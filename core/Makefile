@@ -26,6 +26,10 @@ clean clobber::
 clean::
 	rm -rf $(BUILDDIR)
 	
+cleandep::
+	for i in $(SUBDIRS) ; do \
+		$(MAKE) -C $$i $@ || exit 1; \
+	done
 
 $(LIBRARIES): | $(BUILDDIR)
 

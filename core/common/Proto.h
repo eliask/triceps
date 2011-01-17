@@ -3,14 +3,16 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// The row type definition.
+// XXX this is a prototype for creation of header files.
 
-#ifndef __RowType_h__
-#define __RowType_h__
+#ifndef __Proto_h__
+#define __Proto_h__
 
+#include <mem/XXX.h>
 
 namespace Biceps {
 
+
 }; // Biceps
 
-#endif // __RowType_h__
+#endif // __Proto_h__

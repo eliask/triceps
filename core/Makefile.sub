@@ -33,18 +33,22 @@ depend: $(DEPENDS)
 
 $(BUILDDIR)/%.d: %.cpp Makefile ../Makefile.inc
 	rm -f $@; \
-	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$ && \
+	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
 $(BUILDDIR)/%.d: %.c Makefile ../Makefile.inc
 	rm -f $@; \
-	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	$(CC) -M $(CPPFLAGS) $< > $@.$$$$ && \
+	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
 clean:
 	rm -rf $(BUILDDIR)
 
 clobber:
-	rm -f $(OBJECTS)
+	rm -f $(OBJECTS) $(DEPENDS)
+
+cleandep:
+	rm -f $(DEPENDS)
+
