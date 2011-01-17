@@ -1,0 +1,50 @@
+
+# the common Makefile for all the subdirs
+
+include ../Makefile.inc
+
+SRC_C := $(wildcard *.c)
+SRC_CPP := $(wildcard *.cpp)
+SOURCES := $(SRC_C) $(SRC_CPP)
+OBJECTS := $(addprefix $(BUILDDIR)/, $(SRC_C:.c=$(OBJEXT)) $(SRC_CPP:.cpp=$(OBJEXT)))
+DEPENDS := $(addprefix $(BUILDDIR)/, $(SRC_C:.c=.d) $(SRC_CPP:.cpp=.d))
+
+.PHONY: all depend clean clobber
+
+ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber%, $(MAKECMDGOALS))))
+-include $(DEPENDS)
+endif
+
+all: $(OBJECTS)
+
+$(OBJECTS): | $(BUILDDIR)
+
+$(DEPENDS): | $(BUILDDIR)
+
+$(BUILDDIR)/%$(OBJEXT): Makefile 
+
+$(BUILDDIR)/%$(OBJEXT): %.cpp Makefile ../Makefile.inc
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(BUILDDIR)/%$(OBJEXT): %.c Makefile ../Makefile.inc
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+depend: $(DEPENDS)
+
+$(BUILDDIR)/%.d: %.cpp Makefile ../Makefile.inc
+	rm -f $@; \
+	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+$(BUILDDIR)/%.d: %.c Makefile ../Makefile.inc
+	rm -f $@; \
+	$(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+clean:
+	rm -rf $(BUILDDIR)
+
+clobber:
+	rm -f $(OBJECTS)
