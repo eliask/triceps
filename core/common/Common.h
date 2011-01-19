@@ -9,8 +9,17 @@
 #define __Common_h__
 
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string>
+#include <vector>
+
+#include <common/Errors.h>
+
+namespace Biceps {
 
 using namespace std;
+
+}; // Biceps
 
 #endif // __Common_h__

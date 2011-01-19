@@ -50,7 +50,7 @@ public:
 		ref_(ar.ref_)
 	{
 		if (ref_)
-			ref_->incref_();
+			ref_->incref();
 	}
 
 	~Autoref()
@@ -89,7 +89,7 @@ public:
 			Target *r = ar.ref_;
 			ref_ = r;
 			if (r)
-				r->incref_();
+				r->incref();
 		}
 		return *this;
 	}
