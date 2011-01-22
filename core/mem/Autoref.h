@@ -64,6 +64,11 @@ public:
 		return *ref_; // works fine even with NULL (until that thing gets dereferenced)
 	}
 
+	Target *operator->() const
+	{
+		return ref_; // works fine even with NULL (until that thing gets dereferenced)
+	}
+
 	// Getting the internal pointer
 	Target *get() const
 	{

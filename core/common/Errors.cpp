@@ -8,6 +8,8 @@
 #include <common/Common.h>
 #include <assert.h>
 
+namespace Biceps {
+
 Errors::Errors(bool e) :
 	error_(e)
 { };
@@ -39,3 +41,5 @@ void Errors::appendMsg(bool e, const string &msg)
 	error_ = (error_ || e);
 	push_back(msg);
 }
+
+}; // Biceps

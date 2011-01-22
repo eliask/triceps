@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <common/Errors.h>
+#include <common/Strprintf.h>
 
 namespace Biceps {
 
