@@ -1,10 +1,15 @@
 
 OBJEXT := .o
+BINEXT := 
 BUILDDIR := build
 CPPFLAGS := -I..
-CFLAGS := -O -g -fPIC $(CPPFLAGS)
+CFLAGS := -g -fPIC -pthread -rdynamic $(CPPFLAGS)
 CXXFLAGS := $(CFLAGS)
+LDFLAGS := -L../build -lbiceps -lpthread
+TESTLDFLAGS := $(LDFLAGS) -Wl,-rpath='$$ORIGIN/../../../build'
+
 RANLIB := ranlib
+VALGRIND := valgrind --leak-check=full -v
 
 LIBRARY := biceps
 SHLIB := lib$(LIBRARY).so

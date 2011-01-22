@@ -26,7 +26,7 @@ clean clobber::
 clean::
 	rm -rf $(BUILDDIR)
 	
-cleandep::
+cleandep mktest test qtest vtest::
 	for i in $(SUBDIRS) ; do \
 		$(MAKE) -C $$i $@ || exit 1; \
 	done
@@ -35,7 +35,7 @@ $(LIBRARIES): | $(BUILDDIR)
 
 $(BUILDDIR)/$(SHLIB): $(OBJECTS) 
 	rm -f $@
-	$(CXX) $(LDFLAGS) -shared -o $@ $^
+	$(CXX) -shared -o $@ $^
 
 $(BUILDDIR)/$(ARLIB): $(OBJECTS)
 	rm -f $@
