@@ -5,13 +5,13 @@
 //
 // Collection of headers for all the simple types.
 
-#ifndef __AllSimpleTypes_h__
-#define __AllSimpleTypes_h__
+#ifndef __Biceps_AllSimpleTypes_h__
+#define __Biceps_AllSimpleTypes_h__
 
-#include <type/SimpleType.h>
 #include <common/Common.h>
+#include <type/SimpleType.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 // Later, when there will be own language, these definitions may become
 // more complex and be split into their separate files.
@@ -65,7 +65,7 @@ public:
 	{ }
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __AllSimpleTypes_h__
+#endif // __Biceps_AllSimpleTypes_h__
 

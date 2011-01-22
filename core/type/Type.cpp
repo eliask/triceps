@@ -5,7 +5,7 @@
 
 #include <type/AllSimpleTypes.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 Autoref<const SimpleType> Type::r_void(new VoidType);
 Autoref<const SimpleType> Type::r_uint8(new Uint8Type);
@@ -14,4 +14,4 @@ Autoref<const SimpleType> Type::r_int64(new Int64Type);
 Autoref<const SimpleType> Type::r_float64(new Float64Type);
 Autoref<const SimpleType> Type::r_string(new StringType);
 
-}; // Biceps
+}; // BICEPS_NS

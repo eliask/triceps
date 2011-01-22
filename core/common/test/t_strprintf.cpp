@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <common/Strprintf.h>
 
-using namespace Biceps;
+using namespace BICEPS_NS;
 
 bool eCode = 0;
 

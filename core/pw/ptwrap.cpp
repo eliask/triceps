@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <pw/ptwrap.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 namespace pw // POSIX wrapped
 {
@@ -310,4 +310,4 @@ void weakref::invalidate2()
 
 }; // pw
 
-}; // Biceps
+}; // BICEPS_NS

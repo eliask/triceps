@@ -5,12 +5,12 @@
 //
 // The general type definition.
 
-#ifndef __Type_h__
-#define __Type_h__
+#ifndef __Biceps_Type_h__
+#define __Biceps_Type_h__
 
 #include <mem/Mtarget.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 class SimpleType;
 
@@ -95,6 +95,6 @@ private:
 	Type();
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Type_h__
+#endif // __Biceps_Type_h__

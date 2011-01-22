@@ -5,14 +5,14 @@
 //
 // XXX this is a prototype for creation of header files.
 
-#ifndef __Proto_h__
-#define __Proto_h__
+#ifndef __Biceps_Proto_h__
+#define __Biceps_Proto_h__
 
-#include <mem/XXX.h>
+#include <common/Common.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Proto_h__
+#endif // __Biceps_Proto_h__

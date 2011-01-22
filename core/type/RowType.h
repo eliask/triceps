@@ -5,14 +5,14 @@
 //
 // The row type definition.
 
-#ifndef __RowType_h__
-#define __RowType_h__
+#ifndef __Biceps_RowType_h__
+#define __Biceps_RowType_h__
 
 #include <type/SimpleType.h>
 #include <common/Common.h>
 #include <mem/Autoref.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 // Type of a record that can be stored in a Window.
 class RowType : public Type
@@ -74,6 +74,6 @@ private:
 	RowType();
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __RowType_h__
+#endif // __Biceps_RowType_h__

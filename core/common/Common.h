@@ -5,8 +5,8 @@
 //
 // The common includes grouped together.
 
-#ifndef __Common_h__
-#define __Common_h__
+#ifndef __Biceps_Common_h__
+#define __Biceps_Common_h__
 
 #include <stdint.h>
 #include <stdio.h>
@@ -14,13 +14,14 @@
 #include <string>
 #include <vector>
 
+#include <common/Conf.h>
 #include <common/Errors.h>
 #include <common/Strprintf.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 using namespace std;
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Common_h__
+#endif // __Biceps_Common_h__

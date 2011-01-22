@@ -5,13 +5,13 @@
 //
 // The multi-threaded target for a reference with counting.
 
-#ifndef __Mtarget_h__
-#define __Mtarget_h__
+#ifndef __Biceps_Mtarget_h__
+#define __Biceps_Mtarget_h__
 
 #include <mem/Autoref.h> // just for convenience
 #include <pw/ptwrap.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 // The multithreaded references could certainly benefit from
 // atomic operations on the counter. But for now let's just do it
@@ -54,6 +54,6 @@ private: // the subclasses really shouldn't mess with it
 	mutable int count_;
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Mtarget_h__
+#endif // __Biceps_Mtarget_h__

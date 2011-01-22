@@ -5,14 +5,14 @@
 //
 // A common way for reporting of the errors
 
-#ifndef __Errors_h__
-#define __Errors_h__
+#ifndef __Biceps_Errors_h__
+#define __Biceps_Errors_h__
 
 #include <vector>
 #include <string>
 #include <mem/Starget.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 using namespace std;
 
@@ -61,6 +61,6 @@ public:
 // the typical error indication returned by the parsing functions
 typedef Autoref<Errors> Erref;
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Errors_h__
+#endif // __Biceps_Errors_h__

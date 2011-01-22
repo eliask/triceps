@@ -5,12 +5,13 @@
 //
 // Assorted functions working on strings.
 
-#ifndef __StringTools_h__
-#define __StringTools_h__
+#ifndef __Biceps_StringTools_h__
+#define __Biceps_StringTools_h__
 
 #include <string>
+#include <common/Conf.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 using namespace std;
 
@@ -19,6 +20,6 @@ string strprintf(const char *fmt, ...)
 	__attribute__((format(printf, 1, 2)));
 
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __StringTools_h__
+#endif // __Biceps_StringTools_h__

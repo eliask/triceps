@@ -2,8 +2,10 @@
 // See the accompanying COPYRIGHT file for the copyright notice and license.
 // Adapted from tpopp-examples-100329.
 
-#ifndef __ptwrap_hpp__
-#define __ptwrap_hpp__
+#ifndef __Biceps_ptwrap_hpp__
+#define __Biceps_ptwrap_hpp__
+
+#include <common/Conf.h>
 
 // DEBUG former ex01.cpp
 //
@@ -15,7 +17,7 @@
 #include <errno.h>
 #include <set>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 namespace pw // POSIX wrapped
 {
@@ -1227,8 +1229,8 @@ private:
 
 }; // pw
 
-}; // Biceps
+}; // BICEPS_NS
 
 // the queues are not brought in yet, beceuse there is no need for them yet...
 
-#endif // __ptwrap_hpp__
+#endif // __Biceps_ptwrap_hpp__

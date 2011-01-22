@@ -9,7 +9,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 string strprintf(const char *fmt, ...)
 {
@@ -32,4 +32,4 @@ string strprintf(const char *fmt, ...)
 	return ret;
 }
 
-}; // Biceps
+}; // BICEPS_NS

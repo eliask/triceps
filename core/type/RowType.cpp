@@ -8,7 +8,7 @@
 #include <type/RowType.h>
 #include <map>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 const RowType::Field *RowType::find(const string &fname)
 {
@@ -36,4 +36,4 @@ Erref RowType::validate()
 	return err;
 }
 
-}; // Biceps
+}; // BICEPS_NS

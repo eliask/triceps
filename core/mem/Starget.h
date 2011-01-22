@@ -5,12 +5,12 @@
 //
 // The single-threaded target for a reference with counting.
 
-#ifndef __Starget_h__
-#define __Starget_h__
+#ifndef __Biceps_Starget_h__
+#define __Biceps_Starget_h__
 
 #include <mem/Autoref.h> // just for convenience
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 // The single-threaded autoreferences are faster but require
 // a careful descipline, to keep these objects used in only one
@@ -48,6 +48,6 @@ private: // the subclasses really shouldn't mess with it
 	mutable int count_;
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Starget_h__
+#endif // __Biceps_Starget_h__

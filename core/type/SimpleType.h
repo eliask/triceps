@@ -5,12 +5,12 @@
 //
 // Common subclass for the simple types
 
-#ifndef __SimpleType_h__
-#define __SimpleType_h__
+#ifndef __Biceps_SimpleType_h__
+#define __Biceps_SimpleType_h__
 
 #include <type/Type.h>
 
-namespace Biceps {
+namespace BICEPS_NS {
 
 // Later, when there will be own language, these definitions may become
 // more complex and be split into their separate files.
@@ -36,7 +36,7 @@ private:
 	SimpleType();
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __SimpleType_h__
+#endif // __Biceps_SimpleType_h__
 

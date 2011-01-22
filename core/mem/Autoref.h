@@ -5,10 +5,12 @@
 //
 // The reference with counting.
 
-#ifndef __Autoref_h__
-#define __Autoref_h__
+#ifndef __Biceps_Autoref_h__
+#define __Biceps_Autoref_h__
 
-namespace Biceps {
+#include <common/Conf.h>
+
+namespace BICEPS_NS {
 
 // The reference to a ref-counted object.
 // The idea here is that the referenced object doesn't have to be virtual.
@@ -112,6 +114,6 @@ protected:
 	Target *ref_; // the actual pointer
 };
 
-}; // Biceps
+}; // BICEPS_NS
 
-#endif // __Autoref_h__
+#endif // __Biceps_Autoref_h__
