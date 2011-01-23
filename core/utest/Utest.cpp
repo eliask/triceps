@@ -106,4 +106,6 @@ int Utest::run()
 			lastcase_ = NULL; 
 		}
 	}
+
+	return rc_;
 }
