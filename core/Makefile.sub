@@ -13,6 +13,7 @@ DEPENDS := $(addprefix $(BUILDDIR)/, $(SRC_C:.c=.d) $(SRC_CPP:.cpp=.d))
 T_SRC_CPP := $(wildcard test/t_*.cpp)
 T_BINS := $(patsubst test/%, test/$(BUILDDIR)/%, $(T_SRC_C:.c=$(BINEXT)) $(T_SRC_CPP:.cpp=$(BINOBJEXT)))
 T_DEPENDS := $(patsubst test/%, test/$(BUILDDIR)/%, $(T_SRC_C:.c=.d) $(T_SRC_CPP:.cpp=.d))
+T_MAINS := $(patsubst test/%, test/$(BUILDDIR)/%, $(T_SRC_CPP:.cpp=.main.cpp))
 
 .PHONY: all depend clean clobber mktest test qtest vtest
 
@@ -51,7 +52,10 @@ $(BUILDDIR)/%.d: %.c Makefile ../Makefile.inc
 cleancore:
 	rm -f core.* *.core core vgcore.*
 
-clean: cleancore
+cleantest:
+	rm -rf test/$(BUILDDIR) 
+
+clean: cleancore cleantest
 	rm -rf $(BUILDDIR) test/$(BUILDDIR) 
 
 clobber:
@@ -62,7 +66,7 @@ cleandep:
 
 ### the test stuff ###
 
-mktest: $(T_BINS)
+mktest: $(T_DEPENDS) $(T_MAINS) $(T_BINS)
 
 test: vtest
 
@@ -93,7 +97,7 @@ test/$(BUILDDIR):
 test/$(BUILDDIR)/%.d: test/%.cpp Makefile ../Makefile.inc
 	rm -f $@; \
 	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$ && \
-	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
+	sed 's,\($*\)\.o[ :]*,test/$(BUILDDIR)/\1 $@ : test/build/\1.make.cpp ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
 test/$(BUILDDIR)/%.d: test/%.c Makefile ../Makefile.inc

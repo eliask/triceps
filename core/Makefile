@@ -1,6 +1,6 @@
 SUBDIRS := pw mem type common utest
 
-.PHONY: all clean clobber all-subdirs $(SUBDIRS)
+.PHONY: all clean clobber cleandep mktest cleantest test qtest vtest all-subdirs $(SUBDIRS)
 
 include Makefile.inc
 
@@ -26,7 +26,9 @@ clean clobber::
 clean::
 	rm -rf $(BUILDDIR)
 	
-cleandep mktest test qtest vtest::
+test qtest vtest:: mktest
+
+cleandep mktest cleantest test qtest vtest::
 	for i in $(SUBDIRS) ; do \
 		$(MAKE) -C $$i $@ || exit 1; \
 	done
