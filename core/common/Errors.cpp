@@ -20,8 +20,10 @@ bool Errors::append(Autoref<Errors> clde)
 		return false;
 
 	bool ce = clde->error_;
-	if (!ce && clde->empty()) // nothing in there
-		return false;
+	error_ = (error_ || ce);
+
+	if (clde->isEmpty()) // nothing in there
+		return ce;
 
 	assert(clde->sibling_.isNull());
 
@@ -32,7 +34,6 @@ bool Errors::append(Autoref<Errors> clde)
 	}
 	clast_ = clde;
 
-	error_ = (error_ || ce);
 	return ce;
 }
 
@@ -40,6 +41,39 @@ void Errors::appendMsg(bool e, const string &msg)
 {
 	error_ = (error_ || e);
 	push_back(msg);
+}
+
+bool Errors::isEmpty()
+{
+	if (!empty())
+		return false;
+	if (cfirst_.isNull())
+		return true;
+
+	for (Errors *p = cfirst_; p != NULL; p = p->sibling_) {
+		if (!p->isEmpty())
+			return false;
+	}
+	return true;
+}
+
+void Errors::printTo(string &res, const string &indent, const string &subindent)
+{
+	size_t i, n = size();
+	for (i = 0; i < n; i++) {
+		res += indent + at(i) + "\n";
+	}
+	string downindent = indent + subindent;
+	for (Errors *p = cfirst_; p != NULL; p = p->sibling_) {
+		p->printTo(res, downindent, subindent);
+	}
+}
+
+string Errors::print(const string &indent, const string &subindent)
+{
+	string res;
+	printTo(res, indent, subindent);
+	return res;
 }
 
 }; // BICEPS_NS

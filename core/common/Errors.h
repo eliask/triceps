@@ -49,7 +49,30 @@ public:
 	// @param e - flag: true if error, false if warning
 	// @param msg - the error message
 	void appendMsg(bool e, const string &msg);
+
+	// Check recursively whether ethere are no messages.
+	// @return - true if there are no messages throughout hierarchy
+	bool isEmpty();
+
+	// Check if has an error.
+	// @return - true if has an error
+	bool hasError()
+	{
+		return error_;
+	}
 	
+	// Print the messages recursively by appending them to a string.
+	// @param res - the resulting string to append to
+	// @param indent - initial indentation characters
+	// @param subindent - indentation characters to add on each level
+	void printTo(string &res, const string &indent = "", const string &subindent = "  ");
+
+	// Print in a simple way and return the result string.
+	// @param indent - initial indentation characters
+	// @param subindent - indentation characters to add on each level
+	// @return - the result string
+	string print(const string &indent = "", const string &subindent = "  ");
+
 public:
 	bool error_; // true if there is an error somewhere, false if only warnings
 	Autoref<Errors> cfirst_; // first child
