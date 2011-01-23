@@ -30,6 +30,11 @@ public:
 		return new tg;
 	}
 
+	static Onceref<tg> optfactory()
+	{
+		return new tg;
+	}
+
 	int data_;
 };
 int tg::outstanding = 0;
@@ -93,3 +98,38 @@ UTESTCASE assign(Utest *utest)
 	p2 = 0;
 	UT_ASSERT(tg::outstanding == 0);
 }
+
+UTESTCASE onceref(Utest *utest)
+{
+	UT_ASSERT(tg::outstanding == 0);
+
+	Autoref<tg> p;
+	UT_ASSERT(p.isNull());
+
+	p = tg::optfactory();
+	UT_ASSERT(tg::outstanding == 1);
+
+	Autoref<tg> p2(tg::optfactory());
+	UT_ASSERT(tg::outstanding == 2);
+
+	{
+		Onceref<tg> o1(tg::factory());
+		UT_ASSERT(tg::outstanding == 3);
+
+		Onceref<tg> o2(p);
+		UT_ASSERT(tg::outstanding == 3);
+
+		Onceref<tg> o3 = o1;
+		UT_ASSERT(tg::outstanding == 3);
+
+		Onceref<tg> o4;
+		o4 = o1;
+		UT_ASSERT(tg::outstanding == 3);
+	}
+	UT_ASSERT(tg::outstanding == 2);
+
+	p = NULL;
+	p2 = NULL;
+	UT_ASSERT(tg::outstanding == 0);
+}
+

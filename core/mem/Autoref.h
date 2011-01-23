@@ -114,6 +114,28 @@ protected:
 	Target *ref_; // the actual pointer
 };
 
+// This is a placeholder for now. In the future it may become an optimized
+// version to be used when an auto-referenced value needs to be passed
+// once, such as when returning a newly allocated value from a function,
+// and then this reference just moved to autoref. It's kind_of like STL autoptr.
+// But for now just default to the same as Autoref.
+
+template <typename Target>
+class Onceref : public Autoref<Target>
+{
+public:
+	Onceref()
+	{ }
+
+	Onceref(Target *t) :
+		Autoref<Target>(t)
+	{ }
+
+	Onceref(const Autoref<Target> &ar) :
+		Autoref<Target>(ar)
+	{ }
+};
+
 }; // BICEPS_NS
 
 #endif // __Biceps_Autoref_h__
