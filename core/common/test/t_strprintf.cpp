@@ -5,31 +5,21 @@
 //
 // Test of strprintf().
 
-#include <stdio.h>
+#include <utest/Utest.h>
+
 #include <common/Strprintf.h>
 
-using namespace BICEPS_NS;
+// Now, this is a bit funny, since strprintf() is used inside the etst infrastructure
+// too. But if it all works, it should be all good.
 
-bool eCode = 0;
-
-void fail()
+UTESTCASE mkshort(Utest *utest)
 {
-	eCode = 1;
+	std::string s = strprintf("%s", "aa");
+	UT_ASSERT(s.size() == 2);
 }
 
-// returns the shell error code
-int getCode()
+UTESTCASE mklong(Utest *utest)
 {
-	return eCode;
-}
-
-int main()
-{
-	std::string a = strprintf("%s", "aa");
-	std::string b = strprintf("%1000s", "bc");
-
-	if (a.size() !=2 || b.size() != 1000)
-		fail();
-
-	return getCode();
+	std::string s = strprintf("%1000s", "bc");
+	UT_ASSERT(s.size() == 1000);
 }

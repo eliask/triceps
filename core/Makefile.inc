@@ -6,7 +6,8 @@ CPPFLAGS := -I..
 CFLAGS := -g -fPIC -pthread -rdynamic $(CPPFLAGS)
 CXXFLAGS := $(CFLAGS)
 LDFLAGS := -L../build -lbiceps -lpthread
-TESTLDFLAGS := $(LDFLAGS) -Wl,-rpath='$$ORIGIN/../../../build'
+TESTLDFLAGS := $(LDFLAGS) -L../utest/build -Wl,-rpath='$$ORIGIN/../../../build' \
+	-lbiceps_utest -Wl,-rpath='$$ORIGIN/../../../utest/build'
 
 RANLIB := ranlib
 VALGRIND := valgrind --leak-check=full -v

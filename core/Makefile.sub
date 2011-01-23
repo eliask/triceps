@@ -75,7 +75,7 @@ qtest: cleancore mktest
 # detailed test, with valgrind
 vtest: cleancore mktest
 	@echo "Unit tests valgrind:"; for i in  $(T_BINS); do \
-		basename $$i; $(VALGRIND) $$i >$$i.vg 2>&1  || { echo "  FAIL" >&2; exit 1; }; \
+		basename $$i; $(VALGRIND) $$i 2>$$i.vg || { echo "  FAIL" >&2; exit 1; }; \
 		grep "ERROR SUMMARY: .*[^0].* errors from" $$i.vg && { echo "  FAIL MEMCHK" >&2; exit 1; }; \
 		grep "are definitely lost" $$i.vg && { echo "  FAIL LEAK" >&2; exit 1; }; \
 	done; true
@@ -102,9 +102,16 @@ test/$(BUILDDIR)/%.d: test/%.c Makefile ../Makefile.inc
 	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
-test/$(BUILDDIR)/%$(BINEXT): test/%.cpp Makefile ../Makefile.inc
-	$(CXX) $(CXXFLAGS) $(TESTLDFLAGS) -o $@ $<
+# automatically build main() for the test driver
+test/$(BUILDDIR)/%.main.cpp: test/%.cpp ../utest/genmain.pl
+	perl ../utest/genmain.pl < $< > $@
 
+test/$(BUILDDIR)/%$(BINEXT): Makefile ../Makefile.inc
+
+test/$(BUILDDIR)/%$(BINEXT): test/%.cpp test/$(BUILDDIR)/%.main.cpp
+	$(CXX) $(CXXFLAGS) $(TESTLDFLAGS) -o $@ $^
+
+# the C code, if any appears, doesn't use the common unit test driver
 test/$(BUILDDIR)/%$(BINEXT): test/%.c Makefile ../Makefile.inc
 	$(CC) $(CFLAGS) $(TESTLDFLAGS) -o $@ $<
 

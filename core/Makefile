@@ -1,4 +1,4 @@
-SUBDIRS := pw mem type common
+SUBDIRS := pw mem type common utest
 
 .PHONY: all clean clobber all-subdirs $(SUBDIRS)
 
