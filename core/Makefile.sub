@@ -19,6 +19,7 @@ T_MAINS := $(patsubst test/%, test/$(BUILDDIR)/%, $(T_SRC_CPP:.cpp=.main.cpp))
 
 ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber%, $(MAKECMDGOALS))))
 -include $(DEPENDS)
+-include $(T_DEPENDS)
 endif
 
 all: $(OBJECTS)
@@ -90,14 +91,14 @@ $(T_BINS): | test/$(BUILDDIR)
 
 test/$(BUILDDIR):
 	mkdir test/$(BUILDDIR)
-	echo "$(T_SRC_CPP)"
-	echo "$(T_DEPENDS)"
-	echo "$(T_BINS)"
+	@#echo "$(T_SRC_CPP)"
+	@#echo "$(T_DEPENDS)"
+	@#echo "$(T_BINS)"
 
 test/$(BUILDDIR)/%.d: test/%.cpp Makefile ../Makefile.inc
 	rm -f $@; \
 	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$ && \
-	sed 's,\($*\)\.o[ :]*,test/$(BUILDDIR)/\1 $@ : test/build/\1.make.cpp ,g' < $@.$$$$ > $@ && \
+	sed 's,\($*\)\.o[ :]*,test/$(BUILDDIR)/\1 $@ : test/build/\1.main.cpp ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
 test/$(BUILDDIR)/%.d: test/%.c Makefile ../Makefile.inc
@@ -113,7 +114,7 @@ test/$(BUILDDIR)/%.main.cpp: test/%.cpp ../utest/genmain.pl
 test/$(BUILDDIR)/%$(BINEXT): Makefile ../Makefile.inc
 
 test/$(BUILDDIR)/%$(BINEXT): test/%.cpp test/$(BUILDDIR)/%.main.cpp
-	$(CXX) $(CXXFLAGS) $(TESTLDFLAGS) -o $@ $^
+	$(CXX) $(CXXFLAGS) $(TESTLDFLAGS) -o $@ $< test/$(BUILDDIR)/$*.main.cpp
 
 # the C code, if any appears, doesn't use the common unit test driver
 test/$(BUILDDIR)/%$(BINEXT): test/%.c Makefile ../Makefile.inc
