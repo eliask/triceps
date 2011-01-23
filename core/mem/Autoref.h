@@ -86,7 +86,7 @@ public:
 	// A convenience comparison to NULL
 	bool isNull() const
 	{
-		return (ref_ != 0);
+		return (ref_ == 0);
 	}
 
 	Autoref &operator=(const Autoref &ar)
