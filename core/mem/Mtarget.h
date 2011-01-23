@@ -36,21 +36,28 @@ public:
 	// the operations on the count
 	void incref() const
 	{
-		mutex_.lock();
+		mt_mutex_.lock();
 		++count_;
-		mutex_.unlock();
+		mt_mutex_.unlock();
 	}
 
 	int decref() const
 	{
-		mutex_.lock();
+		mt_mutex_.lock();
 		int c = --count_;
-		mutex_.unlock();
+		mt_mutex_.unlock();
 		return c;
 	}
 
+	// this one is mostly for unit tests
+	int getref() const
+	{
+		return count_;
+	}
+
+protected:
+	mutable pw::pmutex mt_mutex_;
 private: // the subclasses really shouldn't mess with it
-	mutable pw::pmutex mutex_;
 	mutable int count_;
 };
 

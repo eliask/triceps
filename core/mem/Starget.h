@@ -44,6 +44,12 @@ public:
 		return --count_;
 	}
 
+	// this one is mostly for unit tests
+	int getref() const
+	{
+		return count_;
+	}
+
 private: // the subclasses really shouldn't mess with it
 	mutable int count_;
 };
