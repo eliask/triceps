@@ -9,6 +9,7 @@
 #define __Biceps_Type_h__
 
 #include <mem/Mtarget.h>
+#include <common/Common.h>
 
 namespace BICEPS_NS {
 
@@ -55,14 +56,22 @@ public:
 		return typeId_;
 	}
 
+	// Get the errors collected when parsing this type
+	// @return - errors reference, may be NULL
+	virtual Erref getErrors() const = 0;
+
 	// The types can be equal in one of 3 ways, in order or decreasting exactness:
 	// 1. Exactly the same Type object.
 	//    Compary the pointers.
 	// 2. The contents, including the subtypes and the names of field matches exactly.
-	//    The operator==()
+	//    The equals() and operator==()
 	// 3. The names of fields may be different.
 	//    The method match()
-	virtual bool operator==(const Type &t) const
+	bool operator==(const Type &t) const
+	{
+		return equals(t);
+	}
+	virtual bool equals(const Type &t) const
 	{
 		if (this == &t) // a shortcut
 			return true;
@@ -75,7 +84,7 @@ public:
 	{
 		// most types don't have any field names, so it ends up the same as ==,
 		// the rest can redefine this method
-		return (*this == t);
+		return equals(t);
 	}
 
 public:

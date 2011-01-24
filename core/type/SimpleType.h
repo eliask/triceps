@@ -29,6 +29,9 @@ public:
 		return size_;
 	}
 
+	// from Type
+	virtual Erref getErrors() const;
+
 protected:
 	int size_; // size of the basic element of this type
 
