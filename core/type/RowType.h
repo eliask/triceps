@@ -82,11 +82,11 @@ public:
 
 		// the default copy and assignment are good enough
 		
-		Field(const string &name, Autoref<const SimpleType> t, int arsz = 0);
+		Field(const string &name, Autoref<const Type> t, int arsz = 0);
 
 	public:
 		string name_; // field name
-		Autoref <const SimpleType> type_; // field type, must really be a simple type
+		Autoref <const Type> type_; // field type, must really be a simple type
 		int arsz_; // hint of array size, 0 means variable (<0 treated the same as 0 for now)
 	}; // Field
 

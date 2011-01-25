@@ -55,6 +55,15 @@ public:
 			ref_->incref();
 	}
 
+	// This is for the automatic casts of the content pointer types
+	template <typename OtherTarget>
+	Autoref(const Autoref<OtherTarget> &ar) :
+		ref_(ar.get())
+	{
+		if (ref_)
+			ref_->incref();
+	}
+
 	~Autoref()
 	{
 		drop();
@@ -99,6 +108,41 @@ public:
 				r->incref();
 		}
 		return *this;
+	}
+	
+	// This is for the automatic casts of the content pointer types
+	template <typename OtherTarget>
+	Autoref &operator=(const Autoref<OtherTarget> &ar)
+	{
+		if ((void *)&ar != (void *)this) { // assigning to itself is a null-op that might cause a mess
+			drop();
+			Target *r = ar.get();
+			ref_ = r;
+			if (r)
+				r->incref();
+		}
+		return *this;
+	}
+
+	bool operator==(const Autoref &ar)
+	{
+		return (ref_ == ar.ref_);
+	}
+	bool operator!=(const Autoref &ar)
+	{
+		return (ref_ != ar.ref_);
+	}
+
+	// This is for the automatic casts of the content pointer types
+	template <typename OtherTarget>
+	bool operator==(const Autoref<OtherTarget> &ar)
+	{
+		return (ref_ == ar.get());
+	}
+	template <typename OtherTarget>
+	bool operator!=(const Autoref<OtherTarget> &ar)
+	{
+		return (ref_ != ar.get());
 	}
 
 protected:

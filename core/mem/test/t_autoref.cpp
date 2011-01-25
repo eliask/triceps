@@ -39,6 +39,15 @@ public:
 };
 int tg::outstanding = 0;
 
+class tg2 : public tg
+{
+public:
+	static Autoref<tg2> factory()
+	{
+		return new tg2;
+	}
+};
+
 // Now, this is a bit funny, since strprintf() is used inside the etst infrastructure
 // too. But if it all works, it should be all good.
 
@@ -55,7 +64,9 @@ UTESTCASE construct(Utest *utest)
 {
 	UT_ASSERT(tg::outstanding == 0);
 	{
-		Autoref<tg> p(new tg);
+		Autoref<tg2> p(new tg2);
+		UT_ASSERT(tg::outstanding == 1);
+		Autoref<tg> p2(p);
 		UT_ASSERT(tg::outstanding == 1);
 	}
 	UT_ASSERT(tg::outstanding == 0);
@@ -78,11 +89,13 @@ UTESTCASE assign(Utest *utest)
 	UT_ASSERT(tg::outstanding == 0);
 	Autoref<tg> p2;
 	{
-		Autoref<tg> p(new tg);
+		Autoref<tg2> p(new tg2);
 		UT_ASSERT(tg::outstanding == 1);
 		p = p;
 		UT_ASSERT(tg::outstanding == 1);
+		UT_ASSERT(p2 != p);
 		p2 = p;
+		UT_ASSERT(p2 == p);
 		UT_ASSERT(tg::outstanding == 1);
 		p2 = p;
 		UT_ASSERT(tg::outstanding == 1);
@@ -91,7 +104,7 @@ UTESTCASE assign(Utest *utest)
 		p->data_ = 1;
 		UT_ASSERT(p2->data_ == 1);
 
-		p = tg::factory();
+		p = tg2::factory();
 		UT_ASSERT(tg::outstanding == 2);
 	}
 	UT_ASSERT(tg::outstanding == 1);

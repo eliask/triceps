@@ -19,7 +19,7 @@ RowType::Field::Field() :
 
 // the default copy and assignment are good enough
 
-RowType::Field::Field(const string &name, Autoref<const SimpleType> t, int arsz) :
+RowType::Field::Field(const string &name, Autoref<const Type> t, int arsz) :
 	name_(name),
 	type_(t),
 	arsz_(arsz)
