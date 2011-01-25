@@ -11,6 +11,8 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <vector>
+#include <iostream>
 #include <stdio.h>
 #include <common/Conf.h>
 #include <common/Strprintf.h>
@@ -25,6 +27,9 @@ using namespace BICEPS_NS;
 #define UT_FAIL() utest->fail(__FILE__, __LINE__)
 #define UT_FAILMSG(msg) utest->fail(__FILE__, __LINE__, msg)
 #define UT_ASSERT(expr) ((expr)? false : utest->fail(__FILE__, __LINE__, "Failed assertion: " #expr))
+#define UT_IS(expr, cexpr) (((expr) == (cexpr))? false : \
+	(utest->fail(__FILE__, __LINE__, "Failed assertion: " #expr " == " #cexpr), \
+		(cout << "      Has value: \"" << (expr) << "\"" << endl << flush), 1))
 
 class Utest {
 public:
