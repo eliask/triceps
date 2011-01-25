@@ -17,10 +17,13 @@ class CompactRowType : public RowType
 {
 public:
 	CompactRowType(const FieldVec &fields);
+	CompactRowType(const RowType &proto);
+	// a convenience, since we usually get pointers in Autoref
+	CompactRowType(const RowType *proto);
 	virtual ~CompactRowType();
 
 	// from RowType
-	virtual Onceref<RowType> newSameFormat(const FieldVec &fields) const;
+	virtual RowType *newSameFormat(const FieldVec &fields) const;
 	virtual bool isFieldNull(const Row *row, int nf) const;
 	virtual bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const;
 	virtual Onceref<Row> makeRow(FdataVec &data_) const;

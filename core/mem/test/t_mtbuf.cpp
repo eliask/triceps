@@ -45,9 +45,6 @@ public:
 };
 int stype::outstanding = 0;
 
-// Now, this is a bit funny, since strprintf() is used inside the etst infrastructure
-// too. But if it all works, it should be all good.
-
 UTESTCASE buf(Utest *utest)
 {
 	// fprintf(stderr, "sizeof(srow) = %d sizeof(MtBuffer) = %d\n", (int)sizeof(srow), (int)sizeof(MtBuffer));
@@ -106,9 +103,6 @@ public:
 	}
 };
 int vstype::outstanding = 0;
-
-// Now, this is a bit funny, since strprintf() is used inside the etst infrastructure
-// too. But if it all works, it should be all good.
 
 UTESTCASE vbuf(Utest *utest)
 {

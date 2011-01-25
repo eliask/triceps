@@ -45,13 +45,13 @@ public:
 	{ }
 
 	// @return - true if this is a simple type
-	bool isSimple()
+	bool isSimple() const
 	{
 		return simple_;
 	}
 
 	// @return - the id value of this type
-	bool getTypeId()
+	bool getTypeId() const
 	{
 		return typeId_;
 	}
@@ -69,18 +69,19 @@ public:
 	//    The method match()
 	bool operator==(const Type &t) const
 	{
-		return equals(t);
+		return equals(&t);
 	}
-	virtual bool equals(const Type &t) const
+	// normally types are referred by autoref, so pointers are more convenient than references
+	virtual bool equals(const Type *t) const
 	{
-		if (this == &t) // a shortcut
+		if (this == t) // a shortcut
 			return true;
-		if (typeId_ != t.typeId_)
+		if (typeId_ != t->typeId_)
 			return false;
 		// the rest is up to subclasses
 		return true;
 	}
-	virtual bool match(const Type &t) const
+	virtual bool match(const Type *t) const
 	{
 		// most types don't have any field names, so it ends up the same as ==,
 		// the rest can redefine this method

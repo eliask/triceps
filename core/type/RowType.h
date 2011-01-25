@@ -15,6 +15,56 @@
 
 namespace BICEPS_NS {
 
+class RowType;
+	
+// Data to be stored in a field of a record.
+// The field data are normally passed as a vector. If a row type has N fields,
+// then the first N data elements determine the size of the fields and provide
+// the initial filling.
+// 
+// If there are more field data elements, they are treated as overrides:
+// fill more data into the existing fields. This allows to assemble the
+// field values from multiple sources. The overrides can't go past the
+// end of fields, and can not put data into the null fields.
+class Fdata 
+{
+public:
+	// set the field to null
+	void setNull()
+	{
+		notNull_ = false;
+	}
+	// Set the field to point to a buffer
+	void setPtr(bool notNull, const void *data, intptr_t len)
+	{
+		notNull_ = notNull;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+	// Set the field by copying it from other row
+	// (doesn't add a reference to that row, if needed add manually).
+	inline void setFrom(const RowType *rtype, const Row *row, int nf);
+	// Set the field as an override
+	void setOverride(int nf, intptr_t off, const void *data, intptr_t len)
+	{
+		nf_ = nf;
+		off_ = off;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+
+public:
+	Autoref <Row> row_; // in case if data comes from another row, can be used
+		// to keep a hold on it, but doesn't have to if the row won't be deleted anyway
+	const char *data_; // data to store, may be NULL to just zero-fill
+	intptr_t len_; // length of data to store
+	intptr_t off_; // for overrides only: offset into the field
+	int nf_; // for overrides only: index of field to fill
+	bool notNull_; // this field is not null (only for non-overrides)
+};
+typedef vector<Fdata> FdataVec;
+
+
 // Type of a record that can be stored in a Window.
 // Its subclasses know how to actually work with various concrete
 // record formats.
@@ -32,11 +82,11 @@ public:
 
 		// the default copy and assignment are good enough
 		
-		Field(const string &name, Autoref<Type> t, int arsz = 0);
+		Field(const string &name, Autoref<const SimpleType> t, int arsz = 0);
 
 	public:
 		string name_; // field name
-		Autoref <Type> type_; // field type, must really be a simple type
+		Autoref <const SimpleType> type_; // field type, must really be a simple type
 		int arsz_; // hint of array size, 0 means variable (<0 treated the same as 0 for now)
 	}; // Field
 
@@ -48,17 +98,17 @@ public:
 
 	// Essentially a factory, that creates another row type with the
 	// same internal format.
-	virtual Onceref<RowType> newSameFormat(const FieldVec &fields) const = 0;
+	virtual RowType *newSameFormat(const FieldVec &fields) const = 0;
 
 	// from Type
 	virtual Erref getErrors() const;
-	virtual bool equals(const Type &t) const;
-	virtual bool match(const Type &t) const;
+	virtual bool equals(const Type *t) const;
+	virtual bool match(const Type *t) const;
 
 	// just make the guts visible read-only to anyone
-	const vector<Field> *fields() const
+	const vector<Field> &fields() const
 	{
-		return &fields_;
+		return fields_;
 	}
 
 	// find a field by name
@@ -95,56 +145,6 @@ public:
 	// the rows are immutable, so the only way to change a row 
 	// is by building a new one
 	
-	// Data to be stored in a field of a record.
-	// The field data are normally passed as a vector. If a row type has N fields,
-	// then the first N data elements determine the size of the fields and provide
-	// the initial filling.
-	// 
-	// If there are more field data elements, they are treated as overrides:
-	// fill more data into the existing fields. This allows to assemble the
-	// field values from multiple sources. The overrides can't go past the
-	// end of fields, and can not put data into the null fields.
-	class Fdata 
-	{
-	public:
-		// set the field to null
-		void setNull()
-		{
-			notNull_ = false;
-		}
-		// Set the field to point to a buffer
-		void setPtr(bool notNull, const void *data, intptr_t len)
-		{
-			notNull_ = notNull;
-			data_ = (const char *)data;
-			len_ = len;
-		}
-		// Set the field by copying it from other row
-		// (doesn't add a reference to that row, if needed add manually).
-		void setFrom(const RowType *rtype, const Row *row, int nf)
-		{
-			notNull_ = rtype->getField(row, nf, data_, len_);
-		}
-		// Set the field as an override
-		void setOverride(int nf, intptr_t off, const void *data, intptr_t len)
-		{
-			nf_ = nf;
-			off_ = off;
-			data_ = (const char *)data;
-			len_ = len;
-		}
-
-	public:
-		Autoref <Row> row_; // in case if data comes from another row, can be used
-			// to keep a hold on it, but doesn't have to if the row won't be deleted anyway
-		const char *data_; // data to store, may be NULL to just zero-fill
-		intptr_t len_; // length of data to store
-		intptr_t off_; // for overrides only: offset into the field
-		int nf_; // for overrides only: index of field to fill
-		bool notNull_; // this field is not null (only for non-overrides)
-	};
-	typedef vector<Fdata> FdataVec;
-
 	// Split the contents of a row into a data vector. Does not fill in the row_ references.
 	// A convenience function working through setFrom().
 	// @param row - row to split
@@ -186,6 +186,12 @@ protected:
 private:
 	RowType();
 };
+
+// comes atfter RowType is defined...
+inline void Fdata::setFrom(const RowType *rtype, const Row *row, int nf)
+{
+	notNull_ = rtype->getField(row, nf, data_, len_);
+}
 
 }; // BICEPS_NS
 

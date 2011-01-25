@@ -14,10 +14,18 @@ CompactRowType::CompactRowType(const FieldVec &fields) :
 	RowType(fields)
 { }
 
+CompactRowType::CompactRowType(const RowType &proto) :
+	RowType(proto)
+{ }
+
+CompactRowType::CompactRowType(const RowType *proto) :
+	RowType(*proto)
+{ }
+
 CompactRowType::~CompactRowType()
 { }
 
-Onceref<RowType> CompactRowType::newSameFormat(const FieldVec &fields) const
+RowType *CompactRowType::newSameFormat(const FieldVec &fields) const
 {
 	return new CompactRowType(fields);
 }

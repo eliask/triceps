@@ -19,7 +19,7 @@ RowType::Field::Field() :
 
 // the default copy and assignment are good enough
 
-RowType::Field::Field(const string &name, Autoref<Type> t, int arsz) :
+RowType::Field::Field(const string &name, Autoref<const SimpleType> t, int arsz) :
 	name_(name),
 	type_(t),
 	arsz_(arsz)
@@ -62,46 +62,46 @@ Erref RowType::getErrors() const
 	return errors_;
 }
 
-bool RowType::equals(const Type &t) const
+bool RowType::equals(const Type *t) const
 {
-	if (this == &t)
+	if (this == t)
 		return true; // self-comparison, shortcut
 
 	if (!Type::equals(t))
 		return false;
 
-	const RowType &rt = static_cast<const RowType &>(t);
+	const RowType *rt = static_cast<const RowType *>(t);
 
-	if (fields_.size() != rt.fields_.size())
+	if (fields_.size() != rt->fields_.size())
 		return false;
 
 	size_t i, n = fields_.size();
 	for (i = 0; i < n; i++) {
-		if ( fields_[i].name_ != rt.fields_[i].name_
-		|| !fields_[i].type_->equals(*rt.fields_[i].type_) 
-		|| fields_[i].arsz_ != rt.fields_[i].arsz_ )
+		if ( fields_[i].name_ != rt->fields_[i].name_
+		|| !fields_[i].type_->equals(rt->fields_[i].type_) 
+		|| fields_[i].arsz_ != rt->fields_[i].arsz_ )
 			return false;
 	}
 	return true;
 }
 
-bool RowType::match(const Type &t) const
+bool RowType::match(const Type *t) const
 {
-	if (this == &t)
+	if (this == t)
 		return true; // self-comparison, shortcut
 
 	if (!Type::equals(t))
 		return false;
 
-	const RowType &rt = static_cast<const RowType &>(t);
+	const RowType *rt = static_cast<const RowType *>(t);
 
-	if (fields_.size() != rt.fields_.size())
+	if (fields_.size() != rt->fields_.size())
 		return false;
 
 	size_t i, n = fields_.size();
 	for (i = 0; i < n; i++) {
-		if ( !fields_[i].type_->match(*rt.fields_[i].type_) 
-		|| fields_[i].arsz_ != rt.fields_[i].arsz_ )
+		if ( !fields_[i].type_->match(rt->fields_[i].type_) 
+		|| fields_[i].arsz_ != rt->fields_[i].arsz_ )
 			return false;
 	}
 	return true;
@@ -130,7 +130,7 @@ Erref RowType::parse()
 			idmap_[name] = i;
 		}
 
-		Type *t = fields_[i].type_;
+		const Type *t = fields_[i].type_;
 		if (!t->isSimple()) {
 			err->appendMsg(true, strprintf("field '%s' type must be a simple type\n",
 				name.c_str()));
