@@ -39,13 +39,15 @@ $(BUILDDIR)/%$(OBJEXT): %.c Makefile ../Makefile.inc
 depend: $(DEPENDS) $(T_DEPENDS)
 
 $(BUILDDIR)/%.d: %.cpp Makefile ../Makefile.inc
-	rm -f $@; \
+	@echo "depending $< to $@ ..."
+	@rm -f $@; \
 	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$ && \
 	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
 $(BUILDDIR)/%.d: %.c Makefile ../Makefile.inc
-	rm -f $@; \
+	@echo "depending $< to $@ ..."
+	@rm -f $@; \
 	$(CC) -M $(CPPFLAGS) $< > $@.$$$$ && \
 	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
@@ -96,13 +98,15 @@ test/$(BUILDDIR):
 	@#echo "$(T_BINS)"
 
 test/$(BUILDDIR)/%.d: test/%.cpp Makefile ../Makefile.inc
-	rm -f $@; \
+	@echo "depending $< to $@ ..."
+	@rm -f $@; \
 	$(CXX) -M $(CPPFLAGS) $< > $@.$$$$ && \
 	sed 's,\($*\)\.o[ :]*,test/$(BUILDDIR)/\1 $@ : test/build/\1.main.cpp ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
 
 test/$(BUILDDIR)/%.d: test/%.c Makefile ../Makefile.inc
-	rm -f $@; \
+	@echo "depending $< to $@ ..."
+	@rm -f $@; \
 	$(CC) -M $(CPPFLAGS) $< > $@.$$$$ && \
 	sed 's,\($*\)\.o[ :]*,$(BUILDDIR)/\1.o $@ : ,g' < $@.$$$$ > $@ && \
 	rm -f $@.$$$$
