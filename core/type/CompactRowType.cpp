@@ -40,7 +40,7 @@ bool CompactRowType::getField(const Row *row, int nf, const char *&ptr, intptr_t
 	const CompactRow *cr = static_cast<const CompactRow *>(row);
 	ptr = cr->getFieldPtr(nf);
 	len = cr->getFieldLen(nf);
-	return !cr->isFieldNull(nf);
+	return cr->isFieldNotNull(nf);
 }
 
 Onceref<Row> CompactRowType::makeRow(FdataVec &data) const
@@ -89,6 +89,7 @@ Onceref<Row> CompactRowType::makeRow(FdataVec &data) const
 		off = data[i].off_;
 		intptr_t len = data[i].len_;
 		const char *d = data[i].data_;
+		// NULL field will have a length of 0
 		if (off < 0 || len <= 0 || d == NULL || off + len > row->getFieldLen(f))
 			continue;
 		memcpy(row->getFieldPtrW(f) + off, d, len);

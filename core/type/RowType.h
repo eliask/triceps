@@ -29,6 +29,9 @@ class RowType;
 class Fdata 
 {
 public:
+	Fdata()
+	{ }
+
 	// set the field to null
 	void setNull()
 	{
@@ -44,8 +47,23 @@ public:
 	// Set the field by copying it from other row
 	// (doesn't add a reference to that row, if needed add manually).
 	inline void setFrom(const RowType *rtype, const Row *row, int nf);
-	// Set the field as an override
+	// Set the field as an override. 
 	void setOverride(int nf, intptr_t off, const void *data, intptr_t len)
+	{
+		nf_ = nf;
+		off_ = off;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+
+	// Constructors with the same meaning
+	Fdata(bool notNull, const void *data, intptr_t len)
+	{
+		notNull_ = notNull;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+	Fdata(int nf, intptr_t off, const void *data, intptr_t len)
 	{
 		nf_ = nf;
 		off_ = off;

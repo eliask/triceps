@@ -119,12 +119,12 @@ Erref RowType::parse()
 		const string &name = fields_[i].name_;
 
 		if (name.empty()) {
-			err->appendMsg(true, strprintf("field %d name must not be empty\n", (int)i+1));
+			err->appendMsg(true, strprintf("field %d name must not be empty", (int)i+1));
 			continue;
 		}
 
 		if (idmap_.find(name) != idmap_.end())  {
-			err->appendMsg(true, strprintf("duplicate field name '%s' for fields %d and %d\n",
+			err->appendMsg(true, strprintf("duplicate field name '%s' for fields %d and %d",
 				name.c_str(), (int)i+1, (int)(idmap_[name])+1));
 		} else {
 			idmap_[name] = i;
@@ -132,10 +132,10 @@ Erref RowType::parse()
 
 		const Type *t = fields_[i].type_;
 		if (!t->isSimple()) {
-			err->appendMsg(true, strprintf("field '%s' type must be a simple type\n",
+			err->appendMsg(true, strprintf("field '%s' type must be a simple type",
 				name.c_str()));
 		} else if(t->getTypeId() == TT_VOID) {
-			err->appendMsg(true, strprintf("field '%s' type must not be void\n",
+			err->appendMsg(true, strprintf("field '%s' type must not be void",
 				name.c_str()));
 		}
 	}

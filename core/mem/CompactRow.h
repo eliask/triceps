@@ -26,6 +26,10 @@ public:
 	{
 		return (off_[nf] & NULLMASK) != 0;
 	}
+	bool isFieldNotNull(int nf) const
+	{
+		return (off_[nf] & NULLMASK) == 0;
+	}
 
 	// Get a pointer to field data
 	// @param nf - field number, starting from 0
@@ -69,6 +73,11 @@ public:
 		return sizeof(off_[0]) * numf + paylen;
 	}
 
+	// this is mostly for debugging
+	const int32_t &getOffset(int n)
+	{
+		return off_[n];
+	}
 protected:
 	friend class CompactRowType;
 
