@@ -80,6 +80,7 @@ bool Utest::fail(const char *file, int line, string msg)
 	assert(tinf != info_.end());
 	tinf->second.status_ = CS_FAIL;
 	rc_ = 1;
+	return true;
 }
 
 int Utest::run()
