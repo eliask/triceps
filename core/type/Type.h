@@ -38,7 +38,8 @@ public:
 	// @param simple - flag: this is a simple type (must be consistent with typeid)
 	// @param id - 
 	Type(bool simple, TypeId id) :
-		simple_(simple), typeId_(id)
+		typeId_(id),
+		simple_(simple) 
 	{ }
 		
 	virtual ~Type()
@@ -55,6 +56,11 @@ public:
 	{
 		return typeId_;
 	}
+
+	// A convenience function to find a simple type by name (including void).
+	// @param name - name of the type
+	// @return - the type reference (one of r_*) or NULL if not found
+	static const Onceref<const SimpleType> findSimpleType(const char *name);
 
 	// Get the errors collected when parsing this type
 	// @return - errors reference, may be NULL
