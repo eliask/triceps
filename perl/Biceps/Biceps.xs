@@ -7,8 +7,24 @@
 #include "const-c.inc"
 
 #include <wrap/Wrap.h>
+#include <common/Strprintf.h>
 
 using namespace Biceps;
+
+static void setErrMsg(const std::string &msg)
+{
+	// chop the trailing \n if present
+	int  len = msg.size();
+	if (!msg.empty() && msg[msg.size()-1] == '\n')
+		len--;
+
+	SV *errsv = get_sv("!", 0);
+	if (errsv) {
+		sv_setpvn(errsv, msg.c_str(), len);
+	} else {
+		warn("Biceps: can not set $! with error: %s", msg.c_str());
+	}
+}
 
 MODULE = Biceps		PACKAGE = Biceps
 
@@ -22,7 +38,7 @@ Biceps::RowType::new(...)
 		RowType::FieldVec fld;
 
 		if (items < 3 || items % 2 != 1) {
-			warn("Usage: %s(%s), names and types must go in pairs", "Biceps::RowType::new", "CLASS, fieldName, fieldType, ...");
+			setErrMsg("Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 			XSRETURN_UNDEF;
 		}
 		for (int i = 1; i < items; i += 2) {
@@ -30,7 +46,7 @@ Biceps::RowType::new(...)
 			const char *ftype = (const char *)SvPV_nolen(ST(i+1));
 			RowType::Field add(fname, Type::findSimpleType(ftype));
 			if (add.type_.isNull()) {
-				warn("%s: field '%s' has an unknown type '%s'", "Biceps::RowType::new", fname, ftype);
+				setErrMsg(strprintf("%s: field '%s' has an unknown type '%s'", "Biceps::RowType::new", fname, ftype));
 				XSRETURN_UNDEF;
 			}
 			fld.push_back(add);
@@ -38,8 +54,7 @@ Biceps::RowType::new(...)
 		Onceref<RowType> rt = new CompactRowType(fld);
 		Erref err = rt->getErrors();
 		if (!err.isNull() && !err->isEmpty()) {
-			string msg = err->print();
-			warn("%s: %s", "Biceps::RowType::new", msg.c_str());
+			setErrMsg("Biceps::RowType::new: " + err->print());
 			XSRETURN_UNDEF;
 		}
 

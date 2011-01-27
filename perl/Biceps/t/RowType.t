@@ -6,7 +6,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 10 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -23,3 +23,39 @@ $rt1 = Biceps::RowType->new(
 	e => "string",
 );
 ok(ref $rt1, "Biceps::RowType");
+
+$rt2 = Biceps::RowType->new(
+	a => "void",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+ok(!defined $rt2);
+ok($! . "", "Biceps::RowType::new: field 'a' type must not be void");
+
+$rt2 = Biceps::RowType->new(
+	a => "",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+ok(!defined $rt2);
+ok($! . "", "Biceps::RowType::new: field 'a' has an unknown type ''");
+
+$rt2 = Biceps::RowType->new(
+);
+ok(!defined $rt2);
+ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
+
+undef $!;
+$rt2 = Biceps::RowType->new(
+	a => "",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	"string",
+);
+ok(!defined $rt2);
+ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
