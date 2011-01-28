@@ -57,12 +57,12 @@ UTESTCASE buf(Utest *utest)
 		Autoref<srow> s2 = stype::factory(t2);
 
 		if (UT_ASSERT(!strcmp(t1, s1->get()))) {
-			printf("s1=\"%s\"\n", s1.get());
+			printf("s1=\"%s\"\n", (char *)s1.get());
 			fflush(stdout);
 		}
 
 		if (UT_ASSERT(!strcmp(t2, s2->get()))) {
-			printf("s2=\"%s\"\n", s2.get());
+			printf("s2=\"%s\"\n", (char *)s2.get());
 			fflush(stdout);
 		}
 
@@ -115,12 +115,12 @@ UTESTCASE vbuf(Utest *utest)
 	Autoref<vsrow> s2 = vstype::factory(t2);
 
 	if (UT_ASSERT(!strcmp(t1, s1->get()))) {
-		printf("s1=\"%s\"\n", s1.get());
+		printf("s1=\"%s\"\n", (char *)s1.get());
 		fflush(stdout);
 	}
 
 	if (UT_ASSERT(!strcmp(t2, s2->get()))) {
-		printf("s2=\"%s\"\n", s2.get());
+		printf("s2=\"%s\"\n", (char *)s2.get());
 		fflush(stdout);
 	}
 
@@ -128,7 +128,7 @@ UTESTCASE vbuf(Utest *utest)
 	s2 = NULL;
 
 	if (UT_ASSERT(!strcmp(t2, s3->get()))) {
-		printf("s3=\"%s\"\n", s3.get());
+		printf("s3=\"%s\"\n", (char *)s3.get());
 		fflush(stdout);
 	}
 

@@ -26,7 +26,8 @@ public:
 	virtual RowType *newSameFormat(const FieldVec &fields) const;
 	virtual bool isFieldNull(const Row *row, int nf) const;
 	virtual bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const;
-	virtual Onceref<Row> makeRow(FdataVec &data_) const;
+	virtual Row *makeRow(FdataVec &data_) const;
+	virtual void destroyRow(Row *row) const;
 };
 
 }; // BICEPS_NS

@@ -18,7 +18,12 @@ namespace BICEPS_NS {
 // row, it just knows how to carry the fields. So there is nothing much in
 // common between the row formats.
 class Row : public MtBuffer
-{ };
+{ 
+protected:
+	friend class MtBufferOwner; // may delete the buffers
+	~Row() // not virtual, so random classes can't destroy it!
+	{ }
+};
 
 }; // BICEPS_NS
 

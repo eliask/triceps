@@ -51,7 +51,11 @@ class WrapRow
 public:
 	WrapRow(Onceref<RowType> t, Onceref<Row> r) :
 		magic_(classMagic_),
-		t_(t),
+		r_(t, r)
+	{ }
+
+	WrapRow(const Rowref &r) :
+		magic_(classMagic_),
 		r_(r)
 	{ }
 	
@@ -63,8 +67,7 @@ public:
 
 public:
 	WrapMagic magic_;
-	Autoref<RowType> t_; // type that knows how to operate on a row
-	Autoref<Row> r_; // referenced row
+	Rowref r_; // referenced row
 
 	static WrapMagic classMagic_;
 private:

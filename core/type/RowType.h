@@ -16,72 +16,8 @@
 namespace BICEPS_NS {
 
 class RowType;
-	
-// Data to be stored in a field of a record.
-// The field data are normally passed as a vector. If a row type has N fields,
-// then the first N data elements determine the size of the fields and provide
-// the initial filling.
-// 
-// If there are more field data elements, they are treated as overrides:
-// fill more data into the existing fields. This allows to assemble the
-// field values from multiple sources. The overrides can't go past the
-// end of fields, and can not put data into the null fields.
-class Fdata 
-{
-public:
-	Fdata()
-	{ }
-
-	// set the field to null
-	void setNull()
-	{
-		notNull_ = false;
-	}
-	// Set the field to point to a buffer
-	void setPtr(bool notNull, const void *data, intptr_t len)
-	{
-		notNull_ = notNull;
-		data_ = (const char *)data;
-		len_ = len;
-	}
-	// Set the field by copying it from other row
-	// (doesn't add a reference to that row, if needed add manually).
-	inline void setFrom(const RowType *rtype, const Row *row, int nf);
-	// Set the field as an override. 
-	void setOverride(int nf, intptr_t off, const void *data, intptr_t len)
-	{
-		nf_ = nf;
-		off_ = off;
-		data_ = (const char *)data;
-		len_ = len;
-	}
-
-	// Constructors with the same meaning
-	Fdata(bool notNull, const void *data, intptr_t len)
-	{
-		notNull_ = notNull;
-		data_ = (const char *)data;
-		len_ = len;
-	}
-	Fdata(int nf, intptr_t off, const void *data, intptr_t len)
-	{
-		nf_ = nf;
-		off_ = off;
-		data_ = (const char *)data;
-		len_ = len;
-	}
-
-public:
-	Autoref <Row> row_; // in case if data comes from another row, can be used
-		// to keep a hold on it, but doesn't have to if the row won't be deleted anyway
-	const char *data_; // data to store, may be NULL to just zero-fill
-	intptr_t len_; // length of data to store
-	intptr_t off_; // for overrides only: offset into the field
-	int nf_; // for overrides only: index of field to fill
-	bool notNull_; // this field is not null (only for non-overrides)
-};
-typedef vector<Fdata> FdataVec;
-
+class Fdata;
+class FdataVec;
 
 // Type of a record that can be stored in a Window.
 // Its subclasses know how to actually work with various concrete
@@ -174,7 +110,11 @@ public:
 	// Make a new row from the specified field values. If the vector is too
 	// short, it gets extended with nulls.
 	// @param data - data to put into the row (not const because of possible nulls extension)
-	virtual Onceref<Row> makeRow(FdataVec &data) const = 0;
+	virtual Row *makeRow(FdataVec &data) const = 0;
+	
+	// Destroy a row of this type.
+	// The caller must be sure that the row is of this type.
+	virtual void destroyRow(Row *row) const = 0;
 	
 	// Copy a row without any changes. A convenience function, implemented
 	// through splitInto and makeRow. It doesn't care about the data types,
@@ -182,7 +122,7 @@ public:
 	// @param rtype - type of original row, used to extract the contents
 	// @param row - row to copy
 	// @return - the newly created row
-	Onceref<Row> copyRow(const RowType *rtype, const Row *row) const;
+	Row *copyRow(const RowType *rtype, const Row *row) const;
 
 	// A convenience function for building vectors: extends the vector,
 	// filling it with nulls. Never shrinks the vector.
@@ -205,11 +145,203 @@ private:
 	RowType();
 };
 
-// comes atfter RowType is defined...
-inline void Fdata::setFrom(const RowType *rtype, const Row *row, int nf)
+// The row class needs its private kind of autoref because it's
+// not virtual, so the reference would have to remember the right
+// row type to provide the imitation of virtuality.
+
+class Rowref
 {
-	notNull_ = rtype->getField(row, nf, data_, len_);
-}
+public:
+	typedef Row *RowPtr;
+
+	Rowref() :
+		row_(NULL)
+	{ }
+
+	// Constructor from a plain pointer.
+	// @param t - the type of the row (may be NULL if row is NULL)
+	// @param r - the row, may be NULL
+	Rowref(Onceref<RowType> t, Row *r) :
+		type_(t), 
+		row_(r)
+	{
+		if (r)
+			r->incref();
+	}
+
+	// Constructor from another Rowref
+	Rowref(const Rowref &ar) :
+		type_(ar.type_),
+		row_(ar.row_)
+	{
+		if (row_)
+			row_->incref();
+	}
+
+	~Rowref()
+	{
+		drop();
+	}
+
+	// A dereference
+	Row &operator*() const
+	{
+		return *row_; // works fine even with NULL (until that thing gets dereferenced)
+	}
+
+	Row *operator->() const
+	{
+		return row_; // works fine even with NULL (until that thing gets dereferenced)
+	}
+
+	// Getting the internal pointer
+	Row *get() const
+	{
+		return row_;
+	}
+	RowType *getType() const // should this return Autoref?
+	{
+		return type_.get();
+	}
+
+	// same but transparently, as a type conversion
+	operator RowPtr() const
+	{
+		return row_;
+	}
+
+	// A convenience comparison to NULL
+	bool isNull() const
+	{
+		return (row_ == 0);
+	}
+
+	Rowref &operator=(const Rowref &ar)
+	{
+		if (&ar != this) { // assigning to itself is a null-op that might cause a mess
+			drop();
+			type_ = ar.type_;
+			Row *r = ar.row_;
+			row_ = r;
+			if (r)
+				r->incref();
+		}
+		return *this;
+	}
+	// for multiple arguments, have to use a method...
+	void assign(Onceref<RowType> t, Row *r)
+	{
+		drop();
+		type_ = t;
+		row_ = r;
+		if (r)
+			r->incref();
+	}
+	
+	bool operator==(const Rowref &ar)
+	{
+		return (row_ == ar.row_);
+	}
+	bool operator!=(const Rowref &ar)
+	{
+		return (row_ != ar.row_);
+	}
+
+protected:
+	// Drop the current reference
+	inline void drop()
+	{
+		Row *r = row_;
+		if (r)
+			if (r->decref() <= 0)
+				type_->destroyRow(r);
+		// don't delete the type, likely the same type will be assigned again,
+		// and it will save on decreasing/increaing the type reference
+	}
+
+protected:
+	Autoref<RowType> type_;
+	Row *row_;
+};
+
+// Data to be stored in a field of a record.
+// The field data are normally passed as a vector. If a row type has N fields,
+// then the first N data elements determine the size of the fields and provide
+// the initial filling.
+// 
+// If there are more field data elements, they are treated as overrides:
+// fill more data into the existing fields. This allows to assemble the
+// field values from multiple sources. The overrides can't go past the
+// end of fields, and can not put data into the null fields.
+class Fdata 
+{
+public:
+	Fdata()
+	{ }
+
+	// set the field to null
+	void setNull()
+	{
+		notNull_ = false;
+	}
+	// Set the field to point to a buffer
+	void setPtr(bool notNull, const void *data, intptr_t len)
+	{
+		notNull_ = notNull;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+	// Set the field by copying it from other row
+	// (doesn't add a reference to that row, if needed add manually).
+	inline void setFrom(const RowType *rtype, const Row *row, int nf)
+	{
+		notNull_ = rtype->getField(row, nf, data_, len_);
+	}
+
+	// Set the field as an override. 
+	void setOverride(int nf, intptr_t off, const void *data, intptr_t len)
+	{
+		nf_ = nf;
+		off_ = off;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+
+	// Constructors with the same meaning
+	Fdata(bool notNull, const void *data, intptr_t len)
+	{
+		notNull_ = notNull;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+	Fdata(int nf, intptr_t off, const void *data, intptr_t len)
+	{
+		nf_ = nf;
+		off_ = off;
+		data_ = (const char *)data;
+		len_ = len;
+	}
+
+public:
+	Rowref row_; // in case if data comes from another row, can be used
+		// to keep a hold on it, but doesn't have to if the row won't be deleted anyway
+	const char *data_; // data to store, may be NULL to just zero-fill
+	intptr_t len_; // length of data to store
+	intptr_t off_; // for overrides only: offset into the field
+	int nf_; // for overrides only: index of field to fill
+	bool notNull_; // this field is not null (only for non-overrides)
+};
+
+class FdataVec : public  vector<Fdata>
+{
+public:
+	FdataVec()
+	{ }
+
+	FdataVec(size_t n) :
+		vector<Fdata>(n)
+	{ }
+};
 
 }; // BICEPS_NS
 

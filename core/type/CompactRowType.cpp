@@ -43,7 +43,7 @@ bool CompactRowType::getField(const Row *row, int nf, const char *&ptr, intptr_t
 	return cr->isFieldNotNull(nf);
 }
 
-Onceref<Row> CompactRowType::makeRow(FdataVec &data) const
+Row *CompactRowType::makeRow(FdataVec &data) const
 {
 	int i;
 	int n = (int)fields_.size();
@@ -98,4 +98,8 @@ Onceref<Row> CompactRowType::makeRow(FdataVec &data) const
 	return row;
 }
 
+void CompactRowType::destroyRow(Row *row) const
+{
+	delete static_cast<CompactRow *>(row);
+}
 }; // BICEPS_NS

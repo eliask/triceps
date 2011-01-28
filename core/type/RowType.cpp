@@ -154,7 +154,7 @@ void RowType::splitInto(const Row *row, FdataVec &data) const
 	}
 }
 
-Onceref<Row> RowType::copyRow(const RowType *rtype, const Row *row) const
+Row *RowType::copyRow(const RowType *rtype, const Row *row) const
 {
 	FdataVec v;
 	rtype->splitInto(row, v);

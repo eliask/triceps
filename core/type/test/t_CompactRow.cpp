@@ -116,7 +116,7 @@ UTESTCASE mkrow(Utest *utest)
 
 	FdataVec dv;
 	mkfdata(dv);
-	Autoref<Row> r1 = rt1->makeRow(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
 	for (int i = 0; i < rt1->fieldCount(); i++) {
 		if (UT_ASSERT(!rt1->isFieldNull(r1, i))) {
 			printf("failed at field %d\n", i);
@@ -146,7 +146,7 @@ UTESTCASE mkrow(Utest *utest)
 	for (int j = 0; j < rt1->fieldCount(); j++) {
 		mkfdata(dv);
 		dv[j].notNull_ = false;
-		r1 = rt1->makeRow(dv);
+		r1.assign(rt1, rt1->makeRow(dv));
 		for (int i = 0; i < rt1->fieldCount(); i++) {
 			if (i == j) {
 				if ( UT_ASSERT(!rt1->getField(r1, i, ptr, len))
@@ -179,7 +179,7 @@ UTESTCASE mkrow(Utest *utest)
 			if (i != j)
 				dv[i].notNull_ = false;
 		}
-		r1 = rt1->makeRow(dv);
+		r1.assign(rt1, rt1->makeRow(dv));
 		for (int i = 0; i < rt1->fieldCount(); i++) {
 			if (i != j) {
 				if ( UT_ASSERT(!rt1->getField(r1, i, ptr, len))
@@ -210,7 +210,7 @@ UTESTCASE mkrow(Utest *utest)
 	for (int i = 0; i < rt1->fieldCount(); i++) {
 		dv[i].notNull_ = false;
 	}
-	r1 = rt1->makeRow(dv);
+	r1.assign(rt1, rt1->makeRow(dv));
 	for (int i = 0; i < rt1->fieldCount(); i++) {
 		if ( UT_ASSERT(!rt1->getField(r1, i, ptr, len))
 		|| UT_IS(len, 0)) {
@@ -233,7 +233,7 @@ UTESTCASE mkrowshort(Utest *utest)
 	FdataVec dv;
 	mkfdata(dv);
 	dv.resize(1);
-	Autoref<Row> r1 = rt1->makeRow(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
 	if (UT_ASSERT(!rt1->isFieldNull(r1, 0))) return;
 
 	for (int i = 1; i < rt1->fieldCount(); i++) {
@@ -270,7 +270,7 @@ UTESTCASE mkrowover(Utest *utest)
 	dv.push_back(Fdata(3, 0, "01234567890123456789", 20));
 	dv.push_back(Fdata(4, 0, NULL, 2));
 
-	Autoref<Row> r1 = rt1->makeRow(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
 
 	const char *ptr;
 	intptr_t len;
