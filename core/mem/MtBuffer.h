@@ -34,7 +34,9 @@ public:
 	enum { ALIGN = 8 }; // default alignment of the payload from the start of structure
 
 	// The offset calculation is a helper for the case of the completely
-	// manyal layout of the internals.
+	// manual layout of the internals.
+	// XXX and it doesn't help much either, because the variable
+	// argument of new() is already exclusive of Mtarget
 	
 	// get the starting offset for the payload
 	static size_t payloadOffset()
@@ -80,7 +82,9 @@ public:
 	enum { ALIGN = MtBuffer::ALIGN }; // default alignment of the payload from the start of structure
 
 	// The offset calculation is a helper for the case of the completely
-	// manyal layout of the internals.
+	// manual layout of the internals.
+	// XXX and it doesn't help much either, because the variable
+	// argument of new() is already exclusive of Mtarget
 	
 	// get the starting offset for the payload
 	static size_t payloadOffset()
