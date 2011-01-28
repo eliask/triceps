@@ -52,7 +52,7 @@ public:
 	}
 
 	// @return - the id value of this type
-	bool getTypeId() const
+	TypeId getTypeId() const
 	{
 		return typeId_;
 	}

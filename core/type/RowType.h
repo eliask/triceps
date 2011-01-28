@@ -161,7 +161,7 @@ public:
 	// Constructor from a plain pointer.
 	// @param t - the type of the row (may be NULL if row is NULL)
 	// @param r - the row, may be NULL
-	Rowref(Onceref<RowType> t, Row *r) :
+	Rowref(RowType *t, Row *r) :
 		type_(t), 
 		row_(r)
 	{
@@ -229,7 +229,7 @@ public:
 		return *this;
 	}
 	// for multiple arguments, have to use a method...
-	void assign(Onceref<RowType> t, Row *r)
+	void assign(RowType *t, Row *r)
 	{
 		drop();
 		type_ = t;

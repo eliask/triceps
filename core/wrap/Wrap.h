@@ -49,7 +49,7 @@ private:
 class WrapRow
 {
 public:
-	WrapRow(Onceref<RowType> t, Onceref<Row> r) :
+	WrapRow(RowType *t, Row *r) :
 		magic_(classMagic_),
 		r_(t, r)
 	{ }
