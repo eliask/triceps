@@ -32,16 +32,36 @@ public:
 	{
 	public:
 		// The default constructor creates an invalid field.
-		Field();
+		Field() :
+			arsz_(-1) // a scalar by default
+		{ }
 
 		// the default copy and assignment are good enough
 		
-		Field(const string &name, Autoref<const Type> t, int arsz = 0);
+		Field(const string &name, Autoref<const Type> t, int arsz = -1) :
+			name_(name),
+			type_(t),
+			arsz_(arsz)
+		{ }
+
+		void assign(const string &name, Autoref<const Type> t, int arsz = -1)
+		{
+			name_ = name;
+			type_ = t;
+			arsz_ = arsz;
+		}
 
 	public:
 		string name_; // field name
 		Autoref <const Type> type_; // field type, must really be a simple type
-		int arsz_; // hint of array size, 0 means variable (<0 treated the same as 0 for now)
+		// hint of array size, 0 means variable,  <0 means a scalar;
+		// there is no enforcement in the core code, it's just a suggestion
+		// for the script language wrapper on the best representation
+		enum {
+			AR_SCALAR = -1,
+			AR_VARIABLE = 0
+		};
+		int arsz_; 
 	}; // Field
 
 	typedef vector<Field> FieldVec;
@@ -58,6 +78,7 @@ public:
 	virtual Erref getErrors() const;
 	virtual bool equals(const Type *t) const;
 	virtual bool match(const Type *t) const;
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
 	// just make the guts visible read-only to anyone
 	const vector<Field> &fields() const

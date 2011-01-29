@@ -16,7 +16,7 @@ void mkfields(RowType::FieldVec &fields)
 {
 	fields.clear();
 	fields.push_back(RowType::Field("a", Type::r_uint8, 10));
-	fields.push_back(RowType::Field("b", Type::r_int32));
+	fields.push_back(RowType::Field("b", Type::r_int32,0));
 	fields.push_back(RowType::Field("c", Type::r_int64));
 	fields.push_back(RowType::Field("d", Type::r_float64));
 	fields.push_back(RowType::Field("e", Type::r_string));
@@ -72,6 +72,24 @@ UTESTCASE rowtype(Utest *utest)
 	UT_IS(rt1->findIdx("aa"), -1);
 	UT_IS(rt1->find("b"), &rt1->fields()[1]);
 	UT_IS(rt1->find("aa"), NULL);
+
+	UT_IS(rt1->print("  ", "  "), 
+		"row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }");
+
+	UT_IS(rt1->print(NOINDENT), 
+		"row {"
+		" uint8[10] a,"
+		" int32[] b,"
+		" int64 c,"
+		" float64 d,"
+		" string e,"
+		" }");
 }
 
 UTESTCASE parse_err(Utest *utest)

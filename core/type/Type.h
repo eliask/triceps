@@ -10,6 +10,7 @@
 
 #include <mem/Mtarget.h>
 #include <common/Common.h>
+#include <common/StringUtil.h>
 
 namespace BICEPS_NS {
 
@@ -60,7 +61,7 @@ public:
 	// A convenience function to find a simple type by name (including void).
 	// @param name - name of the type
 	// @return - the type reference (one of r_*) or NULL if not found
-	static const Onceref<const SimpleType> findSimpleType(const char *name);
+	static Onceref<const SimpleType> findSimpleType(const char *name);
 
 	// Get the errors collected when parsing this type
 	// @return - errors reference, may be NULL
@@ -93,6 +94,20 @@ public:
 		// the rest can redefine this method
 		return equals(t);
 	}
+
+	// Append the human-readable type definition to a string
+	// @param res - the resulting string to append to
+	// @param indent - initial indentation characters, 
+	//        passing NOINDENT prints everything in a single line
+	// @param subindent - indentation characters to add on each level
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const = 0;
+
+	// Return the human-readable type definition to a string
+	// @param indent - initial indentation characters, 
+	//        passing NOINDENT prints everything in a single line
+	// @param subindent - indentation characters to add on each level
+	// @return - the result string
+	string print(const string &indent = "", const string &subindent = "  ") const;
 
 public:
 	// the global copies of the simple types that can be reused everywhere

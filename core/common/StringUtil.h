@@ -13,6 +13,11 @@
 
 namespace BICEPS_NS {
 
+// A special reference to a string, passed around to indicate that the
+// printing must be done without line breaks.
+// Doesn't work on all printing functions, just where supported.
+extern const string &NOINDENT;
+
 // Print a byte buffer in hex
 // @param dest - file to print to
 // @param bytes - bytes to dump

@@ -11,20 +11,6 @@
 namespace BICEPS_NS {
 
 
-////////////////////// RowType::Field ////////////////////////
-
-RowType::Field::Field() :
-	arsz_(0)
-{ }
-
-// the default copy and assignment are good enough
-
-RowType::Field::Field(const string &name, Autoref<const Type> t, int arsz) :
-	name_(name),
-	type_(t),
-	arsz_(arsz)
-{ }
-
 ////////////////////// RowType ////////////////////////
 
 RowType::RowType(const vector<Field> &fields) :
@@ -107,6 +93,45 @@ bool RowType::match(const Type *t) const
 	return true;
 }
 
+void RowType::printTo(string &res, const string &indent, const string &subindent) const
+{
+	string nextindent;
+
+	if (&indent != &NOINDENT) {
+		nextindent = indent + subindent;
+	}
+
+	res.append("row {");
+
+	size_t i, n = fields_.size();
+	for (i = 0; i < n; i++) {
+		if (&indent != &NOINDENT) {
+			res.append("\n");
+			res.append(nextindent);
+		} else {
+			res.append(" ");
+		}
+		fields_[i].type_->printTo(res, indent, nextindent);
+
+		int arsz = fields_[i].arsz_;
+		if (arsz == 0) {
+			res.append("[]");
+		} else if (arsz > 0) {
+			res.append(strprintf("[%d]", arsz));
+		}
+		
+		res.append(" ");
+		res.append(fields_[i].name_);
+		res.append(",");
+	}
+	if (&indent != &NOINDENT) {
+		res.append("\n");
+		res.append(indent);
+	} else {
+		res.append(" ");
+	}
+	res.append("}");
+}
 
 Erref RowType::parse()
 {

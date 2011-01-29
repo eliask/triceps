@@ -15,7 +15,7 @@ Autoref<const SimpleType> Type::r_int64(new Int64Type);
 Autoref<const SimpleType> Type::r_float64(new Float64Type);
 Autoref<const SimpleType> Type::r_string(new StringType);
 
-const Onceref<const SimpleType> Type::findSimpleType(const char *name)
+Onceref<const SimpleType> Type::findSimpleType(const char *name)
 {
 	if (name == NULL)
 		return NULL;
@@ -50,6 +50,13 @@ const Onceref<const SimpleType> Type::findSimpleType(const char *name)
 		}
 	}
 	return NULL;
+}
+
+string Type::print(const string &indent, const string &subindent) const
+{
+	string res;
+	printTo(res, indent, subindent);
+	return res;
 }
 
 }; // BICEPS_NS

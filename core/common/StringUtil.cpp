@@ -10,6 +10,8 @@
 
 namespace BICEPS_NS {
 
+const string &NOINDENT;
+
 void hexdump(FILE *dest, const void *bytes, size_t n, const char *indent)
 {
 	const int LINELEN = 16; // print so many bytes per line
