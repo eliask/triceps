@@ -150,6 +150,13 @@ public:
 	// @param v - vector to fill
 	// @param nf - fill to this number of fields
 	static void fillFdata(FdataVec &v, int nf);
+
+	// For debugging, hex dump the row contects, appending to a string.
+	// (this is not including the ref counter and anything before it)
+	// @param dest - string to append to
+	// @param row - row to dump
+	// @param indent - indenting after the line feeds
+	virtual void hexdumpRow(string &dest, const Row *row, const string &indent="") const = 0;
 	// }
 	
 

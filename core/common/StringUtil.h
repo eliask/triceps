@@ -25,6 +25,9 @@ extern const string &NOINDENT;
 // @param indent - indent string
 void hexdump(FILE *dest, const void *bytes, size_t n, const char *indent = "");
 
+// same, append to a string
+void hexdump(string &dest, const void *bytes, size_t n, const char *indent = "");
+
 }; // BICEPS_NS
 
 #endif // __Biceps_StringUtil_h__

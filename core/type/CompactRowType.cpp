@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <type/CompactRowType.h>
+#include <common/StringUtil.h>
 
 namespace BICEPS_NS {
 
@@ -102,4 +103,12 @@ void CompactRowType::destroyRow(Row *row) const
 {
 	delete static_cast<CompactRow *>(row);
 }
+
+void CompactRowType::hexdumpRow(string &dest, const Row *row, const string &indent) const
+{
+	const CompactRow *cr = static_cast<const CompactRow *>(row);
+	intptr_t len = cr->off_[fields_.size()];
+	hexdump(dest, cr->off_, len, indent.c_str());
+}
+
 }; // BICEPS_NS

@@ -53,6 +53,7 @@ static EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 			xsv = SvPV(arg, slen);
 			buf = new(slen) EasyBuffer;
 			memcpy(buf->data_, xsv, slen);
+			buf->size_ = slen;
 			break;
 		case Type::TT_STRING:
 			// make sure that the string is 0-terminated
@@ -60,27 +61,29 @@ static EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 			buf = new(slen+1) EasyBuffer;
 			memcpy(buf->data_, xsv, slen);
 			buf->data_[slen] = 0;
+			buf->size_ = slen+1;
 			break;
 		case Type::TT_INT32:
 			x32 = SvIV(arg);
 			buf = new(sizeof(x32)) EasyBuffer;
 			memcpy(buf->data_, &x32, sizeof(x32));
+			buf->size_ = sizeof(x32);
 			break;
 		case Type::TT_INT64:
 			if (sizeof(xiv) == sizeof(x64)) { // 64-bit machine, copy directly
 				x64 = SvIV(arg);
-				buf = new(sizeof(x64)) EasyBuffer;
-				memcpy(buf->data_, &x64, sizeof(x64));
 			} else { // 32-bit machine, int64 represented in Perl as double
 				x64 = SvNV(arg);
-				buf = new(sizeof(x64)) EasyBuffer;
-				memcpy(buf->data_, &x64, sizeof(x64));
 			}
+			buf = new(sizeof(x64)) EasyBuffer;
+			memcpy(buf->data_, &x64, sizeof(x64));
+			buf->size_ = sizeof(x64);
 			break;
 		case Type::TT_FLOAT64:
 			xfv = SvNV(arg);
 			buf = new(sizeof(xfv)) EasyBuffer;
 			memcpy(buf->data_, &xfv, sizeof(xfv));
+			buf->size_ = sizeof(xfv);
 			break;
 		default:
 			setErrMsg(strprintf("Biceps field '%s' data conversion: invalid field type???", fname));
@@ -89,6 +92,70 @@ static EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		}
 	}
 	return buf;
+}
+
+// Convert a byte buffer from a row to a Perl value.
+// @param ti - id of the simple type
+// @param arsz - array size, affects the resulting value:
+//        Type::AR_SCALAR - returns a scalar
+//        anything else - returns an array reference
+//        (except that TT_STRING and TT_UINT8 are always returned as Perl scalar strings)
+// @param notNull - if false, returns an undef (suiitable for putting in an array)
+// @param data - the raw data buffer
+// @param dlen - data buffer length
+// @param fname - field name, for error messages
+// @return - a new SV
+SV *bufToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr_t dlen, const char *fname)
+{
+	int64_t x64;
+	int32_t x32;
+	double xfv;
+
+	if (!notNull)
+		return newSV(0); // undef value
+
+	if (arsz < 0 || ti == Type::TT_STRING || ti == Type::TT_UINT8) { //  Type::AR_SCALAR
+		switch(ti) {
+		case Type::TT_UINT8:
+			return newSVpvn(data, dlen);
+			break;
+		case Type::TT_STRING:
+			// a string normally has a zero byte at the end, deduct that
+			if (dlen > 0 && data[dlen-1] == 0)
+				--dlen;
+			return newSVpvn(data, dlen);
+			break;
+		case Type::TT_INT32:
+			if ((size_t)dlen >= sizeof(x32))  {
+				memcpy(&x32, data, sizeof(x32));
+				return newSViv(x32);
+			}
+			break;
+		case Type::TT_INT64:
+			if ((size_t)dlen >= sizeof(x64))  {
+				memcpy(&x64, data, sizeof(x64));
+				if (sizeof(IV) == sizeof(x64)) { // 64-bit machine, copy directly
+					return newSViv(x64);
+				} else { // 32-bit machine, int64 represented in Perl as double
+					return newSVnv(x64);
+				}
+			}
+			break;
+		case Type::TT_FLOAT64:
+			if ((size_t)dlen >= sizeof(xfv))  {
+				memcpy(&xfv, data, sizeof(xfv));
+				return newSVnv(xfv);
+			}
+			break;
+		default:
+			warn("Biceps field '%s' data conversion: invalid field type???", fname);
+			break;
+		}
+	} else {
+		warn("Biceps field '%s' data conversion: getting arrays is not supported yet", fname);
+		return newSV(0); // undef value
+	}
+	return newSV(0); // undef value
 }
 
 MODULE = Biceps		PACKAGE = Biceps
@@ -147,7 +214,7 @@ DESTROY(WrapRowType *self)
 		delete self;
 
 # get back the type definition
-WrapRowType *
+SV *
 getdef(WrapRowType *self)
 	PPCODE:
 		RowType *rt = self->t_;
@@ -222,5 +289,32 @@ DESTROY(WrapRow *self)
 		// warn("Row destroyed!");
 		delete self;
 
+# for debugging, make a hex dump
+char *
+hexdump(WrapRow *self)
+	CODE:
+		string dump;
+		RowType *t = self->r_.getType();
+		Row *r = self->r_.get();
+		t->hexdumpRow(dump, r);
+		RETVAL = (char *)dump.c_str();
+	OUTPUT:
+		RETVAL
 
+# convert to an array of name-value pairs, suitable for setting into a hash
+SV *
+to_hs(WrapRow *self)
+	PPCODE:
+		RowType *t = self->r_.getType();
+		Row *r = self->r_.get();
+		const RowType::FieldVec &fld = t->fields();
+		int nf = fld.size();
 
+		for (int i = 0; i < nf; i++) {
+			PUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
+			
+			const char *data;
+			intptr_t dlen;
+			bool notNull = t->getField(r, i, data, dlen);
+			PUSHs(sv_2mortal(bufToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+		}

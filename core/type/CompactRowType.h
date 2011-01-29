@@ -28,6 +28,7 @@ public:
 	virtual bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const;
 	virtual Row *makeRow(FdataVec &data_) const;
 	virtual void destroyRow(Row *row) const;
+	virtual void hexdumpRow(string &dest, const Row *row, const string &indent="") const;
 };
 
 }; // BICEPS_NS
