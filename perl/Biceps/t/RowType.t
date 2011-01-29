@@ -6,7 +6,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 19 };
+BEGIN { plan tests => 15 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -88,41 +88,4 @@ $rt2 = Biceps::RowType->new(
 );
 ok(!defined $rt2);
 ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
-
-$r1 = $rt1->makerow_hs(
-	a => "uint8",
-	b => 123,
-	c => 3e15,
-	d => 3.14,
-	e => "string",
-);
-ok(ref $r1, "Biceps::Row");
-
-# test that scalar can be transparently set to arrays
-$r1 = $rt3->makerow_hs(
-	a => "uint8",
-	b => 123,
-	c => 3e15,
-	d => 3.14,
-	e => "string",
-);
-ok(ref $r1, "Biceps::Row");
-
-$r1 = $rt1->makerow_hs(
-	a => undef,
-	b => 123,
-	c => 3e15,
-	e => "string",
-);
-ok(ref $r1, "Biceps::Row");
-
-$r1 = $rt1->makerow_hs(
-	a => "uint8",
-	b => [ 123, 456 ],
-	c => 3e15,
-	d => 3.14,
-	e => "string",
-);
-#ok(ref $r1, "Biceps::Row");
-ok(!defined $r1);
 
