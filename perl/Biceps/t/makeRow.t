@@ -6,7 +6,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 20 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -66,13 +66,74 @@ $r1 = $rt1->makerow_hs(
 );
 ok(ref $r1, "Biceps::Row");
 
+# all-null row
+$r1 = $rt1->makerow_hs();
+ok(ref $r1, "Biceps::Row");
+
 $r1 = $rt1->makerow_hs(
 	a => "uint8",
-	b => [ 123, 456 ],
+	b => [ 0x123, 0x456 ],
 	c => 3e15,
 	d => 3.14,
 	e => "string",
 );
-#ok(ref $r1, "Biceps::Row");
 ok(!defined $r1);
+ok($! . "", "Biceps::RowType::makerow: attempting to set an array into scalar field 'b'");
 
+$r1 = $rt1->makerow_hs(
+	z => "uint8",
+	c => 3e15,
+	d => 3.14,
+	e => "string",
+);
+ok(!defined $r1);
+ok($! . "", "Biceps::RowType::makerow: attempting to set an unknown field 'z'");
+
+$r1 = $rt1->makerow_hs(
+	a => undef,
+	b => 123,
+	c => 3e15,
+	"e"
+);
+ok(!defined $r1);
+ok($! . "", "Usage: Biceps::RowType::makerow(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
+
+$r1 = $rt3->makerow_hs(
+	a => "uint8",
+	b => [ 0x123, 0x456 ],
+	c => 3e15,
+	d => 3.14,
+	e => "string",
+);
+ok(ref $r1, "Biceps::Row");
+#print STDERR "\n", $r1->hexdump;
+
+$r1 = $rt3->makerow_hs(
+	a => [ "uint8" ],
+	b => [ 0x123, 0x456 ],
+	c => 3e15,
+	d => 3.14,
+	e => "string",
+);
+ok(!defined $r1);
+ok($! . "", "Biceps field 'a' data conversion: array reference may not be used for string and uint8");
+
+$r1 = $rt3->makerow_hs(
+	a => "uint8",
+	b => [ 0x123, 0x456 ],
+	c => 3e15,
+	d => 3.14,
+	e => [ "string" ],
+);
+ok(!defined $r1);
+ok($! . "", "Biceps::RowType::makerow: attempting to set an array into scalar field 'e'");
+
+$r1 = $rt3->makerow_hs(
+	a => "uint8",
+	b => { "a" , 0x456 },
+	c => 3e15,
+	d => 3.14,
+	e => "string",
+);
+ok(!defined $r1);
+ok($! . "", "Biceps field 'b' data conversion: reference not to an array");

@@ -28,8 +28,45 @@ static void setErrMsg(const std::string &msg)
 	}
 }
 
+// Copy a Perl scalar (numeric) SV value into a memory buffer.
+// @param ti - field type selection
+// @param  val - SV to copy from
+// @param bytes - memory buffer to copy to, must be large enough
+static void svToBytes(Type::TypeId ti, SV *val, char *bytes)
+{
+	IV xiv;
+	int64_t x64;
+	int32_t x32;
+	double xfv;
+	switch(ti) {
+	case Type::TT_INT32:
+		x32 = SvIV(val);
+		memcpy(bytes, &x32, sizeof(x32));
+		break;
+	case Type::TT_INT64:
+		if (sizeof(xiv) == sizeof(x64)) { // 64-bit machine, copy directly
+			x64 = SvIV(val);
+		} else { // 32-bit machine, int64 represented in Perl as double
+			x64 = SvNV(val);
+		}
+		memcpy(bytes, &x64, sizeof(x64));
+		break;
+	case Type::TT_FLOAT64:
+		xfv = SvNV(val);
+		memcpy(bytes, &xfv, sizeof(xfv));
+		break;
+	default:
+		croak("Biceps svToBytes called with unsupported type %d\n", ti);
+		break;
+	}
+}
+
 // Convert a Perl value (scalar or list) to a buffer
 // with raw bytes suitable for setting into a record.
+// Does NOT check for undef, the caller must do that before.
+// Also silently allows to set the arrays for the scalar fields
+// and scalars into arrays.
+// 
 // @param ti - field type selection
 // @param arg - value to post to, must be already checked for SvOK
 // @param fname - field name, for error messages
@@ -37,59 +74,70 @@ static void setErrMsg(const std::string &msg)
 static EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 {
 	EasyBuffer *buf = NULL;
-	IV xiv;
-	int64_t x64;
-	int32_t x32;
-	double xfv;
 	STRLEN slen;
 	char *xsv;
 
-	if (SvROK(arg)) {
-		setErrMsg(strprintf("Biceps field '%s' data conversion: setting arrays is not supported yet", fname));
-		return NULL;
-	} else {
-		switch(ti) {
-		case Type::TT_UINT8:
+	// as a special case, strings and utint8 can not be arrays, they're always Perl strings
+	switch(ti) {
+	case Type::TT_UINT8:
+	case Type::TT_STRING:
+		if (SvROK(arg)) {
+			setErrMsg(strprintf("Biceps field '%s' data conversion: array reference may not be used for string and uint8", fname));
+			return NULL;
+		}
+		if (ti == Type::TT_UINT8) {
 			xsv = SvPV(arg, slen);
 			buf = new(slen) EasyBuffer;
 			memcpy(buf->data_, xsv, slen);
 			buf->size_ = slen;
-			break;
-		case Type::TT_STRING:
+		} else { // Type::TT_STRING
 			// make sure that the string is 0-terminated
 			xsv = SvPV(arg, slen);
 			buf = new(slen+1) EasyBuffer;
 			memcpy(buf->data_, xsv, slen);
 			buf->data_[slen] = 0;
 			buf->size_ = slen+1;
-			break;
-		case Type::TT_INT32:
-			x32 = SvIV(arg);
-			buf = new(sizeof(x32)) EasyBuffer;
-			memcpy(buf->data_, &x32, sizeof(x32));
-			buf->size_ = sizeof(x32);
-			break;
-		case Type::TT_INT64:
-			if (sizeof(xiv) == sizeof(x64)) { // 64-bit machine, copy directly
-				x64 = SvIV(arg);
-			} else { // 32-bit machine, int64 represented in Perl as double
-				x64 = SvNV(arg);
-			}
-			buf = new(sizeof(x64)) EasyBuffer;
-			memcpy(buf->data_, &x64, sizeof(x64));
-			buf->size_ = sizeof(x64);
-			break;
-		case Type::TT_FLOAT64:
-			xfv = SvNV(arg);
-			buf = new(sizeof(xfv)) EasyBuffer;
-			memcpy(buf->data_, &xfv, sizeof(xfv));
-			buf->size_ = sizeof(xfv);
-			break;
-		default:
-			setErrMsg(strprintf("Biceps field '%s' data conversion: invalid field type???", fname));
-			return NULL;
-			break;
 		}
+		return buf;
+		break;
+
+	case Type::TT_INT32:
+		slen = sizeof(int32_t);
+		break;
+	case Type::TT_INT64:
+		slen = sizeof(int64_t);
+		break;
+	case Type::TT_FLOAT64:
+		slen = sizeof(double);
+		break;
+	default:
+		setErrMsg(strprintf("Biceps field '%s' data conversion: invalid field type???", fname));
+		return NULL;
+		break;
+	}
+
+	// by now it's known to be a numeric type, with value size in slen
+
+	if (SvROK(arg)) {
+		AV *lst = (AV *)SvRV(arg);
+		if (SvTYPE(lst) != SVt_PVAV) {
+			setErrMsg(strprintf("Biceps field '%s' data conversion: reference not to an array", fname));
+			return NULL;
+		}
+		int llen = av_len(lst)+1; // it's the Perl $#array, so add 1
+
+		// fprintf(stderr, "Setting an array into field '%s', size %d\n", fname, llen);
+		
+		buf = new(slen*llen) EasyBuffer;
+		buf->size_ = slen*llen;
+		xsv = buf->data_;
+		for (int i = 0; i < llen; i++, xsv += slen) {
+			svToBytes(ti, *av_fetch(lst, i, 0),  xsv);
+		}
+	} else {
+		buf = new(slen) EasyBuffer;
+		svToBytes(ti, arg,  buf->data_);
+		buf->size_ = slen;
 	}
 	return buf;
 }
@@ -105,7 +153,7 @@ static EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 // @param dlen - data buffer length
 // @param fname - field name, for error messages
 // @return - a new SV
-SV *bufToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr_t dlen, const char *fname)
+SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr_t dlen, const char *fname)
 {
 	int64_t x64;
 	int32_t x32;
@@ -268,6 +316,10 @@ makerow_hs(WrapRowType *self, ...)
 			if (!SvOK(ST(i+1))) { // undef translates to null
 				fields[idx].setNull();
 			} else {
+				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::RowType::makerow", fname));
+					XSRETURN_UNDEF;
+				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
 				if (d == NULL)
 					XSRETURN_UNDEF; // error message already set
@@ -316,5 +368,5 @@ to_hs(WrapRow *self)
 			const char *data;
 			intptr_t dlen;
 			bool notNull = t->getField(r, i, data, dlen);
-			PUSHs(sv_2mortal(bufToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+			PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 		}

@@ -6,7 +6,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 7 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -39,6 +39,7 @@ $rt3 = Biceps::RowType->new( # used later
 );
 ok(ref $rt3, "Biceps::RowType");
 
+# non-null scalars
 @dataset1 = (
 	a => "uint8",
 	b => 123,
@@ -55,3 +56,18 @@ ok(ref $r1, "Biceps::Row");
 
 @d1 = $r1->to_hs();
 ok(join(',', @d1), join(',', @dataset1));
+
+# nulls
+@dataset2 = (
+	a => undef,
+	b => undef,
+	c => 3e15,
+	d => undef,
+	e => undef,
+);
+$r2 = $rt1->makerow_hs( @dataset2);
+ok(ref $r2, "Biceps::Row");
+
+@d2 = $r2->to_hs();
+ok(join(',', map {defined $_? $_ : "-"} @d2), join(',', map {defined $_? $_ : "-"} @dataset2));
+
