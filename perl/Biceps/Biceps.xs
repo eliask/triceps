@@ -95,12 +95,14 @@ MODULE = Biceps		PACKAGE = Biceps
 
 INCLUDE: const-xs.inc
 
+###################################################################################
 MODULE = Biceps		PACKAGE = Biceps::RowType
 
 WrapRowType *
 Biceps::RowType::new(...)
 	CODE:
 		RowType::FieldVec fld;
+		RowType::Field add;
 
 		if (items < 3 || items % 2 != 1) {
 			setErrMsg("Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
@@ -108,10 +110,21 @@ Biceps::RowType::new(...)
 		}
 		for (int i = 1; i < items; i += 2) {
 			const char *fname = (const char *)SvPV_nolen(ST(i));
-			const char *ftype = (const char *)SvPV_nolen(ST(i+1));
-			RowType::Field add(fname, Type::findSimpleType(ftype));
+			STRLEN ftlen;
+			char *ftype = (char *)SvPV(ST(i+1), ftlen);
+			if (ftlen >= 2 && ftype[ftlen-1] == ']' && ftype[ftlen-2] == '[') {
+				ftype[ftlen-2] = 0;
+				add.assign(fname, Type::findSimpleType(ftype), RowType::Field::AR_VARIABLE);
+				ftype[ftlen-2] = '[';
+			} else {
+				add.assign(fname, Type::findSimpleType(ftype));
+			}
 			if (add.type_.isNull()) {
 				setErrMsg(strprintf("%s: field '%s' has an unknown type '%s'", "Biceps::RowType::new", fname, ftype));
+				XSRETURN_UNDEF;
+			}
+			if (add.arsz_ != RowType::Field::AR_SCALAR && add.type_->getTypeId() == Type::TT_STRING) {
+				setErrMsg(strprintf("%s: field '%s' string array type is not supported", "Biceps::RowType::new", fname));
 				XSRETURN_UNDEF;
 			}
 			fld.push_back(add);
@@ -133,9 +146,26 @@ DESTROY(WrapRowType *self)
 		// warn("RowType destroyed!");
 		delete self;
 
-# the row factory
+# get back the type definition
+WrapRowType *
+getdef(WrapRowType *self)
+	PPCODE:
+		RowType *rt = self->t_;
+
+		const RowType::FieldVec &fld = rt->fields();
+		int nf = fld.size();
+		for (int i = 0; i < nf; i++) {
+			PUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
+			string t = fld[i].type_->print();
+			if (fld[i].arsz_ >= 0)
+				t.append("[]");
+			PUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
+		}
+
+
+# the row factory, from a hash-style name-value list
 WrapRow *
-makerow(WrapRowType *self, ...)
+makerow_hs(WrapRowType *self, ...)
 	CODE:
 		RowType *rt = self->t_;
 		// for casting of return value
@@ -183,6 +213,7 @@ makerow(WrapRowType *self, ...)
 	OUTPUT:
 		RETVAL
 
+###################################################################################
 MODULE = Biceps		PACKAGE = Biceps::Row
 
 void
@@ -190,4 +221,6 @@ DESTROY(WrapRow *self)
 	CODE:
 		// warn("Row destroyed!");
 		delete self;
+
+
 

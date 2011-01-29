@@ -6,7 +6,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 13 };
+BEGIN { plan tests => 19 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -15,14 +15,43 @@ ok(1); # If we made it this far, we're ok.
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
-$rt1 = Biceps::RowType->new(
+@def1 = (
 	a => "uint8",
 	b => "int32",
 	c => "int64",
 	d => "float64",
 	e => "string",
 );
+$rt1 = Biceps::RowType->new( # used later
+	@def1
+);
 ok(ref $rt1, "Biceps::RowType");
+@xdef1 = $rt1->getdef();
+ok(join(",", @xdef1), join(",", @def1));
+
+@def3 = (
+	a => "uint8[]",
+	b => "int32[]",
+	c => "int64[]",
+	d => "float64[]",
+	e => "string",
+);
+$rt3 = Biceps::RowType->new( # used later
+	@def3
+);
+ok(ref $rt3, "Biceps::RowType");
+@xdef3 = $rt3->getdef();
+ok(join(",", @xdef3), join(",", @def3));
+
+$rt2 = Biceps::RowType->new(
+	a => "void",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string[]",
+);
+ok(!defined $rt2);
+ok($! . "", "Biceps::RowType::new: field 'e' string array type is not supported");
 
 $rt2 = Biceps::RowType->new(
 	a => "void",
@@ -60,7 +89,7 @@ $rt2 = Biceps::RowType->new(
 ok(!defined $rt2);
 ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 
-$r1 = $rt1->makerow(
+$r1 = $rt1->makerow_hs(
 	a => "uint8",
 	b => 123,
 	c => 3e15,
@@ -69,7 +98,17 @@ $r1 = $rt1->makerow(
 );
 ok(ref $r1, "Biceps::Row");
 
-$r1 = $rt1->makerow(
+# test that scalar can be transparently set to arrays
+$r1 = $rt3->makerow_hs(
+	a => "uint8",
+	b => 123,
+	c => 3e15,
+	d => 3.14,
+	e => "string",
+);
+ok(ref $r1, "Biceps::Row");
+
+$r1 = $rt1->makerow_hs(
 	a => undef,
 	b => 123,
 	c => 3e15,
@@ -77,7 +116,7 @@ $r1 = $rt1->makerow(
 );
 ok(ref $r1, "Biceps::Row");
 
-$r1 = $rt1->makerow(
+$r1 = $rt1->makerow_hs(
 	a => "uint8",
 	b => [ 123, 456 ],
 	c => 3e15,
