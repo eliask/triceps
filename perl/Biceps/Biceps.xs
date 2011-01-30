@@ -200,8 +200,38 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 			break;
 		}
 	} else {
-		warn("Biceps field '%s' data conversion: getting arrays is not supported yet", fname);
-		return newSV(0); // undef value
+		AV *lst = newAV();
+		switch(ti) {
+		case Type::TT_INT32:
+			while ((size_t)dlen >= sizeof(x32))  {
+				memcpy(&x32, data, sizeof(x32));
+				av_push(lst, newSViv(x32));
+				data += sizeof(x32); dlen -= sizeof(x32);
+			}
+			break;
+		case Type::TT_INT64:
+			while ((size_t)dlen >= sizeof(x64))  {
+				memcpy(&x64, data, sizeof(x64));
+				if (sizeof(IV) == sizeof(x64)) { // 64-bit machine, copy directly
+					av_push(lst, newSViv(x64));
+				} else { // 32-bit machine, int64 represented in Perl as double
+					av_push(lst, newSVnv(x64));
+				}
+				data += sizeof(x64); dlen -= sizeof(x64);
+			}
+			break;
+		case Type::TT_FLOAT64:
+			while ((size_t)dlen >= sizeof(xfv))  {
+				memcpy(&xfv, data, sizeof(xfv));
+				av_push(lst, newSVnv(xfv));
+				data += sizeof(xfv); dlen -= sizeof(xfv);
+			}
+			break;
+		default:
+			warn("Biceps field '%s' data conversion: invalid field type???", fname);
+			break;
+		}
+		return newRV_noinc((SV *)lst); 
 	}
 	return newSV(0); // undef value
 }
