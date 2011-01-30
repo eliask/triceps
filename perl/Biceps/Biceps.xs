@@ -13,6 +13,14 @@
 
 using namespace Biceps;
 
+static void clearErrMsg()
+{
+	SV *errsv = get_sv("!", 0);
+	if (errsv) {
+		sv_setpvn(errsv, "", 0);
+	}
+}
+
 static void setErrMsg(const std::string &msg)
 {
 	// chop the trailing \n if present
@@ -30,14 +38,21 @@ static void setErrMsg(const std::string &msg)
 
 // Copy a Perl scalar (numeric) SV value into a memory buffer.
 // @param ti - field type selection
-// @param  val - SV to copy from
+// @param val - SV to copy from
 // @param bytes - memory buffer to copy to, must be large enough
-static void svToBytes(Type::TypeId ti, SV *val, char *bytes)
+// @return - true if set OK, false if value was non-numeric
+static bool svToBytes(Type::TypeId ti, SV *val, char *bytes)
 {
 	IV xiv;
 	int64_t x64;
 	int32_t x32;
 	double xfv;
+
+	// This check is NOT a good idea, it disables the automatic conversions from strings.
+	// Without it the unit test complains when the string doesn't contain a number,
+	// but it's a lesser evil.
+	// if (!SvNOK(val) && !SvIOK(val)) return false;
+
 	switch(ti) {
 	case Type::TT_INT32:
 		x32 = SvIV(val);
@@ -59,6 +74,7 @@ static void svToBytes(Type::TypeId ti, SV *val, char *bytes)
 		croak("Biceps svToBytes called with unsupported type %d\n", ti);
 		break;
 	}
+	return true;
 }
 
 // Convert a Perl value (scalar or list) to a buffer
@@ -132,12 +148,20 @@ static EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		buf->size_ = slen*llen;
 		xsv = buf->data_;
 		for (int i = 0; i < llen; i++, xsv += slen) {
-			svToBytes(ti, *av_fetch(lst, i, 0),  xsv);
+			if (!svToBytes(ti, *av_fetch(lst, i, 0),  xsv)) {
+				delete buf;
+				setErrMsg(strprintf("Biceps field '%s' element %d data conversion: non-numeric value", fname, i));
+				return NULL;
+			}
 		}
 	} else {
 		buf = new(slen) EasyBuffer;
-		svToBytes(ti, arg,  buf->data_);
 		buf->size_ = slen;
+		if (!svToBytes(ti, arg,  buf->data_)) {
+			delete buf;
+			setErrMsg(strprintf("Biceps field '%s' data conversion: non-numeric value", fname));
+			return NULL;
+		}
 	}
 	return buf;
 }
@@ -249,6 +273,7 @@ Biceps::RowType::new(...)
 		RowType::FieldVec fld;
 		RowType::Field add;
 
+		clearErrMsg();
 		if (items < 3 || items % 2 != 1) {
 			setErrMsg("Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 			XSRETURN_UNDEF;
@@ -295,6 +320,7 @@ DESTROY(WrapRowType *self)
 SV *
 getdef(WrapRowType *self)
 	PPCODE:
+		clearErrMsg();
 		RowType *rt = self->t_;
 
 		const RowType::FieldVec &fld = rt->fields();
@@ -312,6 +338,7 @@ getdef(WrapRowType *self)
 WrapRow *
 makerow_hs(WrapRowType *self, ...)
 	CODE:
+		clearErrMsg();
 		RowType *rt = self->t_;
 		// for casting of return value
 		static char CLASS[] = "Biceps::Row";
@@ -324,7 +351,7 @@ makerow_hs(WrapRowType *self, ...)
 		// and can not have lists.
 
 		if (items % 2 != 1) {
-			setErrMsg("Usage: Biceps::RowType::makerow(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
+			setErrMsg("Usage: Biceps::RowType::makerow_hs(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
 			XSRETURN_UNDEF;
 		}
 
@@ -338,7 +365,7 @@ makerow_hs(WrapRowType *self, ...)
 			const char *fname = (const char *)SvPV_nolen(ST(i));
 			int idx  = rt->findIdx(fname);
 			if (idx < 0) {
-				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Biceps::RowType::makerow", fname));
+				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Biceps::RowType::makerow_hs", fname));
 				XSRETURN_UNDEF;
 			}
 			const RowType::Field &finfo = rt->fields()[idx];
@@ -347,7 +374,7 @@ makerow_hs(WrapRowType *self, ...)
 				fields[idx].setNull();
 			} else {
 				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::RowType::makerow", fname));
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::RowType::makerow_hs", fname));
 					XSRETURN_UNDEF;
 				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
@@ -356,6 +383,49 @@ makerow_hs(WrapRowType *self, ...)
 				bufs.push_back(d); // remember for cleaning
 
 				fields[idx].setPtr(true, d->data_, d->size_);
+			}
+		}
+		RETVAL = new WrapRow(rt, rt->makeRow(fields));
+	OUTPUT:
+		RETVAL
+
+# the row factory, from an array of values in the exact order (lice CSV files),
+# filling the missing values at the end with nulls
+WrapRow *
+makerow_ar(WrapRowType *self, ...)
+	CODE:
+		clearErrMsg();
+		RowType *rt = self->t_;
+		// for casting of return value
+		static char CLASS[] = "Biceps::Row";
+
+		int nf = rt->fieldCount();
+
+		if (items > nf + 1) {
+			setErrMsg(strprintf("Biceps::RowType::makerow_ar: %d args, only %d fields in ", items-1, nf) + rt->print(NOINDENT));
+			XSRETURN_UNDEF;
+		}
+
+		FdataVec fields(nf);
+		for (int i = 0; i < nf; i++) {
+			fields[i].setNull(); // default the fields to null
+		}
+		vector<Autoref<EasyBuffer> > bufs;
+		for (int i = 1; i < items; i ++) {
+			const RowType::Field &finfo = rt->fields()[i-1];
+			const char *fname = finfo.name_.c_str();
+
+			if (SvOK(ST(i))) { // undef translates to null, which is already set
+				if (SvROK(ST(i)) && finfo.arsz_ < 0) {
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::RowType::makerow_ar", fname));
+					XSRETURN_UNDEF;
+				}
+				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i), fname);
+				if (d == NULL)
+					XSRETURN_UNDEF; // error message already set
+				bufs.push_back(d); // remember for cleaning
+
+				fields[i-1].setPtr(true, d->data_, d->size_);
 			}
 		}
 		RETVAL = new WrapRow(rt, rt->makeRow(fields));
@@ -375,6 +445,7 @@ DESTROY(WrapRow *self)
 char *
 hexdump(WrapRow *self)
 	CODE:
+		clearErrMsg();
 		string dump;
 		RowType *t = self->r_.getType();
 		Row *r = self->r_.get();
@@ -387,6 +458,7 @@ hexdump(WrapRow *self)
 SV *
 to_hs(WrapRow *self)
 	PPCODE:
+		clearErrMsg();
 		RowType *t = self->r_.getType();
 		Row *r = self->r_.get();
 		const RowType::FieldVec &fld = t->fields();
@@ -395,6 +467,23 @@ to_hs(WrapRow *self)
 		for (int i = 0; i < nf; i++) {
 			PUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
 			
+			const char *data;
+			intptr_t dlen;
+			bool notNull = t->getField(r, i, data, dlen);
+			PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+		}
+
+# convert to an array of data values, like CSV
+SV *
+to_ar(WrapRow *self)
+	PPCODE:
+		clearErrMsg();
+		RowType *t = self->r_.getType();
+		Row *r = self->r_.get();
+		const RowType::FieldVec &fld = t->fields();
+		int nf = fld.size();
+
+		for (int i = 0; i < nf; i++) {
 			const char *data;
 			intptr_t dlen;
 			bool notNull = t->getField(r, i, data, dlen);
