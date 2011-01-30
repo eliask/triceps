@@ -1,7 +1,7 @@
 
 .DEFAULT_GOAL = all
 
-all clean test: perl/Biceps/Makefile
+all clean test qtest vtest: perl/Biceps/Makefile
 	$(MAKE) -C core $@
 	$(MAKE) -C perl/Biceps $@
 
