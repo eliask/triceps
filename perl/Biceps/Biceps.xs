@@ -548,3 +548,23 @@ copymod(WrapRow *self, ...)
 		RETVAL = new WrapRow(rt, rt->makeRow(fields));
 	OUTPUT:
 		RETVAL
+
+# get the value of one field by name
+SV *
+get(WrapRow *self, char *fname)
+	PPCODE:
+		clearErrMsg();
+		RowType *t = self->r_.getType();
+		Row *r = self->r_.get();
+		const RowType::FieldVec &fld = t->fields();
+
+		int i = t->findIdx(fname);
+		if ( i < 0 ) {
+			setErrMsg(strprintf("%s: unknown field '%s'", "Biceps::Row::get", fname));
+			XSRETURN_UNDEF;
+		}
+
+		const char *data;
+		intptr_t dlen;
+		bool notNull = t->getField(r, i, data, dlen);
+		PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));

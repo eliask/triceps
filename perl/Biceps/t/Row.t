@@ -6,7 +6,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 39 };
+BEGIN { plan tests => 70 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -331,3 +331,124 @@ $r2 = $r2->copymod(@dataset3);
 ok(ref $r2, "Biceps::Row");
 @d2 = $r2->to_hs();
 ok(&row2string(@d2), &row2string(@dataset3));
+
+# changing nothing
+$r2 = $r1->copymod();
+ok(ref $r2, "Biceps::Row");
+@d2 = $r2->to_hs();
+ok(&row2string(@d2), &row2string(@dataset1));
+
+# wrong arg number
+$r2 = $r1->copymod(
+	a => undef,
+	b => 123,
+	c => 3e15,
+	"e"
+);
+ok(!defined $r2);
+ok($! . "", "Usage: Biceps::Row::copymod(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs");
+
+# unknown field
+$r2 = $r1->copymod(
+	z => 123,
+);
+ok(!defined $r2);
+ok($! . "", "Biceps::Row::copymod: attempting to set an unknown field 'z'");
+
+# setting an array to a scalar field
+@dataset1 = (
+	a => "uint8",
+	b => 123,
+	c => 3e15+0,
+	d => 3.14,
+	e => "string",
+);
+$r1 = $rt1->makerow_hs( @dataset1);
+ok(ref $r1, "Biceps::Row");
+
+$r2 = $r1->copymod(
+	b => [ 950, 888, 123, 456, 789 ],
+);
+ok(!defined $r2);
+ok($! . "", "Biceps::Row::copymod: attempting to set an array into scalar field 'b'");
+
+# setting an array for uint8
+$r1 = $rt3->makerow_hs( @dataset1);
+ok(ref $r1, "Biceps::Row");
+
+$r2 = $r1->copymod(
+	a => [ "a", "b", "c" ],
+);
+ok(!defined $r2);
+ok($! . "", "Biceps field 'a' data conversion: array reference may not be used for string and uint8");
+
+############ get #################################
+
+# get a scalar
+@dataset1 = (
+	a => "uint8",
+	b => 123,
+	c => 3e15+0,
+	d => 3.14,
+	e => "string",
+);
+$r1 = $rt1->makerow_hs( @dataset1);
+ok(ref $r1, "Biceps::Row");
+
+ok($r1->get("a"), "uint8");
+ok($r1->get("b"), 123);
+ok($r1->get("c"), 3e15+0);
+ok($r1->get("d"), 3.14);
+ok($r1->get("e"), "string");
+
+# getting an unknown field
+ok(!defined $r1->get("z"));
+ok($! . "", "Biceps::Row::get: unknown field 'z'");
+
+# getting a null field
+@dataset2 = (
+	a => undef,
+	b => undef,
+	c => 3e15+0,
+	d => undef,
+	e => undef,
+);
+$r2 = $rt1->makerow_hs( @dataset2);
+ok(ref $r2, "Biceps::Row");
+
+ok(!defined $r2->get("a"));
+ok($! . "", "");
+
+# getting array fields
+@dataset3 = (
+	a => "bytesbytes",
+	b => [ 950, 888, 123, 456, 789 ],
+	c => [ 3e15+0, 42, 65535 ],
+	d => [ 3.14, 2.71, 3.123456789012345+0 ],
+	e => "string",
+);
+$r1 = $rt3->makerow_hs( @dataset3);
+ok(ref $r1, "Biceps::Row");
+
+ok($r1->get("a"), "bytesbytes");
+$v = $r1->get("b");
+ok(&row2string(@$v), &row2string(@{$dataset3[3]}));
+$v = $r1->get("c");
+ok(&row2string(@$v), &row2string(@{$dataset3[5]}));
+$v = $r1->get("d");
+ok(&row2string(@$v), &row2string(@{$dataset3[7]}));
+
+# getting null from an array field
+@dataset2 = (
+	a => undef,
+	b => undef,
+	c => 3e15+0,
+	d => undef,
+	e => undef,
+);
+$r2 = $rt3->makerow_hs( @dataset2);
+ok(ref $r2, "Biceps::Row");
+
+ok(!defined $r2->get("a"));
+ok($! . "", "");
+
