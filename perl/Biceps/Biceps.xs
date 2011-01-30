@@ -489,3 +489,62 @@ to_ar(WrapRow *self)
 			bool notNull = t->getField(r, i, data, dlen);
 			PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 		}
+
+# copy the row and modify the specified fields when copying
+WrapRow *
+copymod(WrapRow *self, ...)
+	CODE:
+		clearErrMsg();
+		RowType *rt = self->r_.getType();
+		Row *r = self->r_.get();
+
+		// for casting of return value
+		static char CLASS[] = "Biceps::Row";
+
+		// The arguments come in pairs fieldName => value;
+		// the value may be either a simple value that will be
+		// cast to the right type, or a reference to a list of values.
+		// The uint8 and string are converted from Perl strings
+		// (the difference for now is that string is 0-terminated)
+		// and can not have lists.
+
+		if (items % 2 != 1) {
+			setErrMsg("Usage: Biceps::Row::copymod(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs");
+			XSRETURN_UNDEF;
+		}
+
+		int nf = rt->fieldCount();
+		// parse data to create a copy
+		FdataVec fields;
+		rt->splitInto(r, fields);
+
+		// now override the modified fields
+		// this code is copied from RowType::makerow_hs
+		vector<Autoref<EasyBuffer> > bufs;
+		for (int i = 1; i < items; i += 2) {
+			const char *fname = (const char *)SvPV_nolen(ST(i));
+			int idx  = rt->findIdx(fname);
+			if (idx < 0) {
+				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Biceps::Row::copymod", fname));
+				XSRETURN_UNDEF;
+			}
+			const RowType::Field &finfo = rt->fields()[idx];
+
+			if (!SvOK(ST(i+1))) { // undef translates to null
+				fields[idx].setNull();
+			} else {
+				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::Row::copymod", fname));
+					XSRETURN_UNDEF;
+				}
+				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
+				if (d == NULL)
+					XSRETURN_UNDEF; // error message already set
+				bufs.push_back(d); // remember for cleaning
+
+				fields[idx].setPtr(true, d->data_, d->size_);
+			}
+		}
+		RETVAL = new WrapRow(rt, rt->makeRow(fields));
+	OUTPUT:
+		RETVAL

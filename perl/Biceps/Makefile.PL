@@ -28,8 +28,8 @@ sub MY::postamble {
 # which might not work so well with a different version of MakeMaker
 vtest: pure_all
 	PERL_DL_NONLAZY=1 valgrind --leak-check=full -v --gen-suppressions=all --suppressions=vg.supp /\$(FULLPERLRUN) \"-MExtUtils::Command::MM\" \"-e\" \"test_harness(1, '\$(INST_LIB)', '\$(INST_ARCHLIB)')\" \$(TEST_FILES) 2>test.vg
-	grep \"ERROR SUMMARY: .*[^0].* errors from\" test.vg && { echo \"  FAIL MEMCHK\" >&2; exit 1; } || true
-	grep \"are definitely lost\" test.vg && { echo \"  FAIL LEAK\" >&2; exit 1; } || true
+	\@grep \"ERROR SUMMARY: .*[^0].* errors from\" test.vg && { echo \"  FAIL MEMCHK\" >&2; exit 1; } || true
+	\@grep \"are definitely lost\" test.vg && { echo \"  FAIL LEAK\" >&2; exit 1; } || true
 	\@echo 'Valgrind test OK'
 
 # the quick test is the default one
