@@ -10,6 +10,7 @@
 
 #include <type/AllSimpleTypes.h>
 #include <type/CompactRowType.h>
+#include <type/PrimaryIndexType.h>
 
 namespace BICEPS_NS {
 

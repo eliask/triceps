@@ -32,6 +32,9 @@ public:
 		TT_FLOAT64, // 64-bit floating-point, what C calls "double"
 		TT_STRING, // a string: a special kind of byte array
 		TT_ROW, // a row of a table
+		TT_RH, // row handle: item through which all indexes in the table own a row
+		TT_TABLE, // data store of rows (AKA "window")
+		TT_INDEX, // a table contains one or more indexes for its rows
 		// add the new types here
 		TT_LAST_MARKER // for range checks, goes after all the real types
 	};

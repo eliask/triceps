@@ -96,9 +96,12 @@ bool RowType::match(const Type *t) const
 void RowType::printTo(string &res, const string &indent, const string &subindent) const
 {
 	string nextindent;
-
+	const string *passni;
 	if (&indent != &NOINDENT) {
 		nextindent = indent + subindent;
+		passni = &nextindent;
+	} else {
+		passni = &NOINDENT;
 	}
 
 	res.append("row {");
@@ -111,7 +114,7 @@ void RowType::printTo(string &res, const string &indent, const string &subindent
 		} else {
 			res.append(" ");
 		}
-		fields_[i].type_->printTo(res, indent, nextindent);
+		fields_[i].type_->printTo(res, *passni, subindent);
 
 		int arsz = fields_[i].arsz_;
 		if (arsz == 0) {
