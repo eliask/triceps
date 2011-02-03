@@ -6,6 +6,7 @@
 // An index that implements a unique primary key with an unpredictable order.
 
 #include <type/PrimaryIndexType.h>
+#include <table/PrimaryIndex.h>
 
 namespace BICEPS_NS {
 
@@ -13,6 +14,14 @@ PrimaryIndexType::PrimaryIndexType(NameSet *key) :
 	IndexType(IT_PRIMARY),
 	key_(key)
 {
+}
+
+PrimaryIndexType::PrimaryIndexType(const PrimaryIndexType &orig) :
+	IndexType(orig)
+{
+	if (!orig.key_.isNull()) {
+		key_ = new NameSet(*orig.key_);
+	}
 }
 
 PrimaryIndexType *PrimaryIndexType::setKey(NameSet *key)
@@ -31,18 +40,33 @@ bool PrimaryIndexType::equals(const Type *t) const
 	if (this == t)
 		return true; // self-comparison, shortcut
 
-	if (!Type::equals(t))
+	if (!IndexType::equals(t))
 		return false;
 	
-	const IndexType *it = static_cast<const IndexType *>(t);
-	if (indexId_ != it->getSubtype())
-		return false;
-
 	const PrimaryIndexType *pit = static_cast<const PrimaryIndexType *>(t);
 	if ( (!key_.isNull() && pit->key_.isNull())
 	|| (key_.isNull() && !pit->key_.isNull()) )
 		return false;
 
+	return key_->equals(pit->key_);
+}
+
+bool PrimaryIndexType::match(const Type *t) const
+{
+	if (this == t)
+		return true; // self-comparison, shortcut
+
+	if (!IndexType::match(t))
+		return false;
+	
+	const PrimaryIndexType *pit = static_cast<const PrimaryIndexType *>(t);
+	if ( (!key_.isNull() && pit->key_.isNull())
+	|| (key_.isNull() && !pit->key_.isNull()) )
+		return false;
+
+	// XXX This is not quite right, it should look up the fields in the
+	// row type and see if they match, but there is no row type known yet
+	// Does it matter?
 	return key_->equals(pit->key_);
 }
 
@@ -56,6 +80,49 @@ void PrimaryIndexType::printTo(string &res, const string &indent, const string &
 		}
 	}
 	res.append(")");
+}
+
+IndexType *PrimaryIndexType::copy()
+{
+	return new PrimaryIndexType(*this);
+}
+
+void PrimaryIndexType::initialize(TableType *tabtype)
+{
+	if (isInitialized())
+		return; // nothing to do
+	initialized_ = true;
+
+	errors_ = new Errors;
+
+	if (nested_.size() != 0)
+		errors_->appendMsg(true, "PrimaryIndexType currently does not support further nested indexes");
+
+	rhOffset_ = tabtype->rhType()->allocate(sizeof(PrimaryIndex::RhSection));
+
+	// find the fields
+	RowType *rt = tabtype->rowType();
+	int n = key_->size();
+	keyFld_.resize();
+	for (int i = 0; i < n; i++) {
+		int idx = rt->findIdx(key_[i]);
+		if (idx < 0) {
+			errors_->appendMsg(true, strprintf("can not find the key field '%s'", key_[i].c_str()));
+		}
+		keyFld_[i] = idx;
+	}
+	
+	if (!errors_->hasError() && errors_->isEmpty())
+		errors_ = NULL;
+}
+
+Index *PrimaryIndexType::makeIndex(TableType *tabtype)
+{
+	if (!isInitialized() 
+	|| (!errors_.isNull() && errors->hasError()) )
+		return NULL; 
+	return new PrimaryIndex(this, new PrimaryIndex::Less(
+		tabtype->rowType(), rhOffset_, keyFld_) );
 }
 
 }; // BICEPS_NS

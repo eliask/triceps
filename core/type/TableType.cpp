@@ -11,7 +11,8 @@ namespace BICEPS_NS {
 
 TableType::TableType(Onceref<RowType> rt) :
 	Type(false, TT_TABLE),
-	rowType_(rt)
+	rowType_(rt),
+	initialized_(false)
 { }
 
 TableType::~TableType()
@@ -19,6 +20,10 @@ TableType::~TableType()
 
 TableType *TableType::addIndex(const string &name, IndexType *index)
 {
+	if (initialized_) {
+		fprint(stderr, "Biceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
+		abort();
+	}
 	topInd_.push_back(IndexRef(name, index));
 	return this;
 }
@@ -114,6 +119,26 @@ void TableType::printTo(string &res, const string &indent, const string &subinde
 		res.append(" ");
 	}
 	res.append("}");
+}
+
+void TableType::initialize()
+{
+	if (initialized_)
+		return; // nothing to do
+	initialized_ = true;
+
+	errors_ = new Errors;
+
+	if (rowType_.isNull()) {
+		errors_.appendMsg(true, "the row type is not set");
+		return;
+	}
+	rhType_ = new RowHandleType;
+
+	topInd_.initialize(this, errors_);
+
+	if (!errors_.hasError() && errors_isEmpty())
+		errors_ = NULL;
 }
 
 }; // BICEPS_NS

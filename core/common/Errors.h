@@ -39,6 +39,8 @@ public:
 	// the erro flag can be set directly in this object too.
 	Errors(bool e = false);
 
+	// XXX there should be a way to give headers to the child errors
+
 	// A convenience function to add the child's info.
 	// If the child had the erro flag set, sets the error flag here too.
 	// @param child - errors returned by child (or NULL)

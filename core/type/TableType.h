@@ -10,6 +10,7 @@
 
 #include <type/IndexType.h>
 #include <type/RowType.h>
+#include <type/RowHandleType.h>
 
 namespace BICEPS_NS {
 
@@ -40,13 +41,33 @@ public:
 	TableType *addIndex(const string &name, IndexType *index);
 
 	// Check the whole table definition and derive the internal
-	// structures. The result gets checked by getErrors().
-	void validate();
+	// structures. The result gets returned by getErrors().
+	void initialize();
+
+	// Whether it was already initialized
+	bool isInitialized() const
+	{
+		return initialized_;
+	}
+
+	// Get the row type
+	const RowType *rowType() const
+	{
+		return rowType_;
+	}
+
+	// Get the row handle type (this one is not constant)
+	RowHandleType *rhType() const
+	{
+		return rhType_;
+	}
 
 protected:
 	IndexVec topInd_; // top-level indexes
 	Autoref<RowType> rowType_; // row for this table
 	Erref errors_;
+	Autoref<RowHandleType> rhType_; // for building the row handles
+	bool initialized_; // flag: has already been initialized, no more changes allowed
 
 private:
 	TableType();
