@@ -9,11 +9,13 @@
 #define __Biceps_PrimaryIndex_h__
 
 #include <table/Index.h>
+#include <table/RowHandle.h>
 #include <common/Hash.h>
 
 namespace BICEPS_NS {
 
 class PrimaryIndexType;
+class RowType;
 
 class PrimaryIndex: public Index
 {
@@ -23,12 +25,12 @@ protected:
 	// Comparator class for the row objects
 	class Less {
 	public:
-		Less(RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld);
+		Less(const RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld);
 
-		bool operator() (RowHandle *r1, RowHandle *r2) const;
+		bool operator() (const RowHandle *r1, const RowHandle *r2) const;
 	protected:
 		vector<int32_t> keyFld_; // indexes of key fields in the record
-		Autoref<RowType> *rt_;
+		Autoref<const RowType> rt_;
 		intptr_t rhOffset_; // offset of this index's data in table's row handle
 
 	private:
@@ -36,10 +38,15 @@ protected:
 	};
 
 public:
+	// @param tabtype - type of table where this index belongs
+	// @param table - the actual table where this index belongs
 	// @param mytype - type that created this index
 	// @param lessop - less functor class for the key, this index assumes is ownership
-	PrimaryIndex(PrimaryIndexType *mytype, Less *lessop);
+	PrimaryIndex(const TableType *tabtype, Table *table, const PrimaryIndexType *mytype, Less *lessop);
 	~PrimaryIndex();
+
+	// from Index
+	virtual void clearData();
 
 protected:
 	// not Autoref<RowHandle> because the row is owned by the whole table once,
@@ -53,7 +60,7 @@ protected:
 	};
 
 	Set data_; // the data store
-	Autoref<PrimaryIndexType> type_; // type of this index
+	Autoref<const PrimaryIndexType> type_; // type of this index
 	Less *less_; // the comparator object
 };
 

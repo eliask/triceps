@@ -6,6 +6,7 @@
 // Type for the tables.
 
 #include <type/TableType.h>
+#include <table/Table.h>
 
 namespace BICEPS_NS {
 
@@ -21,10 +22,10 @@ TableType::~TableType()
 TableType *TableType::addIndex(const string &name, IndexType *index)
 {
 	if (initialized_) {
-		fprint(stderr, "Biceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Biceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
-	topInd_.push_back(IndexRef(name, index));
+	topInd_.push_back(IndexTypeRef(name, index));
 	return this;
 }
 
@@ -102,7 +103,7 @@ void TableType::printTo(string &res, const string &indent, const string &subinde
 		res.append(" ");
 	}
 	res.append(") {");
-	for (IndexVec::const_iterator i = topInd_.begin(); i != topInd_.end(); ++i) {
+	for (IndexTypeVec::const_iterator i = topInd_.begin(); i != topInd_.end(); ++i) {
 		if (&indent != &NOINDENT) {
 			res.append("\n");
 			res.append(nextindent);
@@ -130,15 +131,23 @@ void TableType::initialize()
 	errors_ = new Errors;
 
 	if (rowType_.isNull()) {
-		errors_.appendMsg(true, "the row type is not set");
+		errors_->appendMsg(true, "the row type is not set");
 		return;
 	}
 	rhType_ = new RowHandleType;
 
 	topInd_.initialize(this, errors_);
 
-	if (!errors_.hasError() && errors_isEmpty())
+	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
+}
+
+Onceref<Table> TableType::makeTable() const
+{
+	if (!initialized_ || errors_->hasError())
+		return NULL;
+
+	return new Table(this, rowType_, rhType_, topInd_);
 }
 
 }; // BICEPS_NS

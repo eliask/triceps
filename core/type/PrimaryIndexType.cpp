@@ -6,6 +6,7 @@
 // An index that implements a unique primary key with an unpredictable order.
 
 #include <type/PrimaryIndexType.h>
+#include <type/TableType.h>
 #include <table/PrimaryIndex.h>
 
 namespace BICEPS_NS {
@@ -82,7 +83,7 @@ void PrimaryIndexType::printTo(string &res, const string &indent, const string &
 	res.append(")");
 }
 
-IndexType *PrimaryIndexType::copy()
+IndexType *PrimaryIndexType::copy() const
 {
 	return new PrimaryIndexType(*this);
 }
@@ -101,13 +102,13 @@ void PrimaryIndexType::initialize(TableType *tabtype)
 	rhOffset_ = tabtype->rhType()->allocate(sizeof(PrimaryIndex::RhSection));
 
 	// find the fields
-	RowType *rt = tabtype->rowType();
+	const RowType *rt = tabtype->rowType();
 	int n = key_->size();
-	keyFld_.resize();
+	keyFld_.resize(n);
 	for (int i = 0; i < n; i++) {
-		int idx = rt->findIdx(key_[i]);
+		int idx = rt->findIdx((*key_)[i]);
 		if (idx < 0) {
-			errors_->appendMsg(true, strprintf("can not find the key field '%s'", key_[i].c_str()));
+			errors_->appendMsg(true, strprintf("can not find the key field '%s'", (*key_)[i].c_str()));
 		}
 		keyFld_[i] = idx;
 	}
@@ -116,12 +117,12 @@ void PrimaryIndexType::initialize(TableType *tabtype)
 		errors_ = NULL;
 }
 
-Index *PrimaryIndexType::makeIndex(TableType *tabtype)
+Index *PrimaryIndexType::makeIndex(const TableType *tabtype, Table *table) const
 {
 	if (!isInitialized() 
-	|| (!errors_.isNull() && errors->hasError()) )
+	|| errors_->hasError())
 		return NULL; 
-	return new PrimaryIndex(this, new PrimaryIndex::Less(
+	return new PrimaryIndex(tabtype, table, this, new PrimaryIndex::Less(
 		tabtype->rowType(), rhOffset_, keyFld_) );
 }
 

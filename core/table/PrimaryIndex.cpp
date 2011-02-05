@@ -7,18 +7,20 @@
 
 #include <table/PrimaryIndex.h>
 #include <type/PrimaryIndexType.h>
+#include <type/RowType.h>
+#include <string.h>
 
 namespace BICEPS_NS {
 
 //////////////////////////// PrimaryIndex::Less  /////////////////////////
 
-PrimaryIndex::Less::Less(RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld)  :
+PrimaryIndex::Less::Less(const RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld)  :
 	keyFld_(keyFld),
-	rt_(rt)
+	rt_(rt),
 	rhOffset_(rhOffset)
 { }
 
-bool PrimaryIndex::Less::operator() (RowHandle *r1, RowHandle *r2) const 
+bool PrimaryIndex::Less::operator() (const RowHandle *r1, const RowHandle *r2) const 
 {
 	RhSection *rs1 = r1->get<RhSection>(rhOffset_);
 	RhSection *rs2 = r2->get<RhSection>(rhOffset_);
@@ -34,9 +36,9 @@ bool PrimaryIndex::Less::operator() (RowHandle *r1, RowHandle *r2) const
 	// otherwise do the full comparison
 	int nf = keyFld_.size();
 	for (int i = 0; i < nf; i++) {
-		int idx = keyfld_[i];
+		int idx = keyFld_[i];
 		bool notNull1, notNull2;
-		const char *v1, v2;
+		const char *v1, *v2;
 		intptr_t len1, len2;
 
 		notNull1 = rt_->getField(r1->getRow(), idx, v1, len1);
@@ -71,16 +73,22 @@ bool PrimaryIndex::Less::operator() (RowHandle *r1, RowHandle *r2) const
 
 //////////////////////////// PrimaryIndex /////////////////////////
 
-PrimaryIndex::PrimaryIndex(PrimaryIndexType *mytype, Less *lessop) :
-	set_(*lessop),
+PrimaryIndex::PrimaryIndex(const TableType *tabtype, Table *table, const PrimaryIndexType *mytype, Less *lessop) :
+	Index(tabtype, table),
+	data_(*lessop),
 	type_(mytype),
-	less_lessop)
+	less_(lessop)
 { }
 
 PrimaryIndex::~PrimaryIndex()
 {
-	set_.clear();
+	data_.clear();
 	delete less_;
+}
+
+void PrimaryIndex::clearData()
+{
+	data_.clear();
 }
 
 }; // BICEPS_NS

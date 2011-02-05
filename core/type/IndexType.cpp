@@ -6,47 +6,96 @@
 // Type for creation of indexes in the tables.
 
 #include <type/IndexType.h>
+#include <table/Index.h>
+#include <set>
 
 namespace BICEPS_NS {
 
-/////////////////////// IndexVec ////////////////////////////
+/////////////////////// IndexTypeRef ////////////////////////////
 
-IndexVec::IndexVec()
+IndexTypeRef::IndexTypeRef(const string &n, IndexType *it) :
+	name_(n),
+	index_(it)
 { }
 
-IndexVec::IndexVec(size_t size):
-	vector<IndexRef>(size)
+IndexTypeRef::IndexTypeRef()
 { }
 
-void IndexVec::initialize(TableType *tabtype, Erref parentErr)
-{
-	size_t n = size();
-	for (size_t i = 0; i < n; i++) {
-		if (at(i).name_.empty()) {
-			parentErr->appendMsg(true, strprintf("ERROR: nested index %d is not allowed to have an empty name\n", (int)i+1));
-			continue;
-		}
-		if (at(i).index_.isNull()) {
-			parentErr->appendMsg(true, strprintf("ERROR: nested index %d '%s' reference must not be NULL\n", (int)i+1, at(i).name_.c_str()));
-			continue;
-		}
-		at(i).index_.initialize(tabtype);
-		Erref se = at(i).index_.getError();
-		if (!se.isNull() && !se->isEmpty()) {
-			if (se->hasError()) 
-				parentErr->appendMsg(true, strprintf("ERROR: nested index %d '%s' contains errors\n", (int)i+1, at(i).name_.c_str()));
-			else
-				parentErr->appendMsg(false, strprintf("warning: nested index %d '%s' contains warnings\n", (int)i+1, at(i).name_.c_str()));
-			parentErr->append(se);
-		}
-	}
-}
+/*
+IndexTypeRef::IndexTypeRef(const IndexTypeRef &orig) :
+	name_(orig.name_),
+	index_(orig.index_)
+{ }
+*/
 
-IndexVec::IndexVec(const IndexVec &orig)
+/////////////////////// IndexTypeVec ////////////////////////////
+
+IndexTypeVec::IndexTypeVec()
+{ }
+
+IndexTypeVec::IndexTypeVec(size_t size):
+	vector<IndexTypeRef>(size)
+{ }
+
+IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig)
 {
 	size_t n = orig.size();
 	for (size_t i = 0; i < n; i++) 
-		push_back(IndexRef(orig[i].name_, orig[i].index_->copy()));
+		push_back(IndexTypeRef(orig[i].name_, orig[i].index_->copy()));
+}
+
+void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
+{
+	if (!checkDups(parentErr))
+		return;
+
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) {
+		if (at(i).name_.empty()) {
+			parentErr->appendMsg(true, strprintf("nested index %d is not allowed to have an empty name\n", (int)i+1));
+			continue;
+		}
+		if (at(i).index_.isNull()) {
+			parentErr->appendMsg(true, strprintf("nested index %d '%s' reference must not be NULL\n", (int)i+1, at(i).name_.c_str()));
+			continue;
+		}
+		at(i).index_->initialize(tabtype);
+		Erref se = at(i).index_->getErrors();
+
+		if (se->hasError()) 
+			parentErr->appendMsg(true, strprintf("nested index %d '%s' contains errors\n", (int)i+1, at(i).name_.c_str()));
+		else if (!se->isEmpty())
+			parentErr->appendMsg(false, strprintf("warning: nested index %d '%s' contains warnings\n", (int)i+1, at(i).name_.c_str()));
+		parentErr->append(se);
+	}
+}
+
+void IndexTypeVec::makeIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) {
+		ivec->push_back(IndexRef((*this)[i].name_, (*this)[i].index_->makeIndex(tabtype, table)));
+	}
+}
+
+bool IndexTypeVec::checkDups(Erref parentErr)
+{
+	size_t n = size();
+	if (n == 0)
+		return true;
+
+	set<string> known;
+
+	bool res = true;
+	for (size_t i = 0; i < n; i++) {
+		const string &name = at(i).name_;
+		if (known.find(name) != known.end()) {
+			parentErr->appendMsg(true, strprintf("nested index %d name '%s' is used more than once\n", (int)i+1, name.c_str()));
+			res = false;
+		}
+		known.insert(name);
+	}
+	return res;
 }
 
 /////////////////////// IndexType ////////////////////////////
@@ -72,10 +121,10 @@ IndexType::IndexType(const IndexType &orig) :
 IndexType *IndexType::addNested(const string &name, IndexType *index)
 {
 	if (initialized_) {
-		fprint(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
-	nested_.push_back(IndexRef(name, index));
+	nested_.push_back(IndexTypeRef(name, index));
 	return this;
 }
 
@@ -129,6 +178,11 @@ bool IndexType::match(const Type *t) const
 			return false;
 	}
 	return true;
+}
+
+IndexVec *IndexType::getIndexVec(Index *ind)
+{
+	return &ind->nested_;
 }
 
 }; // BICEPS_NS

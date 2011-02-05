@@ -14,12 +14,11 @@
 
 namespace BICEPS_NS {
 
-class TableType;
-class TableType;
-
+class Table;
 
 class TableType : public Type
 {
+	friend class Table;
 public:
 	// @param rt - type of rows in this table
 	TableType(Onceref<RowType> rt);
@@ -62,8 +61,12 @@ public:
 		return rhType_;
 	}
 
+	// Create an instance table of this type.
+	// @return - new instance or NULL if not initialized or has an error
+	Onceref<Table> makeTable() const;
+
 protected:
-	IndexVec topInd_; // top-level indexes
+	IndexTypeVec topInd_; // top-level indexes
 	Autoref<RowType> rowType_; // row for this table
 	Erref errors_;
 	Autoref<RowHandleType> rhType_; // for building the row handles

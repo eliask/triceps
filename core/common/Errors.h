@@ -53,13 +53,17 @@ public:
 	void appendMsg(bool e, const string &msg);
 
 	// Check recursively whether ethere are no messages.
+	// May be called on a NULL pointer as well.
 	// @return - true if there are no messages throughout hierarchy
 	bool isEmpty();
 
 	// Check if has an error.
+	// May be called on a NULL pointer as well.
 	// @return - true if has an error
 	bool hasError()
 	{
+		if (this == NULL)
+			return false;
 		return error_;
 	}
 	

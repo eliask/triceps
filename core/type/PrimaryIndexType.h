@@ -27,9 +27,9 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
 	// from IndexType
-	virtual IndexType *copy();
+	virtual IndexType *copy() const;
 	virtual void initialize(TableType *tabtype);
-	virtual Index *makeIndex(TableType *tabtype);
+	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
 
 protected:
 	// used by copy()

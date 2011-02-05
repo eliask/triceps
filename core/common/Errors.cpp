@@ -45,6 +45,9 @@ void Errors::appendMsg(bool e, const string &msg)
 
 bool Errors::isEmpty()
 {
+	if (this == NULL)
+		return true;
+
 	if (!empty())
 		return false;
 	if (cfirst_.isNull())

@@ -17,14 +17,14 @@ RowHandleType::RowHandleType() :
 
 RowHandleType::RowHandleType(const RowHandleType &orig) :
 	Type(false, TT_RH),
-	size_(orig.size())
+	size_(orig.size_)
 { }
 
 intptr_t RowHandleType::allocate(size_t amount)
 {
 	intptr_t prev = size_; // last size is alreasy aligned
 	size_ += amount;
-	intptr_t rem = size % sizeof(RowHandle::AlignType);
+	intptr_t rem = size_ % sizeof(RowHandle::AlignType);
 	if (rem != 0) {
 		size_ += sizeof(RowHandle::AlignType) - rem;
 	}
@@ -37,7 +37,7 @@ Erref RowHandleType::getErrors() const
 	return NULL;
 }
 
-void RowHandleType::printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+void RowHandleType::printTo(string &res, const string &indent, const string &subindent) const
 {
 	// this never should get actually printed
 	res.append("**rowHandle**");

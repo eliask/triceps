@@ -5,10 +5,12 @@
 //
 // The type building for RowHandles.
 
-#ifndef __Biceps_RowHandle_h__
-#define __Biceps_RowHandle_h__
+#ifndef __Biceps_RowHandleType_h__
+#define __Biceps_RowHandleType_h__
 
 #include <type/Type.h>
+#include <table/RowHandle.h>
+#include <mem/Row.h>
 
 namespace BICEPS_NS {
 
@@ -18,12 +20,6 @@ class RowHandleType : public Type
 public:
 	RowHandleType();
 	RowHandleType(const RowHandleType &orig);
-
-	// Factory for the new handles
-	RowHandle *makeHandle() const
-	{
-		return new(size_) RowHandle;
-	}
 
 	// Get the payload size in this handle
 	intptr_t getSize() const
@@ -40,10 +36,18 @@ public:
 	virtual Erref getErrors() const;
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
+	// Factory for the new handles
+	// @param r - the row to refer, will be incref-ed.
+	RowHandle *makeHandle(Row *r) const
+	{
+		r->incref();
+		return new(size_) RowHandle(r);
+	}
+
 protected:
 	intptr_t size_; // total size of payload accumulated
 };
 
 }; // BICEPS_NS
 
-#endif // __Biceps_RowHandle_h__
+#endif // __Biceps_RowHandleType_h__

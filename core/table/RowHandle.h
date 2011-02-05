@@ -55,6 +55,7 @@ public:
 
 protected:
 	friend class Table;
+	friend class RowHandleType;
 
 	RowHandle(const Row *row) : // Table knows to incref() the row before this
 		row_(row)
