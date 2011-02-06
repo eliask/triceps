@@ -30,17 +30,8 @@ UTESTCASE simple(Utest *utest)
 	UT_ASSERT(e2->isEmpty());
 	UT_ASSERT(e2->hasError());
 
-	string s;
-	s = e1->print();
-	if (UT_ASSERT(s == "msg1\nmsg2\n")) {
-		printf("s=\"%s\"\n", s.c_str());
-		fflush(stdout);
-	}
-	s = e2->print();
-	if (UT_ASSERT(s == "")) {
-		printf("s=\"%s\"\n", s.c_str());
-		fflush(stdout);
-	}
+	UT_IS(e1->print(), "msg1\nmsg2\n");
+	UT_IS(e2->print(), "");
 }
 
 UTESTCASE nested(Utest *utest)
@@ -49,60 +40,42 @@ UTESTCASE nested(Utest *utest)
 
 	e1->appendMsg(false, "msg1");
 	UT_ASSERT(!e1->hasError());
+	UT_ASSERT(!e1->isEmpty());
 
 	Erref e2 = new Errors;
 	UT_ASSERT(e2->isEmpty());
 	UT_ASSERT(!e2->hasError());
 
-	e2->append(e1);
+	UT_ASSERT(e2->append("from e1", e1) == true);
 	UT_ASSERT(!e2->isEmpty());
 	UT_ASSERT(!e2->hasError());
-	UT_ASSERT(e2->cfirst_ ==  e1);
-	UT_ASSERT(e2->clast_ ==  e1);
 
-	string s;
+	UT_IS(e2->print(), "from e1\n  msg1\n");
 
-	s = e2->print();
-	if (UT_ASSERT(s == "  msg1\n")) {
-		printf("s=\"%s\"\n", s.c_str());
-		fflush(stdout);
-	}
-
-	e2->append(new Errors);
+	UT_ASSERT(e2->append("add empty", new Errors) == false);
 	// empty child should get thrown away
 	UT_ASSERT(!e2->hasError());
-	UT_ASSERT(e2->cfirst_ ==  e1);
-	UT_ASSERT(e2->clast_ ==  e1);
-	UT_ASSERT(e1->sibling_.isNull());
+	UT_IS(e2->elist_.size(), 1);
 
-	e2->append(new Errors(true));
+	UT_ASSERT(e2->append("", new Errors(true)) == true);
 	// empty child should get thrown away, except for error indication
 	UT_ASSERT(e2->hasError());
-	UT_ASSERT(e2->cfirst_ ==  e1);
-	UT_ASSERT(e2->clast_ ==  e1);
+	UT_IS(e2->elist_.size(), 2);
+	UT_ASSERT(e2->elist_[1].child_.isNull());
+
+	e2->replaceMsg("child error flag");
+	UT_IS(e2->elist_[1].msg_, "child error flag");
 
 	Erref e3 = new Errors;
 	e3->appendMsg(true, "msg3");
-	e2->append(e3);
-	UT_ASSERT(e2->cfirst_ ==  e1);
-	UT_ASSERT(e2->clast_ ==  e3);
-	UT_ASSERT(e1->sibling_ ==  e3);
-	UT_ASSERT(e3->sibling_.isNull());
+	UT_ASSERT(e2->append("from e3", e3) == true);
 
-	s = e2->print();
-	if (UT_ASSERT(s == "  msg1\n  msg3\n")) {
-		printf("s=\"%s\"\n", s.c_str());
-		fflush(stdout);
-	}
+	UT_IS(e2->print(), "from e1\n  msg1\nchild error flag\nfrom e3\n  msg3\n");
 
 	Erref e4 = new Errors;
-	e4->append(e2);
+	UT_ASSERT(e4->append("from e2", e2) == true);
 	UT_ASSERT(e4->hasError());
 
 	e4->appendMsg(true, "msg4");
-	s = e4->print();
-	if (UT_ASSERT(s == "msg4\n    msg1\n    msg3\n")) {
-		printf("s=\"%s\"\n", s.c_str());
-		fflush(stdout);
-	}
+	UT_IS(e4->print(), "from e2\n  from e1\n    msg1\n  child error flag\n  from e3\n    msg3\nmsg4\n");
 }

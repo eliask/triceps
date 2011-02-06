@@ -11,6 +11,7 @@
 #include <type/AllSimpleTypes.h>
 #include <type/CompactRowType.h>
 #include <type/PrimaryIndexType.h>
+#include <type/TableType.h>
 
 namespace BICEPS_NS {
 

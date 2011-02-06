@@ -62,11 +62,7 @@ void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
 		at(i).index_->initialize(tabtype);
 		Erref se = at(i).index_->getErrors();
 
-		if (se->hasError()) 
-			parentErr->appendMsg(true, strprintf("nested index %d '%s' contains errors\n", (int)i+1, at(i).name_.c_str()));
-		else if (!se->isEmpty())
-			parentErr->appendMsg(false, strprintf("warning: nested index %d '%s' contains warnings\n", (int)i+1, at(i).name_.c_str()));
-		parentErr->append(se);
+		parentErr->append(strprintf("nested index %d '%s':\n", (int)i+1, at(i).name_.c_str()), se);
 	}
 }
 

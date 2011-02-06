@@ -22,7 +22,7 @@ using namespace std;
 // to find as many errors in one go as possible.
 // As the error detection unwinds, it has to preserve the hierarachy of
 // messages returned.
-class Errors: public Starget, public vector <string>
+class Errors: public Starget
 {
 public:
 	// Since the error checking normally happens in one thread,
@@ -41,16 +41,36 @@ public:
 
 	// XXX there should be a way to give headers to the child errors
 
-	// A convenience function to add the child's info.
-	// If the child had the erro flag set, sets the error flag here too.
-	// @param child - errors returned by child (or NULL)
-	// @return - true if the child returned and error
-	bool append(Autoref<Errors> clde);
-
 	// Append a direct error message.
 	// @param e - flag: true if error, false if warning
 	// @param msg - the error message
 	void appendMsg(bool e, const string &msg);
+
+	// Add information about a child's errors.
+	// If the child had the error flag set, sets the error flag here too.
+	// @msg - message describing the child, will be added only if the
+	//        child errors are not empty
+	// @param child - errors returned by child (or NULL)
+	// @return - true if the child's errors were added
+	//       (if at least one of two was true: clde contained any messages
+	//       and/or an error indication flag)
+	bool append(const string &msg, Autoref<Errors> clde);
+
+	// Replace the last message. The typical usage pattern is:
+	//
+	// if (e.append("", clde)) {
+	//     string msg;
+	//     // ... generate msg in some complicated way
+	//     e.replaceMsg(msg);
+	// }
+	//
+	// The idea is to create the identification message only if it's
+	// actually needed, in case if this generation is very slow.
+	// Most of the time just giving the message directly to append()
+	// should be good enough.
+	// @msg - message describing the child, will be replaced in the
+	//        last error record
+	void replaceMsg(const string &msg);
 
 	// Check recursively whether ethere are no messages.
 	// May be called on a NULL pointer as well.
@@ -80,11 +100,21 @@ public:
 	string print(const string &indent = "", const string &subindent = "  ");
 
 public:
+	// All the error messages are stored in these pairs, where both
+	// components are optional
+	struct Epair 
+	{
+		Epair();
+		Epair(const string &msg, Autoref<Errors> child);
+
+		string msg_; // message describing the error or the identity of a child object
+		Autoref<Errors> child_; // errors from the child object
+		// In the future, may also have the strucutred information about the location of error
+		// (line numbers etc.)
+	};
+
+	vector <Epair> elist_; // list of errors
 	bool error_; // true if there is an error somewhere, false if only warnings
-	Autoref<Errors> cfirst_; // first child
-	Autoref<Errors> clast_; // last child, for addition
-	Autoref<Errors> sibling_; // next sibling, allows to build a tree
-	// In the future, may also have the strucutred information about the location of error
 };
 
 // the typical error indication returned by the parsing functions
