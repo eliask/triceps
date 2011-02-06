@@ -47,6 +47,15 @@ Index *IndexVec::find(const string &name) const
 	return NULL;
 }
 
+Index *IndexVec::findByType(IndexType::IndexId it) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		if((*this)[i].index_->getIndexId() == it)
+			return (*this)[i].index_;
+	return NULL;
+}
+
 ////////////////////////// Index ///////////////////////////////////
 
 Index::Index(const TableType *tabtype, Table *table) :

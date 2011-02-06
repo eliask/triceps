@@ -47,6 +47,7 @@ public:
 
 	// from Index
 	virtual void clearData();
+	virtual const IndexType *getType() const;
 
 protected:
 	// not Autoref<RowHandle> because the row is owned by the whole table once,

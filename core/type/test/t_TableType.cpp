@@ -3,7 +3,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of table and intex types creation.
+// Test of table and primary index types creation.
 
 #include <utest/Utest.h>
 #include <string.h>

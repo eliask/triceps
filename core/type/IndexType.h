@@ -87,7 +87,7 @@ public:
 	IndexType *addNested(const string &name, IndexType *index);
 
 	// For access of subclasses to the subtype id.
-	IndexId getSubtype() const
+	IndexId getIndexId() const
 	{ 
 		return indexId_; 
 	}

@@ -139,6 +139,7 @@ void TableType::initialize()
 
 	rhType_ = new RowHandleType;
 
+	// XXX should it check that there is at least one index?
 	topInd_.initialize(this, errors_);
 
 	if (!errors_->hasError() && errors_->isEmpty())

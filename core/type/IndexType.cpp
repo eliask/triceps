@@ -138,7 +138,7 @@ bool IndexType::equals(const Type *t) const
 		return false;
 	
 	const IndexType *it = static_cast<const IndexType *>(t);
-	if (indexId_ != it->getSubtype())
+	if (indexId_ != it->getIndexId())
 		return false;
 
 	size_t n = nested_.size();
@@ -162,7 +162,7 @@ bool IndexType::match(const Type *t) const
 		return false;
 	
 	const IndexType *it = static_cast<const IndexType *>(t);
-	if (indexId_ != it->getSubtype())
+	if (indexId_ != it->getIndexId())
 		return false;
 
 	size_t n = nested_.size();

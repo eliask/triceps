@@ -91,4 +91,8 @@ void PrimaryIndex::clearData()
 	data_.clear();
 }
 
+const IndexType *PrimaryIndex::getType() const
+{
+	return type_;
+}
 }; // BICEPS_NS

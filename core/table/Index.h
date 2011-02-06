@@ -10,6 +10,7 @@
 
 #include <mem/Mtarget.h>
 #include <common/Common.h>
+#include <type/IndexType.h>
 
 namespace BICEPS_NS {
 
@@ -43,6 +44,12 @@ public:
 	// @param name - name of the nested index
 	// @return - pointer to the nested index or NULL if unknown name
 	Index *find(const string &name) const;
+	
+	// Find the first nested index of given type.
+	// @param it - type enum of the nested index
+	// @return - pointer to the nested index or NULL if none matches
+	Index *findByType(IndexType::IndexId it) const;
+
 private:
 	void operator=(const IndexVec &);
 };
@@ -58,6 +65,37 @@ public:
 	// Clear the contents of the index. The actual RowHandles are guaranteed
 	// to be still held by the table, so the cleaning can be fast.
 	virtual void clearData() = 0;
+
+	// Get the type of this index: le the subclass sort it out
+	virtual const IndexType *getType() const = 0;
+
+	// Find the nested index by name.
+	// @param name - name of the index
+	// @return - index, or NULL if not found
+	Index *findIndex(const string &name) const
+	{
+		return nested_.find(name);
+	}
+
+	// Find the first nested index of given type.
+	// @param it - type enum of the nested index
+	// @return - pointer to the nested index or NULL if none matches
+	Index *findIndexByType(IndexType::IndexId it) const
+	{
+		return nested_.findByType(it);
+	}
+
+	// Return the indev vector.
+	const IndexVec &getIndexVec() const
+	{
+		return nested_;
+	}
+
+	// Get the type id of this index
+	IndexType::IndexId getIndexId() const
+	{
+		return getType()->getIndexId();
+	}
 
 protected:
 	// always created through subclasses

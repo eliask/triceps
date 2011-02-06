@@ -112,6 +112,7 @@ void PrimaryIndexType::initialize(TableType *tabtype)
 		}
 		keyFld_[i] = idx;
 	}
+	// XXX should it check that the fields don't repeat?
 	
 	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
