@@ -3,7 +3,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of a MtBuffer allocation and destruction.
+// Test of simple type creation.
 
 #include <utest/Utest.h>
 #include <string.h>
