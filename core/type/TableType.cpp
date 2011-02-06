@@ -134,6 +134,9 @@ void TableType::initialize()
 		errors_->appendMsg(true, "the row type is not set");
 		return;
 	}
+
+	errors_->append("row type error:", rowType_->getErrors());
+
 	rhType_ = new RowHandleType;
 
 	topInd_.initialize(this, errors_);

@@ -52,17 +52,17 @@ void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
 	size_t n = size();
 	for (size_t i = 0; i < n; i++) {
 		if (at(i).name_.empty()) {
-			parentErr->appendMsg(true, strprintf("nested index %d is not allowed to have an empty name\n", (int)i+1));
+			parentErr->appendMsg(true, strprintf("nested index %d is not allowed to have an empty name", (int)i+1));
 			continue;
 		}
 		if (at(i).index_.isNull()) {
-			parentErr->appendMsg(true, strprintf("nested index %d '%s' reference must not be NULL\n", (int)i+1, at(i).name_.c_str()));
+			parentErr->appendMsg(true, strprintf("nested index %d '%s' reference must not be NULL", (int)i+1, at(i).name_.c_str()));
 			continue;
 		}
 		at(i).index_->initialize(tabtype);
 		Erref se = at(i).index_->getErrors();
 
-		parentErr->append(strprintf("nested index %d '%s':\n", (int)i+1, at(i).name_.c_str()), se);
+		parentErr->append(strprintf("nested index %d '%s':", (int)i+1, at(i).name_.c_str()), se);
 	}
 }
 
@@ -86,7 +86,7 @@ bool IndexTypeVec::checkDups(Erref parentErr)
 	for (size_t i = 0; i < n; i++) {
 		const string &name = at(i).name_;
 		if (known.find(name) != known.end()) {
-			parentErr->appendMsg(true, strprintf("nested index %d name '%s' is used more than once\n", (int)i+1, name.c_str()));
+			parentErr->appendMsg(true, strprintf("nested index %d name '%s' is used more than once", (int)i+1, name.c_str()));
 			res = false;
 		}
 		known.insert(name);

@@ -55,6 +55,162 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt);
 	tt->initialize();
 	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	// repeated initialization should be fine
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
 }
 
+
+UTESTCASE badRow(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+	fld[1].name_ = "a"; // duplicate field name
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors()->hasError());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "row type error:\n  duplicate field name 'a' for fields 2 and 1\n");
+}
+
+UTESTCASE nullRow(Utest *utest)
+{
+	Autoref<TableType> tt = (new TableType(NULL))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "the row type is not set\n");
+}
+
+UTESTCASE badIndexName(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "nested index 1 is not allowed to have an empty name\n");
+}
+
+UTESTCASE nullIndex(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("primary", NULL)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "nested index 1 'primary' reference must not be NULL\n");
+}
+
+UTESTCASE dupIndexName(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		)
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "nested index 2 name 'primary' is used more than once\n");
+}
+
+UTESTCASE primaryNested(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("primary", (new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e")))
+			->addNested("level2", new PrimaryIndexType(
+				(new NameSet())->add("a")->add("e"))
+			)
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "nested index 1 'primary':\n  PrimaryIndexType currently does not support further nested indexes\n");
+}
+
+UTESTCASE primaryBadField(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("x")->add("e"))
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "nested index 1 'primary':\n  can not find the key field 'x'\n");
+}
 
