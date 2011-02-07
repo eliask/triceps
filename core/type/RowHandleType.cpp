@@ -7,8 +7,11 @@
 
 #include <type/RowHandleType.h>
 #include <table/RowHandle.h>
+#include <table/Table.h>
 
 namespace BICEPS_NS {
+
+////////////////////////////// RowHandleType ///////////////////////
 
 RowHandleType::RowHandleType() :
 	Type(false, TT_RH),
@@ -42,7 +45,6 @@ void RowHandleType::printTo(string &res, const string &indent, const string &sub
 	// this never should get actually printed
 	res.append("**rowHandle**");
 }
-
 
 }; // BICEPS_NS
 

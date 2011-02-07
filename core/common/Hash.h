@@ -37,7 +37,7 @@ public:
 	// @param prev - previous hash value
 	// @param byte - byte to append
 	// @return - the new hash value
-	Value addByte(Value prev, unsigned char b)
+	static Value addByte(Value prev, unsigned char b)
 	{
 		return (prev ^ b) * prime_;
 	}
@@ -46,7 +46,7 @@ public:
 	// @param prev - previous hash value
 	// @param byte - byte to append
 	// @return - the new hash value
-	Value append(Value prev, const char *v, size_t len)
+	static Value append(Value prev, const char *v, size_t len)
 	{
 		const char *end = v + len;
 		while (v != end) {

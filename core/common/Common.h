@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
+#include <assert.h>
 
 #include <common/Conf.h>
 #include <common/Errors.h>

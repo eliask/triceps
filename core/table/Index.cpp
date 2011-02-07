@@ -56,6 +56,51 @@ Index *IndexVec::findByType(IndexType::IndexId it) const
 	return NULL;
 }
 
+void IndexVec::clearData() const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->clearData();
+}
+
+void IndexVec::initRowHandle(RowHandle *rh) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->initRowHandle(rh);
+}
+
+void IndexVec::clearRowHandle(RowHandle *rh) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->clearRowHandle(rh);
+}
+
+bool IndexVec::replacementPolicy(RowHandle *rh, RhSet &replaced) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++)  {
+		if ( ! (*this)[i].index_->replacementPolicy(rh, replaced))
+			return false;
+	}
+	return true;
+}
+
+void IndexVec::insert(RowHandle *rh) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->insert(rh);
+}
+
+void IndexVec::remove(RowHandle *rh) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->remove(rh);
+}
+
 ////////////////////////// Index ///////////////////////////////////
 
 Index::Index(const TableType *tabtype, Table *table) :

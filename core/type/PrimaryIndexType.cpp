@@ -8,6 +8,7 @@
 #include <type/PrimaryIndexType.h>
 #include <type/TableType.h>
 #include <table/PrimaryIndex.h>
+#include <table/Table.h>
 
 namespace BICEPS_NS {
 

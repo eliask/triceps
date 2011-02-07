@@ -49,6 +49,8 @@ void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
 	if (!checkDups(parentErr))
 		return;
 
+	// XXX add a check for loops in the topology (or simply a limit on nesting levels?)
+
 	size_t n = size();
 	for (size_t i = 0; i < n; i++) {
 		if (at(i).name_.empty()) {

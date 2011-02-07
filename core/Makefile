@@ -1,4 +1,4 @@
-SUBDIRS := pw mem type table common utest wrap
+SUBDIRS := pw common mem sched type table utest wrap
 
 .PHONY: all clean clobber cleandep mktest cleantest test qtest vtest all-subdirs $(SUBDIRS)
 

@@ -38,7 +38,7 @@ public:
 
 	// Factory for the new handles
 	// @param r - the row to refer, will be incref-ed.
-	RowHandle *makeHandle(Row *r) const
+	RowHandle *makeHandle(const Row *r) const
 	{
 		r->incref();
 		return new(size_) RowHandle(r);

@@ -33,7 +33,7 @@ bool PrimaryIndex::Less::operator() (const RowHandle *r1, const RowHandle *r2) c
 			return false;
 	}
 
-	// otherwise do the full comparison
+	// if the hashes match, do the full comparison
 	int nf = keyFld_.size();
 	for (int i = 0; i < nf; i++) {
 		int idx = keyFld_[i];
@@ -71,6 +71,24 @@ bool PrimaryIndex::Less::operator() (const RowHandle *r1, const RowHandle *r2) c
 	return false; // gets here only on equal values
 }
 
+void PrimaryIndex::Less::initHash(RowHandle *rh)
+{
+	Hash::Value hash = Hash::basis_;
+
+	int nf = keyFld_.size();
+	for (int i = 0; i < nf; i++) {
+		int idx = keyFld_[i];
+		const char *v;
+		intptr_t len;
+
+		rt_->getField(rh->getRow(), idx, v, len);
+		hash = Hash::append(hash, v, len);
+	}
+
+	RhSection *rs = rh->get<RhSection>(rhOffset_);
+	rs->hash_ = hash;
+}
+
 //////////////////////////// PrimaryIndex /////////////////////////
 
 PrimaryIndex::PrimaryIndex(const TableType *tabtype, Table *table, const PrimaryIndexType *mytype, Less *lessop) :
@@ -95,4 +113,65 @@ const IndexType *PrimaryIndex::getType() const
 {
 	return type_;
 }
+
+RowHandle *PrimaryIndex::begin() const
+{
+	Set::iterator it = data_.begin();
+	if (it == data_.end())
+		return NULL;
+	else
+		return *it;
+}
+
+RowHandle *PrimaryIndex::next(RowHandle *cur) const
+{
+	if (cur == NULL || !cur->isInTable())
+		return NULL;
+
+	RhSection *rs = less_->getSection(cur);
+	Set::iterator it = rs->iter_;
+	++it;
+	if (it == data_.end())
+		return NULL;
+	else
+		return *it;
+}
+
+RowHandle *PrimaryIndex::nextGroup(RowHandle *cur) const
+{
+	return NULL;
+}
+
+void PrimaryIndex::initRowHandle(RowHandle *rh) const
+{
+	less_->initHash(rh);
+}
+
+void PrimaryIndex::clearRowHandle(RowHandle *rh) const
+{ } // no dynamic references, nothing to clear
+
+bool PrimaryIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
+{
+	Set::iterator old = data_.find(rh);
+	// XXX for now just silently replace the old value with the same key
+	if (old != data_.end())
+		replaced.insert(*old);
+	return true;
+}
+
+void PrimaryIndex::insert(RowHandle *rh)
+{
+	pair<Set::iterator, bool> res = data_.insert(rh);
+	assert(res.second); // must always succeed
+	RhSection *rs = less_->getSection(rh);
+	rs->iter_ = res.first;
+}
+
+void PrimaryIndex::remove(RowHandle *rh)
+{
+	RhSection *rs = less_->getSection(rh);
+	data_.erase(rs->iter_);
+}
+
+
 }; // BICEPS_NS

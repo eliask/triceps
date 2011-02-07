@@ -21,14 +21,20 @@ class Table;
 class RowHandle : public Starget
 {
 public:
+	// flags describing the state of handle
+	enum Flags {
+		F_INTABLE = 0x01, // the handle is currently stored in the table and can be used as an interator in it
+	};
+
 	// the longest type used for the alignment 
 	typedef double AlignType;
 
+	// Allocation initializes the memory to 0.
 	// @param basic - provided by C++ compiler, size of the basic structure
-	// @param variable - actual size for data_[]
+	// @param variable - actual size in bytes for data_[]
 	static void *operator new(size_t basic, intptr_t variable)
 	{
-		return malloc((intptr_t)basic + variable - sizeof(data_)); 
+		return calloc(1, (intptr_t)basic + variable - sizeof(data_)); 
 	}
 	static void operator delete(void *ptr)
 	{
@@ -53,11 +59,17 @@ public:
 		return row_;
 	}
 
+	bool isInTable() const
+	{
+		return (flags_ & F_INTABLE);
+	}
+
 protected:
 	friend class Table;
 	friend class RowHandleType;
 
 	RowHandle(const Row *row) : // Table knows to incref() the row before this
+		flags_(0),
 		row_(row)
 	{ }
 	
@@ -65,6 +77,7 @@ protected:
 	{ }
 
 protected:
+	int32_t flags_; // together with Starget ref counter, this should result in 64-bit alignment
 	const Row *row_; // the row owned by this handle
 	AlignType data_; // used to focre the initial alignment
 };
