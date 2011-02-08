@@ -142,6 +142,15 @@ RowHandle *PrimaryIndex::nextGroup(RowHandle *cur) const
 	return NULL;
 }
 
+RowHandle *PrimaryIndex::find(RowHandle *what) const
+{
+	Set::iterator it = data_.find(what);
+	if (it == data_.end())
+		return NULL;
+	else
+		return (*it);
+}
+
 void PrimaryIndex::initRowHandle(RowHandle *rh) const
 {
 	less_->initHash(rh);

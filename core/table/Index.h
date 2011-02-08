@@ -124,6 +124,19 @@ public:
 	//       current one was the last one, or not in the table or NULL
 	virtual RowHandle *nextGroup(RowHandle *cur) const = 0;
 
+	// Find the matching element.
+	// Note that for a RowHandle that has been returned from the table
+	// there is no sense in calling find() because it already represents
+	// an iterator in the table. This finds a row in the table with the
+	// key matching one in a freshly made RowHandle (with Table::makeRowHandle()).
+	// @param what - the pattern row
+	// @return - the matching (accoriding to this index) row in the table,
+	//     or NULL if not found; an index that has multiple matching rows,
+	//     may return any of them but preferrably the first one.
+	virtual RowHandle *find(RowHandle *what) const = 0;
+
+	// XXX add lower_bound, upper_bound ?
+
 	// Find the nested index by name.
 	// @param name - name of the index
 	// @return - index, or NULL if not found

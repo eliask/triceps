@@ -61,8 +61,28 @@ UTESTCASE primaryIndex(Utest *utest)
 	tt->initialize();
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
-}
 
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  PrimaryIndex(a, e, ),\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ), }");
+}
 
 UTESTCASE badRow(Utest *utest)
 {

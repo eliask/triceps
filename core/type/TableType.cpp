@@ -115,7 +115,6 @@ void TableType::printTo(string &res, const string &indent, const string &subinde
 	}
 	if (&indent != &NOINDENT) {
 		res.append("\n");
-		res.append(nextindent);
 	} else {
 		res.append(" ");
 	}

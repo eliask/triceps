@@ -59,7 +59,9 @@ void Table::destroyRowHandle(RowHandle *rh)
 {
 	// for each index, clear whatever per-handle internal objects there may be
 	topInd_.clearRowHandle(rh);
-	rowType_->destroyRow(const_cast<Row *>(rh->row_));
+	Row *row = const_cast<Row *>(rh->row_);
+	if (row->decref() <= 0)
+		rowType_->destroyRow(row);
 	delete rh;
 }
 
@@ -81,6 +83,9 @@ bool Table::insert(const Row *row)
 
 bool Table::insert(RowHandle *rh)
 {
+	if (rh == NULL)
+		return false;
+
 	if (rh->isInTable())
 		return false;  // nothing to do
 
@@ -105,6 +110,9 @@ bool Table::insert(RowHandle *rh)
 
 void Table::remove(RowHandle *rh)
 {
+	if (rh == NULL)
+		return;
+
 	topInd_.remove(rh);
 	
 	rh->flags_ &= ~RowHandle::F_INTABLE;

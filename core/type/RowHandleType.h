@@ -36,11 +36,10 @@ public:
 	virtual Erref getErrors() const;
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
-	// Factory for the new handles
-	// @param r - the row to refer, will be incref-ed.
+	// Factory for the new handles.
+	// @param r - the row to refer, the caller must have it already incref-ed.
 	RowHandle *makeHandle(const Row *r) const
 	{
-		r->incref();
 		return new(size_) RowHandle(r);
 	}
 

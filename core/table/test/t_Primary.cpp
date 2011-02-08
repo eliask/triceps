@@ -12,6 +12,7 @@
 #include <common/StringUtil.h>
 #include <table/Table.h>
 #include <table/PrimaryIndex.h>
+#include <mem/Rhref.h>
 
 // Make fields of all simple types
 void mkfields(RowType::FieldVec &fields)
@@ -113,3 +114,109 @@ UTESTCASE withError(Utest *utest)
 	Autoref<Table> t = tt->makeTable();
 	UT_ASSERT(t.isNull());
 }
+
+UTESTCASE tableops(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable();
+	UT_ASSERT(!t.isNull());
+
+	Index *prim = t->findIndex("primary");
+	UT_ASSERT(prim != NULL);
+
+	// above here was a copy of primaryIndex()
+
+	RowHandle *iter, *iter2;
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
+	Rhref rh1(t, t->makeRowHandle(r1));
+
+	// basic insertion
+	UT_ASSERT(t->insert(rh1));
+	iter = t->begin();
+	UT_IS(iter, rh1);
+	iter = t->next(iter);
+	UT_IS(iter, NULL);
+
+	// this should replace the row with an identical one but with auto-created handle
+	UT_ASSERT(t->insert(r1));
+	iter = t->begin();
+	iter2 = iter;
+	UT_ASSERT(iter != NULL);
+	UT_ASSERT(iter != rh1);
+	iter = t->next(iter);
+	UT_IS(iter, NULL);
+
+	// check that the newly inserted record can be found by find on the same key
+	iter = prim->find(rh1);
+	UT_ASSERT(iter == iter2);
+
+	// check that iteration with NULL doesn't crash
+	UT_ASSERT(t->next(NULL) == NULL);
+
+	// add 2nd record
+	const char *key2 = "key2";
+	dv[4].setPtr(true, key2, sizeof(key2));
+	Rowref r2(rt1, rt1->makeRow(dv));
+
+	UT_ASSERT(t->insert(r2));
+
+	// check that now have 2 records
+	iter = t->begin();
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter == NULL);
+
+	// add 3rd record
+	const char *key3 = "key3";
+	dv[4].setPtr(true, key3, sizeof(key3));
+	Rowref r3(rt1, rt1->makeRow(dv));
+
+	UT_ASSERT(t->insert(r3));
+
+	// check that now have 3 records
+	iter = t->begin();
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter == NULL);
+
+	// find and remove the 1st record
+	iter = prim->find(rh1);
+	UT_ASSERT(iter != NULL);
+	t->remove(iter);
+
+	// check that the record is not there any more
+	iter = prim->find(rh1);
+	UT_ASSERT(iter == NULL);
+
+	// check that now have 2 records
+	iter = t->begin();
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter != NULL);
+	iter = t->next(iter);
+	UT_ASSERT(iter == NULL);
+}
+

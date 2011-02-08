@@ -64,6 +64,7 @@ public:
 	virtual RowHandle *begin() const;
 	virtual RowHandle *next(RowHandle *cur) const;
 	virtual RowHandle *nextGroup(RowHandle *cur) const;
+	virtual RowHandle *find(RowHandle *what) const;
 	virtual void initRowHandle(RowHandle *rh) const;
 	virtual void clearRowHandle(RowHandle *rh) const;
 	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const;
