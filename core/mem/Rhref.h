@@ -29,12 +29,22 @@ public:
 	// Constructor from a plain pointer.
 	// @param t - the table where the row handle belongs (may be NULL if row is NULL)
 	// @param r - the row handle, may be NULL
-	Rhref(Table *t, RowHandle *r) :
+	Rhref(Table *t, RowHandle *r = NULL) :
 		table_(t), 
 		rh_(r)
 	{
 		if (r)
 			r->incref();
+	}
+	// Constructor that creates the handle from a row
+	// @param t - the table where the row handle belongs (may be NULL if row is NULL)
+	// @param r - the row to create a handle for
+	Rhref(Table *t, Row *row) :
+		table_(t), 
+		rh_(t->makeRowHandle(row))
+	{
+		if (rh_)
+			rh_->incref();
 	}
 
 	// Constructor from another Rhref
@@ -96,6 +106,17 @@ public:
 		}
 		return *this;
 	}
+	// change only the handle, keep the same table
+	Rhref &operator=(RowHandle *r)
+	{
+		drop();
+		rh_ = r;
+		if (r) {
+			assert(table_);
+			r->incref();
+		}
+		return *this;
+	}
 	// for multiple arguments, have to use a method...
 	void assign(Table *t, RowHandle *r)
 	{
@@ -104,6 +125,13 @@ public:
 		rh_ = r;
 		if (r)
 			r->incref();
+	}
+	// Create a new row handle for a row.
+	// A shortcut for calling makeRowHandle() on that table and then assigning.
+	Rhref &operator=(const Row *row)
+	{
+		(*this) = table_->makeRowHandle(row);
+		return *this;
 	}
 	
 	bool operator==(const Rhref &ar)

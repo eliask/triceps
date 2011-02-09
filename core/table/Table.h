@@ -64,7 +64,7 @@ public:
 	
 	/////// operations on rows
 
-	// Create a new row handle for a new row.
+	// Create a new row handle for a row.
 	// The result should be immediately placed into Rhref.
 	// XXX change the interface to make this protected and return Rhrefs to everyone else
 	RowHandle *makeRowHandle(const Row *row);

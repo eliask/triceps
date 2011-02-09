@@ -189,12 +189,22 @@ public:
 	// Constructor from a plain pointer.
 	// @param t - the type of the row (may be NULL if row is NULL)
 	// @param r - the row, may be NULL
-	Rowref(RowType *t, Row *r) :
+	Rowref(RowType *t, Row *r = NULL) :
 		type_(t), 
 		row_(r)
 	{
 		if (r)
 			r->incref();
+	}
+	// Constructor from a field value set.
+	// @param t - the type of the row (may be NULL if row is NULL)
+	// @param data - data to put into the row (not const because of possible nulls extension)
+	Rowref(RowType *t, FdataVec &data) :
+		type_(t), 
+		row_(t->makeRow(data))
+	{
+		if (row_)
+			row_->incref();
 	}
 
 	// Constructor from another Rowref
@@ -256,6 +266,17 @@ public:
 		}
 		return *this;
 	}
+	// change only the row, keep the same type
+	Rowref &operator=(Row *r)
+	{
+		drop();
+		row_ = r;
+		if (r) {
+			assert(type_);
+			r->incref();
+		}
+		return *this;
+	}
 	// for multiple arguments, have to use a method...
 	void assign(RowType *t, Row *r)
 	{
@@ -266,6 +287,30 @@ public:
 			r->incref();
 	}
 	
+	// Make a new row from the specified field values with the type in the ref.
+	// A shortcut for calling makeRow() on that type and then assigning.
+	// @param data - data to put into the row (not const because of possible nulls extension)
+	Rowref &operator=(FdataVec &data)
+	{
+		(*this) = type_->makeRow(data);
+		return *this;
+	}
+	// Copy a row without any changes. 
+	// A shortcut for calling copyRow() on that type and then assigning.
+	// @param rtype - type of original row, used to extract the contents
+	// @param row - row to copy
+	// @return - the newly created row
+	Rowref &copyRow(const RowType *rtype, const Row *row)
+	{
+		(*this) = type_->copyRow(rtype, row);
+		return *this;
+	}
+	Rowref &copyRow(const Rowref &ar)
+	{
+		(*this) = type_->copyRow(ar.type_, ar.row_);
+		return *this;
+	}
+
 	bool operator==(const Rowref &ar)
 	{
 		return (row_ == ar.row_);

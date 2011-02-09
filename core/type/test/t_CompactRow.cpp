@@ -251,7 +251,7 @@ UTESTCASE mkrowshort(Utest *utest)
 	FdataVec dv;
 	mkfdata(dv);
 	dv.resize(1);
-	Rowref r1(rt1,  rt1->makeRow(dv));
+	Rowref r1(rt1,  dv);
 	if (UT_ASSERT(!rt1->isFieldNull(r1, 0))) return;
 
 	for (int i = 1; i < rt1->fieldCount(); i++) {
@@ -288,7 +288,8 @@ UTESTCASE mkrowover(Utest *utest)
 	dv.push_back(Fdata(3, 0, "01234567890123456789", 20));
 	dv.push_back(Fdata(4, 0, NULL, 2));
 
-	Rowref r1(rt1,  rt1->makeRow(dv));
+	Rowref r1(rt1);
+	r1 =  dv; // makeRow in assignment
 
 	const char *ptr;
 	intptr_t len;
