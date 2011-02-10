@@ -68,6 +68,7 @@ public:
 	// subtype of index
 	enum IndexId {
 		IT_PRIMARY, // PrimaryIndexType
+		IT_FIFO, // FifoIndexType
 		// add new types here
 		IT_LAST
 	};

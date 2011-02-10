@@ -17,6 +17,36 @@ namespace BICEPS_NS {
 class FifoIndexType : public IndexType
 {
 public:
+	// @param limit - the record count limit, or 0 for unlimited
+	FifoIndexType(size_t limit = 0);
+
+	// from Type
+	virtual Erref getErrors() const; 
+	virtual bool equals(const Type *t) const;
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
+
+	// from IndexType
+	virtual IndexType *copy() const;
+	virtual void initialize(TableType *tabtype);
+	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
+
+	size_t getLimit() const
+	{
+		return limit_;
+	}
+
+	intptr_t getRhOffset() const
+	{
+		return rhOffset_;
+	}
+
+protected:
+	// used by copy()
+	FifoIndexType(const FifoIndexType &orig);
+
+	Erref errors_;
+	intptr_t rhOffset_; // offset of this index's data in table's row handle
+	size_t limit_;
 };
 
 }; // BICEPS_NS

@@ -13,7 +13,8 @@ namespace BICEPS_NS {
 Table::Table(const TableType *tt, const RowType *rowt, const RowHandleType *handt, const IndexTypeVec &topIt) :
 	type_(tt),
 	rowType_(rowt),
-	rhType_(handt)
+	rhType_(handt),
+	size_(0)
 { 
 	tt->topInd_.makeIndexes(tt, this, &topInd_);
 }
@@ -24,6 +25,7 @@ Table::~Table()
 	// if we first move them to a vector, clear the indexes and delete from vector;
 	// otherwise the index rebalancing during deletion takes a much longer time
 	vector <RowHandle *> rows;
+	rows.reserve(size_);
 
 	if (!topInd_.empty()) {
 		RowHandle *rh;
@@ -104,13 +106,14 @@ bool Table::insert(RowHandle *rh)
 	// now keep the table-wide reference to that handle
 	rh->incref();
 	rh->flags_ |= RowHandle::F_INTABLE;
+	++size_;
 
 	return true;
 }
 
 void Table::remove(RowHandle *rh)
 {
-	if (rh == NULL)
+	if (rh == NULL || !rh->isInTable())
 		return;
 
 	topInd_.remove(rh);
@@ -118,6 +121,7 @@ void Table::remove(RowHandle *rh)
 	rh->flags_ &= ~RowHandle::F_INTABLE;
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
+	--size_;
 }
 
 RowHandle *Table::begin() const

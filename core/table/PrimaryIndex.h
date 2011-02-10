@@ -36,7 +36,7 @@ protected:
 		void initHash(RowHandle *rh);
 
 		// Get the section in the row handle
-		RhSection *getSection(const RowHandle *rh) 
+		RhSection *getSection(const RowHandle *rh) const
 		{
 			return rh->get<RhSection>(rhOffset_);
 		}

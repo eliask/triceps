@@ -108,6 +108,7 @@ protected:
 	Autoref<const RowType> rowType_; // type of rows stored here
 	Autoref<const RowHandleType> rhType_;
 	IndexVec topInd_; // top-level indexes
+	size_t size_; // count of records in the table
 };
 
 }; // BICEPS_NS
