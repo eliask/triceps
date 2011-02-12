@@ -157,6 +157,13 @@ public:
 	// @param row - row to dump
 	// @param indent - indenting after the line feeds
 	virtual void hexdumpRow(string &dest, const Row *row, const string &indent="") const = 0;
+
+	// Compare two rows for absolute data equality.
+	// XXX maybe also add a method for equality to a row of different type
+	// @param row1 - one row to compare
+	// @parem row2 - another row to compare
+	// @return - true if the rows contain the same data.
+	virtual bool equalRows(const Row *row1, const Row *row2) const = 0;
 	// }
 	
 

@@ -29,6 +29,7 @@ public:
 	virtual Row *makeRow(FdataVec &data_) const;
 	virtual void destroyRow(Row *row) const;
 	virtual void hexdumpRow(string &dest, const Row *row, const string &indent="") const;
+	virtual bool equalRows(const Row *row1, const Row *row2) const;
 };
 
 }; // BICEPS_NS

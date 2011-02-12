@@ -110,5 +110,19 @@ void CompactRowType::hexdumpRow(string &dest, const Row *row, const string &inde
 	intptr_t len = cr->off_[fields_.size()];
 	hexdump(dest, cr->off_, len, indent.c_str());
 }
+	
+bool CompactRowType::equalRows(const Row *row1, const Row *row2) const
+{
+	if (row1 == row2)
+		return true; // short-circuit
+		
+	size_t nf = fields_.size();
+	const CompactRow *cr1 = static_cast<const CompactRow *>(row1);
+	intptr_t len1 = cr1->off_[nf];
+	const CompactRow *cr2 = static_cast<const CompactRow *>(row2);
+	if (len1 != cr2->off_[nf])
+		return false;
+	return memcmp(cr1->off_, cr2->off_, len1) == 0;
+}
 
 }; // BICEPS_NS

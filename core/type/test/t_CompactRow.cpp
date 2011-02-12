@@ -322,3 +322,28 @@ UTESTCASE mkrowover(Utest *utest)
 		}
 	}
 }
+
+UTESTCASE equal(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
+	Rowref r2(rt1,  rt1->makeRow(dv));
+
+	dv[0].notNull_ = false;
+	Rowref r3(rt1,  rt1->makeRow(dv));
+
+	dv[1].data_ = NULL;
+	Rowref r4(rt1,  rt1->makeRow(dv));
+
+	UT_ASSERT(rt1->equalRows(r1, r1));
+	UT_ASSERT(rt1->equalRows(r1, r2));
+	UT_ASSERT(!rt1->equalRows(r1, r3));
+	UT_ASSERT(!rt1->equalRows(r3, r4));
+}
