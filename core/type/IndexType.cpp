@@ -134,6 +134,20 @@ void IndexTypeVec::printTo(string &res, const string &indent, const string &subi
 	res.append("}");
 }
 
+void IndexTypeVec::initRowHandle(RowHandle *rh) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->initRowHandle(rh);
+}
+
+void IndexTypeVec::clearRowHandle(RowHandle *rh) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		(*this)[i].index_->clearRowHandle(rh);
+}
+
 /////////////////////// IndexType ////////////////////////////
 
 IndexType::IndexType(IndexId it) :

@@ -28,15 +28,34 @@ public:
 	virtual IndexType *copy() const;
 	virtual void initialize(TableType *tabtype);
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
+	virtual void initRowHandleSection(RowHandle *rh) const;
+	virtual void clearRowHandleSection(RowHandle *rh) const;
+	virtual void copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const;
 
 	size_t getLimit() const
 	{
 		return limit_;
 	}
 
+protected:
+	// interface for the index instances
+	friend class FifoIndex;
+	
+	// section in the RowHandle, placed at rhOffset_
+	struct RhSection {
+		RowHandle *prev_; // previous in the list
+		RowHandle *next_; // next in the list
+	};
+
 	intptr_t getRhOffset() const
 	{
 		return rhOffset_;
+	}
+
+	// Get the section in the row handle
+	RhSection *getSection(const RowHandle *rh) const
+	{
+		return rh->get<RhSection>(rhOffset_);
 	}
 
 protected:

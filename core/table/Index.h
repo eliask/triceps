@@ -62,14 +62,6 @@ protected:
 	// to be still held by the table, so the cleaning can be fast.
 	void clearData() const;
 
-	// Initialize the row handle section for this index and its nested ones:
-	// pre-calculate the has values and such for the given row.
-	void initRowHandle(RowHandle *rh) const;
-
-	// Clear any references to these indexes' dynamically allocated data
-	// from this handle.
-	void clearRowHandle(RowHandle *rh) const;
-
 	// Prepare all indexes for insertion of the new row handle.
 	// Check if it can legally inserted and calculate any records that
 	// would be deleted by the replacement policy.
@@ -174,27 +166,6 @@ protected:
 	// Clear the contents of the index. The actual RowHandles are guaranteed
 	// to be still held by the table, so the cleaning can be fast.
 	virtual void clearData() = 0;
-
-	// Initialize the row handle section for this index and its nested ones:
-	// pre-calculate the has values and such for the given row.
-	// Normally only the Table class should call it (maybe through IndexVec).
-	virtual void initRowHandle(RowHandle *rh) const = 0;
-
-	// Initialize the row handle for nested indexes.
-	// (to make the compiler happy for calls from subclasses)
-	void initRowHandleNested(RowHandle *rh) const
-	{
-		nested_.initRowHandle(rh);
-	}
-
-	// Clear any references to this index's dynamically allocated data
-	// from this handle.
-	virtual void clearRowHandle(RowHandle *rh) const = 0;
-	// (to make the compiler happy for calls from subclasses)
-	void clearRowHandleNested(RowHandle *rh) const
-	{
-		nested_.initRowHandle(rh);
-	}
 
 	// Prepare for insertion of the new row handle.
 	// Check if it can legally inserted and calculate any records that

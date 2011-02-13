@@ -63,20 +63,6 @@ void IndexVec::clearData() const
 		(*this)[i].index_->clearData();
 }
 
-void IndexVec::initRowHandle(RowHandle *rh) const
-{
-	size_t n = size();
-	for (size_t i = 0; i < n; i++) 
-		(*this)[i].index_->initRowHandle(rh);
-}
-
-void IndexVec::clearRowHandle(RowHandle *rh) const
-{
-	size_t n = size();
-	for (size_t i = 0; i < n; i++) 
-		(*this)[i].index_->clearRowHandle(rh);
-}
-
 bool IndexVec::replacementPolicy(RowHandle *rh, RhSet &replaced) const
 {
 	size_t n = size();

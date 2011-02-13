@@ -53,7 +53,7 @@ RowHandle *Table::makeRowHandle(const Row *row)
 	row->incref();
 	RowHandle *rh = rhType_->makeHandle(row);
 	// for each index, fill in the cached key information
-	topInd_.initRowHandle(rh);
+	type_->root_->initRowHandle(rh);
 
 	return rh;
 }
@@ -61,7 +61,7 @@ RowHandle *Table::makeRowHandle(const Row *row)
 void Table::destroyRowHandle(RowHandle *rh)
 {
 	// for each index, clear whatever per-handle internal objects there may be
-	topInd_.clearRowHandle(rh);
+	type_->root_->clearRowHandle(rh);
 	Row *row = const_cast<Row *>(rh->row_);
 	if (row->decref() <= 0)
 		rowType_->destroyRow(row);

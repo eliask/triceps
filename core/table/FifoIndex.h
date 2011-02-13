@@ -9,7 +9,6 @@
 #define __Biceps_FifoIndex_h__
 
 #include <table/Index.h>
-#include <table/RowHandle.h>
 #include <type/FifoIndexType.h>
 
 namespace BICEPS_NS {
@@ -34,23 +33,17 @@ public:
 	virtual RowHandle *next(RowHandle *cur) const;
 	virtual RowHandle *nextGroup(RowHandle *cur) const;
 	virtual RowHandle *find(RowHandle *what) const;
-	virtual void initRowHandle(RowHandle *rh) const;
-	virtual void clearRowHandle(RowHandle *rh) const;
 	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
 
 protected:
-	// section in the RowHandle, placed at rhOffset_
-	struct RhSection {
-		RowHandle *prev_; // previous in the list
-		RowHandle *next_; // next in the list
-	};
+	typedef FifoIndexType::RhSection RhSection;
 
 	// Get the section in the row handle
 	RhSection *getSection(const RowHandle *rh) const
 	{
-		return rh->get<RhSection>(type_->getRhOffset());
+		return type_->getSection(rh);
 	}
 
 	Autoref<const FifoIndexType> type_; // type of this index

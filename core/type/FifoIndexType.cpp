@@ -78,4 +78,19 @@ Index *FifoIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	return new FifoIndex(tabtype, table, this);
 }
 
+void FifoIndexType::initRowHandleSection(RowHandle *rh) const
+{
+	RhSection *rs = getSection(rh);
+	rs->prev_ = 0;
+	rs->next_ = 0;
+}
+
+void FifoIndexType::clearRowHandleSection(RowHandle *rh) const
+{ } // no dynamic references, nothing to clear
+
+void FifoIndexType::copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const
+{
+	FifoIndexType::initRowHandle(rh); // no cached data, just clear it out
+}
+
 }; // BICEPS_NS

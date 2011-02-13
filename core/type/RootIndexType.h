@@ -25,6 +25,9 @@ public:
 	virtual IndexType *copy() const;
 	virtual void initialize(TableType *tabtype);
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
+	virtual void initRowHandleSection(RowHandle *rh) const;
+	virtual void clearRowHandleSection(RowHandle *rh) const;
+	virtual void copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const;
 
 protected:
 	friend class TableType;

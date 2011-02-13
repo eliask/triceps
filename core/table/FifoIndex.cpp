@@ -60,16 +60,6 @@ RowHandle *FifoIndex::find(RowHandle *what) const
 	return NULL; // XXX the only way to find is by full-row comparison, which is not implemented yet 
 }
 
-void FifoIndex::initRowHandle(RowHandle *rh) const
-{
-	RhSection *rs = getSection(rh);
-	rs->prev_ = 0;
-	rs->next_ = 0;
-}
-
-void FifoIndex::clearRowHandle(RowHandle *rh) const
-{ } // no dynamic references, nothing to clear
-
 bool FifoIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
 {
 	// XXX ideally should check if there is any other group that is already

@@ -9,6 +9,7 @@
 #define __Biceps_IndexType_h__
 
 #include <type/Type.h>
+#include <table/RowHandle.h>
 #include <common/Errors.h>
 
 namespace BICEPS_NS {
@@ -65,6 +66,14 @@ public:
 	// @param subindent - indentation characters to add on each level
 	void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
+	// Initialize the row handle section for the nested indexes, recursively:
+	// pre-calculate the has values and such for the given row.
+	void initRowHandle(RowHandle *rh) const;
+
+	// Clear any references to these index types' dynamically allocated data
+	// from this handle.
+	void clearRowHandle(RowHandle *rh) const;
+
 private:
 	void operator=(const IndexTypeVec &);
 };
@@ -112,6 +121,12 @@ public:
 	// @return - the new instance, or NULL if not initialized or had an error.
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const = 0;
 
+	// @return - true if there are no nested indexes
+	bool isLeaf()
+	{
+		return nested_.empty();
+	}
+
 protected:
 	friend class IndexTypeVec;
 	friend class TableType;
@@ -156,11 +171,49 @@ protected:
 		return initialized_;
 	}
 	
+	// a wrapper
 	void makeNestedIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const
 	{
 		return nested_.makeIndexes(tabtype, table, ivec);
 	}
 
+	// RowHandle operations.
+	// The initialization is done before the handle is inserted into the
+	// table, and cleared after is has been removed from the table.
+	// So at these times it has no connection to the particular index instance,
+	// and these operations belong to th eindex type.
+	// {
+	
+	// Initialize the row handle section for this index and its nested ones:
+	// pre-calculate the has values and such for the given row.
+	// Normally only the Table class should call it (maybe through IndexVec).
+	virtual void initRowHandleSection(RowHandle *rh) const = 0;
+
+	// Initialize the row handle recursively with nested indexes.
+	void initRowHandle(RowHandle *rh) const
+	{
+		initRowHandleSection(rh);
+		nested_.initRowHandle(rh);
+	}
+
+	// Clear any references to this index type's dynamically allocated data
+	// from this handle.
+	virtual void clearRowHandleSection(RowHandle *rh) const = 0;
+	// Clear recursively, with nested indexes.
+	void clearRowHandle(RowHandle *rh) const
+	{
+		clearRowHandleSection(rh);
+		nested_.clearRowHandle(rh);
+	}
+
+	// Copy the precalculated row handle values from one row's handle
+	// to another handle for the same row.
+	// (This is used to initialize the group handles, which would normally be the destinations).
+	// @param rh - row handle to initialize
+	// @param fromrh - the original handle
+	virtual void copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const = 0;
+
+	// }
 protected:
 
 	IndexTypeVec nested_; // nested indices

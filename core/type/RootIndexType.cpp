@@ -50,4 +50,13 @@ Index *RootIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	return NULL; // can't create anything
 }
 
+void RootIndexType::initRowHandleSection(RowHandle *rh) const
+{ }
+
+void RootIndexType::clearRowHandleSection(RowHandle *rh) const
+{ }
+
+void RootIndexType::copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const
+{ }
+
 }; // BICEPS_NS
