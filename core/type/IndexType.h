@@ -16,6 +16,8 @@ namespace BICEPS_NS {
 
 class IndexType;
 class TableType;
+class RowHandleType;
+class GroupHandleType;
 class Index;
 class Table;
 class IndexVec;
@@ -89,6 +91,8 @@ public:
 		// add new types here
 		IT_LAST
 	};
+
+	~IndexType();
 
 	// from Type
 	virtual Erref getErrors() const; 
@@ -220,8 +224,8 @@ protected:
 	TableType *table_; // XXX unused yet // NOT autoref, to avoid reference loops
 	IndexType *parent_; // NOT autoref, to avoid reference loops; NULL for top-level indexes
 	Erref errors_;
-	intptr_t rhSize_; // table's row handle size needed to represent up to and including this index
-			// (but no sub-indexes); will be used to form the GroupHandles
+	Autoref<GroupHandleType> group_; // used to build groups if not leaf
+	intptr_t ghOffSubidx_; // offset in group handle to the array of pointers to nested indexes
 	IndexId indexId_; // identity in case if casting to subtypes is needed (should use typeid instead?)
 	int nestPos_; // position, at which this index sits in parent
 	bool initialized_; // flag: already initialized, no future changes

@@ -24,6 +24,7 @@ public:
 	// flags describing the state of handle
 	enum Flags {
 		F_INTABLE = 0x01, // the handle is currently stored in the table and can be used as an interator in it
+		F_GROUP = 0x02, // this is a group handle
 	};
 
 	// the longest type used for the alignment 
@@ -80,6 +81,11 @@ protected:
 	int32_t flags_; // together with Starget ref counter, this should result in 64-bit alignment
 	const Row *row_; // the row owned by this handle
 	AlignType data_; // used to focre the initial alignment
+
+private:
+	RowHandle();
+	RowHandle(const RowHandle &);
+	void operator=(const RowHandle &);
 };
 
 }; // BICEPS_NS

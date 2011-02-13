@@ -6,6 +6,7 @@
 // Type for creation of indexes in the tables.
 
 #include <type/TableType.h>
+#include <type/GroupHandleType.h>
 #include <table/Index.h>
 #include <set>
 
@@ -154,7 +155,6 @@ IndexType::IndexType(IndexId it) :
 	Type(false, TT_INDEX),
 	table_(NULL),
 	parent_(NULL),
-	rhSize_(-1),
 	indexId_(it),
 	initialized_(false)
 { }
@@ -164,11 +164,13 @@ IndexType::IndexType(const IndexType &orig) :
 	nested_(orig.nested_),
 	table_(NULL),
 	parent_(NULL),
-	rhSize_(-1),
 	indexId_(orig.indexId_),
 	initialized_(false)
 { 
 }
+
+IndexType::~IndexType()
+{ }
 
 IndexType *IndexType::addNested(const string &name, IndexType *index)
 {
@@ -244,9 +246,21 @@ void IndexType::initializeNested(TableType *tabtype)
 	if (errors_.isNull())
 		errors_ = new Errors;
 
-	// remember, how much of handle was needed to get here
-	rhSize_ = tabtype->rhType()->getSize();
+	int n = (int)nested_.size();
 
+	if (n != 0) {
+		// remember, how much of handle was needed to get here
+		group_ = new GroupHandleType(*tabtype->rhType()); // copies the current size
+		ghOffSubidx_ = group_->allocate(n * sizeof(Index *));
+	} else {
+		group_ = NULL;
+	}
+
+	for (int i = 0; i < n; i++) {
+		IndexType *st = nested_[i].index_;
+		if (st != 0)
+			st->setNestPos(this, i);
+	}
 	nested_.initialize(tabtype, errors_);
 	
 	// optimize by nullifying the empty error set
