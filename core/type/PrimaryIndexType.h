@@ -21,7 +21,6 @@ public:
 	PrimaryIndexType *setKey(NameSet *key);
 
 	// from Type
-	virtual Erref getErrors() const; 
 	virtual bool equals(const Type *t) const;
 	virtual bool match(const Type *t) const;
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
@@ -36,7 +35,6 @@ protected:
 	PrimaryIndexType(const PrimaryIndexType &orig);
 
 	Autoref<NameSet> key_;
-	Erref errors_;
 	intptr_t rhOffset_; // offset of this index's data in table's row handle
 	vector<int32_t> keyFld_; // indexes of key fields in the record
 };

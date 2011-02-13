@@ -21,7 +21,6 @@ public:
 	FifoIndexType(size_t limit = 0);
 
 	// from Type
-	virtual Erref getErrors() const; 
 	virtual bool equals(const Type *t) const;
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
@@ -44,7 +43,6 @@ protected:
 	// used by copy()
 	FifoIndexType(const FifoIndexType &orig);
 
-	Erref errors_;
 	intptr_t rhOffset_; // offset of this index's data in table's row handle
 	size_t limit_;
 };

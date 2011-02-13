@@ -139,7 +139,7 @@ UTESTCASE badIndexName(Utest *utest)
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "nested index 1 is not allowed to have an empty name\n");
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 is not allowed to have an empty name\n");
 }
 
 UTESTCASE nullIndex(Utest *utest)
@@ -159,7 +159,7 @@ UTESTCASE nullIndex(Utest *utest)
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "nested index 1 'primary' reference must not be NULL\n");
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary' reference must not be NULL\n");
 }
 
 UTESTCASE dupIndexName(Utest *utest)
@@ -184,7 +184,7 @@ UTESTCASE dupIndexName(Utest *utest)
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "nested index 2 name 'primary' is used more than once\n");
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 2 name 'primary' is used more than once\n");
 }
 
 UTESTCASE primaryNested(Utest *utest)
@@ -209,7 +209,7 @@ UTESTCASE primaryNested(Utest *utest)
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "nested index 1 'primary':\n  PrimaryIndexType currently does not support further nested indexes\n");
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary':\n    PrimaryIndexType currently does not support further nested indexes\n");
 }
 
 UTESTCASE primaryBadField(Utest *utest)
@@ -231,6 +231,6 @@ UTESTCASE primaryBadField(Utest *utest)
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "nested index 1 'primary':\n  can not find the key field 'x'\n");
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary':\n    can not find the key field 'x'\n");
 }
 

@@ -15,6 +15,7 @@
 namespace BICEPS_NS {
 
 class Table;
+class RootIndexType;
 
 class TableType : public Type
 {
@@ -66,7 +67,7 @@ public:
 	Onceref<Table> makeTable() const;
 
 protected:
-	IndexTypeVec topInd_; // top-level indexes
+	Autoref<RootIndexType> root_; // the root of index tree
 	Autoref<RowType> rowType_; // row for this table
 	Erref errors_;
 	Autoref<RowHandleType> rhType_; // for building the row handles

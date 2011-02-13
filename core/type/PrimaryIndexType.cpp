@@ -32,11 +32,6 @@ PrimaryIndexType *PrimaryIndexType::setKey(NameSet *key)
 	return this;
 }
 
-Erref PrimaryIndexType::getErrors() const
-{
-	return errors_;
-}
-
 bool PrimaryIndexType::equals(const Type *t) const
 {
 	if (this == t)
@@ -115,8 +110,6 @@ void PrimaryIndexType::initialize(TableType *tabtype)
 	}
 	// XXX should it check that the fields don't repeat?
 	
-	if (!errors_->hasError() && errors_->isEmpty())
-		errors_ = NULL;
 }
 
 Index *PrimaryIndexType::makeIndex(const TableType *tabtype, Table *table) const

@@ -6,12 +6,14 @@
 // Type for the tables.
 
 #include <type/TableType.h>
+#include <type/RootIndexType.h>
 #include <table/Table.h>
 
 namespace BICEPS_NS {
 
 TableType::TableType(Onceref<RowType> rt) :
 	Type(false, TT_TABLE),
+	root_(new RootIndexType),
 	rowType_(rt),
 	initialized_(false)
 { }
@@ -25,7 +27,7 @@ TableType *TableType::addIndex(const string &name, IndexType *index)
 		fprintf(stderr, "Biceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
-	topInd_.push_back(IndexTypeRef(name, index));
+	root_->addNested(name, index);
 	return this;
 }
 
@@ -44,15 +46,7 @@ bool TableType::equals(const Type *t) const
 	
 	const TableType *tt = static_cast<const TableType *>(t);
 
-	size_t n = topInd_.size();
-	if (n != tt->topInd_.size())
-		return false;
-
-	for (size_t i = 0; i < n; ++i)
-		if (topInd_[i].name_ != tt->topInd_[i].name_
-		|| !topInd_[i].index_->equals(tt->topInd_[i].index_))
-			return false;
-	return true;
+	return root_->equals(tt->root_);
 }
 
 bool TableType::match(const Type *t) const
@@ -65,14 +59,7 @@ bool TableType::match(const Type *t) const
 	
 	const TableType *tt = static_cast<const TableType *>(t);
 
-	size_t n = topInd_.size();
-	if (n != tt->topInd_.size())
-		return false;
-
-	for (size_t i = 0; i < n; ++i)
-		if (!topInd_[i].index_->match(tt->topInd_[i].index_))
-			return false;
-	return true;
+	return root_->match(tt->root_);
 }
 
 void TableType::printTo(string &res, const string &indent, const string &subindent) const
@@ -102,23 +89,10 @@ void TableType::printTo(string &res, const string &indent, const string &subinde
 	} else {
 		res.append(" ");
 	}
-	res.append(") {");
-	for (IndexTypeVec::const_iterator i = topInd_.begin(); i != topInd_.end(); ++i) {
-		if (&indent != &NOINDENT) {
-			res.append("\n");
-			res.append(nextindent);
-		} else {
-			res.append(" ");
-		}
-		i->index_->printTo(res, *passni, subindent);
-		res.append(","); // extra comma after last field doesn't hurt
-	}
-	if (&indent != &NOINDENT) {
-		res.append("\n");
-	} else {
-		res.append(" ");
-	}
-	res.append("}");
+
+	
+	res.append(") ");
+	root_->printTo(res, indent, subindent);
 }
 
 void TableType::initialize()
@@ -139,7 +113,9 @@ void TableType::initialize()
 	rhType_ = new RowHandleType;
 
 	// XXX should it check that there is at least one index?
-	topInd_.initialize(this, errors_);
+	root_->initialize(this);
+	root_->initializeNested(this);
+	errors_->append("index error:", root_->getErrors());
 
 	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
@@ -150,7 +126,7 @@ Onceref<Table> TableType::makeTable() const
 	if (!initialized_ || errors_->hasError())
 		return NULL;
 
-	return new Table(this, rowType_, rhType_, topInd_);
+	return new Table(this, rowType_, rhType_, root_->nested_);
 }
 
 }; // BICEPS_NS

@@ -24,11 +24,6 @@ FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
 {
 }
 
-Erref FifoIndexType::getErrors() const
-{
-	return errors_;
-}
-
 bool FifoIndexType::equals(const Type *t) const
 {
 	if (this == t)

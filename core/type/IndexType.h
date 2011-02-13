@@ -58,6 +58,13 @@ public:
 	// @param idx - the index vector to keep the created indexes
 	void makeIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const;
 
+	// Append the human-readable list of type definitions to a string
+	// @param res - the resulting string to append to
+	// @param indent - initial indentation characters, 
+	//        passing NOINDENT prints everything in a single line
+	// @param subindent - indentation characters to add on each level
+	void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
+
 private:
 	void operator=(const IndexTypeVec &);
 };
@@ -67,6 +74,7 @@ class IndexType : public Type
 public:
 	// subtype of index
 	enum IndexId {
+		IT_ROOT, // RootIndexType
 		IT_PRIMARY, // PrimaryIndexType
 		IT_FIFO, // FifoIndexType
 		// add new types here
@@ -98,12 +106,6 @@ public:
 	// The subclasses must define the actual copying.
 	virtual IndexType *copy() const = 0;
 
-	// Initialize and validate.
-	// If already initialized, must return right away.
-	// The errors are returned through getErrors().
-	// @param tabtype - table type where this index belongs
-	virtual void initialize(TableType *tabtype) = 0;
-
 	// Make a new instance of the index.
 	// @param tabtype - table type where this index belongs
 	// @param table - the actuall table instance where this index belongs
@@ -111,6 +113,10 @@ public:
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const = 0;
 
 protected:
+	friend class IndexTypeVec;
+	friend class TableType;
+	friend class Table;
+
 	// can be constructed only from subclasses
 	IndexType(IndexId it);
 	IndexType(const IndexType &orig); 
@@ -119,17 +125,52 @@ protected:
 	// @return - ind->nested_
 	static IndexVec *getIndexVec(Index *ind);
 
-protected:
+	// let the index find itself in parent
+	void setNestPos(IndexType *parent, int pos)
+	{
+		parent_ = parent;
+		nestPos_ = pos;
+	}
+
+	// Initialize and validate.
+	// If already initialized, must return right away.
+	//
+	// DOES NOT INITIALIZE THE NESTED INDEX TYPES.
+	// This is very important to have the RowHandle filled out in the correct
+	// order, depth-last. The subindexes are initialized with initializeNested().
+	// Also if this function created an empty Errors object, it should not
+	// try to optimize by deleting it afterwards because it will be used
+	// again by initializeNested().
+	//
+	// The errors are returned through getErrors().
+	// @param tabtype - table type where this index belongs
+	virtual void initialize(TableType *tabtype) = 0;
+
+	// Initialize and validate the nested index types.
+	// Adds their errors to this type's indication getErrors() result.
+	// @param tabtype - table type where this index belongs
+	void initializeNested(TableType *tabtype);
+
 	bool isInitialized() const
 	{
 		return initialized_;
 	}
+	
+	void makeNestedIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const
+	{
+		return nested_.makeIndexes(tabtype, table, ivec);
+	}
+
+protected:
 
 	IndexTypeVec nested_; // nested indices
-	TableType *table_; // NOT autoref, to avoid reference loops
+	TableType *table_; // XXX unused yet // NOT autoref, to avoid reference loops
 	IndexType *parent_; // NOT autoref, to avoid reference loops; NULL for top-level indexes
-	IndexId indexId_; // identity in case if casting to subtypes is needed (should use typeid instead?)
 	Erref errors_;
+	intptr_t rhSize_; // table's row handle size needed to represent up to and including this index
+			// (but no sub-indexes); will be used to form the GroupHandles
+	IndexId indexId_; // identity in case if casting to subtypes is needed (should use typeid instead?)
+	int nestPos_; // position, at which this index sits in parent
 	bool initialized_; // flag: already initialized, no future changes
 
 private:

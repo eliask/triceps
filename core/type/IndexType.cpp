@@ -5,7 +5,7 @@
 //
 // Type for creation of indexes in the tables.
 
-#include <type/IndexType.h>
+#include <type/TableType.h>
 #include <table/Index.h>
 #include <set>
 
@@ -62,8 +62,13 @@ void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
 			continue;
 		}
 		at(i).index_->initialize(tabtype);
+	}
+	if (parentErr->hasError())
+		return; // don't even try the nested stuff
+	// do it in the depth-last order
+	for (size_t i = 0; i < n; i++) {
+		at(i).index_->initializeNested(tabtype);
 		Erref se = at(i).index_->getErrors();
-
 		parentErr->append(strprintf("nested index %d '%s':", (int)i+1, at(i).name_.c_str()), se);
 	}
 }
@@ -96,12 +101,46 @@ bool IndexTypeVec::checkDups(Erref parentErr)
 	return res;
 }
 
+void IndexTypeVec::printTo(string &res, const string &indent, const string &subindent) const
+{
+	if (empty())
+		return; // print nothing
+
+	string nextindent;
+	const string *passni;
+	if (&indent != &NOINDENT) {
+		nextindent = indent + subindent;
+		passni = &nextindent;
+	} else {
+		passni = &NOINDENT;
+	}
+
+	res.append("{");
+	for (IndexTypeVec::const_iterator i = begin(); i != end(); ++i) {
+		if (&indent != &NOINDENT) {
+			res.append("\n");
+			res.append(nextindent);
+		} else {
+			res.append(" ");
+		}
+		i->index_->printTo(res, *passni, subindent);
+		res.append(","); // extra comma after last field doesn't hurt
+	}
+	if (&indent != &NOINDENT) {
+		res.append("\n");
+	} else {
+		res.append(" ");
+	}
+	res.append("}");
+}
+
 /////////////////////// IndexType ////////////////////////////
 
 IndexType::IndexType(IndexId it) :
 	Type(false, TT_INDEX),
 	table_(NULL),
 	parent_(NULL),
+	rhSize_(-1),
 	indexId_(it),
 	initialized_(false)
 { }
@@ -111,6 +150,7 @@ IndexType::IndexType(const IndexType &orig) :
 	nested_(orig.nested_),
 	table_(NULL),
 	parent_(NULL),
+	rhSize_(-1),
 	indexId_(orig.indexId_),
 	initialized_(false)
 { 
@@ -181,6 +221,23 @@ bool IndexType::match(const Type *t) const
 IndexVec *IndexType::getIndexVec(Index *ind)
 {
 	return &ind->nested_;
+}
+
+void IndexType::initializeNested(TableType *tabtype)
+{
+	assert(isInitialized());
+
+	if (errors_.isNull())
+		errors_ = new Errors;
+
+	// remember, how much of handle was needed to get here
+	rhSize_ = tabtype->rhType()->getSize();
+
+	nested_.initialize(tabtype, errors_);
+	
+	// optimize by nullifying the empty error set
+	if (!errors_->hasError() && errors_->isEmpty())
+		errors_ = NULL;
 }
 
 }; // BICEPS_NS

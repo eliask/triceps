@@ -7,6 +7,7 @@
 
 #include <table/Table.h>
 #include <type/TableType.h>
+#include <type/RootIndexType.h>
 
 namespace BICEPS_NS {
 
@@ -16,7 +17,7 @@ Table::Table(const TableType *tt, const RowType *rowt, const RowHandleType *hand
 	rhType_(handt),
 	size_(0)
 { 
-	tt->topInd_.makeIndexes(tt, this, &topInd_);
+	tt->root_->makeNestedIndexes(tt, this, &topInd_);
 }
 
 Table::~Table()
