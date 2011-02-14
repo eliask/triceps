@@ -9,7 +9,7 @@
 #define __Biceps_IndexType_h__
 
 #include <type/Type.h>
-#include <table/RowHandle.h>
+#include <table/GroupHandle.h>
 #include <common/Errors.h>
 
 namespace BICEPS_NS {
@@ -92,6 +92,8 @@ public:
 		IT_LAST
 	};
 
+	typedef set<RowHandle *> RhSet;
+
 	~IndexType();
 
 	// from Type
@@ -134,7 +136,20 @@ public:
 protected:
 	friend class IndexTypeVec;
 	friend class TableType;
+	friend class Index;
 	friend class Table;
+	
+	// payload section in the GroupHandle, placed at ghOffset_
+	struct GhSection {
+		size_t size_; // number of records in the section
+		Index *subidx_[1]; // sub-indexes of this group - extended as needed
+	};
+
+	GhSection *getGhSection(const GroupHandle *rh) const
+	{
+		return rh->get<GhSection>(ghOffset_);
+	}
+
 
 	// can be constructed only from subclasses
 	IndexType(IndexId it);
@@ -144,9 +159,10 @@ protected:
 	// @return - ind->nested_
 	static IndexVec *getIndexVec(Index *ind);
 
-	// let the index find itself in parent
-	void setNestPos(IndexType *parent, int pos)
+	// let the index find itself in parent and table type
+	void setNestPos(TableType *tabtype, IndexType *parent, int pos)
 	{
+		tabtype_ = tabtype;
 		parent_ = parent;
 		nestPos_ = pos;
 	}
@@ -215,17 +231,96 @@ protected:
 	// (This is used to initialize the group handles, which would normally be the destinations).
 	// @param rh - row handle to initialize
 	// @param fromrh - the original handle
-	virtual void copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const = 0;
+	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const = 0;
 
+	// }
+	
+public:
+	// this should become protected when the call wrappers get added to Index
+	
+	// GroupHandle operations. Used to control the nested indexes.
+	// These operations bring together two parts: this class provides the
+	// logic while the group handle provides the set of index instances to
+	// apply this logic on.
+	// {
+
+	// Copy the handle sections recursively upwards: from here and to the root index.
+	// This is normally done to populate the group handles, so named accordingly.
+	void copyGroupHandle(GroupHandle *rh, const RowHandle *fromrh) const;
+
+	// Clear the contents of a group handle recursively upwards:
+	// from here and to the root index.
+	void clearGroupHandle(GroupHandle *rh) const;
+	
+	// Create a group handle for a new group to contain a new row.
+	// The group is returned fully populated with nested indexes.
+	// Note that the caller must call incref() afterwards.
+	// @param rh - new row for which to create the group, will be used
+	//             to copy the cached handle information
+	// @param table - table where the index belongs
+	// @return - a new group handle, with zero refs
+	GroupHandle *makeGroupHandle(const RowHandle *rh, Table *table) const;
+
+	// Destroy the group handle, that must be already empty and unreferenced
+	// (this means, removed from the parent index too).
+	// This destroys recursively all the indexes contained in the handle
+	// and then disposes of the handle itself 
+	void destroyGroupHandle(GroupHandle *gh) const;
+
+	// Begin the iteration on the nested indexes:
+	// pick the first index in the group and pass the request there.
+	// @param gh - the group instance to iterate on, may be NULL
+	// @return - the first row in the group according to that index's order,
+	//      may be NULL if the group is empty.
+	RowHandle *beginIteration(GroupHandle *gh) const;
+
+	// Continue the iteration on the nested indexes:
+	// pick the first index in the group and pass the request there.
+	// @param gh - the group instance to iterate on, may be NULL
+	// @param row - the current (soon to become previous) row in iteration
+	// @return - the nest row in the group according to that index's order,
+	//      may be NULL if cur was the last row in the group or does not belong
+	//      in the group.
+	RowHandle *nextIteration(GroupHandle *gh, RowHandle *cur) const;
+
+	// Find an index instance in the group handle.
+	// @param gh - the group instance, may be NULL
+	// @param nestPos - position of the nested index
+	// @return - index at that position, may be NULL
+	Index *groupToIndex(GroupHandle *gh, size_t nestPos) const;
+
+	// Prepare all indexes in group for insertion of the new row handle.
+	// Check if it can legally inserted and calculate any records that
+	// would be deleted by the replacement policy.
+	// If any indexes return false, returns immediately without calling all of them.
+	// @param gh - the group instance, may be NULL (in this case returns true)
+	// @param rh - new row about to be inserted
+	// @param replaced - set to add the handles of replaced rows
+	// @return - true if insertion is allowed, false if not
+	bool groupReplacementPolicy(GroupHandle *gh, RowHandle *rh, RhSet &replaced) const;
+
+	// Insert a new row into each index in the group.
+	// Increases the size in the group handle.
+	// @param gh - the group instance, may NOT be NULL
+	// @param rh - new row to insert
+	void groupInsert(GroupHandle *gh, RowHandle *rh) const;
+
+	// Remove the row from each index in the group.
+	// Decreases the size in the group handle.
+	// This does NOT collapse the groups that become empty. The record
+	// gets actually removed only from the leaf indexes.
+	// @param gh - the group instance, may NOT be NULL
+	// @param rh - row to delete
+	void groupRemove(GroupHandle *gh, RowHandle *rh) const;
 	// }
 protected:
 
 	IndexTypeVec nested_; // nested indices
-	TableType *table_; // XXX unused yet // NOT autoref, to avoid reference loops
+	TableType *tabtype_; // NOT autoref, to avoid reference loops
 	IndexType *parent_; // NOT autoref, to avoid reference loops; NULL for top-level indexes
 	Erref errors_;
 	Autoref<GroupHandleType> group_; // used to build groups if not leaf
-	intptr_t ghOffSubidx_; // offset in group handle to the array of pointers to nested indexes
+	intptr_t ghOffset_; // offset in group handle to the payload section
 	IndexId indexId_; // identity in case if casting to subtypes is needed (should use typeid instead?)
 	int nestPos_; // position, at which this index sits in parent
 	bool initialized_; // flag: already initialized, no future changes

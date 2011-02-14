@@ -34,7 +34,7 @@ public:
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
 	virtual void initRowHandleSection(RowHandle *rh) const;
 	virtual void clearRowHandleSection(RowHandle *rh) const;
-	virtual void copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const;
+	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const;
 
 protected:
 	// index instance interface

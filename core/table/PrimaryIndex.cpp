@@ -72,6 +72,11 @@ RowHandle *PrimaryIndex::find(RowHandle *what) const
 		return (*it);
 }
 
+Index *PrimaryIndex::findNested(RowHandle *what, int nestPos) const
+{
+	return NULL;
+}
+
 bool PrimaryIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
 {
 	Set::iterator old = data_.find(rh);

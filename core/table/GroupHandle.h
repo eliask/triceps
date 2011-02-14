@@ -17,7 +17,7 @@ class GroupHandle: public RowHandle
 public:
 	// uses the new() from RowHandle to pass the actual size
 	
-	GroupHandle(const Row *row) : // Table knows to incref() the row before this
+	GroupHandle(const Row *row) : // Index knows to incref() the row before this
 		RowHandle(row)
 	{
 		flags_ |= F_GROUP;

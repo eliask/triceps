@@ -153,7 +153,7 @@ void IndexTypeVec::clearRowHandle(RowHandle *rh) const
 
 IndexType::IndexType(IndexId it) :
 	Type(false, TT_INDEX),
-	table_(NULL),
+	tabtype_(NULL),
 	parent_(NULL),
 	indexId_(it),
 	initialized_(false)
@@ -162,7 +162,7 @@ IndexType::IndexType(IndexId it) :
 IndexType::IndexType(const IndexType &orig) :
 	Type(false, TT_INDEX),
 	nested_(orig.nested_),
-	table_(NULL),
+	tabtype_(NULL),
 	parent_(NULL),
 	indexId_(orig.indexId_),
 	initialized_(false)
@@ -251,7 +251,7 @@ void IndexType::initializeNested(TableType *tabtype)
 	if (n != 0) {
 		// remember, how much of handle was needed to get here
 		group_ = new GroupHandleType(*tabtype->rhType()); // copies the current size
-		ghOffSubidx_ = group_->allocate(n * sizeof(Index *));
+		ghOffset_ = group_->allocate(sizeof(GhSection) + (n-1) * sizeof(Index *));
 	} else {
 		group_ = NULL;
 	}
@@ -259,13 +259,128 @@ void IndexType::initializeNested(TableType *tabtype)
 	for (int i = 0; i < n; i++) {
 		IndexType *st = nested_[i].index_;
 		if (st != 0)
-			st->setNestPos(this, i);
+			st->setNestPos(tabtype, this, i);
 	}
 	nested_.initialize(tabtype, errors_);
 	
 	// optimize by nullifying the empty error set
 	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
+}
+
+void IndexType::copyGroupHandle(GroupHandle *rh, const RowHandle *fromrh) const
+{
+	copyRowHandleSection(rh, fromrh);
+	if (parent_ != NULL)
+		parent_->copyGroupHandle(rh, fromrh);
+}
+
+void IndexType::clearGroupHandle(GroupHandle *rh) const
+{
+	clearRowHandleSection(rh);
+	if (parent_ != NULL)
+		parent_->clearGroupHandle(rh);
+}
+
+GroupHandle *IndexType::makeGroupHandle(const RowHandle *rh, Table *table) const
+{
+	const Row *r = rh->getRow();
+	r->incref();
+	GroupHandle *gh = group_->makeHandle(r);
+	copyGroupHandle(gh, rh); // copy the key portions
+
+	// now create and connect the sub-indexes
+	GhSection *gs = getGhSection(gh);
+
+	gs->size_ = 0; // empty yet
+
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		Index *idx = nested_[i].index_->makeIndex(tabtype_, table);
+		gs->subidx_[i] = idx;
+		idx->incref(); // hold on to it manually
+	}
+
+	return gh;
+}
+
+void IndexType::destroyGroupHandle(GroupHandle *gh) const
+{
+	GhSection *gs = getGhSection(gh);
+
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		Index *idx = gs->subidx_[i];
+		if (idx->decref() <= 0)
+			delete idx;
+	}
+
+	delete gh;
+}
+
+RowHandle *IndexType::beginIteration(GroupHandle *gh) const
+{
+	if (gh == NULL)
+		return NULL;
+
+	GhSection *gs = getGhSection(gh);
+	return gs->subidx_[0]->begin();
+}
+
+RowHandle *IndexType::nextIteration(GroupHandle *gh, RowHandle *cur) const
+{
+	if (gh == NULL)
+		return NULL;
+
+	GhSection *gs = getGhSection(gh);
+	return gs->subidx_[0]->next(cur);
+}
+
+Index *IndexType::groupToIndex(GroupHandle *gh, size_t nestPos) const
+{
+	if (gh == NULL || nestPos >= nested_.size())
+		return NULL;
+
+	GhSection *gs = getGhSection(gh);
+	return gs->subidx_[nestPos];
+}
+
+bool IndexType::groupReplacementPolicy(GroupHandle *gh, RowHandle *rh, RhSet &replaced) const
+{
+	if (gh == NULL)
+		return true;
+
+	GhSection *gs = getGhSection(gh);
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		if ( !gs->subidx_[i]->replacementPolicy(rh, replaced))
+			return false;
+	}
+	return true;
+}
+
+void IndexType::groupInsert(GroupHandle *gh, RowHandle *rh) const
+{
+	assert(gh != NULL);
+
+	GhSection *gs = getGhSection(gh);
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		gs->subidx_[i]->insert(rh);
+	}
+	++gs->size_; // a record got inserted
+}
+
+void IndexType::groupRemove(GroupHandle *gh, RowHandle *rh) const
+{
+	assert(gh != NULL);
+
+	GhSection *gs = getGhSection(gh);
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		gs->subidx_[i]->remove(rh);
+	}
+	--gs->size_; // a record got inserted
 }
 
 }; // BICEPS_NS

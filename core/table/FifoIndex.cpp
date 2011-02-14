@@ -3,7 +3,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Implementation of a simple primary key.
+// Implementation of a simple FIFO storage.
 
 #include <table/FifoIndex.h>
 #include <type/RowType.h>
@@ -58,6 +58,11 @@ RowHandle *FifoIndex::nextGroup(RowHandle *cur) const
 RowHandle *FifoIndex::find(RowHandle *what) const
 {
 	return NULL; // XXX the only way to find is by full-row comparison, which is not implemented yet 
+}
+
+Index *FifoIndex::findNested(RowHandle *what, int nestPos) const
+{
+	return NULL;
 }
 
 bool FifoIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const

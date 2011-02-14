@@ -215,7 +215,7 @@ void PrimaryIndexType::clearRowHandleSection(RowHandle *rh) const
 	rs->~RhSection();
 }
 
-void PrimaryIndexType::copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const
+void PrimaryIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
 {
 	RhSection *rs = rh->get<RhSection>(rhOffset_);
 	RhSection *fromrs = fromrh->get<RhSection>(rhOffset_);

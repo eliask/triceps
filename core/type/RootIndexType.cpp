@@ -56,7 +56,7 @@ void RootIndexType::initRowHandleSection(RowHandle *rh) const
 void RootIndexType::clearRowHandleSection(RowHandle *rh) const
 { }
 
-void RootIndexType::copyRowHandleSection(RowHandle *rh, RowHandle *fromrh) const
+void RootIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
 { }
 
 }; // BICEPS_NS

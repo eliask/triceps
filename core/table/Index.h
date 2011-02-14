@@ -200,11 +200,19 @@ protected:
 		nested_.remove(rh);
 	}
 
+	// If this is a non-leaf index, find the nested index
+	// in the group where this row belongs.
+	// @param what - row used to find the group
+	// @param nestPos - position of wanted index type in its parent
+	// @return - the index, or NULL if it can not be found
+	//        (if this is a leaf index, it always returns NULL)
+	virtual Index *findNested(RowHandle *what, int nestPos) const = 0;
+
 protected:
 	IndexVec nested_; // nested indices
 	// no reference to the type because they're better in subclasses
 	Autoref<const TableType> tabType_; // type of the table where it belongs
-	Table *table_; // not Autoref, to avoid circularf references
+	Table *table_; // not Autoref, to avoid circular references
 
 private:
 	Index();

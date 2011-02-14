@@ -42,6 +42,7 @@ public:
 	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
+	virtual Index *findNested(RowHandle *what, int nestPos) const;
 
 protected:
 	Set data_; // the data store

@@ -3,28 +3,28 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Implementation of a simple FIFO storage.
+// The pseudo-index for the root of the index tree.
 
-#ifndef __Biceps_FifoIndex_h__
-#define __Biceps_FifoIndex_h__
+#ifndef __Biceps_RootIndex_h__
+#define __Biceps_RootIndex_h__
 
 #include <table/Index.h>
-#include <type/FifoIndexType.h>
+#include <type/RootIndexType.h>
 
 namespace BICEPS_NS {
 
-class FifoIndexType;
+class RootIndexType;
 class RowType;
 
-class FifoIndex: public Index
+class RootIndex: public Index
 {
-	friend class FifoIndexType;
+	friend class RootIndexType;
 public:
 	// @param tabtype - type of table where this index belongs
 	// @param table - the actual table where this index belongs
 	// @param mytype - type that created this index
-	FifoIndex(const TableType *tabtype, Table *table, const FifoIndexType *mytype);
-	~FifoIndex();
+	RootIndex(const TableType *tabtype, Table *table, const RootIndexType *mytype);
+	~RootIndex();
 
 	// from Index
 	virtual void clearData();
@@ -33,26 +33,16 @@ public:
 	virtual RowHandle *next(RowHandle *cur) const;
 	virtual RowHandle *nextGroup(RowHandle *cur) const;
 	virtual RowHandle *find(RowHandle *what) const;
+	virtual Index *findNested(RowHandle *what, int nestPos) const;
 	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
-	virtual Index *findNested(RowHandle *what, int nestPos) const;
 
 protected:
-	typedef FifoIndexType::RhSection RhSection;
-
-	// Get the section in the row handle
-	RhSection *getSection(const RowHandle *rh) const
-	{
-		return type_->getSection(rh);
-	}
-
-	Autoref<const FifoIndexType> type_; // type of this index
-	RowHandle *first_; // first element in the list
-	RowHandle *last_; // last element in the list
-	size_t size_; // the current size of the list
+	Autoref<const RootIndexType> type_; // type of this index
+	GroupHandle *rootg_; // the root group
 };
 
 }; // BICEPS_NS
 
-#endif // __Biceps_FifoIndex_h__
+#endif // __Biceps_RootIndex_h__
