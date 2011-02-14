@@ -66,6 +66,18 @@ public:
 	// @return - new instance or NULL if not initialized or has an error
 	Onceref<Table> makeTable() const;
 
+	// Find an index type by name.
+	// Works only after initialization.
+	// @param name - name of the index
+	// @return - index, or NULL if not found
+	IndexType *findIndex(const string &name) const;
+
+	// Find the first index type of given IndexId
+	// Works only after initialization.
+	// @param it - type enum of the nested index
+	// @return - pointer to the nested index or NULL if none matches
+	IndexType *findIndexByIndexId(IndexType::IndexId it) const;
+
 protected:
 	Autoref<RootIndexType> root_; // the root of index tree
 	Autoref<RowType> rowType_; // row for this table

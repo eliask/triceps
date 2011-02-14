@@ -130,4 +130,18 @@ Onceref<Table> TableType::makeTable() const
 	return new Table(this, rowType_, rhType_, root_->nested_);
 }
 
+IndexType *TableType::findIndex(const string &name) const
+{
+	if (root_.isNull())
+		return NULL;
+	return root_->findNested(name);
+}
+
+IndexType *TableType::findIndexByIndexId(IndexType::IndexId it) const
+{
+	if (root_.isNull())
+		return NULL;
+	return root_->findNestedByIndexId(it);
+}
+
 }; // BICEPS_NS

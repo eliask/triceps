@@ -42,28 +42,28 @@ RowHandle *RootIndex::begin() const
 	return type_->beginIteration(rootg_);
 }
 
-RowHandle *RootIndex::next(RowHandle *cur) const
+RowHandle *RootIndex::next(const RowHandle *cur) const
 {
 	return type_->nextIteration(rootg_, cur);
 }
 
-RowHandle *RootIndex::nextGroup(RowHandle *cur) const
+RowHandle *RootIndex::nextGroup(const RowHandle *cur) const
 {
 	// XXX doesn't make sense at the moment, need to redesign
 	return NULL;
 }
 
-RowHandle *RootIndex::find(RowHandle *what) const
+RowHandle *RootIndex::find(const RowHandle *what) const
 {
 	return NULL; // no records directly here
 }
 
-Index *RootIndex::findNested(RowHandle *what, int nestPos) const
+Index *RootIndex::findNested(const RowHandle *what, int nestPos) const
 {
 	return type_->groupToIndex(rootg_, nestPos);
 }
 
-bool RootIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
+bool RootIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const
 {
 	return type_->groupReplacementPolicy(rootg_, rh, replaced);
 }

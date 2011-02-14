@@ -129,9 +129,22 @@ RowHandle *Table::begin() const
 	return root_->begin();
 }
 
-RowHandle *Table::next(RowHandle *cur) const
+RowHandle *Table::next(const RowHandle *cur) const
 {
 	return root_->next(cur);
+}
+
+RowHandle *Table::nextGroup(IndexType *ixt, const RowHandle *cur) const
+{
+	return NULL; // XXX to be figured out
+}
+
+RowHandle *Table::find(IndexType *ixt, const RowHandle *what) const
+{
+	if (ixt == NULL || ixt->getTabtype() != type_)
+		return NULL;
+
+	return ixt->findRecord(this, what);
 }
 
 }; // BICEPS_NS

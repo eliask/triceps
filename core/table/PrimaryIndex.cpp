@@ -44,7 +44,7 @@ RowHandle *PrimaryIndex::begin() const
 		return *it;
 }
 
-RowHandle *PrimaryIndex::next(RowHandle *cur) const
+RowHandle *PrimaryIndex::next(const RowHandle *cur) const
 {
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
@@ -58,28 +58,28 @@ RowHandle *PrimaryIndex::next(RowHandle *cur) const
 		return *it;
 }
 
-RowHandle *PrimaryIndex::nextGroup(RowHandle *cur) const
+RowHandle *PrimaryIndex::nextGroup(const RowHandle *cur) const
 {
 	return NULL;
 }
 
-RowHandle *PrimaryIndex::find(RowHandle *what) const
+RowHandle *PrimaryIndex::find(const RowHandle *what) const
 {
-	Set::iterator it = data_.find(what);
+	Set::iterator it = data_.find(const_cast<RowHandle *>(what));
 	if (it == data_.end())
 		return NULL;
 	else
 		return (*it);
 }
 
-Index *PrimaryIndex::findNested(RowHandle *what, int nestPos) const
+Index *PrimaryIndex::findNested(const RowHandle *what, int nestPos) const
 {
 	return NULL;
 }
 
-bool PrimaryIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
+bool PrimaryIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const
 {
-	Set::iterator old = data_.find(rh);
+	Set::iterator old = data_.find(const_cast<RowHandle *>(rh));
 	// XXX for now just silently replace the old value with the same key
 	if (old != data_.end())
 		replaced.insert(*old);
@@ -88,7 +88,7 @@ bool PrimaryIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
 
 void PrimaryIndex::insert(RowHandle *rh)
 {
-	pair<Set::iterator, bool> res = data_.insert(rh);
+	pair<Set::iterator, bool> res = data_.insert(const_cast<RowHandle *>(rh));
 	assert(res.second); // must always succeed
 	RhSection *rs = less_->getSection(rh);
 	rs->iter_ = res.first;

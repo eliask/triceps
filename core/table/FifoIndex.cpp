@@ -41,7 +41,7 @@ RowHandle *FifoIndex::begin() const
 	return first_;
 }
 
-RowHandle *FifoIndex::next(RowHandle *cur) const
+RowHandle *FifoIndex::next(const RowHandle *cur) const
 {
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
@@ -50,22 +50,22 @@ RowHandle *FifoIndex::next(RowHandle *cur) const
 	return rs->next_;
 }
 
-RowHandle *FifoIndex::nextGroup(RowHandle *cur) const
+RowHandle *FifoIndex::nextGroup(const RowHandle *cur) const
 {
 	return NULL;
 }
 
-RowHandle *FifoIndex::find(RowHandle *what) const
+RowHandle *FifoIndex::find(const RowHandle *what) const
 {
 	return NULL; // XXX the only way to find is by full-row comparison, which is not implemented yet 
 }
 
-Index *FifoIndex::findNested(RowHandle *what, int nestPos) const
+Index *FifoIndex::findNested(const RowHandle *what, int nestPos) const
 {
 	return NULL;
 }
 
-bool FifoIndex::replacementPolicy(RowHandle *rh, RhSet &replaced) const
+bool FifoIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const
 {
 	// XXX ideally should check if there is any other group that is already
 	// marked for replacement and present in this index, then don't push out another one.

@@ -140,10 +140,8 @@ UTESTCASE tableops(Utest *utest)
 	Autoref<Table> t = tt->makeTable();
 	UT_ASSERT(!t.isNull());
 
-#if 0 // XXX
-	Index *prim = t->findIndex("primary");
+	IndexType *prim = tt->findIndex("primary");
 	UT_ASSERT(prim != NULL);
-#endif
 
 	// above here was a copy of primaryIndex()
 
@@ -167,17 +165,15 @@ UTESTCASE tableops(Utest *utest)
 	// this should replace the row with an identical one but with auto-created handle
 	UT_ASSERT(t->insert(r1));
 	iter = t->begin();
-	// RowHandle *iter2 = iter;
+	RowHandle *iter2 = iter;
 	UT_ASSERT(iter != NULL);
 	UT_ASSERT(iter != rh1);
 	iter = t->next(iter);
 	UT_IS(iter, NULL);
 
-#if 0 // XXX
 	// check that the newly inserted record can be found by find on the same key
-	iter = prim->find(rh1);
+	iter = t->find(prim, rh1);
 	UT_ASSERT(iter == iter2);
-#endif
 
 	// check that iteration with NULL doesn't crash
 	UT_ASSERT(t->next(NULL) == NULL);
@@ -214,14 +210,13 @@ UTESTCASE tableops(Utest *utest)
 	iter = t->next(iter);
 	UT_ASSERT(iter == NULL);
 
-#if 0 // XXX
 	// find and remove the 1st record
-	iter = prim->find(rh1);
+	iter = t->find(prim, rh1);
 	UT_ASSERT(iter != NULL);
 	t->remove(iter);
 
 	// check that the record is not there any more
-	iter = prim->find(rh1);
+	iter = t->find(prim, rh1);
 	UT_ASSERT(iter == NULL);
 
 	// check that now have 2 records
@@ -231,6 +226,5 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(iter != NULL);
 	iter = t->next(iter);
 	UT_ASSERT(iter == NULL);
-#endif
 }
 

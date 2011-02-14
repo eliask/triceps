@@ -36,13 +36,13 @@ public:
 	virtual void clearData();
 	virtual const IndexType *getType() const;
 	virtual RowHandle *begin() const;
-	virtual RowHandle *next(RowHandle *cur) const;
-	virtual RowHandle *nextGroup(RowHandle *cur) const;
-	virtual RowHandle *find(RowHandle *what) const;
-	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const;
+	virtual RowHandle *next(const RowHandle *cur) const;
+	virtual RowHandle *nextGroup(const RowHandle *cur) const;
+	virtual RowHandle *find(const RowHandle *what) const;
+	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
-	virtual Index *findNested(RowHandle *what, int nestPos) const;
+	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 protected:
 	Set data_; // the data store

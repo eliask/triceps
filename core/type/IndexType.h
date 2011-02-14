@@ -41,10 +41,21 @@ public:
 	// Populate with the copy of the original types
 	IndexTypeVec(const IndexTypeVec &orig);
 
+	// Find the nested index by name.
+	// @param name - name of the nested index
+	// @return - pointer to the nested index or NULL if unknown name
+	IndexType *find(const string &name) const;
+	
+	// Find the first nested index of given type.
+	// @param it - IndexType::IndexId enum of the nested index
+	//           (can't use the index type here because it's not defined yet)
+	// @return - pointer to the nested index or NULL if none matches
+	IndexType *findByIndexId(int it) const;
+
 	// Initialize and validate all indexes in the vector.
 	// The errors are returned through parent's getErrors().
 	// Includes the checkDups().
-	// @param tabtype - table type where this index type belongs (to only one table!)
+	// @param tabtype - table type where this index type belongs (to only one table type!)
 	// @param parent - the parent index in the hierarchy
 	// @param parentErr - parent's error collection, to append the
 	//        indexes' errors
@@ -122,9 +133,25 @@ public:
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const = 0;
 
 	// @return - true if there are no nested indexes
-	bool isLeaf()
+	bool isLeaf() const
 	{
 		return nested_.empty();
+	}
+
+	// Find the nested index by name.
+	// @param name - name of the index
+	// @return - index type, or NULL if not found
+	IndexType *findNested(const string &name) const
+	{
+		return nested_.find(name);
+	}
+
+	// Find the first nested index having the given index type id.
+	// @param it - type enum of the nested index
+	// @return - index type, or NULL if not found
+	IndexType *findNestedByIndexId(IndexId it) const
+	{
+		return nested_.findByIndexId(it);
 	}
 
 protected:
@@ -150,7 +177,7 @@ protected:
 	IndexType(const IndexType &orig); 
 
 	// let the index find itself in parent and table type
-	// @param tabtype - table type where this index type belongs (to only one table!)
+	// @param tabtype - table type where this index type belongs (to only one table type!)
 	// @param parent - the parent index in the hierarchy
 	// @param pos - position of this index among siblings
 	void setNestPos(TableType *tabtype, IndexType *parent, int pos)
@@ -158,6 +185,11 @@ protected:
 		tabtype_ = tabtype;
 		parent_ = parent;
 		nestPos_ = pos;
+	}
+
+	TableType *getTabtype()
+	{
+		return tabtype_;
 	}
 
 	// Initialize and validate.
@@ -220,6 +252,22 @@ protected:
 	// @param fromrh - the original handle
 	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const = 0;
 
+	// Find a record in the table, according to this index type.
+	// It goes recursively to the root of the table and then back down, finding the
+	// concrete path of indexes for this record.
+	// @param table - table where to search
+	// @param what - handle to search for
+	// @return - handle of the record in table or NULL
+	RowHandle *findRecord(const Table *table, const RowHandle *what) const;
+
+	// Find the concrete subindex for a subtype.
+	// It goes recursively to the root of the table and then back down, finding the
+	// concrete path of indexes for this record.
+	// @param nestPos - position of the subindex under this one
+	// @param table - table where to search
+	// @param what - handle to search for
+	// @return - concrete index or NULL
+	Index *findNestedIndex(int nestPos, const Table *table, const RowHandle *what) const;
 	// }
 	
 public:
@@ -268,7 +316,7 @@ public:
 	// @return - the nest row in the group according to that index's order,
 	//      may be NULL if cur was the last row in the group or does not belong
 	//      in the group.
-	RowHandle *nextIteration(GroupHandle *gh, RowHandle *cur) const;
+	RowHandle *nextIteration(GroupHandle *gh, const RowHandle *cur) const;
 
 	// Find an index instance in the group handle.
 	// @param gh - the group instance, may be NULL
@@ -284,7 +332,7 @@ public:
 	// @param rh - new row about to be inserted
 	// @param replaced - set to add the handles of replaced rows
 	// @return - true if insertion is allowed, false if not
-	bool groupReplacementPolicy(GroupHandle *gh, RowHandle *rh, RhSet &replaced) const;
+	bool groupReplacementPolicy(GroupHandle *gh, const RowHandle *rh, RhSet &replaced) const;
 
 	// Insert a new row into each index in the group.
 	// Increases the size in the group handle.

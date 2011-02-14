@@ -24,32 +24,6 @@ public:
 	Table(const TableType *tt, const RowType *rowt, const RowHandleType *handt, const IndexTypeVec &topIt);
 	~Table();
 
-#if 0
-	// XXX this is not right, the finding must work through index types, not indexes themselves
-	
-	// Find an index by name
-	// @param name - name of the index
-	// @return - index, or NULL if not found
-	Index *findIndex(const string &name) const
-	{
-		return topInd_.find(name);
-	}
-
-	// Find the first index of given type
-	// @param it - type enum of the nested index
-	// @return - pointer to the nested index or NULL if none matches
-	Index *findIndexByType(IndexType::IndexId it) const
-	{
-		return topInd_.findByType(it);
-	}
-
-	// Return the indev vector.
-	const IndexVec &getIndexVec() const
-	{
-		return topInd_;
-	}
-#endif
-
 	// Get the type of this table
 	const TableType *getType()
 	{
@@ -99,13 +73,45 @@ public:
 	// @param - the current handle
 	// @return - the next row's handle, or NULL if the current one was the last one,
 	//       or not in the table or NULL
-	RowHandle *next(RowHandle *cur) const;
+	RowHandle *next(const RowHandle *cur) const;
+
+	// XXX doesn't work yet
+	// For the nested indexes, a way to skip over all the
+	// remaining records in the current group, according to an index.
+	// @param ixt - index type from this table's type
+	// @param cur - the current handle
+	// @return - handle of the first row in the next group, or NULL if the 
+	//       current group was the last one, or row not in the table or NULL
+	RowHandle *nextGroup(IndexType *ixt, const RowHandle *cur) const;
+
+	// Find the matching element.
+	// Note that for a RowHandle that has been returned from the table
+	// there is no sense in calling find() because it already represents
+	// an iterator in the table. This finds a row in the table with the
+	// key matching one in a freshly made RowHandle (with Table::makeRowHandle()).
+	//
+	// XXX should it allow non-leaf indexes and find the first record in group?
+	//
+	// @param ixt - leaf index type from this table's type
+	// @param what - the pattern row
+	// @return - the matching (accoriding to this index) row in the table,
+	//     or NULL if not found or if the index is non-leaf; an index that has 
+	//     multiple matching rows, may return any of them but preferrably the first one.
+	RowHandle *find(IndexType *ixt, const RowHandle *what) const;
 
 protected:
 	friend class Rhref;
 
 	// called by Rhref when the last reference to a row handle is removed
 	void destroyRowHandle(RowHandle *rh);
+
+protected:
+	friend class IndexType;
+
+	RootIndex *getRoot() const
+	{
+		return root_;
+	}
 
 protected:
 	Autoref<const TableType> type_; // type where this table belongs

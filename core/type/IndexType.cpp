@@ -8,6 +8,7 @@
 #include <type/TableType.h>
 #include <type/GroupHandleType.h>
 #include <table/Index.h>
+#include <table/Table.h>
 #include <set>
 
 namespace BICEPS_NS {
@@ -141,6 +142,25 @@ void IndexTypeVec::clearRowHandle(RowHandle *rh) const
 	size_t n = size();
 	for (size_t i = 0; i < n; i++) 
 		(*this)[i].index_->clearRowHandle(rh);
+}
+
+IndexType *IndexTypeVec::find(const string &name) const
+{
+	// since the size is usually pretty small, linear search is fine
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		if((*this)[i].name_ == name)
+			return (*this)[i].index_;
+	return NULL;
+}
+
+IndexType *IndexTypeVec::findByIndexId(int it) const
+{
+	size_t n = size();
+	for (size_t i = 0; i < n; i++) 
+		if((*this)[i].index_->getIndexId() == it)
+			return (*this)[i].index_;
+	return NULL;
 }
 
 /////////////////////// IndexType ////////////////////////////
@@ -314,7 +334,7 @@ RowHandle *IndexType::beginIteration(GroupHandle *gh) const
 	return gs->subidx_[0]->begin();
 }
 
-RowHandle *IndexType::nextIteration(GroupHandle *gh, RowHandle *cur) const
+RowHandle *IndexType::nextIteration(GroupHandle *gh, const RowHandle *cur) const
 {
 	if (gh == NULL)
 		return NULL;
@@ -332,7 +352,7 @@ Index *IndexType::groupToIndex(GroupHandle *gh, size_t nestPos) const
 	return gs->subidx_[nestPos];
 }
 
-bool IndexType::groupReplacementPolicy(GroupHandle *gh, RowHandle *rh, RhSet &replaced) const
+bool IndexType::groupReplacementPolicy(GroupHandle *gh, const RowHandle *rh, RhSet &replaced) const
 {
 	if (gh == NULL)
 		return true;
@@ -390,6 +410,28 @@ void IndexType::groupClearData(GroupHandle *gh) const
 		gs->subidx_[i]->clearData();
 	}
 	gs->size_ = 0; // all records got deleted
+}
+
+RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) const
+{
+	if (!isLeaf())
+		return NULL;
+
+	const Index *myidx = parent_->findNestedIndex(nestPos_, table, what);
+	if (myidx == NULL)
+		return NULL;
+	return myidx->find(what);
+}
+
+Index *IndexType::findNestedIndex(int nestPos, const Table *table, const RowHandle *what) const
+{
+	if (isLeaf())
+		return NULL;
+
+	if (parent_ == NULL)
+		return table->getRoot()->findNested(what, nestPos);
+	else
+		return parent_->findNestedIndex(nestPos_, table, what);
 }
 
 }; // BICEPS_NS

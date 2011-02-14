@@ -44,14 +44,14 @@ public:
 	// @param - the current handle
 	// @return - the next row's handle, or NULL if the current one was the last one,
 	//       or not in the table or NULL
-	virtual RowHandle *next(RowHandle *cur) const = 0;
+	virtual RowHandle *next(const RowHandle *cur) const = 0;
 
 	// For the nested indexes, a way to skip over all the
 	// remaining records in the current group.
 	// @param - the current handle
 	// @return - handle of the first row in the next group, or NULL if the 
-	//       current one was the last one, or not in the table or NULL
-	virtual RowHandle *nextGroup(RowHandle *cur) const = 0;
+	//       current group was the last one, or row not in the table or NULL
+	virtual RowHandle *nextGroup(const RowHandle *cur) const = 0;
 
 	// Find the matching element.
 	// Note that for a RowHandle that has been returned from the table
@@ -62,7 +62,7 @@ public:
 	// @return - the matching (accoriding to this index) row in the table,
 	//     or NULL if not found; an index that has multiple matching rows,
 	//     may return any of them but preferrably the first one.
-	virtual RowHandle *find(RowHandle *what) const = 0;
+	virtual RowHandle *find(const RowHandle *what) const = 0;
 
 	// XXX add lower_bound, upper_bound ?
 
@@ -93,7 +93,7 @@ protected:
 	// @param rh - new row about to be inserted
 	// @param replaced - set to add the handles of replaced rows
 	// @return - true if insertion is allowed, false if not
-	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const = 0;
+	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const = 0;
 
 	// Insert the row into the index.
 	// This is called after the replacement policy has been executed.
@@ -112,7 +112,7 @@ protected:
 	// @param nestPos - position of wanted index type in its parent
 	// @return - the index, or NULL if it can not be found
 	//        (if this is a leaf index, it always returns NULL)
-	virtual Index *findNested(RowHandle *what, int nestPos) const = 0;
+	virtual Index *findNested(const RowHandle *what, int nestPos) const = 0;
 
 protected:
 	// no reference to the type because they're better in subclasses
