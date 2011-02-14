@@ -21,71 +21,8 @@ class IndexType;
 class Table;
 class Index;
 
-// mirrors IndexTypeRef
-// connection of indexes into a tree
-class  IndexRef 
-{
-public:
-	IndexRef(const string &n, Index *i);
-	IndexRef();
-
-	string name_; // name of the index, for finding it later
-	Autoref<Index> index_;
-};
-
-// mirrors IndexTypeVec
-class IndexVec: public  vector<IndexRef>
-{
-public:
-	IndexVec();
-	IndexVec(size_t size);
-	// Populate with the copy of the original types
-	// IndexVec(const IndexVec &orig);
-
-	// Find the nested index by name.
-	// @param name - name of the nested index
-	// @return - pointer to the nested index or NULL if unknown name
-	Index *find(const string &name) const;
-	
-	// Find the first nested index of given type.
-	// @param it - type enum of the nested index
-	// @return - pointer to the nested index or NULL if none matches
-	Index *findByType(IndexType::IndexId it) const;
-
-protected:
-	friend class Table;
-	friend class Index;
-
-	typedef set<RowHandle *> RhSet;
-
-	// Clear the contents of the indexes. The actual RowHandles are guaranteed
-	// to be still held by the table, so the cleaning can be fast.
-	void clearData() const;
-
-	// Prepare all indexes for insertion of the new row handle.
-	// Check if it can legally inserted and calculate any records that
-	// would be deleted by the replacement policy.
-	// If any indexes return false, returns immediately without calling all.
-	// @param rh - new row about to be inserted
-	// @param replaced - set to add the handles of replaced rows
-	// @return - true if insertion is allowed, false if not
-	bool replacementPolicy(RowHandle *rh, RhSet &replaced) const;
-
-	// Insert the row into all indexes.
-	// @param rh - handle to insert
-	void insert(RowHandle *rh) const;
-
-	// Remove the row from all indexes.
-	// @param rh - handle to remove
-	void remove(RowHandle *rh) const;
-
-private:
-	void operator=(const IndexVec &);
-};
-
-// Indexes should be accessed only in one thread, so maybe Straget 
-// would be a better choice.
-class Index : public Mtarget
+// Indexes should be accessed only in one thread, so Straget is good enough.
+class Index : public Starget
 {
 	friend class IndexType;
 	friend class IndexVec;
@@ -129,28 +66,6 @@ public:
 
 	// XXX add lower_bound, upper_bound ?
 
-	// Find the nested index by name.
-	// @param name - name of the index
-	// @return - index, or NULL if not found
-	Index *findIndex(const string &name) const
-	{
-		return nested_.find(name);
-	}
-
-	// Find the first nested index of given type.
-	// @param it - type enum of the nested index
-	// @return - pointer to the nested index or NULL if none matches
-	Index *findIndexByType(IndexType::IndexId it) const
-	{
-		return nested_.findByType(it);
-	}
-
-	// Return the indev vector.
-	const IndexVec &getIndexVec() const
-	{
-		return nested_;
-	}
-
 	// Get the type id of this index
 	IndexType::IndexId getIndexId() const
 	{
@@ -163,7 +78,11 @@ protected:
 	// always created through subclasses
 	Index(const TableType *tabtype, Table *table);
 	
-	// Clear the contents of the index. The actual RowHandles are guaranteed
+	// Clear the data rows of the index. For non-leaf indexes this
+	// means the recursive propagation down to the leaves.
+	// The contents of the non-leaf indexes does not get deleted,
+	// and the groups are not collapsed.
+	// The actual RowHandles are guaranteed
 	// to be still held by the table, so the cleaning can be fast.
 	virtual void clearData() = 0;
 
@@ -175,30 +94,17 @@ protected:
 	// @param replaced - set to add the handles of replaced rows
 	// @return - true if insertion is allowed, false if not
 	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) const = 0;
-	// (to make the compiler happy for calls from subclasses)
-	bool replacementPolicyNested(RowHandle *rh, RhSet &replaced) const
-	{
-		return nested_.replacementPolicy(rh, replaced);
-	}
 
 	// Insert the row into the index.
 	// This is called after the replacement policy has been executed.
 	// @param rh - handle to insert
 	virtual void insert(RowHandle *rh) = 0;
 	// (to make the compiler happy for calls from subclasses)
-	void insertNested(RowHandle *rh) 
-	{
-		nested_.insert(rh);
-	}
 
 	// Remove the row from the index.
 	// @param rh - handle to remove
 	virtual void remove(RowHandle *rh) = 0;
 	// (to make the compiler happy for calls from subclasses)
-	void removeNested(RowHandle *rh) 
-	{
-		nested_.remove(rh);
-	}
 
 	// If this is a non-leaf index, find the nested index
 	// in the group where this row belongs.
@@ -209,7 +115,6 @@ protected:
 	virtual Index *findNested(RowHandle *what, int nestPos) const = 0;
 
 protected:
-	IndexVec nested_; // nested indices
 	// no reference to the type because they're better in subclasses
 	Autoref<const TableType> tabType_; // type of the table where it belongs
 	Table *table_; // not Autoref, to avoid circular references

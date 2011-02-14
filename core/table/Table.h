@@ -9,7 +9,7 @@
 #define __Biceps_Table_h__
 
 #include <type/TableType.h>
-#include <table/Index.h>
+#include <table/RootIndex.h>
 
 namespace BICEPS_NS {
 
@@ -24,6 +24,9 @@ public:
 	Table(const TableType *tt, const RowType *rowt, const RowHandleType *handt, const IndexTypeVec &topIt);
 	~Table();
 
+#if 0
+	// XXX this is not right, the finding must work through index types, not indexes themselves
+	
 	// Find an index by name
 	// @param name - name of the index
 	// @return - index, or NULL if not found
@@ -45,6 +48,7 @@ public:
 	{
 		return topInd_;
 	}
+#endif
 
 	// Get the type of this table
 	const TableType *getType()
@@ -107,8 +111,7 @@ protected:
 	Autoref<const TableType> type_; // type where this table belongs
 	Autoref<const RowType> rowType_; // type of rows stored here
 	Autoref<const RowHandleType> rhType_;
-	IndexVec topInd_; // top-level indexes
-	size_t size_; // count of records in the table
+	Autoref<RootIndex> root_; // root of the index tree
 };
 
 }; // BICEPS_NS

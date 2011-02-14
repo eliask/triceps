@@ -67,14 +67,15 @@ public:
 
 protected:
 	friend class Table;
+	friend class IndexType;
 	friend class RowHandleType;
 
-	RowHandle(const Row *row) : // Table knows to incref() the row before this
+	RowHandle(const Row *row) : // Table or IndexType knows to incref() the row before this
 		flags_(0),
 		row_(row)
 	{ }
 	
-	~RowHandle() // only Table knows how to destroy the contents properly
+	~RowHandle() // only Table or IndexType knows how to destroy the contents properly
 	{ }
 
 protected:

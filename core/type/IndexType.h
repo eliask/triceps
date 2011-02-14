@@ -20,7 +20,6 @@ class RowHandleType;
 class GroupHandleType;
 class Index;
 class Table;
-class IndexVec;
 
 // connection of indexes into a tree
 class  IndexTypeRef 
@@ -45,21 +44,16 @@ public:
 	// Initialize and validate all indexes in the vector.
 	// The errors are returned through parent's getErrors().
 	// Includes the checkDups().
-	// @param table - table type where this index belongs
+	// @param tabtype - table type where this index type belongs (to only one table!)
+	// @param parent - the parent index in the hierarchy
 	// @param parentErr - parent's error collection, to append the
 	//        indexes' errors
-	void initialize(TableType *table, Erref parentErr);
+	void initialize(TableType *tabtype, IndexType *parent, Erref parentErr);
 
 	// Check for dups in names.
 	// @param err - place to report the name dup errors
 	// @return - true on success, false on error
 	bool checkDups(Erref parentErr);
-
-	// create the indexes for the types stored here
-	// @param tabtype - table type where this index belongs
-	// @param table - the actuall table instance where this index belongs
-	// @param idx - the index vector to keep the created indexes
-	void makeIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const;
 
 	// Append the human-readable list of type definitions to a string
 	// @param res - the resulting string to append to
@@ -155,11 +149,10 @@ protected:
 	IndexType(IndexId it);
 	IndexType(const IndexType &orig); 
 
-	// wrapper to access friend-only data
-	// @return - ind->nested_
-	static IndexVec *getIndexVec(Index *ind);
-
 	// let the index find itself in parent and table type
+	// @param tabtype - table type where this index type belongs (to only one table!)
+	// @param parent - the parent index in the hierarchy
+	// @param pos - position of this index among siblings
 	void setNestPos(TableType *tabtype, IndexType *parent, int pos)
 	{
 		tabtype_ = tabtype;
@@ -168,6 +161,7 @@ protected:
 	}
 
 	// Initialize and validate.
+	// Guaranteed to be called after setNestPos().
 	// If already initialized, must return right away.
 	//
 	// DOES NOT INITIALIZE THE NESTED INDEX TYPES.
@@ -178,25 +172,18 @@ protected:
 	// again by initializeNested().
 	//
 	// The errors are returned through getErrors().
-	// @param tabtype - table type where this index belongs
-	virtual void initialize(TableType *tabtype) = 0;
+	virtual void initialize() = 0;
 
 	// Initialize and validate the nested index types.
+	// Guaranteed to be called after setNestPos() and initialize().
 	// Adds their errors to this type's indication getErrors() result.
-	// @param tabtype - table type where this index belongs
-	void initializeNested(TableType *tabtype);
+	void initializeNested();
 
 	bool isInitialized() const
 	{
 		return initialized_;
 	}
 	
-	// a wrapper
-	void makeNestedIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const
-	{
-		return nested_.makeIndexes(tabtype, table, ivec);
-	}
-
 	// RowHandle operations.
 	// The initialization is done before the handle is inserted into the
 	// table, and cleared after is has been removed from the table.
@@ -206,7 +193,7 @@ protected:
 	
 	// Initialize the row handle section for this index and its nested ones:
 	// pre-calculate the has values and such for the given row.
-	// Normally only the Table class should call it (maybe through IndexVec).
+	// Normally only the Table class should call it.
 	virtual void initRowHandleSection(RowHandle *rh) const = 0;
 
 	// Initialize the row handle recursively with nested indexes.
@@ -312,6 +299,14 @@ public:
 	// @param gh - the group instance, may NOT be NULL
 	// @param rh - row to delete
 	void groupRemove(GroupHandle *gh, RowHandle *rh) const;
+
+	// Get the number of rows in the group.
+	// @param gh - the group instance, may be NULL
+	size_t groupSize(GroupHandle *gh) const;
+
+	// Clear the data rows in the leaf indexes under this group.
+	// @param gh - the group instance, may be NULL
+	void groupClearData(GroupHandle *gh) const;
 	// }
 protected:
 

@@ -38,6 +38,9 @@ public:
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
 
+	// Get the number of records in this index
+	size_t size();
+
 protected:
 	Autoref<const RootIndexType> type_; // type of this index
 	GroupHandle *rootg_; // the root group

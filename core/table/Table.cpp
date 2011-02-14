@@ -14,28 +14,29 @@ namespace BICEPS_NS {
 Table::Table(const TableType *tt, const RowType *rowt, const RowHandleType *handt, const IndexTypeVec &topIt) :
 	type_(tt),
 	rowType_(rowt),
-	rhType_(handt),
-	size_(0)
+	rhType_(handt)
 { 
-	tt->root_->makeNestedIndexes(tt, this, &topInd_);
+	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));
+	// fprintf(stderr, "DEBUG Table::Table root=%p\n", root_.get());
 }
 
 Table::~Table()
 {
+	// fprintf(stderr, "DEBUG Table::~Table root=%p\n", root_.get());
+
 	// remove all the rows in the table: this goes more efficiently
 	// if we first move them to a vector, clear the indexes and delete from vector;
 	// otherwise the index rebalancing during deletion takes a much longer time
 	vector <RowHandle *> rows;
-	rows.reserve(size_);
+	rows.reserve(root_->size());
 
-	if (!topInd_.empty()) {
+	{
 		RowHandle *rh;
-		Index *index = topInd_[0].index_;
-		for (rh = index->begin(); rh != NULL; rh = index->next(rh))
+		for (rh = root_->begin(); rh != NULL; rh = root_->next(rh))
 			rows.push_back(rh);
 	}
 
-	topInd_.clearData();
+	root_->clearData();
 
 	for (vector <RowHandle *>::iterator it = rows.begin(); it != rows.end(); ++it) {
 		RowHandle *rh = *it;
@@ -94,7 +95,7 @@ bool Table::insert(RowHandle *rh)
 
 	Index::RhSet replace;
 
-	if (!topInd_.replacementPolicy(rh, replace))
+	if (!root_->replacementPolicy(rh, replace))
 		return false;
 
 	// delete the records that are pushed out
@@ -102,12 +103,11 @@ bool Table::insert(RowHandle *rh)
 	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit)
 		remove(*rsit);
 
-	topInd_.insert(rh);
-
 	// now keep the table-wide reference to that handle
 	rh->incref();
 	rh->flags_ |= RowHandle::F_INTABLE;
-	++size_;
+
+	root_->insert(rh);
 
 	return true;
 }
@@ -117,26 +117,21 @@ void Table::remove(RowHandle *rh)
 	if (rh == NULL || !rh->isInTable())
 		return;
 
-	topInd_.remove(rh);
+	root_->remove(rh);
 	
 	rh->flags_ &= ~RowHandle::F_INTABLE;
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
-	--size_;
 }
 
 RowHandle *Table::begin() const
 {
-	if (topInd_.empty())
-		return NULL;
-	return topInd_[0].index_->begin();
+	return root_->begin();
 }
 
 RowHandle *Table::next(RowHandle *cur) const
 {
-	if (topInd_.empty())
-		return NULL;
-	return topInd_[0].index_->next(cur);
+	return root_->next(cur);
 }
 
 }; // BICEPS_NS

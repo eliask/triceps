@@ -28,7 +28,9 @@ RootIndex::~RootIndex()
 }
 
 void RootIndex::clearData()
-{ }
+{ 
+	type_->groupClearData(rootg_);
+}
 
 const IndexType *RootIndex::getType() const
 {
@@ -81,5 +83,9 @@ void RootIndex::remove(RowHandle *rh)
 	type_->groupRemove(rootg_, rh);
 }
 
+size_t RootIndex::size()
+{
+	return type_->groupSize(rootg_);
+}
 
 }; // BICEPS_NS

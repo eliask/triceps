@@ -8,6 +8,7 @@
 
 #include <type/RootIndexType.h>
 #include <type/TableType.h>
+#include <table/RootIndex.h>
 // #include <table/RootIndex.h>
 
 namespace BICEPS_NS {
@@ -39,15 +40,14 @@ IndexType *RootIndexType::copy() const
 	return new RootIndexType(*this);
 }
 
-void RootIndexType::initialize(TableType *tabtype)
+void RootIndexType::initialize()
 {
 	initialized_ = true;
 }
 
 Index *RootIndexType::makeIndex(const TableType *tabtype, Table *table) const
 {
-	// XXX maybe there should be a fake RootIndex?
-	return NULL; // can't create anything
+	return new RootIndex(tabtype, table, this);
 }
 
 void RootIndexType::initRowHandleSection(RowHandle *rh) const

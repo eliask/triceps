@@ -45,7 +45,7 @@ IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig)
 		push_back(IndexTypeRef(orig[i].name_, orig[i].index_->copy()));
 }
 
-void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
+void IndexTypeVec::initialize(TableType *tabtype, IndexType *parent, Erref parentErr)
 {
 	if (!checkDups(parentErr))
 		return;
@@ -58,27 +58,21 @@ void IndexTypeVec::initialize(TableType *tabtype, Erref parentErr)
 			parentErr->appendMsg(true, strprintf("nested index %d is not allowed to have an empty name", (int)i+1));
 			continue;
 		}
-		if (at(i).index_.isNull()) {
+		IndexType *st = (*this)[i].index_;
+		if (st == NULL) {
 			parentErr->appendMsg(true, strprintf("nested index %d '%s' reference must not be NULL", (int)i+1, at(i).name_.c_str()));
 			continue;
 		}
-		at(i).index_->initialize(tabtype);
+		st->setNestPos(tabtype, parent, i);
+		st->initialize();
 	}
 	if (parentErr->hasError())
 		return; // don't even try the nested stuff
 	// do it in the depth-last order
 	for (size_t i = 0; i < n; i++) {
-		at(i).index_->initializeNested(tabtype);
+		at(i).index_->initializeNested();
 		Erref se = at(i).index_->getErrors();
 		parentErr->append(strprintf("nested index %d '%s':", (int)i+1, at(i).name_.c_str()), se);
-	}
-}
-
-void IndexTypeVec::makeIndexes(const TableType *tabtype, Table *table, IndexVec *ivec) const
-{
-	size_t n = size();
-	for (size_t i = 0; i < n; i++) {
-		ivec->push_back(IndexRef((*this)[i].name_, (*this)[i].index_->makeIndex(tabtype, table)));
 	}
 }
 
@@ -234,12 +228,7 @@ bool IndexType::match(const Type *t) const
 	return true;
 }
 
-IndexVec *IndexType::getIndexVec(Index *ind)
-{
-	return &ind->nested_;
-}
-
-void IndexType::initializeNested(TableType *tabtype)
+void IndexType::initializeNested()
 {
 	assert(isInitialized());
 
@@ -250,18 +239,13 @@ void IndexType::initializeNested(TableType *tabtype)
 
 	if (n != 0) {
 		// remember, how much of handle was needed to get here
-		group_ = new GroupHandleType(*tabtype->rhType()); // copies the current size
+		group_ = new GroupHandleType(*tabtype_->rhType()); // copies the current size
 		ghOffset_ = group_->allocate(sizeof(GhSection) + (n-1) * sizeof(Index *));
 	} else {
 		group_ = NULL;
 	}
 
-	for (int i = 0; i < n; i++) {
-		IndexType *st = nested_[i].index_;
-		if (st != 0)
-			st->setNestPos(tabtype, this, i);
-	}
-	nested_.initialize(tabtype, errors_);
+	nested_.initialize(tabtype_, this, errors_);
 	
 	// optimize by nullifying the empty error set
 	if (!errors_->hasError() && errors_->isEmpty())
@@ -313,6 +297,9 @@ void IndexType::destroyGroupHandle(GroupHandle *gh) const
 		Index *idx = gs->subidx_[i];
 		if (idx->decref() <= 0)
 			delete idx;
+	}
+	if (gh->getRow()->decref() <= 0) {
+		tabtype_->rowType()->destroyRow(const_cast<Row *>(gh->getRow()));
 	}
 
 	delete gh;
@@ -380,7 +367,29 @@ void IndexType::groupRemove(GroupHandle *gh, RowHandle *rh) const
 	for (int i = 0; i < n; i++) {
 		gs->subidx_[i]->remove(rh);
 	}
-	--gs->size_; // a record got inserted
+	--gs->size_; // a record got deleted
+}
+
+size_t IndexType::groupSize(GroupHandle *gh) const
+{
+	if (gh == NULL)
+		return 0;
+
+	GhSection *gs = getGhSection(gh);
+	return gs->size_;
+}
+
+void IndexType::groupClearData(GroupHandle *gh) const
+{
+	if (gh == NULL)
+		return;
+
+	GhSection *gs = getGhSection(gh);
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		gs->subidx_[i]->clearData();
+	}
+	gs->size_ = 0; // all records got deleted
 }
 
 }; // BICEPS_NS

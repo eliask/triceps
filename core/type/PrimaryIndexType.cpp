@@ -166,7 +166,7 @@ IndexType *PrimaryIndexType::copy() const
 	return new PrimaryIndexType(*this);
 }
 
-void PrimaryIndexType::initialize(TableType *tabtype)
+void PrimaryIndexType::initialize()
 {
 	if (isInitialized())
 		return; // nothing to do
@@ -177,10 +177,10 @@ void PrimaryIndexType::initialize(TableType *tabtype)
 	if (nested_.size() != 0)
 		errors_->appendMsg(true, "PrimaryIndexType currently does not support further nested indexes");
 
-	rhOffset_ = tabtype->rhType()->allocate(sizeof(PrimaryIndex::RhSection));
+	rhOffset_ = tabtype_->rhType()->allocate(sizeof(PrimaryIndex::RhSection));
 
 	// find the fields
-	const RowType *rt = tabtype->rowType();
+	const RowType *rt = tabtype_->rowType();
 	int n = key_->size();
 	keyFld_.resize(n);
 	for (int i = 0; i < n; i++) {
@@ -192,7 +192,7 @@ void PrimaryIndexType::initialize(TableType *tabtype)
 	}
 	// XXX should it check that the fields don't repeat?
 	
-	less_ = new Less(tabtype->rowType(), rhOffset_, keyFld_);
+	less_ = new Less(tabtype_->rowType(), rhOffset_, keyFld_);
 }
 
 Index *PrimaryIndexType::makeIndex(const TableType *tabtype, Table *table) const

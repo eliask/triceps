@@ -113,8 +113,9 @@ void TableType::initialize()
 	rhType_ = new RowHandleType;
 
 	// XXX should it check that there is at least one index?
-	root_->initialize(this);
-	root_->initializeNested(this);
+	root_->setNestPos(this, NULL, 0);
+	root_->initialize();
+	root_->initializeNested();
 	errors_->append("index error:", root_->getErrors());
 
 	if (!errors_->hasError() && errors_->isEmpty())

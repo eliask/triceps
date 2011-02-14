@@ -50,7 +50,7 @@ IndexType *FifoIndexType::copy() const
 	return new FifoIndexType(*this);
 }
 
-void FifoIndexType::initialize(TableType *tabtype)
+void FifoIndexType::initialize()
 {
 	if (isInitialized())
 		return; // nothing to do
@@ -64,7 +64,7 @@ void FifoIndexType::initialize(TableType *tabtype)
 	if (limit_ != 0)
 		errors_->appendMsg(true, "FifoIndexType currently does not support the size limit");
 
-	rhOffset_ = tabtype->rhType()->allocate(sizeof(FifoIndex::RhSection));
+	rhOffset_ = tabtype_->rhType()->allocate(sizeof(FifoIndex::RhSection));
 
 	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
