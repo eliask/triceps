@@ -206,10 +206,8 @@ UTESTCASE primaryNested(Utest *utest)
 
 	UT_ASSERT(tt);
 	tt->initialize();
-	if (UT_ASSERT(!tt->getErrors().isNull()))
+	if (UT_ASSERT(tt->getErrors().isNull()))
 		return;
-	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary':\n    PrimaryIndexType currently does not support further nested indexes\n");
 }
 
 UTESTCASE primaryBadField(Utest *utest)

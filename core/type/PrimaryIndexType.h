@@ -39,6 +39,7 @@ public:
 protected:
 	// index instance interface
 	friend class PrimaryIndex;
+	friend class PrimaryNestedIndex;
 
 	struct RhSection;
 	

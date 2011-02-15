@@ -8,6 +8,7 @@
 #include <type/PrimaryIndexType.h>
 #include <type/TableType.h>
 #include <table/PrimaryIndex.h>
+#include <table/PrimaryNestedIndex.h>
 #include <table/Table.h>
 #include <string.h>
 
@@ -174,9 +175,6 @@ void PrimaryIndexType::initialize()
 
 	errors_ = new Errors;
 
-	if (nested_.size() != 0)
-		errors_->appendMsg(true, "PrimaryIndexType currently does not support further nested indexes");
-
 	rhOffset_ = tabtype_->rhType()->allocate(sizeof(PrimaryIndex::RhSection));
 
 	// find the fields
@@ -200,7 +198,10 @@ Index *PrimaryIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	if (!isInitialized() 
 	|| errors_->hasError())
 		return NULL; 
-	return new PrimaryIndex(tabtype, table, this, less_);
+	if (nested_.empty())
+		return new PrimaryIndex(tabtype, table, this, less_);
+	else
+		return new PrimaryNestedIndex(tabtype, table, this, less_);
 }
 
 void PrimaryIndexType::initRowHandleSection(RowHandle *rh) const
