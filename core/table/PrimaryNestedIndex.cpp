@@ -60,17 +60,27 @@ RowHandle *PrimaryNestedIndex::begin() const
 
 RowHandle *PrimaryNestedIndex::next(const RowHandle *cur) const
 {
+	// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
 
 	Set::iterator it = data_.find(static_cast<GroupHandle *>(const_cast<RowHandle *>(cur)));
 
-	while (it != data_.end()) {
+	if (it != data_.end()) {
 		RowHandle *res = type_->nextIteration(*it, cur);
+		// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
 		if (res != NULL)
 			return res;
-		++it; 
 	}
+
+	// otherwise try the next groups until find a non-empty one
+	for (++it; it != data_.end(); ++it) {
+		RowHandle *res = type_->beginIteration(*it);
+		// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p) beginIteration return=%p\n", this, res);
+		if (res != NULL)
+			return res;
+	}
+	// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p) return NULL\n", this);
 
 	return NULL;
 }
@@ -88,11 +98,16 @@ RowHandle *PrimaryNestedIndex::find(const RowHandle *what) const
 
 Index *PrimaryNestedIndex::findNested(const RowHandle *what, int nestPos) const
 {
+	// fprintf(stderr, "DEBUG PrimaryNestedIndex::findNested(this=%p, what=%p, nestPos=%d)\n", this, what, nestPos);
 	Set::iterator it = data_.find(static_cast<GroupHandle *>(const_cast<RowHandle *>(what)));
-	if (it == data_.end())
+	if (it == data_.end()) {
+		// fprintf(stderr, "DEBUG PrimaryNestedIndex::findNested(this=%p) return NULL\n", this);
 		return NULL;
-	else
-		return type_->groupToIndex(*it, nestPos);
+	} else {
+		Index *idx = type_->groupToIndex(*it, nestPos);
+		// fprintf(stderr, "DEBUG PrimaryNestedIndex::findNested(this=%p) return index %p\n", this, idx);
+		return idx;
+	}
 }
 
 bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const

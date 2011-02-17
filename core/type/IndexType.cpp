@@ -336,6 +336,7 @@ RowHandle *IndexType::beginIteration(GroupHandle *gh) const
 
 RowHandle *IndexType::nextIteration(GroupHandle *gh, const RowHandle *cur) const
 {
+	// fprintf(stderr, "DEBUG IndexType::nextIteration(this=%p, gh=%p, cur=%p)\n", this, gh, cur);
 	if (gh == NULL)
 		return NULL;
 
@@ -414,6 +415,7 @@ void IndexType::groupClearData(GroupHandle *gh) const
 
 RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) const
 {
+	// fprintf(stderr, "DEBUG IndexType::findRecord(this=%p, table=%p, what=%p)\n", this, table, what);
 	if (!isLeaf())
 		return NULL;
 
@@ -425,13 +427,19 @@ RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) cons
 
 Index *IndexType::findNestedIndex(int nestPos, const Table *table, const RowHandle *what) const
 {
+	// fprintf(stderr, "DEBUG IndexType::findNestedIndex(this=%p, nestPos=%d, table=%p, what=%p)\n", this, nestPos, table, what);
 	if (isLeaf())
 		return NULL;
 
-	if (parent_ == NULL)
-		return table->getRoot()->findNested(what, nestPos);
-	else
-		return parent_->findNestedIndex(nestPos_, table, what);
+	Index *myinst;
+	if (parent_ == NULL) {
+		myinst = table->getRoot();
+	} else {
+		myinst = parent_->findNestedIndex(nestPos_, table, what);
+	}
+	if (myinst == NULL)
+		return NULL;
+	return myinst->findNested(what, nestPos);
 }
 
 }; // BICEPS_NS

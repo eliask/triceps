@@ -46,16 +46,20 @@ RowHandle *PrimaryIndex::begin() const
 
 RowHandle *PrimaryIndex::next(const RowHandle *cur) const
 {
+	// fprintf(stderr, "DEBUG PrimaryIndex::next(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
 
 	RhSection *rs = less_->getSection(cur);
 	Set::iterator it = rs->iter_;
 	++it;
-	if (it == data_.end())
+	if (it == data_.end()) {
+		// fprintf(stderr, "DEBUG PrimaryIndex::next(this=%p) return NULL\n", this);
 		return NULL;
-	else
+	} else {
+		// fprintf(stderr, "DEBUG PrimaryIndex::next(this=%p) return %p\n", this, *it);
 		return *it;
+	}
 }
 
 RowHandle *PrimaryIndex::nextGroup(const RowHandle *cur) const
@@ -92,6 +96,7 @@ void PrimaryIndex::insert(RowHandle *rh)
 	assert(res.second); // must always succeed
 	RhSection *rs = less_->getSection(rh);
 	rs->iter_ = res.first;
+	// fprintf(stderr, "DEBUG PrimaryIndex::insert(this=%p, rh=%p)\n", this, rh);
 }
 
 void PrimaryIndex::remove(RowHandle *rh)

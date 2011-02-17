@@ -60,7 +60,9 @@ RowHandle *RootIndex::find(const RowHandle *what) const
 
 Index *RootIndex::findNested(const RowHandle *what, int nestPos) const
 {
-	return type_->groupToIndex(rootg_, nestPos);
+	Index *idx = type_->groupToIndex(rootg_, nestPos);
+	fprintf(stderr, "DEBUG RootIndex::findNested(this=%p) return index %p\n", this, idx);
+	return idx;
 }
 
 bool RootIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const

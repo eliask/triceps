@@ -129,6 +129,24 @@ UTESTCASE tableops(Utest *utest)
 	IndexType *prim = tt->findIndex("primary");
 	UT_ASSERT(prim != NULL);
 
+	// other instance, for checking of errors
+	Autoref<Table> t2 = tt->makeTable();
+	UT_ASSERT(!t2.isNull());
+	IndexType *prim2 = tt->findIndex("primary");
+	UT_ASSERT(prim2 != NULL);
+
+	// 3rd instance, with its own type, for checking of errors
+	Autoref<TableType> tt3 = (new TableType(rt1))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("a")->add("e"))
+		);
+	UT_ASSERT(tt3);
+	tt3->initialize();
+	Autoref<Table> t3 = tt3->makeTable();
+	UT_ASSERT(!t3.isNull());
+	IndexType *prim3 = tt3->findIndex("primary");
+	UT_ASSERT(prim3 != NULL);
+
 	// above here was a copy of primaryIndex()
 
 	RowHandle *iter;
@@ -160,6 +178,14 @@ UTESTCASE tableops(Utest *utest)
 	// check that the newly inserted record can be found by find on the same key
 	iter = t->find(prim, rh1);
 	UT_ASSERT(iter == iter2);
+
+	// check that the type is shared between tables
+	iter = t->find(prim2, rh1);
+	UT_ASSERT(iter == iter2);
+
+	// check that the finding by other table type's index returns NULL
+	iter = t->find(prim3, rh1);
+	UT_ASSERT(iter == NULL);
 
 	// check that iteration with NULL doesn't crash
 	UT_ASSERT(t->next(NULL) == NULL);
