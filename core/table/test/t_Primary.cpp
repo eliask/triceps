@@ -62,20 +62,6 @@ UTESTCASE primaryIndex(Utest *utest)
 
 	Autoref<Table> t = tt->makeTable();
 	UT_ASSERT(!t.isNull());
-
-#if 0
-	// XXX needs to be rewritten with correct logic
-	
-	Index *prim = t->findIndex("primary");
-	UT_ASSERT(prim != NULL);
-	UT_IS(t->findIndexByType(IndexType::IT_PRIMARY), prim);
-
-	UT_IS(t->findIndexByType(IndexType::IT_LAST), NULL);
-	UT_IS(t->findIndex("nosuch"), NULL);
-
-	UT_IS(prim->findIndex("nosuch"), NULL);
-	UT_IS(prim->findIndexByType(IndexType::IT_LAST), NULL);
-#endif
 }
 
 UTESTCASE uninitialized(Utest *utest)

@@ -82,6 +82,17 @@ UTESTCASE primaryIndex(Utest *utest)
 		fflush(stdout);
 	}
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ), }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findIndex("primary");
+	UT_ASSERT(prim != NULL);
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_PRIMARY), prim);
+
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_LAST), NULL);
+	UT_IS(tt->findIndex("nosuch"), NULL);
+
+	UT_IS(prim->findNested("nosuch"), NULL);
+	UT_IS(prim->findNestedByIndexId(IndexType::IT_LAST), NULL);
 }
 
 UTESTCASE badRow(Utest *utest)
@@ -208,6 +219,20 @@ UTESTCASE primaryNested(Utest *utest)
 	tt->initialize();
 	if (UT_ASSERT(tt->getErrors().isNull()))
 		return;
+	
+	// get back the initialized types
+	IndexType *prim = tt->findIndex("primary");
+	if (UT_ASSERT(prim != NULL))
+		return;
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_PRIMARY), prim);
+
+	IndexType *sec = prim->findNested("level2");
+	if (UT_ASSERT(sec != NULL))
+		return;
+	UT_IS(prim->findNestedByIndexId(IndexType::IT_PRIMARY), sec);
+
+	UT_IS(sec->findNested("nosuch"), NULL);
+	UT_IS(sec->findNestedByIndexId(IndexType::IT_LAST), NULL);
 }
 
 UTESTCASE primaryBadField(Utest *utest)
