@@ -39,7 +39,7 @@ public:
 	virtual RowHandle *next(const RowHandle *cur) const;
 	virtual RowHandle *nextGroup(const RowHandle *cur) const;
 	virtual RowHandle *find(const RowHandle *what) const;
-	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const;
+	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced);
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
 	virtual bool collapse(const RhSet &replaced);

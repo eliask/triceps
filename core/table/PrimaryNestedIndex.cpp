@@ -110,35 +110,37 @@ Index *PrimaryNestedIndex::findNested(const RowHandle *what, int nestPos) const
 	}
 }
 
-bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const
+bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
 	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
-	// XXX the result of find() can be stored in rh, to avoid look-up on insert
+	// the result of find() can be stored now in rh, to avoid look-up on insert
+	type_->getSection(rh)->iter_ = it;
+	GroupHandle *gh;
+	fprintf(stderr, "DEBUG PrimaryNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
-	if (it == data_.end())
-		return true; // will be a new group
-	else
-		return type_->groupReplacementPolicy(static_cast<GroupHandle *>(*it), rh, replaced);
+	if (it == data_.end()) {
+		gh = type_->makeGroupHandle(rh, table_);
+		gh->incref();
+		pair<Set::iterator, bool> res = data_.insert(gh);
+		type_->getSection(rh)->iter_ = res.first;
+		type_->getSection(gh)->iter_ = res.first;
+	} else {
+		gh = static_cast<GroupHandle *>(*it);
+	}
+	return type_->groupReplacementPolicy(gh, rh, replaced);
 }
 
 void PrimaryNestedIndex::insert(RowHandle *rh)
 {
-	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
+	Set::iterator it = type_->getIter(rh); // has been initialized in replacementPolicy()
+	fprintf(stderr, "DEBUG PrimaryNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
-	if (it == data_.end()) { // a new group
-		GroupHandle *grp = type_->makeGroupHandle(rh, table_);
-		grp->incref();
-		pair<Set::iterator, bool> res = data_.insert(grp);
-		type_->groupInsert(static_cast<GroupHandle *>(*res.first), rh);
-	} else {
-		type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
-	}
+	type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
 }
 
 void PrimaryNestedIndex::remove(RowHandle *rh)
 {
-	// XXX don't find(), use the direct iterator
-	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
+	Set::iterator it = type_->getIter(rh); // row is known to be in the table
 	if (it != data_.end()) {
 		type_->groupRemove(static_cast<GroupHandle *>(*it), rh);
 	}

@@ -95,8 +95,12 @@ bool Table::insert(RowHandle *newrh)
 
 	Index::RhSet replace;
 
-	if (!root_->replacementPolicy(newrh, replace))
+	if (!root_->replacementPolicy(newrh, replace)) {
+		// this may have created the groups for the new record that didn't get inserted, so collapse them back
+		replace.insert(newrh);
+		root_->collapse(replace);
 		return false;
+	}
 
 	// delete the rows that are pushed out but don't collapse the groups yet
 	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {

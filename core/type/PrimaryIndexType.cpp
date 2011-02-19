@@ -225,10 +225,8 @@ void PrimaryIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *from
 	RhSection *rs = rh->get<RhSection>(rhOffset_);
 	RhSection *fromrs = fromrh->get<RhSection>(rhOffset_);
 	
-	// initialize the iterator by calling its constructor
-	new(rs) RhSection;
-	// then copy the hash
-	rs->hash_ = fromrs->hash_;
+	// initialize the iterator by calling its constructor inside RhSection constructor
+	new(rs) RhSection(*fromrs);
 }
 
 }; // BICEPS_NS

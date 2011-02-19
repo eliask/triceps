@@ -87,13 +87,23 @@ protected:
 	virtual void clearData() = 0;
 
 	// Prepare for insertion of the new row handle.
-	// Check if it can legally inserted and calculate any records that
+	// Recursively check if it can legally inserted and calculate any records that
 	// would be deleted by the replacement policy.
 	// XXX should it also have an indication of update vs insert?
+	//
+	// The non-leaf indexes absolutely MUST create their groups if they
+	// weren't previously existing. The reason is that without groups created
+	// this call can not be propagated to their sub-indexes. In turn, the major reason
+	// for that is to let the non-leat indexes in the middle of the tree populate
+	// the iterator values in their sections of the row handle.
+	// So even if a non-leaf is going to return false, it still must create
+	// the group and do the nested call.
+	// Because of all this, this method is NOT const.
+	//
 	// @param rh - new row about to be inserted
 	// @param replaced - set to add the handles of replaced rows
 	// @return - true if insertion is allowed, false if not
-	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const = 0;
+	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) = 0;
 
 	// Insert the row into the index.
 	// This is called after the replacement policy has been executed.

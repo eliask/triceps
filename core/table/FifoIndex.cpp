@@ -65,7 +65,7 @@ Index *FifoIndex::findNested(const RowHandle *what, int nestPos) const
 	return NULL;
 }
 
-bool FifoIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const
+bool FifoIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
 	// XXX ideally should check if there is any other group that is already
 	// marked for replacement and present in this index, then don't push out another one.

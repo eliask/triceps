@@ -61,22 +61,23 @@ RowHandle *RootIndex::find(const RowHandle *what) const
 Index *RootIndex::findNested(const RowHandle *what, int nestPos) const
 {
 	Index *idx = type_->groupToIndex(rootg_, nestPos);
-	fprintf(stderr, "DEBUG RootIndex::findNested(this=%p) return index %p\n", this, idx);
+	// fprintf(stderr, "DEBUG RootIndex::findNested(this=%p) return index %p\n", this, idx);
 	return idx;
 }
 
-bool RootIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced) const
+bool RootIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
-	return type_->groupReplacementPolicy(rootg_, rh, replaced);
-}
-
-void RootIndex::insert(RowHandle *rh)
-{
+	// fprintf(stderr, "DEBUG RootIndex::replacementPolicy(this=%p, rh=%p)\n", this, rh);
 	if (rootg_ == NULL) {
 		// create a new group
 		rootg_ = type_->makeGroupHandle(rh, table_);
 		rootg_->incref();
 	}
+	return type_->groupReplacementPolicy(rootg_, rh, replaced);
+}
+
+void RootIndex::insert(RowHandle *rh)
+{
 	type_->groupInsert(rootg_, rh);
 }
 
