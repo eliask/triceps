@@ -72,7 +72,7 @@ UTESTCASE primaryIndex(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  PrimaryIndex(a, e, ),\n"
+		"  PrimaryIndex(a, e, ) primary,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -81,7 +81,7 @@ UTESTCASE primaryIndex(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ), }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ) primary, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findIndex("primary");
@@ -220,6 +220,29 @@ UTESTCASE primaryNested(Utest *utest)
 	if (UT_ASSERT(tt->getErrors().isNull()))
 		return;
 	
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  PrimaryIndex(a, e, ) {\n"
+		"    PrimaryIndex(a, e, ) level2,\n"
+		"  } primary,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ) { PrimaryIndex(a, e, ) level2, } primary, }");
+
 	// get back the initialized types
 	IndexType *prim = tt->findIndex("primary");
 	if (UT_ASSERT(prim != NULL))

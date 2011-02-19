@@ -120,10 +120,13 @@ void IndexTypeVec::printTo(string &res, const string &indent, const string &subi
 			res.append(" ");
 		}
 		i->index_->printTo(res, *passni, subindent);
+		res.append(" ");
+		res.append(i->name_);
 		res.append(","); // extra comma after last field doesn't hurt
 	}
 	if (&indent != &NOINDENT) {
 		res.append("\n");
+		res.append(indent);
 	} else {
 		res.append(" ");
 	}
