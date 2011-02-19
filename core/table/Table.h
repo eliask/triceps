@@ -58,6 +58,7 @@ public:
 	// @return - true on success, false on failure (if the index policies don't allow it)
 	bool insert(RowHandle *rh);
 
+	// XXX also add a version working on RhSet, for better efficiency?
 	// Remove a row handle from the table. If the row is already not in table, do nothing.
 	// @param rh - row handle to remove
 	void remove(RowHandle *rh);

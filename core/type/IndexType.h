@@ -348,6 +348,14 @@ public:
 	// @param rh - row to delete
 	void groupRemove(GroupHandle *gh, RowHandle *rh) const;
 
+	// Attempt to collapse all the sub-indexes of the group
+	// (see the detailed discussion of the semantics in table/Index.h).
+	// @param gh - the group instance, may NOT be NULL
+	// @param replaced - set of records indentifying the groups that might be collapsible
+	// @return - true if the group may be collapsed, i.e. all the sub-indexes agreed 
+	//      on collapsing and the group size is 0
+	bool groupCollapse(GroupHandle *gh, const RhSet &replaced) const;
+
 	// Get the number of rows in the group.
 	// @param gh - the group instance, may be NULL
 	size_t groupSize(GroupHandle *gh) const;

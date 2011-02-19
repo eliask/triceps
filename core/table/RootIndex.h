@@ -33,10 +33,11 @@ public:
 	virtual RowHandle *next(const RowHandle *cur) const;
 	virtual RowHandle *nextGroup(const RowHandle *cur) const;
 	virtual RowHandle *find(const RowHandle *what) const;
-	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
+	virtual bool collapse(const RhSet &replaced);
+	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 	// Get the number of records in this index
 	size_t size();

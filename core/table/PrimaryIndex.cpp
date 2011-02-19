@@ -105,5 +105,10 @@ void PrimaryIndex::remove(RowHandle *rh)
 	data_.erase(rs->iter_);
 }
 
+bool PrimaryIndex::collapse(const RhSet &replaced)
+{
+	return true;
+}
+
 
 }; // BICEPS_NS

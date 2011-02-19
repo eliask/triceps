@@ -121,5 +121,9 @@ void FifoIndex::remove(RowHandle *rh)
 	--size_;
 }
 
+bool FifoIndex::collapse(const RhSet &replaced)
+{
+	return true;
+}
 
 }; // BICEPS_NS

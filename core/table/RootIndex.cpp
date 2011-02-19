@@ -90,4 +90,12 @@ size_t RootIndex::size()
 	return type_->groupSize(rootg_);
 }
 
+bool RootIndex::collapse(const RhSet &replaced)
+{
+	if (rootg_ == NULL)
+		return true;
+	type_->groupCollapse(rootg_, replaced);
+	return false; // the root index never collapses its group
+}
+
 }; // BICEPS_NS

@@ -36,6 +36,7 @@ public:
 	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
+	virtual bool collapse(const RhSet &replaced);
 	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 protected:

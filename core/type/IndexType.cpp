@@ -391,6 +391,23 @@ void IndexType::groupRemove(GroupHandle *gh, RowHandle *rh) const
 	--gs->size_; // a record got deleted
 }
 
+bool IndexType::groupCollapse(GroupHandle *gh, const RhSet &replaced) const
+{
+	assert(gh != NULL);
+
+	GhSection *gs = getGhSection(gh);
+	bool res = (gs->size_ == 0);
+
+	// even if the size != 0, still must go through recursion, because
+	// there may be collapsible sub-groups
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		res = (res && gs->subidx_[i]->collapse(replaced));
+	}
+
+	return res;
+}
+
 size_t IndexType::groupSize(GroupHandle *gh) const
 {
 	if (gh == NULL)

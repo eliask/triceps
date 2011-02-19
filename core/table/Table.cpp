@@ -85,30 +85,43 @@ bool Table::insert(const Row *row)
 	return res;
 }
 
-bool Table::insert(RowHandle *rh)
+bool Table::insert(RowHandle *newrh)
 {
-	if (rh == NULL)
+	if (newrh == NULL)
 		return false;
 
-	if (rh->isInTable())
+	if (newrh->isInTable())
 		return false;  // nothing to do
 
 	Index::RhSet replace;
 
-	if (!root_->replacementPolicy(rh, replace))
+	if (!root_->replacementPolicy(newrh, replace))
 		return false;
 
-	// delete the records that are pushed out
-	// XXX these records should also be returned in a tray
-	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit)
-		remove(*rsit);
+	// delete the rows that are pushed out but don't collapse the groups yet
+	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
+		RowHandle *rh = *rsit;
+		root_->remove(rh);
+		rh->flags_ &= ~RowHandle::F_INTABLE;
+	}
 
-	// now keep the table-wide reference to that handle
-	rh->incref();
-	rh->flags_ |= RowHandle::F_INTABLE;
+	// now keep the table-wide reference to that new handle
+	newrh->incref();
+	newrh->flags_ |= RowHandle::F_INTABLE;
 
-	root_->insert(rh);
+	root_->insert(newrh);
 
+	// finally, collapse the groups
+	root_->collapse(replace);
+
+	// and then the removed rows get unreferenced by the table
+	// XXX these rows should also be returned in a tray
+	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
+		RowHandle *rh = *rsit;
+		if (rh->decref() <= 0)
+			destroyRowHandle(rh);
+	}
+	
 	return true;
 }
 
@@ -118,8 +131,12 @@ void Table::remove(RowHandle *rh)
 		return;
 
 	root_->remove(rh);
-	
 	rh->flags_ &= ~RowHandle::F_INTABLE;
+
+	Index::RhSet replace;
+	replace.insert(rh);
+	root_->collapse(replace);
+	
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
 }

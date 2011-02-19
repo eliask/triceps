@@ -74,6 +74,7 @@ protected:
 	// not set of Autoref<RowHandle> because the row is owned by the whole table once,
 	// not by each index; this also improves the performance a lot
 	typedef set<RowHandle *, Less> Set; // storage for the records
+	typedef set<GroupHandle *, Less> NestedSet; // storage for the nested groups
 
 	// section in the RowHandle, placed at rhOffset_
 	struct RhSection {
@@ -93,6 +94,12 @@ protected:
 	RhSection *getSection(const RowHandle *rh) const
 	{
 		return rh->get<RhSection>(rhOffset_);
+	}
+
+	// can be used only if the row is known to be in the table
+	Set::iterator getIter(const RowHandle *rh) const
+	{
+		return rh->get<RhSection>(rhOffset_)->iter_;
 	}
 
 protected:

@@ -23,7 +23,7 @@ class PrimaryNestedIndex: public Index
 public:
 	typedef PrimaryIndexType::Less Less;
 	typedef PrimaryIndexType::RhSection RhSection;
-	typedef set<GroupHandle *, Less> Set;
+	typedef PrimaryIndexType::Set Set;
 
 	// @param tabtype - type of table where this index belongs
 	// @param table - the actual table where this index belongs
@@ -42,6 +42,7 @@ public:
 	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) const;
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
+	virtual bool collapse(const RhSet &replaced);
 	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 protected:

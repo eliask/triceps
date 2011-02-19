@@ -160,6 +160,10 @@ void PrimaryIndexType::printTo(string &res, const string &indent, const string &
 		}
 	}
 	res.append(")");
+	if (!nested_.empty()) {
+		res.append(" ");
+		nested_.printTo(res, indent, subindent);
+	}
 }
 
 IndexType *PrimaryIndexType::copy() const
