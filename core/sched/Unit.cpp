@@ -9,9 +9,56 @@
 
 namespace BICEPS_NS {
 
+///////////////////////////// Unit::Tracer //////////////////////////////////
+
+Unit::Tracer::~Tracer()
+{ }
+
+///////////////////////////// Unit::StringTracer //////////////////////////////////
+
+Unit::StringTracer::StringTracer() :
+	buffer_(new Errors)
+{ }
+
+void Unit::StringTracer::clearBuffer()
+{
+	buffer_ = new Errors;
+}
+
+void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when)
+{
+	buffer_->appendMsg(false, strprintf("unit %p '%s' %s label %p '%s' (chain %p) op %p %s", 
+		unit, unit->getName().c_str(), tracerWhenString(when),
+		label, label->getName().c_str(), fromLabel, 
+		rop, Rowop::opcodeString(rop->getOpcode()) ));
+
+	// XXX hexdump the row too?
+}
+
+///////////////////////////// Unit::StringNameTracer //////////////////////////////////
+
+void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when)
+{
+	string res = strprintf("unit '%s' %s label '%s' ", 
+		unit->getName().c_str(), tracerWhenString(when), label->getName().c_str());
+
+	if (fromLabel != NULL) {
+		res.append("(chain '");
+		res.append(fromLabel->getName());
+		res.append(") ");
+	};
+	res.append("op ");
+	res.append(Rowop::opcodeString(rop->getOpcode()));
+
+	buffer_->appendMsg(false, res);
+	
+	// XXX hexdump the row too?
+}
+
 ///////////////////////////// Unit //////////////////////////////////
 
-Unit::Unit()
+Unit::Unit(const string &name) :
+	name_(name)
 {
 	// the outermost frame is always present
 	innerFrame_ = outerFrame_ = new Tray;
@@ -101,6 +148,34 @@ void Unit::popFrame()
 	if (innerFrame_ != outerFrame_) { // never pop the outermost frame
 		queue_.pop_front();
 		innerFrame_ = queue_.front();
+	}
+}
+
+const char *Unit::tracerWhenString(TracerWhen when)
+{
+	switch(when) {
+	case TW_BEFORE:
+		return "before";
+	case TW_BEFORE_DRAIN:
+		return "drain";
+	case TW_BEFORE_CHAINED:
+		return "before-chained";
+	case TW_AFTER:
+		return "after";
+	default:
+		return "???unknown???";
+	}
+}
+
+void Unit::setTracer(Onceref<Tracer> tracer)
+{
+	tracer_ = tracer;
+}
+
+void Unit::trace(const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when)
+{
+	if (!tracer_.isNull()) {
+		tracer_->execute(this, label, fromLabel, rop, when);
 	}
 }
 

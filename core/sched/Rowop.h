@@ -85,6 +85,9 @@ public:
 		return row_;
 	}
 
+	// Convert the opcode to string
+	static const char *opcodeString(Opcode code);
+
 protected:
 	Autoref<const Label> label_;
 	Row *row_; // a manual reference, the type from Label will be used for deletion

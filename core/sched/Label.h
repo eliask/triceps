@@ -40,7 +40,8 @@ public:
 
 	// @param unit - the unit where this label belongs
 	// @param rtype - type of row to be handled by this label
-	Label(Unit *unit, Onceref<const RowType> rtype);
+	// @param name - a human-readable name of this label, for tracing
+	Label(Unit *unit, Onceref<const RowType> rtype, const string &name = "");
 	
 	virtual ~Label();
 
@@ -64,6 +65,17 @@ public:
 		return chained_;
 	}
 
+	// Get the human-readable name
+	const string &getName() const
+	{
+		return name_;
+	}
+
+	void setName(const string &name)
+	{
+		name_ = name;
+	}
+
 protected:
 	// The subclasses re-define this method to do something useful.
 	//
@@ -82,11 +94,28 @@ protected:
 	//
 	// unit - unit from where called (should be the same as in constructor)
 	// arg - operation to perform; the caller holds a reference on it.
-	void call(Unit *unit, const Rowop *arg) const;
+	// chainedFrom - if this call is a result of chaining, the chain parent
+	void call(Unit *unit, const Rowop *arg, const Label *chainedFrom = NULL) const;
 
 protected:
 	ChainedVec chained_; // the chained labels
 	Autoref<const RowType> type_; // type of the row handled here
+	Unit *unit_; // not a reference, but more of a token
+	string name_; // human-readable name for tracing
+};
+
+// A label that does nothing: typically used as an endpoint for chaining in the 
+// tables and such.
+class DummyLabel : public Label
+{
+public:
+	DummyLabel(Unit *unit, Onceref<const RowType> rtype, const string &name = "") :
+		Label(unit, rtype, name)
+	{ }
+
+protected:
+	// from Label
+	virtual void execute(const Rowop *arg) const;
 };
 
 }; // BICEPS_NS

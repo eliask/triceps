@@ -32,10 +32,13 @@ namespace BICEPS_NS {
 // 3. To push a new frame, add the rowop there, and immediately start executing it.
 //    This works like a function call, making sure that all the effects from that
 //    rowop are finished before the current processing resumes.
-class Unit : public Starget
+//
+// Since the Units in different threads need to communicate, it's an Mtarget.
+class Unit : public Mtarget
 {
 public:
-	Unit();
+	// @param name - a human-readable name of this unit, for tracing
+	Unit(const string &name = "");
 
 	// Append a rowop to the end of the outermost queue frame.
 	void schedule(Onceref<const Rowop> rop);
@@ -59,6 +62,97 @@ public:
 	// Execute until the current stack frame drains.
 	void drainFrame();
 
+	// Get the human-readable name
+	const string &getName() const
+	{
+		return name_;
+	}
+
+	void setName(const string &name)
+	{
+		name_ = name;
+	}
+
+	// Tracing interface.
+	// Often it's hard to figure out, how a certain result got produced.
+	// This allows the user to trace the whole execution sequence.
+	// {
+
+	// the tracer function is called multiple times during the processing of a rowop,
+	// with the indication of when it's called:
+	enum TracerWhen {
+		TW_BEFORE, // before calling the label's execution as such
+		TW_BEFORE_DRAIN, // after execution as such, before draining the frame
+		TW_BEFORE_CHAINED, // after execution and draining, before calliong the chained labels
+		TW_AFTER, // after all the execution is done
+		// XXX should there be events on enqueueing?
+	};
+
+	// convert the when-code to a human-readable string
+	static const char *tracerWhenString(TracerWhen when);
+
+	// The type of tracer callback functor: inherit from it and redefine your own execute()
+	class Tracer : public Mtarget
+	{
+	public:
+		virtual ~Tracer();
+
+		// The callback on some event related to rowop execution happens
+		// @param unit - unit from where the tracer is called
+		// @param label - label that is being called
+		// @param fromLabel - during the chained calls, the parent label, otherwise NULL
+		// @param rop - rop operation that is executed
+		// @param when - the kind of event
+		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when) = 0;
+	};
+
+	// For convenience, a concrete tracer class that collects the trace information
+	// into an Errors object. It's a very typical usage to track the sequence of execution
+	// and get it back as a string (Errors here takes the task of converting to string).
+	class StringTracer : public Tracer
+	{
+	public:
+		StringTracer();
+
+		// Get back the buffer of messages
+		Erref getBuffer() const
+		{
+			return buffer_;
+		}
+
+		// Replace the message buffer with a clean one.
+		// The old one gets simply dereferenced, so if you have a reference, you can keep it.
+		void clearBuffer();
+
+		// from Tracer
+		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when);
+
+	protected:
+		Erref buffer_;
+	};
+
+	// Another version of string tracer that doesn't print the object addresses, 
+	// prints only names.
+	class StringNameTracer : public StringTracer
+	{
+	public:
+		// from Tracer
+		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when);
+	};
+
+	// Set the new tracer
+	void setTracer(Onceref<Tracer> tracer);
+
+	// Get back the current tracer
+	Onceref<Tracer> getTracer() const
+	{
+		return tracer_;
+	}
+
+	// A callback for the Label, to trace its execution
+	void trace(const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when);
+
+	// }
 protected:
 	// Push a new frame onto the stack, unless the current frame is empty
 	// @return - true if the frame was actually pushed
@@ -74,6 +168,8 @@ protected:
 	TrayList queue_;
 	Tray *outerFrame_; // the outermost frame
 	Tray *innerFrame_; // the current innermost frame (may happen to be the same as outermost)
+	Autoref<Tracer> tracer_; // the tracer object
+	string name_; // human-readable name for tracing
 };
 
 }; // BICEPS_NS
