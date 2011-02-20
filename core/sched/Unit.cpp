@@ -133,6 +133,11 @@ void Unit::drainFrame()
 		callNext();
 }
 
+bool Unit::empty() const
+{
+	return innerFrame_ == outerFrame_ && innerFrame_->empty();
+}
+
 bool Unit::pushFrame()
 {
 	if (!innerFrame_->empty()) {

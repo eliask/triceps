@@ -62,6 +62,10 @@ public:
 	// Execute until the current stack frame drains.
 	void drainFrame();
 
+	// Check whether the queue is empty.
+	// @return - if no rowops in the whole queue
+	bool empty() const;
+
 	// Get the human-readable name
 	const string &getName() const
 	{

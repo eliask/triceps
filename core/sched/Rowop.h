@@ -47,7 +47,8 @@ public:
 	};
 
 	// Rowop will hold the references on the row and the label.
-	Rowop(const Label *label, Opcode op, Onceref<Row> row);
+	// XXX think of checking the type of row 
+	Rowop(const Label *label, Opcode op, Row *row);
 	Rowop(const Label *label, Opcode op, const Rowref &row);
 
 	~Rowop();

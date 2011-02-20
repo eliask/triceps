@@ -10,7 +10,7 @@
 
 namespace BICEPS_NS {
 
-Rowop::Rowop(const Label *label, Opcode op, Onceref<Row> row) :
+Rowop::Rowop(const Label *label, Opcode op, Row *row) :
 	label_(label),
 	row_(row),
 	opcode_(op)
