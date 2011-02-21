@@ -90,7 +90,7 @@ public:
 	static const char *opcodeString(Opcode code);
 
 protected:
-	Autoref<const Label> label_;
+	const_Autoref<Label> label_;
 	Row *row_; // a manual reference, the type from Label will be used for deletion
 	// no timestamp nor sequence now, these will come later
 	Opcode opcode_;
