@@ -34,6 +34,12 @@ class Autoref
 public:
 	typedef Target *Ptr;
 
+	// Casting NULL to Autoref is not easy, so provide an obvious way.
+	static Ptr null()
+	{
+		return (Ptr)0;
+	}
+
 	Autoref() :
 		ref_(0)
 	{ }
@@ -176,6 +182,10 @@ public:
 		Autoref<const Target>(t)
 	{ }
 
+	const_Autoref(const Target *t) :
+		Autoref<const Target>(t)
+	{ }
+
 	const_Autoref(const const_Autoref<Target> &ar) :
 		Autoref<const Target>(ar)
 	{ }
@@ -221,6 +231,10 @@ public:
 	{ }
 
 	const_Onceref(Target *t) :
+		const_Autoref<Target>(t)
+	{ }
+
+	const_Onceref(const Target *t) :
 		const_Autoref<Target>(t)
 	{ }
 
