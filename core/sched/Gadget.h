@@ -13,7 +13,7 @@
 namespace BICEPS_NS {
 
 // A Gadget is something with its own mind, which in response to
-// operations on it may produce records and send them to the Unit's
+// operations on it may produce records and enqueues them to the Unit's
 // scheduler. A Gadget has its own dummy label for those records,
 // so that processing can be chained from it. Duplicates of these
 // records can also be collected on a Tray.
@@ -24,18 +24,18 @@ namespace BICEPS_NS {
 class Gadget 
 {
 public:
-	// How the rows get scheduled in the Unit
-	enum SchedMode {
+	// How the rows get enqueued in the Unit
+	enum EnqMode {
 		SM_SCHEDULE,
 		SM_FORK,
 		SM_CALL,
-		SM_IGNORE, // rows aren't scheduled at all
+		SM_IGNORE, // rows aren't equeued at all
 	};
 
 	virtual ~Gadget();
 
-	// Get back the scheduling mode
-	SchedMode getSchedMode() const
+	// Get back the enqueueing mode
+	EnqMode getEnqMode() const
 	{
 		return mode_;
 	}
@@ -55,7 +55,7 @@ public:
 	// Get the label where the rowops will be sent to.
 	// (Gadget is normally not going anywhere, so returning a pointer is OK).
 	// @return - the label after it was initialized, or NULL before that
-	Label *getSchedLabel() const
+	Label *getLabel() const
 	{
 		return label_;
 	}
@@ -64,13 +64,13 @@ protected:
 	// interface for subclasses
 
 	// @param unit - Unit where the gadget belongs
-	// @param mode - how the rowops will be scheduled
+	// @param mode - how the rowops will be enqueued
 	// @parem name - name of the gadget if known, will be used to name the label
 	// @param rt - row type produced by this gadget, or NULL if not known yet
-	Gadget(Unit *unit, SchedMode mode, const string &name = "", Onceref<RowType> rt = (RowType*)NULL);
+	Gadget(Unit *unit, EnqMode mode, const string &name = "", Onceref<RowType> rt = (RowType*)NULL);
 
-	// Change the scheduling mode.
-	void setSchedMode(SchedMode mode)
+	// Change the enqueueing mode.
+	void setEnqMode(EnqMode mode)
 	{
 		mode_ = mode;
 	}
@@ -88,32 +88,34 @@ protected:
 	// By this time the row type must be set, and so the embedded label initialized
 	// (even if the mode is SM_IGNORE).
 	//
-	// @param row - row being sent, may be NULL which will be ignored
+	// If the user requests a copy, he should not try to schdeule it as is, since
+	// that would repeat the change the second time. Instead he should either do a
+	// translation on that tray or pick the records individually.
+	//
+	// @param row - row being sent, may be NULL which will be ignored and produce nothing
 	// @param opcode - opcode for rowop
-	// @param copyTray - tray to insert a copy of the row
-	// @param copyLabel - the label for the copy (must not be NULL if copyTray is not NULL);
-	//        MUST be of an equal row type (checking left to the caller).
+	// @param copyTray - tray to insert a copy of the row, or NULL
 	// XXX later will add timestamp and sequence
-	void send(Row *row, Rowop::Opcode opcode, Tray *copyTray, Label *copyLabel);
+	void send(Row *row, Rowop::Opcode opcode, Tray *copyTray);
 
 protected:
 	Autoref<Unit> unit_; // unit where it belongs (not that Unit doesn't have a ref back, ao Autoref is OK)
 	Autoref<Label> label_; // this gadget's label
 	Autoref<RowType> type_; // type of rows
 	string name_; // name of the gadget, passed to the label name
-	SchedMode mode_; // how the rowops get scheduled in unit
+	EnqMode mode_; // how the rowops get enqueued in unit
 };
 
-// a version that exports setSchedMode()
-// (CS stands for Changeable Scheduling)
-class GadgetCS : public Gadget
+// a version that exports setEnqMode()
+// (CS stands for Changeable Enqueueing)
+class GadgetCE : public Gadget
 {
 public:
-	GadgetCS(Unit *unit, SchedMode mode, const string &name = "", Onceref<RowType> rt = (RowType*)NULL) :
+	GadgetCE(Unit *unit, EnqMode mode, const string &name = "", Onceref<RowType> rt = (RowType*)NULL) :
 		Gadget(unit, mode, name, rt)
 	{ }
 
-	void setSchedMode(SchedMode mode)
+	void setEnqMode(EnqMode mode)
 	{
 		mode_ = mode;
 	}
