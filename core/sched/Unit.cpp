@@ -86,7 +86,7 @@ void Unit::schedule(Onceref<Rowop> rop)
 	outerFrame_->push_back(rop);
 }
 
-void Unit::schedule(Onceref<Tray> tray)
+void Unit::scheduleTray(Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
 		outerFrame_->push_back(*it);
@@ -98,7 +98,7 @@ void Unit::fork(Onceref<Rowop> rop)
 	innerFrame_->push_back(rop);
 }
 
-void Unit::fork(Onceref<Tray> tray)
+void Unit::forkTray(Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
 		innerFrame_->push_back(*it);
@@ -116,11 +116,11 @@ void Unit::call(Onceref<Rowop> rop)
 		popFrame();
 }
 
-void Unit::call(Onceref<Tray> tray)
+void Unit::callTray(Onceref<Tray> tray)
 {
 	bool pushed = pushFrame();
 
-	fork(tray);
+	forkTray(tray);
 	drainFrame();
 
 	if (pushed)

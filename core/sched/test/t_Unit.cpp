@@ -353,7 +353,7 @@ UTESTCASE scheduling(Utest *utest)
 	tray->push_back(op4);
 	tray->push_back(op5);
 
-	unit->schedule(tray);
+	unit->scheduleTray(tray);
 
 	tray->push_back(op4); // mess with the tray afterwards, check that it doesn't affect what is scheduled
 	tray->push_back(op5);
@@ -373,7 +373,7 @@ UTESTCASE scheduling(Utest *utest)
 	tray->push_back(op4);
 	tray->push_back(op5);
 
-	unit->fork(tray);
+	unit->forkTray(tray);
 
 	unit->drainFrame();
 	UT_ASSERT(unit->empty());
@@ -391,7 +391,7 @@ UTESTCASE scheduling(Utest *utest)
 	tray->push_back(op4);
 	tray->push_back(op5);
 
-	unit->call(tray); // produces the immediate result, so check it before draining
+	unit->callTray(tray); // produces the immediate result, so check it before draining
 
 	string expect_call_1 = 
 		"unit 'u' before label 'lab4' op NOP\n"
@@ -520,7 +520,7 @@ UTESTCASE chaining(Utest *utest)
 
 	// now the StringTracer not verbose
 	Autoref<Unit::StringTracer> trace3 = new Unit::StringTracer();
-	unit->setTracer(trace3.get());
+	unit->setTracer(trace3);
 	unit->schedule(op1);
 	unit->schedule(op2);
 	unit->drainFrame();

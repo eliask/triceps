@@ -55,7 +55,11 @@ public:
 			ref_->incref();
 	}
 
-	// This is for the automatic casts of the content pointer types
+	// This is for the automatic casts of the content pointer types.
+	// A catch here is that if there is an overloaded method differing
+	// only by the type in Autoref, and the call doesn't match one of them
+	// exactly, the compiler can't figure out, in which direction to cast.
+	// So avoid such overloading.
 	template <typename OtherTarget>
 	Autoref(const Autoref<OtherTarget> &ar) :
 		ref_(ar.get())
@@ -158,6 +162,29 @@ protected:
 	Target *ref_; // the actual pointer
 };
 
+// This is similar to const_iterator, because otherwise the
+// automatic conversion from Autoref<T> to Autoref<const T> doesn't work.
+// The conversion from Autoref<T> to const_Autoref<T> works.
+template <typename Target>
+class const_Autoref : public Autoref<const Target>
+{
+public:
+	const_Autoref()
+	{ }
+
+	const_Autoref(Target *t) :
+		Autoref<const Target>(t)
+	{ }
+
+	const_Autoref(const const_Autoref<Target> &ar) :
+		Autoref<const Target>(ar)
+	{ }
+
+	const_Autoref(const Autoref<Target> &ar) :
+		Autoref<const Target>(ar.get())
+	{ }
+};
+
 // This is a placeholder for now. In the future it may become an optimized
 // version to be used when an auto-referenced value needs to be passed
 // once, such as when returning a newly allocated value from a function,
@@ -177,6 +204,34 @@ public:
 
 	Onceref(const Autoref<Target> &ar) :
 		Autoref<Target>(ar)
+	{ }
+	
+	// This is for the automatic casts of the content pointer types
+	template <typename OtherTarget>
+	Onceref(const Autoref<OtherTarget> &ar) :
+		Autoref<Target>(ar)
+	{ }
+};
+
+template <typename Target>
+class const_Onceref : public const_Autoref<Target>
+{
+public:
+	const_Onceref()
+	{ }
+
+	const_Onceref(Target *t) :
+		const_Autoref<Target>(t)
+	{ }
+
+	const_Onceref(const const_Autoref<Target> &ar) :
+		const_Autoref<Target>(ar)
+	{ }
+	
+	// This is for the automatic casts of the content pointer types
+	template <typename OtherTarget>
+	const_Onceref(const Autoref<OtherTarget> &ar) :
+		const_Autoref<Target>(ar)
 	{ }
 };
 
