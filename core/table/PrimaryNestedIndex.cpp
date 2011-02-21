@@ -116,7 +116,7 @@ bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 	// the result of find() can be stored now in rh, to avoid look-up on insert
 	type_->getSection(rh)->iter_ = it;
 	GroupHandle *gh;
-	fprintf(stderr, "DEBUG PrimaryNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
+	// fprintf(stderr, "DEBUG PrimaryNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
 	if (it == data_.end()) {
 		gh = type_->makeGroupHandle(rh, table_);
@@ -133,7 +133,7 @@ bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 void PrimaryNestedIndex::insert(RowHandle *rh)
 {
 	Set::iterator it = type_->getIter(rh); // has been initialized in replacementPolicy()
-	fprintf(stderr, "DEBUG PrimaryNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
+	// fprintf(stderr, "DEBUG PrimaryNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
 	type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
 }
