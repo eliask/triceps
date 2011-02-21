@@ -41,21 +41,21 @@ public:
 	Unit(const string &name = "");
 
 	// Append a rowop to the end of the outermost queue frame.
-	void schedule(Onceref<const Rowop> rop);
+	void schedule(Onceref<Rowop> rop);
 	// Append the contents of a tray to the end of the outermost queue frame.
-	void schedule(Onceref<const Tray> tray);
+	void schedule(Onceref<Tray> tray);
 
 	// Append a rowop to the end of the current inner queue frame.
-	void fork(Onceref<const Rowop> rop);
+	void fork(Onceref<Rowop> rop);
 	// Append the contents of a tray to the end of the current inner queue frame.
-	void fork(Onceref<const Tray> tray);
+	void fork(Onceref<Tray> tray);
 
 	// Push a new frame and execute the rowop on it, until the frame empties.
 	// Then pop that frame, restoring the stack of queues.
-	void call(Onceref<const Rowop> rop);
+	void call(Onceref<Rowop> rop);
 	// Push a new frame with the copy of this tray and execute the ops until the frame empties.
 	// Then pop that frame, restoring the stack of queues.
-	void call(Onceref<const Tray> tray);
+	void call(Onceref<Tray> tray);
 
 	// Extract and execute the next record from the innermost frame.
 	void callNext();
@@ -107,7 +107,7 @@ public:
 		// @param fromLabel - during the chained calls, the parent label, otherwise NULL
 		// @param rop - rop operation that is executed
 		// @param when - the kind of event
-		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when) = 0;
+		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when) = 0;
 	};
 
 	// For convenience, a concrete tracer class that collects the trace information
@@ -116,9 +116,11 @@ public:
 	class StringTracer : public Tracer
 	{
 	public:
-		StringTracer();
+		// @param verbose - if true, record all the events, otherwise only the BEGIN records
+		StringTracer(bool verbose = false);
 
 		// Get back the buffer of messages
+		// (it can also be used to add messages to the buffer)
 		Erref getBuffer() const
 		{
 			return buffer_;
@@ -129,10 +131,11 @@ public:
 		void clearBuffer();
 
 		// from Tracer
-		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when);
+		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
 
 	protected:
 		Erref buffer_;
+		bool verbose_;
 	};
 
 	// Another version of string tracer that doesn't print the object addresses, 
@@ -140,8 +143,11 @@ public:
 	class StringNameTracer : public StringTracer
 	{
 	public:
+		// @param verbose - if true, record all the events, otherwise only the BEGIN records
+		StringNameTracer(bool verbose = false);
+
 		// from Tracer
-		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when);
+		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
 	};
 
 	// Set the new tracer
@@ -154,7 +160,7 @@ public:
 	}
 
 	// A callback for the Label, to trace its execution
-	void trace(const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when);
+	void trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
 
 	// }
 protected:

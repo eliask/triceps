@@ -29,7 +29,7 @@ using namespace BICEPS_NS;
 #define UT_ASSERT(expr) ((expr)? false : utest->fail(__FILE__, __LINE__, "Failed assertion: " #expr))
 #define UT_IS(expr, cexpr) (((expr) == (cexpr))? false : \
 	(utest->fail(__FILE__, __LINE__, "Failed assertion: " #expr " == " #cexpr), \
-		(cout << "      Has value: \"" << (expr) << "\"" << endl << flush), 1))
+		(cout << "      Has value: \"" << (expr) << "\"" << endl << flush), true))
 
 class Utest {
 public:

@@ -84,7 +84,7 @@ protected:
 	// The subclasses re-define this method to do something useful.
 	//
 	// arg - operation to perform; the caller holds a reference on it.
-	virtual void execute(const Rowop *arg) const = 0;
+	virtual void execute(Rowop *arg) const = 0;
 
 protected:
 	friend class Unit;
@@ -99,7 +99,7 @@ protected:
 	// unit - unit from where called (should be the same as in constructor)
 	// arg - operation to perform; the caller holds a reference on it.
 	// chainedFrom - if this call is a result of chaining, the chain parent
-	void call(Unit *unit, const Rowop *arg, const Label *chainedFrom = NULL) const;
+	void call(Unit *unit, Rowop *arg, const Label *chainedFrom = NULL) const;
 
 protected:
 	ChainedVec chained_; // the chained labels
@@ -119,7 +119,7 @@ public:
 
 protected:
 	// from Label
-	virtual void execute(const Rowop *arg) const;
+	virtual void execute(Rowop *arg) const;
 };
 
 }; // BICEPS_NS

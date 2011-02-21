@@ -21,14 +21,14 @@ namespace BICEPS_NS {
 // data is pushed into a table, some change notifications fall out
 // of it. By putting a tray under it these falling ops can be collected
 // and sent into the further processing.
-class Tray : public Starget, public deque< Autoref<const Rowop> >
+class Tray : public Starget, public deque< Autoref<Rowop> >
 {
 public:
 	Tray()
 	{}
 
 	Tray(const Tray &orig) :
-		deque< Autoref<const Rowop> >(orig)
+		deque< Autoref<Rowop> >(orig)
 	{ }
 };
 

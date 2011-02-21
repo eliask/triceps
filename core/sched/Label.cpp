@@ -39,7 +39,7 @@ void Label::clearChained()
 	chained_.clear();
 }
 
-void Label::call(Unit *unit, const Rowop *arg, const Label *chainedFrom) const
+void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 {
 	assert(unit == unit_); // XXX add some better way to report errors than crash? also check when scheduling a tray
 	unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE);
@@ -56,7 +56,7 @@ void Label::call(Unit *unit, const Rowop *arg, const Label *chainedFrom) const
 
 //////////////////////////////// DummyLabel ///////////////////////////////////////////
 
-void DummyLabel::execute(const Rowop *arg) const
+void DummyLabel::execute(Rowop *arg) const
 { }
 
 

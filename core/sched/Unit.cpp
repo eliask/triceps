@@ -16,8 +16,9 @@ Unit::Tracer::~Tracer()
 
 ///////////////////////////// Unit::StringTracer //////////////////////////////////
 
-Unit::StringTracer::StringTracer() :
-	buffer_(new Errors)
+Unit::StringTracer::StringTracer(bool verbose) :
+	buffer_(new Errors),
+	verbose_(verbose)
 { }
 
 void Unit::StringTracer::clearBuffer()
@@ -25,34 +26,49 @@ void Unit::StringTracer::clearBuffer()
 	buffer_ = new Errors;
 }
 
-void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when)
+void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when)
 {
-	buffer_->appendMsg(false, strprintf("unit %p '%s' %s label %p '%s' (chain %p) op %p %s", 
-		unit, unit->getName().c_str(), tracerWhenString(when),
-		label, label->getName().c_str(), fromLabel, 
-		rop, Rowop::opcodeString(rop->getOpcode()) ));
+	if (!verbose_ && when != TW_BEFORE)
+		return;
 
-	// XXX hexdump the row too?
+	string res = strprintf("unit %p '%s' %s label %p '%s' ",
+		unit, unit->getName().c_str(), tracerWhenString(when),
+		label, label->getName().c_str());
+
+	if (fromLabel != NULL) {
+		res.append(strprintf("(chain %p '%s') ", fromLabel, fromLabel->getName().c_str()));
+	};
+	res.append(strprintf("op %p %s", rop, Rowop::opcodeString(rop->getOpcode()) ));
+
+	buffer_->appendMsg(false, res);
+	// XXX print the row too?
 }
 
 ///////////////////////////// Unit::StringNameTracer //////////////////////////////////
 
-void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when)
+Unit::StringNameTracer::StringNameTracer(bool verbose) :
+	StringTracer(verbose)
+{ }
+
+void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when)
 {
+	if (!verbose_ && when != TW_BEFORE)
+		return;
+
 	string res = strprintf("unit '%s' %s label '%s' ", 
 		unit->getName().c_str(), tracerWhenString(when), label->getName().c_str());
 
 	if (fromLabel != NULL) {
 		res.append("(chain '");
 		res.append(fromLabel->getName());
-		res.append(") ");
+		res.append("') ");
 	};
 	res.append("op ");
 	res.append(Rowop::opcodeString(rop->getOpcode()));
 
 	buffer_->appendMsg(false, res);
 	
-	// XXX hexdump the row too?
+	// XXX print the row too?
 }
 
 ///////////////////////////// Unit //////////////////////////////////
@@ -65,31 +81,31 @@ Unit::Unit(const string &name) :
 	queue_.push_front(outerFrame_);
 }
 
-void Unit::schedule(Onceref<const Rowop> rop)
+void Unit::schedule(Onceref<Rowop> rop)
 {
 	outerFrame_->push_back(rop);
 }
 
-void Unit::schedule(Onceref<const Tray> tray)
+void Unit::schedule(Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
 		outerFrame_->push_back(*it);
 }
 
 
-void Unit::fork(Onceref<const Rowop> rop)
+void Unit::fork(Onceref<Rowop> rop)
 {
 	innerFrame_->push_back(rop);
 }
 
-void Unit::fork(Onceref<const Tray> tray)
+void Unit::fork(Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
 		innerFrame_->push_back(*it);
 }
 
 
-void Unit::call(Onceref<const Rowop> rop)
+void Unit::call(Onceref<Rowop> rop)
 {
 	// here a little optimization allows to avoid pushing extra frames
 	bool pushed = pushFrame();
@@ -100,7 +116,7 @@ void Unit::call(Onceref<const Rowop> rop)
 		popFrame();
 }
 
-void Unit::call(Onceref<const Tray> tray)
+void Unit::call(Onceref<Tray> tray)
 {
 	bool pushed = pushFrame();
 
@@ -115,7 +131,7 @@ void Unit::call(Onceref<const Tray> tray)
 void Unit::callNext()
 {
 	if (!innerFrame_->empty()) {
-		Autoref<const Rowop> rop = innerFrame_->front();
+		Autoref<Rowop> rop = innerFrame_->front();
 		innerFrame_->pop_front();
 
 		bool pushed = pushFrame();
@@ -177,7 +193,7 @@ void Unit::setTracer(Onceref<Tracer> tracer)
 	tracer_ = tracer;
 }
 
-void Unit::trace(const Label *label, const Label *fromLabel, const Rowop *rop, TracerWhen when)
+void Unit::trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when)
 {
 	if (!tracer_.isNull()) {
 		tracer_->execute(this, label, fromLabel, rop, when);

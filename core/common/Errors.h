@@ -99,6 +99,13 @@ public:
 	// @return - the result string
 	string print(const string &indent = "", const string &subindent = "  ");
 
+	// Get the number of messages (without taking nesting into account).
+	// (useful mostly for testing)
+	size_t size() const
+	{
+		return elist_.size();
+	}
+
 public:
 	// All the error messages are stored in these pairs, where both
 	// components are optional
