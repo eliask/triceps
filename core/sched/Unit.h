@@ -43,19 +43,19 @@ public:
 	// Append a rowop to the end of the outermost queue frame.
 	void schedule(Onceref<Rowop> rop);
 	// Append the contents of a tray to the end of the outermost queue frame.
-	void scheduleTray(Onceref<Tray> tray);
+	void scheduleTray(const_Onceref<Tray> tray);
 
 	// Append a rowop to the end of the current inner queue frame.
 	void fork(Onceref<Rowop> rop);
 	// Append the contents of a tray to the end of the current inner queue frame.
-	void forkTray(Onceref<Tray> tray);
+	void forkTray(const_Onceref<Tray> tray);
 
 	// Push a new frame and execute the rowop on it, until the frame empties.
 	// Then pop that frame, restoring the stack of queues.
 	void call(Onceref<Rowop> rop);
 	// Push a new frame with the copy of this tray and execute the ops until the frame empties.
 	// Then pop that frame, restoring the stack of queues.
-	void callTray(Onceref<Tray> tray);
+	void callTray(const_Onceref<Tray> tray);
 
 	// Extract and execute the next record from the innermost frame.
 	void callNext();

@@ -55,7 +55,7 @@ UTESTCASE mkunit(Utest *utest)
 	Autoref<Unit::Tracer> tracer1 = new Unit::StringNameTracer;
 	UT_IS(unit1->getTracer().get(), NULL);
 	unit1->setTracer(tracer1);
-	UT_IS(unit1->getTracer().get(), tracer1.get());
+	UT_IS(unit1->getTracer().get(), tracer1);
 
 	UT_ASSERT(unit1->empty());
 }
@@ -286,7 +286,7 @@ UTESTCASE scheduling(Utest *utest)
 	// make a unit 
 	Autoref<Unit> unit = new Unit("u");
 	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
-	unit->setTracer(trace.get());
+	unit->setTracer(trace);
 
 	// make row for setting
 	RowType::FieldVec fld;
@@ -433,7 +433,7 @@ UTESTCASE chaining(Utest *utest)
 	// make a unit 
 	Autoref<Unit> unit = new Unit("u");
 	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer(true);
-	unit->setTracer(trace.get());
+	unit->setTracer(trace);
 
 	// make row for setting
 	RowType::FieldVec fld;
@@ -509,7 +509,7 @@ UTESTCASE chaining(Utest *utest)
 	// now try the same with StringTracer, but since the pointers are unpredictable,
 	// just count the records
 	Autoref<Unit::StringTracer> trace2 = new Unit::StringTracer(true);
-	unit->setTracer(trace2.get());
+	unit->setTracer(trace2);
 	unit->schedule(op1);
 	unit->schedule(op2);
 	unit->drainFrame();
