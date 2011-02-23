@@ -67,7 +67,7 @@ protected:
 	// @param mode - how the rowops will be enqueued
 	// @parem name - name of the gadget if known, will be used to name the label
 	// @param rt - row type produced by this gadget, or NULL if not known yet
-	Gadget(Unit *unit, EnqMode mode, const string &name = "", Onceref<RowType> rt = (RowType*)NULL);
+	Gadget(Unit *unit, EnqMode mode, const string &name = "", const_Onceref<RowType> rt = (const RowType*)NULL);
 
 	// Change the enqueueing mode.
 	void setEnqMode(EnqMode mode)
@@ -82,7 +82,7 @@ protected:
 	}
 
 	// Set the row type. This initializes the label.
-	void setRowType(Onceref<RowType> rt);
+	void setRowType(const_Onceref<RowType> rt);
 
 	// Send a row.
 	// By this time the row type must be set, and so the embedded label initialized
@@ -96,12 +96,12 @@ protected:
 	// @param opcode - opcode for rowop
 	// @param copyTray - tray to insert a copy of the row, or NULL
 	// XXX later will add timestamp and sequence
-	void send(Row *row, Rowop::Opcode opcode, Tray *copyTray);
+	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray);
 
 protected:
 	Autoref<Unit> unit_; // unit where it belongs (not that Unit doesn't have a ref back, ao Autoref is OK)
 	Autoref<Label> label_; // this gadget's label
-	Autoref<RowType> type_; // type of rows
+	const_Autoref<RowType> type_; // type of rows
 	string name_; // name of the gadget, passed to the label name
 	EnqMode mode_; // how the rowops get enqueued in unit
 };

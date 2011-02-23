@@ -13,7 +13,7 @@ namespace BICEPS_NS {
 
 ////////////////////////////////////// Label /////////////////////////////////
 
-Label::Label(Unit *unit, Onceref<RowType> rtype, const string &name) :
+Label::Label(Unit *unit, const_Onceref<RowType> rtype, const string &name) :
 	type_(rtype),
 	unit_(unit),
 	name_(name)

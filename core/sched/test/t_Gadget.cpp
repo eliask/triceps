@@ -59,7 +59,7 @@ public:
 		GadgetCE::setRowType(rt);
 	}
 
-	void send(Row *row, Rowop::Opcode opcode, Tray *copyTray)
+	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
 	{
 		GadgetCE::send(row, opcode, copyTray);
 	}

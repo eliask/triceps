@@ -48,7 +48,7 @@ public:
 
 	// Rowop will hold the references on the row and the label.
 	// XXX think of checking the type of row 
-	Rowop(const Label *label, Opcode op, Row *row);
+	Rowop(const Label *label, Opcode op, const Row *row);
 	Rowop(const Label *label, Opcode op, const Rowref &row);
 
 	~Rowop();
@@ -81,7 +81,7 @@ public:
 		return  label_;
 	}
 
-	Row *getRow() const
+	const Row *getRow() const
 	{
 		return row_;
 	}
@@ -91,7 +91,7 @@ public:
 
 protected:
 	const_Autoref<Label> label_;
-	Row *row_; // a manual reference, the type from Label will be used for deletion
+	const Row *row_; // a manual reference, the type from Label will be used for deletion
 	// no timestamp nor sequence now, these will come later
 	Opcode opcode_;
 };

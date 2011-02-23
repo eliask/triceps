@@ -10,7 +10,7 @@
 
 namespace BICEPS_NS {
 
-Rowop::Rowop(const Label *label, Opcode op, Row *row) :
+Rowop::Rowop(const Label *label, Opcode op, const Row *row) :
 	label_(label),
 	row_(row),
 	opcode_(op)
@@ -35,7 +35,7 @@ Rowop::~Rowop()
 {
 	if (row_) {
 		if (row_->decref() <= 0)
-			label_->getType()->destroyRow(row_);
+			label_->getType()->destroyRow(const_cast<Row *>(row_));
 	}
 }
 

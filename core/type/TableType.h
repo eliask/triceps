@@ -11,6 +11,7 @@
 #include <type/IndexType.h>
 #include <type/RowType.h>
 #include <type/RowHandleType.h>
+#include <sched/Gadget.h>
 
 namespace BICEPS_NS {
 
@@ -63,8 +64,12 @@ public:
 	}
 
 	// Create an instance table of this type.
+	// @param unit - unit where the table belongs
+	// @param emode - enqueueing mode for the rowops produced in the table
+	// @param name - name of the table and of the table's output label (if unused, can be left as "")
+	// @param inputName - name of the table's input label (if unused, can be left as "")
 	// @return - new instance or NULL if not initialized or has an error
-	Onceref<Table> makeTable() const;
+	Onceref<Table> makeTable(Unit *unit, Gadget::EnqMode emode, const string &name, const string &inputName = "") const;
 
 	// Find an index type by name.
 	// Works only after initialization.

@@ -11,10 +11,37 @@
 
 namespace BICEPS_NS {
 
-Table::Table(const TableType *tt, const RowType *rowt, const RowHandleType *handt, const IndexTypeVec &topIt) :
+////////////////////////////////////// Table::InputLabel ////////////////////////////////////
+
+Table::InputLabel::InputLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Table *table) :
+	Label(unit, rtype, name),
+	table_(table)
+{ }
+
+void Table::InputLabel::execute(Rowop *arg) const
+{
+	if (arg->isInsert()) {
+		table_->insertRow(arg->getRow()); // ignore the failures
+	} else if (arg->isDelete()) {
+		// XXX this doesn't work because there is no default primary index,
+		// something needs to be done about it
+#if 0
+		RowHandle *rh = table_->find(arg->getRow());
+		if (rh != NULL)
+			table_->remove(rh);
+#endif
+	}
+}
+
+////////////////////////////////////// Table ////////////////////////////////////
+
+Table::Table(Unit *unit, EnqMode emode, const string &name, const string &inputName,
+	const TableType *tt, const RowType *rowt, const RowHandleType *handt) :
+	Gadget(unit, emode, name, rowt),
 	type_(tt),
 	rowType_(rowt),
-	rhType_(handt)
+	rhType_(handt),
+	inputLabel_(new InputLabel(unit, rowt, inputName, this))
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));
 	// fprintf(stderr, "DEBUG Table::Table root=%p\n", root_.get());
@@ -69,7 +96,7 @@ void Table::destroyRowHandle(RowHandle *rh)
 	delete rh;
 }
 
-bool Table::insert(const Row *row)
+bool Table::insertRow(const Row *row, Tray *copyTray)
 {
 	if (row == NULL)
 		return false;
@@ -77,7 +104,7 @@ bool Table::insert(const Row *row)
 	RowHandle *rh = makeRowHandle(row);
 	rh->incref();
 
-	bool res = insert(rh);
+	bool res = insert(rh, copyTray);
 
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
@@ -85,7 +112,7 @@ bool Table::insert(const Row *row)
 	return res;
 }
 
-bool Table::insert(RowHandle *newrh)
+bool Table::insert(RowHandle *newrh, Tray *copyTray)
 {
 	if (newrh == NULL)
 		return false;
@@ -118,18 +145,20 @@ bool Table::insert(RowHandle *newrh)
 	// finally, collapse the groups
 	root_->collapse(replace);
 
-	// and then the removed rows get unreferenced by the table
+	// and then the removed rows get unreferenced by the table and enqueued
 	// XXX these rows should also be returned in a tray
 	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
 		RowHandle *rh = *rsit;
+		send(rh->getRow(), Rowop::OP_DELETE, copyTray);
 		if (rh->decref() <= 0)
 			destroyRowHandle(rh);
 	}
+	send(newrh->getRow(), Rowop::OP_INSERT, copyTray);
 	
 	return true;
 }
 
-void Table::remove(RowHandle *rh)
+void Table::remove(RowHandle *rh, Tray *copyTray)
 {
 	if (rh == NULL || !rh->isInTable())
 		return;
@@ -141,6 +170,7 @@ void Table::remove(RowHandle *rh)
 	replace.insert(rh);
 	root_->collapse(replace);
 	
+	send(rh->getRow(), Rowop::OP_DELETE, copyTray);
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
 }

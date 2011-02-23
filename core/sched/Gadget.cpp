@@ -9,7 +9,7 @@
 
 namespace BICEPS_NS {
 
-Gadget::Gadget(Unit *unit, EnqMode mode, const string &name, Onceref<RowType> rt) :
+Gadget::Gadget(Unit *unit, EnqMode mode, const string &name, const_Onceref<RowType> rt) :
 	unit_(unit),
 	name_(name),
 	mode_(mode)
@@ -22,7 +22,7 @@ Gadget::Gadget(Unit *unit, EnqMode mode, const string &name, Onceref<RowType> rt
 Gadget::~Gadget()
 { }
 
-void Gadget::setRowType(Onceref<RowType> rt)
+void Gadget::setRowType(const_Onceref<RowType> rt)
 {
 	type_ = rt;
 	if (!rt.isNull()) {
@@ -30,7 +30,7 @@ void Gadget::setRowType(Onceref<RowType> rt)
 	}
 }
 
-void Gadget::send(Row *row, Rowop::Opcode opcode, Tray *copyTray)
+void Gadget::send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
 {
 	// fprintf(stderr, "DEBUG Gadget::send(row=%p, opcode=0x%x, tray=%p) mode=%d\n", row, opcode, copyTray, mode_);
 	assert(!label_.isNull());

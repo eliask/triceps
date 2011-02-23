@@ -47,6 +47,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -60,7 +61,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 }
 
@@ -69,6 +70,7 @@ UTESTCASE uninitialized(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -79,7 +81,7 @@ UTESTCASE uninitialized(Utest *utest)
 
 	UT_ASSERT(tt);
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -88,6 +90,7 @@ UTESTCASE withError(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -101,7 +104,7 @@ UTESTCASE withError(Utest *utest)
 	UT_ASSERT(!tt->getErrors().isNull());
 	UT_ASSERT(tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -110,6 +113,7 @@ UTESTCASE tableops(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -123,14 +127,14 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findIndex("primary");
 	UT_ASSERT(prim != NULL);
 
 	// other instance, for checking of errors
-	Autoref<Table> t2 = tt->makeTable();
+	Autoref<Table> t2 = tt->makeTable(unit, Table::SM_IGNORE, "t2");
 	UT_ASSERT(!t2.isNull());
 	IndexType *prim2 = tt->findIndex("primary");
 	UT_ASSERT(prim2 != NULL);
@@ -142,7 +146,7 @@ UTESTCASE tableops(Utest *utest)
 		);
 	UT_ASSERT(tt3);
 	tt3->initialize();
-	Autoref<Table> t3 = tt3->makeTable();
+	Autoref<Table> t3 = tt3->makeTable(unit, Table::SM_IGNORE, "t3");
 	UT_ASSERT(!t3.isNull());
 	IndexType *prim3 = tt3->findIndex("primary");
 	UT_ASSERT(prim3 != NULL);
@@ -167,7 +171,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_IS(iter, NULL);
 
 	// this should replace the row with an identical one but with auto-created handle
-	UT_ASSERT(t->insert(r1));
+	UT_ASSERT(t->insertRow(r1));
 	iter = t->begin();
 	RowHandle *iter2 = iter;
 	UT_ASSERT(iter != NULL);
@@ -195,7 +199,7 @@ UTESTCASE tableops(Utest *utest)
 	dv[4].setPtr(true, key2, sizeof(key2));
 	Rowref r2(rt1, rt1->makeRow(dv));
 
-	UT_ASSERT(t->insert(r2));
+	UT_ASSERT(t->insertRow(r2));
 
 	// check that now have 2 records
 	iter = t->begin();
@@ -210,7 +214,7 @@ UTESTCASE tableops(Utest *utest)
 	dv[4].setPtr(true, key3, sizeof(key3));
 	Rowref r3(rt1, rt1->makeRow(dv));
 
-	UT_ASSERT(t->insert(r3));
+	UT_ASSERT(t->insertRow(r3));
 
 	// check that now have 3 records
 	iter = t->begin();

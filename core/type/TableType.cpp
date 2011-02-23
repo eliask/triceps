@@ -122,12 +122,12 @@ void TableType::initialize()
 		errors_ = NULL;
 }
 
-Onceref<Table> TableType::makeTable() const
+Onceref<Table> TableType::makeTable(Unit *unit, Gadget::EnqMode emode, const string &name, const string &inputName) const
 {
 	if (!initialized_ || errors_->hasError())
 		return NULL;
 
-	return new Table(this, rowType_, rhType_, root_->nested_);
+	return new Table(unit, emode, name, inputName, this, rowType_, rhType_);
 }
 
 IndexType *TableType::findIndex(const string &name) const

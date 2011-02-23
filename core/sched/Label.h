@@ -41,12 +41,12 @@ public:
 	// @param unit - the unit where this label belongs
 	// @param rtype - type of row to be handled by this label
 	// @param name - a human-readable name of this label, for tracing
-	Label(Unit *unit, Onceref<RowType> rtype, const string &name = "");
+	Label(Unit *unit, const_Onceref<RowType> rtype, const string &name = "");
 	
 	virtual ~Label();
 
 	// Get the type of rows handled here
-	RowType *getType() const
+	const RowType *getType() const
 	{
 		return type_;
 	}
@@ -103,7 +103,7 @@ protected:
 
 protected:
 	ChainedVec chained_; // the chained labels
-	Autoref<RowType> type_; // type of the row handled here
+	const_Autoref<RowType> type_; // type of the row handled here
 	Unit *unit_; // not a reference, but more of a token
 	string name_; // human-readable name for tracing
 };
@@ -113,7 +113,7 @@ protected:
 class DummyLabel : public Label
 {
 public:
-	DummyLabel(Unit *unit, Onceref<RowType> rtype, const string &name = "") :
+	DummyLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name = "") :
 		Label(unit, rtype, name)
 	{ }
 

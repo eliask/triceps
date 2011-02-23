@@ -59,6 +59,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -69,7 +70,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 }
 
@@ -78,6 +79,7 @@ UTESTCASE uninitialized(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -85,7 +87,7 @@ UTESTCASE uninitialized(Utest *utest)
 
 	UT_ASSERT(tt);
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -94,6 +96,7 @@ UTESTCASE withError(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -113,7 +116,7 @@ UTESTCASE withError(Utest *utest)
 
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary':\n    nested index 1 'level2':\n      can not find the key field 'x'\n");
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -122,6 +125,7 @@ UTESTCASE tableops(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
+	Autoref<Unit> unit = new Unit;
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -132,7 +136,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable();
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findIndex("primary");
@@ -215,7 +219,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_IS(iter, NULL);
 
 	// this should replace the row with an identical one but with auto-created handle
-	UT_ASSERT(t->insert(r11));
+	UT_ASSERT(t->insertRow(r11));
 	// check that the old record is not in the table any more
 	i = 0;
 	iter2 = NULL;
