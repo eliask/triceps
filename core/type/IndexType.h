@@ -154,6 +154,22 @@ public:
 		return nested_.findByIndexId(it);
 	}
 
+	// Return the vector of nested indexes, for iteration
+	const IndexTypeVec &getNested() const
+	{
+		return nested_;
+	}
+
+	// Get the first leaf index under this one. If this
+	// one is a leaf, returns itself.
+	IndexType *getFirstLeaf() const
+	{
+		if (isLeaf())
+			return const_cast<IndexType *>(this);
+		else
+			return nested_[0].index_->getFirstLeaf();
+	}
+
 protected:
 	friend class IndexTypeVec;
 	friend class TableType;

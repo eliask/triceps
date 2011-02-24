@@ -83,6 +83,10 @@ public:
 	// @return - pointer to the nested index or NULL if none matches
 	IndexType *findIndexByIndexId(IndexType::IndexId it) const;
 
+	// Return the first leaf index type.
+	// If no indexes defined, returns NULL.
+	IndexType *firstLeafIndex() const;
+
 protected:
 	Autoref<RootIndexType> root_; // the root of index tree
 	Autoref<RowType> rowType_; // row for this table

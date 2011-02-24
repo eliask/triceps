@@ -111,6 +111,12 @@ public:
 	//     multiple matching rows, may return any of them but preferrably the first one.
 	RowHandle *find(IndexType *ixt, const RowHandle *what) const;
 
+	// Find the matching element using the default (first leaf) index.
+	RowHandle *find(const RowHandle *what) const
+	{
+		return find(firstLeaf_, what);
+	}
+
 protected:
 	friend class TableType;
 	// A Table is normally created by a TableType as a factory.
@@ -158,6 +164,7 @@ protected:
 	Autoref<const RowHandleType> rhType_;
 	Autoref<RootIndex> root_; // root of the index tree
 	Autoref<InputLabel> inputLabel_;
+	Autoref<IndexType> firstLeaf_; // the first leaf index type, used for default find
 };
 
 }; // BICEPS_NS

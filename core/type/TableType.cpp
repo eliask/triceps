@@ -144,4 +144,11 @@ IndexType *TableType::findIndexByIndexId(IndexType::IndexId it) const
 	return root_->findNestedByIndexId(it);
 }
 
+IndexType *TableType::firstLeafIndex() const
+{
+	if (root_.isNull())
+		return NULL;
+	return root_->getFirstLeaf();
+}
+
 }; // BICEPS_NS

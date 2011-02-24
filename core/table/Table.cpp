@@ -8,6 +8,7 @@
 #include <table/Table.h>
 #include <type/TableType.h>
 #include <type/RootIndexType.h>
+#include <mem/Rhref.h>
 
 namespace BICEPS_NS {
 
@@ -23,13 +24,10 @@ void Table::InputLabel::execute(Rowop *arg) const
 	if (arg->isInsert()) {
 		table_->insertRow(arg->getRow()); // ignore the failures
 	} else if (arg->isDelete()) {
-		// XXX this doesn't work because there is no default primary index,
-		// something needs to be done about it
-#if 0
-		RowHandle *rh = table_->find(arg->getRow());
+		Rhref what(table_, table_->makeRowHandle(arg->getRow()));
+		RowHandle *rh = table_->find(what);
 		if (rh != NULL)
 			table_->remove(rh);
-#endif
 	}
 }
 
@@ -41,7 +39,8 @@ Table::Table(Unit *unit, EnqMode emode, const string &name, const string &inputN
 	type_(tt),
 	rowType_(rowt),
 	rhType_(handt),
-	inputLabel_(new InputLabel(unit, rowt, inputName, this))
+	inputLabel_(new InputLabel(unit, rowt, inputName, this)),
+	firstLeaf_(tt->firstLeafIndex())
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));
 	// fprintf(stderr, "DEBUG Table::Table root=%p\n", root_.get());
