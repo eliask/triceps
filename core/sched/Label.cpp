@@ -27,6 +27,8 @@ Label::~Label()
 
 bool Label::chain(Onceref<Label> lab)
 {
+	assert(this != NULL);
+	assert(!lab.isNull());
 	if (!type_->equals(lab->type_))
 		return false;
 
