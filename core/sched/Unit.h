@@ -38,7 +38,7 @@ class Unit : public Mtarget
 {
 public:
 	// @param name - a human-readable name of this unit, for tracing
-	Unit(const string &name = "");
+	Unit(const string &name);
 
 	// Append a rowop to the end of the outermost queue frame.
 	void schedule(Onceref<Rowop> rop);

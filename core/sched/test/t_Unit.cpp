@@ -48,9 +48,6 @@ UTESTCASE mkunit(Utest *utest)
 	unit1->setName("xxx");
 	UT_IS(unit1->getName(), "xxx");
 
-	Autoref<Unit> unit2 = new Unit;
-	UT_IS(unit2->getName(), "");
-
 	// try setting a tracer
 	Autoref<Unit::Tracer> tracer1 = new Unit::StringNameTracer;
 	UT_IS(unit1->getTracer().get(), NULL);

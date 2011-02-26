@@ -47,7 +47,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
-	Autoref<Unit> unit = new Unit;
+	Autoref<Unit> unit = new Unit("u");
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -70,7 +70,7 @@ UTESTCASE uninitialized(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
-	Autoref<Unit> unit = new Unit;
+	Autoref<Unit> unit = new Unit("u");
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -90,7 +90,7 @@ UTESTCASE withError(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
-	Autoref<Unit> unit = new Unit;
+	Autoref<Unit> unit = new Unit("u");
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -113,7 +113,7 @@ UTESTCASE tableops(Utest *utest)
 	RowType::FieldVec fld;
 	mkfields(fld);
 
-	Autoref<Unit> unit = new Unit;
+	Autoref<Unit> unit = new Unit("u");
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
