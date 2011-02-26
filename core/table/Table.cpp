@@ -39,7 +39,7 @@ Table::Table(Unit *unit, EnqMode emode, const string &name, const string &inputN
 	type_(tt),
 	rowType_(rowt),
 	rhType_(handt),
-	inputLabel_(new InputLabel(unit, rowt, inputName, this)),
+	inputLabel_(inputName.empty()? NULL : new InputLabel(unit, rowt, inputName, this)),
 	firstLeaf_(tt->firstLeafIndex())
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));

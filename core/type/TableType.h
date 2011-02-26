@@ -67,7 +67,8 @@ public:
 	// @param unit - unit where the table belongs
 	// @param emode - enqueueing mode for the rowops produced in the table
 	// @param name - name of the table and of the table's output label (if unused, can be left as "")
-	// @param inputName - name of the table's input label (if unused, can be left as "")
+	// @param inputName - name of the table's input label (if unused, can be left as "" and the
+	//               table's input label will be NULL)
 	// @return - new instance or NULL if not initialized or has an error
 	Onceref<Table> makeTable(Unit *unit, Gadget::EnqMode emode, const string &name, const string &inputName = "") const;
 

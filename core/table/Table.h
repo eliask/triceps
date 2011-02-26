@@ -43,6 +43,7 @@ public:
 	// Return the label for sending Rowops into the table
 	// (as opposed to getLabel() which is inherited from gadget and
 	// returns the output label, on which the rowops are sent from the table).
+	// May return NULL if the input label was not created.
 	Label *getInputLabel() const
 	{
 		return inputLabel_.get();
@@ -124,7 +125,8 @@ protected:
 	// @param unit - unit where the table belongs
 	// @param emode - enqueueing mode for the rowops produced in the table
 	// @param name - name of the table and of the table's output label (if unused, can be left as "")
-	// @param inputName - name of the table's input label (if unused, can be left as "")
+	// @param inputName - name of the table's input label (if unused, can be left as "", and the
+	//               input label will be NULL)
 	// @param tt - table type
 	// @param rowt - type of rows in the table
 	// @param handt - type of row handles, created inside the table type

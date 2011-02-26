@@ -63,6 +63,7 @@ UTESTCASE primaryIndex(Utest *utest)
 
 	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
+	UT_ASSERT(t->getInputLabel() == NULL); // input label name was not specified
 }
 
 UTESTCASE uninitialized(Utest *utest)
