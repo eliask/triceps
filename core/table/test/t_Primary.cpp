@@ -244,3 +244,4 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(iter == NULL);
 }
 
+// queuing is tested in t_PrimaryNested

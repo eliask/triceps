@@ -272,3 +272,129 @@ UTESTCASE tableops(Utest *utest)
 	UT_IS(i, 2);
 }
 
+UTESTCASE queuing(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	// set a tracer on unit
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	// t0 is a table with a single index
+	Autoref<TableType> tt0 = (new TableType(rt1))
+		->addIndex("primary", new PrimaryIndexType(
+			(new NameSet())->add("c")) // same as the inner key of tt1
+		);
+
+	UT_ASSERT(tt0);
+	tt0->initialize();
+	UT_ASSERT(tt0->getErrors().isNull());
+	UT_ASSERT(!tt0->getErrors()->hasError());
+
+	Autoref<Table> t0 = tt0->makeTable(unit, Table::SM_FORK, "t0", "t0_in");
+	UT_ASSERT(!t0.isNull());
+
+	// tt1 is a table with nested index
+	Autoref<TableType> tt1 = mktabtype(rt1);
+
+	UT_ASSERT(tt1);
+	tt1->initialize();
+	UT_ASSERT(tt1->getErrors().isNull());
+	UT_ASSERT(!tt1->getErrors()->hasError());
+
+	Autoref<Table> t1 = tt1->makeTable(unit, Table::SM_CALL, "t1", "t1_in");
+	UT_ASSERT(!t1.isNull());
+
+	// connect the tables
+	UT_ASSERT(t0->getLabel()->chain(t1->getInputLabel()));
+
+	// create a matrix of records, across both axes of indexing
+	RowHandle *iter;
+	FdataVec dv;
+	mkfdata(dv);
+
+	int32_t one32 = 1, two32 = 2;
+	int64_t one64 = 1, two64 = 2;
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&one64;
+	Rowref r11(rt1,  rt1->makeRow(dv));
+	Rhref rh11(t0, t0->makeRowHandle(r11));
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&two64;
+	Rowref r12(rt1,  rt1->makeRow(dv));
+	Rhref rh12(t0, t0->makeRowHandle(r12));
+
+	dv[1].data_ = (char *)&two32; dv[2].data_ = (char *)&one64;
+	Rowref r21(rt1,  rt1->makeRow(dv));
+	Rhref rh21(t0, t0->makeRowHandle(r21));
+
+	dv[1].data_ = (char *)&two32; dv[2].data_ = (char *)&two64;
+	Rowref r22(rt1,  rt1->makeRow(dv));
+	Rhref rh22(t0, t0->makeRowHandle(r22));
+
+	// so far the tables must be empty
+	iter = t0->begin();
+	UT_IS(iter, NULL);
+	iter = t1->begin();
+	UT_IS(iter, NULL);
+
+	// enqueue the ops, the second 2 records trigger the replacement policies in t0
+	unit->schedule(new Rowop(t0->getInputLabel(), Rowop::OP_INSERT, r11));
+	unit->schedule(new Rowop(t0->getInputLabel(), Rowop::OP_INSERT, r12));
+	unit->schedule(new Rowop(t0->getInputLabel(), Rowop::OP_INSERT, r21));
+	unit->schedule(new Rowop(t0->getInputLabel(), Rowop::OP_INSERT, r22));
+
+	// execute
+	unit->drainFrame();
+	UT_ASSERT(unit->empty());
+	string tlog = trace->getBuffer()->print();
+
+	string expect = 
+		"unit 'u' before label 't0_in' op INSERT\n"
+		"unit 'u' before label 't0' op INSERT\n"
+		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
+		"unit 'u' before label 't1' op INSERT\n"
+
+		"unit 'u' before label 't0_in' op INSERT\n"
+		"unit 'u' before label 't0' op INSERT\n"
+		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
+		"unit 'u' before label 't1' op INSERT\n"
+
+		"unit 'u' before label 't0_in' op INSERT\n"
+			"unit 'u' before label 't0' op DELETE\n"
+			"unit 'u' before label 't1_in' (chain 't0') op DELETE\n"
+			"unit 'u' before label 't1' op DELETE\n"
+		"unit 'u' before label 't0' op INSERT\n"
+		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
+		"unit 'u' before label 't1' op INSERT\n"
+
+		"unit 'u' before label 't0_in' op INSERT\n"
+			"unit 'u' before label 't0' op DELETE\n"
+			"unit 'u' before label 't1_in' (chain 't0') op DELETE\n"
+			"unit 'u' before label 't1' op DELETE\n"
+		"unit 'u' before label 't0' op INSERT\n"
+		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
+		"unit 'u' before label 't1' op INSERT\n"
+	;
+	UT_IS(tlog, expect);
+
+	// now each table should have 2 records
+	iter = t0->begin();
+	UT_ASSERT(iter != NULL);
+	iter = t0->next(iter);
+	UT_ASSERT(iter != NULL);
+	iter = t0->next(iter);
+	UT_IS(iter, NULL);
+
+	iter = t1->begin();
+	UT_ASSERT(iter != NULL);
+	iter = t1->next(iter);
+	UT_ASSERT(iter != NULL);
+	iter = t1->next(iter);
+	UT_IS(iter, NULL);
+}
