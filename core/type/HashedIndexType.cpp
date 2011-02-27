@@ -5,24 +5,24 @@
 //
 // An index that implements a unique primary key with an unpredictable order.
 
-#include <type/PrimaryIndexType.h>
+#include <type/HashedIndexType.h>
 #include <type/TableType.h>
-#include <table/PrimaryIndex.h>
-#include <table/PrimaryNestedIndex.h>
+#include <table/HashedIndex.h>
+#include <table/HashedNestedIndex.h>
 #include <table/Table.h>
 #include <string.h>
 
 namespace BICEPS_NS {
 
-//////////////////////////// PrimaryIndexType::Less  /////////////////////////
+//////////////////////////// HashedIndexType::Less  /////////////////////////
 
-PrimaryIndexType::Less::Less(const RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld)  :
+HashedIndexType::Less::Less(const RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld)  :
 	keyFld_(keyFld),
 	rt_(rt),
 	rhOffset_(rhOffset)
 { }
 
-bool PrimaryIndexType::Less::operator() (const RowHandle *r1, const RowHandle *r2) const 
+bool HashedIndexType::Less::operator() (const RowHandle *r1, const RowHandle *r2) const 
 {
 	RhSection *rs1 = r1->get<RhSection>(rhOffset_);
 	RhSection *rs2 = r2->get<RhSection>(rhOffset_);
@@ -73,7 +73,7 @@ bool PrimaryIndexType::Less::operator() (const RowHandle *r1, const RowHandle *r
 	return false; // gets here only on equal values
 }
 
-void PrimaryIndexType::Less::initHash(RowHandle *rh)
+void HashedIndexType::Less::initHash(RowHandle *rh)
 {
 	Hash::Value hash = Hash::basis_;
 
@@ -93,15 +93,15 @@ void PrimaryIndexType::Less::initHash(RowHandle *rh)
 	rs->hash_ = hash;
 }
 
-//////////////////////////// PrimaryIndexType /////////////////////////
+//////////////////////////// HashedIndexType /////////////////////////
 
-PrimaryIndexType::PrimaryIndexType(NameSet *key) :
+HashedIndexType::HashedIndexType(NameSet *key) :
 	IndexType(IT_PRIMARY),
 	key_(key)
 {
 }
 
-PrimaryIndexType::PrimaryIndexType(const PrimaryIndexType &orig) :
+HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
 	IndexType(orig)
 {
 	if (!orig.key_.isNull()) {
@@ -109,13 +109,13 @@ PrimaryIndexType::PrimaryIndexType(const PrimaryIndexType &orig) :
 	}
 }
 
-PrimaryIndexType *PrimaryIndexType::setKey(NameSet *key)
+HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
 	key_ = key;
 	return this;
 }
 
-bool PrimaryIndexType::equals(const Type *t) const
+bool HashedIndexType::equals(const Type *t) const
 {
 	if (this == t)
 		return true; // self-comparison, shortcut
@@ -123,7 +123,7 @@ bool PrimaryIndexType::equals(const Type *t) const
 	if (!IndexType::equals(t))
 		return false;
 	
-	const PrimaryIndexType *pit = static_cast<const PrimaryIndexType *>(t);
+	const HashedIndexType *pit = static_cast<const HashedIndexType *>(t);
 	if ( (!key_.isNull() && pit->key_.isNull())
 	|| (key_.isNull() && !pit->key_.isNull()) )
 		return false;
@@ -131,7 +131,7 @@ bool PrimaryIndexType::equals(const Type *t) const
 	return key_->equals(pit->key_);
 }
 
-bool PrimaryIndexType::match(const Type *t) const
+bool HashedIndexType::match(const Type *t) const
 {
 	if (this == t)
 		return true; // self-comparison, shortcut
@@ -139,7 +139,7 @@ bool PrimaryIndexType::match(const Type *t) const
 	if (!IndexType::match(t))
 		return false;
 	
-	const PrimaryIndexType *pit = static_cast<const PrimaryIndexType *>(t);
+	const HashedIndexType *pit = static_cast<const HashedIndexType *>(t);
 	if ( (!key_.isNull() && pit->key_.isNull())
 	|| (key_.isNull() && !pit->key_.isNull()) )
 		return false;
@@ -150,9 +150,9 @@ bool PrimaryIndexType::match(const Type *t) const
 	return key_->equals(pit->key_);
 }
 
-void PrimaryIndexType::printTo(string &res, const string &indent, const string &subindent) const
+void HashedIndexType::printTo(string &res, const string &indent, const string &subindent) const
 {
-	res.append("PrimaryIndex(");
+	res.append("HashedIndex(");
 	if (key_) {
 		for (NameSet::iterator i = key_->begin(); i != key_->end(); ++i) {
 			res.append(*i);
@@ -166,12 +166,12 @@ void PrimaryIndexType::printTo(string &res, const string &indent, const string &
 	}
 }
 
-IndexType *PrimaryIndexType::copy() const
+IndexType *HashedIndexType::copy() const
 {
-	return new PrimaryIndexType(*this);
+	return new HashedIndexType(*this);
 }
 
-void PrimaryIndexType::initialize()
+void HashedIndexType::initialize()
 {
 	if (isInitialized())
 		return; // nothing to do
@@ -179,7 +179,7 @@ void PrimaryIndexType::initialize()
 
 	errors_ = new Errors;
 
-	rhOffset_ = tabtype_->rhType()->allocate(sizeof(PrimaryIndex::RhSection));
+	rhOffset_ = tabtype_->rhType()->allocate(sizeof(HashedIndex::RhSection));
 
 	// find the fields
 	const RowType *rt = tabtype_->rowType();
@@ -197,30 +197,30 @@ void PrimaryIndexType::initialize()
 	less_ = new Less(tabtype_->rowType(), rhOffset_, keyFld_);
 }
 
-Index *PrimaryIndexType::makeIndex(const TableType *tabtype, Table *table) const
+Index *HashedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 {
 	if (!isInitialized() 
 	|| errors_->hasError())
 		return NULL; 
 	if (nested_.empty())
-		return new PrimaryIndex(tabtype, table, this, less_);
+		return new HashedIndex(tabtype, table, this, less_);
 	else
-		return new PrimaryNestedIndex(tabtype, table, this, less_);
+		return new HashedNestedIndex(tabtype, table, this, less_);
 }
 
-void PrimaryIndexType::initRowHandleSection(RowHandle *rh) const
+void HashedIndexType::initRowHandleSection(RowHandle *rh) const
 {
 	less_->initHash(rh);
 }
 
-void PrimaryIndexType::clearRowHandleSection(RowHandle *rh) const
+void HashedIndexType::clearRowHandleSection(RowHandle *rh) const
 { 
 	// clear the iterator by calling its destructor
 	RhSection *rs = rh->get<RhSection>(rhOffset_);
 	rs->~RhSection();
 }
 
-void PrimaryIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
+void HashedIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
 {
 	RhSection *rs = rh->get<RhSection>(rhOffset_);
 	RhSection *fromrs = fromrh->get<RhSection>(rhOffset_);

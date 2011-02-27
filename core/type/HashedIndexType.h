@@ -5,8 +5,8 @@
 //
 // An index that implements a unique primary key with an unpredictable order.
 
-#ifndef __Biceps_PrimaryIndexType_h__
-#define __Biceps_PrimaryIndexType_h__
+#ifndef __Biceps_HashedIndexType_h__
+#define __Biceps_HashedIndexType_h__
 
 #include <type/IndexType.h>
 #include <type/NameSet.h>
@@ -16,12 +16,12 @@ namespace BICEPS_NS {
 
 class RowType;
 
-class PrimaryIndexType : public IndexType
+class HashedIndexType : public IndexType
 {
 public:
-	PrimaryIndexType(NameSet *key = NULL);
+	HashedIndexType(NameSet *key = NULL);
 
-	PrimaryIndexType *setKey(NameSet *key);
+	HashedIndexType *setKey(NameSet *key);
 
 	// from Type
 	virtual bool equals(const Type *t) const;
@@ -38,8 +38,8 @@ public:
 
 protected:
 	// index instance interface
-	friend class PrimaryIndex;
-	friend class PrimaryNestedIndex;
+	friend class HashedIndex;
+	friend class HashedNestedIndex;
 
 	struct RhSection;
 	
@@ -89,7 +89,7 @@ protected:
 
 protected:
 	// used by copy()
-	PrimaryIndexType(const PrimaryIndexType &orig);
+	HashedIndexType(const HashedIndexType &orig);
 
 	RhSection *getSection(const RowHandle *rh) const
 	{
@@ -111,4 +111,4 @@ protected:
 
 }; // BICEPS_NS
 
-#endif // __Biceps_PrimaryIndexType_h__
+#endif // __Biceps_HashedIndexType_h__

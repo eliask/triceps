@@ -5,22 +5,22 @@
 //
 // Implementation of a simple primary key with further nesting.
 
-#include <table/PrimaryNestedIndex.h>
-#include <type/PrimaryIndexType.h>
+#include <table/HashedNestedIndex.h>
+#include <type/HashedIndexType.h>
 #include <type/RowType.h>
 
 namespace BICEPS_NS {
 
-//////////////////////////// PrimaryNestedIndex /////////////////////////
+//////////////////////////// HashedNestedIndex /////////////////////////
 
-PrimaryNestedIndex::PrimaryNestedIndex(const TableType *tabtype, Table *table, const PrimaryIndexType *mytype, Less *lessop) :
+HashedNestedIndex::HashedNestedIndex(const TableType *tabtype, Table *table, const HashedIndexType *mytype, Less *lessop) :
 	Index(tabtype, table),
 	data_(*lessop),
 	type_(mytype),
 	less_(lessop)
 { }
 
-PrimaryNestedIndex::~PrimaryNestedIndex()
+HashedNestedIndex::~HashedNestedIndex()
 {
 	vector<GroupHandle *> groups;
 	groups.reserve(data_.size());
@@ -36,7 +36,7 @@ PrimaryNestedIndex::~PrimaryNestedIndex()
 	}
 }
 
-void PrimaryNestedIndex::clearData()
+void HashedNestedIndex::clearData()
 {
 	// pass recursively into the groups
 	for (Set::iterator it = data_.begin(); it != data_.end(); ++it) {
@@ -44,12 +44,12 @@ void PrimaryNestedIndex::clearData()
 	}
 }
 
-const IndexType *PrimaryNestedIndex::getType() const
+const IndexType *HashedNestedIndex::getType() const
 {
 	return type_;
 }
 
-RowHandle *PrimaryNestedIndex::begin() const
+RowHandle *HashedNestedIndex::begin() const
 {
 	Set::iterator it = data_.begin();
 	if (it == data_.end())
@@ -58,9 +58,9 @@ RowHandle *PrimaryNestedIndex::begin() const
 		return type_->beginIteration(static_cast<GroupHandle *>(*it));
 }
 
-RowHandle *PrimaryNestedIndex::next(const RowHandle *cur) const
+RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
 {
-	// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p, cur=%p)\n", this, cur);
+	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
 
@@ -68,7 +68,7 @@ RowHandle *PrimaryNestedIndex::next(const RowHandle *cur) const
 
 	if (it != data_.end()) {
 		RowHandle *res = type_->nextIteration(static_cast<GroupHandle *>(*it), cur);
-		// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
+		// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
 		if (res != NULL)
 			return res;
 	}
@@ -76,47 +76,47 @@ RowHandle *PrimaryNestedIndex::next(const RowHandle *cur) const
 	// otherwise try the next groups until find a non-empty one
 	for (++it; it != data_.end(); ++it) {
 		RowHandle *res = type_->beginIteration(static_cast<GroupHandle *>(*it));
-		// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p) beginIteration return=%p\n", this, res);
+		// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) beginIteration return=%p\n", this, res);
 		if (res != NULL)
 			return res;
 	}
-	// fprintf(stderr, "DEBUG PrimaryNestedIndex::next(this=%p) return NULL\n", this);
+	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) return NULL\n", this);
 
 	return NULL;
 }
 
-RowHandle *PrimaryNestedIndex::nextGroup(const RowHandle *cur) const
+RowHandle *HashedNestedIndex::nextGroup(const RowHandle *cur) const
 {
 	// XXX doesn't make sense at the moment, need to redesign
 	return NULL;
 }
 
-RowHandle *PrimaryNestedIndex::find(const RowHandle *what) const
+RowHandle *HashedNestedIndex::find(const RowHandle *what) const
 {
 	return NULL; // no records directly here
 }
 
-Index *PrimaryNestedIndex::findNested(const RowHandle *what, int nestPos) const
+Index *HashedNestedIndex::findNested(const RowHandle *what, int nestPos) const
 {
-	// fprintf(stderr, "DEBUG PrimaryNestedIndex::findNested(this=%p, what=%p, nestPos=%d)\n", this, what, nestPos);
+	// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p, what=%p, nestPos=%d)\n", this, what, nestPos);
 	Set::iterator it = data_.find(const_cast<RowHandle *>(what));
 	if (it == data_.end()) {
-		// fprintf(stderr, "DEBUG PrimaryNestedIndex::findNested(this=%p) return NULL\n", this);
+		// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return NULL\n", this);
 		return NULL;
 	} else {
 		Index *idx = type_->groupToIndex(static_cast<GroupHandle *>(*it), nestPos);
-		// fprintf(stderr, "DEBUG PrimaryNestedIndex::findNested(this=%p) return index %p\n", this, idx);
+		// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return index %p\n", this, idx);
 		return idx;
 	}
 }
 
-bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
+bool HashedNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
 	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
 	// the result of find() can be stored now in rh, to avoid look-up on insert
 	type_->getSection(rh)->iter_ = it;
 	GroupHandle *gh;
-	// fprintf(stderr, "DEBUG PrimaryNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
+	// fprintf(stderr, "DEBUG HashedNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
 	if (it == data_.end()) {
 		gh = type_->makeGroupHandle(rh, table_);
@@ -130,15 +130,15 @@ bool PrimaryNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 	return type_->groupReplacementPolicy(gh, rh, replaced);
 }
 
-void PrimaryNestedIndex::insert(RowHandle *rh)
+void HashedNestedIndex::insert(RowHandle *rh)
 {
 	Set::iterator it = type_->getIter(rh); // has been initialized in replacementPolicy()
-	// fprintf(stderr, "DEBUG PrimaryNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
+	// fprintf(stderr, "DEBUG HashedNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
 	type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
 }
 
-void PrimaryNestedIndex::remove(RowHandle *rh)
+void HashedNestedIndex::remove(RowHandle *rh)
 {
 	Set::iterator it = type_->getIter(rh); // row is known to be in the table
 	if (it != data_.end()) {
@@ -146,7 +146,7 @@ void PrimaryNestedIndex::remove(RowHandle *rh)
 	}
 }
 
-bool PrimaryNestedIndex::collapse(const RhSet &replaced)
+bool HashedNestedIndex::collapse(const RhSet &replaced)
 {
 	// split the set into subsets by iterator
 	typedef map<GroupHandle *, RhSet> SplitMap;

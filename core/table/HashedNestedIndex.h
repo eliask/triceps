@@ -5,32 +5,32 @@
 //
 // Implementation of a simple primary key with further nesting.
 
-#ifndef __Biceps_PrimaryNestedIndex_h__
-#define __Biceps_PrimaryNestedIndex_h__
+#ifndef __Biceps_HashedNestedIndex_h__
+#define __Biceps_HashedNestedIndex_h__
 
 #include <table/Index.h>
-#include <type/PrimaryIndexType.h>
+#include <type/HashedIndexType.h>
 
 namespace BICEPS_NS {
 
-class PrimaryIndexType;
+class HashedIndexType;
 class RowType;
 
-class PrimaryNestedIndex: public Index
+class HashedNestedIndex: public Index
 {
-	friend class PrimaryIndexType;
+	friend class HashedIndexType;
 
 public:
-	typedef PrimaryIndexType::Less Less;
-	typedef PrimaryIndexType::RhSection RhSection;
-	typedef PrimaryIndexType::Set Set;
+	typedef HashedIndexType::Less Less;
+	typedef HashedIndexType::RhSection RhSection;
+	typedef HashedIndexType::Set Set;
 
 	// @param tabtype - type of table where this index belongs
 	// @param table - the actual table where this index belongs
 	// @param mytype - type that created this index
 	// @param lessop - less functor class for the key, this index assumes is ownership
-	PrimaryNestedIndex(const TableType *tabtype, Table *table, const PrimaryIndexType *mytype, Less *lessop);
-	~PrimaryNestedIndex();
+	HashedNestedIndex(const TableType *tabtype, Table *table, const HashedIndexType *mytype, Less *lessop);
+	~HashedNestedIndex();
 
 	// from Index
 	virtual void clearData();
@@ -47,10 +47,10 @@ public:
 
 protected:
 	Set data_; // the data store
-	Autoref<const PrimaryIndexType> type_; // type of this index
+	Autoref<const HashedIndexType> type_; // type of this index
 	Less *less_; // the comparator object, owned by the type
 };
 
 }; // BICEPS_NS
 
-#endif // __Biceps_PrimaryNestedIndex_h__
+#endif // __Biceps_HashedNestedIndex_h__

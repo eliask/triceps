@@ -48,7 +48,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -72,7 +72,7 @@ UTESTCASE primaryIndex(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  PrimaryIndex(a, e, ) primary,\n"
+		"  HashedIndex(a, e, ) primary,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -81,7 +81,7 @@ UTESTCASE primaryIndex(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ) primary, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { HashedIndex(a, e, ) primary, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findIndex("primary");
@@ -105,7 +105,7 @@ UTESTCASE badRow(Utest *utest)
 	UT_ASSERT(rt1->getErrors()->hasError());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -120,7 +120,7 @@ UTESTCASE badRow(Utest *utest)
 UTESTCASE nullRow(Utest *utest)
 {
 	Autoref<TableType> tt = (new TableType(NULL))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -141,7 +141,7 @@ UTESTCASE badIndexName(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("", new PrimaryIndexType(
+		->addIndex("", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -182,10 +182,10 @@ UTESTCASE dupIndexName(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		)
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		)
 		;
@@ -207,9 +207,9 @@ UTESTCASE primaryNested(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", (new PrimaryIndexType(
+		->addIndex("primary", (new HashedIndexType(
 			(new NameSet())->add("a")->add("e")))
-			->addNested("level2", new PrimaryIndexType(
+			->addNested("level2", new HashedIndexType(
 				(new NameSet())->add("a")->add("e"))
 			)
 		)
@@ -230,8 +230,8 @@ UTESTCASE primaryNested(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  PrimaryIndex(a, e, ) {\n"
-		"    PrimaryIndex(a, e, ) level2,\n"
+		"  HashedIndex(a, e, ) {\n"
+		"    HashedIndex(a, e, ) level2,\n"
 		"  } primary,\n"
 		"}"
 	;
@@ -241,7 +241,7 @@ UTESTCASE primaryNested(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { PrimaryIndex(a, e, ) { PrimaryIndex(a, e, ) level2, } primary, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { HashedIndex(a, e, ) { HashedIndex(a, e, ) level2, } primary, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findIndex("primary");
@@ -267,7 +267,7 @@ UTESTCASE primaryBadField(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("x")->add("e"))
 		)
 		;

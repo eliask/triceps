@@ -11,7 +11,7 @@
 #include <type/AllTypes.h>
 #include <common/StringUtil.h>
 #include <table/Table.h>
-#include <table/PrimaryIndex.h>
+#include <table/HashedIndex.h>
 #include <mem/Rhref.h>
 
 // Make fields of all simple types
@@ -45,9 +45,9 @@ void mkfdata(FdataVec &fd)
 Onceref<TableType> mktabtype(Onceref<RowType> rt)
 {
 	return (new TableType(rt))
-			->addIndex("primary", (new PrimaryIndexType(
+			->addIndex("primary", (new HashedIndexType(
 				(new NameSet())->add("b")
-				))->addNested("level2", new PrimaryIndexType(
+				))->addNested("level2", new HashedIndexType(
 					(new NameSet())->add("c")
 				)
 			)
@@ -101,9 +101,9 @@ UTESTCASE withError(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-			->addIndex("primary", (new PrimaryIndexType(
+			->addIndex("primary", (new HashedIndexType(
 				(new NameSet())->add("b")
-				))->addNested("level2", new PrimaryIndexType(
+				))->addNested("level2", new HashedIndexType(
 					(new NameSet())->add("x")
 				)
 			)
@@ -287,7 +287,7 @@ UTESTCASE queuing(Utest *utest)
 
 	// t0 is a table with a single index
 	Autoref<TableType> tt0 = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("c")) // same as the inner key of tt1
 		);
 

@@ -11,7 +11,7 @@
 #include <type/AllTypes.h>
 #include <common/StringUtil.h>
 #include <table/Table.h>
-#include <table/PrimaryIndex.h>
+#include <table/HashedIndex.h>
 #include <mem/Rhref.h>
 
 // Make fields of all simple types
@@ -52,7 +52,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -76,7 +76,7 @@ UTESTCASE uninitialized(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -96,7 +96,7 @@ UTESTCASE withError(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("x")->add("e"))
 		);
 
@@ -119,7 +119,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -142,7 +142,7 @@ UTESTCASE tableops(Utest *utest)
 
 	// 3rd instance, with its own type, for checking of errors
 	Autoref<TableType> tt3 = (new TableType(rt1))
-		->addIndex("primary", new PrimaryIndexType(
+		->addIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 	UT_ASSERT(tt3);
@@ -245,4 +245,4 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(iter == NULL);
 }
 
-// queuing is tested in t_PrimaryNested
+// queuing is tested in t_HashedNested

@@ -10,7 +10,7 @@
 
 #include <type/AllSimpleTypes.h>
 #include <type/CompactRowType.h>
-#include <type/PrimaryIndexType.h>
+#include <type/HashedIndexType.h>
 #include <type/FifoIndexType.h>
 #include <type/TableType.h>
 
