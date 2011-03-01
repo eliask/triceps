@@ -33,13 +33,13 @@ void Table::InputLabel::execute(Rowop *arg) const
 
 ////////////////////////////////////// Table ////////////////////////////////////
 
-Table::Table(Unit *unit, EnqMode emode, const string &name, const string &inputName,
+Table::Table(Unit *unit, EnqMode emode, const string &name, 
 	const TableType *tt, const RowType *rowt, const RowHandleType *handt) :
-	Gadget(unit, emode, name, rowt),
+	Gadget(unit, emode, name + ".out", rowt),
 	type_(tt),
 	rowType_(rowt),
 	rhType_(handt),
-	inputLabel_(inputName.empty()? NULL : new InputLabel(unit, rowt, inputName, this)),
+	inputLabel_(new InputLabel(unit, rowt, name + ".in", this)),
 	firstLeaf_(tt->firstLeafIndex())
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));

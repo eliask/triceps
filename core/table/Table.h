@@ -124,13 +124,12 @@ protected:
 	//
 	// @param unit - unit where the table belongs
 	// @param emode - enqueueing mode for the rowops produced in the table
-	// @param name - name of the table and of the table's output label (if unused, can be left as "")
-	// @param inputName - name of the table's input label (if unused, can be left as "", and the
-	//               input label will be NULL)
+	// @param name - name of the table (name and a dot will prefix all the labels, the
+	//        input label will be name.in, output label name.out)
 	// @param tt - table type
 	// @param rowt - type of rows in the table
 	// @param handt - type of row handles, created inside the table type
-	Table(Unit *unit, EnqMode emode, const string &name, const string &inputName,
+	Table(Unit *unit, EnqMode emode, const string &name, 
 		const TableType *tt, const RowType *rowt, const RowHandleType *handt);
 
 protected:

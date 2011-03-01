@@ -296,7 +296,7 @@ UTESTCASE queuing(Utest *utest)
 	UT_ASSERT(tt0->getErrors().isNull());
 	UT_ASSERT(!tt0->getErrors()->hasError());
 
-	Autoref<Table> t0 = tt0->makeTable(unit, Table::SM_FORK, "t0", "t0_in");
+	Autoref<Table> t0 = tt0->makeTable(unit, Table::SM_FORK, "t0");
 	UT_ASSERT(!t0.isNull());
 
 	// tt1 is a table with nested index
@@ -307,7 +307,7 @@ UTESTCASE queuing(Utest *utest)
 	UT_ASSERT(tt1->getErrors().isNull());
 	UT_ASSERT(!tt1->getErrors()->hasError());
 
-	Autoref<Table> t1 = tt1->makeTable(unit, Table::SM_CALL, "t1", "t1_in");
+	Autoref<Table> t1 = tt1->makeTable(unit, Table::SM_CALL, "t1");
 	UT_ASSERT(!t1.isNull());
 
 	// connect the tables
@@ -355,31 +355,31 @@ UTESTCASE queuing(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string expect = 
-		"unit 'u' before label 't0_in' op INSERT\n"
-		"unit 'u' before label 't0' op INSERT\n"
-		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
-		"unit 'u' before label 't1' op INSERT\n"
+		"unit 'u' before label 't0.in' op INSERT\n"
+		"unit 'u' before label 't0.out' op INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
+		"unit 'u' before label 't1.out' op INSERT\n"
 
-		"unit 'u' before label 't0_in' op INSERT\n"
-		"unit 'u' before label 't0' op INSERT\n"
-		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
-		"unit 'u' before label 't1' op INSERT\n"
+		"unit 'u' before label 't0.in' op INSERT\n"
+		"unit 'u' before label 't0.out' op INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
+		"unit 'u' before label 't1.out' op INSERT\n"
 
-		"unit 'u' before label 't0_in' op INSERT\n"
-			"unit 'u' before label 't0' op DELETE\n"
-			"unit 'u' before label 't1_in' (chain 't0') op DELETE\n"
-			"unit 'u' before label 't1' op DELETE\n"
-		"unit 'u' before label 't0' op INSERT\n"
-		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
-		"unit 'u' before label 't1' op INSERT\n"
+		"unit 'u' before label 't0.in' op INSERT\n"
+			"unit 'u' before label 't0.out' op DELETE\n"
+			"unit 'u' before label 't1.in' (chain 't0.out') op DELETE\n"
+			"unit 'u' before label 't1.out' op DELETE\n"
+		"unit 'u' before label 't0.out' op INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
+		"unit 'u' before label 't1.out' op INSERT\n"
 
-		"unit 'u' before label 't0_in' op INSERT\n"
-			"unit 'u' before label 't0' op DELETE\n"
-			"unit 'u' before label 't1_in' (chain 't0') op DELETE\n"
-			"unit 'u' before label 't1' op DELETE\n"
-		"unit 'u' before label 't0' op INSERT\n"
-		"unit 'u' before label 't1_in' (chain 't0') op INSERT\n"
-		"unit 'u' before label 't1' op INSERT\n"
+		"unit 'u' before label 't0.in' op INSERT\n"
+			"unit 'u' before label 't0.out' op DELETE\n"
+			"unit 'u' before label 't1.in' (chain 't0.out') op DELETE\n"
+			"unit 'u' before label 't1.out' op DELETE\n"
+		"unit 'u' before label 't0.out' op INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
+		"unit 'u' before label 't1.out' op INSERT\n"
 	;
 	UT_IS(tlog, expect);
 
