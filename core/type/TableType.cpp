@@ -7,6 +7,7 @@
 
 #include <type/TableType.h>
 #include <type/RootIndexType.h>
+#include <type/AggregatorType.h>
 #include <table/Table.h>
 
 namespace BICEPS_NS {
@@ -111,6 +112,23 @@ void TableType::initialize()
 	errors_->append("row type error:", rowType_->getErrors());
 
 	rhType_ = new RowHandleType;
+
+	// collect the aggregators
+	root_->collectAggregators(aggs_);
+
+	// set the aggregator positions and check for duplicate gadget names
+	set<string> gnames;
+	gnames.insert("in");
+	gnames.insert("out");
+
+	size_t n = aggs_.size();
+	for (size_t i = 0; i < n; i++) {
+		aggs_[i]->setPos((int)i);
+		string name = aggs_[i]->getName();
+		if (gnames.find(name) != gnames.end())
+			errors_->appendMsg(true, "duplicate aggregator/label name '" + name + "'");
+		gnames.insert(name);
+	}
 
 	// XXX should it check that there is at least one index?
 	root_->setNestPos(this, NULL, 0);

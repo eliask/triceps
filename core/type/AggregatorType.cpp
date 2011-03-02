@@ -15,9 +15,17 @@ AggregatorType::AggregatorType(const string &name, const RowType *rt) :
 	Type(false, TT_AGGREGATOR),
 	rtype_(rt),
 	name_(name),
-	pos_(-1)
-{
-}
+	pos_(-1),
+	initialized_(false)
+{ }
+
+AggregatorType::AggregatorType(const AggregatorType &agg) :
+	Type(false, TT_AGGREGATOR),
+	rtype_(agg.rtype_),
+	name_(agg.name_),
+	pos_(-1),
+	initialized_(false)
+{ }
 
 void AggregatorType::initialize(TableType *tabtype, IndexType *intype)
 {

@@ -16,6 +16,7 @@ namespace BICEPS_NS {
 
 class IndexType;
 class TableType;
+class AggregatorType;
 class RowHandleType;
 class GroupHandleType;
 class Index;
@@ -121,6 +122,14 @@ public:
 		return indexId_; 
 	}
 
+	// Define an aggregator on this index. Each aggregator instance
+	// will work on the instance of this index.
+	// Potentially there is no reason to limit to only one aggregator
+	// but for now it's simpler this way.
+	// @param agg - type of the aggregator
+	// @return - this
+	Index *setAggregator(Onceref<AggregatorType> agg);
+
 	// Make a copy of this type. The copy is always uninitialized, no
 	// matter whther it was made from an initialized one or not.
 	// The subclasses must define the actual copying.
@@ -222,7 +231,7 @@ protected:
 	// The errors are returned through getErrors().
 	virtual void initialize() = 0;
 
-	// Initialize and validate the nested index types.
+	// Initialize and validate the nested index types and aggregator(s).
 	// Guaranteed to be called after setNestPos() and initialize().
 	// Adds their errors to this type's indication getErrors() result.
 	void initializeNested();
@@ -231,6 +240,10 @@ protected:
 	{
 		return initialized_;
 	}
+
+	// Add the agggregator typess from this index recursively to the
+	// table's vector of them.
+	void collectAggregators(vector< Autoref<AggregatorType> > &aggs);
 	
 	// RowHandle operations.
 	// The initialization is done before the handle is inserted into the
@@ -387,6 +400,7 @@ protected:
 	IndexType *parent_; // NOT autoref, to avoid reference loops; NULL for top-level indexes
 	Erref errors_;
 	Autoref<GroupHandleType> group_; // used to build groups if not leaf
+	Autoref<AggregatorType> agg_; // aggregator on this index
 	intptr_t ghOffset_; // offset in group handle to the payload section
 	IndexId indexId_; // identity in case if casting to subtypes is needed (should use typeid instead?)
 	int nestPos_; // position, at which this index sits in parent

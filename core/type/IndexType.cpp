@@ -7,6 +7,7 @@
 
 #include <type/TableType.h>
 #include <type/GroupHandleType.h>
+#include <type/AggregatorType.h>
 #include <table/Index.h>
 #include <table/Table.h>
 #include <set>
@@ -181,6 +182,7 @@ IndexType::IndexType(const IndexType &orig) :
 	nested_(orig.nested_),
 	tabtype_(NULL),
 	parent_(NULL),
+	agg_(orig.agg_.isNull()? NULL : orig.agg_->copy()),
 	indexId_(orig.indexId_),
 	initialized_(false)
 { 
@@ -270,9 +272,32 @@ void IndexType::initializeNested()
 
 	nested_.initialize(tabtype_, this, errors_);
 	
+	if (errors_->hasError())
+		return; // skip the aggregators
+
+	// initialize the aggregators
+	if (!agg_.isNull()) {
+		agg_->initialize(tabtype_, this);
+		Erref se = agg_->getErrors();
+		errors_->append(strprintf("aggregator '%s':", agg_->getName().c_str()), se);
+	}
+
 	// optimize by nullifying the empty error set
 	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
+}
+
+void IndexType::collectAggregators(vector< Autoref<AggregatorType> > &aggs)
+{
+	if (!agg_.isNull())
+		aggs.push_back(agg_);
+
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		IndexType *ni = nested_[i].index_;
+		if (ni)
+			ni->collectAggregators(aggs);
+	}
 }
 
 void IndexType::copyGroupHandle(GroupHandle *rh, const RowHandle *fromrh) const

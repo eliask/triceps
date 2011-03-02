@@ -27,6 +27,8 @@ public:
 	// @param name - name for aggregators' gadget in the table, will be tablename.name
 	// @param rt - type of rows produced by this aggregator, wil be referenced
 	AggregatorType(const string &name, const RowType *rt);
+	// for copying
+	AggregatorType(const AggregatorType &agg);
 
 	// Get back the name
 	const string &getName() const
@@ -44,7 +46,7 @@ public:
 	// If already initialized, must return right away.
 	// does not include initialization of pos_ and must not make assumptions
 	// whether pos_ has been initialized.
-	// XXX add whether the index has been initialized
+	// Called after the index has been initialized.
 	//
 	// The errors are returned through getErrors().
 	//
@@ -60,6 +62,11 @@ public:
 		return initialized_;
 	}
 	
+	// Make a copy of this type. The copy is always uninitialized, no
+	// matter whther it was made from an initialized one or not.
+	// The subclasses must define the actual copying.
+	virtual AggregatorType *copy() const = 0;
+
 	// Create an AggregatorGadget subclass, one per table.
 	// @param table - table where the gadget is created (get the unit, front half
 	//        of the name, row type and enqueueing mode from there)
@@ -82,6 +89,7 @@ public:
 
 protected:
 	friend class Table;
+	friend class TableType;
 
 	// set the position of this aggregator in table's flat vector
 	void setPos(int pos)
@@ -100,6 +108,9 @@ protected:
 	string name_; // name inside the table's dotted namespace
 	int pos_; // a table has a flat vector of AggregatorGadgets in it, this is the index for this one (-1 if not set)
 	bool initialized_; // flag: already initialized, no future changes
+
+private:
+	void operator=(const AggregatorType &);
 };
 
 }; // BICEPS_NS
