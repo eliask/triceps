@@ -1,0 +1,23 @@
+//
+// This file is a part of Biceps.
+// See the file COPYRIGHT for the copyright notice and license information
+//
+//
+// The base class for aggregation gadgets.
+
+#include <sched/AggregatorGadget.h>
+#include <type/AggregatorType.h>
+#include <type/RowType.h>
+#include <type/TableType.h>
+#include <table/Table.h>
+
+namespace BICEPS_NS {
+
+AggregatorGadget::AggregatorGadget(const AggregatorType *type, Table *table, IndexType *intype) :
+	Gadget(table->getUnit(), table->getEnqMode(), table->getName() + "." + type->getName(), type_->getRowType()),
+	table_(table),
+	type_(type),
+	indexType_(intype)
+{ }
+
+}; // BICEPS_NS

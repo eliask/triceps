@@ -104,6 +104,10 @@ protected:
 	const_Autoref<RowType> type_; // type of rows
 	string name_; // name of the gadget, passed to the label name
 	EnqMode mode_; // how the rowops get enqueued in unit
+
+private:
+	Gadget(const Gadget &);
+	void operator=(const Gadget &);
 };
 
 // a version that exports setEnqMode()
