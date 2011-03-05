@@ -13,18 +13,23 @@ namespace BICEPS_NS {
 
 AggregatorType::AggregatorType(const string &name, const RowType *rt) :
 	Type(false, TT_AGGREGATOR),
-	rtype_(rt),
+	rowType_(rt),
 	name_(name),
+	pos_(-1),
+	initialized_(false)
+{ 
+	assert(rt != NULL);
+}
+
+AggregatorType::AggregatorType(const AggregatorType &agg) :
+	Type(false, TT_AGGREGATOR),
+	rowType_(agg.rowType_),
+	name_(agg.name_),
 	pos_(-1),
 	initialized_(false)
 { }
 
-AggregatorType::AggregatorType(const AggregatorType &agg) :
-	Type(false, TT_AGGREGATOR),
-	rtype_(agg.rtype_),
-	name_(agg.name_),
-	pos_(-1),
-	initialized_(false)
+AggregatorType::~AggregatorType()
 { }
 
 void AggregatorType::initialize(TableType *tabtype, IndexType *intype)
@@ -35,6 +40,38 @@ void AggregatorType::initialize(TableType *tabtype, IndexType *intype)
 Erref AggregatorType::getErrors() const
 {
 	return errors_;
+}
+
+void AggregatorType::printTo(string &res, const string &indent, const string &subindent) const
+{
+	string nextindent;
+	const string *passni;
+	if (&indent != &NOINDENT) {
+		nextindent = indent + subindent;
+		passni = &nextindent;
+	} else {
+		passni = &NOINDENT;
+	}
+
+	res.append("aggregator (");
+
+	if (&indent != &NOINDENT) {
+		res.append("\n");
+		res.append(nextindent);
+	} else {
+		res.append(" ");
+	}
+	rowType_->printTo(res, *passni, subindent);
+
+	if (&indent != &NOINDENT) {
+		res.append("\n");
+		res.append(indent);
+	} else {
+		res.append(" ");
+	}
+
+	
+	res.append(") ");
 }
 
 }; // BICEPS_NS

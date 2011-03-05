@@ -29,6 +29,7 @@ public:
 	AggregatorType(const string &name, const RowType *rt);
 	// for copying
 	AggregatorType(const AggregatorType &agg);
+	~AggregatorType();
 
 	// Get back the name
 	const string &getName() const
@@ -39,7 +40,7 @@ public:
 	// Get back the row type
 	const RowType *getRowType() const
 	{
-		return rtype_;
+		return rowType_;
 	}
 
 	// Initialize and validate.
@@ -65,27 +66,46 @@ public:
 	// Make a copy of this type. The copy is always uninitialized, no
 	// matter whther it was made from an initialized one or not.
 	// The subclasses must define the actual copying.
+	//
+	// The typical subclass copy function looks like this:
+	// AgregatorType *MyAggregatorType::copy() const
+	// {
+	//     return new MyAggregatorType(*this);
+	// }
 	virtual AggregatorType *copy() const = 0;
 
 	// Create an AggregatorGadget subclass, one per table.
+	//
+	// The typical subclass function looks like this:
+	// AgregatorGadget *MyAggregatorType::makeGadget(Table *table, IndexType *intype) const
+	// {
+	//     return new MyAggregatorGadget(table, intype);
+	// }
+	//
 	// @param table - table where the gadget is created (get the unit, front half
 	//        of the name, row type and enqueueing mode from there)
 	// @param intype - type of the index on which this aggregation happens
 	//        (the set of rows in an index instance are the rows for aggregation)
 	// @return - a newly created gadget of the proper subclass
-	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) = 0;
+	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const = 0;
 
 	// Create an Aggregator subclass, one per index/group.
+	//
+	// The typical subclass function looks like this:
+	// Agregator *MyAggregatorType::makeAggregator(Table *table, AggregatorGadget *gadget) const
+	// {
+	//     return new MyAggregator(table, gadget);
+	// }
+	//
 	// @param - table where the aggregator is created (will also be passed to all ops)
 	// @param - this type's gadget in the table (will also be passed to all ops)
 	// @return - a newly created instance of aggregator
-	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) = 0;
+	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const = 0;
 
 	// from Type
 	virtual Erref getErrors() const;
-	// subclasses also need to implement printTo()
-	// XXX do some common part of printTo() here
-	// virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const = 0;
+	// subclasses also may want to override printTo() if the default is not good enough
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
 protected:
 	friend class Table;
@@ -103,7 +123,7 @@ protected:
 	}
 
 protected:
-	const_Autoref<RowType> rtype_; // row type of result
+	const_Autoref<RowType> rowType_; // row type of result
 	Erref errors_; // errors from initialization
 	string name_; // name inside the table's dotted namespace
 	int pos_; // a table has a flat vector of AggregatorGadgets in it, this is the index for this one (-1 if not set)

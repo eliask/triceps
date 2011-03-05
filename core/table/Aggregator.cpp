@@ -5,6 +5,7 @@
 //
 // The base class for aggregators.
 
+#include <common/Common.h>
 #include <table/Aggregator.h>
 
 namespace BICEPS_NS {
