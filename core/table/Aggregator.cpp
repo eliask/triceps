@@ -7,6 +7,7 @@
 
 #include <common/Common.h>
 #include <table/Aggregator.h>
+#include <sched/AggregatorGadget.h>
 
 namespace BICEPS_NS {
 

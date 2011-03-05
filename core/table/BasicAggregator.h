@@ -22,6 +22,10 @@ public:
 		gadget_(gadget)
 	{ }
 
+	// from Aggregator
+	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
+		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
+
 protected:
 	// In more complex aggregators the gadget would be of a subtype
 	AggregatorGadget *gadget_;

@@ -9,16 +9,23 @@
 #define __Biceps_BasicAggregatorType_h__
 
 #include <type/AggregatorType.h>
+#include <table/Aggregator.h>
 
 namespace BICEPS_NS {
+
+class BasicAggregator;
+class Table;
+class Index;
+class RowHandle;
 
 // Aggregator that keeps no state, every time recalculates the
 // result row from scratch with a basic C-style function.
 class BasicAggregatorType : public AggregatorType
 {
 public:
-	// type of callback function
-	typedef void Callback(Table *table, IndexType *intype);
+	// type of callback function, see Aggregator::handle()
+	typedef void Callback(Table *table, AggregatorGadget *gadget, Index *index,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
 
 	// @param name - name for aggregators' gadget in the table, will be tablename.name
 	// @param rt - type of rows produced by this aggregator, wil be referenced
@@ -32,6 +39,8 @@ public:
 	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const;
 
 protected:
+	friend class BasicAggregator;
+
 	Callback *cb_;
 };
 
