@@ -89,13 +89,11 @@ public:
 	IndexType *firstLeafIndex() const;
 
 protected:
-	typedef vector< Autoref<AggregatorType> > AggVec;
-
 	Autoref<RootIndexType> root_; // the root of index tree
 	Autoref<RowType> rowType_; // row for this table
 	Erref errors_;
 	Autoref<RowHandleType> rhType_; // for building the row handles
-	AggVec aggs_; // all the aggregators, collected during initialization
+	IndexAggTypeVec aggs_; // all the aggregators, collected during initialization
 	bool initialized_; // flag: has already been initialized, no more changes allowed
 
 private:

@@ -19,9 +19,8 @@ namespace BICEPS_NS {
 // records can also be collected on a Tray.
 // A Table is a concrete example of Gadget.
 //
-// Each concrete subclass is free to decide if it wants to be
-// an Starget or Mtarget.
-class Gadget 
+// Gadgets are a part of Unit, so Starget is good enough.
+class Gadget : public Starget
 {
 public:
 	// How the rows get enqueued in the Unit

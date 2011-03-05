@@ -7,7 +7,9 @@
 
 #include <table/Table.h>
 #include <type/TableType.h>
+#include <type/AggregatorType.h>
 #include <type/RootIndexType.h>
+#include <sched/AggregatorGadget.h>
 #include <mem/Rhref.h>
 
 namespace BICEPS_NS {
@@ -44,6 +46,12 @@ Table::Table(Unit *unit, EnqMode emode, const string &name,
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));
 	// fprintf(stderr, "DEBUG Table::Table root=%p\n", root_.get());
+
+	// create gadgets for all the aggregators
+	size_t n = tt->aggs_.size();
+	for (size_t i = 0; i < n; i++) {
+		aggs_.push_back(tt->aggs_[i].agg_->makeGadget(this, tt->aggs_[i].index_));
+	}
 }
 
 Table::~Table()

@@ -21,6 +21,7 @@ class RowHandleType;
 class GroupHandleType;
 class Index;
 class Table;
+class Aggregator;
 
 // connection of indexes into a tree
 class  IndexTypeRef 
@@ -85,6 +86,25 @@ public:
 private:
 	void operator=(const IndexTypeVec &);
 };
+
+// Information about connections between index and aggregator types
+// is represented as pairs.
+
+class IndexAggTypePair
+{
+public:
+	IndexAggTypePair(IndexType *ind, AggregatorType *agg) :
+		index_(ind), agg_(agg)
+	{ }
+
+public:
+	// index and aggregator types are held elsewhere, this pair simply
+	// represents a connection between them, so no need for Autorefs
+	IndexType *index_;
+	AggregatorType *agg_;
+};
+
+typedef vector<IndexAggTypePair> IndexAggTypeVec;
 
 class IndexType : public Type
 {
@@ -195,6 +215,10 @@ protected:
 	{
 		return rh->get<GhSection>(ghOffset_);
 	}
+	Aggregator **getGhAggs(const GroupHandle *rh) const
+	{
+		return rh->get<Aggregator *>(ghAggOffset_);
+	}
 
 
 	// can be constructed only from subclasses
@@ -243,7 +267,7 @@ protected:
 
 	// Add the agggregator typess from this index recursively to the
 	// table's vector of them.
-	void collectAggregators(vector< Autoref<AggregatorType> > &aggs);
+	void collectAggregators(IndexAggTypeVec &aggs);
 	
 	// RowHandle operations.
 	// The initialization is done before the handle is inserted into the
@@ -400,8 +424,10 @@ protected:
 	IndexType *parent_; // NOT autoref, to avoid reference loops; NULL for top-level indexes
 	Erref errors_;
 	Autoref<GroupHandleType> group_; // used to build groups if not leaf
+	IndexAggTypeVec groupAggs_; // aggregators of nested indexes, used to build groups
 	Autoref<AggregatorType> agg_; // aggregator on this index
 	intptr_t ghOffset_; // offset in group handle to the payload section
+	intptr_t ghAggOffset_; // offset in group handle to the aggregators subsection
 	IndexId indexId_; // identity in case if casting to subtypes is needed (should use typeid instead?)
 	int nestPos_; // position, at which this index sits in parent
 	bool initialized_; // flag: already initialized, no future changes

@@ -40,7 +40,7 @@ void mkfdata(FdataVec &fd)
 	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
 }
 
-class TestGadget : public Starget, public GadgetCE
+class TestGadget : public GadgetCE
 {
 public:
 	// copy here the whole protected interface

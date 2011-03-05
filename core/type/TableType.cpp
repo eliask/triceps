@@ -123,8 +123,9 @@ void TableType::initialize()
 
 	size_t n = aggs_.size();
 	for (size_t i = 0; i < n; i++) {
-		aggs_[i]->setPos((int)i);
-		string name = aggs_[i]->getName();
+		aggs_[i].agg_->setPos((int)i);
+		string name = aggs_[i].agg_->getName();
+		// XXX improve the error message, print on which indexes
 		if (gnames.find(name) != gnames.end())
 			errors_->appendMsg(true, "duplicate aggregator/label name '" + name + "'");
 		gnames.insert(name);

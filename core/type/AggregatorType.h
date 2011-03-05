@@ -110,6 +110,7 @@ public:
 protected:
 	friend class Table;
 	friend class TableType;
+	friend class IndexType;
 
 	// set the position of this aggregator in table's flat vector
 	void setPos(int pos)

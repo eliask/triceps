@@ -10,7 +10,7 @@
 
 #include <type/TableType.h>
 #include <table/RootIndex.h>
-#include <sched/Gadget.h>
+#include <sched/AggregatorGadget.h>
 
 namespace BICEPS_NS {
 
@@ -19,7 +19,7 @@ class RowHandleType;
 class TableType;
 class Row;
 
-class Table : public Mtarget, public Gadget
+class Table : public Gadget
 {
 public:
 	~Table();
@@ -146,6 +146,12 @@ protected:
 		return root_;
 	}
 
+	// For creation of Aggregators, gives them a gadget instance
+	AggregatorGadget *getAggregatorGadget(int i)
+	{
+		return aggs_[i];
+	}
+
 protected:
 	class InputLabel: public Label
 	{
@@ -160,12 +166,19 @@ protected:
 	};
 
 protected:
+	typedef vector< Autoref<AggregatorGadget> > AggGadgetVec;
+
 	Autoref<const TableType> type_; // type where this table belongs
 	Autoref<const RowType> rowType_; // type of rows stored here
 	Autoref<const RowHandleType> rhType_;
 	Autoref<RootIndex> root_; // root of the index tree
 	Autoref<InputLabel> inputLabel_;
 	Autoref<IndexType> firstLeaf_; // the first leaf index type, used for default find
+	AggGadgetVec aggs_; // gadgets for all aggregators, matching the order in TableType
+
+private:
+	Table(const Table &t);
+	void operator=(const Table &t);
 };
 
 }; // BICEPS_NS

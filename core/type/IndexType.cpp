@@ -10,6 +10,7 @@
 #include <type/AggregatorType.h>
 #include <table/Index.h>
 #include <table/Table.h>
+#include <table/Aggregator.h>
 #include <set>
 
 namespace BICEPS_NS {
@@ -262,10 +263,22 @@ void IndexType::initializeNested()
 
 	int n = (int)nested_.size();
 
+	groupAggs_.clear();
 	if (n != 0) {
+		// Collect the aggregators from the immediately nested indexes
+		for (int i = 0; i < n; i++) {
+			IndexType *si = nested_[i].index_;
+			if (si == NULL)
+				continue;
+			AggregatorType *sag = si->agg_;
+			if (sag == NULL)
+				continue;
+			groupAggs_.push_back(IndexAggTypePair(si, sag));
+		}
 		// remember, how much of handle was needed to get here
 		group_ = new GroupHandleType(*tabtype_->rhType()); // copies the current size
 		ghOffset_ = group_->allocate(sizeof(GhSection) + (n-1) * sizeof(Index *));
+		ghAggOffset_ = group_->allocate(groupAggs_.size() * sizeof(Aggregator *));
 	} else {
 		group_ = NULL;
 	}
@@ -287,10 +300,10 @@ void IndexType::initializeNested()
 		errors_ = NULL;
 }
 
-void IndexType::collectAggregators(vector< Autoref<AggregatorType> > &aggs)
+void IndexType::collectAggregators(IndexAggTypeVec &aggs)
 {
 	if (!agg_.isNull())
-		aggs.push_back(agg_);
+		aggs.push_back(IndexAggTypePair(this, agg_));
 
 	int n = (int)nested_.size();
 	for (int i = 0; i < n; i++) {
@@ -333,6 +346,16 @@ GroupHandle *IndexType::makeGroupHandle(const RowHandle *rh, Table *table) const
 		idx->incref(); // hold on to it manually
 	}
 
+	// create the aggregator instances
+	n = (int)groupAggs_.size();
+	if (n != 0) {
+		Aggregator **aggs = getGhAggs(gh);
+		for (int i = 0; i < n; i++) {
+			const IndexAggTypePair &iap = groupAggs_[i];
+			aggs[i] = iap.agg_->makeAggregator(table, table->getAggregatorGadget(iap.agg_->getPos()));
+		}
+	}
+
 	return gh;
 }
 
@@ -346,6 +369,15 @@ void IndexType::destroyGroupHandle(GroupHandle *gh) const
 		if (idx->decref() <= 0)
 			delete idx;
 	}
+	
+	// delete the aggregator instances
+	n = (int)groupAggs_.size();
+	if (n != 0) {
+		Aggregator **aggs = getGhAggs(gh);
+		for (int i = 0; i < n; i++) 
+			delete aggs[i];
+	}
+
 	if (gh->getRow()->decref() <= 0) {
 		tabtype_->rowType()->destroyRow(const_cast<Row *>(gh->getRow()));
 	}
