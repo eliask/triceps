@@ -416,6 +416,11 @@ public:
 	// Clear the data rows in the leaf indexes under this group.
 	// @param gh - the group instance, may be NULL
 	void groupClearData(GroupHandle *gh) const;
+
+	// Call all the aggregators, telling them that the group is collapsing.
+	// @param table - table where the group belongs
+	// @param gh - the group instance
+	void aggregateCollapse(Table *table, GroupHandle *gh) const;
 	// }
 protected:
 

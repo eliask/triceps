@@ -490,6 +490,23 @@ void IndexType::groupClearData(GroupHandle *gh) const
 	gs->size_ = 0; // all records got deleted
 }
 
+void IndexType::aggregateCollapse(Table *table, GroupHandle *gh) const
+{
+	assert(gh != NULL);
+
+	int n = (int)groupAggs_.size();
+	if (n != 0) {
+		GhSection *gs = getGhSection(gh);
+		Aggregator **aggs = getGhAggs(gh);
+		for (int i = 0; i < n; i++) {
+			const IndexAggTypePair &iap = groupAggs_[i];
+			aggs[i]->handle(table, table->getAggregatorGadget(iap.agg_->getPos()), 
+				gs->subidx_[iap.index_->nestPos_], 
+				Aggregator::AO_COLLAPSE, Rowop::OP_DELETE, NULL);
+		}
+	}
+}
+
 RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) const
 {
 	// fprintf(stderr, "DEBUG IndexType::findRecord(this=%p, table=%p, what=%p)\n", this, table, what);

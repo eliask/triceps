@@ -164,6 +164,10 @@ bool HashedNestedIndex::collapse(const RhSet &replaced)
 	for(SplitMap::iterator smi = split.begin(); smi != split.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		if (type_->groupCollapse(gh, smi->second)) {
+			// call the aggregators to process collapse
+			if (!type_->groupAggs_.empty()) {
+				type_->aggregateCollapse(table_, gh);
+			}
 			// destroy the group
 			data_.erase(type_->getIter(gh)); // after this the iterator in gh is not valid any more
 			if (gh->decref() <= 0)

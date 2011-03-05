@@ -42,14 +42,21 @@ public:
 	//
 	// @param table - table on which the change happens
 	// @param gadget - gadget of this aggregator, where to send the Rowops
-	// @param index - index on which this aggregator is defined, contains the row of the group
+	// @param index - index on which this aggregator is defined, contains the row of the group;
+	//        to get data from the index use begin(), next().
 	// @param aggop - the reason for this call
 	// @param opcode - the Rowop opcode that would be normally used for the records
 	//        produced in this operation (INSERT, DELETE, NOP), so that the simpler
-	//        aggregators can ignore aggop and just go by opcode
+	//        aggregators can ignore aggop and just go by opcode. When multiple records
+	//        are changed in one table operation, the calls for all but the last records 
+	//        will have the opcode NOP. The last one will normally have INSERT.
+	//        The sending of old state (AO_BEFORE_MOD or AO_COLLAPSE) generally has
+	//        the opcode DELETE.
 	// @param rh - row that has been inderted or deleted, if deleted then it will be
 	//        already not in table; may be NULL if aggop just requires the sending of
-	//        the old state
+	//        the old state (such as AO_BEFORE_MOD or AO_COLLAPSE).
+	//
+	// XXX add parentIndexType, groupHandle
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh) = 0;
 };
