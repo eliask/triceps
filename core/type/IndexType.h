@@ -10,6 +10,7 @@
 
 #include <type/Type.h>
 #include <table/GroupHandle.h>
+#include <table/Aggregator.h>
 #include <common/Errors.h>
 
 namespace BICEPS_NS {
@@ -408,6 +409,18 @@ public:
 	// @param except - set of rows that have already been modified, identifying the
 	//     groups for which the aggregator AO_BEFORE_MOD must not be called again.
 	void groupRemove(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &except) const;
+
+	// Call aggregator AO_AFTER_DELETE or AO_AFTER_INSERT (as indicated by aggop)
+	// after the rows have been removed or inserted.
+	// See the details in Index.h.
+	//
+	// @param aggop - aggregator operation, AO_AFTER_DELETE or AO_AFTER_INSERT
+	// @param table - table where the group belongs
+	// @param gh - the group instance, may NOT be NULL
+	// @param rows - set of rows that have been removed
+	// @param future - set of rows for which the aggregation notifications will
+	//        be called separtely in the future, modifies the Rowop::Opcode
+	void groupAggregateAfter(Aggregator::AggOp aggop, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &future) const;
 
 	// Attempt to collapse all the sub-indexes of the group
 	// (see the detailed discussion of the semantics in table/Index.h).

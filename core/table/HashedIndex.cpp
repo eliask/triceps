@@ -111,6 +111,11 @@ void HashedIndex::remove(const RhSet &rows, const RhSet &except)
 		removeRowHandle(*it);
 }
 
+void HashedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+{ 
+	// nothing to do
+}
+
 bool HashedIndex::collapse(const RhSet &replaced)
 {
 	// fprintf(stderr, "DEBUG HashedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());

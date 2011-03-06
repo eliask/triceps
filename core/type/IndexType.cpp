@@ -478,6 +478,46 @@ void IndexType::groupRemove(Table *table, GroupHandle *gh, const RhSet &rows, co
 	gs->size_ -= rows.size(); // records got deleted
 }
 
+void IndexType::groupAggregateAfter(Aggregator::AggOp aggop, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &future) const
+{
+	assert(gh != NULL);
+	if (rows.empty())
+		return;
+
+	GhSection *gs = getGhSection(gh);
+	int nn = (int)nested_.size();
+
+	if (!groupAggs_.empty()) {
+		if (aggop == Aggregator::AO_AFTER_INSERT)
+			gh->flags_ |= GroupHandle::F_GROUP_AGGREGATED;
+
+		int an = (int)groupAggs_.size();
+		Aggregator **aggs = getGhAggs(gh);
+
+		const RowHandle *lastRow = NULL; // one, for which to send OP_INSERT
+		if (future.empty()) {
+			// if future is not empty then the final update will occur later
+			lastRow = *rows.rbegin();
+		}
+
+		for (int i = 0; i < an; i++) {
+			const IndexAggTypePair &iap = groupAggs_[i];
+			AggregatorGadget *gadget = table->getAggregatorGadget(iap.agg_->getPos());
+			Index *subidx = gs->subidx_[iap.index_->nestPos_];
+
+			for (RhSet::const_iterator rit = rows.begin(); rit != rows.end(); ++rit) {
+				aggs[i]->handle(table, gadget, subidx, this, gh, aggop, 
+					(*rit == lastRow ? Rowop::OP_INSERT : Rowop::OP_NOP), 
+					*rit);
+			}
+		}
+	}
+
+	for (int i = 0; i < nn; i++) {
+		gs->subidx_[i]->aggregateAfter(aggop, rows, future);
+	}
+}
+
 bool IndexType::groupCollapse(GroupHandle *gh, const RhSet &replaced) const
 {
 	assert(gh != NULL);

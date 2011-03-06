@@ -86,6 +86,11 @@ void RootIndex::remove(const RhSet &rows, const RhSet &except)
 	type_->groupRemove(table_, rootg_, rows, except);
 }
 
+void RootIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+{
+	type_->groupAggregateAfter(aggop, table_, rootg_, rows, future);
+}
+
 size_t RootIndex::size()
 {
 	return type_->groupSize(rootg_);

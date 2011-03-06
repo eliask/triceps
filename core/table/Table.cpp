@@ -155,6 +155,12 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 
 	root_->insert(newrh);
 
+	if (!aggs_.empty()) {
+		changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
+		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed);
+		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, untouched);
+	}
+
 	// finally, collapse the groups of the replaced records
 	root_->collapse(replace);
 
@@ -182,6 +188,9 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 
 	root_->remove(replace, changed);
 	rh->flags_ &= ~RowHandle::F_INTABLE;
+
+	if (!aggs_.empty())
+		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed);
 
 	root_->collapse(replace);
 	

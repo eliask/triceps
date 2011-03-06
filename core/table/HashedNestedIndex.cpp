@@ -165,6 +165,24 @@ void HashedNestedIndex::remove(const RhSet &rows, const RhSet &except)
 	}
 }
 
+void HashedNestedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+{
+	SplitMap splitRows, splitFuture;
+	splitRhSet(rows, splitRows);
+	if (!future.empty())
+		splitRhSet(future, splitFuture);
+
+	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
+		GroupHandle *gh = smi->first;
+		if (future.empty()) { // a little optimization
+			type_->groupAggregateAfter(aggop, table_, gh, smi->second, future);
+		} else {
+			// this automatically creates a new entry in splitFuture if it was missing
+			type_->groupAggregateAfter(aggop, table_, gh, smi->second, splitFuture[gh]);
+		}
+	}
+}
+
 bool HashedNestedIndex::collapse(const RhSet &replaced)
 {
 	// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());

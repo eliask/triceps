@@ -11,7 +11,7 @@
 #include <mem/Mtarget.h>
 #include <common/Common.h>
 #include <type/IndexType.h>
-#include <table/RowHandle.h>
+#include <table/Aggregator.h>
 #include <set>
 #include <map>
 
@@ -123,6 +123,28 @@ protected:
 	//     These row handles are guaranteed to have valid group iterators inside them,
 	//     i.e. they're currently in the table or have been just removed from it.
 	virtual void remove(const RhSet &rows, const RhSet &except) = 0;
+
+	// Call aggregator AO_AFTER_DELETE or AO_AFTER_INSERT (as indicated by aggop) 
+	// after the rows have been removed or inserted.
+	// The call is done for each row. The Rowop::opcode varies: all the calls for
+	// a particular group are NOP and only the last one is INSERT. If the
+	// future set for the group is not empty, then all opcodes are NOP (because then 
+	// the future set will be processed later and have the last call as INSERT).
+	//
+	// Why INSERT after removal: because the groups haven't been
+	// deleted, they've been modified. So remove() called AO_BEFORE_MOD with OP_DELETE
+	// to delete the old state, and now the new state gets sent with 
+	// AO_AFTER_DELETE and INSERT.
+	//
+	// Why all but the last are NOPs: because all the modifications get combined
+	// into one update, and only one INSERT needs to be sent per group. The
+	// intermediate calls with NOPs are needed to give the additive aggregations
+	// a chance to update their state.
+	//
+	// @param rows - set of rows that have been removed
+	// @param future - set of rows for which the aggregation notifications will
+	//        be called separtely in the future (usually that would be the rows inserted)
+	virtual void aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future) = 0;
 
 	// Collapse the groups identified by this RowHandle set recursively
 	// if they are found to be empty. "Collapsing" of a group means that the group

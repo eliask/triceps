@@ -127,6 +127,11 @@ void FifoIndex::remove(const RhSet &rows, const RhSet &except)
 		removeRowHandle(*it);
 }
 
+void FifoIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+{ 
+	// nothing to do
+}
+
 bool FifoIndex::collapse(const RhSet &replaced)
 {
 	return true;
