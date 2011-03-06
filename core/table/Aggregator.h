@@ -14,6 +14,8 @@
 namespace BICEPS_NS {
 
 class Index;
+class IndexType;
+class GroupHandle;
 class AggregatorGadget;
 
 // The Aggregator is always owned by the index group (OK, logically it can be thought
@@ -44,6 +46,12 @@ public:
 	// @param gadget - gadget of this aggregator, where to send the Rowops
 	// @param index - index on which this aggregator is defined, contains the row of the group;
 	//        to get data from the index use begin(), next().
+	// @param parentIndexType - type of the parent index, that can be used for operations
+	//        in the group handle
+	// @param gh - handle of the group where index belongs; the most important use is to get
+	//        the group size as: parentIndexType->groupSize(gh); but also can be used
+	//        to get access to other indexes in the same group, all of them will contain
+	//        the same set of rows but possibly in different order
 	// @param aggop - the reason for this call
 	// @param opcode - the Rowop opcode that would be normally used for the records
 	//        produced in this operation (INSERT, DELETE, NOP), so that the simpler
@@ -55,9 +63,8 @@ public:
 	// @param rh - row that has been inderted or deleted, if deleted then it will be
 	//        already not in table; may be NULL if aggop just requires the sending of
 	//        the old state (such as AO_BEFORE_MOD or AO_COLLAPSE).
-	//
-	// XXX add parentIndexType, groupHandle
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
+		const IndexType *parentIndexType, GroupHandle *gh,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh) = 0;
 };
 

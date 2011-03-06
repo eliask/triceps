@@ -148,6 +148,8 @@ void HashedNestedIndex::remove(RowHandle *rh)
 
 bool HashedNestedIndex::collapse(const RhSet &replaced)
 {
+	// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
+	
 	// split the set into subsets by iterator
 	typedef map<GroupHandle *, RhSet> SplitMap;
 	SplitMap split;
@@ -163,7 +165,9 @@ bool HashedNestedIndex::collapse(const RhSet &replaced)
 	// handle each subset's group
 	for(SplitMap::iterator smi = split.begin(); smi != split.end(); ++smi) {
 		GroupHandle *gh = smi->first;
+		// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p\n", this, gh);
 		if (type_->groupCollapse(gh, smi->second)) {
+			// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p destroying\n", this, gh);
 			// call the aggregators to process collapse
 			if (!type_->groupAggs_.empty()) {
 				type_->aggregateCollapse(table_, gh);
@@ -173,6 +177,7 @@ bool HashedNestedIndex::collapse(const RhSet &replaced)
 			if (gh->decref() <= 0)
 				type_->destroyGroupHandle(gh);
 		} else {
+			// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p not collapsing\n", this, gh);
 			// a group objects to being collapsed
 			res = false;
 		}

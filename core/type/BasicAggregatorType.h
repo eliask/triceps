@@ -25,6 +25,7 @@ class BasicAggregatorType : public AggregatorType
 public:
 	// type of callback function, see Aggregator::handle()
 	typedef void Callback(Table *table, AggregatorGadget *gadget, Index *index,
+		const IndexType *parentIndexType, GroupHandle *gh,
 		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
 
 	// @param name - name for aggregators' gadget in the table, will be tablename.name

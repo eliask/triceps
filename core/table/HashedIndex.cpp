@@ -107,6 +107,7 @@ void HashedIndex::remove(RowHandle *rh)
 
 bool HashedIndex::collapse(const RhSet &replaced)
 {
+	// fprintf(stderr, "DEBUG HashedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	return true;
 }
 

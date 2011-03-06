@@ -12,6 +12,8 @@
 #include <common/StringUtil.h>
 #include <table/Table.h>
 #include <table/HashedIndex.h>
+#include <type/BasicAggregatorType.h>
+#include <table/BasicAggregator.h>
 #include <mem/Rhref.h>
 
 // Make fields of all simple types
@@ -52,6 +54,15 @@ Onceref<TableType> mktabtype(Onceref<RowType> rt)
 				)
 			)
 		);
+}
+
+int collapses = 0;
+void countCollapses(Table *table, AggregatorGadget *gadget, Index *index,
+        const IndexType *parentIndexType, GroupHandle *gh,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
+{
+	if (aggop == Aggregator::AO_COLLAPSE)
+		collapses++;
 }
 
 UTESTCASE primaryIndex(Utest *utest)
@@ -129,7 +140,19 @@ UTESTCASE tableops(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	Autoref<TableType> tt = mktabtype(rt1);
+	// same as mktabtype but adds an aggregator to count collapses
+	Autoref<TableType> tt = ( new TableType(rt1))
+			->addIndex("primary", (new HashedIndexType(
+				(new NameSet())->add("b")
+				))->addNested("level2", (new HashedIndexType(
+						(new NameSet())->add("c")
+					))->setAggregator(
+						new BasicAggregatorType("agg", rt1, countCollapses)
+					)
+				)
+			);
+
+	collapses = 0;
 
 	UT_ASSERT(tt);
 	tt->initialize();
@@ -262,7 +285,9 @@ UTESTCASE tableops(Utest *utest)
 	UT_IS(i, 3);
 
 	// remove the 2nd record from the same group, potentially collapsing it
+	UT_IS(collapses, 0);
 	t->remove(rh12);
+	UT_IS(collapses, 1);
 	
 	// check that now have 2 records
 	i = 0;

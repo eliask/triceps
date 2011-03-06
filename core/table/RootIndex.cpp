@@ -93,6 +93,7 @@ size_t RootIndex::size()
 
 bool RootIndex::collapse(const RhSet &replaced)
 {
+	// fprintf(stderr, "DEBUG RootIndex::collapse(this=%p, rhset size=%d) rootg_=%p\n", this, (int)replaced.size(), rootg_);
 	if (rootg_ == NULL)
 		return true;
 	type_->groupCollapse(rootg_, replaced);

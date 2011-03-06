@@ -14,7 +14,7 @@
 namespace BICEPS_NS {
 
 AggregatorGadget::AggregatorGadget(const AggregatorType *type, Table *table, IndexType *intype) :
-	Gadget(table->getUnit(), table->getEnqMode(), table->getName() + "." + type->getName(), type_->getRowType()),
+	Gadget(table->getUnit(), table->getEnqMode(), table->getName() + "." + type->getName(), type->getRowType()),
 	table_(table),
 	type_(type),
 	indexType_(intype)

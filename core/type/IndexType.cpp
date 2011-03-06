@@ -202,6 +202,16 @@ IndexType *IndexType::addNested(const string &name, IndexType *index)
 	return this;
 }
 
+IndexType *IndexType::setAggregator(Onceref<AggregatorType> agg)
+{
+	if (initialized_) {
+		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		abort();
+	}
+	agg_ = agg;
+	return this;
+}
+
 Erref IndexType::getErrors() const
 {
 	return errors_;
@@ -461,8 +471,9 @@ bool IndexType::groupCollapse(GroupHandle *gh, const RhSet &replaced) const
 	// even if the size != 0, still must go through recursion, because
 	// there may be collapsible sub-groups
 	int n = (int)nested_.size();
+	// fprintf(stderr, "DEBUG IndexType::groupCollapse(this=%p, gh=%p, rhset size=%d) gsize=%d, nested=%d\n", this, gh, (int)replaced.size(), (int)gs->size_, n);
 	for (int i = 0; i < n; i++) {
-		res = (res && gs->subidx_[i]->collapse(replaced));
+		res = (gs->subidx_[i]->collapse(replaced) && res);
 	}
 
 	return res;
@@ -501,7 +512,7 @@ void IndexType::aggregateCollapse(Table *table, GroupHandle *gh) const
 		for (int i = 0; i < n; i++) {
 			const IndexAggTypePair &iap = groupAggs_[i];
 			aggs[i]->handle(table, table->getAggregatorGadget(iap.agg_->getPos()), 
-				gs->subidx_[iap.index_->nestPos_], 
+				gs->subidx_[iap.index_->nestPos_], this, gh,
 				Aggregator::AO_COLLAPSE, Rowop::OP_DELETE, NULL);
 		}
 	}

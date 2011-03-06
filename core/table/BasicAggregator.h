@@ -24,6 +24,7 @@ public:
 
 	// from Aggregator
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
+		const IndexType *parentIndexType, GroupHandle *gh,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
 
 protected:

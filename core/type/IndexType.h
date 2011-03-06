@@ -148,7 +148,7 @@ public:
 	// but for now it's simpler this way.
 	// @param agg - type of the aggregator
 	// @return - this
-	Index *setAggregator(Onceref<AggregatorType> agg);
+	IndexType *setAggregator(Onceref<AggregatorType> agg);
 
 	// Make a copy of this type. The copy is always uninitialized, no
 	// matter whther it was made from an initialized one or not.
