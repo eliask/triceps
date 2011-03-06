@@ -67,6 +67,10 @@ public:
 	{
 		return (op & OCF_DELETE);
 	}
+	static bool isNop(Opcode op)
+	{
+		return (op & (OCF_INSERT|OCF_DELETE)) == 0;
+	}
 	bool isInsert() const
 	{
 		return isInsert(opcode_);
@@ -74,6 +78,10 @@ public:
 	bool isDelete() const
 	{
 		return isDelete(opcode_);
+	}
+	bool isNop() const
+	{
+		return isNop(opcode_);
 	}
 
 	const Label *getLabel() const

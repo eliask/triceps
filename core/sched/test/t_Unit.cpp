@@ -154,21 +154,29 @@ UTESTCASE rowop(Utest *utest)
 	// the opcode translation
 	UT_ASSERT(!Rowop::isInsert(Rowop::OP_NOP));
 	UT_ASSERT(!Rowop::isDelete(Rowop::OP_NOP));
+	UT_ASSERT(Rowop::isNop(Rowop::OP_NOP));
 	UT_ASSERT(Rowop::isInsert(Rowop::OP_INSERT));
 	UT_ASSERT(!Rowop::isDelete(Rowop::OP_INSERT));
+	UT_ASSERT(!Rowop::isNop(Rowop::OP_INSERT));
 	UT_ASSERT(!Rowop::isInsert(Rowop::OP_DELETE));
 	UT_ASSERT(Rowop::isDelete(Rowop::OP_DELETE));
+	UT_ASSERT(!Rowop::isNop(Rowop::OP_DELETE));
 	UT_ASSERT(Rowop::isInsert((Rowop::Opcode)0x333));
 	UT_ASSERT(Rowop::isDelete((Rowop::Opcode)0x333));
+	UT_ASSERT(!Rowop::isNop((Rowop::Opcode)0x333));
 	UT_ASSERT(!Rowop::isInsert((Rowop::Opcode)0x330));
 	UT_ASSERT(!Rowop::isDelete((Rowop::Opcode)0x330));
+	UT_ASSERT(Rowop::isNop((Rowop::Opcode)0x330));
 
 	UT_ASSERT(!op1->isInsert());
 	UT_ASSERT(!op1->isDelete());
+	UT_ASSERT(op1->isNop());
 	UT_ASSERT(op2->isInsert());
 	UT_ASSERT(!op2->isDelete());
+	UT_ASSERT(!op2->isNop());
 	UT_ASSERT(!op3->isInsert());
 	UT_ASSERT(op3->isDelete());
+	UT_ASSERT(!op3->isNop());
 
 	UT_IS(string(Rowop::opcodeString(Rowop::OP_NOP)), "NOP");
 	UT_IS(string(Rowop::opcodeString(Rowop::OP_INSERT)), "INSERT");
