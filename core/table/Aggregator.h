@@ -38,6 +38,9 @@ public:
 		AO_COLLAPSE, // when the group is being collapsed, must not access index any more
 	};
 
+	// Convert the AggOp to string
+	static const char *aggOpString(AggOp code);
+
 	// Handle one operation on the group.
 	// Updates the internal state of the aggregator and possibly sends information
 	// about the changes to the Gadget.

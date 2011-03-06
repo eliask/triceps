@@ -48,6 +48,13 @@ public:
 	{
 		return inputLabel_.get();
 	}
+
+	// Get back the table name (overrides the garget method, because that
+	// name has ".out" added to it).
+	const string &getName() const
+	{
+		return name_;
+	}
 	
 	/////// operations on rows
 
@@ -175,6 +182,7 @@ protected:
 	Autoref<InputLabel> inputLabel_;
 	Autoref<IndexType> firstLeaf_; // the first leaf index type, used for default find
 	AggGadgetVec aggs_; // gadgets for all aggregators, matching the order in TableType
+	string name_; // base name of the table
 
 private:
 	Table(const Table &t);

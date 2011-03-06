@@ -42,7 +42,8 @@ Table::Table(Unit *unit, EnqMode emode, const string &name,
 	rowType_(rowt),
 	rhType_(handt),
 	inputLabel_(new InputLabel(unit, rowt, name + ".in", this)),
-	firstLeaf_(tt->firstLeafIndex())
+	firstLeaf_(tt->firstLeafIndex()),
+	name_(name)
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));
 	// fprintf(stderr, "DEBUG Table::Table root=%p\n", root_.get());
