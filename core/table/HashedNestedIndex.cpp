@@ -138,11 +138,30 @@ void HashedNestedIndex::insert(RowHandle *rh)
 	type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
 }
 
-void HashedNestedIndex::remove(RowHandle *rh)
+void HashedNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
 {
-	Set::iterator it = type_->getIter(rh); // row is known to be in the table
-	if (it != data_.end()) {
-		type_->groupRemove(static_cast<GroupHandle *>(*it), rh);
+	for(RhSet::iterator rsi = rows.begin(); rsi != rows.end(); ++rsi) {
+		RowHandle *rh = *rsi;
+		Set::iterator si = type_->getIter(rh); // row is known to still be in the set
+		dest[static_cast<GroupHandle *>(*si)].insert(rh);
+	}
+}
+
+void HashedNestedIndex::remove(const RhSet &rows, const RhSet &except)
+{
+	SplitMap splitRows, splitExcept;
+	splitRhSet(rows, splitRows);
+	if (!except.empty())
+		splitRhSet(except, splitExcept);
+
+	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
+		GroupHandle *gh = smi->first;
+		if (except.empty()) { // a little optimization
+			type_->groupRemove(table_, gh, smi->second, except);
+		} else {
+			// this automatically creates a new entry in splitExcept if it was missing
+			type_->groupRemove(table_, gh, smi->second, splitExcept[gh]);
+		}
 	}
 }
 
@@ -151,14 +170,8 @@ bool HashedNestedIndex::collapse(const RhSet &replaced)
 	// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	
 	// split the set into subsets by iterator
-	typedef map<GroupHandle *, RhSet> SplitMap;
 	SplitMap split;
-
-	for(RhSet::iterator rsi = replaced.begin(); rsi != replaced.end(); ++rsi) {
-		RowHandle *rh = *rsi;
-		Set::iterator si = type_->getIter(rh); // row is known to still be in the set
-		split[static_cast<GroupHandle *>(*si)].insert(rh);
-	}
+	splitRhSet(replaced, split);
 
 	bool res = true;
 

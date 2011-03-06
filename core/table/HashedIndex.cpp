@@ -99,10 +99,16 @@ void HashedIndex::insert(RowHandle *rh)
 	// fprintf(stderr, "DEBUG HashedIndex::insert(this=%p, rh=%p)\n", this, rh);
 }
 
-void HashedIndex::remove(RowHandle *rh)
+void HashedIndex::removeRowHandle(RowHandle *rh)
 {
 	RhSection *rs = less_->getSection(rh);
 	data_.erase(rs->iter_);
+}
+
+void HashedIndex::remove(const RhSet &rows, const RhSet &except)
+{
+	for (RhSet::const_iterator it = rows.begin(); it != rows.end(); ++it)
+		removeRowHandle(*it);
 }
 
 bool HashedIndex::collapse(const RhSet &replaced)

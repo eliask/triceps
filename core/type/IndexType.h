@@ -394,12 +394,20 @@ public:
 	void groupInsert(GroupHandle *gh, RowHandle *rh) const;
 
 	// Remove the row from each index in the group.
+	// Before removing calls AO_BEFORE_MOD on all the relevant aggregators
+	// (only once on each group).
+	// DOES NOT call aggregator AO_AFTER_DELETE.
 	// Decreases the size in the group handle.
 	// This does NOT collapse the groups that become empty. The record
 	// gets actually removed only from the leaf indexes.
+	//
+	// @param table - table where the group belongs
 	// @param gh - the group instance, may NOT be NULL
-	// @param rh - row to delete
-	void groupRemove(GroupHandle *gh, RowHandle *rh) const;
+	// @param rows - set of rows to remove, if two rows happen to be in the
+	//     same group then the aggregator AO_BEFORE_MOD needs to be called only once.
+	// @param except - set of rows that have already been modified, identifying the
+	//     groups for which the aggregator AO_BEFORE_MOD must not be called again.
+	void groupRemove(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &except) const;
 
 	// Attempt to collapse all the sub-indexes of the group
 	// (see the detailed discussion of the semantics in table/Index.h).

@@ -25,6 +25,7 @@ public:
 	enum Flags {
 		F_INTABLE = 0x01, // the handle is currently stored in the table and can be used as an interator in it
 		F_GROUP = 0x02, // this is a group handle
+		F_GROUP_AGGREGATED = 0x04, // for a group handle, an aggregator op was called on this group at least once
 	};
 
 	// the longest type used for the alignment 

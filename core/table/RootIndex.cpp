@@ -81,9 +81,9 @@ void RootIndex::insert(RowHandle *rh)
 	type_->groupInsert(rootg_, rh);
 }
 
-void RootIndex::remove(RowHandle *rh)
+void RootIndex::remove(const RhSet &rows, const RhSet &except)
 {
-	type_->groupRemove(rootg_, rh);
+	type_->groupRemove(table_, rootg_, rows, except);
 }
 
 size_t RootIndex::size()

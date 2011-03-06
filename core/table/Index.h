@@ -13,6 +13,7 @@
 #include <type/IndexType.h>
 #include <table/RowHandle.h>
 #include <set>
+#include <map>
 
 namespace BICEPS_NS {
 
@@ -110,9 +111,18 @@ protected:
 	// @param rh - handle to insert
 	virtual void insert(RowHandle *rh) = 0;
 
-	// Remove the row from the index.
-	// @param rh - handle to remove
-	virtual void remove(RowHandle *rh) = 0;
+	// Remove a set of rows from the index.
+	// Before removing calls AO_BEFORE_MOD on all the relevant aggregators
+	// (only once on each group).
+	// DOES NOT call aggregator AO_AFTER_DELETE.
+	//
+	// @param rows - set of rows to remove, if two rows happen to be in the
+	//     same group then the aggregator AO_BEFORE_MOD needs to be called only once.
+	// @param except - set of rows that have already been modified, identifying the
+	//     groups for which the aggregator AO_BEFORE_MOD must not be called again.
+	//     These row handles are guaranteed to have valid group iterators inside them,
+	//     i.e. they're currently in the table or have been just removed from it.
+	virtual void remove(const RhSet &rows, const RhSet &except) = 0;
 
 	// Collapse the groups identified by this RowHandle set recursively
 	// if they are found to be empty. "Collapsing" of a group means that the group
@@ -143,7 +153,7 @@ protected:
 	//     false otherwise. For the leaf indexes it's safe to always return
 	//     true, their parents will never collapse the non-empty groups.
 	virtual bool collapse(const RhSet &replaced) = 0;
-	
+
 	// If this is a non-leaf index, find the nested index
 	// in the group where this row belongs.
 	// @param what - row used to find the group
@@ -153,6 +163,9 @@ protected:
 	virtual Index *findNested(const RowHandle *what, int nestPos) const = 0;
 
 protected:
+	// Common type used to split the row sets by groups
+	typedef map<GroupHandle *, RhSet> SplitMap;
+
 	// no reference to the type because they're better in subclasses
 	Autoref<const TableType> tabType_; // type of the table where it belongs
 	Table *table_; // not Autoref, to avoid circular references

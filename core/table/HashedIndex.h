@@ -41,11 +41,14 @@ public:
 	virtual RowHandle *find(const RowHandle *what) const;
 	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced);
 	virtual void insert(RowHandle *rh);
-	virtual void remove(RowHandle *rh);
+	virtual void remove(const RhSet &rows, const RhSet &except);
 	virtual bool collapse(const RhSet &replaced);
 	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 protected:
+	// A helper function that removes one row handle
+	void removeRowHandle(RowHandle *rh);
+
 	Set data_; // the data store
 	Autoref<const HashedIndexType> type_; // type of this index
 	Less *less_; // the comparator object, owned by the type

@@ -41,11 +41,17 @@ public:
 	virtual RowHandle *find(const RowHandle *what) const;
 	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced);
 	virtual void insert(RowHandle *rh);
-	virtual void remove(RowHandle *rh);
+	virtual void remove(const RhSet &rows, const RhSet &except);
 	virtual bool collapse(const RhSet &replaced);
 	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 protected:
+	// A helper function splitting a row handle set by groups.
+	// @param rows - set to split
+	// @param dest - destination map that gets populated 
+	//        (if not empty then added to)
+	void splitRhSet(const RhSet &rows, SplitMap &dest);
+
 	Set data_; // the data store
 	Autoref<const HashedIndexType> type_; // type of this index
 	Less *less_; // the comparator object, owned by the type

@@ -127,19 +127,24 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	if (newrh->isInTable())
 		return false;  // nothing to do
 
+	Index::RhSet untouched; // always empty here
 	Index::RhSet replace;
+	Index::RhSet changed;
 
 	if (!root_->replacementPolicy(newrh, replace)) {
 		// this may have created the groups for the new record that didn't get inserted, so collapse them back
-		replace.insert(newrh);
-		root_->collapse(replace);
+		changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
+		root_->collapse(changed); 
+		// XXX this potentially creates an issue for non-collapsible groups, when on next insert
+		// they would send an OP_DELETE of previous state without any preceding OP_INSERT!
+		// Needs to be taken care of by keeping info on whether any aggregator was called for a group yet.
 		return false;
 	}
 
 	// delete the rows that are pushed out but don't collapse the groups yet
+	root_->remove(replace, untouched);
 	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
 		RowHandle *rh = *rsit;
-		root_->remove(rh);
 		rh->flags_ &= ~RowHandle::F_INTABLE;
 	}
 
@@ -149,7 +154,7 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 
 	root_->insert(newrh);
 
-	// finally, collapse the groups
+	// finally, collapse the groups of the replaced records
 	root_->collapse(replace);
 
 	// and then the removed rows get unreferenced by the table and enqueued
@@ -170,11 +175,13 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	if (rh == NULL || !rh->isInTable())
 		return;
 
-	root_->remove(rh);
-	rh->flags_ &= ~RowHandle::F_INTABLE;
-
+	Index::RhSet changed; // always empty here
 	Index::RhSet replace;
 	replace.insert(rh);
+
+	root_->remove(replace, changed);
+	rh->flags_ &= ~RowHandle::F_INTABLE;
+
 	root_->collapse(replace);
 	
 	send(rh->getRow(), Rowop::OP_DELETE, copyTray);
