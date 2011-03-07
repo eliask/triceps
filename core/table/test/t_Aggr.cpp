@@ -271,10 +271,7 @@ UTESTCASE tableops(Utest *utest)
 
 	// now check the history collected by the aggregators
 	const char *expect = 
-		// XXX this is not exactly right altogether but for now only remove ops are
-		// expected to be proper
 		"+insert 11\n"
-		"t.onPrimary ao=BEFORE_MOD op=DELETE count=0\n"
 		"t.onPrimary ao=AFTER_INSERT op=INSERT count=1\n"
 		"t.onLevel2 ao=AFTER_INSERT op=INSERT count=1\n"
 		"+insert 22\n"
@@ -283,10 +280,12 @@ UTESTCASE tableops(Utest *utest)
 		"t.onLevel2 ao=AFTER_INSERT op=INSERT count=1\n"
 		"+insert 12\n"
 		"t.onPrimary ao=BEFORE_MOD op=DELETE count=2\n"
+		"t.onLevel2 ao=BEFORE_MOD op=DELETE count=1\n"
 		"t.onPrimary ao=AFTER_INSERT op=INSERT count=3\n"
 		"t.onLevel2 ao=AFTER_INSERT op=INSERT count=2\n"
 		"+insert 21\n"
 		"t.onPrimary ao=BEFORE_MOD op=DELETE count=3\n"
+		"t.onLevel2 ao=BEFORE_MOD op=DELETE count=1\n"
 		"t.onPrimary ao=AFTER_INSERT op=INSERT count=4\n"
 		"t.onLevel2 ao=AFTER_INSERT op=INSERT count=2\n"
 		"+replace 11\n"

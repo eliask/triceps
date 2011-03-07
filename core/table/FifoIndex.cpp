@@ -127,6 +127,11 @@ void FifoIndex::remove(const RhSet &rows, const RhSet &except)
 		removeRowHandle(*it);
 }
 
+void FifoIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
+{ 
+	// nothing to do
+}
+
 void FifoIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
 { 
 	// nothing to do

@@ -410,6 +410,17 @@ public:
 	//     groups for which the aggregator AO_BEFORE_MOD must not be called again.
 	void groupRemove(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &except) const;
 
+	// Call aggregator AO_BEFORE_MOD on the groups that are about to be
+	// modified by removal or insertion of rows.
+	// See the details in Index.h.
+	//
+	// @param table - table where the group belongs
+	// @param gh - the group instance, may NOT be NULL
+	// @param rows - set of rows that will be modified (with in them iterators populated)
+	// @param already - set of rows for which this notification has already been done,
+	//        indicates the groups that don't need another notification.
+	void groupAggregateBefore(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &already) const;
+
 	// Call aggregator AO_AFTER_DELETE or AO_AFTER_INSERT (as indicated by aggop)
 	// after the rows have been removed or inserted.
 	// See the details in Index.h.

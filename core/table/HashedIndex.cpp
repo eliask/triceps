@@ -111,6 +111,11 @@ void HashedIndex::remove(const RhSet &rows, const RhSet &except)
 		removeRowHandle(*it);
 }
 
+void HashedIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
+{ 
+	// nothing to do
+}
+
 void HashedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
 { 
 	// nothing to do

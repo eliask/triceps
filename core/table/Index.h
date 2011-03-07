@@ -124,6 +124,14 @@ protected:
 	//     i.e. they're currently in the table or have been just removed from it.
 	virtual void remove(const RhSet &rows, const RhSet &except) = 0;
 
+	// Call aggregator AO_BEFORE_MOD before the rows get deleted or inserted.
+	// The call is done one for each group, if it was not already done (as indicated
+	// by the "already" argument).
+	//
+	// @param rows - set of rows that will be modified
+	// @param future - set of rows for which aggregateBefore has already been called.
+	virtual void aggregateBefore(const RhSet &rows, const RhSet &already) = 0;
+
 	// Call aggregator AO_AFTER_DELETE or AO_AFTER_INSERT (as indicated by aggop) 
 	// after the rows have been removed or inserted.
 	// The call is done for each row. The Rowop::opcode varies: all the calls for
@@ -141,9 +149,11 @@ protected:
 	// intermediate calls with NOPs are needed to give the additive aggregations
 	// a chance to update their state.
 	//
-	// @param rows - set of rows that have been removed
+	// @param aggop - operation argument to pass through, AO_AFTER_DELETE or AO_AFTER_INSERT
+	// @param rows - set of rows that have been removed or inserted
 	// @param future - set of rows for which the aggregation notifications will
-	//        be called separtely in the future (usually that would be the rows inserted)
+	//        be called separtely in the future (usually the sets are separated into
+	//        "remove" and "insert", and the notifications for inserts are done after remove)
 	virtual void aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future) = 0;
 
 	// Collapse the groups identified by this RowHandle set recursively

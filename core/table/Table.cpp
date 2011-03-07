@@ -128,7 +128,7 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	if (newrh->isInTable())
 		return false;  // nothing to do
 
-	Index::RhSet untouched; // always empty here
+	Index::RhSet emptyRhSet; // always empty here
 	Index::RhSet replace;
 	Index::RhSet changed;
 
@@ -142,8 +142,14 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 		return false;
 	}
 
+	if (!aggs_.empty()) {
+		changed.insert(newrh); // OK to add, since the iterators in newrh got populated by replacementPolicy()
+		root_->aggregateBefore(replace, emptyRhSet);
+		root_->aggregateBefore(changed, replace);
+	}
+
 	// delete the rows that are pushed out but don't collapse the groups yet
-	root_->remove(replace, untouched);
+	root_->remove(replace, emptyRhSet);
 	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
 		RowHandle *rh = *rsit;
 		rh->flags_ &= ~RowHandle::F_INTABLE;
@@ -156,9 +162,8 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	root_->insert(newrh);
 
 	if (!aggs_.empty()) {
-		changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
 		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed);
-		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, untouched);
+		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, emptyRhSet);
 	}
 
 	// finally, collapse the groups of the replaced records
@@ -182,15 +187,18 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	if (rh == NULL || !rh->isInTable())
 		return;
 
-	Index::RhSet changed; // always empty here
+	Index::RhSet emptyRhSet; // always empty here
 	Index::RhSet replace;
 	replace.insert(rh);
 
-	root_->remove(replace, changed);
+	if (!aggs_.empty())
+		root_->aggregateBefore(replace, emptyRhSet);
+
+	root_->remove(replace, emptyRhSet);
 	rh->flags_ &= ~RowHandle::F_INTABLE;
 
 	if (!aggs_.empty())
-		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed);
+		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, emptyRhSet);
 
 	root_->collapse(replace);
 	

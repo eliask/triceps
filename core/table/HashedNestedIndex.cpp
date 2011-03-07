@@ -165,6 +165,24 @@ void HashedNestedIndex::remove(const RhSet &rows, const RhSet &except)
 	}
 }
 
+void HashedNestedIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
+{
+	SplitMap splitRows, splitAlready;
+	splitRhSet(rows, splitRows);
+	if (!already.empty())
+		splitRhSet(already, splitAlready);
+
+	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
+		GroupHandle *gh = smi->first;
+		if (already.empty()) { // a little optimization
+			type_->groupAggregateBefore(table_, gh, smi->second, already);
+		} else {
+			// this automatically creates a new entry in splitAlready if it was missing
+			type_->groupAggregateBefore(table_, gh, smi->second, splitAlready[gh]);
+		}
+	}
+}
+
 void HashedNestedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
 {
 	SplitMap splitRows, splitFuture;
