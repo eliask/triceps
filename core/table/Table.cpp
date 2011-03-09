@@ -149,9 +149,9 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	}
 
 	// delete the rows that are pushed out but don't collapse the groups yet
-	root_->remove(replace, emptyRhSet);
 	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
 		RowHandle *rh = *rsit;
+		root_->remove(rh);
 		rh->flags_ &= ~RowHandle::F_INTABLE;
 	}
 
@@ -194,7 +194,7 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	if (!aggs_.empty())
 		root_->aggregateBefore(replace, emptyRhSet);
 
-	root_->remove(replace, emptyRhSet);
+	root_->remove(rh);
 	rh->flags_ &= ~RowHandle::F_INTABLE;
 
 	if (!aggs_.empty())

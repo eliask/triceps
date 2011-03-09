@@ -95,7 +95,7 @@ void FifoIndex::insert(RowHandle *rh)
 	++size_;
 }
 
-void FifoIndex::removeRowHandle(RowHandle *rh)
+void FifoIndex::remove(RowHandle *rh)
 {
 	RhSection *rs = getSection(rh);
 
@@ -119,12 +119,6 @@ void FifoIndex::removeRowHandle(RowHandle *rh)
 	}
 	rs->prev_ = rs->next_ = NULL;
 	--size_;
-}
-
-void FifoIndex::remove(const RhSet &rows, const RhSet &except)
-{
-	for (RhSet::const_iterator it = rows.begin(); it != rows.end(); ++it)
-		removeRowHandle(*it);
 }
 
 void FifoIndex::aggregateBefore(const RhSet &rows, const RhSet &already)

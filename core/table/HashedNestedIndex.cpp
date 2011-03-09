@@ -138,30 +138,18 @@ void HashedNestedIndex::insert(RowHandle *rh)
 	type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
 }
 
+void HashedNestedIndex::remove(RowHandle *rh)
+{
+	Set::iterator it = type_->getIter(rh); // row is known to be in the table
+	type_->groupRemove(static_cast<GroupHandle *>(*it), rh);
+}
+
 void HashedNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
 {
 	for(RhSet::iterator rsi = rows.begin(); rsi != rows.end(); ++rsi) {
 		RowHandle *rh = *rsi;
 		Set::iterator si = type_->getIter(rh); // row is known to still be in the set
 		dest[static_cast<GroupHandle *>(*si)].insert(rh);
-	}
-}
-
-void HashedNestedIndex::remove(const RhSet &rows, const RhSet &except)
-{
-	SplitMap splitRows, splitExcept;
-	splitRhSet(rows, splitRows);
-	if (!except.empty())
-		splitRhSet(except, splitExcept);
-
-	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
-		GroupHandle *gh = smi->first;
-		if (except.empty()) { // a little optimization
-			type_->groupRemove(table_, gh, smi->second, except);
-		} else {
-			// this automatically creates a new entry in splitExcept if it was missing
-			type_->groupRemove(table_, gh, smi->second, splitExcept[gh]);
-		}
 	}
 }
 

@@ -81,9 +81,9 @@ void RootIndex::insert(RowHandle *rh)
 	type_->groupInsert(rootg_, rh);
 }
 
-void RootIndex::remove(const RhSet &rows, const RhSet &except)
+void RootIndex::remove(RowHandle *rh)
 {
-	type_->groupRemove(table_, rootg_, rows, except);
+	type_->groupRemove(rootg_, rh);
 }
 
 void RootIndex::aggregateBefore(const RhSet &rows, const RhSet &already)

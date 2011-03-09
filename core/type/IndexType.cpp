@@ -441,7 +441,6 @@ void IndexType::groupInsert(GroupHandle *gh, RowHandle *rh) const
 {
 	assert(gh != NULL);
 
-	gh->flags_ |= GroupHandle::F_GROUP_AGGREGATED; // XXX will call aggregators in the future
 	GhSection *gs = getGhSection(gh);
 	int n = (int)nested_.size();
 	for (int i = 0; i < n; i++) {
@@ -450,35 +449,18 @@ void IndexType::groupInsert(GroupHandle *gh, RowHandle *rh) const
 	++gs->size_; // a record got inserted
 }
 
-void IndexType::groupRemove(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &except) const
+void IndexType::groupRemove(GroupHandle *gh, RowHandle *rh) const
 {
 	assert(gh != NULL);
 
 	GhSection *gs = getGhSection(gh);
-	int nn = (int)nested_.size();
-
-#if 0 // groupAggregateBefore() replaced it
-	// any record present on the exception list means that this
-	// group has already been modified, so AO_BEFORE_MOD needs not be called again
-	if (!groupAggs_.empty() && except.empty()) {
-		gh->flags_ |= GroupHandle::F_GROUP_AGGREGATED;
-		int an = (int)groupAggs_.size();
-		Aggregator **aggs = getGhAggs(gh);
-		for (int i = 0; i < an; i++) {
-			const IndexAggTypePair &iap = groupAggs_[i];
-			aggs[i]->handle(table, table->getAggregatorGadget(iap.agg_->getPos()), 
-				gs->subidx_[iap.index_->nestPos_], this, gh,
-				Aggregator::AO_BEFORE_MOD, Rowop::OP_DELETE, NULL);
-		}
+	int n = (int)nested_.size();
+	for (int i = 0; i < n; i++) {
+		gs->subidx_[i]->remove(rh);
 	}
-#endif
-
-	for (int i = 0; i < nn; i++) {
-		gs->subidx_[i]->remove(rows, except);
-	}
-
-	gs->size_ -= rows.size(); // records got deleted
+	--gs->size_; // a record got deleted
 }
+
 
 void IndexType::groupAggregateBefore(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &already) const
 {

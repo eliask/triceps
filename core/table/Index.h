@@ -111,18 +111,9 @@ protected:
 	// @param rh - handle to insert
 	virtual void insert(RowHandle *rh) = 0;
 
-	// Remove a set of rows from the index.
-	// Before removing calls AO_BEFORE_MOD on all the relevant aggregators
-	// (only once on each group).
-	// DOES NOT call aggregator AO_AFTER_DELETE.
-	//
-	// @param rows - set of rows to remove, if two rows happen to be in the
-	//     same group then the aggregator AO_BEFORE_MOD needs to be called only once.
-	// @param except - set of rows that have already been modified, identifying the
-	//     groups for which the aggregator AO_BEFORE_MOD must not be called again.
-	//     These row handles are guaranteed to have valid group iterators inside them,
-	//     i.e. they're currently in the table or have been just removed from it.
-	virtual void remove(const RhSet &rows, const RhSet &except) = 0;
+	// Remove the row from the index.
+	// @param rh - handle to remove
+	virtual void remove(RowHandle *rh) = 0;
 
 	// Call aggregator AO_BEFORE_MOD before the rows get deleted or inserted.
 	// The call is done one for each group, if it was not already done (as indicated
