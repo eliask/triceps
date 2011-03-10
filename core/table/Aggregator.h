@@ -17,6 +17,7 @@ class Index;
 class IndexType;
 class GroupHandle;
 class AggregatorGadget;
+class Tray;
 
 // The Aggregator is always owned by the index group (OK, logically it can be thought
 // that it's owned by an index but really by a group), which always works single-threaded.
@@ -66,9 +67,10 @@ public:
 	// @param rh - row that has been inderted or deleted, if deleted then it will be
 	//        already not in table; may be NULL if aggop just requires the sending of
 	//        the old state (such as AO_BEFORE_MOD or AO_COLLAPSE).
+	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
 		const IndexType *parentIndexType, GroupHandle *gh,
-		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh) = 0;
+		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray) = 0;
 };
 
 }; // BICEPS_NS

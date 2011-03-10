@@ -86,14 +86,14 @@ void RootIndex::remove(RowHandle *rh)
 	type_->groupRemove(rootg_, rh);
 }
 
-void RootIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
+void RootIndex::aggregateBefore(const RhSet &rows, const RhSet &already, Tray *copyTray)
 {
-	type_->groupAggregateBefore(table_, rootg_, rows, already);
+	type_->groupAggregateBefore(table_, rootg_, rows, already, copyTray);
 }
 
-void RootIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+void RootIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
 {
-	type_->groupAggregateAfter(aggop, table_, rootg_, rows, future);
+	type_->groupAggregateAfter(aggop, table_, rootg_, rows, future, copyTray);
 }
 
 size_t RootIndex::size()
@@ -101,12 +101,12 @@ size_t RootIndex::size()
 	return type_->groupSize(rootg_);
 }
 
-bool RootIndex::collapse(const RhSet &replaced)
+bool RootIndex::collapse(const RhSet &replaced, Tray *copyTray)
 {
 	// fprintf(stderr, "DEBUG RootIndex::collapse(this=%p, rhset size=%d) rootg_=%p\n", this, (int)replaced.size(), rootg_);
 	if (rootg_ == NULL)
 		return true;
-	type_->groupCollapse(rootg_, replaced);
+	type_->groupCollapse(rootg_, replaced, copyTray);
 	return false; // the root index never collapses its group
 }
 

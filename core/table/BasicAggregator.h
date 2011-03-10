@@ -25,7 +25,7 @@ public:
 	// from Aggregator
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
 		const IndexType *parentIndexType, GroupHandle *gh,
-		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
+		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray);
 
 protected:
 	// In more complex aggregators the gadget would be of a subtype

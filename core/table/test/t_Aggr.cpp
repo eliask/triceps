@@ -60,11 +60,21 @@ Onceref<TableType> mktabtype(Onceref<RowType> rt)
 Erref aggHistory(new Errors);
 void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
         const IndexType *parentIndexType, GroupHandle *gh,
-		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
 {
 	aggHistory->appendMsg(false, strprintf("%s ao=%s op=%s count=%d",
 		gadget->getName().c_str(), Aggregator::aggOpString(aggop),
 		Rowop::opcodeString(opcode), (int)parentIndexType->groupSize(gh)));
+
+	// and also produce the output by sending the first record of the group!
+	if (!Rowop::isNop(opcode)) {
+		RowHandle *rh = index->begin();
+		if (rh != NULL) {
+			// this is an OK approach, sending nothing on empty groups,
+			// it's an easy way to provide consistency
+			gadget->send(rh->getRow(), opcode, copyTray);
+		}
+	}
 }
 
 UTESTCASE badName(Utest *utest)
@@ -103,6 +113,9 @@ UTESTCASE tableops(Utest *utest)
 	mkfields(fld);
 
 	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
@@ -127,7 +140,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_CALL, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findIndex("primary");
@@ -309,4 +322,52 @@ UTESTCASE tableops(Utest *utest)
 	;
 	string hist = aggHistory->print();
 	UT_IS(hist, expect);
+
+	// and the history collected by tracer
+	unit->drainFrame();
+	UT_ASSERT(unit->empty());
+	string tlog = trace->getBuffer()->print();
+
+	string trace_expect = 
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+		"unit 'u' before label 't.out' op INSERT\n"
+
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+		"unit 'u' before label 't.out' op INSERT\n"
+
+		"unit 'u' before label 't.onPrimary' op DELETE\n"
+		"unit 'u' before label 't.onLevel2' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+		"unit 'u' before label 't.out' op INSERT\n"
+
+		"unit 'u' before label 't.onPrimary' op DELETE\n"
+		"unit 'u' before label 't.onLevel2' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+		"unit 'u' before label 't.out' op INSERT\n"
+
+		"unit 'u' before label 't.onPrimary' op DELETE\n"
+		"unit 'u' before label 't.onLevel2' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+		"unit 'u' before label 't.out' op DELETE\n"
+		"unit 'u' before label 't.out' op INSERT\n"
+
+		"unit 'u' before label 't.onPrimary' op DELETE\n"
+		"unit 'u' before label 't.onLevel2' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+		"unit 'u' before label 't.out' op DELETE\n"
+
+		"unit 'u' before label 't.onPrimary' op DELETE\n"
+		"unit 'u' before label 't.onLevel2' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.out' op DELETE\n"
+
+	;
+	UT_IS(tlog, trace_expect);
+
 }

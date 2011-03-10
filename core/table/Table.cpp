@@ -135,7 +135,7 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	if (!root_->replacementPolicy(newrh, replace)) {
 		// this may have created the groups for the new record that didn't get inserted, so collapse them back
 		changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
-		root_->collapse(changed); 
+		root_->collapse(changed, copyTray); 
 		// XXX this potentially creates an issue for non-collapsible groups, when on next insert
 		// they would send an OP_DELETE of previous state without any preceding OP_INSERT!
 		// Needs to be taken care of by keeping info on whether any aggregator was called for a group yet.
@@ -144,8 +144,8 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 
 	if (!aggs_.empty()) {
 		changed.insert(newrh); // OK to add, since the iterators in newrh got populated by replacementPolicy()
-		root_->aggregateBefore(replace, emptyRhSet);
-		root_->aggregateBefore(changed, replace);
+		root_->aggregateBefore(replace, emptyRhSet, copyTray);
+		root_->aggregateBefore(changed, replace, copyTray);
 	}
 
 	// delete the rows that are pushed out but don't collapse the groups yet
@@ -162,12 +162,12 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	root_->insert(newrh);
 
 	if (!aggs_.empty()) {
-		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed);
-		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, emptyRhSet);
+		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed, copyTray);
+		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, emptyRhSet, copyTray);
 	}
 
 	// finally, collapse the groups of the replaced records
-	root_->collapse(replace);
+	root_->collapse(replace, copyTray);
 
 	// and then the removed rows get unreferenced by the table and enqueued
 	// XXX these rows should also be returned in a tray
@@ -192,15 +192,15 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	replace.insert(rh);
 
 	if (!aggs_.empty())
-		root_->aggregateBefore(replace, emptyRhSet);
+		root_->aggregateBefore(replace, emptyRhSet, copyTray);
 
 	root_->remove(rh);
 	rh->flags_ &= ~RowHandle::F_INTABLE;
 
 	if (!aggs_.empty())
-		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, emptyRhSet);
+		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, emptyRhSet, copyTray);
 
-	root_->collapse(replace);
+	root_->collapse(replace, copyTray);
 	
 	send(rh->getRow(), Rowop::OP_DELETE, copyTray);
 	if (rh->decref() <= 0)

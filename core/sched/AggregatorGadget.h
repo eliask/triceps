@@ -47,6 +47,12 @@ public:
 		return type_;
 	}
 
+	// export the send() interface
+	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
+	{
+		Gadget::send(row, opcode, copyTray);
+	}
+
 protected:
 	Table *table_;
 	const_Autoref<AggregatorType> type_;

@@ -121,17 +121,17 @@ void FifoIndex::remove(RowHandle *rh)
 	--size_;
 }
 
-void FifoIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
+void FifoIndex::aggregateBefore(const RhSet &rows, const RhSet &already, Tray *copyTray)
 { 
 	// nothing to do
 }
 
-void FifoIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+void FifoIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
 { 
 	// nothing to do
 }
 
-bool FifoIndex::collapse(const RhSet &replaced)
+bool FifoIndex::collapse(const RhSet &replaced, Tray *copyTray)
 {
 	return true;
 }

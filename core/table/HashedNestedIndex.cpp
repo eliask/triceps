@@ -153,7 +153,7 @@ void HashedNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
 	}
 }
 
-void HashedNestedIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
+void HashedNestedIndex::aggregateBefore(const RhSet &rows, const RhSet &already, Tray *copyTray)
 {
 	SplitMap splitRows, splitAlready;
 	splitRhSet(rows, splitRows);
@@ -163,15 +163,15 @@ void HashedNestedIndex::aggregateBefore(const RhSet &rows, const RhSet &already)
 	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		if (already.empty()) { // a little optimization
-			type_->groupAggregateBefore(table_, gh, smi->second, already);
+			type_->groupAggregateBefore(table_, gh, smi->second, already, copyTray);
 		} else {
 			// this automatically creates a new entry in splitAlready if it was missing
-			type_->groupAggregateBefore(table_, gh, smi->second, splitAlready[gh]);
+			type_->groupAggregateBefore(table_, gh, smi->second, splitAlready[gh], copyTray);
 		}
 	}
 }
 
-void HashedNestedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
+void HashedNestedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
 {
 	SplitMap splitRows, splitFuture;
 	splitRhSet(rows, splitRows);
@@ -181,15 +181,15 @@ void HashedNestedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &row
 	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		if (future.empty()) { // a little optimization
-			type_->groupAggregateAfter(aggop, table_, gh, smi->second, future);
+			type_->groupAggregateAfter(aggop, table_, gh, smi->second, future, copyTray);
 		} else {
 			// this automatically creates a new entry in splitFuture if it was missing
-			type_->groupAggregateAfter(aggop, table_, gh, smi->second, splitFuture[gh]);
+			type_->groupAggregateAfter(aggop, table_, gh, smi->second, splitFuture[gh], copyTray);
 		}
 	}
 }
 
-bool HashedNestedIndex::collapse(const RhSet &replaced)
+bool HashedNestedIndex::collapse(const RhSet &replaced, Tray *copyTray)
 {
 	// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	
@@ -203,11 +203,11 @@ bool HashedNestedIndex::collapse(const RhSet &replaced)
 	for(SplitMap::iterator smi = split.begin(); smi != split.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p\n", this, gh);
-		if (type_->groupCollapse(gh, smi->second)) {
+		if (type_->groupCollapse(gh, smi->second, copyTray)) {
 			// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p destroying\n", this, gh);
 			// call the aggregators to process collapse
 			if (!type_->groupAggs_.empty()) {
-				type_->aggregateCollapse(table_, gh);
+				type_->aggregateCollapse(table_, gh, copyTray);
 			}
 			// destroy the group
 			data_.erase(type_->getIter(gh)); // after this the iterator in gh is not valid any more

@@ -462,7 +462,7 @@ void IndexType::groupRemove(GroupHandle *gh, RowHandle *rh) const
 }
 
 
-void IndexType::groupAggregateBefore(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &already) const
+void IndexType::groupAggregateBefore(Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &already, Tray *copyTray) const
 {
 	assert(gh != NULL);
 	if (rows.empty())
@@ -483,16 +483,16 @@ void IndexType::groupAggregateBefore(Table *table, GroupHandle *gh, const RhSet 
 			// no matter how many rows are in the set, call only once per group
 			aggs[i]->handle(table, table->getAggregatorGadget(iap.agg_->getPos()), 
 				gs->subidx_[iap.index_->nestPos_], this, gh,
-				Aggregator::AO_BEFORE_MOD, Rowop::OP_DELETE, NULL);
+				Aggregator::AO_BEFORE_MOD, Rowop::OP_DELETE, NULL, copyTray);
 		}
 	}
 
 	for (int i = 0; i < nn; i++) {
-		gs->subidx_[i]->aggregateBefore(rows, already);
+		gs->subidx_[i]->aggregateBefore(rows, already, copyTray);
 	}
 }
 
-void IndexType::groupAggregateAfter(Aggregator::AggOp aggop, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &future) const
+void IndexType::groupAggregateAfter(Aggregator::AggOp aggop, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &future, Tray *copyTray) const
 {
 	assert(gh != NULL);
 	if (rows.empty())
@@ -522,17 +522,17 @@ void IndexType::groupAggregateAfter(Aggregator::AggOp aggop, Table *table, Group
 			for (RhSet::const_iterator rit = rows.begin(); rit != rows.end(); ++rit) {
 				aggs[i]->handle(table, gadget, subidx, this, gh, aggop, 
 					(*rit == lastRow ? Rowop::OP_INSERT : Rowop::OP_NOP), 
-					*rit);
+					*rit, copyTray);
 			}
 		}
 	}
 
 	for (int i = 0; i < nn; i++) {
-		gs->subidx_[i]->aggregateAfter(aggop, rows, future);
+		gs->subidx_[i]->aggregateAfter(aggop, rows, future, copyTray);
 	}
 }
 
-bool IndexType::groupCollapse(GroupHandle *gh, const RhSet &replaced) const
+bool IndexType::groupCollapse(GroupHandle *gh, const RhSet &replaced, Tray *copyTray) const
 {
 	assert(gh != NULL);
 
@@ -544,7 +544,7 @@ bool IndexType::groupCollapse(GroupHandle *gh, const RhSet &replaced) const
 	int n = (int)nested_.size();
 	// fprintf(stderr, "DEBUG IndexType::groupCollapse(this=%p, gh=%p, rhset size=%d) gsize=%d, nested=%d\n", this, gh, (int)replaced.size(), (int)gs->size_, n);
 	for (int i = 0; i < n; i++) {
-		res = (gs->subidx_[i]->collapse(replaced) && res);
+		res = (gs->subidx_[i]->collapse(replaced, copyTray) && res);
 	}
 
 	return res;
@@ -572,7 +572,7 @@ void IndexType::groupClearData(GroupHandle *gh) const
 	gs->size_ = 0; // all records got deleted
 }
 
-void IndexType::aggregateCollapse(Table *table, GroupHandle *gh) const
+void IndexType::aggregateCollapse(Table *table, GroupHandle *gh, Tray *copyTray) const
 {
 	assert(gh != NULL);
 
@@ -587,7 +587,7 @@ void IndexType::aggregateCollapse(Table *table, GroupHandle *gh) const
 			const IndexAggTypePair &iap = groupAggs_[i];
 			aggs[i]->handle(table, table->getAggregatorGadget(iap.agg_->getPos()), 
 				gs->subidx_[iap.index_->nestPos_], this, gh,
-				Aggregator::AO_COLLAPSE, Rowop::OP_DELETE, NULL);
+				Aggregator::AO_COLLAPSE, Rowop::OP_DELETE, NULL, copyTray);
 		}
 	}
 }

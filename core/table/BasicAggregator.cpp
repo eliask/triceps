@@ -13,10 +13,10 @@ namespace BICEPS_NS {
 
 void BasicAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index,
 	const IndexType *parentIndexType, GroupHandle *gh,
-	AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
+	AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
 {
 	const BasicAggregatorType *at = static_cast<const BasicAggregatorType *>(gadget->getType());
-	at->cb_(table, gadget, index, parentIndexType, gh, aggop, opcode, rh);
+	at->cb_(table, gadget, index, parentIndexType, gh, aggop, opcode, rh, copyTray);
 }
 
 }; // BICEPS_NS
