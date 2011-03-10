@@ -161,6 +161,14 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 
 	root_->insert(newrh);
 
+	// This has a bit weird effect of aggregator results being updated before the
+	// underlying table's but moving the table result update here will result
+	// in the table not being fully collapsed yet when its updates are sent.
+	// But then again, aggregators are kind of parallel to the underlying tables,
+	// and maybe don't have to be ordered after the tables.
+	// XXX This may cause a major breakage if someone makes a topological loop with CALL
+	// (but that's an unsafe idea anyway). Perhaps should collect the aggregator
+	// updates on a tray before sending them anywhere. Needs more thinking.
 	if (!aggs_.empty()) {
 		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed, copyTray);
 		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, emptyRhSet, copyTray);
