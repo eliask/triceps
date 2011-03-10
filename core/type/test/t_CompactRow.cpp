@@ -160,6 +160,21 @@ UTESTCASE mkrow(Utest *utest)
 		}
 	}
 
+	// try the get...() functions
+	UT_IS(rt1->getUint8(r1, 0), '1');
+	UT_IS(rt1->getUint8(r1, 0, 1), '2');
+	UT_IS(rt1->getUint8(r1, 0, 100), 0); // null
+	UT_IS(rt1->getInt32(r1, 1), 1234);
+	UT_IS(rt1->getInt32(r1, 1, 0), 1234);
+	UT_IS(rt1->getInt32(r1, 1, 1), 0); // null
+	UT_IS(rt1->getInt64(r1, 2), 0xdeadbeefc00c);
+	UT_IS(rt1->getInt64(r1, 2, 0), 0xdeadbeefc00c);
+	UT_IS(rt1->getInt64(r1, 2, 1), 0); // null
+	UT_IS(rt1->getFloat64(r1, 3), 9.99e99);
+	UT_IS(rt1->getFloat64(r1, 3, 0), 9.99e99);
+	UT_IS(rt1->getFloat64(r1, 3, 1), 0); // null
+	UT_IS(string(rt1->getString(r1, 4)), "hello world");
+
 	// try to put a NULL in each of the fields
 	for (int j = 0; j < rt1->fieldCount(); j++) {
 		mkfdata(dv);
@@ -237,6 +252,12 @@ UTESTCASE mkrow(Utest *utest)
 			return;
 		}
 	}
+	// try the get...() functions with null values
+	UT_IS(rt1->getUint8(r1, 0), 0);
+	UT_IS(rt1->getInt32(r1, 1), 0);
+	UT_IS(rt1->getInt64(r1, 2), 0);
+	UT_IS(rt1->getFloat64(r1, 3), 0);
+	UT_IS(string(rt1->getString(r1, 4)), "");
 }
 
 UTESTCASE mkrowshort(Utest *utest)

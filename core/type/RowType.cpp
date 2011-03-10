@@ -7,6 +7,7 @@
 
 #include <type/RowType.h>
 #include <map>
+#include <string.h>
 
 namespace BICEPS_NS {
 
@@ -198,6 +199,78 @@ void RowType::fillFdata(FdataVec &v, int nf)
 		v.resize(nf);
 		for (int i = oldsz; i < nf; i++)
 			v[i].notNull_ = false;
+	}
+}
+
+uint8_t RowType::getUint8(const Row *row, int nf, int pos)
+{
+	uint8_t val;
+
+	const char *ptr;
+	intptr_t len;
+	bool notNull = getField(row, nf, ptr, len);
+	if (notNull  && len >= sizeof(val)*(pos+1)) {
+		memcpy(&val, ptr + sizeof(val)*pos, sizeof(val));
+		return val;
+	} else {
+		return 0;
+	}
+}
+
+int32_t RowType::getInt32(const Row *row, int nf, int pos)
+{
+	int32_t val;
+
+	const char *ptr;
+	intptr_t len;
+	bool notNull = getField(row, nf, ptr, len);
+	if (notNull  && len >= sizeof(val)*(pos+1)) {
+		memcpy(&val, ptr + sizeof(val)*pos, sizeof(val));
+		return val;
+	} else {
+		return 0;
+	}
+}
+
+int64_t RowType::getInt64(const Row *row, int nf, int pos)
+{
+	int64_t val;
+
+	const char *ptr;
+	intptr_t len;
+	bool notNull = getField(row, nf, ptr, len);
+	if (notNull  && len >= sizeof(val)*(pos+1)) {
+		memcpy(&val, ptr + sizeof(val)*pos, sizeof(val));
+		return val;
+	} else {
+		return 0;
+	}
+}
+
+double RowType::getFloat64(const Row *row, int nf, int pos)
+{
+	double val;
+
+	const char *ptr;
+	intptr_t len;
+	bool notNull = getField(row, nf, ptr, len);
+	if (notNull  && len >= sizeof(val)*(pos+1)) {
+		memcpy(&val, ptr + sizeof(val)*pos, sizeof(val));
+		return val;
+	} else {
+		return 0;
+	}
+}
+
+const char *RowType::getString(const Row *row, int nf)
+{
+	const char *ptr;
+	intptr_t len;
+	bool notNull = getField(row, nf, ptr, len);
+	if (notNull) {
+		return ptr;
+	} else {
+		return "";
 	}
 }
 

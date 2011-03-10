@@ -166,6 +166,23 @@ public:
 	virtual bool equalRows(const Row *row1, const Row *row2) const = 0;
 	// }
 	
+	// {
+	// Convenience functions to read values of assorted types.
+	// Work internally through getField(). For null values they work like
+	// Perl, returning the numeric 0 or empty string. If the field array
+	// doesn't have enough elements for the required position, this is also 
+	// treated as null.
+	//
+	// Common arguments:
+	// @param row - row to operate on
+	// @param nf - field number, starting from 0
+	// @param pos - position of element in field array, 0 by default
+	uint8_t getUint8(const Row *row, int nf, int pos = 0);
+	int32_t getInt32(const Row *row, int nf, int pos = 0);
+	int64_t getInt64(const Row *row, int nf, int pos = 0);
+	double getFloat64(const Row *row, int nf, int pos = 0);
+	const char *getString(const Row *row, int nf);
+	// }
 
 protected:
 	// parse the definition and return the errors, called from the constructor
