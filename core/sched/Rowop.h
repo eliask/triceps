@@ -25,6 +25,11 @@ class Rowref;
 // withing a single thread. They can not be directly passed between two execution
 // units even in a single thread, instead they mush be translated. Similarly,
 // they need to be translated for passing to a unit inside another thread.
+//
+// A rowop may also have an enqueueing mode from a gadget. This mostly
+// has to do with ordering the aggregator changes right relative to the
+// main table change. Most uses of Rowop ignore that mode, except the
+// few specially marked ones.
 class Rowop : public Starget
 {
 public:
@@ -47,9 +52,20 @@ public:
 	};
 
 	// Rowop will hold the references on the row and the label.
+	// This defaults the enqMode to SM_FORK as the safest one (see the 
+	// explanation before the class, in the normal uses the enqMode is ignored).
 	// XXX think of checking the type of row 
 	Rowop(const Label *label, Opcode op, const Row *row);
 	Rowop(const Label *label, Opcode op, const Rowref &row);
+
+	// The same with explicit enqueueing mode (see the explanation before the class).
+	// This way is used in the guts of aggregators.
+	// @param enqMode - really a Gadget::EnqMode, but here int to avoid a circular
+	//        header dependency; how this row should be enqueued.
+	Rowop(const Label *label, Opcode op, const Row *row, int enqMode);
+	Rowop(const Label *label, Opcode op, const Rowref &row, int enqMode);
+
+	Rowop(const Rowop &orig);
 
 	~Rowop();
 
@@ -94,6 +110,11 @@ public:
 		return row_;
 	}
 
+	int getEnqMode() const
+	{
+		return enqMode_;
+	}
+
 	// Convert the opcode to string
 	static const char *opcodeString(Opcode code);
 
@@ -102,6 +123,11 @@ protected:
 	const Row *row_; // a manual reference, the type from Label will be used for deletion
 	// no timestamp nor sequence now, these will come later
 	Opcode opcode_;
+	int enqMode_; // enqueueing mode, as in Gadget::EnqMode
+
+private:
+	Rowop();
+	void operator=(const Rowop &);
 };
 
 }; // BICEPS_NS

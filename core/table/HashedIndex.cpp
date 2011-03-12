@@ -105,17 +105,17 @@ void HashedIndex::remove(RowHandle *rh)
 	data_.erase(rs->iter_);
 }
 
-void HashedIndex::aggregateBefore(const RhSet &rows, const RhSet &already, Tray *copyTray)
+void HashedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray)
 { 
 	// nothing to do
 }
 
-void HashedIndex::aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
+void HashedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
 { 
 	// nothing to do
 }
 
-bool HashedIndex::collapse(const RhSet &replaced, Tray *copyTray)
+bool HashedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray)
 {
 	// fprintf(stderr, "DEBUG HashedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	return true;

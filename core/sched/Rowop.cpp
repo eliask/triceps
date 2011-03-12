@@ -7,13 +7,15 @@
 
 #include <sched/Rowop.h>
 #include <sched/Label.h>
+#include <sched/Gadget.h>
 
 namespace BICEPS_NS {
 
 Rowop::Rowop(const Label *label, Opcode op, const Row *row) :
 	label_(label),
 	row_(row),
-	opcode_(op)
+	opcode_(op),
+	enqMode_(Gadget::SM_FORK)
 {
 	assert(label);
 	if (row_)
@@ -23,13 +25,45 @@ Rowop::Rowop(const Label *label, Opcode op, const Row *row) :
 Rowop::Rowop(const Label *label, Opcode op, const Rowref &row) :
 	label_(label),
 	row_(row),
-	opcode_(op)
+	opcode_(op),
+	enqMode_(Gadget::SM_FORK)
 {
 	assert(label);
 	if (row_)
 		row_->incref(); // manual reference keeping
 }
 
+Rowop::Rowop(const Label *label, Opcode op, const Row *row, int enqMode) :
+	label_(label),
+	row_(row),
+	opcode_(op),
+	enqMode_(enqMode)
+{
+	assert(label);
+	if (row_)
+		row_->incref(); // manual reference keeping
+}
+
+Rowop::Rowop(const Label *label, Opcode op, const Rowref &row, int enqMode) :
+	label_(label),
+	row_(row),
+	opcode_(op),
+	enqMode_(enqMode)
+{
+	assert(label);
+	if (row_)
+		row_->incref(); // manual reference keeping
+}
+
+Rowop::Rowop(const Rowop &orig) :
+	label_(orig.getLabel()),
+	row_(orig.getRow()),
+	opcode_(orig.getOpcode()),
+	enqMode_(orig.getEnqMode())
+{
+	if (row_)
+		row_->incref(); // manual reference keeping
+}
 
 Rowop::~Rowop()
 {

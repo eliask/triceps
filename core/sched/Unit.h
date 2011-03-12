@@ -57,6 +57,9 @@ public:
 	// Then pop that frame, restoring the stack of queues.
 	void callTray(const_Onceref<Tray> tray);
 
+	// Enqueue each record from the tray according to its enqMode
+	void enqueueDelayedTray(const_Onceref<Tray> tray);
+
 	// Extract and execute the next record from the innermost frame.
 	void callNext();
 	// Execute until the current stack frame drains.

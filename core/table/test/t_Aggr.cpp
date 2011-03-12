@@ -59,7 +59,7 @@ Onceref<TableType> mktabtype(Onceref<RowType> rt)
 // an "aggregator" that records the history of calls
 Erref aggHistory(new Errors);
 void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
-        const IndexType *parentIndexType, GroupHandle *gh,
+        const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
 {
 	aggHistory->appendMsg(false, strprintf("%s ao=%s op=%s count=%d",
@@ -72,7 +72,7 @@ void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
 		if (rh != NULL) {
 			// this is an OK approach, sending nothing on empty groups,
 			// it's an easy way to provide consistency
-			gadget->send(rh->getRow(), opcode, copyTray);
+			gadget->sendDelayed(dest, rh->getRow(), opcode, copyTray);
 		}
 	}
 }
@@ -329,43 +329,43 @@ UTESTCASE tableops(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string trace_expect = 
+		"unit 'u' before label 't.out' op INSERT\n"
 		"unit 'u' before label 't.onPrimary' op INSERT\n"
 		"unit 'u' before label 't.onLevel2' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
 
+		"unit 'u' before label 't.out' op INSERT\n"
 		"unit 'u' before label 't.onPrimary' op INSERT\n"
 		"unit 'u' before label 't.onLevel2' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
 
+		"unit 'u' before label 't.out' op INSERT\n"
 		"unit 'u' before label 't.onPrimary' op DELETE\n"
 		"unit 'u' before label 't.onLevel2' op DELETE\n"
 		"unit 'u' before label 't.onPrimary' op INSERT\n"
 		"unit 'u' before label 't.onLevel2' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
 
+		"unit 'u' before label 't.out' op INSERT\n"
 		"unit 'u' before label 't.onPrimary' op DELETE\n"
 		"unit 'u' before label 't.onLevel2' op DELETE\n"
 		"unit 'u' before label 't.onPrimary' op INSERT\n"
 		"unit 'u' before label 't.onLevel2' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
 
-		"unit 'u' before label 't.onPrimary' op DELETE\n"
-		"unit 'u' before label 't.onLevel2' op DELETE\n"
-		"unit 'u' before label 't.onPrimary' op INSERT\n"
-		"unit 'u' before label 't.onLevel2' op INSERT\n"
 		"unit 'u' before label 't.out' op DELETE\n"
 		"unit 'u' before label 't.out' op INSERT\n"
-
 		"unit 'u' before label 't.onPrimary' op DELETE\n"
 		"unit 'u' before label 't.onLevel2' op DELETE\n"
 		"unit 'u' before label 't.onPrimary' op INSERT\n"
 		"unit 'u' before label 't.onLevel2' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
 
+		"unit 'u' before label 't.out' op DELETE\n"
 		"unit 'u' before label 't.onPrimary' op DELETE\n"
 		"unit 'u' before label 't.onLevel2' op DELETE\n"
 		"unit 'u' before label 't.onPrimary' op INSERT\n"
+		"unit 'u' before label 't.onLevel2' op INSERT\n"
+
 		"unit 'u' before label 't.out' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op DELETE\n"
+		"unit 'u' before label 't.onLevel2' op DELETE\n"
+		"unit 'u' before label 't.onPrimary' op INSERT\n"
 
 	;
 	UT_IS(tlog, trace_expect);

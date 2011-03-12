@@ -36,9 +36,9 @@ public:
 	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced);
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
-	virtual void aggregateBefore(const RhSet &rows, const RhSet &already, Tray *copyTray);
-	virtual void aggregateAfter(Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray);
-	virtual bool collapse(const RhSet &replaced, Tray *copyTray);
+	virtual void aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray);
+	virtual void aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray);
+	virtual bool collapse(Tray *dest, const RhSet &replaced, Tray *copyTray);
 	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 	// Get the number of records in this index

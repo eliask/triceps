@@ -43,8 +43,8 @@ public:
 	static const char *aggOpString(AggOp code);
 
 	// Handle one operation on the group.
-	// Updates the internal state of the aggregator and possibly sends information
-	// about the changes to the Gadget.
+	// Updates the internal state of the aggregator and possibly sends (delayed) information
+	// about the changes to the Gadget. 
 	//
 	// @param table - table on which the change happens
 	// @param gadget - gadget of this aggregator, where to send the Rowops
@@ -56,6 +56,7 @@ public:
 	//        the group size as: parentIndexType->groupSize(gh); but also can be used
 	//        to get access to other indexes in the same group, all of them will contain
 	//        the same set of rows but possibly in different order
+	// @param dest - the tray to collect the row for delayed sending (dest of sendDelayed())
 	// @param aggop - the reason for this call
 	// @param opcode - the Rowop opcode that would be normally used for the records
 	//        produced in this operation (INSERT, DELETE, NOP), so that the simpler
@@ -69,7 +70,7 @@ public:
 	//        the old state (such as AO_BEFORE_MOD or AO_COLLAPSE).
 	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
-		const IndexType *parentIndexType, GroupHandle *gh,
+		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray) = 0;
 };
 

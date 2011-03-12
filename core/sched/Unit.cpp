@@ -6,6 +6,7 @@
 // The basic execution unit.
 
 #include <sched/Unit.h>
+#include <sched/Gadget.h>
 
 namespace BICEPS_NS {
 
@@ -127,6 +128,23 @@ void Unit::callTray(const_Onceref<Tray> tray)
 		popFrame();
 }
 
+void Unit::enqueueDelayedTray(const_Onceref<Tray> tray)
+{
+	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it) {
+		Rowop *rop = *it;
+		switch(rop->getEnqMode()) {
+		case Gadget::SM_SCHEDULE:
+			schedule(rop);
+			break;
+		case Gadget::SM_FORK:
+			fork(rop);
+			break;
+		case Gadget::SM_CALL:
+			call(rop);
+			break;
+		}
+	}
+}
 
 void Unit::callNext()
 {

@@ -30,7 +30,7 @@ void Gadget::setRowType(const_Onceref<RowType> rt)
 	}
 }
 
-void Gadget::send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
+void Gadget::send(const Row *row, Rowop::Opcode opcode, Tray *copyTray) const
 {
 	// fprintf(stderr, "DEBUG Gadget::send(row=%p, opcode=0x%x, tray=%p) mode=%d\n", row, opcode, copyTray, mode_);
 	assert(!label_.isNull());
@@ -57,6 +57,23 @@ void Gadget::send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
 		if (copyTray != NULL) {
 			copyTray->push_back(rop);
 		}
+	}
+}
+
+void Gadget::sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray *copyTray) const
+{
+	// fprintf(stderr, "DEBUG Gadget::sendDelayed(dest=%p, row=%p, opcode=0x%x, tray=%p) mode=%d\n", dest, row, opcode, copyTray, mode_);
+	assert(!label_.isNull());
+
+	if (row == NULL)
+		return; // nothing to do
+
+	if (mode_ != SM_IGNORE || copyTray != NULL) {
+		Autoref<Rowop> rop = new Rowop(label_, opcode, row, mode_);
+		if (mode_ != SM_IGNORE)
+			dest->push_back(rop);
+		if (copyTray != NULL)
+			copyTray->push_back(rop);
 	}
 }
 

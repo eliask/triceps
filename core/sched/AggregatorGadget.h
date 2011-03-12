@@ -47,16 +47,20 @@ public:
 		return type_;
 	}
 
-	// export the send() interface
-	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
+	// export the sendDeplayed() interface
+	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray *copyTray) const
 	{
-		Gadget::send(row, opcode, copyTray);
+		Gadget::sendDelayed(dest, row, opcode, copyTray);
 	}
 
 protected:
 	Table *table_;
 	const_Autoref<AggregatorType> type_;
 	const_Autoref<IndexType> indexType_;
+
+private:
+	// prevent the accidental use of send(), it must not be used with aggregators
+	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray) const;
 };
 
 }; // BICEPS_NS

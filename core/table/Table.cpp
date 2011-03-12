@@ -128,6 +128,11 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	if (newrh->isInTable())
 		return false;  // nothing to do
 
+	bool noAggs = aggs_.empty();
+	Autoref<Tray> aggTray; // delayed records from aggregation
+	if (!noAggs)
+		aggTray = new Tray;
+
 	Index::RhSet emptyRhSet; // always empty here
 	Index::RhSet replace;
 	Index::RhSet changed;
@@ -135,17 +140,15 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	if (!root_->replacementPolicy(newrh, replace)) {
 		// this may have created the groups for the new record that didn't get inserted, so collapse them back
 		changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
-		root_->collapse(changed, copyTray); 
-		// XXX this potentially creates an issue for non-collapsible groups, when on next insert
-		// they would send an OP_DELETE of previous state without any preceding OP_INSERT!
-		// Needs to be taken care of by keeping info on whether any aggregator was called for a group yet.
+		root_->collapse(aggTray, changed, copyTray); // aggTray may be NULL, it's OK with no aggregators
+		// aggTray should be empty, so don't send it anywhere
 		return false;
 	}
 
-	if (!aggs_.empty()) {
+	if (!noAggs) {
 		changed.insert(newrh); // OK to add, since the iterators in newrh got populated by replacementPolicy()
-		root_->aggregateBefore(replace, emptyRhSet, copyTray);
-		root_->aggregateBefore(changed, replace, copyTray);
+		root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
+		root_->aggregateBefore(aggTray, changed, replace, copyTray);
 	}
 
 	// delete the rows that are pushed out but don't collapse the groups yet
@@ -161,21 +164,13 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 
 	root_->insert(newrh);
 
-	// This has a bit weird effect of aggregator results being updated before the
-	// underlying table's but moving the table result update here will result
-	// in the table not being fully collapsed yet when its updates are sent.
-	// But then again, aggregators are kind of parallel to the underlying tables,
-	// and maybe don't have to be ordered after the tables.
-	// XXX This may cause a major breakage if someone makes a topological loop with CALL
-	// (but that's an unsafe idea anyway). Perhaps should collect the aggregator
-	// updates on a tray before sending them anywhere. Needs more thinking.
-	if (!aggs_.empty()) {
-		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, changed, copyTray);
-		root_->aggregateAfter(Aggregator::AO_AFTER_INSERT, changed, emptyRhSet, copyTray);
+	if (!noAggs) {
+		root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, changed, copyTray);
+		root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_INSERT, changed, emptyRhSet, copyTray);
 	}
 
 	// finally, collapse the groups of the replaced records
-	root_->collapse(replace, copyTray);
+	root_->collapse(aggTray, replace, copyTray);
 
 	// and then the removed rows get unreferenced by the table and enqueued
 	// XXX these rows should also be returned in a tray
@@ -186,6 +181,14 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 			destroyRowHandle(rh);
 	}
 	send(newrh->getRow(), Rowop::OP_INSERT, copyTray);
+
+	// Aggregator changes go after table changes. If there are multiople aggregators,
+	// between themselves they go sort of in parallel.
+	// Besides being better logically, the major reason for delaying the sending of
+	// aggregator updates is to prevent an SM_CALL from happening
+	// while the table is in the middle of a change.
+	if (!noAggs) 
+		unit_->enqueueDelayedTray(aggTray); 
 	
 	return true;
 }
@@ -195,24 +198,34 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	if (rh == NULL || !rh->isInTable())
 		return;
 
+	bool noAggs = aggs_.empty();
+	Autoref<Tray> aggTray; // delayed records from aggregation
+	if (!noAggs)
+		aggTray = new Tray;
+
 	Index::RhSet emptyRhSet; // always empty here
 	Index::RhSet replace;
 	replace.insert(rh);
 
-	if (!aggs_.empty())
-		root_->aggregateBefore(replace, emptyRhSet, copyTray);
+	if (!noAggs)
+		root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
 
 	root_->remove(rh);
 	rh->flags_ &= ~RowHandle::F_INTABLE;
 
-	if (!aggs_.empty())
-		root_->aggregateAfter(Aggregator::AO_AFTER_DELETE, replace, emptyRhSet, copyTray);
+	if (!noAggs)
+		root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, emptyRhSet, copyTray);
 
-	root_->collapse(replace, copyTray);
+	root_->collapse(aggTray, replace, copyTray);
 	
 	send(rh->getRow(), Rowop::OP_DELETE, copyTray);
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
+	
+	// Aggregator changes go after table changes. If there are multiople aggregators,
+	// between themselves they go sort of in parallel.
+	if (!noAggs) 
+		unit_->enqueueDelayedTray(aggTray); 
 }
 
 RowHandle *Table::begin() const
