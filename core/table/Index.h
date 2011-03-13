@@ -193,6 +193,14 @@ protected:
 	virtual Index *findNested(const RowHandle *what, int nestPos) const = 0;
 
 protected:
+	// Interface for subtypes
+	
+	// Find the index instance of a given type for the given handle.
+	// The index instances can use it to check whether some row belongs
+	// to themselves or not.
+	Index *getIndexOf(IndexType *type, const RowHandle *rh) const;
+
+protected:
 	// Common type used to split the row sets by groups
 	typedef map<GroupHandle *, RhSet> SplitMap;
 

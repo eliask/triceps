@@ -18,7 +18,11 @@ class FifoIndexType : public IndexType
 {
 public:
 	// @param limit - the record count limit, or 0 for unlimited
-	FifoIndexType(size_t limit = 0);
+	// @param jumping - flag: this is a jumping index, i.e. when the count limit is
+	//        overfilled, all the current records will be flushed out. "Overfilled"
+	//        mans that the flush will happen only on the insertion of the next
+	//        record that would be pushing the size over the limit.
+	FifoIndexType(size_t limit = 0, bool jumping = false);
 
 	// from Type
 	virtual bool equals(const Type *t) const;
@@ -35,6 +39,11 @@ public:
 	size_t getLimit() const
 	{
 		return limit_;
+	}
+
+	bool isJumping() const
+	{
+		return jumping_;
 	}
 
 protected:
@@ -63,7 +72,8 @@ protected:
 	FifoIndexType(const FifoIndexType &orig);
 
 	intptr_t rhOffset_; // offset of this index's data in table's row handle
-	size_t limit_;
+	size_t limit_; // 0 means unlimited
+	bool jumping_; // flag: this is a jumping index
 };
 
 }; // BICEPS_NS

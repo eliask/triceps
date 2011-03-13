@@ -12,15 +12,17 @@
 
 namespace BICEPS_NS {
 
-FifoIndexType::FifoIndexType(size_t limit) :
+FifoIndexType::FifoIndexType(size_t limit, bool jumping) :
 	IndexType(IT_FIFO),
-	limit_(limit)
+	limit_(limit),
+	jumping_(jumping)
 { 
 }
 
 FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
 	IndexType(orig),
-	limit_(orig.limit_)
+	limit_(orig.limit_),
+	jumping_(orig.jumping_)
 {
 }
 
@@ -34,14 +36,16 @@ bool FifoIndexType::equals(const Type *t) const
 	
 	const FifoIndexType *fit = static_cast<const FifoIndexType *>(t);
 
-	return (limit_ == fit->limit_);
+	return (limit_ == fit->limit_ && jumping_ == fit->jumping_);
 }
 
 void FifoIndexType::printTo(string &res, const string &indent, const string &subindent) const
 {
 	res.append("FifoIndex(");
 	if (limit_ != 0)
-		res.append(strprintf("%zd", limit_));
+		res.append(strprintf("limit=%zd", limit_));
+	if (jumping_)
+		res.append(" jumping");
 	res.append(")");
 }
 
@@ -61,8 +65,8 @@ void FifoIndexType::initialize()
 	if (nested_.size() != 0)
 		errors_->appendMsg(true, "FifoIndexType currently does not support further nested indexes");
 
-	if (limit_ != 0)
-		errors_->appendMsg(true, "FifoIndexType currently does not support the size limit");
+	if (limit_ == 0 && jumping_)
+		errors_->appendMsg(true, "FifoIndexType requires a non-0 limit for the jumping mode");
 
 	rhOffset_ = tabtype_->rhType()->allocate(sizeof(FifoIndex::RhSection));
 

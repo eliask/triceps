@@ -237,7 +237,7 @@ protected:
 		nestPos_ = pos;
 	}
 
-	TableType *getTabtype()
+	TableType *getTabtype() const
 	{
 		return tabtype_;
 	}
@@ -313,6 +313,14 @@ protected:
 	// @param what - handle to search for
 	// @return - handle of the record in table or NULL
 	RowHandle *findRecord(const Table *table, const RowHandle *what) const;
+
+	// Finds an instance of this type's index where this record belongs
+	// (the record must be already inserted in the table, or for non-leaf
+	// indexes at least have its groups created and iterators populated).
+	// @param table - table where to search
+	// @param what - handle to search for
+	// @return - index instance where this record belongs (NULL should never happen)
+	Index *findInstance(const Table *table, const RowHandle *what) const;
 
 	// Find the concrete subindex for a subtype.
 	// It goes recursively to the root of the table and then back down, finding the

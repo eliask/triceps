@@ -6,7 +6,7 @@
 // Implementation of a simple FIFO storage.
 
 #include <table/FifoIndex.h>
-#include <type/RowType.h>
+#include <type/TableType.h>
 
 namespace BICEPS_NS {
 
@@ -57,7 +57,17 @@ RowHandle *FifoIndex::nextGroup(const RowHandle *cur) const
 
 RowHandle *FifoIndex::find(const RowHandle *what) const
 {
-	return NULL; // XXX the only way to find is by full-row comparison, which is not implemented yet 
+	// Find by sequential comparison of whole rows
+	const Row *rwhat = what->getRow();
+	RowHandle *curh = first_;
+	while(curh != NULL) {
+		if (type_->getTabtype()->rowType()->equalRows(rwhat, curh->getRow()))
+			return curh;
+
+		RhSection *rs = getSection(curh);
+		curh = rs->next_;
+	}
+	return NULL; // not found
 }
 
 Index *FifoIndex::findNested(const RowHandle *what, int nestPos) const
@@ -67,12 +77,32 @@ Index *FifoIndex::findNested(const RowHandle *what, int nestPos) const
 
 bool FifoIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
-	// XXX ideally should check if there is any other group that is already
-	// marked for replacement and present in this index, then don't push out another one.
-
 	size_t limit = type_->getLimit();
-	if (limit > 0 && size_ >= limit)
-		replaced.insert(first_); 
+	if (limit == 0)
+		return true; // no limit, nothing replaced
+
+	// Check if there is any row already marked for replacement and present in this index, 
+	// then don't push out another one.
+	size_t subtract = 0;
+	for (RhSet::iterator it = replaced.begin(); it != replaced.end(); ++it) {
+		Index *rind = type_->findInstance(table_, *it);
+		if (rind == this)
+			++subtract; // it belongs here, so a record will be already pushed out
+	}
+
+	if (size_ - subtract >= limit && size_ >= subtract) { // this works well only with one-at-a-time inserts
+		if (type_->isJumping()) {
+			RowHandle *curh = first_;
+			while(curh != NULL) {
+				replaced.insert(curh); 
+
+				RhSection *rs = getSection(curh);
+				curh = rs->next_;
+			}
+		} else {
+			replaced.insert(first_); 
+		}
+	}
 		
 	return true;
 }
@@ -82,11 +112,11 @@ void FifoIndex::insert(RowHandle *rh)
 	RhSection *rs = getSection(rh);
 
 	if (first_ == NULL) {
-		rs->next_ = 0;
-		rs->prev_ = 0;
+		rs->next_ = NULL;
+		rs->prev_ = NULL;
 		first_ = last_ = rh;
 	} else {
-		rs->next_ = 0;
+		rs->next_ = NULL;
 		rs->prev_ = last_;
 		RhSection *lastrs = getSection(last_);
 		lastrs->next_ = rh;

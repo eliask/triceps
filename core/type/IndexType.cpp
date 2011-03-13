@@ -604,6 +604,13 @@ RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) cons
 	return myidx->find(what);
 }
 
+Index *IndexType::findInstance(const Table *table, const RowHandle *what) const
+{
+	// fprintf(stderr, "DEBUG IndexType::findInstance(this=%p, table=%p, what=%p)\n", this, table, what);
+	Index *myidx = parent_->findNestedIndex(nestPos_, table, what);
+	return myidx;
+}
+
 Index *IndexType::findNestedIndex(int nestPos, const Table *table, const RowHandle *what) const
 {
 	// fprintf(stderr, "DEBUG IndexType::findNestedIndex(this=%p, nestPos=%d, table=%p, what=%p)\n", this, nestPos, table, what);
