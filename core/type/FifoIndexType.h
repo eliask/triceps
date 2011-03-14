@@ -46,6 +46,18 @@ public:
 		return jumping_;
 	}
 
+	FifoIndexType *setLimit(size_t limit)
+	{
+		limit_ = limit;
+		return this;
+	}
+
+	FifoIndexType *setJumping(bool jumping)
+	{
+		jumping_ = jumping;
+		return this;
+	}
+
 protected:
 	// interface for the index instances
 	friend class FifoIndex;

@@ -42,7 +42,7 @@ public:
 	virtual Index *findNested(const RowHandle *what, int nestPos) const;
 
 	// Get the number of records in this index
-	size_t size();
+	size_t size() const;
 
 protected:
 	Autoref<const RootIndexType> type_; // type of this index

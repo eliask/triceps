@@ -280,3 +280,195 @@ UTESTCASE primaryBadField(Utest *utest)
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary':\n    can not find the key field 'x'\n");
 }
 
+UTESTCASE fifoIndex(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("fifo", new FifoIndexType()
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	// repeated initialization should be fine
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  FifoIndex() fifo,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex() fifo, }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findIndex("fifo");
+	UT_ASSERT(prim != NULL);
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_FIFO), prim);
+}
+
+UTESTCASE fifoIndexLimit(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("fifo", new FifoIndexType(15)
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	// repeated initialization should be fine
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  FifoIndex(limit=15) fifo,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15) fifo, }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findIndex("fifo");
+	UT_ASSERT(prim != NULL);
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_FIFO), prim);
+}
+
+UTESTCASE fifoIndexJumping(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("fifo", new FifoIndexType(15, true)
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	// repeated initialization should be fine
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  FifoIndex(limit=15 jumping) fifo,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15 jumping) fifo, }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findIndex("fifo");
+	UT_ASSERT(prim != NULL);
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_FIFO), prim);
+}
+
+UTESTCASE fifoBadJumping(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("fifo", new FifoIndexType(0, true)
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'fifo':\n    FifoIndexType requires a non-0 limit for the jumping mode\n");
+}
+
+UTESTCASE fifoBadNested(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addIndex("fifo", (new FifoIndexType())
+			->addNested("level2", new HashedIndexType(
+				(new NameSet())->add("a")->add("e"))
+			)
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(!tt->getErrors().isNull()))
+		return;
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'fifo':\n    FifoIndexType currently does not support further nested indexes\n");
+}
+

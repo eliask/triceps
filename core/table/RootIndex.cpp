@@ -96,7 +96,7 @@ void RootIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet 
 	type_->groupAggregateAfter(dest, aggop, table_, rootg_, rows, future, copyTray);
 }
 
-size_t RootIndex::size()
+size_t RootIndex::size() const
 {
 	return type_->groupSize(rootg_);
 }

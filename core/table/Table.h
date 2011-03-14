@@ -55,6 +55,12 @@ public:
 	{
 		return name_;
 	}
+
+	// Get the size of the table, in rows.
+	size_t size() const
+	{
+		return root_->size();
+	}
 	
 	/////// operations on rows
 
@@ -64,7 +70,6 @@ public:
 	RowHandle *makeRowHandle(const Row *row);
 
 	// Insert a row.
-	// XXX add a way to get back the records removed by the replacement policies
 	// @param row - the row to insert
 	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true on success, false on failure (if the index policies don't allow it)
