@@ -233,6 +233,14 @@ RowHandle *Table::begin() const
 	return root_->begin();
 }
 
+RowHandle *Table::beginIdx(IndexType *ixt) const
+{
+	if (ixt == NULL || ixt->getTabtype() != type_)
+		return NULL;
+
+	return ixt->beginIterationIdx(this);
+}
+
 RowHandle *Table::next(const RowHandle *cur) const
 {
 	return root_->next(cur);

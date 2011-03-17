@@ -330,6 +330,13 @@ protected:
 	// @param what - handle to search for
 	// @return - concrete index or NULL
 	Index *findNestedIndex(int nestPos, const Table *table, const RowHandle *what) const;
+
+	// Begin iteration according to this index (or if not leaf then according to its
+	// first leaf).
+	// @param table - table to iterate
+	// @return - the first record according to this index or NULL if empty
+	RowHandle *beginIterationIdx(const Table *table) const;
+
 	// }
 	
 public:

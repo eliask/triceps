@@ -186,7 +186,8 @@ protected:
 
 	// If this is a non-leaf index, find the nested index
 	// in the group where this row belongs.
-	// @param what - row used to find the group
+	// @param what - row used to find the group (or NULL, requesting to return
+	//     the index form the first group, used in Table::beginIdx())
 	// @param nestPos - position of wanted index type in its parent
 	// @return - the index, or NULL if it can not be found
 	//        (if this is a leaf index, it always returns NULL)

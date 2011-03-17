@@ -404,6 +404,18 @@ RowHandle *IndexType::beginIteration(GroupHandle *gh) const
 	return gs->subidx_[0]->begin();
 }
 
+RowHandle *IndexType::beginIterationIdx(const Table *table) const
+{
+	// logically it's very much like findRecord(), only allows the non-leaf types too
+	
+	// fprintf(stderr, "DEBUG IndexType::beginIterationIdx(this=%p, table=%p, ixt=%p)\n", this, table, ixt);
+	const Index *myidx = parent_->findNestedIndex(nestPos_, table, NULL);
+	if (myidx == NULL)
+		return NULL;
+
+	return myidx->begin();
+}
+
 RowHandle *IndexType::nextIteration(GroupHandle *gh, const RowHandle *cur) const
 {
 	// fprintf(stderr, "DEBUG IndexType::nextIteration(this=%p, gh=%p, cur=%p)\n", this, gh, cur);

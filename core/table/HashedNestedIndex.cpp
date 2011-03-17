@@ -99,14 +99,23 @@ RowHandle *HashedNestedIndex::find(const RowHandle *what) const
 Index *HashedNestedIndex::findNested(const RowHandle *what, int nestPos) const
 {
 	// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p, what=%p, nestPos=%d)\n", this, what, nestPos);
-	Set::iterator it = data_.find(const_cast<RowHandle *>(what));
-	if (it == data_.end()) {
-		// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return NULL\n", this);
-		return NULL;
-	} else {
+	if (what == NULL) {
+		if (data_.empty())
+			return NULL;
+		Set::iterator it = data_.begin();
 		Index *idx = type_->groupToIndex(static_cast<GroupHandle *>(*it), nestPos);
 		// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return index %p\n", this, idx);
 		return idx;
+	} else {
+		Set::iterator it = data_.find(const_cast<RowHandle *>(what));
+		if (it == data_.end()) {
+			// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return NULL\n", this);
+			return NULL;
+		} else {
+			Index *idx = type_->groupToIndex(static_cast<GroupHandle *>(*it), nestPos);
+			// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return index %p\n", this, idx);
+			return idx;
+		}
 	}
 }
 

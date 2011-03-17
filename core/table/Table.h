@@ -94,6 +94,12 @@ public:
 	// @return - the handle, or NULL if the table is empty
 	RowHandle *begin() const;
 
+	// Get the handle of the first record in this table, according to a specific index.
+	// @param ixt - index type from this table's type (if not leaf then will mean
+	//        the same as it's first nested leaf)
+	// @return - the handle, or NULL if the table is empty
+	RowHandle *beginIdx(IndexType *ixt) const;
+
 	// Return the next row in this table.
 	// @param - the current handle
 	// @return - the next row's handle, or NULL if the current one was the last one,
