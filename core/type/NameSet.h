@@ -20,6 +20,15 @@ class NameSet : public Starget, public vector<string>
 public:
 	NameSet();
 	NameSet(const NameSet &other);
+	// Constructors duplicated as make() for syntactically better usage.
+	static NameSet *make()
+	{
+		return new NameSet;
+	}
+	static NameSet *make(const NameSet &other)
+	{
+		return new NameSet(other);
+	}
 
 	// for chained initialization
 	NameSet *add(const string &s);

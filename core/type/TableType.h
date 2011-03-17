@@ -23,8 +23,13 @@ class TableType : public Type
 {
 	friend class Table;
 public:
+	// Constructors duplicated as make() for syntactically better usage.
 	// @param rt - type of rows in this table
 	TableType(Onceref<RowType> rt);
+	static TableType *make(Onceref<RowType> rt)
+	{
+		return new TableType(rt);
+	}
 	~TableType();
 
 	// from Type

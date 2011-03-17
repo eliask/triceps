@@ -20,6 +20,12 @@ class HashedIndexType : public IndexType
 {
 public:
 	HashedIndexType(NameSet *key = NULL);
+	// Constructors duplicated as make() for syntactically better usage.
+	static HashedIndexType *make(NameSet *key = NULL)
+	{
+		return new HashedIndexType(key);
+	}
+	
 
 	HashedIndexType *setKey(NameSet *key);
 

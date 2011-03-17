@@ -46,11 +46,11 @@ void mkfdata(FdataVec &fd)
 
 Onceref<TableType> mktabtype(Onceref<RowType> rt)
 {
-	return (new TableType(rt))
-			->addIndex("primary", (new HashedIndexType(
-				(new NameSet())->add("b")
-				))->addNested("level2", new HashedIndexType(
-					(new NameSet())->add("c")
+	return TableType::make(rt)
+		->addIndex("primary", HashedIndexType::make(
+				NameSet::make()->add("b")
+			)->addNested("level2", HashedIndexType::make(
+					NameSet::make()->add("c")
 				)
 			)
 		);
@@ -111,11 +111,11 @@ UTESTCASE withError(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	Autoref<TableType> tt = (new TableType(rt1))
-			->addIndex("primary", (new HashedIndexType(
-				(new NameSet())->add("b")
-				))->addNested("level2", new HashedIndexType(
-					(new NameSet())->add("x")
+	Autoref<TableType> tt = TableType::make(rt1)
+		->addIndex("primary", HashedIndexType::make(
+				NameSet::make()->add("b")
+			)->addNested("level2", HashedIndexType::make(
+					NameSet::make()->add("x")
 				)
 			)
 		);

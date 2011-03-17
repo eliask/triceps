@@ -23,6 +23,11 @@ public:
 	//        mans that the flush will happen only on the insertion of the next
 	//        record that would be pushing the size over the limit.
 	FifoIndexType(size_t limit = 0, bool jumping = false);
+	// Constructors duplicated as make() for syntactically better usage.
+	static FifoIndexType *make(size_t limit = 0, bool jumping = false)
+	{
+		return new FifoIndexType(limit, jumping);
+	}
 
 	// from Type
 	virtual bool equals(const Type *t) const;

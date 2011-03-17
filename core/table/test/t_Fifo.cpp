@@ -51,8 +51,8 @@ UTESTCASE fifoIndex(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType()
+	Autoref<TableType> tt = TableType::make(rt1)
+		->addIndex("fifo", FifoIndexType::make()
 		);
 
 	UT_ASSERT(tt);
@@ -385,11 +385,11 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", (new HashedIndexType(
-			(new NameSet())->add("b")->add("c")
-			))
-		)->addIndex("fifo", new FifoIndexType(2)
+	Autoref<TableType> tt = TableType::make(rt1)
+		->addIndex("primary", HashedIndexType::make(
+				NameSet::make()->add("b")->add("c")
+			)
+		)->addIndex("fifo", FifoIndexType::make(2)
 		);
 
 	UT_ASSERT(tt);
