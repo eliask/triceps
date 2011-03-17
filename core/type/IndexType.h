@@ -331,11 +331,31 @@ protected:
 	// @return - concrete index or NULL
 	Index *findNestedIndex(int nestPos, const Table *table, const RowHandle *what) const;
 
-	// Begin iteration according to this index (or if not leaf then according to its
+	// Find the concrete group handle owning the index of this type that contains
+	// the row.
+	// @param table - table where to search
+	// @param what - handle to search for (must be known to be in table)
+	// @return - concrete group handle or NULL
+	const GroupHandle *findGroupHandle(const Table *table, const RowHandle *what) const;
+
+	// Find the next group handle owning the index of this type.
+	// @param table - table where to search
+	// @param cur - the current (soon to become previous) group handle in iteration
+	// @return - next group handle or NULL if that was the last group
+	const GroupHandle *nextGroupHandle(const Table *table, const GroupHandle *cur) const;
+
+	// Begin iteration according to this index type (or if not leaf then according to its
 	// first leaf).
 	// @param table - table to iterate
 	// @return - the first record according to this index or NULL if empty
 	RowHandle *beginIterationIdx(const Table *table) const;
+
+	// Next iteration according to this index type (or if not leaf then according to its
+	// first leaf).
+	// @param table - table to iterate
+	// @param cur - the current (soon to become previous) row in iteration
+	// @return - the next record according to this index or NULL if empty
+	RowHandle *nextIterationIdx(const Table *table, const RowHandle *cur) const;
 
 	// }
 	
@@ -381,7 +401,7 @@ public:
 	// Continue the iteration on the nested indexes:
 	// pick the first index in the group and pass the request there.
 	// @param gh - the group instance to iterate on, may be NULL
-	// @param row - the current (soon to become previous) row in iteration
+	// @param cur - the current (soon to become previous) row in iteration
 	// @return - the nest row in the group according to that index's order,
 	//      may be NULL if cur was the last row in the group or does not belong
 	//      in the group.

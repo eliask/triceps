@@ -404,18 +404,6 @@ RowHandle *IndexType::beginIteration(GroupHandle *gh) const
 	return gs->subidx_[0]->begin();
 }
 
-RowHandle *IndexType::beginIterationIdx(const Table *table) const
-{
-	// logically it's very much like findRecord(), only allows the non-leaf types too
-	
-	// fprintf(stderr, "DEBUG IndexType::beginIterationIdx(this=%p, table=%p, ixt=%p)\n", this, table, ixt);
-	const Index *myidx = parent_->findNestedIndex(nestPos_, table, NULL);
-	if (myidx == NULL)
-		return NULL;
-
-	return myidx->begin();
-}
-
 RowHandle *IndexType::nextIteration(GroupHandle *gh, const RowHandle *cur) const
 {
 	// fprintf(stderr, "DEBUG IndexType::nextIteration(this=%p, gh=%p, cur=%p)\n", this, gh, cur);
@@ -424,6 +412,98 @@ RowHandle *IndexType::nextIteration(GroupHandle *gh, const RowHandle *cur) const
 
 	GhSection *gs = getGhSection(gh);
 	return gs->subidx_[0]->next(cur);
+}
+
+RowHandle *IndexType::beginIterationIdx(const Table *table) const
+{
+	// logically it's very much like findRecord(), only allows the non-leaf types too
+	
+	// fprintf(stderr, "DEBUG IndexType::beginIterationIdx(this=%p, table=%p)\n", this, table);
+	const Index *myidx = parent_->findNestedIndex(nestPos_, table, NULL);
+	if (myidx == NULL)
+		return NULL;
+
+	return myidx->begin();
+}
+
+RowHandle *IndexType::nextIterationIdx(const Table *table, const RowHandle *cur) const
+{
+	// logically it's very much like findRecord(), only allows the non-leaf types too
+	
+	// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p)\n", this, table, cur);
+
+	const GroupHandle *parentgh = parent_->findGroupHandle(table, cur);
+	if (parentgh == NULL)
+		return NULL;
+
+	// Now we've got the handle of the group where the last record belonged.
+	// The group handle is better here than the actual index because the group
+	// handle allows to go up and to the next group while the index pointer doesn't.
+	// This comes handy when the end of current group is reached.
+	const GhSection *parentgs = getGhSection(parentgh);
+	RowHandle *nextRow = parentgs->subidx_[nestPos_]->next(cur);
+
+	while(nextRow == NULL) {
+		parentgh = parent_->nextGroupHandle(table, parentgh);
+		if (parentgh == NULL)
+			return NULL;
+		parentgs = getGhSection(parentgh);
+		nextRow = parentgs->subidx_[nestPos_]->begin();
+	}
+
+	return nextRow;
+}
+
+// here the "what" record is known to be already present in the table
+const GroupHandle *IndexType::findGroupHandle(const Table *table, const RowHandle *what) const
+{
+	// fprintf(stderr, "DEBUG IndexType::findGroupHandle(this=%p, table=%p, what=%p)\n", this, table, what);
+	if (isLeaf())
+		return NULL;
+
+	const GroupHandle *gh;
+	if (parent_ == NULL) {
+		gh = table->getRoot()->toGroup(what);
+	} else {
+		const GroupHandle *parentgh = parent_->findGroupHandle(table, what);
+		if (parentgh == NULL) {
+			gh = NULL;
+		} else {
+			const GhSection *parentgs = parent_->getGhSection(parentgh);
+			gh = parentgs->subidx_[nestPos_]->toGroup(what);
+		}
+	}
+	
+	return gh;
+}
+
+const GroupHandle *IndexType::nextGroupHandle(const Table *table, const GroupHandle *cur) const
+{
+	// fprintf(stderr, "DEBUG IndexType::nextGroupHandle(this=%p, table=%p, cur=%p)\n", this, table, cur);
+	if (isLeaf() || cur == NULL)
+		return NULL;
+
+	const GroupHandle *gh;
+	if (parent_ == NULL) {
+		return NULL; // a special case: root index has only one group
+	} else {
+		const GroupHandle *parentgh = parent_->findGroupHandle(table, cur);
+		if (parentgh == NULL) {
+			gh = NULL;
+		} else {
+			const GhSection *parentgs = parent_->getGhSection(parentgh);
+			gh = parentgs->subidx_[nestPos_]->nextGroup(cur);
+			while (gh == NULL) { // reached the end of parent index
+				parentgh = parent_->nextGroupHandle(table, parentgh);
+				if (parentgh == NULL)
+					return NULL;
+				parentgs = parent_->getGhSection(parentgh);
+				gh = parentgs->subidx_[nestPos_]->nextGroup(cur);
+			}
+		}
+	}
+
+	return gh;
 }
 
 Index *IndexType::groupToIndex(GroupHandle *gh, size_t nestPos) const

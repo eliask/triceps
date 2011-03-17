@@ -101,10 +101,18 @@ public:
 	RowHandle *beginIdx(IndexType *ixt) const;
 
 	// Return the next row in this table.
-	// @param - the current handle
+	// @param cur - the current handle
 	// @return - the next row's handle, or NULL if the current one was the last one,
 	//       or not in the table or NULL
 	RowHandle *next(const RowHandle *cur) const;
+
+	// Return the next row in this table, according to a specific index.
+	// @param ixt - index type from this table's type (if not leaf then will mean
+	//        the same as it's first nested leaf)
+	// @param cur - the current handle
+	// @return - the next row's handle, or NULL if the current one was the last one,
+	//       or not in the table or NULL
+	RowHandle *nextIdx(IndexType *ixt, const RowHandle *cur) const;
 
 	// XXX doesn't work yet
 	// For the nested indexes, a way to skip over all the

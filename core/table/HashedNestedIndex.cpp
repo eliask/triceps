@@ -64,14 +64,15 @@ RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
 
-	Set::iterator it = data_.find(const_cast<RowHandle *>(cur));
+	Set::iterator it = type_->getIter(cur); // row is known to be in the table
 
-	if (it != data_.end()) {
-		RowHandle *res = type_->nextIteration(static_cast<GroupHandle *>(*it), cur);
-		// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
-		if (res != NULL)
-			return res;
-	}
+	if (it == data_.end())
+		return NULL; // should never happen
+
+	RowHandle *res = type_->nextIteration(static_cast<GroupHandle *>(*it), cur);
+	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
+	if (res != NULL)
+		return res;
 
 	// otherwise try the next groups until find a non-empty one
 	for (++it; it != data_.end(); ++it) {
@@ -85,10 +86,21 @@ RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
 	return NULL;
 }
 
-RowHandle *HashedNestedIndex::nextGroup(const RowHandle *cur) const
+const GroupHandle *HashedNestedIndex::nextGroup(const GroupHandle *cur) const
 {
-	// XXX doesn't make sense at the moment, need to redesign
-	return NULL;
+	if (cur == NULL)
+		return NULL;
+	Set::iterator it = type_->getSection(cur)->iter_;
+	++it;
+	if (it == data_.end())
+		return NULL; 
+	return static_cast<const GroupHandle *>(*it);
+}
+
+const GroupHandle *HashedNestedIndex::toGroup(const RowHandle *cur) const
+{
+	Set::iterator it = type_->getIter(cur); // row is known to be in the table
+	return static_cast<const GroupHandle *>(*it);
 }
 
 RowHandle *HashedNestedIndex::find(const RowHandle *what) const
@@ -122,7 +134,7 @@ Index *HashedNestedIndex::findNested(const RowHandle *what, int nestPos) const
 bool HashedNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
 	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
-	// the result of find() can be stored now in rh, to avoid look-up on insert
+	// the result of find() has to be stored now in rh, to avoid look-up on insert
 	type_->getSection(rh)->iter_ = it;
 	GroupHandle *gh;
 	// fprintf(stderr, "DEBUG HashedNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());

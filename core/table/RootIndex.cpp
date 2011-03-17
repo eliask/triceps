@@ -47,10 +47,16 @@ RowHandle *RootIndex::next(const RowHandle *cur) const
 	return type_->nextIteration(rootg_, cur);
 }
 
-RowHandle *RootIndex::nextGroup(const RowHandle *cur) const
+const GroupHandle *RootIndex::nextGroup(const GroupHandle *cur) const
 {
-	// XXX doesn't make sense at the moment, need to redesign
+	// The root index has only one group, nowhere to go next.
+	// (And anyway IndexType::nextGroupHandle() will never call here).
 	return NULL;
+}
+
+const GroupHandle *RootIndex::toGroup(const RowHandle *cur) const
+{
+	return rootg_; // only one group, everything must be there
 }
 
 RowHandle *RootIndex::find(const RowHandle *what) const

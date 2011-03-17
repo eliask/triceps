@@ -62,7 +62,12 @@ RowHandle *HashedIndex::next(const RowHandle *cur) const
 	}
 }
 
-RowHandle *HashedIndex::nextGroup(const RowHandle *cur) const
+const GroupHandle *HashedIndex::nextGroup(const GroupHandle *cur) const
+{
+	return NULL;
+}
+
+const GroupHandle *HashedIndex::toGroup(const RowHandle *cur) const
 {
 	return NULL;
 }

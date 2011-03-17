@@ -43,17 +43,23 @@ public:
 	// The repeated calls would go through all the records in the table.
 	// So for the nested indexes this means that it should iterate
 	// through any (usually, first) of the sub-indexes as well.
-	// @param - the current handle
+	// @param cur - the current handle
 	// @return - the next row's handle, or NULL if the current one was the last one,
 	//       or not in the table or NULL
 	virtual RowHandle *next(const RowHandle *cur) const = 0;
 
-	// For the nested indexes, a way to skip over all the
-	// remaining records in the current group.
-	// @param - the current handle
-	// @return - handle of the first row in the next group, or NULL if the 
-	//       current group was the last one, or row not in the table or NULL
-	virtual RowHandle *nextGroup(const RowHandle *cur) const = 0;
+	// For the nested indexes, find the next group in them.
+	// @param cur - the current group in this index
+	// @return - the next group, or NULL if the current group was the last one or was NULL
+	virtual const GroupHandle *nextGroup(const GroupHandle *cur) const = 0;
+
+	// For the nested indexes, find the group where the row belongs.
+	// The row must be not NULL, known to be in the table, and known 
+	// (from parent indexes) to located in this index.
+	// @param cur - the current handle
+	// @return - group where the row belongs (usually obtained from the iterator in
+	//           row handle)
+	virtual const GroupHandle *toGroup(const RowHandle *cur) const = 0;
 
 	// Find the matching element.
 	// Note that for a RowHandle that has been returned from the table

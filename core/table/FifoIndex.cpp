@@ -50,7 +50,12 @@ RowHandle *FifoIndex::next(const RowHandle *cur) const
 	return rs->next_;
 }
 
-RowHandle *FifoIndex::nextGroup(const RowHandle *cur) const
+const GroupHandle *FifoIndex::nextGroup(const GroupHandle *cur) const
+{
+	return NULL;
+}
+
+const GroupHandle *FifoIndex::toGroup(const RowHandle *cur) const
 {
 	return NULL;
 }

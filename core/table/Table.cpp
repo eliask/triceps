@@ -246,6 +246,14 @@ RowHandle *Table::next(const RowHandle *cur) const
 	return root_->next(cur);
 }
 
+RowHandle *Table::nextIdx(IndexType *ixt, const RowHandle *cur) const
+{
+	if (ixt == NULL || ixt->getTabtype() != type_ || !cur->isInTable())
+		return NULL;
+
+	return ixt->nextIterationIdx(this, cur);
+}
+
 RowHandle *Table::nextGroup(IndexType *ixt, const RowHandle *cur) const
 {
 	return NULL; // XXX to be figured out
