@@ -646,6 +646,8 @@ UTESTCASE deepNested(Utest *utest)
 
 	Autoref<IndexType> level3 = tt->findIndex("level1")->findNested("level2")->findNested("level3");
 	UT_ASSERT(!level3.isNull());
+	Autoref<IndexType> level2 = tt->findIndex("level1")->findNested("level2");
+	UT_ASSERT(!level2.isNull());
 
 	// create a matrix of records
 
@@ -710,6 +712,22 @@ UTESTCASE deepNested(Utest *utest)
 		++i;
 		const char *rid = rt1->getString(iter->getRow(), 4);
 		// fprintf(stderr, "  loop %d: %c\n", i, rid[0]); 
+		seq += rid;
+		bitmap |= (1 << (rid[0] - 'a'));
+	}
+	UT_IS(bitmap, 0xFF);
+	printf("    iteration order: %s\n", seq.c_str()); fflush(stdout);
+
+	// now the same iteration on a nested index
+	seq.clear();
+	bitmap = 0;
+	i = 0;
+	
+	// fprintf(stderr, "  loop2 begin\n"); 
+	for (iter = t->beginIdx(level3); iter != NULL; iter = t->nextIdx(level3, iter)) {
+		++i;
+		const char *rid = rt1->getString(iter->getRow(), 4);
+		// fprintf(stderr, "  loop2 %d: %c\n", i, rid[0]); 
 		seq += rid;
 		bitmap |= (1 << (rid[0] - 'a'));
 	}
