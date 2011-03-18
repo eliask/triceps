@@ -404,6 +404,9 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 	UT_IS(t->getInputLabel()->getName(), "t.in");
 	UT_IS(t->getLabel()->getName(), "t.out");
 
+	IndexType *fifot = tt->findIndex("fifo");
+	UT_ASSERT(fifot != NULL);
+
 	// create a matrix of records
 
 	RowHandle *iter;
@@ -441,50 +444,42 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 
 	// check the iteration in the same order
 	UT_IS(t->size(), 2);
-#if 0 // { can't check the iteration because it uses the first index, which is hashed here
-	iter = t->begin();
+	iter = t->beginIdx(fifot);
 	UT_IS(iter, rh11);
-	iter = t->next(iter);
+	iter = t->nextIdx(fifot, iter);
 	UT_IS(iter, rh12);
-	iter = t->next(iter);
+	iter = t->nextIdx(fifot, iter);
 	UT_IS(iter, NULL);
-#endif // }
 
 	// now replace the 2nd record according to the primary index
 	UT_ASSERT(t->insert(rh12copy));
 
 	// make sure that it didn't push anything else out
 	UT_IS(t->size(), 2);
-#if 0 // { can't check the iteration because it uses the first index, which is hashed here
-	iter = t->begin();
+	iter = t->beginIdx(fifot);
 	UT_IS(iter, rh11);
-	iter = t->next(iter);
+	iter = t->nextIdx(fifot, iter);
 	UT_IS(iter, rh12copy);
-	iter = t->next(iter);
+	iter = t->nextIdx(fifot, iter);
 	UT_IS(iter, NULL);
-#endif // }
 
 	// replace the 1st record
 	UT_ASSERT(t->insert(rh11copy));
 
 	// make sure that it didn't push anything else out and moved to the back
 	UT_IS(t->size(), 2);
-#if 0 // { can't check the iteration because it uses the first index, which is hashed here
-	iter = t->begin();
+	iter = t->beginIdx(fifot);
 	UT_IS(iter, rh12copy);
-	iter = t->next(iter);
+	iter = t->nextIdx(fifot, iter);
 	UT_IS(iter, rh11copy);
-	iter = t->next(iter);
+	iter = t->nextIdx(fifot, iter);
 	UT_IS(iter, NULL);
-#endif // }
 
 	// now insertion will be pushing out the previous records
 	UT_ASSERT(t->insert(rh21));
 	UT_IS(t->size(), 2);
-#if 0 // { can't check the iteration because it uses the first index, which is hashed here
-	iter = t->begin();
+	iter = t->beginIdx(fifot);
 	UT_IS(iter, rh11copy);
-#endif // }
 
 	UT_ASSERT(t->insert(rh22));
 	UT_IS(t->size(), 2);
@@ -615,3 +610,109 @@ UTESTCASE fifoIndexLimitNoReplace(Utest *utest)
 	UT_IS(tlog, expect);
 }
 
+// check iteration through a deeply nested index
+UTESTCASE deepNested(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = TableType::make(rt1)
+		->addIndex("parallel1", FifoIndexType::make()
+		)->addIndex("level1", HashedIndexType::make(
+				NameSet::make()->add("b")
+			)->addNested("parallel2", FifoIndexType::make()
+			)->addNested("level2", HashedIndexType::make(
+					NameSet::make()->add("c")
+				)->addNested("parallel3", FifoIndexType::make()
+				)->addNested("level3", FifoIndexType::make()
+				)
+			)
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable(unit, Table::SM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	Autoref<IndexType> level3 = tt->findIndex("level1")->findNested("level2")->findNested("level3");
+	UT_ASSERT(!level3.isNull());
+
+	// create a matrix of records
+
+	RowHandle *iter;
+	FdataVec dv;
+	mkfdata(dv);
+
+	int32_t one32 = 1, two32 = 2;
+	int64_t one64 = 1, two64 = 2;
+	static char id[] = "x";
+
+	dv[4].data_= id;
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&one64;
+	id[0] = 'a';
+	Rowref r11(rt1,  rt1->makeRow(dv));
+	Rhref rh11(t, t->makeRowHandle(r11));
+	id[0] = 'b';
+	Rhref rh11copy(t, t->makeRowHandle(rt1->makeRow(dv)));
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&two64;
+	id[0] = 'c';
+	Rowref r12(rt1,  rt1->makeRow(dv));
+	Rhref rh12(t, t->makeRowHandle(r12));
+	id[0] = 'd';
+	Rhref rh12copy(t, t->makeRowHandle(rt1->makeRow(dv)));
+
+	dv[1].data_ = (char *)&two32; dv[2].data_ = (char *)&one64;
+	id[0] = 'e';
+	Rowref r21(rt1,  rt1->makeRow(dv));
+	Rhref rh21(t, t->makeRowHandle(r21));
+	id[0] = 'f';
+	Rhref rh21copy(t, t->makeRowHandle(rt1->makeRow(dv)));
+
+	dv[1].data_ = (char *)&two32; dv[2].data_ = (char *)&two64;
+	id[0] = 'g';
+	Rowref r22(rt1,  rt1->makeRow(dv));
+	Rhref rh22(t, t->makeRowHandle(r22));
+	id[0] = 'h';
+	Rhref rh22copy(t, t->makeRowHandle(rt1->makeRow(dv)));
+
+	// so far the table must be empty
+	iter = t->beginIdx(level3);
+	UT_IS(iter, NULL);
+
+	// basic insertion
+	UT_ASSERT(t->insert(rh11));
+	UT_ASSERT(t->insert(rh12));
+	UT_ASSERT(t->insert(rh21));
+	UT_ASSERT(t->insert(rh22));
+	UT_ASSERT(t->insert(rh11copy));
+	UT_ASSERT(t->insert(rh12copy));
+	UT_ASSERT(t->insert(rh21copy));
+	UT_ASSERT(t->insert(rh22copy));
+
+	string seq; // this is purely for entertainment, see the resulting order
+	int bitmap = 0;
+	int i = 0;
+	
+	// fprintf(stderr, "  loop begin\n"); 
+	for (iter = t->beginIdx(level3); iter != NULL; iter = t->nextIdx(level3, iter)) {
+		++i;
+		const char *rid = rt1->getString(iter->getRow(), 4);
+		// fprintf(stderr, "  loop %d: %c\n", i, rid[0]); 
+		seq += rid;
+		bitmap |= (1 << (rid[0] - 'a'));
+	}
+	UT_IS(bitmap, 0xFF);
+	printf("    iteration order: %s\n", seq.c_str()); fflush(stdout);
+}

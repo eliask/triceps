@@ -55,6 +55,11 @@ const GroupHandle *FifoIndex::nextGroup(const GroupHandle *cur) const
 	return NULL;
 }
 
+const GroupHandle *FifoIndex::beginGroup() const
+{
+	return NULL;
+}
+
 const GroupHandle *FifoIndex::toGroup(const RowHandle *cur) const
 {
 	return NULL;

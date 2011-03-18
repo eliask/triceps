@@ -169,18 +169,26 @@ public:
 	}
 
 	// Find the nested index by name.
+	// It's safe to call with this==NULL, so the calls can be safely chained,
+	// checking only the final result.
 	// @param name - name of the index
 	// @return - index type, or NULL if not found
 	IndexType *findNested(const string &name) const
 	{
+		if (this == NULL)
+			return NULL;
 		return nested_.find(name);
 	}
 
 	// Find the first nested index having the given index type id.
+	// It's safe to call with this==NULL, so the calls can be safely chained,
+	// checking only the final result.
 	// @param it - type enum of the nested index
 	// @return - index type, or NULL if not found
 	IndexType *findNestedByIndexId(IndexId it) const
 	{
+		if (this == NULL)
+			return NULL;
 		return nested_.findByIndexId(it);
 	}
 

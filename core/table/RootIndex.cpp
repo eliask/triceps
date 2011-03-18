@@ -54,8 +54,14 @@ const GroupHandle *RootIndex::nextGroup(const GroupHandle *cur) const
 	return NULL;
 }
 
+const GroupHandle *RootIndex::beginGroup() const
+{
+	return rootg_; // only one group, everything must be there
+}
+
 const GroupHandle *RootIndex::toGroup(const RowHandle *cur) const
 {
+	// fprintf(stderr, "DEBUG RootIndex::toGroup(this=%p) return %p\n", this, rootg_);
 	return rootg_; // only one group, everything must be there
 }
 

@@ -53,6 +53,10 @@ public:
 	// @return - the next group, or NULL if the current group was the last one or was NULL
 	virtual const GroupHandle *nextGroup(const GroupHandle *cur) const = 0;
 
+	// For the nested indexes, find the first group in them.
+	// @return - the first group, or NULL if the index is empty.
+	virtual const GroupHandle *beginGroup() const = 0;
+
 	// For the nested indexes, find the group where the row belongs.
 	// The row must be not NULL, known to be in the table, and known 
 	// (from parent indexes) to located in this index.

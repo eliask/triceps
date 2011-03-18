@@ -92,7 +92,9 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_IS(tt->findIndex("nosuch"), NULL);
 
 	UT_IS(prim->findNested("nosuch"), NULL);
+	UT_IS(prim->findNested("nosuch")->findNested("nothat"), NULL);
 	UT_IS(prim->findNestedByIndexId(IndexType::IT_LAST), NULL);
+	UT_IS(prim->findNested("nosuch")->findNestedByIndexId(IndexType::IT_LAST), NULL);
 }
 
 UTESTCASE badRow(Utest *utest)

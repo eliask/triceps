@@ -433,24 +433,31 @@ RowHandle *IndexType::nextIterationIdx(const Table *table, const RowHandle *cur)
 	// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p)\n", this, table, cur);
 
 	const GroupHandle *parentgh = parent_->findGroupHandle(table, cur);
-	if (parentgh == NULL)
+	if (parentgh == NULL) {
+		// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p) parent NULL\n", this, table, cur);
 		return NULL;
+	}
 
 	// Now we've got the handle of the group where the last record belonged.
 	// The group handle is better here than the actual index because the group
 	// handle allows to go up and to the next group while the index pointer doesn't.
 	// This comes handy when the end of current group is reached.
-	const GhSection *parentgs = getGhSection(parentgh);
+	const GhSection *parentgs = parent_->getGhSection(parentgh);
 	RowHandle *nextRow = parentgs->subidx_[nestPos_]->next(cur);
 
+	// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p) nextRow=%p\n", this, table, cur, nextRow);
 	while(nextRow == NULL) {
 		parentgh = parent_->nextGroupHandle(table, parentgh);
-		if (parentgh == NULL)
+		if (parentgh == NULL) {
+			// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p) in loop parent NULL\n", this, table, cur);
 			return NULL;
-		parentgs = getGhSection(parentgh);
+		}
+		parentgs = parent_->getGhSection(parentgh);
 		nextRow = parentgs->subidx_[nestPos_]->begin();
+		// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p) nextRow=%p\n", this, table, cur, nextRow);
 	}
 
+	// fprintf(stderr, "DEBUG IndexType::nextIterationIdx(this=%p, table=%p, cur=%p) return %p\n", this, table, cur, nextRow);
 	return nextRow;
 }
 
@@ -474,6 +481,7 @@ const GroupHandle *IndexType::findGroupHandle(const Table *table, const RowHandl
 		}
 	}
 	
+	// fprintf(stderr, "DEBUG IndexType::findGroupHandle(this=%p, table=%p, what=%p) return=%p\n", this, table, what, gh);
 	return gh;
 }
 
@@ -498,11 +506,12 @@ const GroupHandle *IndexType::nextGroupHandle(const Table *table, const GroupHan
 				if (parentgh == NULL)
 					return NULL;
 				parentgs = parent_->getGhSection(parentgh);
-				gh = parentgs->subidx_[nestPos_]->nextGroup(cur);
+				gh = parentgs->subidx_[nestPos_]->beginGroup();
 			}
 		}
 	}
 
+	// fprintf(stderr, "DEBUG IndexType::nextGroupHandle(this=%p, table=%p, cur=%p) return %p\n", this, table, cur, gh);
 	return gh;
 }
 

@@ -88,13 +88,23 @@ RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
 
 const GroupHandle *HashedNestedIndex::nextGroup(const GroupHandle *cur) const
 {
+	// fprintf(stderr, "DEBUG HashedNestedIndex::nextGroup(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL)
 		return NULL;
 	Set::iterator it = type_->getSection(cur)->iter_;
 	++it;
 	if (it == data_.end())
 		return NULL; 
+	// fprintf(stderr, "DEBUG HashedNestedIndex::nextGroup(this=%p, cur=%p) return %p\n", this, cur, *it);
 	return static_cast<const GroupHandle *>(*it);
+}
+
+const GroupHandle *HashedNestedIndex::beginGroup() const
+{
+	if (data_.empty())
+		return NULL;
+	else
+		return static_cast<const GroupHandle *>(*data_.begin());
 }
 
 const GroupHandle *HashedNestedIndex::toGroup(const RowHandle *cur) const
