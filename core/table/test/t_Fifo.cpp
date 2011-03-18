@@ -716,6 +716,7 @@ UTESTCASE deepNested(Utest *utest)
 		bitmap |= (1 << (rid[0] - 'a'));
 	}
 	UT_IS(bitmap, 0xFF);
+	UT_IS(i, 8);
 	printf("    iteration order: %s\n", seq.c_str()); fflush(stdout);
 
 	// now the same iteration on a nested index
@@ -732,5 +733,6 @@ UTESTCASE deepNested(Utest *utest)
 		bitmap |= (1 << (rid[0] - 'a'));
 	}
 	UT_IS(bitmap, 0xFF);
+	UT_IS(i, 8);
 	printf("    iteration order: %s\n", seq.c_str()); fflush(stdout);
 }
