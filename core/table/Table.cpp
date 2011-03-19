@@ -262,9 +262,12 @@ RowHandle *Table::firstOfGroupIdx(IndexType *ixt, const RowHandle *cur) const
 	return ixt->firstOfGroupIdx(this, cur);
 }
 
-RowHandle *Table::nextGroup(IndexType *ixt, const RowHandle *cur) const
+RowHandle *Table::nextGroupIdx(IndexType *ixt, const RowHandle *cur) const
 {
-	return NULL; // XXX to be figured out
+	if (ixt == NULL || ixt->getTabtype() != type_ || cur == NULL || !cur->isInTable())
+		return NULL;
+
+	return ixt->nextGroupIdx(this, cur);
 }
 
 RowHandle *Table::find(IndexType *ixt, const RowHandle *what) const

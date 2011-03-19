@@ -475,6 +475,44 @@ RowHandle *IndexType::firstOfGroupIdx(const Table *table, const RowHandle *cur) 
 	return first;
 }
 
+RowHandle *IndexType::nextGroupIdx(const Table *table, const RowHandle *cur) const
+{
+	// logically it's very much like findRecord(), only allows the non-leaf types too
+	
+	// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p)\n", this, table, cur);
+
+	const GroupHandle *parentgh = parent_->findGroupHandle(table, cur);
+	if (parentgh == NULL) {
+		// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p) parent NULL\n", this, table, cur);
+		return NULL;
+	}
+	// Now we've got the handle of the group where the last record belonged.
+	// Step to the next group.
+	parentgh = parent_->nextGroupHandle(table, parentgh);
+	if (parentgh == NULL) {
+		// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p) next parent NULL\n", this, table, cur);
+		return NULL;
+	}
+
+	const GhSection *parentgs = parent_->getGhSection(parentgh);
+	RowHandle *nextRow = parentgs->subidx_[nestPos_]->begin();
+
+	// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p) nextRow=%p\n", this, table, cur, nextRow);
+	while(nextRow == NULL) {
+		parentgh = parent_->nextGroupHandle(table, parentgh);
+		if (parentgh == NULL) {
+			// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p) in loop parent NULL\n", this, table, cur);
+			return NULL;
+		}
+		parentgs = parent_->getGhSection(parentgh);
+		nextRow = parentgs->subidx_[nestPos_]->begin();
+		// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p) nextRow=%p\n", this, table, cur, nextRow);
+	}
+
+	// fprintf(stderr, "DEBUG IndexType::nextGroupIdx(this=%p, table=%p, cur=%p) return %p\n", this, table, cur, nextRow);
+	return nextRow;
+}
+
 // here the "what" record is known to be already present in the table
 const GroupHandle *IndexType::findGroupHandle(const Table *table, const RowHandle *what) const
 {

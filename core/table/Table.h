@@ -122,22 +122,20 @@ public:
 	//        is not in table or NULL, returns NULL)
 	RowHandle *firstOfGroupIdx(IndexType *ixt, const RowHandle *cur) const;
 
-	// XXX doesn't work yet
+	// Return the first row of the next group (according to this index).
 	// For the nested indexes, a way to skip over all the
-	// remaining records in the current group, according to an index.
-	// @param ixt - index type from this table's type
+	// remaining records in the current group.
+	// @param ixt - index type from this table's type (may be not leaf)
 	// @param cur - the current handle
 	// @return - handle of the first row in the next group, or NULL if the 
 	//       current group was the last one, or row not in the table or NULL
-	RowHandle *nextGroup(IndexType *ixt, const RowHandle *cur) const;
+	RowHandle *nextGroupIdx(IndexType *ixt, const RowHandle *cur) const;
 
 	// Find the matching element.
 	// Note that for a RowHandle that has been returned from the table
 	// there is no sense in calling find() because it already represents
 	// an iterator in the table. This finds a row in the table with the
 	// key matching one in a freshly made RowHandle (with Table::makeRowHandle()).
-	//
-	// XXX should it allow non-leaf indexes and find the first record in group?
 	//
 	// @param ixt - leaf index type from this table's type
 	// @param what - the pattern row
@@ -151,6 +149,8 @@ public:
 	{
 		return find(firstLeaf_, what);
 	}
+
+	// XXX add findRow()
 
 protected:
 	friend class TableType;

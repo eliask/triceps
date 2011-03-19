@@ -722,7 +722,7 @@ UTESTCASE deepNested(Utest *utest)
 	string seq; // this is purely for entertainment, see the resulting order
 	int bitmap = 0;
 	int i = 0;
-	RowHandle *hist[8];
+	RowHandle *hist[9];
 	
 	// fprintf(stderr, "  loop begin\n"); 
 	for (iter = t->beginIdx(level3); iter != NULL; iter = t->nextIdx(level3, iter)) {
@@ -781,9 +781,74 @@ UTESTCASE deepNested(Utest *utest)
 		seq += rid;
 		bitmap |= (1 << (rid[0] - 'a'));
 	}
-	UT_IS(bitmap, 0xFF);
-	UT_IS(i, 8);
 	printf("    iteration order: %s\n", seq.c_str()); fflush(stdout);
+	UT_IS(bitmap, 0xFF);
+	if (UT_IS(i, 8))
+		return;
+
+	// check nextGroupIdx() after the history is built
+	hist[8] = NULL; // going past the contents returns NULL
+	for (i = 0; i < 8; i++) {
+		iter = hist[i];
+		{
+			int j = i - (i%2) + 2;
+			iter2 = t->nextGroupIdx(level3, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    nextGroupIdx(level3, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+			// parallel3 has the same order
+			iter2 = t->nextGroupIdx(parallel3, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    nextGroupIdx(parallel3, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			int j = i - (i%4) + 4;
+			iter2 = t->nextGroupIdx(level2, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    nextGroupIdx(level2, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			int j = i - (i%8) + 8;
+			iter2 = t->nextGroupIdx(level1, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    nextGroupIdx(level1, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			iter2 = t->nextGroupIdx(parallel1, iter);
+			if (UT_ASSERT(iter2 == NULL)) {
+				printf("    nextGroupIdx(parallel1, iter[%d])=%p expect=NULL\n", i, iter2);
+				fflush(stdout);
+			}
+		}
+	}
+	// feeding NULL should not crash
+	iter2 = t->nextGroupIdx(NULL, hist[0]);
+	UT_IS(iter2, NULL);
+	iter2 = t->nextGroupIdx(level3, NULL);
+	UT_IS(iter2, NULL);
+	iter2 = t->nextGroupIdx(level1, NULL);
+	UT_IS(iter2, NULL);
+	iter2 = t->firstOfGroupIdx(NULL, hist[0]);
+	UT_IS(iter2, NULL);
+	iter2 = t->firstOfGroupIdx(level3, NULL);
+	UT_IS(iter2, NULL);
+	iter2 = t->firstOfGroupIdx(level1, NULL);
+	UT_IS(iter2, NULL);
 
 	// now the same iteration on a nested index
 	seq.clear();

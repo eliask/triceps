@@ -372,6 +372,14 @@ protected:
 	// @return - the first row of the same group where the current one belongs
 	RowHandle *firstOfGroupIdx(const Table *table, const RowHandle *cur) const;
 
+	// Return the first row in next group (according to this index)
+	// from the current row.
+	// @param table - table holding the rows
+	// @param cur - a row in this table
+	// @return - the first row of the next group where the current one belongs
+	//       (or NULL if that was the last group)
+	RowHandle *nextGroupIdx(const Table *table, const RowHandle *cur) const;
+
 	// }
 	
 public:
