@@ -447,8 +447,8 @@ hexdump(WrapRow *self)
 	CODE:
 		clearErrMsg();
 		string dump;
-		RowType *t = self->r_.getType();
-		Row *r = self->r_.get();
+		RowType *t = self->ref_.getType();
+		Row *r = self->ref_.get();
 		t->hexdumpRow(dump, r);
 		RETVAL = (char *)dump.c_str();
 	OUTPUT:
@@ -459,8 +459,8 @@ SV *
 to_hs(WrapRow *self)
 	PPCODE:
 		clearErrMsg();
-		RowType *t = self->r_.getType();
-		Row *r = self->r_.get();
+		RowType *t = self->ref_.getType();
+		Row *r = self->ref_.get();
 		const RowType::FieldVec &fld = t->fields();
 		int nf = fld.size();
 
@@ -478,8 +478,8 @@ SV *
 to_ar(WrapRow *self)
 	PPCODE:
 		clearErrMsg();
-		RowType *t = self->r_.getType();
-		Row *r = self->r_.get();
+		RowType *t = self->ref_.getType();
+		Row *r = self->ref_.get();
 		const RowType::FieldVec &fld = t->fields();
 		int nf = fld.size();
 
@@ -495,8 +495,8 @@ WrapRow *
 copymod(WrapRow *self, ...)
 	CODE:
 		clearErrMsg();
-		RowType *rt = self->r_.getType();
-		Row *r = self->r_.get();
+		RowType *rt = self->ref_.getType();
+		Row *r = self->ref_.get();
 
 		// for casting of return value
 		static char CLASS[] = "Biceps::Row";
@@ -513,7 +513,6 @@ copymod(WrapRow *self, ...)
 			XSRETURN_UNDEF;
 		}
 
-		int nf = rt->fieldCount();
 		// parse data to create a copy
 		FdataVec fields;
 		rt->splitInto(r, fields);
@@ -554,8 +553,8 @@ SV *
 get(WrapRow *self, char *fname)
 	PPCODE:
 		clearErrMsg();
-		RowType *t = self->r_.getType();
-		Row *r = self->r_.get();
+		RowType *t = self->ref_.getType();
+		Row *r = self->ref_.get();
 		const RowType::FieldVec &fld = t->fields();
 
 		int i = t->findIdx(fname);

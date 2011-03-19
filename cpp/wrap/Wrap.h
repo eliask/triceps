@@ -24,6 +24,7 @@ struct WrapMagic {
 	}
 };
 
+// A template for wrapper with a simple single Autoref
 template<const WrapMagic &magic, class Class>
 class Wrap
 {
@@ -56,40 +57,56 @@ private:
 	Wrap();
 };
 
+// A template for wrapper with a separate class the knows how
+// to access the main class (Row, RowHandle and such)
+template<const WrapMagic &magic, class TypeClass, class ValueClass, class RefClass>
+class Wrap2
+{
+public:
+	Wrap2(TypeClass *t, ValueClass *r) :
+		magic_(magic),
+		ref_(t, r)
+	{ }
+
+	Wrap2(const RefClass &r) :
+		magic_(magic),
+		ref_(r)
+	{ }
+	
+	// returns true if the magic value is bad
+	bool badMagic()
+	{
+		return magic_ != magic;
+	}
+
+	ValueClass *get() const
+	{
+		return ref_.get();
+	}
+
+	operator ValueClass*() const
+	{
+		return ref_.get();
+	}
+
+public:
+	WrapMagic magic_;
+	RefClass ref_; // referenced value
+
+	static WrapMagic classMagic_;
+private:
+	Wrap2();
+};
+
 extern WrapMagic magicWrapUnit;
 typedef Wrap<magicWrapUnit, Unit> WrapUnit;
 
 extern WrapMagic magicWrapRowType;
 typedef Wrap<magicWrapUnit, RowType> WrapRowType;
 
-// These are special cases because they combine a type and object
-class WrapRow
-{
-public:
-	WrapRow(RowType *t, Row *r) :
-		magic_(classMagic_),
-		r_(t, r)
-	{ }
+extern WrapMagic magicWrapRow;
+typedef Wrap2<magicWrapUnit, RowType, Row, Rowref> WrapRow;
 
-	WrapRow(const Rowref &r) :
-		magic_(classMagic_),
-		r_(r)
-	{ }
-	
-	// returns true if the magic value is bad
-	bool badMagic()
-	{
-		return magic_ != classMagic_;
-	}
-
-public:
-	WrapMagic magic_;
-	Rowref r_; // referenced row
-
-	static WrapMagic classMagic_;
-private:
-	WrapRow();
-};
 
 }; // BICEPS_NS
 

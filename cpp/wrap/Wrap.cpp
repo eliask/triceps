@@ -11,6 +11,6 @@ namespace BICEPS_NS {
 
 WrapMagic magicWrapUnit = { "unit" };
 WrapMagic magicWrapRowType = { "rowtype" };
-WrapMagic WrapRow::classMagic_ = { "rowP" };
+WrapMagic magicWrapRow = { "rowP" };
 
 }; // BICEPS_NS
