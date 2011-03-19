@@ -321,7 +321,7 @@ SV *
 getdef(WrapRowType *self)
 	PPCODE:
 		clearErrMsg();
-		RowType *rt = self->t_;
+		RowType *rt = self->get();
 
 		const RowType::FieldVec &fld = rt->fields();
 		int nf = fld.size();
@@ -339,7 +339,7 @@ WrapRow *
 makerow_hs(WrapRowType *self, ...)
 	CODE:
 		clearErrMsg();
-		RowType *rt = self->t_;
+		RowType *rt = self->get();
 		// for casting of return value
 		static char CLASS[] = "Biceps::Row";
 
@@ -395,7 +395,7 @@ WrapRow *
 makerow_ar(WrapRowType *self, ...)
 	CODE:
 		clearErrMsg();
-		RowType *rt = self->t_;
+		RowType *rt = self->get();
 		// for casting of return value
 		static char CLASS[] = "Biceps::Row";
 

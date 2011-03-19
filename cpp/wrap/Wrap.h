@@ -9,6 +9,7 @@
 #define __Biceps_Wrap_h__
 
 #include <type/AllTypes.h>
+#include <sched/Unit.h>
 
 namespace BICEPS_NS {
 
@@ -23,29 +24,45 @@ struct WrapMagic {
 	}
 };
 
-class WrapRowType
+template<const WrapMagic &magic, class Class>
+class Wrap
 {
 public:
-	WrapRowType(Onceref<RowType> t) :
-		magic_(classMagic_),
-		t_(t)
+	Wrap(Onceref<Class> r) :
+		magic_(magic),
+		ref_(r)
 	{ }
 
 	// returns true if the magic value is bad
 	bool badMagic()
 	{
-		return magic_ != classMagic_;
+		return magic_ != magic;
+	}
+
+	Class *get() const
+	{
+		return ref_.get();
+	}
+
+	operator Class*() const
+	{
+		return ref_.get();
 	}
 
 public:
 	WrapMagic magic_;
-	Autoref<RowType> t_; // referenced type
-
-	static WrapMagic classMagic_;
+	Autoref<Class> ref_; // referenced value
 private:
-	WrapRowType();
+	Wrap();
 };
 
+extern WrapMagic magicWrapUnit;
+typedef Wrap<magicWrapUnit, Unit> WrapUnit;
+
+extern WrapMagic magicWrapRowType;
+typedef Wrap<magicWrapUnit, RowType> WrapRowType;
+
+// These are special cases because they combine a type and object
 class WrapRow
 {
 public:

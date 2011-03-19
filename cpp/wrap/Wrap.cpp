@@ -9,7 +9,8 @@
 
 namespace BICEPS_NS {
 
-WrapMagic WrapRowType::classMagic_ = { "rowtype" };
+WrapMagic magicWrapUnit = { "unit" };
+WrapMagic magicWrapRowType = { "rowtype" };
 WrapMagic WrapRow::classMagic_ = { "rowP" };
 
 }; // BICEPS_NS
