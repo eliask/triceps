@@ -461,6 +461,20 @@ RowHandle *IndexType::nextIterationIdx(const Table *table, const RowHandle *cur)
 	return nextRow;
 }
 
+RowHandle *IndexType::firstOfGroupIdx(const Table *table, const RowHandle *cur) const
+{
+	// logically it's very much like findRecord(), only allows the non-leaf types too
+	
+	// fprintf(stderr, "DEBUG IndexType::firstOfGroupIdx(this=%p, table=%p, cur=%p)\n", this, table, cur);
+
+	const Index *myidx = parent_->findNestedIndex(nestPos_, table, cur);
+	if (myidx == NULL)
+		return NULL;
+	RowHandle *first = myidx->begin();
+	// fprintf(stderr, "DEBUG IndexType::firstOfGroupIdx(this=%p, table=%p, cur=%p) return %p\n", this, table, cur, first);
+	return first;
+}
+
 // here the "what" record is known to be already present in the table
 const GroupHandle *IndexType::findGroupHandle(const Table *table, const RowHandle *what) const
 {

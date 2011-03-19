@@ -442,6 +442,14 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 	UT_ASSERT(t->insert(rh11));
 	UT_ASSERT(t->insert(rh12));
 
+	// just a smoke test of calls that should return NULL and not crash
+	// XXX add a check for a row of a different type
+	// XXX no way to check a rowhandle from a different table? Check in Perl.
+	UT_ASSERT(t->beginIdx(NULL) == NULL);
+	UT_ASSERT(t->nextIdx(NULL, rh11) == NULL);
+	UT_ASSERT(t->nextIdx(fifot, NULL) == NULL);
+	UT_ASSERT(t->nextIdx(fifot, rh22) == NULL); // not in table yet
+
 	// check the iteration in the same order
 	UT_IS(t->size(), 2);
 	iter = t->beginIdx(fifot);
@@ -644,14 +652,22 @@ UTESTCASE deepNested(Utest *utest)
 	Autoref<Table> t = tt->makeTable(unit, Table::SM_CALL, "t");
 	UT_ASSERT(!t.isNull());
 
-	Autoref<IndexType> level3 = tt->findIndex("level1")->findNested("level2")->findNested("level3");
-	UT_ASSERT(!level3.isNull());
+	Autoref<IndexType> parallel1 = tt->findIndex("parallel1");
+	UT_ASSERT(!parallel1.isNull());
+	Autoref<IndexType> level1 = tt->findIndex("level1");
+	UT_ASSERT(!level1.isNull());
+	Autoref<IndexType> parallel2 = tt->findIndex("level1")->findNested("parallel2");
+	UT_ASSERT(!parallel2.isNull());
 	Autoref<IndexType> level2 = tt->findIndex("level1")->findNested("level2");
 	UT_ASSERT(!level2.isNull());
+	Autoref<IndexType> parallel3 = tt->findIndex("level1")->findNested("level2")->findNested("parallel3");
+	UT_ASSERT(!parallel3.isNull());
+	Autoref<IndexType> level3 = tt->findIndex("level1")->findNested("level2")->findNested("level3");
+	UT_ASSERT(!level3.isNull());
 
 	// create a matrix of records
 
-	RowHandle *iter;
+	RowHandle *iter, *iter2;
 	FdataVec dv;
 	mkfdata(dv);
 
@@ -706,9 +722,59 @@ UTESTCASE deepNested(Utest *utest)
 	string seq; // this is purely for entertainment, see the resulting order
 	int bitmap = 0;
 	int i = 0;
+	RowHandle *hist[8];
 	
 	// fprintf(stderr, "  loop begin\n"); 
 	for (iter = t->beginIdx(level3); iter != NULL; iter = t->nextIdx(level3, iter)) {
+		// test the firstOfGroupIdx()
+		if (i < 8)
+			hist[i] = iter;
+		{
+			int j = i - (i%2);
+			iter2 = t->firstOfGroupIdx(level3, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    firstOfGroupIdx(level3, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+			// parallel3 has the same order
+			iter2 = t->firstOfGroupIdx(parallel3, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    firstOfGroupIdx(parallel3, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			int j = i - (i%4);
+			iter2 = t->firstOfGroupIdx(level2, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    firstOfGroupIdx(level2, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			int j = i - (i%8);
+			iter2 = t->firstOfGroupIdx(level1, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    firstOfGroupIdx(level1, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			iter2 = t->firstOfGroupIdx(parallel1, iter);
+			if (UT_ASSERT(iter2 == rh11)) {
+				printf("    firstOfGroupIdx(parallel1, iter[%d])=%p expect=%p\n", i, iter2, rh11.get());
+				fflush(stdout);
+			}
+		}
+
 		++i;
 		const char *rid = rt1->getString(iter->getRow(), 4);
 		// fprintf(stderr, "  loop %d: %c\n", i, rid[0]); 

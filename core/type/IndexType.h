@@ -216,7 +216,7 @@ protected:
 	
 	// payload section in the GroupHandle, placed at ghOffset_
 	struct GhSection {
-		size_t size_; // number of records in the section
+		size_t size_; // number of rows in the section
 		Index *subidx_[1]; // sub-indexes of this group - extended as needed
 	};
 
@@ -314,25 +314,25 @@ protected:
 	// @param fromrh - the original handle
 	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const = 0;
 
-	// Find a record in the table, according to this index type.
+	// Find a row in the table, according to this index type.
 	// It goes recursively to the root of the table and then back down, finding the
-	// concrete path of indexes for this record.
+	// concrete path of indexes for this row.
 	// @param table - table where to search
 	// @param what - handle to search for
-	// @return - handle of the record in table or NULL
+	// @return - handle of the row in table or NULL
 	RowHandle *findRecord(const Table *table, const RowHandle *what) const;
 
-	// Finds an instance of this type's index where this record belongs
-	// (the record must be already inserted in the table, or for non-leaf
+	// Finds an instance of this type's index where this row belongs
+	// (the row must be already inserted in the table, or for non-leaf
 	// indexes at least have its groups created and iterators populated).
 	// @param table - table where to search
 	// @param what - handle to search for
-	// @return - index instance where this record belongs (NULL should never happen)
+	// @return - index instance where this row belongs (NULL should never happen)
 	Index *findInstance(const Table *table, const RowHandle *what) const;
 
 	// Find the concrete subindex for a subtype.
 	// It goes recursively to the root of the table and then back down, finding the
-	// concrete path of indexes for this record.
+	// concrete path of indexes for this row.
 	// @param nestPos - position of the subindex under this one
 	// @param table - table where to search
 	// @param what - handle to search for
@@ -355,15 +355,22 @@ protected:
 	// Begin iteration according to this index type (or if not leaf then according to its
 	// first leaf).
 	// @param table - table to iterate
-	// @return - the first record according to this index or NULL if empty
+	// @return - the first row according to this index or NULL if empty
 	RowHandle *beginIterationIdx(const Table *table) const;
 
 	// Next iteration according to this index type (or if not leaf then according to its
 	// first leaf).
 	// @param table - table to iterate
 	// @param cur - the current (soon to become previous) row in iteration
-	// @return - the next record according to this index or NULL if empty
+	// @return - the next row according to this index or NULL if empty
 	RowHandle *nextIterationIdx(const Table *table, const RowHandle *cur) const;
+
+	// Return the first row in the same group (according to this index)
+	// as the current row.
+	// @param table - table holding the rows
+	// @param cur - a row in this table
+	// @return - the first row of the same group where the current one belongs
+	RowHandle *firstOfGroupIdx(const Table *table, const RowHandle *cur) const;
 
 	// }
 	
@@ -422,7 +429,7 @@ public:
 	Index *groupToIndex(GroupHandle *gh, size_t nestPos) const;
 
 	// Prepare all indexes in group for insertion of the new row handle.
-	// Check if it can legally inserted and calculate any records that
+	// Check if it can legally inserted and calculate any row that
 	// would be deleted by the replacement policy.
 	// If any indexes return false, returns immediately without calling all of them.
 	// @param gh - the group instance, may be NULL (in this case returns true)
@@ -439,7 +446,7 @@ public:
 
 	// Remove the row from each index in the group.
 	// Decreases the size in the group handle.
-	// This does NOT collapse the groups that become empty. The record
+	// This does NOT collapse the groups that become empty. The row
 	// gets actually removed only from the leaf indexes.
 	// @param gh - the group instance, may NOT be NULL
 	// @param rh - row to delete
@@ -476,7 +483,7 @@ public:
 	// (see the detailed discussion of the semantics in table/Index.h).
 	// @param dest - destination to send the delayed aggregation changes
 	// @param gh - the group instance, may NOT be NULL
-	// @param replaced - set of records indentifying the groups that might be collapsible
+	// @param replaced - set of rows indentifying the groups that might be collapsible
 	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
 	// @return - true if the group may be collapsed, i.e. all the sub-indexes agreed 
 	//      on collapsing and the group size is 0

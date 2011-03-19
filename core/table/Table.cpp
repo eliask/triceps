@@ -248,10 +248,18 @@ RowHandle *Table::next(const RowHandle *cur) const
 
 RowHandle *Table::nextIdx(IndexType *ixt, const RowHandle *cur) const
 {
-	if (ixt == NULL || ixt->getTabtype() != type_ || !cur->isInTable())
+	if (ixt == NULL || ixt->getTabtype() != type_ || cur == NULL || !cur->isInTable())
 		return NULL;
 
 	return ixt->nextIterationIdx(this, cur);
+}
+
+RowHandle *Table::firstOfGroupIdx(IndexType *ixt, const RowHandle *cur) const
+{
+	if (ixt == NULL || ixt->getTabtype() != type_ || cur == NULL || !cur->isInTable())
+		return NULL;
+
+	return ixt->firstOfGroupIdx(this, cur);
 }
 
 RowHandle *Table::nextGroup(IndexType *ixt, const RowHandle *cur) const
