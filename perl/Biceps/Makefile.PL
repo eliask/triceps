@@ -11,10 +11,10 @@ WriteMakefile(
        AUTHOR         => 'Sergey Babkin <babkin@users.sf.net>') : ()),
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
-    INC               => '-I../../core', # e.g., '-I. -I/usr/include/other'
+    INC               => '-I../../cpp', # e.g., '-I. -I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
     # OBJECT            => '$(O_FILES)', # link all the C files too
-    MYEXTLIB          => '../../core/build/libbiceps$(LIB_EXT)', # embed the static version into Perl shared module
+    MYEXTLIB          => '../../cpp/build/libbiceps$(LIB_EXT)', # embed the static version into Perl shared module
 	CC                => 'g++',
 	LD                => 'g++',
 );

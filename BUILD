@@ -35,8 +35,8 @@ Configurables
 
 Currently there is no ./configure script and all the configuration
 changes have to be done by hand. Two most important places to change
-the configuration are the files core/Makefile.inc and
-core/common/Conf.h. The extra defines in CFLAGS in Makefile.inc can be
+the configuration are the files cpp/Makefile.inc and
+cpp/common/Conf.h. The extra defines in CFLAGS in Makefile.inc can be
 used to override the macros defined in Conf.h.
 
 The Conf.h macros are:
@@ -67,12 +67,12 @@ To uninstall:
 
 [XXX Now]
 
-At the moment only the C++ part located under core/ builds. To build:
+At the moment only the C++ part located under cpp/ builds. To build:
 
 	make all
 	make test
 
-The libraries will be created under core/build.
+The libraries will be created under cpp/build.
 
 
 Other interesting make targets:

@@ -2,11 +2,11 @@
 .DEFAULT_GOAL = all
 
 all clean test qtest vtest: perl/Biceps/Makefile
-	$(MAKE) -C core $@
+	$(MAKE) -C cpp $@
 	$(MAKE) -C perl/Biceps $@
 
 clobber:
-	$(MAKE) -C core $@
+	$(MAKE) -C cpp $@
 	#$(MAKE) -C perl/Biceps $@
 
 install uninstall:
