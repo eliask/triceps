@@ -9,8 +9,17 @@
 
 namespace BICEPS_NS {
 
-WrapMagic magicWrapUnit = { "unit" };
-WrapMagic magicWrapRowType = { "rowtype" };
-WrapMagic magicWrapRow = { "rowP" };
+WrapMagic magicWrapRowType = { "RowType" };
+WrapMagic magicWrapRow = { "RowP" };
+
+WrapMagic magicWrapUnit = { "Unit" };
+WrapMagic magicWrapTray = { "Tray" };
+WrapMagic magicWrapLabel = { "Label" };
+WrapMagic magicWrapGadget = { "Gadget" };
+WrapMagic magicWrapRowop = { "Rowop" };
+
+WrapMagic magicWrapTable = { "Table" };
+WrapMagic magicWrapIndex = { "Index" };
+WrapMagic magicWrapRowHandle = { "RowHand" };
 
 }; // BICEPS_NS

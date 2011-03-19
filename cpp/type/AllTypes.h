@@ -12,7 +12,10 @@
 #include <type/CompactRowType.h>
 #include <type/HashedIndexType.h>
 #include <type/FifoIndexType.h>
+#include <type/RootIndexType.h>
 #include <type/TableType.h>
+#include <type/BasicAggregatorType.h>
+#include <type/GroupHandleType.h>
 
 namespace BICEPS_NS {
 
