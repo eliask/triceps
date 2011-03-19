@@ -67,7 +67,7 @@ public:
 	// Create a new row handle for a row.
 	// The result should be immediately placed into Rhref.
 	// XXX change the interface to make this protected and return Rhrefs to everyone else
-	RowHandle *makeRowHandle(const Row *row);
+	RowHandle *makeRowHandle(const Row *row) const;
 
 	// Insert a row.
 	// @param row - the row to insert
@@ -150,7 +150,12 @@ public:
 		return find(firstLeaf_, what);
 	}
 
-	// XXX add findRow()
+	// The same but creates RowHandle from a Row internally.
+	RowHandle *findRow(IndexType *ixt, const Row *what) const;
+	RowHandle *findRow(const Row *what) const
+	{
+		return findRow(firstLeaf_, what);
+	}
 
 protected:
 	friend class TableType;
@@ -170,7 +175,7 @@ protected:
 	friend class Rhref;
 
 	// called by Rhref when the last reference to a row handle is removed
-	void destroyRowHandle(RowHandle *rh);
+	void destroyRowHandle(RowHandle *rh) const;
 
 protected:
 	friend class IndexType;

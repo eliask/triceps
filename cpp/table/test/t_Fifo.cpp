@@ -116,6 +116,8 @@ UTESTCASE fifoIndex(Utest *utest)
 	UT_IS(iter, NULL);
 
 	// do the finds
+	iter = t->findRow(rh11->getRow());
+	UT_IS(iter, rh11);
 	iter = t->find(rh11);
 	UT_IS(iter, rh11);
 	iter = t->find(rh11copy);

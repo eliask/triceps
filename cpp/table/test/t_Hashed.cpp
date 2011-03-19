@@ -186,6 +186,8 @@ UTESTCASE tableops(Utest *utest)
 	// check that the newly inserted record can be found by find on the same key
 	iter = t->find(prim, rh1);
 	UT_ASSERT(iter == iter2);
+	iter = t->findRow(prim, r1);
+	UT_ASSERT(iter == iter2);
 
 	// check that the type is shared between tables
 	iter = t->find(prim2, rh1);

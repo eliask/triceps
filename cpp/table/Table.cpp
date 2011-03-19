@@ -81,7 +81,7 @@ Table::~Table()
 	}
 }
 
-RowHandle *Table::makeRowHandle(const Row *row)
+RowHandle *Table::makeRowHandle(const Row *row) const
 {
 	if (row == NULL)
 		return NULL;
@@ -94,7 +94,7 @@ RowHandle *Table::makeRowHandle(const Row *row)
 	return rh;
 }
 
-void Table::destroyRowHandle(RowHandle *rh)
+void Table::destroyRowHandle(RowHandle *rh) const
 {
 	// for each index, clear whatever per-handle internal objects there may be
 	type_->root_->clearRowHandle(rh);
@@ -276,6 +276,22 @@ RowHandle *Table::find(IndexType *ixt, const RowHandle *what) const
 		return NULL;
 
 	return ixt->findRecord(this, what);
+}
+
+RowHandle *Table::findRow(IndexType *ixt, const Row *row) const
+{
+	if (row == NULL)
+		return NULL;
+
+	RowHandle *rh = makeRowHandle(row);
+	rh->incref();
+
+	RowHandle *res = find(ixt, rh);
+
+	if (rh->decref() <= 0)
+		destroyRowHandle(rh);
+
+	return res;
 }
 
 }; // BICEPS_NS
