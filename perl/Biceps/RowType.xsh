@@ -129,7 +129,7 @@ makerow_hs(WrapRowType *self, ...)
 	OUTPUT:
 		RETVAL
 
-# the row factory, from an array of values in the exact order (lice CSV files),
+# the row factory, from an array of values in the exact order (like CSV files),
 # filling the missing values at the end with nulls
 WrapRow *
 makerow_ar(WrapRowType *self, ...)
@@ -173,3 +173,4 @@ makerow_ar(WrapRowType *self, ...)
 		RETVAL
 
 
+# XXX add print()

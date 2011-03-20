@@ -11,6 +11,8 @@ namespace BICEPS_NS {
 
 WrapMagic magicWrapRowType = { "RowType" };
 WrapMagic magicWrapRow = { "RowP" };
+WrapMagic magicWrapIndexType = { "IndexT" };
+WrapMagic magicWrapTableType = { "TableT" };
 
 WrapMagic magicWrapUnit = { "Unit" };
 WrapMagic magicWrapTray = { "Tray" };

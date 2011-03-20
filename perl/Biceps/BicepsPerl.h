@@ -269,6 +269,31 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 	}
 	return newSV(0); // undef value
 }
+
+// Parse an option value of reference to array into a NameSet
+// On error calls setErrMsg and returns NULL.
+// @param funcName - calling function name, for error messages
+// @param optname - option name of the originating value, for error messages
+// @param ref - option value (will be checked for being a reference to array)
+// @return - the parsed NameSet or NULL on error
+Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *optval)
+{
+	if (!SvROK(optval) || SvTYPE(SvRV(optval)) != SVt_PVAV) {
+		setErrMsg(strprintf("%s: option '%s' value must be an array reference", funcName, optname));
+		return NULL;
+	}
+	Onceref<NameSet> key = new NameSet;
+	AV *ka = (AV *)SvRV(optval);
+	int klen = av_len(ka);
+	for (int j = 0; j <= klen; j++) {
+		SV *fldsv = *av_fetch(ka, j, 1);
+		STRLEN len;
+		char *fld = SvPV(fldsv, len);
+		key->add(string(fld, len));
+	}
+	return key;
+}
+
 }; // Biceps::BicepsPerl
 }; // Biceps
 

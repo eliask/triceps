@@ -1,3 +1,9 @@
+#
+# This file is a part of Biceps.
+# See the file COPYRIGHT for the copyright notice and license information
+#
+# The test for RowType.
+
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Biceps.t'
 
