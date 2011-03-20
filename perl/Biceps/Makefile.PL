@@ -13,7 +13,7 @@ WriteMakefile(
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I../../cpp', # e.g., '-I. -I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
-    # OBJECT            => '$(O_FILES)', # link all the C files too
+    OBJECT            => '$(O_FILES)', # link all the C files too
     MYEXTLIB          => '../../cpp/build/libbiceps$(LIB_EXT)', # embed the static version into Perl shared module
 	CC                => 'g++',
 	LD                => 'g++',
@@ -37,6 +37,11 @@ qtest: test
 
 clean::
 	rm -f core.* *.core core vgcore.* test.vg
+
+clobber:
+	rm Biceps.o
+
+Biceps.c: BicepsPerl.h RowType.xsh Row.xsh
 ";
 }
 
