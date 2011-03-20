@@ -137,11 +137,15 @@ public:
 	// Add a nested index under this one.
 	//
 	// May be used only until initialized.
+	// The nested index remembered is actually a copy of original, so all the settings
+	// need to be done before calling here. This also means that to access indexes
+	// in a table, their types need to be obtained from TableType after it is initialized,
+	// using findIndex/findNested.
 	//
 	// @param name - name of the nested index
 	// @param index - the nested index
 	// @return - this
-	IndexType *addNested(const string &name, IndexType *index);
+	IndexType *addNested(const string &name, Onceref<IndexType> index);
 
 	// For access of subclasses to the subtype id.
 	IndexId getIndexId() const

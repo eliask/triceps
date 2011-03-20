@@ -192,13 +192,16 @@ IndexType::IndexType(const IndexType &orig) :
 IndexType::~IndexType()
 { }
 
-IndexType *IndexType::addNested(const string &name, IndexType *index)
+IndexType *IndexType::addNested(const string &name, Onceref<IndexType> index)
 {
 	if (initialized_) {
 		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
-	nested_.push_back(IndexTypeRef(name, index));
+	if (index.isNull())
+		nested_.push_back(IndexTypeRef(name, NULL));
+	else
+		nested_.push_back(IndexTypeRef(name, index->copy()));
 	return this;
 }
 

@@ -42,6 +42,13 @@ public:
 	// making possible to chain them together with "->".
 
 	// Add a top-level index.
+	//
+	// May be used only until initialized.
+	// The index remembered is actually a copy of original, so all the settings
+	// need to be done before calling here. This also means that to access indexes
+	// in a table, their types need to be obtained from TableType after it is initialized,
+	// using findIndex/findNested.
+	//
 	// @param name - name of the index
 	// @param index - the index
 	// @return - this
