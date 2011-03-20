@@ -10,9 +10,9 @@ MODULE = Biceps		PACKAGE = Biceps::IndexType
 # create a HashedIndex
 # options go in pairs  name => value 
 WrapIndexType *
-new_hashed(char *CLASS, ...)
+newHashed(char *CLASS, ...)
 	CODE:
-		char funcName[] = "Biceps::IndexType::new_hashed";
+		char funcName[] = "Biceps::IndexType::newHashed";
 		clearErrMsg();
 
 		Autoref<NameSet> key;
@@ -50,9 +50,9 @@ new_hashed(char *CLASS, ...)
 # create a FifoIndex
 # options go in pairs  name => value 
 WrapIndexType *
-new_fifo(char *CLASS, ...)
+newFifo(char *CLASS, ...)
 	CODE:
-		char funcName[] = "Biceps::IndexType::new_fifo";
+		char funcName[] = "Biceps::IndexType::newFifo";
 		clearErrMsg();
 
 		size_t limit = 0;
@@ -80,6 +80,7 @@ new_fifo(char *CLASS, ...)
 		RETVAL
 
 # print the description
+# XXX add indenting?
 SV *
 print(WrapIndexType *self)
 	PPCODE:
@@ -88,3 +89,83 @@ print(WrapIndexType *self)
 		string res;
 		ixt->printTo(res);
 		PUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size())));
+
+# type comparisons
+int
+equals(WrapIndexType *self, WrapIndexType *other)
+	CODE:
+		clearErrMsg();
+		IndexType *ixself = self->get();
+		IndexType *ixother = other->get();
+		RETVAL = ixself->equals(ixother);
+	OUTPUT:
+		RETVAL
+
+int
+match(WrapIndexType *self, WrapIndexType *other)
+	CODE:
+		clearErrMsg();
+		IndexType *ixself = self->get();
+		IndexType *ixother = other->get();
+		RETVAL = ixself->match(ixother);
+	OUTPUT:
+		RETVAL
+
+# check if leaf
+int
+isLeaf(WrapIndexType *self)
+	CODE:
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		RETVAL = ixt->isLeaf();
+	OUTPUT:
+		RETVAL
+
+# add a nested index
+WrapIndexType *
+addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Biceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		IndexType *ixsub = sub->get();
+		// can't just return self because it will upset the refcount
+		RETVAL = new WrapIndexType(ixt->addNested(subname, ixsub));
+	OUTPUT:
+		RETVAL
+
+# find a nested index by name
+WrapIndexType *
+findNested(WrapIndexType *self, char *subname)
+	CODE:
+		char funcName[] = "Biceps::IndexType::findNested";
+		// for casting of return value
+		static char CLASS[] = "Biceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		IndexType *ixsub = ixt->findNested(subname);
+		if (ixsub == NULL) {
+			setErrMsg(strprintf("%s: unknown nested index '%s'", funcName, subname));
+			XSRETURN_UNDEF;
+		}
+		RETVAL = new WrapIndexType(ixsub);
+	OUTPUT:
+		RETVAL
+
+# get the first leaf sub-index
+WrapIndexType *
+getFirstLeaf(WrapIndexType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Biceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		RETVAL = new WrapIndexType(ixt->getFirstLeaf());
+	OUTPUT:
+		RETVAL
+
+# XXX dealing with IndexId requires constants, so leave a lone for now...

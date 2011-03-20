@@ -173,4 +173,4 @@ makerow_ar(WrapRowType *self, ...)
 		RETVAL
 
 
-# XXX add print()
+# XXX add print(), equals(), match()
