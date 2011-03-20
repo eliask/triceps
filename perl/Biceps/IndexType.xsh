@@ -132,11 +132,18 @@ isLeaf(WrapIndexType *self)
 WrapIndexType *
 addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
 	CODE:
+		char funcName[] = "Biceps::IndexType::addNested";
 		// for casting of return value
 		static char CLASS[] = "Biceps::IndexType";
 
 		clearErrMsg();
 		IndexType *ixt = self->get();
+
+		if (ixt->isInitialized()) {
+			setErrMsg(strprintf("%s: index is already initialized, can not add indexes any more", funcName));
+			XSRETURN_UNDEF;
+		}
+
 		IndexType *ixsub = sub->get();
 		// can't just return self because it will upset the refcount
 		RETVAL = new WrapIndexType(ixt->addNested(subname, ixsub));
