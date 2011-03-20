@@ -26,6 +26,26 @@ FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
 {
 }
 
+FifoIndexType *FifoIndexType::setLimit(size_t limit)
+{
+	if (initialized_) {
+		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		abort();
+	}
+	limit_ = limit;
+	return this;
+}
+
+FifoIndexType *FifoIndexType::setJumping(bool jumping)
+{
+	if (initialized_) {
+		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		abort();
+	}
+	jumping_ = jumping;
+	return this;
+}
+
 bool FifoIndexType::equals(const Type *t) const
 {
 	if (this == t)

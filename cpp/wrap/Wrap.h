@@ -164,6 +164,7 @@ private:
 DEFINE_WRAP(RowType);
 DEFINE_WRAP2(RowType, Rowref, Row);
 DEFINE_WRAP(IndexType);
+DEFINE_WRAP(TableType);
 
 DEFINE_WRAP(Unit);
 DEFINE_WRAP_IDENT(Unit, Tray);

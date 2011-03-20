@@ -130,8 +130,14 @@ public:
 
 	// The idea of the configuration methods is that they return back "this",
 	// making possible to chain them together with "->".
+	// The index types may be configured until they are initialized (as a part
+	// of table type initialization).
+	// Once initialized, they become immutable.
 
 	// Add a nested index under this one.
+	//
+	// May be used only until initialized.
+	//
 	// @param name - name of the nested index
 	// @param index - the nested index
 	// @return - this
@@ -147,6 +153,9 @@ public:
 	// will work on the instance of this index.
 	// Potentially there is no reason to limit to only one aggregator
 	// but for now it's simpler this way.
+	//
+	// May be used only until initialized.
+	//
 	// @param agg - type of the aggregator
 	// @return - this
 	IndexType *setAggregator(Onceref<AggregatorType> agg);

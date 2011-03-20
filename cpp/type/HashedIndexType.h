@@ -27,6 +27,7 @@ public:
 	}
 	
 
+	// Set tke key later (until initialized).
 	HashedIndexType *setKey(NameSet *key);
 
 	// from Type

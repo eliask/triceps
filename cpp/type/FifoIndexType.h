@@ -51,17 +51,10 @@ public:
 		return jumping_;
 	}
 
-	FifoIndexType *setLimit(size_t limit)
-	{
-		limit_ = limit;
-		return this;
-	}
-
-	FifoIndexType *setJumping(bool jumping)
-	{
-		jumping_ = jumping;
-		return this;
-	}
+	// Set the limit later (only until initialized).
+	FifoIndexType *setLimit(size_t limit);
+	// Set the jumping flag later (only until initialized).
+	FifoIndexType *setJumping(bool jumping);
 
 protected:
 	// interface for the index instances

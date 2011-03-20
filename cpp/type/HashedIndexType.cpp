@@ -111,6 +111,10 @@ HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
 
 HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
+	if (initialized_) {
+		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		abort();
+	}
 	key_ = key;
 	return this;
 }
