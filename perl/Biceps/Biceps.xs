@@ -19,4 +19,5 @@ MODULE = Biceps		PACKAGE = Biceps
 INCLUDE: RowType.xsh
 INCLUDE: Row.xsh
 INCLUDE: IndexType.xsh
+INCLUDE: TableType.xsh
 

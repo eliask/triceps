@@ -7,6 +7,13 @@
 MODULE = Biceps		PACKAGE = Biceps::IndexType
 ###################################################################################
 
+void
+DESTROY(WrapIndexType *self)
+	CODE:
+		// warn("IndexType destroyed!");
+		delete self;
+
+
 # create a HashedIndex
 # options go in pairs  name => value 
 WrapIndexType *
