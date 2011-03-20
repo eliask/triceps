@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 52 };
+BEGIN { plan tests => 53 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -146,3 +146,8 @@ $res = $it6->equals($it5);
 $it6 = $it5->getFirstLeaf();
 ok(ref $it6, "Biceps::IndexType");
 $res = $it6->equals($it5);
+
+###################### nested #################################
+
+$res = $it2->isInitialized();
+ok($res, 0);

@@ -221,6 +221,12 @@ public:
 			return nested_[0].index_->getFirstLeaf();
 	}
 
+	// Check whether the type has been initialized.
+	bool isInitialized() const
+	{
+		return initialized_;
+	}
+
 protected:
 	friend class IndexTypeVec;
 	friend class TableType;
@@ -281,11 +287,6 @@ protected:
 	// Guaranteed to be called after setNestPos() and initialize().
 	// Adds their errors to this type's indication getErrors() result.
 	void initializeNested();
-
-	bool isInitialized() const
-	{
-		return initialized_;
-	}
 
 	// Add the agggregator typess from this index recursively to the
 	// table's vector of them.

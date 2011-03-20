@@ -168,4 +168,14 @@ getFirstLeaf(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+# check if the type has been initialized
+int
+isInitialized(WrapIndexType *self)
+	CODE:
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		RETVAL = ixt->isInitialized();
+	OUTPUT:
+		RETVAL
+
 # XXX dealing with IndexId requires constants, so leave a lone for now...
