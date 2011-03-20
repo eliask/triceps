@@ -96,7 +96,7 @@ void HashedIndexType::Less::initHash(RowHandle *rh)
 //////////////////////////// HashedIndexType /////////////////////////
 
 HashedIndexType::HashedIndexType(NameSet *key) :
-	IndexType(IT_PRIMARY),
+	IndexType(IT_HASHED),
 	key_(key)
 {
 }
