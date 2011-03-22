@@ -14,13 +14,15 @@ DESTROY(WrapTableType *self)
 		delete self;
 
 WrapTableType *
-Biceps::RowType::new(WrapRowType *wrt)
+Biceps::TableType::new(WrapRowType *wrt)
 	CODE:
 		clearErrMsg();
 
 		RETVAL = new WrapTableType(new TableType(wrt->get()));
 	OUTPUT:
 		RETVAL
+
+# XXX add copy()?
 
 # print the description
 # XXX add indenting?
@@ -196,6 +198,11 @@ makeTable(WrapTableType *self, WrapUnit *unit, SV *enqMode, char *name)
 			}
 		}
 
-		RETVAL = new WrapTable(tbt->makeTable(unit->get(), em, name));
+		Autoref<Table> t = tbt->makeTable(unit->get(), em, name);
+		if (t.isNull()) {
+			setErrMsg(strprintf("%s: table type was not successfully initialized", funcName));
+			XSRETURN_UNDEF;
+		}
+		RETVAL = new WrapTable(t);
 	OUTPUT:
 		RETVAL

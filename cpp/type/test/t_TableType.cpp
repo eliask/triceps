@@ -39,6 +39,24 @@ void mkfdata(FdataVec &fd)
 	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
 }
 
+UTESTCASE emptyTable(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = new TableType(rt1);
+
+	UT_ASSERT(tt);
+	UT_IS(tt->firstLeafIndex(), NULL);
+
+	tt->initialize();
+	UT_ASSERT(tt->getErrors()->hasError());
+	UT_IS(tt->getErrors()->print(), "no indexes are defined\n");
+}
+
 UTESTCASE primaryIndex(Utest *utest)
 {
 	RowType::FieldVec fld;
@@ -86,7 +104,8 @@ UTESTCASE primaryIndex(Utest *utest)
 	// get back the initialized types
 	IndexType *prim = tt->findIndex("primary");
 	UT_ASSERT(prim != NULL);
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_PRIMARY), prim);
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_HASHED), prim);
+	UT_IS(tt->firstLeafIndex(), prim);
 
 	UT_IS(tt->findIndexByIndexId(IndexType::IT_LAST), NULL);
 	UT_IS(tt->findIndex("nosuch"), NULL);
@@ -249,12 +268,12 @@ UTESTCASE primaryNested(Utest *utest)
 	IndexType *prim = tt->findIndex("primary");
 	if (UT_ASSERT(prim != NULL))
 		return;
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_PRIMARY), prim);
+	UT_IS(tt->findIndexByIndexId(IndexType::IT_HASHED), prim);
 
 	IndexType *sec = prim->findNested("level2");
 	if (UT_ASSERT(sec != NULL))
 		return;
-	UT_IS(prim->findNestedByIndexId(IndexType::IT_PRIMARY), sec);
+	UT_IS(prim->findNestedByIndexId(IndexType::IT_HASHED), sec);
 
 	UT_IS(sec->findNested("nosuch"), NULL);
 	UT_IS(sec->findNestedByIndexId(IndexType::IT_LAST), NULL);

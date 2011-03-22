@@ -108,6 +108,10 @@ void TableType::initialize()
 		errors_->appendMsg(true, "the row type is not set");
 		return;
 	}
+	if (root_->isLeaf()) {
+		errors_->appendMsg(true, "no indexes are defined");
+		return;
+	}
 
 	errors_->append("row type error:", rowType_->getErrors());
 
@@ -165,7 +169,7 @@ IndexType *TableType::findIndexByIndexId(IndexType::IndexId it) const
 
 IndexType *TableType::firstLeafIndex() const
 {
-	if (root_.isNull())
+	if (root_.isNull() || root_->isLeaf())
 		return NULL;
 	return root_->getFirstLeaf();
 }
