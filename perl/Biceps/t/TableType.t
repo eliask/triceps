@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 17 };
+BEGIN { plan tests => 27 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -42,6 +42,9 @@ ok(ref $it1, "Biceps::IndexType");
 
 $tt1 = Biceps::TableType->new($rt1);
 ok(ref $tt1, "Biceps::TableType");
+
+$ret = $tt1->rowType();
+ok(ref $ret, "Biceps::RowType");
 
 ###################### addIndex #################################
 
@@ -97,3 +100,32 @@ $it2 = $tt4->firstLeafIndex();
 ok(!defined($it2));
 
 ###################### initialization #################################
+
+$res = $tt1->isInitialized();
+ok($res, 0);
+
+$res = $tt1->initialize();
+ok($res, 1);
+ok($! . "", "");
+
+$res = $tt1->isInitialized();
+ok($res, 1);
+
+# repeated initialization is OK
+$res = $tt1->initialize();
+ok($res, 1);
+ok($! . "", "");
+
+# check that still can find indexes
+$it2 = $tt1->firstLeafIndex();
+$res = $it2->print();
+ok($res, "FifoIndex()");
+
+# adding indexes is not allowed any more
+$res = $tt1->addIndex("second", Biceps::IndexType->newFifo());
+ok(!defined $res);
+ok($! . "", "Biceps::TableType::addIndex: table is already initialized, can not add indexes any more");
+
+###################### makeTable #################################
+
+# can not test yet, need unit

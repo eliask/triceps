@@ -160,7 +160,7 @@ rowType(WrapTableType *self)
 WrapTable *
 makeTable(WrapTableType *self, WrapUnit *unit, SV *enqMode, char *name)
 	CODE:
-		char funcName[] = "Biceps::TableType::firstLeafIndex";
+		char funcName[] = "Biceps::TableType::makeTable";
 		// for casting of return value
 		static char CLASS[] = "Biceps::Table";
 
