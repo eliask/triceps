@@ -41,7 +41,7 @@ clean::
 clobber:
 	rm Biceps.o
 
-Biceps.c: BicepsPerl.h RowType.xsh Row.xsh IndexType.xsh TableType.xsh
+Biceps.c: BicepsPerl.h RowType.xsh Row.xsh IndexType.xsh TableType.xsh Unit.xsh
 ";
 }
 

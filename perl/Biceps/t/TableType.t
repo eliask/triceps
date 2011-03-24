@@ -126,6 +126,3 @@ $res = $tt1->addIndex("second", Biceps::IndexType->newFifo());
 ok(!defined $res);
 ok($! . "", "Biceps::TableType::addIndex: table is already initialized, can not add indexes any more");
 
-###################### makeTable #################################
-
-# can not test yet, need unit
