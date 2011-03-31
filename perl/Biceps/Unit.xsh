@@ -36,18 +36,19 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 		Gadget::EnqMode em;
 		// accept enqueueing mode as either number of name
 		if (SvIOK(enqMode)) {
-			em = (Gadget::EnqMode)SvIV(enqMode);
-			switch(em) {
+			int intem = SvIV(enqMode);
+			switch(intem) { // if enum used directly, the compiler optimizes out "default"
 			case Gadget::SM_SCHEDULE:
 			case Gadget::SM_FORK:
 			case Gadget::SM_CALL:
 			case Gadget::SM_IGNORE:
 				break;
 			default:
-				setErrMsg(strprintf("%s: unknown enqueuing mode %d", funcName, em));
+				setErrMsg(strprintf("%s: unknown enqueuing mode integer %d", funcName, intem));
 				XSRETURN_UNDEF;
 				break;
 			}
+			em = (Gadget::EnqMode)intem;
 		} else {
 			const char *emname = SvPV_nolen(enqMode);
 			if (!strcmp(emname, "SCHEDULE"))
@@ -59,7 +60,7 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 			else if (!strcmp(emname, "IGNORE"))
 				em = Gadget::SM_IGNORE;
 			else {
-				setErrMsg(strprintf("%s: unknown enqueuing mode '%s'", funcName, emname));
+				setErrMsg(strprintf("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname));
 				XSRETURN_UNDEF;
 			}
 		}
