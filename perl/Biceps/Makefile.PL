@@ -15,7 +15,7 @@ WriteMakefile(
 	# Un-comment this if you add C files to link with later:
     OBJECT            => '$(O_FILES)', # link all the C files too
     MYEXTLIB          => '../../cpp/build/libbiceps$(LIB_EXT)', # embed the static version into Perl shared module
-	CC                => 'g++',
+	CC                => 'g++ -Wno-unused-variable',
 	LD                => 'g++',
 );
 

@@ -73,3 +73,5 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 		RETVAL = new WrapTable(t);
 	OUTPUT:
 		RETVAL
+
+# XXX add the rest of methods
