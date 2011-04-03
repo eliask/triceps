@@ -3,7 +3,6 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // Helper functions for Perl wrapper.
-// This is really a .cpp file but Makefile.PL understands only .c
 
 #include "EXTERN.h"
 #include "perl.h"
