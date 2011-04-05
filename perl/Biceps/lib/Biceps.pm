@@ -35,6 +35,7 @@ sub AUTOLOAD {
 
     my $constname;
     our $AUTOLOAD;
+	#print STDERR "AUTOLOAD '$AUTOLOAD'\n";
     ($constname = $AUTOLOAD) =~ s/.*:://;
     croak "&Biceps::constant not defined" if $constname eq 'constant';
     my ($error, $val) = constant($constname);

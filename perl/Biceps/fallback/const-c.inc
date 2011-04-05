@@ -21,7 +21,7 @@ typedef double NV; /* 5.6 and later define NVTYPE, and typedef NV to it.  */
 #endif
 
 static int
-constant (pTHX_ const char *name, STRLEN len) {
+constant (pTHX_ const char *name, STRLEN len, IV *iv_return) {
   /* Initially switch on the length of the name.  */
   /* When generated this function returned values for the list of names given
      in this section of perl code.  Rather than manually editing these functions
@@ -49,6 +49,27 @@ __END__
    */
 
   switch (len) {
+  case 7:
+    if (memEQ(name, "SM_FORK", 7)) {
+      *iv_return = Gadget::SM_FORK;
+      return PERL_constant_ISIV;
+    } else if (memEQ(name, "SM_CALL", 7)) {
+      *iv_return = Gadget::SM_CALL;
+      return PERL_constant_ISIV;
+    }
+    break;
+  case 9:
+    if (memEQ(name, "SM_IGNORE", 7)) {
+      *iv_return = Gadget::SM_IGNORE;
+      return PERL_constant_ISIV;
+    }
+    break;
+  case 11:
+    if (memEQ(name, "SM_SCHEDULE", 7)) {
+      *iv_return = Gadget::SM_SCHEDULE;
+      return PERL_constant_ISIV;
+    }
+    break;
   }
   return PERL_constant_NOTFOUND;
 }

@@ -41,11 +41,11 @@ clean::
 clobber:
 	rm Biceps.o
 
-Biceps.c: BicepsPerl.h RowType.xsh Row.xsh IndexType.xsh TableType.xsh Unit.xsh
+Biceps.c: BicepsPerl.h RowType.xsh Row.xsh IndexType.xsh TableType.xsh Unit.xsh const-c.inc const-xs.inc
 ";
 }
 
-if  (eval {require ExtUtils::Constant; 1}) {
+if  (0 && eval {require ExtUtils::Constant; 1}) {
   # If you edit these definitions to change the constants used by this module,
   # you will need to use the generated const-c.inc and const-xs.inc
   # files to replace their "fallback" counterparts before distributing your
