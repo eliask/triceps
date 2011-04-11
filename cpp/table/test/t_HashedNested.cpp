@@ -380,31 +380,31 @@ UTESTCASE queuing(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string expect = 
-		"unit 'u' before label 't0.in' op INSERT\n"
-		"unit 'u' before label 't0.out' op INSERT\n"
-		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
-		"unit 'u' before label 't1.out' op INSERT\n"
+		"unit 'u' before label 't0.in' op OP_INSERT\n"
+		"unit 'u' before label 't0.out' op OP_INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op OP_INSERT\n"
+		"unit 'u' before label 't1.out' op OP_INSERT\n"
 
-		"unit 'u' before label 't0.in' op INSERT\n"
-		"unit 'u' before label 't0.out' op INSERT\n"
-		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
-		"unit 'u' before label 't1.out' op INSERT\n"
+		"unit 'u' before label 't0.in' op OP_INSERT\n"
+		"unit 'u' before label 't0.out' op OP_INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op OP_INSERT\n"
+		"unit 'u' before label 't1.out' op OP_INSERT\n"
 
-		"unit 'u' before label 't0.in' op INSERT\n"
-			"unit 'u' before label 't0.out' op DELETE\n"
-			"unit 'u' before label 't1.in' (chain 't0.out') op DELETE\n"
-			"unit 'u' before label 't1.out' op DELETE\n"
-		"unit 'u' before label 't0.out' op INSERT\n"
-		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
-		"unit 'u' before label 't1.out' op INSERT\n"
+		"unit 'u' before label 't0.in' op OP_INSERT\n"
+			"unit 'u' before label 't0.out' op OP_DELETE\n"
+			"unit 'u' before label 't1.in' (chain 't0.out') op OP_DELETE\n"
+			"unit 'u' before label 't1.out' op OP_DELETE\n"
+		"unit 'u' before label 't0.out' op OP_INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op OP_INSERT\n"
+		"unit 'u' before label 't1.out' op OP_INSERT\n"
 
-		"unit 'u' before label 't0.in' op INSERT\n"
-			"unit 'u' before label 't0.out' op DELETE\n"
-			"unit 'u' before label 't1.in' (chain 't0.out') op DELETE\n"
-			"unit 'u' before label 't1.out' op DELETE\n"
-		"unit 'u' before label 't0.out' op INSERT\n"
-		"unit 'u' before label 't1.in' (chain 't0.out') op INSERT\n"
-		"unit 'u' before label 't1.out' op INSERT\n"
+		"unit 'u' before label 't0.in' op OP_INSERT\n"
+			"unit 'u' before label 't0.out' op OP_DELETE\n"
+			"unit 'u' before label 't1.in' (chain 't0.out') op OP_DELETE\n"
+			"unit 'u' before label 't1.out' op OP_DELETE\n"
+		"unit 'u' before label 't0.out' op OP_INSERT\n"
+		"unit 'u' before label 't1.in' (chain 't0.out') op OP_INSERT\n"
+		"unit 'u' before label 't1.out' op OP_INSERT\n"
 	;
 	UT_IS(tlog, expect);
 

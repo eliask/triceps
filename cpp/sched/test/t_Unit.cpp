@@ -178,9 +178,9 @@ UTESTCASE rowop(Utest *utest)
 	UT_ASSERT(op3->isDelete());
 	UT_ASSERT(!op3->isNop());
 
-	UT_IS(string(Rowop::opcodeString(Rowop::OP_NOP)), "NOP");
-	UT_IS(string(Rowop::opcodeString(Rowop::OP_INSERT)), "INSERT");
-	UT_IS(string(Rowop::opcodeString(Rowop::OP_DELETE)), "DELETE");
+	UT_IS(string(Rowop::opcodeString(Rowop::OP_NOP)), "OP_NOP");
+	UT_IS(string(Rowop::opcodeString(Rowop::OP_INSERT)), "OP_INSERT");
+	UT_IS(string(Rowop::opcodeString(Rowop::OP_DELETE)), "OP_DELETE");
 	UT_IS(string(Rowop::opcodeString((Rowop::Opcode)0x330)), "[NOP]");
 	UT_IS(string(Rowop::opcodeString((Rowop::Opcode)0x331)), "[I]");
 	UT_IS(string(Rowop::opcodeString((Rowop::Opcode)0x332)), "[D]");
@@ -329,22 +329,22 @@ UTESTCASE scheduling(Utest *utest)
 	tlog = trace->getBuffer()->print();
 
 	string expect_sched = 
-		"unit 'u' before label 'lab4' op NOP\n"
-		"unit 'u' before label 'lab3' op INSERT\n"
-		"unit 'u' before label 'lab3' op DELETE\n"
-		"unit 'u' before label 'lab2' op INSERT\n"
-		"unit 'u' before label 'lab2' op DELETE\n"
+		"unit 'u' before label 'lab4' op OP_NOP\n"
+		"unit 'u' before label 'lab3' op OP_INSERT\n"
+		"unit 'u' before label 'lab3' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_DELETE\n"
 
-		"unit 'u' before label 'lab5' op NOP\n"
-		"unit 'u' before label 'lab3' op INSERT\n"
-		"unit 'u' before label 'lab3' op DELETE\n"
-		"unit 'u' before label 'lab2' op INSERT\n"
-		"unit 'u' before label 'lab2' op DELETE\n"
+		"unit 'u' before label 'lab5' op OP_NOP\n"
+		"unit 'u' before label 'lab3' op OP_INSERT\n"
+		"unit 'u' before label 'lab3' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_DELETE\n"
 
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab1' op DELETE\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
 	;
 
 	UT_IS(tlog, expect_sched);
@@ -399,17 +399,17 @@ UTESTCASE scheduling(Utest *utest)
 	unit->callTray(tray); // produces the immediate result, so check it before draining
 
 	string expect_call_1 = 
-		"unit 'u' before label 'lab4' op NOP\n"
-		"unit 'u' before label 'lab3' op INSERT\n"
-		"unit 'u' before label 'lab3' op DELETE\n"
-		"unit 'u' before label 'lab2' op INSERT\n"
-		"unit 'u' before label 'lab2' op DELETE\n"
+		"unit 'u' before label 'lab4' op OP_NOP\n"
+		"unit 'u' before label 'lab3' op OP_INSERT\n"
+		"unit 'u' before label 'lab3' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_DELETE\n"
 
-		"unit 'u' before label 'lab5' op NOP\n"
-		"unit 'u' before label 'lab3' op INSERT\n"
-		"unit 'u' before label 'lab3' op DELETE\n"
-		"unit 'u' before label 'lab2' op INSERT\n"
-		"unit 'u' before label 'lab2' op DELETE\n"
+		"unit 'u' before label 'lab5' op OP_NOP\n"
+		"unit 'u' before label 'lab3' op OP_INSERT\n"
+		"unit 'u' before label 'lab3' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_DELETE\n"
 	;
 
 	UT_ASSERT(!unit->empty());
@@ -420,11 +420,11 @@ UTESTCASE scheduling(Utest *utest)
 	unit->drainFrame();
 
 	string expect_call_2 = 
-		"unit 'u' before label 'lab1' op NOP\n"
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab1' op DELETE\n"
+		"unit 'u' before label 'lab1' op OP_NOP\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
 	;
 
 	UT_ASSERT(unit->empty());
@@ -475,37 +475,37 @@ UTESTCASE chaining(Utest *utest)
 	UT_ASSERT(unit->empty());
 
 	string expect = 
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' drain label 'lab1' op INSERT\n"
-		"unit 'u' before-chained label 'lab1' op INSERT\n"
-			"unit 'u' before label 'lab2' (chain 'lab1') op INSERT\n"
-			"unit 'u' drain label 'lab2' (chain 'lab1') op INSERT\n"
-			"unit 'u' before-chained label 'lab2' (chain 'lab1') op INSERT\n"
-				"unit 'u' before label 'lab3' (chain 'lab2') op INSERT\n"
-				"unit 'u' drain label 'lab3' (chain 'lab2') op INSERT\n"
-				"unit 'u' after label 'lab3' (chain 'lab2') op INSERT\n"
-			"unit 'u' after label 'lab2' (chain 'lab1') op INSERT\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' drain label 'lab1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lab1' op OP_INSERT\n"
+			"unit 'u' before label 'lab2' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' drain label 'lab2' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_INSERT\n"
+				"unit 'u' before label 'lab3' (chain 'lab2') op OP_INSERT\n"
+				"unit 'u' drain label 'lab3' (chain 'lab2') op OP_INSERT\n"
+				"unit 'u' after label 'lab3' (chain 'lab2') op OP_INSERT\n"
+			"unit 'u' after label 'lab2' (chain 'lab1') op OP_INSERT\n"
 
-			"unit 'u' before label 'lab3' (chain 'lab1') op INSERT\n"
-			"unit 'u' drain label 'lab3' (chain 'lab1') op INSERT\n"
-			"unit 'u' after label 'lab3' (chain 'lab1') op INSERT\n"
-		"unit 'u' after label 'lab1' op INSERT\n"
+			"unit 'u' before label 'lab3' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' drain label 'lab3' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' after label 'lab3' (chain 'lab1') op OP_INSERT\n"
+		"unit 'u' after label 'lab1' op OP_INSERT\n"
 
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' drain label 'lab1' op DELETE\n"
-		"unit 'u' before-chained label 'lab1' op DELETE\n"
-			"unit 'u' before label 'lab2' (chain 'lab1') op DELETE\n"
-			"unit 'u' drain label 'lab2' (chain 'lab1') op DELETE\n"
-			"unit 'u' before-chained label 'lab2' (chain 'lab1') op DELETE\n"
-				"unit 'u' before label 'lab3' (chain 'lab2') op DELETE\n"
-				"unit 'u' drain label 'lab3' (chain 'lab2') op DELETE\n"
-				"unit 'u' after label 'lab3' (chain 'lab2') op DELETE\n"
-			"unit 'u' after label 'lab2' (chain 'lab1') op DELETE\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' drain label 'lab1' op OP_DELETE\n"
+		"unit 'u' before-chained label 'lab1' op OP_DELETE\n"
+			"unit 'u' before label 'lab2' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' drain label 'lab2' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_DELETE\n"
+				"unit 'u' before label 'lab3' (chain 'lab2') op OP_DELETE\n"
+				"unit 'u' drain label 'lab3' (chain 'lab2') op OP_DELETE\n"
+				"unit 'u' after label 'lab3' (chain 'lab2') op OP_DELETE\n"
+			"unit 'u' after label 'lab2' (chain 'lab1') op OP_DELETE\n"
 
-			"unit 'u' before label 'lab3' (chain 'lab1') op DELETE\n"
-			"unit 'u' drain label 'lab3' (chain 'lab1') op DELETE\n"
-			"unit 'u' after label 'lab3' (chain 'lab1') op DELETE\n"
-		"unit 'u' after label 'lab1' op DELETE\n"
+			"unit 'u' before label 'lab3' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' drain label 'lab3' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' after label 'lab3' (chain 'lab1') op OP_DELETE\n"
+		"unit 'u' after label 'lab1' op OP_DELETE\n"
 	;
 
 	string tlog = trace->getBuffer()->print();

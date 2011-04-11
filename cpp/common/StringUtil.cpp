@@ -8,6 +8,7 @@
 #include <common/StringUtil.h>
 #include <common/Strprintf.h>
 #include <ctype.h>
+#include <string.h>
 
 namespace BICEPS_NS {
 
@@ -82,6 +83,26 @@ GEN_HEXDUMP(string &)
 #undef HD_PUTC
 #undef HD_PRINTF
 #undef HD_FLUSH
+
+int string2enum(const Valname *reft, const char *name)
+{
+	const char *n;
+	for (; (n = reft->name_) != NULL; ++reft) {
+		if (!strcmp(n, name))
+			return reft->val_;
+	}
+	return -1;
+}
+
+const char *enum2string(const Valname *reft, int val, const char *def)
+{
+	int v;
+	for (; (v = reft->val_) != -1; ++reft) {
+		if (v == val)
+			return reft->name_;
+	}
+	return def;
+}
 
 }; // BICEPS_NS
 

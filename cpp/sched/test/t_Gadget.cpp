@@ -163,16 +163,16 @@ UTESTCASE scheduling(Utest *utest)
 	tlog = trace->getBuffer()->print();
 
 	string expect_sched = 
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab2' op NOP\n"
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 
-		"unit 'u' before label 'g1' op INSERT\n"
-		"unit 'u' before label 'g2' op INSERT\n"
+		"unit 'u' before label 'g1' op OP_INSERT\n"
+		"unit 'u' before label 'g2' op OP_INSERT\n"
 
-		"unit 'u' before label 'g1' op DELETE\n"
-		"unit 'u' before label 'g2' op DELETE\n"
+		"unit 'u' before label 'g1' op OP_DELETE\n"
+		"unit 'u' before label 'g2' op OP_DELETE\n"
 	;
 
 	UT_IS(tlog, expect_sched);
@@ -190,17 +190,17 @@ UTESTCASE scheduling(Utest *utest)
 	tlog = trace->getBuffer()->print();
 
 	string expect_fork = 
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 
-		"unit 'u' before label 'g1' op INSERT\n"
-		"unit 'u' before label 'g2' op INSERT\n"
+		"unit 'u' before label 'g1' op OP_INSERT\n"
+		"unit 'u' before label 'g2' op OP_INSERT\n"
 
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 
-		"unit 'u' before label 'g1' op DELETE\n"
-		"unit 'u' before label 'g2' op DELETE\n"
+		"unit 'u' before label 'g1' op OP_DELETE\n"
+		"unit 'u' before label 'g2' op OP_DELETE\n"
 	;
 
 	UT_IS(tlog, expect_fork);
@@ -218,15 +218,15 @@ UTESTCASE scheduling(Utest *utest)
 	tlog = trace->getBuffer()->print();
 
 	string expect_call = 
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'g1' op INSERT\n"
-		"unit 'u' before label 'g2' op INSERT\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'g1' op OP_INSERT\n"
+		"unit 'u' before label 'g2' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' before label 'g1' op DELETE\n"
-		"unit 'u' before label 'g2' op DELETE\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'g1' op OP_DELETE\n"
+		"unit 'u' before label 'g2' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 	;
 
 	UT_IS(tlog, expect_call);
@@ -244,11 +244,11 @@ UTESTCASE scheduling(Utest *utest)
 	tlog = trace->getBuffer()->print();
 
 	string expect_ignore = 
-		"unit 'u' before label 'lab1' op INSERT\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 
-		"unit 'u' before label 'lab1' op DELETE\n"
-		"unit 'u' before label 'lab2' op NOP\n"
+		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'lab2' op OP_NOP\n"
 	;
 
 	UT_IS(tlog, expect_ignore);

@@ -8,6 +8,7 @@
 #include <sched/Rowop.h>
 #include <sched/Label.h>
 #include <sched/Gadget.h>
+#include <common/StringUtil.h>
 
 namespace BICEPS_NS {
 
@@ -73,16 +74,18 @@ Rowop::~Rowop()
 	}
 }
 
-const char *Rowop::opcodeString(Opcode code)
+Valname opcodes[] = {
+	{ Rowop::OP_NOP, "OP_NOP" },
+	{ Rowop::OP_INSERT, "OP_INSERT" },
+	{ Rowop::OP_DELETE, "OP_DELETE" },
+	{ -1, NULL }
+};
+
+const char *Rowop::opcodeString(int code)
 {
-	switch(code) {
-	case OP_NOP:
-		return "NOP";
-	case OP_INSERT:
-		return "INSERT";
-	case OP_DELETE:
-		return "DELETE";
-	default:
+	const char *def = "?";
+	const char *res = enum2string(opcodes, code, def);
+	if (res == def) {
 		// for the unknown opcodes, get at least the general sense
 		if (isInsert(code) && isDelete(code))
 			return "[ID]";
@@ -92,7 +95,33 @@ const char *Rowop::opcodeString(Opcode code)
 			return "[D]";
 		else
 			return "[NOP]";
+	} else {
+		return res;
 	}
+}
+
+int Rowop::stringOpcode(const char *op)
+{
+	int res = string2enum(opcodes, op);
+	if (res == -1)
+		return OP_BAD;
+	return res;
+}
+
+Valname opcodeFlags[] = {
+	{ Rowop::OCF_INSERT, "OCF_INSERT" },
+	{ Rowop::OCF_DELETE, "OCF_DELETE" },
+	{ -1, NULL }
+};
+
+const char *ocfString(int flag, const char *def)
+{
+	return enum2string(opcodeFlags, flag);
+}
+
+int stringOcf(const char *flag)
+{
+	return string2enum(opcodeFlags, flag);
 }
 
 }; // BICEPS_NS

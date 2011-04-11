@@ -258,12 +258,12 @@ UTESTCASE fifoIndexLimit(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string expect = 
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
 	;
 	UT_IS(tlog, expect);
 }
@@ -363,12 +363,12 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string expect = 
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
 	;
 	UT_IS(tlog, expect);
 }
@@ -500,16 +500,16 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string expect = 
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
 	;
 	UT_IS(tlog, expect);
 }
@@ -610,12 +610,12 @@ UTESTCASE fifoIndexLimitNoReplace(Utest *utest)
 	string tlog = trace->getBuffer()->print();
 
 	string expect = 
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op DELETE\n"
-		"unit 'u' before label 't.out' op INSERT\n"
-		"unit 'u' before label 't.out' op INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
 	;
 	UT_IS(tlog, expect);
 }

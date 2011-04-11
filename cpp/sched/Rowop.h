@@ -48,7 +48,8 @@ public:
 	enum Opcode {
 		OP_NOP = 0,
 		OP_INSERT = OCF_INSERT,
-		OP_DELETE = OCF_DELETE
+		OP_DELETE = OCF_DELETE,
+		OP_BAD = (~3), // a NOP opcode returned in bad conversions from string
 	};
 
 	// Rowop will hold the references on the row and the label.
@@ -74,16 +75,16 @@ public:
 		return opcode_;
 	}
 
-	// get the curde classification
-	static bool isInsert(Opcode op)
+	// get the crude classification of Opcode
+	static bool isInsert(int op)
 	{
 		return (op & OCF_INSERT);
 	}
-	static bool isDelete(Opcode op)
+	static bool isDelete(int op)
 	{
 		return (op & OCF_DELETE);
 	}
-	static bool isNop(Opcode op)
+	static bool isNop(int op)
 	{
 		return (op & (OCF_INSERT|OCF_DELETE)) == 0;
 	}
@@ -115,8 +116,14 @@ public:
 		return enqMode_;
 	}
 
-	// Convert the opcode to string
-	static const char *opcodeString(Opcode code);
+	// Convert the opcode to string and back
+	static const char *opcodeString(int code);
+	// @return - if unknown, returns OP_BAD
+	static int stringOpcode(const char *op);
+
+	// Convert the opcode flags to string and back
+	static const char *ocfString(int flag, const char *def = "???");
+	static int stringOcf(const char *flag);
 
 protected:
 	const_Autoref<Label> label_;
