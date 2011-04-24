@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 14 };
+BEGIN { plan tests => 17 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -51,7 +51,7 @@ $tt1 = Biceps::TableType->new($rt1)
 ok(ref $tt1, "Biceps::TableType");
 
 # check with uninitialized type
-$t1 = $u1->makeTable($tt1, "SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(!defined $t1);
 ok($! . "", "Biceps::Unit::makeTable: table type was not successfully initialized");
 
@@ -61,9 +61,18 @@ print STDERR "$!" . "\n";
 
 ###################### makeTable #################################
 
-$t1 = $u1->makeTable($tt1, "SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(ref $t1, "Biceps::Table");
 #print STDERR "$!" . "\n";
+
+$t1 = $u1->makeTable($tt1, "SM_FORK", "tab1");
+ok(ref $t1, "Biceps::Table");
+
+$t1 = $u1->makeTable($tt1, "SM_CALL", "tab1");
+ok(ref $t1, "Biceps::Table");
+
+$t1 = $u1->makeTable($tt1, "SM_IGNORE", "tab1");
+ok(ref $t1, "Biceps::Table");
 
 $t1 = $u1->makeTable($tt1, 0, "tab1");
 ok(ref $t1, "Biceps::Table");

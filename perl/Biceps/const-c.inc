@@ -48,29 +48,22 @@ print XS_constant ("Biceps", $types);
 __END__
    */
 
-  switch (len) {
-  case 7:
-    if (memEQ(name, "SM_FORK", 7)) {
-      *iv_return = Gadget::SM_FORK;
-      return PERL_constant_ISIV;
-    } else if (memEQ(name, "SM_CALL", 7)) {
-      *iv_return = Gadget::SM_CALL;
-      return PERL_constant_ISIV;
-    }
-    break;
-  case 9:
-    if (memEQ(name, "SM_IGNORE", 7)) {
-      *iv_return = Gadget::SM_IGNORE;
-      return PERL_constant_ISIV;
-    }
-    break;
-  case 11:
-    if (memEQ(name, "SM_SCHEDULE", 7)) {
-      *iv_return = Gadget::SM_SCHEDULE;
-      return PERL_constant_ISIV;
-    }
-    break;
-  }
-  return PERL_constant_NOTFOUND;
-}
+	if (len < 4) 
+		return PERL_constant_NOTFOUND;
 
+	switch(name[0]) {
+	case 'S':
+		*iv_return = Gadget::stringEm(name);
+		if (*iv_return == -1)
+			return PERL_constant_NOTFOUND;
+		return PERL_constant_ISIV;
+		break;
+	case 'O':
+		*iv_return = Rowop::stringOpcode(name);
+		if (*iv_return == Rowop::OP_BAD)
+			return PERL_constant_NOTFOUND;
+		return PERL_constant_ISIV;
+		break;
+	}
+	return PERL_constant_NOTFOUND;
+}

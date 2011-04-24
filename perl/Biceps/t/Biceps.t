@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 8 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -25,3 +25,7 @@ ok(&Biceps::SM_SCHEDULE, 0);
 ok(&Biceps::SM_FORK, 1);
 ok(&Biceps::SM_CALL, 2);
 ok(&Biceps::SM_IGNORE, 3);
+
+ok(&Biceps::OP_NOP, 0);
+ok(&Biceps::OP_INSERT, 1);
+ok(&Biceps::OP_DELETE, 2);

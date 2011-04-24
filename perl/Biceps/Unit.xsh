@@ -33,37 +33,24 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 		clearErrMsg();
 		TableType *tbt = wtt->get();
 
-		Gadget::EnqMode em;
+		int intem;
 		// accept enqueueing mode as either number of name
 		if (SvIOK(enqMode)) {
-			int intem = SvIV(enqMode);
-			switch(intem) { // if enum used directly, the compiler optimizes out "default"
-			case Gadget::SM_SCHEDULE:
-			case Gadget::SM_FORK:
-			case Gadget::SM_CALL:
-			case Gadget::SM_IGNORE:
-				break;
-			default:
+			intem = SvIV(enqMode);
+			if (Gadget::emString(intem, NULL) == NULL) {
 				setErrMsg(strprintf("%s: unknown enqueuing mode integer %d", funcName, intem));
 				XSRETURN_UNDEF;
-				break;
 			}
-			em = (Gadget::EnqMode)intem;
+			// em = (Gadget::EnqMode)intem;
 		} else {
 			const char *emname = SvPV_nolen(enqMode);
-			if (!strcmp(emname, "SCHEDULE"))
-				em = Gadget::SM_SCHEDULE;
-			else if (!strcmp(emname, "FORK"))
-				em = Gadget::SM_FORK;
-			else if (!strcmp(emname, "CALL"))
-				em = Gadget::SM_CALL;
-			else if (!strcmp(emname, "IGNORE"))
-				em = Gadget::SM_IGNORE;
-			else {
+			intem = Gadget::stringEm(emname);
+			if (intem == -1) {
 				setErrMsg(strprintf("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname));
 				XSRETURN_UNDEF;
 			}
 		}
+		Gadget::EnqMode em = (Gadget::EnqMode)intem;
 
 		Autoref<Table> t = tbt->makeTable(unit->get(), em, name);
 		if (t.isNull()) {

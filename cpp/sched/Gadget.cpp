@@ -6,6 +6,7 @@
 // A basic stateful element inside a Unit.
 
 #include <sched/Gadget.h>
+#include <common/StringUtil.h>
 
 namespace BICEPS_NS {
 
@@ -76,5 +77,24 @@ void Gadget::sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray 
 			copyTray->push_back(rop);
 	}
 }
+
+Valname enqModes[] = {
+	{ Gadget::SM_SCHEDULE, "SM_SCHEDULE" },
+	{ Gadget::SM_FORK, "SM_FORK" },
+	{ Gadget::SM_CALL, "SM_CALL" },
+	{ Gadget::SM_IGNORE, "SM_IGNORE" },
+	{ -1, NULL }
+};
+
+const char *Gadget::emString(int enval, const char *def)
+{
+	return enum2string(enqModes, enval, def);
+}
+
+int Gadget::stringEm(const char *str)
+{
+	return string2enum(enqModes, str);
+}
+
 
 }; // BICEPS_NS

@@ -45,7 +45,8 @@ Biceps.c: BicepsPerl.h RowType.xsh Row.xsh IndexType.xsh TableType.xsh Unit.xsh 
 ";
 }
 
-if  (0 && eval {require ExtUtils::Constant; 1}) {
+if (0) {
+if  (eval {require ExtUtils::Constant; 1}) {
   # If you edit these definitions to change the constants used by this module,
   # you will need to use the generated const-c.inc and const-xs.inc
   # files to replace their "fallback" counterparts before distributing your
@@ -67,4 +68,5 @@ else {
     my $fallback = File::Spec->catfile('fallback', $file);
     copy ($fallback, $file) or die "Can't copy $fallback to $file: $!";
   }
+}
 }

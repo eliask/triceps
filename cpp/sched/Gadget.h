@@ -59,6 +59,14 @@ public:
 		return label_;
 	}
 
+	// Convert the EnqMode to string and back
+	// @param enval - enum value
+	// @param def - default string to return if not a known value
+	static const char *emString(int enval, const char *def = "???");
+	// @param str - string value
+	// @return - if unknown, returns -1
+	static int stringEm(const char *str);
+
 protected:
 	// interface for subclasses
 
