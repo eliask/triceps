@@ -21,5 +21,6 @@ INCLUDE: Row.xsh
 INCLUDE: IndexType.xsh
 INCLUDE: TableType.xsh
 INCLUDE: Unit.xsh
+INCLUDE: Table.xsh
 INCLUDE: const-xs.inc
 
