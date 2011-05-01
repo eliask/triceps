@@ -149,17 +149,24 @@ private:
 	WrapIdent();
 };
 
+// @param what - class to be wrapped
 #define DEFINE_WRAP(what) \
 	extern WrapMagic magicWrap##what; \
 	typedef Wrap<magicWrap##what, what> Wrap##what
 
+// @param typewhat - class that defines the type of value (like RowType)
+// @param refwhat - C++ reference class, to be used instead of plain Autoref, that keep 
+//        reference to both type and value
+// @param what - class to be wrapped (like Row)
 #define DEFINE_WRAP2(typewhat, refwhat, what) \
 	extern WrapMagic magicWrap##what; \
 	typedef Wrap2<magicWrap##what, typewhat, what, refwhat> Wrap##what
 
-#define DEFINE_WRAP_IDENT(typewhat, what) \
+// @param parent - class that owns the values, where the values can't be passed between different parents
+// @param what - class to be wrapped
+#define DEFINE_WRAP_IDENT(parent, what) \
 	extern WrapMagic magicWrap##what; \
-	typedef WrapIdent<magicWrap##what, typewhat, what> Wrap##what
+	typedef WrapIdent<magicWrap##what, parent, what> Wrap##what
 
 DEFINE_WRAP(RowType);
 DEFINE_WRAP2(RowType, Rowref, Row);

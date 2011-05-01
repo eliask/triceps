@@ -14,7 +14,16 @@
 
 #include "const-c.inc"
 
+#ifdef __cplusplus
+extern "C"
+#endif
+XS(boot_Biceps__Label); 
+
 MODULE = Biceps		PACKAGE = Biceps
+
+BOOT:
+# boot sub-packages that are compiled separately
+boot_Biceps__Label(aTHX_ cv);
 
 INCLUDE: RowType.xsh
 INCLUDE: Row.xsh

@@ -16,4 +16,32 @@ DESTROY(WrapTable *self)
 
 # The table gets created by Unit::makeTable
 
+WrapLabel *
+getInputLabel(WrapTable *self)
+	CODE:
+		char funcName[] = "Biceps::Table::getInputLabel";
+		// for casting of return value
+		static char CLASS[] = "Biceps::Label";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = new WrapLabel(t->getInputLabel());
+	OUTPUT:
+		RETVAL
+
+# since the C++ inheritance doesn't propagate to Perl, the inherited call getLabel()
+# becomes an explicit getOutputLabel()
+WrapLabel *
+getOutputLabel(WrapTable *self)
+	CODE:
+		char funcName[] = "Biceps::Table::getOutputLabel";
+		// for casting of return value
+		static char CLASS[] = "Biceps::Label";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = new WrapLabel(t->getLabel());
+	OUTPUT:
+		RETVAL
+
 # XXX add the rest of methods
