@@ -1,11 +1,22 @@
-#
-# This file is a part of Biceps.
-# See the file COPYRIGHT for the copyright notice and license information
-#
-# The wrapper for Row.
+//
+// This file is a part of Biceps.
+// See the file COPYRIGHT for the copyright notice and license information
+//
+// The wrapper for Row.
 
-MODULE = Biceps		PACKAGE = Biceps::Row
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#include "ppport.h"
+
+#include "BicepsPerl.h"
+
+MODULE = Biceps::Row		PACKAGE = Biceps::Row
 ###################################################################################
+
+BOOT:
+// fprintf(stderr, "DEBUG Row items=%d sp=%p mark=%p\n", items, sp, mark);
 
 void
 DESTROY(WrapRow *self)
@@ -37,12 +48,12 @@ to_hs(WrapRow *self)
 		int nf = fld.size();
 
 		for (int i = 0; i < nf; i++) {
-			PUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
+			XPUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
 			
 			const char *data;
 			intptr_t dlen;
 			bool notNull = t->getField(r, i, data, dlen);
-			PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+			XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 		}
 
 # convert to an array of data values, like CSV
@@ -59,7 +70,7 @@ to_ar(WrapRow *self)
 			const char *data;
 			intptr_t dlen;
 			bool notNull = t->getField(r, i, data, dlen);
-			PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+			XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 		}
 
 # copy the row and modify the specified fields when copying
@@ -138,5 +149,5 @@ get(WrapRow *self, char *fname)
 		const char *data;
 		intptr_t dlen;
 		bool notNull = t->getField(r, i, data, dlen);
-		PUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+		XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 

@@ -115,3 +115,19 @@
    obj:*
    fun:*
 }
+{
+   <insert a suppression name here>
+   Memcheck:Leak
+   fun:*
+   fun:*
+   fun:*
+   fun:*
+   fun:*
+   fun:Perl_yyparse
+   obj:*
+   fun:*
+   fun:*
+   fun:*
+   fun:*
+   obj:*
+}

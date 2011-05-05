@@ -1,11 +1,22 @@
-#
-# This file is a part of Biceps.
-# See the file COPYRIGHT for the copyright notice and license information
-#
-# The wrapper for RowType.
+//
+// This file is a part of Biceps.
+// See the file COPYRIGHT for the copyright notice and license information
+//
+// The wrapper for RowType.
 
-MODULE = Biceps		PACKAGE = Biceps::RowType
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#include "ppport.h"
+
+#include "BicepsPerl.h"
+
+MODULE = Biceps::RowType		PACKAGE = Biceps::RowType
 ###################################################################################
+
+BOOT:
+// fprintf(stderr, "DEBUG RowType items=%d sp=%p mark=%p\n", items, sp, mark);
 
 WrapRowType *
 Biceps::RowType::new(...)
@@ -66,11 +77,11 @@ getdef(WrapRowType *self)
 		const RowType::FieldVec &fld = rt->fields();
 		int nf = fld.size();
 		for (int i = 0; i < nf; i++) {
-			PUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
+			XPUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
 			string t = fld[i].type_->print();
 			if (fld[i].arsz_ >= 0)
 				t.append("[]");
-			PUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
+			XPUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
 		}
 
 

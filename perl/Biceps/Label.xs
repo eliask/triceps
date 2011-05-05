@@ -16,6 +16,9 @@ MODULE = Biceps::Label		PACKAGE = Biceps::Label
 
 ###################################################################################
 
+BOOT:
+// fprintf(stderr, "DEBUG Label items=%d sp=%p mark=%p\n", items, sp, mark);
+
 void
 DESTROY(WrapLabel *self)
 	CODE:

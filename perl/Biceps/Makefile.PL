@@ -36,14 +36,14 @@ vtest: pure_all
 qtest: test
 
 clean::
-	rm -f core.* *.core core vgcore.* test.vg
+	rm -f core.* *.core core vgcore.* test.vg 
 
 clobber:
 	rm Biceps.o
 
-Biceps.c: RowType.xsh Row.xsh IndexType.xsh TableType.xsh Unit.xsh Table.xsh const-c.inc const-xs.inc
+Biceps.c: IndexType.xsh TableType.xsh Unit.xsh Table.xsh const-c.inc const-xs.inc
 
-$(O_FILES): BicepsPerl.h
+\$(O_FILES): BicepsPerl.h 
 
 ";
 }
