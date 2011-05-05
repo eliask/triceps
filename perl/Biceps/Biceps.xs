@@ -35,33 +35,33 @@ BOOT:
 	// fprintf(stderr, "DEBUG Biceps items=%d sp=%p mark=%p\n", items, sp, mark);
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__Label(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Biceps items=%d sp=%p mark=%p\n", items, sp, mark);
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__Row(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Biceps items=%d sp=%p mark=%p\n", items, sp, mark);
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__RowType(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__IndexType(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__TableType(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__Unit(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Biceps__Table(aTHX_ cv); 
-	SPAGAIN; POPi;
+	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Biceps items=%d sp=%p mark=%p\n", items, sp, mark);
 
