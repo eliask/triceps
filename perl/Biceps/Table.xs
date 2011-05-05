@@ -1,10 +1,18 @@
-#
-# This file is a part of Biceps.
-# See the file COPYRIGHT for the copyright notice and license information
-#
-# The wrapper for Table.
+//
+// This file is a part of Biceps.
+// See the file COPYRIGHT for the copyright notice and license information
+//
+// The wrapper for Table.
 
-MODULE = Biceps		PACKAGE = Biceps::Table
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#include "ppport.h"
+
+#include "BicepsPerl.h"
+
+MODULE = Biceps::Table		PACKAGE = Biceps::Table
 ###################################################################################
 
 void

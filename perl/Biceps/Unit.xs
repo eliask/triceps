@@ -1,10 +1,18 @@
-#
-# This file is a part of Biceps.
-# See the file COPYRIGHT for the copyright notice and license information
-#
-# The wrapper for Unit.
+//
+// This file is a part of Biceps.
+// See the file COPYRIGHT for the copyright notice and license information
+//
+// The wrapper for Unit.
 
-MODULE = Biceps		PACKAGE = Biceps::Unit
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#include "ppport.h"
+
+#include "BicepsPerl.h"
+
+MODULE = Biceps::Unit		PACKAGE = Biceps::Unit
 ###################################################################################
 
 void

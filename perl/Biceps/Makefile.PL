@@ -41,7 +41,7 @@ clean::
 clobber:
 	rm Biceps.o
 
-Biceps.c: IndexType.xsh TableType.xsh Unit.xsh Table.xsh const-c.inc const-xs.inc
+Biceps.c: const-c.inc const-xs.inc
 
 \$(O_FILES): BicepsPerl.h 
 

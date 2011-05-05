@@ -1,10 +1,18 @@
-#
-# This file is a part of Biceps.
-# See the file COPYRIGHT for the copyright notice and license information
-#
-# The wrapper for IndexType.
+//
+// This file is a part of Biceps.
+// See the file COPYRIGHT for the copyright notice and license information
+//
+// The wrapper for IndexType.
 
-MODULE = Biceps		PACKAGE = Biceps::IndexType
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
+
+#include "ppport.h"
+
+#include "BicepsPerl.h"
+
+MODULE = Biceps::IndexType		PACKAGE = Biceps::IndexType
 ###################################################################################
 
 void
