@@ -183,5 +183,35 @@ makerow_ar(WrapRowType *self, ...)
 	OUTPUT:
 		RETVAL
 
+# check whether both refs point to the same type object
+int
+same(WrapRowType *self, WrapRowType *other)
+	CODE:
+		clearErrMsg();
+		RowType *rt = self->get();
+		RowType *ort = other->get();
+		RETVAL = (rt == ort);
+	OUTPUT:
+		RETVAL
 
-# XXX add print(), equals(), match()
+int
+equals(WrapRowType *self, WrapRowType *other)
+	CODE:
+		clearErrMsg();
+		RowType *rt = self->get();
+		RowType *ort = other->get();
+		RETVAL = rt->equals(ort);
+	OUTPUT:
+		RETVAL
+
+int
+match(WrapRowType *self, WrapRowType *other)
+	CODE:
+		clearErrMsg();
+		RowType *rt = self->get();
+		RowType *ort = other->get();
+		RETVAL = rt->match(ort);
+	OUTPUT:
+		RETVAL
+
+# XXX add print()

@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 15 };
+BEGIN { plan tests => 25 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -95,3 +95,28 @@ $rt2 = Biceps::RowType->new(
 ok(!defined $rt2);
 ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 
+######################### comparisons ###########################################
+
+# same() gets successfull when getting the row type of some other object, see Label
+$rt2 = Biceps::RowType->new(
+	@def1
+);
+ok(ref $rt2, "Biceps::RowType");
+ok($rt2->equals($rt1));
+ok($rt1->equals($rt2));
+ok($rt2->match($rt1));
+ok(!$rt2->same($rt1));
+
+$rt2 = Biceps::RowType->new(
+	A => "uint8",
+	B => "int32",
+	C => "int64",
+	D => "float64",
+	E => "string",
+);
+ok(ref $rt2, "Biceps::RowType");
+ok(!$rt2->equals($rt1));
+ok($rt1->match($rt2));
+ok($rt2->match($rt1));
+
+ok(!$rt3->match($rt1));

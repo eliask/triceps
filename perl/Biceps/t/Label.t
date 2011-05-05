@@ -2,7 +2,7 @@
 # This file is a part of Biceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
-# The test for Table.
+# The test for Label.
 
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Biceps.t'
@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 10 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -22,7 +22,7 @@ ok(1); # If we made it this far, we're ok.
 # its man page ( perldoc Test::More ) for help writing this test script.
 
 
-######################### preparations (originating from Unit.t)  #############################
+######################### preparations (originating from Table.t)  #############################
 
 $u1 = Biceps::Unit->new("u1");
 ok(ref $u1, "Biceps::Unit");
@@ -55,11 +55,11 @@ print STDERR "$!" . "\n";
 $t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(ref $t1, "Biceps::Table");
 
-########################## get label #################################################
-
-$lb = $t1->getInputLabel();
-ok(ref $lb, "Biceps::Label");
-
 $lb = $t1->getOutputLabel();
 ok(ref $lb, "Biceps::Label");
 
+########################## get label #################################################
+
+$rt2 = $lb->getType();
+ok(ref $rt2, "Biceps::RowType");
+ok($rt1->same($rt2));

@@ -25,4 +25,16 @@ DESTROY(WrapLabel *self)
 		// warn("Label destroyed!");
 		delete self;
 
+WrapRowType*
+getType(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->ref_.get();
+
+		// for casting of return value
+		static char CLASS[] = "Biceps::RowType";
+		RETVAL = new WrapRowType(const_cast<RowType *>(lab->getType()));
+	OUTPUT:
+		RETVAL
+
 # XXX add the rest of methods!
