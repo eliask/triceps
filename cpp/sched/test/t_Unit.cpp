@@ -120,9 +120,13 @@ UTESTCASE mklabel(Utest *utest)
 	}
 	UT_ASSERT(lab1->chain(lab4)->hasError());
 
-	// this is more of a reminder that when the loop detection
-	// is added, the test needs to be altered too
-	UT_ASSERT(!lab2->chain(lab1)->hasError()); // this creates a circular chain
+	Erref ecloop = lab2->chain(lab1); // this tries to create a circular chain
+	if (!UT_ASSERT(ecloop->hasError())) {
+		UT_IS(ecloop->print(), 
+			"labels must not be chained in a loop\n"
+			"  lab2->lab1->lab2\n"
+		);
+	}
 
 	UT_IS(lab1->getChain().size(), 1);
 	UT_ASSERT(lab1->getChain()[0] == lab2);

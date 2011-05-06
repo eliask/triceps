@@ -38,6 +38,19 @@ Erref Label::chain(Onceref<Label> lab)
 		err->appendMsg(true, "    " + lab->type_->print("    "));
 		return err;
 	}
+	ChainedVec path;
+	if (lab->findChained(this, path)) {
+		Erref err = new Errors;
+		err->appendMsg(true, "labels must not be chained in a loop");
+		string dep = "  " + getName() + "->" + lab->getName();
+		while (!path.empty()) {
+			dep += "->";
+			dep += path.back()->getName();
+			path.pop_back();
+		}
+		err->appendMsg(true, dep);
+		return err;
+	}
 
 	chained_.push_back(lab);
 	return NULL;
@@ -61,6 +74,17 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 			(*it)->call(unit, arg, this); // each of them can do their own chaining....
 	}
 	unit->trace(this, chainedFrom, arg, Unit::TW_AFTER);
+}
+
+bool Label::findChained(const Label *target, ChainedVec &path) const
+{
+	for (ChainedVec::const_iterator it = chained_.begin(); it != chained_.end(); ++it) {
+		if ( it->get() == target || (*it)->findChained(target, path) ) {
+			path.push_back(*it);
+			return true;
+		}
+	}
+	return false;
 }
 
 //////////////////////////////// DummyLabel ///////////////////////////////////////////

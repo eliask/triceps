@@ -52,9 +52,9 @@ public:
 	}
 
 	// Chain another label to this one.
-	// Be careful, you can create the endless loops by chaining in a circular fashion!
-	//
-	// XXX add a check for circular chains, and better error reporting
+	// Checks for correct row types and for direct loops.
+	// Note that it still would not detect loops with connections through the input
+	// and output labels of a table or such.
 	//
 	// @param lab - other label to chain here
 	// @return - NULL ref if chained successfully, otherwise an error indication
@@ -101,6 +101,20 @@ protected:
 	// chainedFrom - if this call is a result of chaining, the chain parent
 	void call(Unit *unit, Rowop *arg, const Label *chainedFrom = NULL) const;
 
+	// Check for circular dependencies when adding a label.
+	// Goes recursively through all the chained labels reachable from
+	// here and looks for the target label. If found, builds a path
+	// of how it's reachable. Since it's called recursively, on success
+	// each call adds its step of the path to the end of trace, and
+	// when the outermost call returns, the path contains the whole
+	// dependency list in backwards order.
+	//
+	// @param target - label to look for
+	// @param path - if target found, will have the path to target appended
+	//        (so normally should be passed as an empty list to the outermost call)
+	// @return - true if found
+	bool findChained(const Label *target, ChainedVec &path) const;
+	
 protected:
 	ChainedVec chained_; // the chained labels
 	const_Autoref<RowType> type_; // type of the row handled here
