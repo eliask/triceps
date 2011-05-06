@@ -336,7 +336,7 @@ UTESTCASE queuing(Utest *utest)
 	UT_ASSERT(!t1.isNull());
 
 	// connect the tables
-	UT_ASSERT(t0->getLabel()->chain(t1->getInputLabel()));
+	UT_ASSERT(!t0->getLabel()->chain(t1->getInputLabel())->hasError());
 
 	// create a matrix of records, across both axes of indexing
 	RowHandle *iter;

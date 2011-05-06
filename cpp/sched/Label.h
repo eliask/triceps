@@ -57,8 +57,8 @@ public:
 	// XXX add a check for circular chains, and better error reporting
 	//
 	// @param lab - other label to chain here
-	// @return - true if chained successfully, false if the row type is not equal
-	bool chain(Onceref<Label> lab);
+	// @return - NULL ref if chained successfully, otherwise an error indication
+	Erref chain(Onceref<Label> lab);
 
 	// Clear the chain leading from this label.
 	void clearChained();

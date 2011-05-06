@@ -95,21 +95,42 @@ UTESTCASE mklabel(Utest *utest)
 	UT_IS(lab3->getType(), rt3.get());
 	UT_IS(lab4->getType(), rt4.get());
 
-	UT_ASSERT(lab1->chain(lab2));
-	UT_ASSERT(!lab1->chain(lab3)); // matching but not equal types not allowed
-	UT_ASSERT(!lab1->chain(lab4));
+	UT_ASSERT(!lab1->chain(lab2)->hasError());
+	Erref ec3 = lab1->chain(lab3);
+	if (!UT_ASSERT(ec3->hasError())) {
+		UT_IS(ec3->print(), 
+			"can not chain labels with non-equal row types\n"
+			"  lab1:\n"
+			"    row {\n"
+			"      uint8[10] a,\n"
+			"      int32[] b,\n"
+			"      int64 c,\n"
+			"      float64 d,\n"
+			"      string e,\n"
+			"    }\n"
+			"  lab3:\n"
+			"    row {\n"
+			"      uint8[10] field1,\n"
+			"      int32[] b,\n"
+			"      int64 c,\n"
+			"      float64 d,\n"
+			"      string e,\n"
+			"    }\n"
+		);
+	}
+	UT_ASSERT(lab1->chain(lab4)->hasError());
 
 	// this is more of a reminder that when the loop detection
 	// is added, the test needs to be altered too
-	UT_ASSERT(lab2->chain(lab1)); // this creates a circular chain
+	UT_ASSERT(!lab2->chain(lab1)->hasError()); // this creates a circular chain
 
 	UT_IS(lab1->getChain().size(), 1);
 	UT_ASSERT(lab1->getChain()[0] == lab2);
 	
 	lab1->clearChained(); // undoes the endless loop
 	UT_IS(lab1->getChain().size(), 0);
-	UT_ASSERT(lab1->chain(lab11));
-	UT_ASSERT(lab1->chain(lab12));
+	UT_ASSERT(!lab1->chain(lab11)->hasError());
+	UT_ASSERT(!lab1->chain(lab12)->hasError());
 	UT_IS(lab1->getChain().size(), 2);
 	UT_ASSERT(lab1->getChain()[0] == lab11);
 	UT_ASSERT(lab1->getChain()[1] == lab12);
@@ -459,9 +480,9 @@ UTESTCASE chaining(Utest *utest)
 	Autoref<Label> lab3 = new DummyLabel(unit, rt1, "lab3");
 
 	// add chaining
-	UT_ASSERT(lab1->chain(lab2));
-	UT_ASSERT(lab1->chain(lab3));
-	UT_ASSERT(lab2->chain(lab3));
+	UT_ASSERT(!lab1->chain(lab2)->hasError());
+	UT_ASSERT(!lab1->chain(lab3)->hasError());
+	UT_ASSERT(!lab2->chain(lab3)->hasError());
 
 	Autoref<Rowop> op1 = new Rowop(lab1, Rowop::OP_INSERT, NULL);
 	Autoref<Rowop> op2 = new Rowop(lab1, Rowop::OP_DELETE, NULL);

@@ -25,15 +25,22 @@ Label::Label(Unit *unit, const_Onceref<RowType> rtype, const string &name) :
 Label::~Label()
 { }
 
-bool Label::chain(Onceref<Label> lab)
+Erref Label::chain(Onceref<Label> lab)
 {
 	assert(this != NULL);
 	assert(!lab.isNull());
-	if (!type_->equals(lab->type_))
-		return false;
+	if (!type_->equals(lab->type_)) {
+		Erref err = new Errors;
+		err->appendMsg(true, "can not chain labels with non-equal row types");
+		err->appendMsg(true, "  " + getName() + ":");
+		err->appendMsg(true, "    " + type_->print("    "));
+		err->appendMsg(true, "  " + lab->getName() + ":");
+		err->appendMsg(true, "    " + lab->type_->print("    "));
+		return err;
+	}
 
 	chained_.push_back(lab);
-	return true;
+	return NULL;
 }
 
 void Label::clearChained()
