@@ -37,6 +37,49 @@ getType(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
+# returns 1 on success, 0 on error
+int
+chain(WrapLabel *self, WrapLabel *other)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->ref_.get();
+		Label *olab = other->ref_.get();
+
+		Erref err = lab->chain(olab);
+		if (!err.isNull() && !err->isEmpty()) {
+			setErrMsg("Biceps::Label::chain: " + err->print());
+		}
+		RETVAL = !err->hasError();
+	OUTPUT:
+		RETVAL
+
+void
+clearChained(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->ref_.get();
+		lab->clearChained();
+
+# returns an array of references to chained objects
+SV *
+getChain(WrapLabel *self)
+	PPCODE:
+		clearErrMsg();
+		Label *lab = self->get();
+
+		// for casting of return value
+		static char CLASS[] = "Biceps::Label";
+
+		const Label::ChainedVec &cv = lab->getChain();
+		int nf = cv.size();
+		for (int i = 0; i < nf; i++) {
+			WrapLabel *cl = new WrapLabel(cv[i].get());
+
+			SV *sv = newSV(0);
+			sv_setref_pv( sv, CLASS, (void*)cl );
+			XPUSHs(sv_2mortal(sv));
+		}
+
 char *
 getName(WrapLabel *self)
 	CODE:
