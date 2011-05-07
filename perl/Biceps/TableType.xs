@@ -64,6 +64,16 @@ match(WrapTableType *self, WrapTableType *other)
 	OUTPUT:
 		RETVAL
 
+int
+same(WrapTableType *self, WrapTableType *other)
+	CODE:
+		clearErrMsg();
+		TableType *tbself = self->get();
+		TableType *tbother = other->get();
+		RETVAL = (tbself == tbother);
+	OUTPUT:
+		RETVAL
+
 # add an index
 WrapTableType *
 addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)

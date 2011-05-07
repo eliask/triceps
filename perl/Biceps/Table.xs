@@ -27,7 +27,6 @@ DESTROY(WrapTable *self)
 WrapLabel *
 getInputLabel(WrapTable *self)
 	CODE:
-		char funcName[] = "Biceps::Table::getInputLabel";
 		// for casting of return value
 		static char CLASS[] = "Biceps::Label";
 
@@ -42,13 +41,24 @@ getInputLabel(WrapTable *self)
 WrapLabel *
 getOutputLabel(WrapTable *self)
 	CODE:
-		char funcName[] = "Biceps::Table::getOutputLabel";
 		// for casting of return value
 		static char CLASS[] = "Biceps::Label";
 
 		clearErrMsg();
 		Table *t = self->get();
 		RETVAL = new WrapLabel(t->getLabel());
+	OUTPUT:
+		RETVAL
+
+WrapTableType *
+getType(WrapTable *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Biceps::TableType";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = new WrapTableType(const_cast<TableType *>(t->getType()));
 	OUTPUT:
 		RETVAL
 

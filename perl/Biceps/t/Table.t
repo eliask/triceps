@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 10 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -63,3 +63,9 @@ ok(ref $lb, "Biceps::Label");
 $lb = $t1->getOutputLabel();
 ok(ref $lb, "Biceps::Label");
 
+################# getting back and sameness of various objects  ##############################
+# sameness tested here because a table is a convenient way to get back another reference to
+# existing objects
+
+$tt2 = $t1->getType();
+ok($tt1->same($tt2));

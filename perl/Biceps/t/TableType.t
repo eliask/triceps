@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 27 };
+BEGIN { plan tests => 29 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -75,6 +75,11 @@ $res = $tt1->equals($tt2);
 ok($res);
 
 $res = $tt1->match($tt3);
+ok(!$res);
+
+$res = $tt1->same($tt2);
+ok($res);
+$res = $tt1->same($tt3);
 ok(!$res);
 
 ###################### print #################################
