@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 23 };
+BEGIN { plan tests => 26 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -71,6 +71,12 @@ $lb->setName("xxx_tab1.out");
 $v = $lb->getName();
 ok($v, "xxx_tab1.out");
 
+$v = $lb->same($lb);
+ok($v);
+
+$v = $lb->same($t1->getInputLabel());
+ok(!$v);
+
 ########################## chaining #################################################
 
 @chain = $lb->getChain();
@@ -84,6 +90,8 @@ ok($! . "", "");
 
 @chain = $lb->getChain();
 ok(join(", ", map {$_->getName()} @chain), "tab1.in");
+$v = $t1->getInputLabel()->same($chain[0]);
+ok($v);
 
 # yes, the same chaining can be repeated!
 $res = $lb->chain($t1->getInputLabel());

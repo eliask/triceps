@@ -29,7 +29,7 @@ WrapRowType*
 getType(WrapLabel *self)
 	CODE:
 		clearErrMsg();
-		Label *lab = self->ref_.get();
+		Label *lab = self->get();
 
 		// for casting of return value
 		static char CLASS[] = "Biceps::RowType";
@@ -42,8 +42,8 @@ int
 chain(WrapLabel *self, WrapLabel *other)
 	CODE:
 		clearErrMsg();
-		Label *lab = self->ref_.get();
-		Label *olab = other->ref_.get();
+		Label *lab = self->get();
+		Label *olab = other->get();
 
 		Erref err = lab->chain(olab);
 		if (!err.isNull() && !err->isEmpty()) {
@@ -57,7 +57,7 @@ void
 clearChained(WrapLabel *self)
 	CODE:
 		clearErrMsg();
-		Label *lab = self->ref_.get();
+		Label *lab = self->get();
 		lab->clearChained();
 
 # returns an array of references to chained objects
@@ -84,7 +84,7 @@ char *
 getName(WrapLabel *self)
 	CODE:
 		clearErrMsg();
-		Label *lab = self->ref_.get();
+		Label *lab = self->get();
 
 		RETVAL = (char *)lab->getName().c_str();
 	OUTPUT:
@@ -94,7 +94,18 @@ void
 setName(WrapLabel *self, char *name)
 	CODE:
 		clearErrMsg();
-		Label *lab = self->ref_.get();
+		Label *lab = self->get();
 		lab->setName(name);
+
+# check whether both refs point to the same type object
+int
+same(WrapLabel *self, WrapLabel *other)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		Label *olab = other->get();
+		RETVAL = (lab == olab);
+	OUTPUT:
+		RETVAL
 
 # XXX add the rest of methods!
