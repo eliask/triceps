@@ -1,4 +1,5 @@
                    GNU LESSER GENERAL PUBLIC LICENSE
+				          (Biceps version)
                        Version 3, 29 June 2007
 
  Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
@@ -21,8 +22,12 @@ other than an Application or a Combined Work as defined below.
 
   An "Application" is any work that makes use of an interface provided
 by the Library, but which is not otherwise based on the Library.
+An Application solves a particular user task and does not provide a 
+general Complex Event Processing functionality.
 Defining a subclass of a class defined by the Library is deemed a mode
-of using an interface provided by the Library.
+of using an interface provided by the Library, if this subclass does not
+provide direct access to the Library interface from outside of the
+Application.
 
   A "Combined Work" is a work produced by combining or linking an
 Application with the Library.  The particular version of the Library

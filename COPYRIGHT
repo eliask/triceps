@@ -1,14 +1,19 @@
 (C) Copyright 2011 Sergey A. Babkin.
 
 The Biceps project is dual-licensed under 2 licenses:
-  1. GNU LGPL v3
+  1. GNU LGPL v3 (Biceps version), as specified in the file LGPL
   2. If LGPL is not good enough for you, a Custom license issued by Sergey Babkin.
   To obtain a Custom license, contact Sergey Babkin at <babkin@users.sf.net>.
 
 Any third-party contributions to the project must also be licensed under a dual license:
-  1. GNU LGPL v3
+  1. GNU LGPL v3 (Biceps version), as specified in the file LGPL
   2. A BSD-style license. The intent is to permit the inclusion of the contributions
   with the Custom licensed version.
+
+The intent of the Biceps version of LGPL v3 is to specify that any general
+Complex Event Processing engines based on Biceps are considered direct
+derived works of Biceps and fall under full GPL provisions (or a Custom license),
+unlike the end-user applications.
 
 Parts of this package have been included from other packages, and are covered by
 their own license. Such code includes:
