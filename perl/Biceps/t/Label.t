@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 10 };
+BEGIN { plan tests => 12 };
 use Biceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -58,8 +58,15 @@ ok(ref $t1, "Biceps::Table");
 $lb = $t1->getOutputLabel();
 ok(ref $lb, "Biceps::Label");
 
-########################## get label #################################################
+########################## label g/setters #################################################
 
 $rt2 = $lb->getType();
 ok(ref $rt2, "Biceps::RowType");
 ok($rt1->same($rt2));
+
+$v = $lb->getName();
+ok($v, "tab1.out");
+
+$lb->setName("xxx_tab1.out");
+$v = $lb->getName();
+ok($v, "xxx_tab1.out");

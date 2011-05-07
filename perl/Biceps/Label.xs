@@ -37,4 +37,21 @@ getType(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
+char *
+getName(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->ref_.get();
+
+		RETVAL = (char *)lab->getName().c_str();
+	OUTPUT:
+		RETVAL
+
+void
+setName(WrapLabel *self, char *name)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->ref_.get();
+		lab->setName(name);
+
 # XXX add the rest of methods!
