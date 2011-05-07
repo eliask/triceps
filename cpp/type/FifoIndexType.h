@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // An index that simply keeps the records in the order entered.
 
-#ifndef __Biceps_FifoIndexType_h__
-#define __Biceps_FifoIndexType_h__
+#ifndef __Triceps_FifoIndexType_h__
+#define __Triceps_FifoIndexType_h__
 
 #include <type/IndexType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // It's not much of an index, simply keeping the records in a list.
 // But it's useful fo rthings like storing the aggregation groups.
@@ -86,6 +86,6 @@ protected:
 	bool jumping_; // flag: this is a jumping index
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_FifoIndexType_h__
+#endif // __Triceps_FifoIndexType_h__

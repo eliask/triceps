@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // An ordered set of names.
 
-#ifndef __Biceps_NameSet_h__
-#define __Biceps_NameSet_h__
+#ifndef __Triceps_NameSet_h__
+#define __Triceps_NameSet_h__
 
 #include <common/Common.h>
 #include <mem/Starget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // The ordered set of names gets used to specify subsets of fields,
 // in particular, the index keys.
@@ -37,6 +37,6 @@ public:
 	bool equals(const NameSet *other) const;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_NameSet_h__
+#endif // __Triceps_NameSet_h__

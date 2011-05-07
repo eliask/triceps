@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -12,7 +12,7 @@
 #include <table/Table.h>
 #include <string.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 //////////////////////////// HashedIndexType::Less  /////////////////////////
 
@@ -112,7 +112,7 @@ HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
 HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
 	if (initialized_) {
-		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
 	key_ = key;
@@ -233,4 +233,4 @@ void HashedIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromr
 	new(rs) RhSection(*fromrs);
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

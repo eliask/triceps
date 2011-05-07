@@ -1,19 +1,19 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Type for the tables.
 
-#ifndef __Biceps_TableType_h__
-#define __Biceps_TableType_h__
+#ifndef __Triceps_TableType_h__
+#define __Triceps_TableType_h__
 
 #include <type/IndexType.h>
 #include <type/RowType.h>
 #include <type/RowHandleType.h>
 #include <sched/Gadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class Table;
 class RootIndexType;
@@ -114,7 +114,7 @@ private:
 	void operator=(const TableType &);
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_TableType_h__
+#endif // __Triceps_TableType_h__
 

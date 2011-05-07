@@ -1,18 +1,18 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The general type definition.
 
-#ifndef __Biceps_Type_h__
-#define __Biceps_Type_h__
+#ifndef __Triceps_Type_h__
+#define __Triceps_Type_h__
 
 #include <mem/Mtarget.h>
 #include <common/Common.h>
 #include <common/StringUtil.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class SimpleType;
 
@@ -130,6 +130,6 @@ private:
 	Type();
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Type_h__
+#endif // __Triceps_Type_h__

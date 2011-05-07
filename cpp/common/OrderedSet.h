@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // An set that preserves the order of insertions but weeds out duplicates
 
-#ifndef __Biceps_OrderedSet_h__
-#define __Biceps_OrderedSet_h__
+#ifndef __Triceps_OrderedSet_h__
+#define __Triceps_OrderedSet_h__
 
 #include <set>
 #include <vector>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 template<typename Target>
 
@@ -85,6 +85,6 @@ protected:
 	set<Target> set_;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_OrderedSet_h__
+#endif // __Triceps_OrderedSet_h__

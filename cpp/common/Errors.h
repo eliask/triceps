@@ -1,18 +1,18 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // A common way for reporting of the errors
 
-#ifndef __Biceps_Errors_h__
-#define __Biceps_Errors_h__
+#ifndef __Triceps_Errors_h__
+#define __Triceps_Errors_h__
 
 #include <vector>
 #include <string>
 #include <mem/Starget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 using namespace std;
 
@@ -127,6 +127,6 @@ public:
 // the typical error indication returned by the parsing functions
 typedef Autoref<Errors> Erref;
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Errors_h__
+#endif // __Triceps_Errors_h__

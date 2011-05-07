@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // CEP code label.
 
-#ifndef __Biceps_Label_h__
-#define __Biceps_Label_h__
+#ifndef __Triceps_Label_h__
+#define __Triceps_Label_h__
 
 #include <mem/Autoref.h>
 #include <mem/Starget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class Rowop;
 class Unit;
@@ -136,6 +136,6 @@ protected:
 	virtual void execute(Rowop *arg) const;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Label_h__
+#endif // __Triceps_Label_h__

@@ -1,16 +1,16 @@
 
 .DEFAULT_GOAL = all
 
-all clean test qtest vtest: perl/Biceps/Makefile
+all clean test qtest vtest: perl/Triceps/Makefile
 	$(MAKE) -C cpp $@
-	$(MAKE) -C perl/Biceps $@
+	$(MAKE) -C perl/Triceps $@
 
 clobber:
 	$(MAKE) -C cpp $@
-	#$(MAKE) -C perl/Biceps $@
+	#$(MAKE) -C perl/Triceps $@
 
 install uninstall:
-	#$(MAKE) -C perl/Biceps $@
+	#$(MAKE) -C perl/Triceps $@
 
-perl/Biceps/Makefile: perl/Biceps/Makefile.PL
-	cd perl/Biceps && perl Makefile.PL
+perl/Triceps/Makefile: perl/Triceps/Makefile.PL
+	cd perl/Triceps && perl Makefile.PL

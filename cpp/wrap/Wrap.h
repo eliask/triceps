@@ -1,19 +1,19 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Wrappers for handling of objects from interpreted languages.
 
-#ifndef __Biceps_Wrap_h__
-#define __Biceps_Wrap_h__
+#ifndef __Triceps_Wrap_h__
+#define __Triceps_Wrap_h__
 
 #include <type/AllTypes.h>
 #include <sched/Unit.h>
 #include <table/Table.h>
 #include <mem/Rhref.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // for extra safety, add a magic in front of each wrapper
 
@@ -187,6 +187,6 @@ DEFINE_WRAP2(Table, Rhref, RowHandle);
 #undef DEFINE_WRAP2
 #undef DEFINE_WRAP_IDENT
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Wrap_h__
+#endif // __Triceps_Wrap_h__

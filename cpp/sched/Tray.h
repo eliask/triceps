@@ -1,19 +1,19 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Tray is an ordered collection of rowops.
 
-#ifndef __Biceps_Tray_h__
-#define __Biceps_Tray_h__
+#ifndef __Triceps_Tray_h__
+#define __Triceps_Tray_h__
 
 #include <common/Common.h>
 #include <mem/Autoref.h>
 #include <sched/Rowop.h>
 #include <deque>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // A tray stores the row operations in the order they were appended.
 // The row operations may be on mixed labels and mixed row types.
@@ -32,6 +32,6 @@ public:
 	{ }
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Tray_h__
+#endif // __Triceps_Tray_h__

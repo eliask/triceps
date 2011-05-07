@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -7,7 +7,7 @@
 
 #include <type/AllSimpleTypes.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 void VoidType::printTo(string &res, const string &indent, const string &subindent) const
 {
@@ -39,4 +39,4 @@ void StringType::printTo(string &res, const string &indent, const string &subind
 	res.append("string");
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <table/BasicAggregator.h>
 #include <sched/AggregatorGadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 void BasicAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index,
 	const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
@@ -19,4 +19,4 @@ void BasicAggregator::handle(Table *table, AggregatorGadget *gadget, Index *inde
 	at->cb_(table, gadget, index, parentIndexType, gh, dest, aggop, opcode, rh, copyTray);
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

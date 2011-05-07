@@ -1,5 +1,5 @@
-How to build Biceps.
-====================
+How to build Triceps.
+=====================
 
 The tested build environment is Linux Fedora 11. The Perl build system
 should make it work automatically on the other Unix environments as
@@ -17,18 +17,18 @@ Versioning
 At the moment this is an experimental project, and there is no
 versioning. The API may change in any way at any moment.
 
-If you build some production code with Biceps, simply include the
-Biceps shared library that was used to build it into your
+If you build some production code with Triceps, simply include the
+Triceps shared library that was used to build it into your
 deliverables. It's best to define a custom LIBRARY name to guarantee
 its uniqueness. Put the shared library in a known directory relative
 to your binary and build your binary with the appropriate -rpath
 setting. For example, if they are in the same directory, use
 "-Wl,-rpath='$$ORIGIN/.".  This way each project is free to have its
-own version of Biceps shared library.
+own version of Triceps shared library.
 
 If you are concerned that your object files may later get mixed in the
 same binary with other object files using a different version of
-Biceps, also change the setting of BICEPS_NS to a custom value.
+Triceps, also change the setting of TRICEPS_NS to a custom value.
 
 Configurables
 -------------
@@ -41,7 +41,7 @@ used to override the macros defined in Conf.h.
 
 The Conf.h macros are:
 
-	BICEPS_NS - C++ namespace used by Biceps
+	TRICEPS_NS - C++ namespace used by Triceps
 
 Other Makefile.inc settings:
 
@@ -50,13 +50,18 @@ Other Makefile.inc settings:
 Build
 -----
 
-[XXX Future, doesn't work yet]
-
 To build:
 
 	make all
 	make test
 
+The C++ libraries will be created under cpp/build.
+The Perl libraries will be created under perl/Triceps/blib.
+
+The tests are normally run with valgrind for the C++ part, without valgrind
+for the Perl part.
+
+[XXX install and uninstall dont' work yet]
 To install:
 
 	make install
@@ -64,15 +69,6 @@ To install:
 To uninstall:
 
 	make uninstall
-
-[XXX Now]
-
-At the moment only the C++ part located under cpp/ builds. To build:
-
-	make all
-	make test
-
-The libraries will be created under cpp/build.
 
 
 Other interesting make targets:

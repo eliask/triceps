@@ -1,12 +1,12 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Definition of the simple unit test infrastructure.
 
-#ifndef __Biceps_Utest_h__
-#define __Biceps_Utest_h__
+#ifndef __Triceps_Utest_h__
+#define __Triceps_Utest_h__
 
 #include <string>
 #include <map>
@@ -18,8 +18,8 @@
 #include <common/Strprintf.h>
 
 using namespace std;
-using namespace BICEPS_NS;
-// NOT in BICEPS_NS!!!
+using namespace TRICEPS_NS;
+// NOT in TRICEPS_NS!!!
 
 // this is for the script to detect test cases
 #define UTESTCASE void
@@ -104,4 +104,4 @@ private:
 	void operator=(const Utest &);
 }; 
 
-#endif // __Biceps_Utest_h__
+#endif // __Triceps_Utest_h__

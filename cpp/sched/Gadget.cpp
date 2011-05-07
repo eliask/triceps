@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -8,7 +8,7 @@
 #include <sched/Gadget.h>
 #include <common/StringUtil.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 Gadget::Gadget(Unit *unit, EnqMode mode, const string &name, const_Onceref<RowType> rt) :
 	unit_(unit),
@@ -97,4 +97,4 @@ int Gadget::stringEm(const char *str)
 }
 
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

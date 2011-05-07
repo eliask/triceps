@@ -1,18 +1,18 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // An index that implements a unique primary key with an unpredictable order.
 
-#ifndef __Biceps_HashedIndexType_h__
-#define __Biceps_HashedIndexType_h__
+#ifndef __Triceps_HashedIndexType_h__
+#define __Triceps_HashedIndexType_h__
 
 #include <type/IndexType.h>
 #include <type/NameSet.h>
 #include <common/Hash.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class RowType;
 
@@ -116,6 +116,6 @@ protected:
 	Autoref<Less> less_;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_HashedIndexType_h__
+#endif // __Triceps_HashedIndexType_h__

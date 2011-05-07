@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The common buffer base of all the row implementations.
 
-#ifndef __Biceps_MtBuffer_h__
-#define __Biceps_MtBuffer_h__
+#ifndef __Triceps_MtBuffer_h__
+#define __Triceps_MtBuffer_h__
 
 #include <common/Common.h>
 #include <mem/Mtarget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // It's essentially an Mtarget-ed array of bytes, where a particular
 // MtBufferType knows how to interpret these bytes. This includes the deletion.
@@ -106,6 +106,6 @@ public:
 	virtual ~VirtualMtBuffer();
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_MtBuffer_h__
+#endif // __Triceps_MtBuffer_h__

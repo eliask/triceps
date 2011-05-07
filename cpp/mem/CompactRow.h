@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // A row format bent on compactness, good for storing in the windows.
 
-#ifndef __Biceps_CompactRow_h__
-#define __Biceps_CompactRow_h__
+#ifndef __Triceps_CompactRow_h__
+#define __Triceps_CompactRow_h__
 
 #include <mem/Row.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class CompactRowType;
 
@@ -105,6 +105,6 @@ protected:
 	int32_t off_[1]; // really bigger
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_CompactRow_h__
+#endif // __Triceps_CompactRow_h__

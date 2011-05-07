@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <type/HashedIndexType.h>
 #include <type/RowType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 //////////////////////////// HashedNestedIndex /////////////////////////
 
@@ -255,4 +255,4 @@ bool HashedNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTr
 }
 
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

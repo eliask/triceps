@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <pw/ptwrap.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 namespace pw // POSIX wrapped
 {
@@ -310,4 +310,4 @@ void weakref::invalidate2()
 
 }; // pw
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

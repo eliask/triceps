@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // A special service index type that represents the root of the index type
 // tree in a table type.
 
-#ifndef __Biceps_RootIndexType_h__
-#define __Biceps_RootIndexType_h__
+#ifndef __Triceps_RootIndexType_h__
+#define __Triceps_RootIndexType_h__
 
 #include <type/IndexType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class RootIndexType : public IndexType
 {
@@ -39,6 +39,6 @@ protected:
 	RootIndexType(const RootIndexType &orig);
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_RootIndexType_h__
+#endif // __Triceps_RootIndexType_h__

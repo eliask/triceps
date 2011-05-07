@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <table/Aggregator.h>
 #include <sched/AggregatorGadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 Aggregator::~Aggregator()
 { }
@@ -30,5 +30,5 @@ const char *Aggregator::aggOpString(AggOp code)
 	}
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 

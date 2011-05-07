@@ -1,19 +1,19 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Type for creation of indexes in the tables.
 
-#ifndef __Biceps_IndexType_h__
-#define __Biceps_IndexType_h__
+#ifndef __Triceps_IndexType_h__
+#define __Triceps_IndexType_h__
 
 #include <type/Type.h>
 #include <table/GroupHandle.h>
 #include <table/Aggregator.h>
 #include <common/Errors.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class IndexType;
 class TableType;
@@ -545,6 +545,6 @@ private:
 	void operator=(const IndexType &);
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_IndexType_h__
+#endif // __Triceps_IndexType_h__

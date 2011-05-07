@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The base class for aggregators.
 
-#ifndef __Biceps_Aggregator_h__
-#define __Biceps_Aggregator_h__
+#ifndef __Triceps_Aggregator_h__
+#define __Triceps_Aggregator_h__
 
 #include <sched/Rowop.h>
 #include <table/RowHandle.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class Index;
 class IndexType;
@@ -74,6 +74,6 @@ public:
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray) = 0;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Aggregator_h__
+#endif // __Triceps_Aggregator_h__

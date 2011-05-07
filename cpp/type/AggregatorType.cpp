@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <type/TableType.h>
 #include <sched/AggregatorGadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 AggregatorType::AggregatorType(const string &name, const RowType *rt) :
 	Type(false, TT_AGGREGATOR),
@@ -74,4 +74,4 @@ void AggregatorType::printTo(string &res, const string &indent, const string &su
 	res.append(") ");
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

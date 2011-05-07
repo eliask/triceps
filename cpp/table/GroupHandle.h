@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Handle to store groups in the non-leaf indexes.
 
-#ifndef __Biceps_GroupHandle_h__
-#define __Biceps_GroupHandle_h__
+#ifndef __Triceps_GroupHandle_h__
+#define __Triceps_GroupHandle_h__
 
 #include <table/RowHandle.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class GroupHandle: public RowHandle
 {
@@ -24,6 +24,6 @@ public:
 	}
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_GroupHandle_h__
+#endif // __Triceps_GroupHandle_h__

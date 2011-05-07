@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Collection of definitions for all the simple types.
 
-#ifndef __Biceps_AllSimpleTypes_h__
-#define __Biceps_AllSimpleTypes_h__
+#ifndef __Triceps_AllSimpleTypes_h__
+#define __Triceps_AllSimpleTypes_h__
 
 #include <common/Common.h>
 #include <type/SimpleType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // Later, when there will be own language, these definitions may become
 // more complex and be split into their separate files.
@@ -71,7 +71,7 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_AllSimpleTypes_h__
+#endif // __Triceps_AllSimpleTypes_h__
 

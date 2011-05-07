@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The reference with counting.
 
-#ifndef __Biceps_Autoref_h__
-#define __Biceps_Autoref_h__
+#ifndef __Triceps_Autoref_h__
+#define __Triceps_Autoref_h__
 
 #include <common/Conf.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // The reference to a ref-counted object.
 // The idea here is that the referenced object doesn't have to be virtual.
@@ -249,6 +249,6 @@ public:
 	{ }
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Autoref_h__
+#endif // __Triceps_Autoref_h__

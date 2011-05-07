@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Counted reference to a RowHandle.
 
-#ifndef __Biceps_Rhref_h__
-#define __Biceps_Rhref_h__
+#ifndef __Triceps_Rhref_h__
+#define __Triceps_Rhref_h__
 
 #include <table/Table.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // The row handle needs its private kind of autoref because it's
 // not virtual, so the reference would have to remember the right
@@ -160,6 +160,6 @@ protected:
 	RowHandle *rh_;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Rhref_h__
+#endif // __Triceps_Rhref_h__

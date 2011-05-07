@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The base class for aggregation gadgets.
 
-#ifndef __Biceps_AggregatorGadget_h__
-#define __Biceps_AggregatorGadget_h__
+#ifndef __Triceps_AggregatorGadget_h__
+#define __Triceps_AggregatorGadget_h__
 
 #include <sched/Gadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class Table;
 class AggregatorType;
@@ -63,6 +63,6 @@ private:
 	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray) const;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_AggregatorGadget_h__
+#endif // __Triceps_AggregatorGadget_h__

@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The multi-threaded target for a reference with counting.
 
-#ifndef __Biceps_Mtarget_h__
-#define __Biceps_Mtarget_h__
+#ifndef __Triceps_Mtarget_h__
+#define __Triceps_Mtarget_h__
 
 #include <mem/Autoref.h> // just for convenience
 #include <pw/ptwrap.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // The multithreaded references could certainly benefit from
 // atomic operations on the counter. But for now let's just do it
@@ -61,6 +61,6 @@ private: // the subclasses really shouldn't mess with it
 	mutable int count_;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Mtarget_h__
+#endif // __Triceps_Mtarget_h__

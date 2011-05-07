@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -12,7 +12,7 @@
 #include <sched/AggregatorGadget.h>
 #include <mem/Rhref.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 ////////////////////////////////////// Table::InputLabel ////////////////////////////////////
 
@@ -294,5 +294,5 @@ RowHandle *Table::findRow(IndexType *ixt, const Row *row) const
 	return res;
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 

@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The pseudo-index for the root of the index tree.
 
-#ifndef __Biceps_RootIndex_h__
-#define __Biceps_RootIndex_h__
+#ifndef __Triceps_RootIndex_h__
+#define __Triceps_RootIndex_h__
 
 #include <table/Index.h>
 #include <type/RootIndexType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class RootIndexType;
 class RowType;
@@ -51,6 +51,6 @@ protected:
 	GroupHandle *rootg_; // the root group
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_RootIndex_h__
+#endif // __Triceps_RootIndex_h__

@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Common subclass for the simple types
 
-#ifndef __Biceps_SimpleType_h__
-#define __Biceps_SimpleType_h__
+#ifndef __Triceps_SimpleType_h__
+#define __Triceps_SimpleType_h__
 
 #include <type/Type.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // Later, when there will be own language, these definitions may become
 // more complex and be split into their separate files.
@@ -39,7 +39,7 @@ private:
 	SimpleType();
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_SimpleType_h__
+#endif // __Triceps_SimpleType_h__
 

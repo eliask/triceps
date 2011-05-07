@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -10,7 +10,7 @@
 #include <type/AggregatorType.h>
 #include <table/Table.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 TableType::TableType(Onceref<RowType> rt) :
 	Type(false, TT_TABLE),
@@ -25,7 +25,7 @@ TableType::~TableType()
 TableType *TableType::addIndex(const string &name, IndexType *index)
 {
 	if (initialized_) {
-		fprintf(stderr, "Biceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Triceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
 	root_->addNested(name, index);
@@ -174,4 +174,4 @@ IndexType *TableType::firstLeafIndex() const
 	return root_->getFirstLeaf();
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

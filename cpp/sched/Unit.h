@@ -1,19 +1,19 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The basic execution unit.
 
-#ifndef __Biceps_Unit_h__
-#define __Biceps_Unit_h__
+#ifndef __Triceps_Unit_h__
+#define __Triceps_Unit_h__
 
 #include <common/Common.h>
 #include <sched/Tray.h>
 #include <sched/Label.h>
 #include <list>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // The basic execution unit ties together a buch of tables, code and scheduling.
 // It lives inside one thread and always executes sequentially. But nothing really
@@ -185,6 +185,6 @@ protected:
 	string name_; // human-readable name for tracing
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Unit_h__
+#endif // __Triceps_Unit_h__

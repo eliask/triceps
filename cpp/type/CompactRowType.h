@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Row type that operates on CompactRow internal representation.
 
-#ifndef __Biceps_CompactRowType_h__
-#define __Biceps_CompactRowType_h__
+#ifndef __Triceps_CompactRowType_h__
+#define __Triceps_CompactRowType_h__
 
 #include <type/RowType.h>
 #include <mem/CompactRow.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class CompactRowType : public RowType
 {
@@ -32,6 +32,6 @@ public:
 	virtual bool equalRows(const Row *row1, const Row *row2) const;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_CompactRowType_h__
+#endif // __Triceps_CompactRowType_h__

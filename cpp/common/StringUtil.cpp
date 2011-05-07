@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <string.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 const string &NOINDENT;
 
@@ -104,5 +104,5 @@ const char *enum2string(const Valname *reft, int val, const char *def)
 	return def;
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 

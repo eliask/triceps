@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The single-threaded target for a reference with counting.
 
-#ifndef __Biceps_Starget_h__
-#define __Biceps_Starget_h__
+#ifndef __Triceps_Starget_h__
+#define __Triceps_Starget_h__
 
 #include <mem/Autoref.h> // just for convenience
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // The single-threaded autoreferences are faster but require
 // a careful descipline, to keep these objects used in only one
@@ -54,6 +54,6 @@ private: // the subclasses really shouldn't mess with it
 	mutable int count_;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Starget_h__
+#endif // __Triceps_Starget_h__

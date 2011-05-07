@@ -5,14 +5,14 @@ BUILDDIR := build
 CPPFLAGS := -I..
 CFLAGS := -g -fPIC -pthread -rdynamic $(CPPFLAGS) -Wall -Wno-sign-conversion -Wno-sign-compare -Werror
 CXXFLAGS := $(CFLAGS)
-LDFLAGS := -L../build -lbiceps -lpthread
+LDFLAGS := -L../build -ltriceps -lpthread
 TESTLDFLAGS := $(LDFLAGS) -L../utest/build -Wl,-rpath='$$ORIGIN/../../../build' \
-	-lbiceps_utest -Wl,-rpath='$$ORIGIN/../../../utest/build'
+	-ltriceps_utest -Wl,-rpath='$$ORIGIN/../../../utest/build'
 
 RANLIB := ranlib
 VALGRIND := valgrind --leak-check=full -v
 
-LIBRARY := biceps
+LIBRARY := triceps
 SHLIB := lib$(LIBRARY).so
 ARLIB := lib$(LIBRARY).a
 

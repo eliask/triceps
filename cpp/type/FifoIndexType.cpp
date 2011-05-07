@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -10,7 +10,7 @@
 #include <table/FifoIndex.h>
 #include <table/Table.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 FifoIndexType::FifoIndexType(size_t limit, bool jumping) :
 	IndexType(IT_FIFO),
@@ -29,7 +29,7 @@ FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
 FifoIndexType *FifoIndexType::setLimit(size_t limit)
 {
 	if (initialized_) {
-		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
 	limit_ = limit;
@@ -39,7 +39,7 @@ FifoIndexType *FifoIndexType::setLimit(size_t limit)
 FifoIndexType *FifoIndexType::setJumping(bool jumping)
 {
 	if (initialized_) {
-		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
 	jumping_ = jumping;
@@ -117,4 +117,4 @@ void FifoIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh)
 	FifoIndexType::initRowHandle(rh); // no cached data, just clear it out
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

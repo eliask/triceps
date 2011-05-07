@@ -1,18 +1,18 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // A reference-counted byte buffer
 
-#ifndef __Biceps_RowHandle_h__
-#define __Biceps_RowHandle_h__
+#ifndef __Triceps_RowHandle_h__
+#define __Triceps_RowHandle_h__
 
 #include <common/Common.h>
 #include <mem/Starget.h>
 #include <mem/Row.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class Table;
 
@@ -90,6 +90,6 @@ private:
 	void operator=(const RowHandle &);
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_RowHandle_h__
+#endif // __Triceps_RowHandle_h__

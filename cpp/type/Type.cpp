@@ -1,12 +1,12 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 
 #include <type/AllSimpleTypes.h>
 #include <string.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 Autoref<const SimpleType> Type::r_void(new VoidType);
 Autoref<const SimpleType> Type::r_uint8(new Uint8Type);
@@ -59,4 +59,4 @@ string Type::print(const string &indent, const string &subindent) const
 	return res;
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

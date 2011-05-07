@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The base class of user-defined factory of user-defined aggregators.
 
-#ifndef __Biceps_AggregatorType_h__
-#define __Biceps_AggregatorType_h__
+#ifndef __Triceps_AggregatorType_h__
+#define __Triceps_AggregatorType_h__
 
 #include <type/Type.h>
 #include <sched/Gadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class TableType;
 class IndexType;
@@ -134,6 +134,6 @@ private:
 	void operator=(const AggregatorType &);
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_AggregatorType_h__
+#endif // __Triceps_AggregatorType_h__

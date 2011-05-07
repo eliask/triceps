@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Implementation of a simple primary key with further nesting.
 
-#ifndef __Biceps_HashedNestedIndex_h__
-#define __Biceps_HashedNestedIndex_h__
+#ifndef __Triceps_HashedNestedIndex_h__
+#define __Triceps_HashedNestedIndex_h__
 
 #include <table/Index.h>
 #include <type/HashedIndexType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class HashedIndexType;
 class RowType;
@@ -61,6 +61,6 @@ protected:
 	Less *less_; // the comparator object, owned by the type
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_HashedNestedIndex_h__
+#endif // __Triceps_HashedNestedIndex_h__

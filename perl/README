@@ -1,7 +1,7 @@
 The Perl interface, gets installed as a Perl module.
 
 Generated with:
-h2xs -O -n Biceps --use-old-tests
+h2xs -O -n Triceps --use-old-tests
 
 The old-style tests are used because as it turns out not all recent
 versions of Linux (Fedora 11 in particular) have the module Test::Simple
@@ -13,5 +13,7 @@ Biceps.0 contains the clean as-generated directory,
 so that the manual changes can be traced easily.
 I'm still learning how to generate the Perl makefiles
 and such right, so I need these crutches.
+It's still called Biceps.0 because it was generated in the days when the
+project was named Biceps.
 
 The magic setting for the verbose test progress is TEST_VERBOSE=1.

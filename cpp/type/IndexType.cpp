@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -13,7 +13,7 @@
 #include <table/Aggregator.h>
 #include <set>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 /////////////////////// IndexTypeRef ////////////////////////////
 
@@ -195,7 +195,7 @@ IndexType::~IndexType()
 IndexType *IndexType::addNested(const string &name, Onceref<IndexType> index)
 {
 	if (initialized_) {
-		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
 	if (index.isNull())
@@ -208,7 +208,7 @@ IndexType *IndexType::addNested(const string &name, Onceref<IndexType> index)
 IndexType *IndexType::setAggregator(Onceref<AggregatorType> agg)
 {
 	if (initialized_) {
-		fprintf(stderr, "Biceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
 	agg_ = agg;
@@ -784,4 +784,4 @@ Index *IndexType::findNestedIndex(int nestPos, const Table *table, const RowHand
 	return myinst->findNested(what, nestPos);
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

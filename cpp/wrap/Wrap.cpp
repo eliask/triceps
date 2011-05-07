@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -7,7 +7,7 @@
 
 #include <wrap/Wrap.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 WrapMagic magicWrapRowType = { "RowType" };
 WrapMagic magicWrapRow = { "RowP" };
@@ -24,4 +24,4 @@ WrapMagic magicWrapTable = { "Table" };
 WrapMagic magicWrapIndex = { "Index" };
 WrapMagic magicWrapRowHandle = { "RowHand" };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -8,7 +8,7 @@
 #include <table/FifoIndex.h>
 #include <type/TableType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 //////////////////////////// FifoIndex /////////////////////////
 
@@ -176,4 +176,4 @@ bool FifoIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray)
 	return true;
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

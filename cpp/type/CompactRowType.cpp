@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <type/CompactRowType.h>
 #include <common/StringUtil.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 CompactRowType::CompactRowType(const FieldVec &fields) :
 	RowType(fields)
@@ -125,4 +125,4 @@ bool CompactRowType::equalRows(const Row *row1, const Row *row2) const
 	return memcmp(cr1->off_, cr2->off_, len1) == 0;
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

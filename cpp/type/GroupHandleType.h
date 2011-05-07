@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Type for constructing the group handles.
 
-#ifndef __Biceps_GroupHandleType_h__
-#define __Biceps_GroupHandleType_h__
+#ifndef __Triceps_GroupHandleType_h__
+#define __Triceps_GroupHandleType_h__
 
 #include <type/RowHandleType.h>
 #include <table/GroupHandle.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class GroupHandleType : public RowHandleType
 {
@@ -32,6 +32,6 @@ public:
 
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_GroupHandleType_h__
+#endif // __Triceps_GroupHandleType_h__

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <table/BasicAggregator.h>
 #include <sched/AggregatorGadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 BasicAggregatorType::BasicAggregatorType(const string &name, const RowType *rt, Callback *cb) :
 	AggregatorType(name, rt),
@@ -31,4 +31,4 @@ Aggregator *BasicAggregatorType::makeAggregator(Table *table, AggregatorGadget *
 	return new BasicAggregator(table, gadget);
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

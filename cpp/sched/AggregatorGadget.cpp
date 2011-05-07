@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -11,7 +11,7 @@
 #include <type/TableType.h>
 #include <table/Table.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 AggregatorGadget::AggregatorGadget(const AggregatorType *type, Table *table, IndexType *intype) :
 	Gadget(table->getUnit(), table->getEnqMode(), table->getName() + "." + type->getName(), type->getRowType()),
@@ -20,4 +20,4 @@ AggregatorGadget::AggregatorGadget(const AggregatorType *type, Table *table, Ind
 	indexType_(intype)
 { }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

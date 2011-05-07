@@ -1,18 +1,18 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // The type building for RowHandles.
 
-#ifndef __Biceps_RowHandleType_h__
-#define __Biceps_RowHandleType_h__
+#ifndef __Triceps_RowHandleType_h__
+#define __Triceps_RowHandleType_h__
 
 #include <type/Type.h>
 #include <table/RowHandle.h>
 #include <mem/Row.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // This is metadata used for building a RowHandle out of sections
 class RowHandleType : public Type
@@ -47,6 +47,6 @@ protected:
 	intptr_t size_; // total size of payload accumulated
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_RowHandleType_h__
+#endif // __Triceps_RowHandleType_h__

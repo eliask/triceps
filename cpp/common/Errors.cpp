@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -8,7 +8,7 @@
 #include <common/Common.h>
 #include <assert.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 Errors::Epair::Epair()
 { }
@@ -81,4 +81,4 @@ string Errors::print(const string &indent, const string &subindent)
 	return res;
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

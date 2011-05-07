@@ -1,12 +1,12 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Includes all the existing type classes.
 
-#ifndef __Biceps_AllTypes_h__
-#define __Biceps_AllTypes_h__
+#ifndef __Triceps_AllTypes_h__
+#define __Triceps_AllTypes_h__
 
 #include <type/AllSimpleTypes.h>
 #include <type/CompactRowType.h>
@@ -17,8 +17,8 @@
 #include <type/BasicAggregatorType.h>
 #include <type/GroupHandleType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_AllTypes_h__
+#endif // __Triceps_AllTypes_h__

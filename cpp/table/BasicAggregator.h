@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Aggregator through a basic C-style callback function.
 
-#ifndef __Biceps_BasicAggregator_h__
-#define __Biceps_BasicAggregator_h__
+#ifndef __Triceps_BasicAggregator_h__
+#define __Triceps_BasicAggregator_h__
 
 #include <table/Aggregator.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class AggregatorGadget;
 class Table;
@@ -32,6 +32,6 @@ protected:
 	AggregatorGadget *gadget_;
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_BasicAggregator_h__
+#endif // __Triceps_BasicAggregator_h__

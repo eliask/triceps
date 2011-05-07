@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // A reference-counted byte buffer
 
-#ifndef __Biceps_EasyBuffer_h__
-#define __Biceps_EasyBuffer_h__
+#ifndef __Triceps_EasyBuffer_h__
+#define __Triceps_EasyBuffer_h__
 
 #include <common/Common.h>
 #include <mem/Starget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // There is a frequent case of temporary variable-sized byte buffers
 // used for construction of rows and such. This takes care of them.
@@ -34,6 +34,6 @@ public:
 	char data_[1];
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_EasyBuffer_h__
+#endif // __Triceps_EasyBuffer_h__

@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // A basic stateful element inside a Unit.
 
-#ifndef __Biceps_Gadget_h__
-#define __Biceps_Gadget_h__
+#ifndef __Triceps_Gadget_h__
+#define __Triceps_Gadget_h__
 
 #include <sched/Unit.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // A Gadget is something with its own mind, which in response to
 // operations on it may produce records and enqueues them to the Unit's
@@ -141,6 +141,6 @@ public:
 	}
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Gadget_h__
+#endif // __Triceps_Gadget_h__

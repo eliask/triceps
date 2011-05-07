@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Implementation of a simple FIFO storage.
 
-#ifndef __Biceps_FifoIndex_h__
-#define __Biceps_FifoIndex_h__
+#ifndef __Triceps_FifoIndex_h__
+#define __Triceps_FifoIndex_h__
 
 #include <table/Index.h>
 #include <type/FifoIndexType.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class FifoIndexType;
 class RowType;
@@ -58,6 +58,6 @@ protected:
 	size_t size_; // the current size of the list
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_FifoIndex_h__
+#endif // __Triceps_FifoIndex_h__

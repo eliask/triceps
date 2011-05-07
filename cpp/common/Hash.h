@@ -1,16 +1,16 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Hash functions calculation.
 
-#ifndef __Biceps_Hash_h__
-#define __Biceps_Hash_h__
+#ifndef __Triceps_Hash_h__
+#define __Triceps_Hash_h__
 
 #include <common/Common.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 class Hash
 {
@@ -56,6 +56,6 @@ public:
 	}
 };
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_Hash_h__
+#endif // __Triceps_Hash_h__

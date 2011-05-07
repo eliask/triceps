@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -8,7 +8,7 @@
 #include <sched/Unit.h>
 #include <sched/Gadget.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 ///////////////////////////// Unit::Tracer //////////////////////////////////
 
@@ -218,4 +218,4 @@ void Unit::trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerW
 	}
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -11,7 +11,7 @@
 #include <table/RootIndex.h>
 // #include <table/RootIndex.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 RootIndexType::RootIndexType() :
 	IndexType(IT_ROOT)
@@ -59,4 +59,4 @@ void RootIndexType::clearRowHandleSection(RowHandle *rh) const
 void RootIndexType::copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
 { }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

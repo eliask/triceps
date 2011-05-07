@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Helper functions working with strings
 
-#ifndef __Biceps_StringUtil_h__
-#define __Biceps_StringUtil_h__
+#ifndef __Triceps_StringUtil_h__
+#define __Triceps_StringUtil_h__
 
 #include <common/Common.h>
 #include <stdio.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 // A special reference to a string, passed around to indicate that the
 // printing must be done without line breaks.
@@ -49,6 +49,6 @@ int string2enum(const Valname *reft, const char *name);
 // @return - the table value, or default
 const char *enum2string(const Valname *reft, int val, const char *def = "???");
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_StringUtil_h__
+#endif // __Triceps_StringUtil_h__

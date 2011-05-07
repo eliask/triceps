@@ -1,17 +1,17 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
 // Assorted functions working on strings.
 
-#ifndef __Biceps_StringTools_h__
-#define __Biceps_StringTools_h__
+#ifndef __Triceps_StringTools_h__
+#define __Triceps_StringTools_h__
 
 #include <string>
 #include <common/Conf.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 using namespace std;
 
@@ -20,6 +20,6 @@ string strprintf(const char *fmt, ...)
 	__attribute__((format(printf, 1, 2)));
 
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
 
-#endif // __Biceps_StringTools_h__
+#endif // __Triceps_StringTools_h__

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 /////////////////////// MtBuffer ////////////////////////
 
@@ -38,4 +38,4 @@ void VirtualMtBuffer::operator delete(void *ptr)
 VirtualMtBuffer::~VirtualMtBuffer()
 { }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS

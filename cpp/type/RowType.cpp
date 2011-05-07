@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
@@ -9,7 +9,7 @@
 #include <map>
 #include <string.h>
 
-namespace BICEPS_NS {
+namespace TRICEPS_NS {
 
 
 ////////////////////// RowType ////////////////////////
@@ -274,4 +274,4 @@ const char *RowType::getString(const Row *row, int nf)
 	}
 }
 
-}; // BICEPS_NS
+}; // TRICEPS_NS
