@@ -1,11 +1,11 @@
 #
-# This file is a part of Biceps.
+# This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
 # The test for RowType.
 
 # Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl Biceps.t'
+# `make test'. After `make install' it should work as `perl Triceps.t'
 
 #########################
 
@@ -13,7 +13,7 @@
 
 use Test;
 BEGIN { plan tests => 25 };
-use Biceps;
+use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -28,10 +28,10 @@ ok(1); # If we made it this far, we're ok.
 	d => "float64",
 	e => "string",
 );
-$rt1 = Biceps::RowType->new( # used later
+$rt1 = Triceps::RowType->new( # used later
 	@def1
 );
-ok(ref $rt1, "Biceps::RowType");
+ok(ref $rt1, "Triceps::RowType");
 @xdef1 = $rt1->getdef();
 ok(join(",", @xdef1), join(",", @def1));
 
@@ -42,14 +42,14 @@ ok(join(",", @xdef1), join(",", @def1));
 	d => "float64[]",
 	e => "string",
 );
-$rt3 = Biceps::RowType->new( # used later
+$rt3 = Triceps::RowType->new( # used later
 	@def3
 );
-ok(ref $rt3, "Biceps::RowType");
+ok(ref $rt3, "Triceps::RowType");
 @xdef3 = $rt3->getdef();
 ok(join(",", @xdef3), join(",", @def3));
 
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 	a => "void",
 	b => "int32",
 	c => "int64",
@@ -57,9 +57,9 @@ $rt2 = Biceps::RowType->new(
 	e => "string[]",
 );
 ok(!defined $rt2);
-ok($! . "", "Biceps::RowType::new: field 'e' string array type is not supported");
+ok($! . "", "Triceps::RowType::new: field 'e' string array type is not supported");
 
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 	a => "void",
 	b => "int32",
 	c => "int64",
@@ -67,9 +67,9 @@ $rt2 = Biceps::RowType->new(
 	e => "string",
 );
 ok(!defined $rt2);
-ok($! . "", "Biceps::RowType::new: field 'a' type must not be void");
+ok($! . "", "Triceps::RowType::new: field 'a' type must not be void");
 
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 	a => "",
 	b => "int32",
 	c => "int64",
@@ -77,15 +77,15 @@ $rt2 = Biceps::RowType->new(
 	e => "string",
 );
 ok(!defined $rt2);
-ok($! . "", "Biceps::RowType::new: field 'a' has an unknown type ''");
+ok($! . "", "Triceps::RowType::new: field 'a' has an unknown type ''");
 
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 );
 ok(!defined $rt2);
-ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
+ok($! . "", "Usage: Triceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 
 undef $!;
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 	a => "",
 	b => "int32",
 	c => "int64",
@@ -93,28 +93,28 @@ $rt2 = Biceps::RowType->new(
 	"string",
 );
 ok(!defined $rt2);
-ok($! . "", "Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
+ok($! . "", "Usage: Triceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 
 ######################### comparisons ###########################################
 
 # same() gets successfull when getting the row type of some other object, see Label
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 	@def1
 );
-ok(ref $rt2, "Biceps::RowType");
+ok(ref $rt2, "Triceps::RowType");
 ok($rt2->equals($rt1));
 ok($rt1->equals($rt2));
 ok($rt2->match($rt1));
 ok(!$rt2->same($rt1));
 
-$rt2 = Biceps::RowType->new(
+$rt2 = Triceps::RowType->new(
 	A => "uint8",
 	B => "int32",
 	C => "int64",
 	D => "float64",
 	E => "string",
 );
-ok(ref $rt2, "Biceps::RowType");
+ok(ref $rt2, "Triceps::RowType");
 ok(!$rt2->equals($rt1));
 ok($rt1->match($rt2));
 ok($rt2->match($rt1));

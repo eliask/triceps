@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for Unit.
@@ -10,9 +10,9 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::Unit		PACKAGE = Biceps::Unit
+MODULE = Triceps::Unit		PACKAGE = Triceps::Unit
 ###################################################################################
 
 void
@@ -23,7 +23,7 @@ DESTROY(WrapUnit *self)
 
 
 WrapUnit *
-Biceps::Unit::new(char *name)
+Triceps::Unit::new(char *name)
 	CODE:
 		clearErrMsg();
 
@@ -34,9 +34,9 @@ Biceps::Unit::new(char *name)
 WrapTable *
 makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 	CODE:
-		char funcName[] = "Biceps::Unit::makeTable";
+		char funcName[] = "Triceps::Unit::makeTable";
 		// for casting of return value
-		static char CLASS[] = "Biceps::Table";
+		static char CLASS[] = "Triceps::Table";
 
 		clearErrMsg();
 		TableType *tbt = wtt->get();

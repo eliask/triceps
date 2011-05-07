@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for Table.
@@ -10,9 +10,9 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::Table		PACKAGE = Biceps::Table
+MODULE = Triceps::Table		PACKAGE = Triceps::Table
 ###################################################################################
 
 void
@@ -28,7 +28,7 @@ WrapLabel *
 getInputLabel(WrapTable *self)
 	CODE:
 		// for casting of return value
-		static char CLASS[] = "Biceps::Label";
+		static char CLASS[] = "Triceps::Label";
 
 		clearErrMsg();
 		Table *t = self->get();
@@ -42,7 +42,7 @@ WrapLabel *
 getOutputLabel(WrapTable *self)
 	CODE:
 		// for casting of return value
-		static char CLASS[] = "Biceps::Label";
+		static char CLASS[] = "Triceps::Label";
 
 		clearErrMsg();
 		Table *t = self->get();
@@ -54,7 +54,7 @@ WrapTableType *
 getType(WrapTable *self)
 	CODE:
 		// for casting of return value
-		static char CLASS[] = "Biceps::TableType";
+		static char CLASS[] = "Triceps::TableType";
 
 		clearErrMsg();
 		Table *t = self->get();

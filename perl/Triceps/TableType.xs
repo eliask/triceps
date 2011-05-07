@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for TableType.
@@ -10,9 +10,9 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::TableType		PACKAGE = Biceps::TableType
+MODULE = Triceps::TableType		PACKAGE = Triceps::TableType
 ###################################################################################
 
 void
@@ -22,7 +22,7 @@ DESTROY(WrapTableType *self)
 		delete self;
 
 WrapTableType *
-Biceps::TableType::new(WrapRowType *wrt)
+Triceps::TableType::new(WrapRowType *wrt)
 	CODE:
 		clearErrMsg();
 
@@ -78,9 +78,9 @@ same(WrapTableType *self, WrapTableType *other)
 WrapTableType *
 addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 	CODE:
-		char funcName[] = "Biceps::TableType::addIndex";
+		char funcName[] = "Triceps::TableType::addIndex";
 		// for casting of return value
-		static char CLASS[] = "Biceps::TableType";
+		static char CLASS[] = "Triceps::TableType";
 
 		clearErrMsg();
 		TableType *tbt = self->get();
@@ -100,9 +100,9 @@ addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 WrapIndexType *
 findIndex(WrapTableType *self, char *subname)
 	CODE:
-		char funcName[] = "Biceps::TableType::findIndex";
+		char funcName[] = "Triceps::TableType::findIndex";
 		// for casting of return value
-		static char CLASS[] = "Biceps::IndexType";
+		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		TableType *tbt = self->get();
@@ -119,9 +119,9 @@ findIndex(WrapTableType *self, char *subname)
 WrapIndexType *
 firstLeafIndex(WrapTableType *self)
 	CODE:
-		char funcName[] = "Biceps::TableType::firstLeafIndex";
+		char funcName[] = "Triceps::TableType::firstLeafIndex";
 		// for casting of return value
-		static char CLASS[] = "Biceps::IndexType";
+		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		TableType *tbt = self->get();
@@ -167,7 +167,7 @@ WrapRowType *
 rowType(WrapTableType *self)
 	CODE:
 		// for casting of return value
-		static char CLASS[] = "Biceps::RowType";
+		static char CLASS[] = "Triceps::RowType";
 
 		clearErrMsg();
 		TableType *tbt = self->get();

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // Helper functions for Perl wrapper.
@@ -11,11 +11,11 @@
 
 // ###################################################################################
 
-using namespace Biceps;
+using namespace Triceps;
 
-namespace Biceps
+namespace Triceps
 {
-namespace BicepsPerl 
+namespace TricepsPerl 
 {
 
 // Clear the perl $! variable
@@ -65,8 +65,8 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 // @return - the parsed NameSet or NULL on error
 Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *optval);
 
-}; // Biceps::BicepsPerl
-}; // Biceps
+}; // Triceps::TricepsPerl
+}; // Triceps
 
-using namespace Biceps::BicepsPerl;
+using namespace Triceps::TricepsPerl;
 

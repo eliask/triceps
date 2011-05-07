@@ -1,4 +1,4 @@
-package Biceps;
+package Triceps;
 
 use 5.008000;
 use strict;
@@ -14,7 +14,7 @@ our @ISA = qw(Exporter);
 # names by default without a very good reason. Use EXPORT_OK instead.
 # Do not simply export all your public functions/methods/constants.
 
-# This allows declaration	use Biceps ':all';
+# This allows declaration	use Triceps ':all';
 # If you do not need this, moving things directly into @EXPORT or @EXPORT_OK
 # will save memory.
 our %EXPORT_TAGS = ( 'all' => [ qw(
@@ -37,7 +37,7 @@ sub AUTOLOAD {
     our $AUTOLOAD;
 	#print STDERR "AUTOLOAD '$AUTOLOAD'\n";
     ($constname = $AUTOLOAD) =~ s/.*:://;
-    croak "&Biceps::constant not defined" if $constname eq 'constant';
+    croak "&Triceps::constant not defined" if $constname eq 'constant';
     my ($error, $val) = constant($constname);
     if ($error) { croak $error; }
     {
@@ -54,7 +54,7 @@ sub AUTOLOAD {
 }
 
 require XSLoader;
-XSLoader::load('Biceps', $VERSION);
+XSLoader::load('Triceps', $VERSION);
 
 # Preloaded methods go here.
 
@@ -66,15 +66,15 @@ __END__
 
 =head1 NAME
 
-Biceps - Perl interface to the Biceps CEP engine
+Triceps - Perl interface to the Triceps CEP engine
 
 =head1 SYNOPSIS
 
-  use Biceps;
+  use Triceps;
 
 =head1 DESCRIPTION
 
-Biceps is a Complex Event Processing engine, embeddable into the
+Triceps is a Complex Event Processing engine, embeddable into the
 scripting language. At the moment the only language supported is Perl
 (and of course the native C++).
 
@@ -88,7 +88,7 @@ None by default.
 
 =head1 SEE ALSO
 
-Biceps project at SourceForge http://sourceforge.net/projects/biceps/
+Triceps project at SourceForge http://sourceforge.net/projects/triceps/
 
 =head1 AUTHOR
 

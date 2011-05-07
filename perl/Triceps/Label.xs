@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for Label.
@@ -10,9 +10,9 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::Label		PACKAGE = Biceps::Label
+MODULE = Triceps::Label		PACKAGE = Triceps::Label
 
 ###################################################################################
 
@@ -32,7 +32,7 @@ getType(WrapLabel *self)
 		Label *lab = self->get();
 
 		// for casting of return value
-		static char CLASS[] = "Biceps::RowType";
+		static char CLASS[] = "Triceps::RowType";
 		RETVAL = new WrapRowType(const_cast<RowType *>(lab->getType()));
 	OUTPUT:
 		RETVAL
@@ -47,7 +47,7 @@ chain(WrapLabel *self, WrapLabel *other)
 
 		Erref err = lab->chain(olab);
 		if (!err.isNull() && !err->isEmpty()) {
-			setErrMsg("Biceps::Label::chain: " + err->print());
+			setErrMsg("Triceps::Label::chain: " + err->print());
 		}
 		RETVAL = !err->hasError();
 	OUTPUT:
@@ -68,7 +68,7 @@ getChain(WrapLabel *self)
 		Label *lab = self->get();
 
 		// for casting of return value
-		static char CLASS[] = "Biceps::Label";
+		static char CLASS[] = "Triceps::Label";
 
 		const Label::ChainedVec &cv = lab->getChain();
 		int nf = cv.size();

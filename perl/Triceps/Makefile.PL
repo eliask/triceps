@@ -3,18 +3,18 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
-    NAME              => 'Biceps',
-    VERSION_FROM      => 'lib/Biceps.pm', # finds $VERSION
+    NAME              => 'Triceps',
+    VERSION_FROM      => 'lib/Triceps.pm', # finds $VERSION
     PREREQ_PM         => {}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Biceps.pm', # retrieve abstract from module
+      (ABSTRACT_FROM  => 'lib/Triceps.pm', # retrieve abstract from module
        AUTHOR         => 'Sergey Babkin <babkin@users.sf.net>') : ()),
     LIBS              => [''], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I../../cpp', # e.g., '-I. -I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
     OBJECT            => '$(O_FILES)', # link all the C files too
-    MYEXTLIB          => '../../cpp/build/libbiceps$(LIB_EXT)', # embed the static version into Perl shared module
+    MYEXTLIB          => '../../cpp/build/libtriceps$(LIB_EXT)', # embed the static version into Perl shared module
 	CC                => 'g++ -Wno-unused-variable',
 	LD                => 'g++',
 );
@@ -39,11 +39,11 @@ clean::
 	rm -f core.* *.core core vgcore.* test.vg 
 
 clobber:
-	rm Biceps.o
+	rm Triceps.o
 
-Biceps.c: const-c.inc const-xs.inc
+Triceps.c: const-c.inc const-xs.inc
 
-\$(O_FILES): BicepsPerl.h 
+\$(O_FILES): TricepsPerl.h 
 
 ";
 }
@@ -56,7 +56,7 @@ if  (eval {require ExtUtils::Constant; 1}) {
   # changes.
   my @names = (qw());
   ExtUtils::Constant::WriteConstants(
-                                     NAME         => 'Biceps',
+                                     NAME         => 'Triceps',
                                      NAMES        => \@names,
                                      DEFAULT_TYPE => 'IV',
                                      C_FILE       => 'const-c.inc',

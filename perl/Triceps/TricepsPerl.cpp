@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // Helper functions for Perl wrapper.
@@ -10,15 +10,15 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
 // ###################################################################################
 
-using namespace Biceps;
+using namespace Triceps;
 
-namespace Biceps
+namespace Triceps
 {
-namespace BicepsPerl 
+namespace TricepsPerl 
 {
 
 void clearErrMsg()
@@ -40,7 +40,7 @@ void setErrMsg(const std::string &msg)
 	if (errsv) {
 		sv_setpvn(errsv, msg.c_str(), len);
 	} else {
-		warn("Biceps: can not set $! with error: %s", msg.c_str());
+		warn("Triceps: can not set $! with error: %s", msg.c_str());
 	}
 }
 
@@ -74,7 +74,7 @@ bool svToBytes(Type::TypeId ti, SV *val, char *bytes)
 		memcpy(bytes, &xfv, sizeof(xfv));
 		break;
 	default:
-		croak("Biceps svToBytes called with unsupported type %d\n", ti);
+		croak("Triceps svToBytes called with unsupported type %d\n", ti);
 		break;
 	}
 	return true;
@@ -91,7 +91,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 	case Type::TT_UINT8:
 	case Type::TT_STRING:
 		if (SvROK(arg)) {
-			setErrMsg(strprintf("Biceps field '%s' data conversion: array reference may not be used for string and uint8", fname));
+			setErrMsg(strprintf("Triceps field '%s' data conversion: array reference may not be used for string and uint8", fname));
 			return NULL;
 		}
 		if (ti == Type::TT_UINT8) {
@@ -120,7 +120,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		slen = sizeof(double);
 		break;
 	default:
-		setErrMsg(strprintf("Biceps field '%s' data conversion: invalid field type???", fname));
+		setErrMsg(strprintf("Triceps field '%s' data conversion: invalid field type???", fname));
 		return NULL;
 		break;
 	}
@@ -130,7 +130,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 	if (SvROK(arg)) {
 		AV *lst = (AV *)SvRV(arg);
 		if (SvTYPE(lst) != SVt_PVAV) {
-			setErrMsg(strprintf("Biceps field '%s' data conversion: reference not to an array", fname));
+			setErrMsg(strprintf("Triceps field '%s' data conversion: reference not to an array", fname));
 			return NULL;
 		}
 		int llen = av_len(lst)+1; // it's the Perl $#array, so add 1
@@ -143,7 +143,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		for (int i = 0; i < llen; i++, xsv += slen) {
 			if (!svToBytes(ti, *av_fetch(lst, i, 0),  xsv)) {
 				delete buf;
-				setErrMsg(strprintf("Biceps field '%s' element %d data conversion: non-numeric value", fname, i));
+				setErrMsg(strprintf("Triceps field '%s' element %d data conversion: non-numeric value", fname, i));
 				return NULL;
 			}
 		}
@@ -152,7 +152,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		buf->size_ = slen;
 		if (!svToBytes(ti, arg,  buf->data_)) {
 			delete buf;
-			setErrMsg(strprintf("Biceps field '%s' data conversion: non-numeric value", fname));
+			setErrMsg(strprintf("Triceps field '%s' data conversion: non-numeric value", fname));
 			return NULL;
 		}
 	}
@@ -202,7 +202,7 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 			}
 			break;
 		default:
-			warn("Biceps field '%s' data conversion: invalid field type???", fname);
+			warn("Triceps field '%s' data conversion: invalid field type???", fname);
 			break;
 		}
 	} else {
@@ -234,7 +234,7 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 			}
 			break;
 		default:
-			warn("Biceps field '%s' data conversion: invalid field type???", fname);
+			warn("Triceps field '%s' data conversion: invalid field type???", fname);
 			break;
 		}
 		return newRV_noinc((SV *)lst); 
@@ -260,8 +260,8 @@ Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *opt
 	return key;
 }
 
-}; // Biceps::BicepsPerl
-}; // Biceps
+}; // Triceps::TricepsPerl
+}; // Triceps
 
-using namespace Biceps::BicepsPerl;
+using namespace Triceps::TricepsPerl;
 

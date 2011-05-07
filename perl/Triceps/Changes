@@ -1,6 +1,6 @@
-Revision history for Perl extension Biceps.
+Revision history for Perl extension Triceps.
 
 0.01  Wed Jan 26 17:53:34 2011
 	- original version; created by h2xs 1.23 with options
-		-O -n Biceps --use-old-tests
+		-O -n Triceps --use-old-tests
 

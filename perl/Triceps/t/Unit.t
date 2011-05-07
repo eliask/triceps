@@ -1,11 +1,11 @@
 #
-# This file is a part of Biceps.
+# This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
 # The test for Unit.
 
 # Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl Biceps.t'
+# `make test'. After `make install' it should work as `perl Triceps.t'
 
 #########################
 
@@ -13,7 +13,7 @@
 
 use Test;
 BEGIN { plan tests => 17 };
-use Biceps;
+use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -24,8 +24,8 @@ ok(1); # If we made it this far, we're ok.
 
 ###################### new #################################
 
-$u1 = Biceps::Unit->new("u1");
-ok(ref $u1, "Biceps::Unit");
+$u1 = Triceps::Unit->new("u1");
+ok(ref $u1, "Triceps::Unit");
 
 ###################### makeTable prep #################################
 
@@ -36,24 +36,24 @@ ok(ref $u1, "Biceps::Unit");
 	d => "float64",
 	e => "string",
 );
-$rt1 = Biceps::RowType->new( # used later
+$rt1 = Triceps::RowType->new( # used later
 	@def1
 );
-ok(ref $rt1, "Biceps::RowType");
+ok(ref $rt1, "Triceps::RowType");
 
-$it1 = Biceps::IndexType->newHashed(key => [ "b", "c" ])
-	->addNested("fifo", Biceps::IndexType->newFifo()
+$it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addNested("fifo", Triceps::IndexType->newFifo()
 	);
-ok(ref $it1, "Biceps::IndexType");
+ok(ref $it1, "Triceps::IndexType");
 
-$tt1 = Biceps::TableType->new($rt1)
+$tt1 = Triceps::TableType->new($rt1)
 	->addIndex("grouping", $it1);
-ok(ref $tt1, "Biceps::TableType");
+ok(ref $tt1, "Triceps::TableType");
 
 # check with uninitialized type
 $t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(!defined $t1);
-ok($! . "", "Biceps::Unit::makeTable: table type was not successfully initialized");
+ok($! . "", "Triceps::Unit::makeTable: table type was not successfully initialized");
 
 $res = $tt1->initialize();
 ok($res, 1);
@@ -62,25 +62,25 @@ print STDERR "$!" . "\n";
 ###################### makeTable #################################
 
 $t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
-ok(ref $t1, "Biceps::Table");
+ok(ref $t1, "Triceps::Table");
 #print STDERR "$!" . "\n";
 
 $t1 = $u1->makeTable($tt1, "SM_FORK", "tab1");
-ok(ref $t1, "Biceps::Table");
+ok(ref $t1, "Triceps::Table");
 
 $t1 = $u1->makeTable($tt1, "SM_CALL", "tab1");
-ok(ref $t1, "Biceps::Table");
+ok(ref $t1, "Triceps::Table");
 
 $t1 = $u1->makeTable($tt1, "SM_IGNORE", "tab1");
-ok(ref $t1, "Biceps::Table");
+ok(ref $t1, "Triceps::Table");
 
 $t1 = $u1->makeTable($tt1, 0, "tab1");
-ok(ref $t1, "Biceps::Table");
+ok(ref $t1, "Triceps::Table");
 
 $t1 = $u1->makeTable($tt1, 0.0, "tab1");
 ok(!defined $t1);
-ok($! . "", "Biceps::Unit::makeTable: unknown enqueuing mode string '0', if integer was meant, it has to be cast");
+ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode string '0', if integer was meant, it has to be cast");
 
 $t1 = $u1->makeTable($tt1, 20, "tab1");
 ok(!defined $t1);
-ok($! . "", "Biceps::Unit::makeTable: unknown enqueuing mode integer 20");
+ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode integer 20");

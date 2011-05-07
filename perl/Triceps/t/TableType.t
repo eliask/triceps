@@ -1,11 +1,11 @@
 #
-# This file is a part of Biceps.
+# This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
 # The test for TableType.
 
 # Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl Biceps.t'
+# `make test'. After `make install' it should work as `perl Triceps.t'
 
 #########################
 
@@ -13,7 +13,7 @@
 
 use Test;
 BEGIN { plan tests => 29 };
-use Biceps;
+use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -28,34 +28,34 @@ ok(1); # If we made it this far, we're ok.
 	d => "float64",
 	e => "string",
 );
-$rt1 = Biceps::RowType->new( # used later
+$rt1 = Triceps::RowType->new( # used later
 	@def1
 );
-ok(ref $rt1, "Biceps::RowType");
+ok(ref $rt1, "Triceps::RowType");
 
-$it1 = Biceps::IndexType->newHashed(key => [ "b", "c" ])
-	->addNested("fifo", Biceps::IndexType->newFifo()
+$it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addNested("fifo", Triceps::IndexType->newFifo()
 	);
-ok(ref $it1, "Biceps::IndexType");
+ok(ref $it1, "Triceps::IndexType");
 
 ###################### new #################################
 
-$tt1 = Biceps::TableType->new($rt1);
-ok(ref $tt1, "Biceps::TableType");
+$tt1 = Triceps::TableType->new($rt1);
+ok(ref $tt1, "Triceps::TableType");
 
 $ret = $tt1->rowType();
-ok(ref $ret, "Biceps::RowType");
+ok(ref $ret, "Triceps::RowType");
 
 ###################### addIndex #################################
 
 # tt2 actually refers to the same C++ object as tt1
 $tt2 = $tt1->addIndex("primary", $it1);
-ok(ref $tt2, "Biceps::TableType");
+ok(ref $tt2, "Triceps::TableType");
 
 
-$tt3 = Biceps::TableType->new($rt1)
+$tt3 = Triceps::TableType->new($rt1)
 	->addIndex("primary", $it1);
-ok(ref $tt3, "Biceps::TableType");
+ok(ref $tt3, "Triceps::TableType");
 
 ###################### equals #################################
 
@@ -69,7 +69,7 @@ ok($res);
 $res = $tt1->equals($tt3);
 ok($res);
 
-$tt1->addIndex("second", Biceps::IndexType->newFifo());
+$tt1->addIndex("second", Triceps::IndexType->newFifo());
 # they still point to the same object!
 $res = $tt1->equals($tt2);
 ok($res);
@@ -100,7 +100,7 @@ ok($res, "HashedIndex(b, c, ) {\n  FifoIndex() fifo,\n}");
 $it2 = $tt1->findIndex("xxx");
 ok(!defined($it2));
 
-$tt4 = Biceps::TableType->new($rt1);
+$tt4 = Triceps::TableType->new($rt1);
 $it2 = $tt4->firstLeafIndex();
 ok(!defined($it2));
 
@@ -127,7 +127,7 @@ $res = $it2->print();
 ok($res, "FifoIndex()");
 
 # adding indexes is not allowed any more
-$res = $tt1->addIndex("second", Biceps::IndexType->newFifo());
+$res = $tt1->addIndex("second", Triceps::IndexType->newFifo());
 ok(!defined $res);
-ok($! . "", "Biceps::TableType::addIndex: table is already initialized, can not add indexes any more");
+ok($! . "", "Triceps::TableType::addIndex: table is already initialized, can not add indexes any more");
 

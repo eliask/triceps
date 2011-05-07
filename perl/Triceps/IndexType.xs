@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for IndexType.
@@ -10,9 +10,9 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::IndexType		PACKAGE = Biceps::IndexType
+MODULE = Triceps::IndexType		PACKAGE = Triceps::IndexType
 ###################################################################################
 
 void
@@ -27,7 +27,7 @@ DESTROY(WrapIndexType *self)
 WrapIndexType *
 newHashed(char *CLASS, ...)
 	CODE:
-		char funcName[] = "Biceps::IndexType::newHashed";
+		char funcName[] = "Triceps::IndexType::newHashed";
 		clearErrMsg();
 
 		Autoref<NameSet> key;
@@ -67,7 +67,7 @@ newHashed(char *CLASS, ...)
 WrapIndexType *
 newFifo(char *CLASS, ...)
 	CODE:
-		char funcName[] = "Biceps::IndexType::newFifo";
+		char funcName[] = "Triceps::IndexType::newFifo";
 		clearErrMsg();
 
 		size_t limit = 0;
@@ -140,9 +140,9 @@ isLeaf(WrapIndexType *self)
 WrapIndexType *
 addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
 	CODE:
-		char funcName[] = "Biceps::IndexType::addNested";
+		char funcName[] = "Triceps::IndexType::addNested";
 		// for casting of return value
-		static char CLASS[] = "Biceps::IndexType";
+		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		IndexType *ixt = self->get();
@@ -162,9 +162,9 @@ addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
 WrapIndexType *
 findNested(WrapIndexType *self, char *subname)
 	CODE:
-		char funcName[] = "Biceps::IndexType::findNested";
+		char funcName[] = "Triceps::IndexType::findNested";
 		// for casting of return value
-		static char CLASS[] = "Biceps::IndexType";
+		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		IndexType *ixt = self->get();
@@ -182,7 +182,7 @@ WrapIndexType *
 getFirstLeaf(WrapIndexType *self)
 	CODE:
 		// for casting of return value
-		static char CLASS[] = "Biceps::IndexType";
+		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		IndexType *ixt = self->get();

@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for RowType.
@@ -10,23 +10,23 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::RowType		PACKAGE = Biceps::RowType
+MODULE = Triceps::RowType		PACKAGE = Triceps::RowType
 ###################################################################################
 
 BOOT:
 // fprintf(stderr, "DEBUG RowType items=%d sp=%p mark=%p\n", items, sp, mark);
 
 WrapRowType *
-Biceps::RowType::new(...)
+Triceps::RowType::new(...)
 	CODE:
 		RowType::FieldVec fld;
 		RowType::Field add;
 
 		clearErrMsg();
 		if (items < 3 || items % 2 != 1) {
-			setErrMsg("Usage: Biceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
+			setErrMsg("Usage: Triceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
 			XSRETURN_UNDEF;
 		}
 		for (int i = 1; i < items; i += 2) {
@@ -41,11 +41,11 @@ Biceps::RowType::new(...)
 				add.assign(fname, Type::findSimpleType(ftype));
 			}
 			if (add.type_.isNull()) {
-				setErrMsg(strprintf("%s: field '%s' has an unknown type '%s'", "Biceps::RowType::new", fname, ftype));
+				setErrMsg(strprintf("%s: field '%s' has an unknown type '%s'", "Triceps::RowType::new", fname, ftype));
 				XSRETURN_UNDEF;
 			}
 			if (add.arsz_ != RowType::Field::AR_SCALAR && add.type_->getTypeId() == Type::TT_STRING) {
-				setErrMsg(strprintf("%s: field '%s' string array type is not supported", "Biceps::RowType::new", fname));
+				setErrMsg(strprintf("%s: field '%s' string array type is not supported", "Triceps::RowType::new", fname));
 				XSRETURN_UNDEF;
 			}
 			fld.push_back(add);
@@ -53,7 +53,7 @@ Biceps::RowType::new(...)
 		Onceref<RowType> rt = new CompactRowType(fld);
 		Erref err = rt->getErrors();
 		if (!err.isNull() && !err->isEmpty()) {
-			setErrMsg("Biceps::RowType::new: " + err->print());
+			setErrMsg("Triceps::RowType::new: " + err->print());
 			XSRETURN_UNDEF;
 		}
 
@@ -92,7 +92,7 @@ makerow_hs(WrapRowType *self, ...)
 		clearErrMsg();
 		RowType *rt = self->get();
 		// for casting of return value
-		static char CLASS[] = "Biceps::Row";
+		static char CLASS[] = "Triceps::Row";
 
 		// The arguments come in pairs fieldName => value;
 		// the value may be either a simple value that will be
@@ -102,7 +102,7 @@ makerow_hs(WrapRowType *self, ...)
 		// and can not have lists.
 
 		if (items % 2 != 1) {
-			setErrMsg("Usage: Biceps::RowType::makerow_hs(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
+			setErrMsg("Usage: Triceps::RowType::makerow_hs(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
 			XSRETURN_UNDEF;
 		}
 
@@ -116,7 +116,7 @@ makerow_hs(WrapRowType *self, ...)
 			const char *fname = (const char *)SvPV_nolen(ST(i));
 			int idx  = rt->findIdx(fname);
 			if (idx < 0) {
-				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Biceps::RowType::makerow_hs", fname));
+				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Triceps::RowType::makerow_hs", fname));
 				XSRETURN_UNDEF;
 			}
 			const RowType::Field &finfo = rt->fields()[idx];
@@ -125,7 +125,7 @@ makerow_hs(WrapRowType *self, ...)
 				fields[idx].setNull();
 			} else {
 				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::RowType::makerow_hs", fname));
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makerow_hs", fname));
 					XSRETURN_UNDEF;
 				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
@@ -148,12 +148,12 @@ makerow_ar(WrapRowType *self, ...)
 		clearErrMsg();
 		RowType *rt = self->get();
 		// for casting of return value
-		static char CLASS[] = "Biceps::Row";
+		static char CLASS[] = "Triceps::Row";
 
 		int nf = rt->fieldCount();
 
 		if (items > nf + 1) {
-			setErrMsg(strprintf("Biceps::RowType::makerow_ar: %d args, only %d fields in ", items-1, nf) + rt->print(NOINDENT));
+			setErrMsg(strprintf("Triceps::RowType::makerow_ar: %d args, only %d fields in ", items-1, nf) + rt->print(NOINDENT));
 			XSRETURN_UNDEF;
 		}
 
@@ -168,7 +168,7 @@ makerow_ar(WrapRowType *self, ...)
 
 			if (SvOK(ST(i))) { // undef translates to null, which is already set
 				if (SvROK(ST(i)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::RowType::makerow_ar", fname));
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makerow_ar", fname));
 					XSRETURN_UNDEF;
 				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i), fname);

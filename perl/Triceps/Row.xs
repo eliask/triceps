@@ -1,5 +1,5 @@
 //
-// This file is a part of Biceps.
+// This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
 // The wrapper for Row.
@@ -10,9 +10,9 @@
 
 #include "ppport.h"
 
-#include "BicepsPerl.h"
+#include "TricepsPerl.h"
 
-MODULE = Biceps::Row		PACKAGE = Biceps::Row
+MODULE = Triceps::Row		PACKAGE = Triceps::Row
 ###################################################################################
 
 BOOT:
@@ -82,7 +82,7 @@ copymod(WrapRow *self, ...)
 		Row *r = self->ref_.get();
 
 		// for casting of return value
-		static char CLASS[] = "Biceps::Row";
+		static char CLASS[] = "Triceps::Row";
 
 		// The arguments come in pairs fieldName => value;
 		// the value may be either a simple value that will be
@@ -92,7 +92,7 @@ copymod(WrapRow *self, ...)
 		// and can not have lists.
 
 		if (items % 2 != 1) {
-			setErrMsg("Usage: Biceps::Row::copymod(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs");
+			setErrMsg("Usage: Triceps::Row::copymod(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs");
 			XSRETURN_UNDEF;
 		}
 
@@ -107,7 +107,7 @@ copymod(WrapRow *self, ...)
 			const char *fname = (const char *)SvPV_nolen(ST(i));
 			int idx  = rt->findIdx(fname);
 			if (idx < 0) {
-				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Biceps::Row::copymod", fname));
+				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Triceps::Row::copymod", fname));
 				XSRETURN_UNDEF;
 			}
 			const RowType::Field &finfo = rt->fields()[idx];
@@ -116,7 +116,7 @@ copymod(WrapRow *self, ...)
 				fields[idx].setNull();
 			} else {
 				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Biceps::Row::copymod", fname));
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::Row::copymod", fname));
 					XSRETURN_UNDEF;
 				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
@@ -142,7 +142,7 @@ get(WrapRow *self, char *fname)
 
 		int i = t->findIdx(fname);
 		if ( i < 0 ) {
-			setErrMsg(strprintf("%s: unknown field '%s'", "Biceps::Row::get", fname));
+			setErrMsg(strprintf("%s: unknown field '%s'", "Triceps::Row::get", fname));
 			XSRETURN_UNDEF;
 		}
 
