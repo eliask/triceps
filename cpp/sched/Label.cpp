@@ -39,7 +39,7 @@ Erref Label::chain(Onceref<Label> lab)
 		return err;
 	}
 	ChainedVec path;
-	if (lab->findChained(this, path)) {
+	if (lab.get() == this || lab->findChained(this, path)) {
 		Erref err = new Errors;
 		err->appendMsg(true, "labels must not be chained in a loop");
 		string dep = "  " + getName() + "->" + lab->getName();

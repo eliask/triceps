@@ -128,6 +128,14 @@ UTESTCASE mklabel(Utest *utest)
 		);
 	}
 
+	ecloop = lab2->chain(lab2); // this tries to create a circular chain of label to itself
+	if (!UT_ASSERT(ecloop->hasError())) {
+		UT_IS(ecloop->print(), 
+			"labels must not be chained in a loop\n"
+			"  lab2->lab2\n"
+		);
+	}
+
 	UT_IS(lab1->getChain().size(), 1);
 	UT_ASSERT(lab1->getChain()[0] == lab2);
 	
