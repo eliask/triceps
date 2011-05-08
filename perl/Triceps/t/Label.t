@@ -114,3 +114,6 @@ ok(join(", ", map {$_->getName()} @chain), "tab1.in, tab1.in");
 $lb->clearChained();
 @chain = $lb->getChain();
 ok($#chain, -1);
+
+######################### makeRowop ###################################
+# tested in Rowop.t
