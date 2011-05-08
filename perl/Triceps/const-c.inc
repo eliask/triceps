@@ -59,10 +59,20 @@ __END__
 		return PERL_constant_ISIV;
 		break;
 	case 'O':
-		*iv_return = Rowop::stringOpcode(name);
-		if (*iv_return == Rowop::OP_BAD)
-			return PERL_constant_NOTFOUND;
-		return PERL_constant_ISIV;
+		switch(name[1]) {
+		case 'P':
+			*iv_return = Rowop::stringOpcode(name);
+			if (*iv_return == Rowop::OP_BAD)
+				return PERL_constant_NOTFOUND;
+			return PERL_constant_ISIV;
+			break;
+		case 'C':
+			*iv_return = Rowop::stringOcf(name);
+			if (*iv_return == -1)
+				return PERL_constant_NOTFOUND;
+			return PERL_constant_ISIV;
+			break;
+		}
 		break;
 	}
 	return PERL_constant_NOTFOUND;

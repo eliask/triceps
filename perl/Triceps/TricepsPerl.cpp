@@ -260,6 +260,47 @@ Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *opt
 	return key;
 }
 
+bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em)
+{
+	int intem;
+	// accept enqueueing mode as either number of name
+	if (SvIOK(enqMode)) {
+		intem = SvIV(enqMode);
+		if (Gadget::emString(intem, NULL) == NULL) {
+			setErrMsg(strprintf("%s: unknown enqueuing mode integer %d", funcName, intem));
+			return false;
+		}
+		// em = (Gadget::EnqMode)intem;
+	} else {
+		const char *emname = SvPV_nolen(enqMode);
+		intem = Gadget::stringEm(emname);
+		if (intem == -1) {
+			setErrMsg(strprintf("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname));
+			return false;
+		}
+	}
+	em = (Gadget::EnqMode)intem;
+	return true;
+}
+
+bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
+{
+	int intop;
+	// accept opcode as either number of name
+	if (SvIOK(opcode)) {
+		intop = SvIV(opcode);
+	} else {
+		const char *opname = SvPV_nolen(opcode);
+		intop = Rowop::stringOpcode(opname);
+		if (intop == Rowop::OP_BAD) {
+			setErrMsg(strprintf("%s: unknown opcode string '%s', if integer was meant, it has to be cast", funcName, opname));
+			return false;
+		}
+	}
+	op = (Rowop::Opcode)intop;
+	return true;
+}
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 

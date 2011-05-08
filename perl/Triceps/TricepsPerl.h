@@ -65,6 +65,22 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 // @return - the parsed NameSet or NULL on error
 Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *optval);
 
+// Parse an enqueuing mode as an integer or string constant to an enum.
+// On error calls setErrMsg and returns false.
+// @param funcName - calling function name, for error messages
+// @param enqMode - SV containing the value to parse
+// @param em - place to return the parsed value
+// @return - true on success or false on error
+bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em);
+
+// Parse an opcode as an integer or string constant to an enum.
+// On error calls setErrMsg and returns false.
+// @param funcName - calling function name, for error messages
+// @param opcode - SV containing the value to parse
+// @param op - place to return the parsed value
+// @return - true on success or false on error
+bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op);
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 

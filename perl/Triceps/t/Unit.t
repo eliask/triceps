@@ -57,7 +57,7 @@ ok($! . "", "Triceps::Unit::makeTable: table type was not successfully initializ
 
 $res = $tt1->initialize();
 ok($res, 1);
-print STDERR "$!" . "\n";
+#print STDERR "$!" . "\n";
 
 ###################### makeTable #################################
 

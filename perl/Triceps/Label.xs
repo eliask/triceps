@@ -124,49 +124,23 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 		Row *r = row->ref_.get();
 
 		if ((lt != rt) && !lt->match(rt)) {
-			setErrMsg(strprintf("%s: row types do not match\n  Label:\n", funcName)
-				+ lt->print("    ") + "\n  Row:\n" + rt->print("    ")
+			setErrMsg(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
+				+ lt->print("    ") + "\n  Row:\n    " + rt->print("    ")
 			);
 			XSRETURN_UNDEF;
 		}
 
-		int intop;
-		// accept opcode as either number of name
-		if (SvIOK(opcode)) {
-			intop = SvIV(opcode);
-		} else {
-			const char *opname = SvPV_nolen(opcode);
-			intop = Rowop::stringOpcode(opname);
-			if (intop == -1) {
-				setErrMsg(strprintf("%s: unknown opcode string '%s', if integer was meant, it has to be cast", funcName, opname));
-				XSRETURN_UNDEF;
-			}
-		}
-		Rowop::Opcode op = (Rowop::Opcode)intop;
+		Rowop::Opcode op;
+		if (!parseOpcode(funcName, opcode, op))
+			XSRETURN_UNDEF;
 
 		Autoref<Rowop> rop;
 		if (items == 3) {
 			rop = new Rowop(lab, op, r);
 		} else if (items == 4) {
-			SV *enqMode = ST(3);
-			int intem;
-			// accept enqueueing mode as either number of name
-			if (SvIOK(enqMode)) {
-				intem = SvIV(enqMode);
-				if (Gadget::emString(intem, NULL) == NULL) {
-					setErrMsg(strprintf("%s: unknown enqueuing mode integer %d", funcName, intem));
-					XSRETURN_UNDEF;
-				}
-				// em = (Gadget::EnqMode)intem;
-			} else {
-				const char *emname = SvPV_nolen(enqMode);
-				intem = Gadget::stringEm(emname);
-				if (intem == -1) {
-					setErrMsg(strprintf("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname));
-					XSRETURN_UNDEF;
-				}
-			}
-			Gadget::EnqMode em = (Gadget::EnqMode)intem;
+			Gadget::EnqMode em;
+			if (!parseEnqMode(funcName, ST(3), em))
+				XSRETURN_UNDEF;
 
 			rop = new Rowop(lab, op, r, em);
 		} else {

@@ -41,24 +41,9 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 		clearErrMsg();
 		TableType *tbt = wtt->get();
 
-		int intem;
-		// accept enqueueing mode as either number of name
-		if (SvIOK(enqMode)) {
-			intem = SvIV(enqMode);
-			if (Gadget::emString(intem, NULL) == NULL) {
-				setErrMsg(strprintf("%s: unknown enqueuing mode integer %d", funcName, intem));
-				XSRETURN_UNDEF;
-			}
-			// em = (Gadget::EnqMode)intem;
-		} else {
-			const char *emname = SvPV_nolen(enqMode);
-			intem = Gadget::stringEm(emname);
-			if (intem == -1) {
-				setErrMsg(strprintf("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname));
-				XSRETURN_UNDEF;
-			}
-		}
-		Gadget::EnqMode em = (Gadget::EnqMode)intem;
+		Gadget::EnqMode em;
+		if (!parseEnqMode(funcName, enqMode, em))
+			XSRETURN_UNDEF;
 
 		Autoref<Table> t = tbt->makeTable(unit->get(), em, name);
 		if (t.isNull()) {

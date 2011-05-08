@@ -114,12 +114,12 @@ Valname opcodeFlags[] = {
 	{ -1, NULL }
 };
 
-const char *ocfString(int flag, const char *def)
+const char *Rowop::ocfString(int flag, const char *def)
 {
 	return enum2string(opcodeFlags, flag);
 }
 
-int stringOcf(const char *flag)
+int Rowop::stringOcf(const char *flag)
 {
 	return string2enum(opcodeFlags, flag);
 }

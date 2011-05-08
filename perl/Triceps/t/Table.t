@@ -50,7 +50,7 @@ ok(ref $tt1, "Triceps::TableType");
 
 $res = $tt1->initialize();
 ok($res, 1);
-print STDERR "$!" . "\n";
+#print STDERR "$!" . "\n";
 
 $t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");

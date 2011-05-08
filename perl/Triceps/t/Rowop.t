@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 11 };
+BEGIN { plan tests => 34 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -39,6 +39,32 @@ $rt1 = Triceps::RowType->new( # used later
 );
 ok(ref $rt1, "Triceps::RowType");
 
+# a type matching rt1
+@def2 = (
+	xa => "uint8",
+	xb => "int32",
+	xc => "int64",
+	xd => "float64",
+	xe => "string",
+);
+$rt2 = Triceps::RowType->new( # used later
+	@def2
+);
+ok(ref $rt2, "Triceps::RowType");
+
+# a type not matching rt1
+@def3 = (
+	e => "string",
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+);
+$rt3 = Triceps::RowType->new( # used later
+	@def3
+);
+ok(ref $rt3, "Triceps::RowType");
+
 $it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
 	->addNested("fifo", Triceps::IndexType->newFifo()
 	);
@@ -50,7 +76,7 @@ ok(ref $tt1, "Triceps::TableType");
 
 $res = $tt1->initialize();
 ok($res, 1);
-print STDERR "$!" . "\n";
+#print STDERR "$!" . "\n";
 
 $t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");
@@ -59,20 +85,93 @@ $lb = $t1->getInputLabel();
 ok(ref $lb, "Triceps::Label");
 
 # create a row for Rowop building
-@dataset = (
+@dataset1 = (
 	a => 123,
 	b => 456,
 	c => 3e15+0,
 	d => 3.14,
 	e => "text",
 );
-$row1 = $rt1->makerow_hs(@dataset);
+$row1 = $rt1->makerow_hs(@dataset1);
 ok(ref $row1, "Triceps::Row");
+
+@dataset2 = (
+	xa => 123,
+	xb => 456,
+	xc => 3e15+0,
+	xd => 3.14,
+	xe => "text",
+);
+$row2 = $rt2->makerow_hs(@dataset2);
+ok(ref $row2, "Triceps::Row");
+
+@dataset3 = (
+	e => "text",
+	a => 123,
+	b => 456,
+	c => 3e15+0,
+	d => 3.14,
+);
+$row3 = $rt3->makerow_hs(@dataset3);
+ok(ref $row3, "Triceps::Row");
 
 ######################### factory  #############################
 
-$rop = $lb->makeRowop("OP_INSERT", $row1);
-ok(ref $rop, "Triceps::Rowop");
+$rop1 = $lb->makeRowop("OP_INSERT", $row1);
+ok(ref $rop1, "Triceps::Rowop");
 
 $rop = $lb->makeRowop(&Triceps::OP_INSERT, $row1);
 ok(ref $rop, "Triceps::Rowop");
+
+$rop = $lb->makeRowop("OCF_INSERT", $row1);
+ok(!defined $rop);
+ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OCF_INSERT', if integer was meant, it has to be cast");
+
+$rop = $lb->makeRowop("OP_INSERT", $row1, "SM_CALL");
+ok(ref $rop, "Triceps::Rowop");
+
+$rop = $lb->makeRowop("OP_INSERT", $row1, &Triceps::SM_CALL);
+ok(ref $rop, "Triceps::Rowop");
+
+$rop = $lb->makeRowop("OP_INSERT", $row1, "something");
+ok(!defined $rop);
+ok($! . "", "Triceps::Label::makeRowop: unknown enqueuing mode string 'something', if integer was meant, it has to be cast");
+
+$rop = $lb->makeRowop("OP_INSERT", $row1, "SM_CALL", 9);
+ok(!defined $rop);
+ok($! . "", "Usage: Triceps::Label::makeRowop(label, opcode, row [, enqMode]), received too many arguments");
+
+# a matching row type is OK
+$rop2 = $lb->makeRowop("OP_DELETE", $row2, "SM_CALL");
+ok(ref $rop2, "Triceps::Rowop");
+
+$rop = $lb->makeRowop("OP_INSERT", $row3, "SM_CALL");
+ok(!defined $rop);
+ok($! . "", "Triceps::Label::makeRowop: row types do not match\n  Label:\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  Row:\n    row {\n      string e,\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n    }");
+
+######################### copy and sameness #############################
+
+# XXX when get a genuine way to make the same rowop, check it for same()
+
+$v = $rop1->same($rop1);
+ok($v);
+
+$v = $rop1->same($rop2);
+ok(!$v);
+
+$rop3 = $rop1->copy();
+ok(ref $rop3, "Triceps::Rowop");
+$v = $rop1->same($rop3);
+ok(!$v);
+
+######################### getting info  #############################
+
+$v = $rop1->getOpcode();
+ok($v, &Triceps::OP_INSERT);
+$v = $rop2->getOpcode();
+ok($v, &Triceps::OP_DELETE);
+
+$v = $rop1->isInsert();
+ok($v);
+$v = $rop2->isInsert();
+ok(!$v);
