@@ -116,7 +116,7 @@ Valname opcodeFlags[] = {
 
 const char *Rowop::ocfString(int flag, const char *def)
 {
-	return enum2string(opcodeFlags, flag);
+	return enum2string(opcodeFlags, flag, def);
 }
 
 int Rowop::stringOcf(const char *flag)

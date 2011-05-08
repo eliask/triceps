@@ -219,6 +219,21 @@ UTESTCASE rowop(Utest *utest)
 	UT_IS(string(Rowop::opcodeString((Rowop::Opcode)0x332)), "[D]");
 	UT_IS(string(Rowop::opcodeString((Rowop::Opcode)0x333)), "[ID]");
 
+	UT_IS(Rowop::stringOpcode("OP_NOP"), Rowop::OP_NOP);
+	UT_IS(Rowop::stringOpcode("OP_INSERT"), Rowop::OP_INSERT);
+	UT_IS(Rowop::stringOpcode("OP_DELETE"), Rowop::OP_DELETE);
+	UT_IS(Rowop::stringOpcode("[I]"), Rowop::OP_BAD);
+
+	UT_IS(string(Rowop::ocfString(Rowop::OCF_INSERT)), "OCF_INSERT");
+	UT_IS(string(Rowop::ocfString(Rowop::OCF_DELETE)), "OCF_DELETE");
+	UT_IS(string(Rowop::ocfString((Rowop::OpcodeFlags)0x333)), "???");
+	UT_IS(string(Rowop::ocfString((Rowop::OpcodeFlags)0x333, "unknown")), "unknown");
+	UT_IS(Rowop::ocfString((Rowop::OpcodeFlags)0x333, NULL), NULL);
+
+	UT_IS(Rowop::stringOcf("OCF_INSERT"), Rowop::OCF_INSERT);
+	UT_IS(Rowop::stringOcf("OCF_DELETE"), Rowop::OCF_DELETE);
+	UT_IS(Rowop::stringOcf("OP_INSERT"), -1);
+
 	// getting back the components
 	UT_IS(op1->getOpcode(), Rowop::OP_NOP);
 	UT_IS(op2->getOpcode(), Rowop::OP_INSERT);
