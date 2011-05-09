@@ -23,6 +23,7 @@ XS(boot_Triceps__Rowop);
 XS(boot_Triceps__RowType); 
 XS(boot_Triceps__IndexType); 
 XS(boot_Triceps__TableType); 
+XS(boot_Triceps__Tray); 
 XS(boot_Triceps__Unit); 
 XS(boot_Triceps__Table); 
 #ifdef __cplusplus
@@ -58,6 +59,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__TableType(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__Tray(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 

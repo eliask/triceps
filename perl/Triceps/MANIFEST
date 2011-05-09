@@ -5,6 +5,7 @@ Row.xs
 TableType.xs
 Table.xs
 Triceps.xs
+Tray.xs
 Unit.xs
 Changes
 Makefile.PL

@@ -130,7 +130,7 @@ public:
 
 	ParentClass *getParent() const
 	{
-		return ref_.get();
+		return parent_.get();
 	}
 
 	// returns true if the parent doesn't match
