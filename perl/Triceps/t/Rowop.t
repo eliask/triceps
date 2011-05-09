@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 34 };
+BEGIN { plan tests => 43 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -166,12 +166,35 @@ ok(!$v);
 
 ######################### getting info  #############################
 
+$rop3 = $lb->makeRowop("OP_NOP", $row1);
+ok(ref $rop3, "Triceps::Rowop");
+
 $v = $rop1->getOpcode();
 ok($v, &Triceps::OP_INSERT);
 $v = $rop2->getOpcode();
 ok($v, &Triceps::OP_DELETE);
+$v = $rop3->getOpcode();
+ok($v, &Triceps::OP_NOP);
 
 $v = $rop1->isInsert();
 ok($v);
 $v = $rop2->isInsert();
 ok(!$v);
+$v = $rop3->isInsert();
+ok(!$v);
+
+$v = $rop1->isDelete();
+ok(!$v);
+$v = $rop2->isDelete();
+ok($v);
+$v = $rop3->isDelete();
+ok(!$v);
+
+$v = $rop1->isNop();
+ok(!$v);
+$v = $rop2->isNop();
+ok(!$v);
+$v = $rop3->isNop();
+ok($v);
+
+# the static isInsert() etc are in the base Triceps:: class

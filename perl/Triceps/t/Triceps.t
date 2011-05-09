@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 8 };
+BEGIN { plan tests => 19 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -31,3 +31,20 @@ ok(&Triceps::SM_IGNORE, 3);
 ok(&Triceps::OP_NOP, 0);
 ok(&Triceps::OP_INSERT, 1);
 ok(&Triceps::OP_DELETE, 2);
+
+ok(&Triceps::OCF_INSERT, 1);
+ok(&Triceps::OCF_DELETE, 2);
+
+# tests of the opcodes
+
+ok(&Triceps::isInsert(&Triceps::OP_INSERT));
+ok(!&Triceps::isInsert(&Triceps::OP_DELETE));
+ok(!&Triceps::isInsert(&Triceps::OP_NOP));
+
+ok(!&Triceps::isDelete(&Triceps::OP_INSERT));
+ok(&Triceps::isDelete(&Triceps::OP_DELETE));
+ok(!&Triceps::isDelete(&Triceps::OP_NOP));
+
+ok(!&Triceps::isNop(&Triceps::OP_INSERT));
+ok(!&Triceps::isNop(&Triceps::OP_DELETE));
+ok(&Triceps::isNop(&Triceps::OP_NOP));

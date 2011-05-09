@@ -56,11 +56,31 @@ getOpcode(WrapRowop *self)
 	OUTPUT:
 		RETVAL
 
+# the static isInsert() etc are in the base Triceps:: class
+
 int
 isInsert(WrapRowop *self)
 	CODE:
 		clearErrMsg();
 		Rowop *rop = self->get();
 		RETVAL = rop->isInsert();
+	OUTPUT:
+		RETVAL
+
+int
+isDelete(WrapRowop *self)
+	CODE:
+		clearErrMsg();
+		Rowop *rop = self->get();
+		RETVAL = rop->isDelete();
+	OUTPUT:
+		RETVAL
+
+int
+isNop(WrapRowop *self)
+	CODE:
+		clearErrMsg();
+		Rowop *rop = self->get();
+		RETVAL = rop->isNop();
 	OUTPUT:
 		RETVAL

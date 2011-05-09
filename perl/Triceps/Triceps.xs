@@ -73,3 +73,28 @@ BOOT:
 
 INCLUDE: const-xs.inc
 
+# static functions from Rowop, in perl they move to Triceps::
+
+int
+isInsert(int op)
+	CODE:
+		clearErrMsg();
+		RETVAL = Rowop::isInsert(op);
+	OUTPUT:
+		RETVAL
+
+int
+isDelete(int op)
+	CODE:
+		clearErrMsg();
+		RETVAL = Rowop::isDelete(op);
+	OUTPUT:
+		RETVAL
+
+int
+isNop(int op)
+	CODE:
+		clearErrMsg();
+		RETVAL = Rowop::isNop(op);
+	OUTPUT:
+		RETVAL
