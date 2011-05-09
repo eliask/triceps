@@ -151,3 +151,14 @@ get(WrapRow *self, char *fname)
 		bool notNull = t->getField(r, i, data, dlen);
 		XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 
+# check whether both refs point to the same type object
+int
+same(WrapRow *self, WrapRow *other)
+	CODE:
+		clearErrMsg();
+		Row *r1 = self->get();
+		Row *r2 = other->get();
+		RETVAL = (r1 == r2);
+	OUTPUT:
+		RETVAL
+

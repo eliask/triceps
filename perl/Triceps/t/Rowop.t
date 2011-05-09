@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 43 };
+BEGIN { plan tests => 48 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -198,3 +198,14 @@ $v = $rop3->isNop();
 ok($v);
 
 # the static isInsert() etc are in the base Triceps:: class
+
+$lb2 = $rop1->getLabel();
+ok(ref $lb2, "Triceps::Label");
+ok($lb->same($lb2));
+
+$row = $rop1->getRow();
+ok(ref $row, "Triceps::Row");
+ok($row1->same($row));
+
+$v = $rop1->getEnqMode();
+ok($v, &Triceps::SM_FORK);

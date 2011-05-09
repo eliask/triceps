@@ -84,3 +84,36 @@ isNop(WrapRowop *self)
 		RETVAL = rop->isNop();
 	OUTPUT:
 		RETVAL
+
+WrapLabel *
+getLabel(WrapRowop *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		Rowop *rop = self->get();
+		RETVAL = new WrapLabel(const_cast<Label *>(rop->getLabel()));
+	OUTPUT:
+		RETVAL
+
+WrapRow *
+getRow(WrapRowop *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Row";
+		clearErrMsg();
+		Rowop *rop = self->get();
+		RETVAL = new WrapRow(const_cast<RowType *>(rop->getLabel()->getType()), const_cast<Row *>(rop->getRow()));
+	OUTPUT:
+		RETVAL
+
+int
+getEnqMode(WrapRowop *self)
+	CODE:
+		clearErrMsg();
+		Rowop *rop = self->get();
+		RETVAL = rop->getEnqMode();
+	OUTPUT:
+		RETVAL
+
+# XXX do opcodeString(), ocfString()?
