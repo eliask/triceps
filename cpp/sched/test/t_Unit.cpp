@@ -176,6 +176,8 @@ UTESTCASE rowop(Utest *utest)
 	Autoref<Label> lab2 = new DummyLabel(unit, rt1, "lab2");
 	Autoref<Label> lab3 = new DummyLabel(unit, rt1, "lab3");
 
+	UT_IS(lab1->getUnit(), unit.get());
+
 	// now make the rowops
 	Autoref<Rowop> op1 = new Rowop(lab1, Rowop::OP_NOP, NULL);
 	UT_ASSERT(!op1.isNull()); // make the compiler shut up about unused vars

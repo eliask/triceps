@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 17 };
+BEGIN { plan tests => 21 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -26,6 +26,14 @@ ok(1); # If we made it this far, we're ok.
 
 $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
+
+$u2 = Triceps::Unit->new("u2");
+ok(ref $u2, "Triceps::Unit");
+
+$v = $u1->same($u1);
+ok($v);
+$v = $u1->same($u2);
+ok(!$v);
 
 ###################### makeTable prep #################################
 
@@ -65,6 +73,9 @@ $t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");
 #print STDERR "$!" . "\n";
 
+$v = $t1->getUnit();
+ok($u1->same($v));
+
 $t1 = $u1->makeTable($tt1, "SM_FORK", "tab1");
 ok(ref $t1, "Triceps::Table");
 
@@ -84,3 +95,6 @@ ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode string '0', if int
 $t1 = $u1->makeTable($tt1, 20, "tab1");
 ok(!defined $t1);
 ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode integer 20");
+
+###################### makeTray #################################
+# see in Tray.t

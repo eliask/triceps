@@ -62,4 +62,16 @@ getType(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
+WrapUnit*
+getUnit(WrapTable *self)
+	CODE:
+		clearErrMsg();
+		Table *tab = self->get();
+
+		// for casting of return value
+		static char CLASS[] = "Triceps::Unit";
+		RETVAL = new WrapUnit(tab->getUnit());
+	OUTPUT:
+		RETVAL
+
 # XXX add the rest of methods

@@ -80,6 +80,11 @@ public:
 		name_ = name;
 	}
 
+	Unit *getUnit() const
+	{
+		return unit_;
+	}
+
 protected:
 	// The subclasses re-define this method to do something useful.
 	//

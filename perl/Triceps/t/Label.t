@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 26 };
+BEGIN { plan tests => 27 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -76,6 +76,9 @@ ok($v);
 
 $v = $lb->same($t1->getInputLabel());
 ok(!$v);
+
+$v = $lb->getUnit();
+ok($u1->same($v));
 
 ########################## chaining #################################################
 

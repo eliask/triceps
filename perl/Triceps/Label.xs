@@ -37,6 +37,18 @@ getType(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
+WrapUnit*
+getUnit(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+
+		// for casting of return value
+		static char CLASS[] = "Triceps::Unit";
+		RETVAL = new WrapUnit(lab->getUnit());
+	OUTPUT:
+		RETVAL
+
 # returns 1 on success, 0 on error
 int
 chain(WrapLabel *self, WrapLabel *other)
