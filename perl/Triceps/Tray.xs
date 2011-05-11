@@ -85,7 +85,7 @@ clear(WrapTray *self)
 
 # returns itself (or undef on error)
 # (the code is almost the same as Triceps::Unit::makeTray)
-WrapTray *
+SV *
 push(WrapTray *self, ...)
 	CODE:
 		char funcName[] = "Triceps::Tray::push";
@@ -120,7 +120,8 @@ push(WrapTray *self, ...)
 			WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
 			tray->push_back(var->get());
 		}
-		RETVAL = new WrapTray(unit, tray);  // can't figure out how to copyi the Perl SV right
+		SvREFCNT_inc(ST(0));
+		RETVAL = ST(0);
 	OUTPUT:
 		RETVAL
 
