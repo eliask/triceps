@@ -27,7 +27,7 @@ DESTROY(WrapIndexType *self)
 WrapIndexType *
 newHashed(char *CLASS, ...)
 	CODE:
-		char funcName[] = "Triceps::IndexType::newHashed";
+		char *funcName = (char *) "Triceps::IndexType::newHashed";
 		clearErrMsg();
 
 		Autoref<NameSet> key;
@@ -67,7 +67,7 @@ newHashed(char *CLASS, ...)
 WrapIndexType *
 newFifo(char *CLASS, ...)
 	CODE:
-		char funcName[] = "Triceps::IndexType::newFifo";
+		char *funcName = (char *) "Triceps::IndexType::newFifo";
 		clearErrMsg();
 
 		size_t limit = 0;
@@ -140,7 +140,7 @@ isLeaf(WrapIndexType *self)
 WrapIndexType *
 addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
 	CODE:
-		char funcName[] = "Triceps::IndexType::addNested";
+		char *funcName = (char *) "Triceps::IndexType::addNested";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
@@ -162,7 +162,7 @@ addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
 WrapIndexType *
 findNested(WrapIndexType *self, char *subname)
 	CODE:
-		char funcName[] = "Triceps::IndexType::findNested";
+		char *funcName = (char *) "Triceps::IndexType::findNested";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 

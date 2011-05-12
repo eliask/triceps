@@ -78,7 +78,7 @@ same(WrapTableType *self, WrapTableType *other)
 WrapTableType *
 addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 	CODE:
-		char funcName[] = "Triceps::TableType::addIndex";
+		char *funcName = (char *) "Triceps::TableType::addIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::TableType";
 
@@ -100,7 +100,7 @@ addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 WrapIndexType *
 findIndex(WrapTableType *self, char *subname)
 	CODE:
-		char funcName[] = "Triceps::TableType::findIndex";
+		char *funcName = (char *) "Triceps::TableType::findIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
@@ -119,7 +119,7 @@ findIndex(WrapTableType *self, char *subname)
 WrapIndexType *
 firstLeafIndex(WrapTableType *self)
 	CODE:
-		char funcName[] = "Triceps::TableType::firstLeafIndex";
+		char *funcName = (char *) "Triceps::TableType::firstLeafIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
