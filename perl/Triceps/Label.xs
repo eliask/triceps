@@ -164,5 +164,6 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 	OUTPUT:
 		RETVAL
 
+# add getCode() for PerlLabel
 
 # XXX add the rest of methods!

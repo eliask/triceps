@@ -81,6 +81,27 @@ bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em);
 // @return - true on success or false on error
 bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op);
 
+// Label that executes Perl code
+class PerlLabel : public Label
+{
+public:
+	
+	// @param unit - the unit where this label belongs
+	// @param rtype - type of row to be handled by this label
+	// @param name - a human-readable name of this label, for tracing
+	// @param code - Perl code reference for processing the rows; the caller must check
+	//               for correctness; will make a copy of it (because if keeping a reference,
+	//               SV may change later, a copy is guaranteed to stay the same).
+	PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, SV *code);
+	~PerlLabel();
+
+protected:
+	// from Label
+	virtual void execute(Rowop *arg) const;
+
+	SV *code_; // reference to Perl code
+};
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 

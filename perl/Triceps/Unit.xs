@@ -148,4 +148,41 @@ makeTray(WrapUnit *self, ...)
 	OUTPUT:
 		RETVAL
 
+# make a label without any executable code (that is useful for chaining)
+WrapLabel *
+makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::makeDummyLabel";
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+
+		clearErrMsg();
+		Unit *unit = self->get();
+		RowType *rt = wrt->get();
+
+		RETVAL = new WrapLabel(new DummyLabel(unit, rt, name));
+	OUTPUT:
+		RETVAL
+
+# make a label with executable Perl code
+WrapLabel *
+makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *code)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::makeLabel";
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+
+		if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
+			setErrMsg( "Triceps::Unit::makeLabel: code must be a reference to Perl function" );
+			XSRETURN_UNDEF;
+		}
+
+		clearErrMsg();
+		Unit *unit = self->get();
+		RowType *rt = wrt->get();
+
+		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, code));
+	OUTPUT:
+		RETVAL
+
 # XXX add the rest of methods

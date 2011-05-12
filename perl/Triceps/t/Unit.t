@@ -99,4 +99,4 @@ ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode integer 20");
 ###################### makeTray #################################
 # see in Tray.t
 
-# XXX test schedule()
+# XXX test schedule(), makeDummyLabel(), makeLabel()

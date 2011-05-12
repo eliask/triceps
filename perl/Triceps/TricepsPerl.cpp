@@ -301,6 +301,57 @@ bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
 	return true;
 }
 
+///////////////////////// PerlLabel ///////////////////////////////////////////////
+
+PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, SV *code) :
+	Label(unit, rtype, name)
+{
+	code_ = newSV(0);
+	sv_setsv(code_, code);
+}
+
+PerlLabel::~PerlLabel()
+{
+	SvREFCNT_dec(code_);
+}
+
+void PerlLabel::execute(Rowop *arg) const
+{
+	dSP;
+
+	WrapRowop *wrop = new WrapRowop(arg);
+	SV *svrop = newSV(0);
+	sv_setref_pv(svrop, "Triceps::Rowop", (void *)wrop);
+
+	WrapLabel *wlab = new WrapLabel(const_cast<PerlLabel *>(this));
+	SV *svlab = newSV(0);
+	sv_setref_pv(svlab, "Triceps::Label", (void *)wlab);
+
+	ENTER; SAVETMPS;
+
+	PUSHMARK(SP); 
+	XPUSHs(svlab);
+	XPUSHs(svrop);
+	PUTBACK; 
+
+	call_sv(code_, G_VOID|G_EVAL);
+
+	SPAGAIN;
+
+	FREETMPS; LEAVE;
+
+	// this calls the DELETE methods on wrappers
+	SvREFCNT_dec(svrop);
+	SvREFCNT_dec(svlab);
+
+	if (SvTRUE(ERRSV)) {
+		// XXXX If in eval, may cause issues by doing longjmp(), so maybe better just warn and/or exit(1)?
+		Perl_croak(aTHX_ "Fatal error in unit %s label %s handler: %s", 
+			getUnit()->getName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
+
+	}
+}
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 
