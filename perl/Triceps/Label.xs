@@ -127,7 +127,7 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 		// for casting of return value
 		static char CLASS[] = "Triceps::Rowop";
 
-		char *funcName = (char *) "Triceps::Label::makeRowop";
+		static char funcName[] =  "Triceps::Label::makeRowop";
 
 		clearErrMsg();
 		Label *lab = self->get();

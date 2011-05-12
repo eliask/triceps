@@ -37,7 +37,7 @@ Triceps::Unit::new(char *name)
 int
 schedule(WrapUnit *self, ...)
 	CODE:
-		char *funcName = (char *) "Triceps::Unit::schedule";
+		static char funcName[] =  "Triceps::Unit::schedule";
 		clearErrMsg();
 		Unit *u = self->get();
 
@@ -89,7 +89,7 @@ same(WrapUnit *self, WrapUnit *other)
 WrapTable *
 makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 	CODE:
-		char *funcName = (char *) "Triceps::Unit::makeTable";
+		static char funcName[] =  "Triceps::Unit::makeTable";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Table";
 
@@ -112,7 +112,7 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 WrapTray *
 makeTray(WrapUnit *self, ...)
 	CODE:
-		char *funcName = (char *) "Triceps::Unit::makeTray";
+		static char funcName[] =  "Triceps::Unit::makeTray";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Tray";
 

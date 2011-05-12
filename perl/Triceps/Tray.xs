@@ -88,7 +88,7 @@ clear(WrapTray *self)
 SV *
 push(WrapTray *self, ...)
 	CODE:
-		char *funcName = (char *) "Triceps::Tray::push";
+		static char funcName[] =  "Triceps::Tray::push";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Tray";
 
