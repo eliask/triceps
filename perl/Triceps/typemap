@@ -26,10 +26,10 @@ O_WRAP_OBJECT
 	if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
 		$var = ($type)SvIV((SV*)SvRV( $arg ));
 		if ($var == 0 || $var->badMagic()) {
-			setErrMsg( \"${Package}::$func_name() -- $var has an incorrect magic for $ntype\" );
+			setErrMsg( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
 			XSRETURN_UNDEF;
 		}
 	} else{
-		setErrMsg( \"${Package}::$func_name() -- $var is not a blessed SV reference to $ntype\" );
+		setErrMsg( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
 		XSRETURN_UNDEF;
 	}
