@@ -78,7 +78,7 @@ BOOT:
 
 INCLUDE: const-xs.inc
 
-# static functions from Rowop, in perl they move to Triceps::
+############## static functions from Rowop, in perl they move to Triceps:: ###########
 
 int
 isInsert(int op)
@@ -103,3 +103,37 @@ isNop(int op)
 		RETVAL = Rowop::isNop(op);
 	OUTPUT:
 		RETVAL
+
+############ conversions of constants back to string #############################
+
+char *
+opcodeString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Rowop::opcodeString(val); // never returns NULL
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+ocfString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Rowop::ocfString(val, NULL);
+		if (res == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+emString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Gadget::emString(val, NULL);
+		if (res == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+

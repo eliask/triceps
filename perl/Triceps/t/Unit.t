@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 21 };
+BEGIN { plan tests => 42 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -99,4 +99,99 @@ ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode integer 20");
 ###################### makeTray #################################
 # see in Tray.t
 
-# XXX test schedule(), makeDummyLabel(), makeLabel()
+###################### make*Label ###############################
+
+sub exe_history # (label, rowop)
+{
+	my ($label, $rowop) = @_;
+	our $history;
+	$history .= "x " . $label->getName() . " op=" . Triceps::opcodeString($rowop->getOpcode()) 
+		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "]\n";
+}
+
+sub exe_die # (label, rowop)
+{
+	my ($label, $rowop) = @_;
+	die "xdie " . $label->getName() . " op=" . Triceps::opcodeString($rowop->getOpcode()) 
+		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "]";
+}
+
+$dumlab = $u1->makeDummyLabel($rt1, "dumlab");
+ok(ref $dumlab, "Triceps::Label");
+
+$xlab1 = $u1->makeLabel($rt1, "xlab1", \&exe_history);
+ok(ref $xlab1, "Triceps::Label");
+$xlab2 = $u1->makeLabel($rt1, "xlab2", \&exe_history);
+ok(ref $xlab2, "Triceps::Label");
+
+$dielab = $u1->makeLabel($rt1, "dielab", \&exe_die);
+ok(ref $dielab, "Triceps::Label");
+
+$v = $dumlab->chain($xlab2);
+ok($v);
+
+$history = "";
+
+# prepare rowops for enqueueing
+
+@dataset1 = (
+	a => 123,
+	b => 456,
+	c => 789,
+	d => 3.14,
+	e => "text",
+);
+$row1 = $rt1->makerow_hs(@dataset1);
+ok(ref $row1, "Triceps::Row");
+
+$rop11 = $xlab1->makeRowop("OP_INSERT", $row1);
+ok(ref $rop11, "Triceps::Rowop");
+$rop12 = $xlab1->makeRowop("OP_DELETE", $row1);
+ok(ref $rop12, "Triceps::Rowop");
+
+# will get to xlab2 through the chaining
+$rop21 = $dumlab->makeRowop("OP_INSERT", $row1);
+ok(ref $rop21, "Triceps::Rowop");
+$rop22 = $dumlab->makeRowop("OP_DELETE", $row1);
+ok(ref $rop22, "Triceps::Rowop");
+# put them into a tray
+$tray2 = $u1->makeTray($rop21, $rop22);
+ok(ref $tray2, "Triceps::Tray");
+
+$ropd1 = $dielab->makeRowop("OP_INSERT", $row1);
+ok(ref $ropd1, "Triceps::Rowop");
+$ropd2 = $dielab->makeRowop("OP_DELETE", $row1);
+ok(ref $ropd2, "Triceps::Rowop");
+
+# also add an empty tray
+$trayem = $u1->makeTray();
+ok(ref $trayem, "Triceps::Tray");
+
+##################### schedule ##################################
+
+$v = $u1->empty();
+ok($v);
+
+$v = $u1->schedule($rop11, $tray2, $rop12, $trayem);
+ok($v);
+#print STDERR $! . "\n";
+
+$v = $u1->empty();
+ok(!$v);
+
+$history = "";
+$u1->callNext();
+ok($history, "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
+
+$history = "";
+$u1->callNext();
+ok($history, "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
+
+$history = "";
+$u1->drainFrame();
+ok($history, "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\nx xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+# XXX test scheduling for errors
+# XXX test scheduling of dying function

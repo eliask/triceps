@@ -49,7 +49,7 @@ getUnit(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
-# returns 1 on success, 0 on error
+# returns 1 on success, undef on error
 int
 chain(WrapLabel *self, WrapLabel *other)
 	CODE:
@@ -61,7 +61,9 @@ chain(WrapLabel *self, WrapLabel *other)
 		if (!err.isNull() && !err->isEmpty()) {
 			setErrMsg("Triceps::Label::chain: " + err->print());
 		}
-		RETVAL = !err->hasError();
+		if (err->hasError())
+			XSRETURN_UNDEF;
+		RETVAL = 1;
 	OUTPUT:
 		RETVAL
 
@@ -165,5 +167,21 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 		RETVAL
 
 # add getCode() for PerlLabel
+# for PerlLabel, returns the reference to code
+SV *
+getCode(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		PerlLabel *plab = dynamic_cast<PerlLabel *>(lab);
+		if (plab == NULL) {
+			setErrMsg("Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
+			XSRETURN_UNDEF; 
+		}
+		SV *ret = newSV(0);
+		sv_setsv(ret, plab->getCode());
+		RETVAL = ret;
+	OUTPUT:
+		RETVAL
 
 # XXX add the rest of methods!

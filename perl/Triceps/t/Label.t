@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 27 };
+BEGIN { plan tests => 32 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -106,7 +106,7 @@ ok(join(", ", map {$_->getName()} @chain), "tab1.in, tab1.in");
 
 # incorrect chaining
 $res = $lb->chain($lb);
-ok(!$res);
+ok(! defined $res);
 ok($! . "", "Triceps::Label::chain: labels must not be chained in a loop\n  xxx_tab1.out->xxx_tab1.out");
 
 # see that it's unchanged
@@ -120,3 +120,26 @@ ok($#chain, -1);
 
 ######################### makeRowop ###################################
 # tested in Rowop.t
+
+######################## PerlLabel ####################################
+
+# the more interesting execution is tested in Unit.t
+
+sub plab_exec # (label, rowop)
+{
+	1;
+}
+
+$plab = $u1->makeLabel($rt1, "plab", \&plab_exec);
+ok(ref $plab, "Triceps::Label");
+
+$res = $plab->getName();
+ok($res, "plab");
+
+$res = $plab->getCode();
+ok($res, \&plab_exec);
+
+$res = $lb->getCode();
+ok(! defined $res);
+ok($! . "", "Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
+

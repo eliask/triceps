@@ -38,6 +38,7 @@ hexdump(WrapRow *self)
 		RETVAL
 
 # convert to an array of name-value pairs, suitable for setting into a hash
+# XXX rename toHash
 SV *
 to_hs(WrapRow *self)
 	PPCODE:
@@ -57,6 +58,7 @@ to_hs(WrapRow *self)
 		}
 
 # convert to an array of data values, like CSV
+# XXX rename toArray
 SV *
 to_ar(WrapRow *self)
 	PPCODE:

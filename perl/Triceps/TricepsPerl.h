@@ -95,6 +95,12 @@ public:
 	PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, SV *code);
 	~PerlLabel();
 
+	// Get back the code reference (don't give it directly to random Perl code,
+	// make a copy!)
+	SV *getCode() const
+	{
+		return code_;
+	}
 protected:
 	// from Label
 	virtual void execute(Rowop *arg) const;

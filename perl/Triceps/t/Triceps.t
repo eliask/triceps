@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 19 };
+BEGIN { plan tests => 31 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -22,6 +22,8 @@ ok(1); # If we made it this far, we're ok.
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
+
+# constants
 
 ok(&Triceps::SM_SCHEDULE, 0);
 ok(&Triceps::SM_FORK, 1);
@@ -34,6 +36,22 @@ ok(&Triceps::OP_DELETE, 2);
 
 ok(&Triceps::OCF_INSERT, 1);
 ok(&Triceps::OCF_DELETE, 2);
+
+# reverse translation of constants
+ok(&Triceps::emString(&Triceps::SM_SCHEDULE), "SM_SCHEDULE");
+ok(&Triceps::emString(&Triceps::SM_FORK), "SM_FORK");
+ok(&Triceps::emString(&Triceps::SM_CALL), "SM_CALL");
+ok(&Triceps::emString(&Triceps::SM_IGNORE), "SM_IGNORE");
+ok(&Triceps::emString(999), undef);
+
+ok(&Triceps::opcodeString(&Triceps::OP_NOP), "OP_NOP");
+ok(&Triceps::opcodeString(&Triceps::OP_INSERT), "OP_INSERT");
+ok(&Triceps::opcodeString(&Triceps::OP_DELETE), "OP_DELETE");
+ok(&Triceps::opcodeString(0x333), "[ID]");
+
+ok(&Triceps::ocfString(&Triceps::OCF_INSERT), "OCF_INSERT");
+ok(&Triceps::ocfString(&Triceps::OCF_DELETE), "OCF_DELETE");
+ok(&Triceps::ocfString(999), undef);
 
 # tests of the opcodes
 
@@ -48,3 +66,4 @@ ok(!&Triceps::isDelete(&Triceps::OP_NOP));
 ok(!&Triceps::isNop(&Triceps::OP_INSERT));
 ok(!&Triceps::isNop(&Triceps::OP_DELETE));
 ok(&Triceps::isNop(&Triceps::OP_NOP));
+

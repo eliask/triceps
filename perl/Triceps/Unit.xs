@@ -41,7 +41,7 @@ schedule(WrapUnit *self, ...)
 		clearErrMsg();
 		Unit *u = self->get();
 
-		for (int i = 0; i < items; i++) {
+		for (int i = 1; i < items; i++) {
 			SV *arg = ST(i);
 			if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
 				WrapRowop *wrop = (WrapRowop *)SvIV((SV*)SvRV( arg ));
@@ -72,6 +72,29 @@ schedule(WrapUnit *self, ...)
 		}
 
 		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+void
+callNext(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		u->callNext();
+
+void
+drainFrame(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		u->drainFrame();
+
+int
+empty(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = u->empty();
 	OUTPUT:
 		RETVAL
 
