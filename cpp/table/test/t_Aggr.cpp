@@ -140,7 +140,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::SM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findIndex("primary");

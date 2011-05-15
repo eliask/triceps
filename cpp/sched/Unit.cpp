@@ -133,13 +133,13 @@ void Unit::enqueueDelayedTray(const_Onceref<Tray> tray)
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it) {
 		Rowop *rop = *it;
 		switch(rop->getEnqMode()) {
-		case Gadget::SM_SCHEDULE:
+		case Gadget::EM_SCHEDULE:
 			schedule(rop);
 			break;
-		case Gadget::SM_FORK:
+		case Gadget::EM_FORK:
 			fork(rop);
 			break;
-		case Gadget::SM_CALL:
+		case Gadget::EM_CALL:
 			call(rop);
 			break;
 		}

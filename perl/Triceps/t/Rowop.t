@@ -78,7 +78,7 @@ $res = $tt1->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");
 
 $lb = $t1->getInputLabel();
@@ -127,25 +127,25 @@ $rop = $lb->makeRowop("OCF_INSERT", $row1);
 ok(!defined $rop);
 ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OCF_INSERT', if integer was meant, it has to be cast");
 
-$rop = $lb->makeRowop("OP_INSERT", $row1, "SM_CALL");
+$rop = $lb->makeRowop("OP_INSERT", $row1, "EM_CALL");
 ok(ref $rop, "Triceps::Rowop");
 
-$rop = $lb->makeRowop("OP_INSERT", $row1, &Triceps::SM_CALL);
+$rop = $lb->makeRowop("OP_INSERT", $row1, &Triceps::EM_CALL);
 ok(ref $rop, "Triceps::Rowop");
 
 $rop = $lb->makeRowop("OP_INSERT", $row1, "something");
 ok(!defined $rop);
 ok($! . "", "Triceps::Label::makeRowop: unknown enqueuing mode string 'something', if integer was meant, it has to be cast");
 
-$rop = $lb->makeRowop("OP_INSERT", $row1, "SM_CALL", 9);
+$rop = $lb->makeRowop("OP_INSERT", $row1, "EM_CALL", 9);
 ok(!defined $rop);
 ok($! . "", "Usage: Triceps::Label::makeRowop(label, opcode, row [, enqMode]), received too many arguments");
 
 # a matching row type is OK
-$rop2 = $lb->makeRowop("OP_DELETE", $row2, "SM_CALL");
+$rop2 = $lb->makeRowop("OP_DELETE", $row2, "EM_CALL");
 ok(ref $rop2, "Triceps::Rowop");
 
-$rop = $lb->makeRowop("OP_INSERT", $row3, "SM_CALL");
+$rop = $lb->makeRowop("OP_INSERT", $row3, "EM_CALL");
 ok(!defined $rop);
 ok($! . "", "Triceps::Label::makeRowop: row types do not match\n  Label:\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  Row:\n    row {\n      string e,\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n    }");
 
@@ -208,4 +208,4 @@ ok(ref $row, "Triceps::Row");
 ok($row1->same($row));
 
 $v = $rop1->getEnqMode();
-ok($v, &Triceps::SM_FORK);
+ok($v, &Triceps::EM_FORK);

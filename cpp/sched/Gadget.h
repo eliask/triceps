@@ -25,10 +25,10 @@ class Gadget : public Starget
 public:
 	// How the rows get enqueued in the Unit
 	enum EnqMode {
-		SM_SCHEDULE,
-		SM_FORK,
-		SM_CALL,
-		SM_IGNORE, // rows aren't equeued at all
+		EM_SCHEDULE,
+		EM_FORK,
+		EM_CALL,
+		EM_IGNORE, // rows aren't equeued at all
 	};
 
 	virtual ~Gadget();
@@ -93,7 +93,7 @@ protected:
 
 	// Send a row.
 	// By this time the row type must be set, and so the embedded label initialized
-	// (even if the mode is SM_IGNORE).
+	// (even if the mode is EM_IGNORE).
 	//
 	// If the user requests a copy, he should not try to schdeule it as is, since
 	// that would repeat the change the second time. Instead he should either do a

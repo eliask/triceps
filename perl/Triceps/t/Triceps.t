@@ -25,10 +25,10 @@ ok(1); # If we made it this far, we're ok.
 
 # constants
 
-ok(&Triceps::SM_SCHEDULE, 0);
-ok(&Triceps::SM_FORK, 1);
-ok(&Triceps::SM_CALL, 2);
-ok(&Triceps::SM_IGNORE, 3);
+ok(&Triceps::EM_SCHEDULE, 0);
+ok(&Triceps::EM_FORK, 1);
+ok(&Triceps::EM_CALL, 2);
+ok(&Triceps::EM_IGNORE, 3);
 
 ok(&Triceps::OP_NOP, 0);
 ok(&Triceps::OP_INSERT, 1);
@@ -38,10 +38,10 @@ ok(&Triceps::OCF_INSERT, 1);
 ok(&Triceps::OCF_DELETE, 2);
 
 # reverse translation of constants
-ok(&Triceps::emString(&Triceps::SM_SCHEDULE), "SM_SCHEDULE");
-ok(&Triceps::emString(&Triceps::SM_FORK), "SM_FORK");
-ok(&Triceps::emString(&Triceps::SM_CALL), "SM_CALL");
-ok(&Triceps::emString(&Triceps::SM_IGNORE), "SM_IGNORE");
+ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
+ok(&Triceps::emString(&Triceps::EM_FORK), "EM_FORK");
+ok(&Triceps::emString(&Triceps::EM_CALL), "EM_CALL");
+ok(&Triceps::emString(&Triceps::EM_IGNORE), "EM_IGNORE");
 ok(&Triceps::emString(999), undef);
 
 ok(&Triceps::opcodeString(&Triceps::OP_NOP), "OP_NOP");

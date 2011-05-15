@@ -52,7 +52,7 @@ __END__
 		return PERL_constant_NOTFOUND;
 
 	switch(name[0]) {
-	case 'S':
+	case 'E':
 		*iv_return = Gadget::stringEm(name);
 		if (*iv_return == -1)
 			return PERL_constant_NOTFOUND;

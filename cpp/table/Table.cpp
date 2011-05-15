@@ -185,7 +185,7 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	// Aggregator changes go after table changes. If there are multiople aggregators,
 	// between themselves they go sort of in parallel.
 	// Besides being better logically, the major reason for delaying the sending of
-	// aggregator updates is to prevent an SM_CALL from happening
+	// aggregator updates is to prevent an EM_CALL from happening
 	// while the table is in the middle of a change.
 	if (!noAggs) 
 		unit_->enqueueDelayedTray(aggTray); 

@@ -59,7 +59,7 @@ $tt1 = Triceps::TableType->new($rt1)
 ok(ref $tt1, "Triceps::TableType");
 
 # check with uninitialized type
-$t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
 ok(!defined $t1);
 ok($! . "", "Triceps::Unit::makeTable: table type was not successfully initialized");
 
@@ -69,20 +69,20 @@ ok($res, 1);
 
 ###################### makeTable #################################
 
-$t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");
 #print STDERR "$!" . "\n";
 
 $v = $t1->getUnit();
 ok($u1->same($v));
 
-$t1 = $u1->makeTable($tt1, "SM_FORK", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_FORK", "tab1");
 ok(ref $t1, "Triceps::Table");
 
-$t1 = $u1->makeTable($tt1, "SM_CALL", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_CALL", "tab1");
 ok(ref $t1, "Triceps::Table");
 
-$t1 = $u1->makeTable($tt1, "SM_IGNORE", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_IGNORE", "tab1");
 ok(ref $t1, "Triceps::Table");
 
 $t1 = $u1->makeTable($tt1, 0, "tab1");

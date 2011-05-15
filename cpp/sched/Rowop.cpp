@@ -16,7 +16,7 @@ Rowop::Rowop(const Label *label, Opcode op, const Row *row) :
 	label_(label),
 	row_(row),
 	opcode_(op),
-	enqMode_(Gadget::SM_FORK)
+	enqMode_(Gadget::EM_FORK)
 {
 	assert(label);
 	if (row_)
@@ -27,7 +27,7 @@ Rowop::Rowop(const Label *label, Opcode op, const Rowref &row) :
 	label_(label),
 	row_(row),
 	opcode_(op),
-	enqMode_(Gadget::SM_FORK)
+	enqMode_(Gadget::EM_FORK)
 {
 	assert(label);
 	if (row_)

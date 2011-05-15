@@ -80,13 +80,13 @@ $res = $tt1->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t1 = $u1->makeTable($tt1, "SM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");
 
 $lb1 = $t1->getInputLabel();
 ok(ref $lb1, "Triceps::Label");
 
-$t2 = $u2->makeTable($tt1, "SM_SCHEDULE", "tab2");
+$t2 = $u2->makeTable($tt1, "EM_SCHEDULE", "tab2");
 ok(ref $t2, "Triceps::Table");
 
 $lb2 = $t2->getInputLabel();

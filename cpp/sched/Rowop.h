@@ -53,7 +53,7 @@ public:
 	};
 
 	// Rowop will hold the references on the row and the label.
-	// This defaults the enqMode to SM_FORK as the safest one (see the 
+	// This defaults the enqMode to EM_FORK as the safest one (see the 
 	// explanation before the class, in the normal uses the enqMode is ignored).
 	// XXX think of checking the type of row 
 	Rowop(const Label *label, Opcode op, const Row *row);

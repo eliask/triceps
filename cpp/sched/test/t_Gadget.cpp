@@ -75,17 +75,17 @@ UTESTCASE mkgadget(Utest *utest)
 
 	Autoref<Unit> unit1 = new Unit("u");
 
-	Autoref<TestGadget> g1 = new TestGadget(unit1, Gadget::SM_IGNORE, "g1", (RowType *)NULL);
+	Autoref<TestGadget> g1 = new TestGadget(unit1, Gadget::EM_IGNORE, "g1", (RowType *)NULL);
 	UT_IS(g1->getUnit(), unit1);
 	UT_IS(g1->getName(), "g1");
-	UT_IS(g1->getEnqMode(), Gadget::SM_IGNORE);
+	UT_IS(g1->getEnqMode(), Gadget::EM_IGNORE);
 	UT_IS(g1->getLabel(), NULL);
 
 	g1->setName("gg1");
 	UT_IS(g1->getName(), "gg1");
 
-	g1->setEnqMode(Gadget::SM_CALL);
-	UT_IS(g1->getEnqMode(), Gadget::SM_CALL);
+	g1->setEnqMode(Gadget::EM_CALL);
+	UT_IS(g1->getEnqMode(), Gadget::EM_CALL);
 
 	g1->setRowType(rt1);
 	UT_ASSERT(g1->getLabel() != NULL);
@@ -143,8 +143,8 @@ UTESTCASE scheduling(Utest *utest)
 
 	if (UT_ASSERT(!r1.isNull())) return;
 
-	Autoref<TestGadget> g1 = new TestGadget(unit, Gadget::SM_SCHEDULE, "g1", rt1);
-	Autoref<TestGadget> g2 = new TestGadget(unit, Gadget::SM_SCHEDULE, "g2", rt1);
+	Autoref<TestGadget> g1 = new TestGadget(unit, Gadget::EM_SCHEDULE, "g1", rt1);
+	Autoref<TestGadget> g2 = new TestGadget(unit, Gadget::EM_SCHEDULE, "g2", rt1);
 
 	Autoref<Label> lab2 = new DummyLabel(unit, rt1, "lab2");
 
@@ -178,8 +178,8 @@ UTESTCASE scheduling(Utest *utest)
 	UT_IS(tlog, expect_sched);
 
 	// change the mode to fork and repeat
-	g1->setEnqMode(Gadget::SM_FORK);
-	g2->setEnqMode(Gadget::SM_FORK);
+	g1->setEnqMode(Gadget::EM_FORK);
+	g2->setEnqMode(Gadget::EM_FORK);
 
 	trace->clearBuffer();
 	unit->schedule(op1);
@@ -206,8 +206,8 @@ UTESTCASE scheduling(Utest *utest)
 	UT_IS(tlog, expect_fork);
 
 	// change the mode to call and repeat
-	g1->setEnqMode(Gadget::SM_CALL);
-	g2->setEnqMode(Gadget::SM_CALL);
+	g1->setEnqMode(Gadget::EM_CALL);
+	g2->setEnqMode(Gadget::EM_CALL);
 
 	trace->clearBuffer();
 	unit->schedule(op1);
@@ -232,8 +232,8 @@ UTESTCASE scheduling(Utest *utest)
 	UT_IS(tlog, expect_call);
 
 	// change the mode to ignore and repeat
-	g1->setEnqMode(Gadget::SM_IGNORE);
-	g2->setEnqMode(Gadget::SM_IGNORE);
+	g1->setEnqMode(Gadget::EM_IGNORE);
+	g2->setEnqMode(Gadget::EM_IGNORE);
 
 	trace->clearBuffer();
 	unit->schedule(op1);
@@ -260,8 +260,8 @@ UTESTCASE scheduling(Utest *utest)
 
 	// do the schedule mode
 	tray->clear();
-	g1->setEnqMode(Gadget::SM_SCHEDULE);
-	g2->setEnqMode(Gadget::SM_SCHEDULE);
+	g1->setEnqMode(Gadget::EM_SCHEDULE);
+	g2->setEnqMode(Gadget::EM_SCHEDULE);
 
 	trace->clearBuffer();
 	unit->schedule(op1);
@@ -284,8 +284,8 @@ UTESTCASE scheduling(Utest *utest)
 
 	// do the fork mode
 	tray->clear();
-	g1->setEnqMode(Gadget::SM_FORK);
-	g2->setEnqMode(Gadget::SM_FORK);
+	g1->setEnqMode(Gadget::EM_FORK);
+	g2->setEnqMode(Gadget::EM_FORK);
 
 	trace->clearBuffer();
 	unit->schedule(op1);
@@ -308,8 +308,8 @@ UTESTCASE scheduling(Utest *utest)
 
 	// do the call mode
 	tray->clear();
-	g1->setEnqMode(Gadget::SM_CALL);
-	g2->setEnqMode(Gadget::SM_CALL);
+	g1->setEnqMode(Gadget::EM_CALL);
+	g2->setEnqMode(Gadget::EM_CALL);
 
 	trace->clearBuffer();
 	unit->schedule(op1);
@@ -332,8 +332,8 @@ UTESTCASE scheduling(Utest *utest)
 
 	// do the ignore mode
 	tray->clear();
-	g1->setEnqMode(Gadget::SM_IGNORE);
-	g2->setEnqMode(Gadget::SM_IGNORE);
+	g1->setEnqMode(Gadget::EM_IGNORE);
+	g2->setEnqMode(Gadget::EM_IGNORE);
 
 	trace->clearBuffer();
 	unit->schedule(op1);

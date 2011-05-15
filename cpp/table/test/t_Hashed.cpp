@@ -61,7 +61,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 	UT_ASSERT(t->getInputLabel() != NULL);
 	UT_ASSERT(t->getLabel() != NULL);
@@ -85,7 +85,7 @@ UTESTCASE uninitialized(Utest *utest)
 
 	UT_ASSERT(tt);
 
-	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -108,7 +108,7 @@ UTESTCASE withError(Utest *utest)
 	UT_ASSERT(!tt->getErrors().isNull());
 	UT_ASSERT(tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -131,14 +131,14 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::SM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findIndex("primary");
 	UT_ASSERT(prim != NULL);
 
 	// other instance, for checking of errors
-	Autoref<Table> t2 = tt->makeTable(unit, Table::SM_IGNORE, "t2");
+	Autoref<Table> t2 = tt->makeTable(unit, Table::EM_IGNORE, "t2");
 	UT_ASSERT(!t2.isNull());
 	IndexType *prim2 = tt->findIndex("primary");
 	UT_ASSERT(prim2 != NULL);
@@ -150,7 +150,7 @@ UTESTCASE tableops(Utest *utest)
 		);
 	UT_ASSERT(tt3);
 	tt3->initialize();
-	Autoref<Table> t3 = tt3->makeTable(unit, Table::SM_IGNORE, "t3");
+	Autoref<Table> t3 = tt3->makeTable(unit, Table::EM_IGNORE, "t3");
 	UT_ASSERT(!t3.isNull());
 	IndexType *prim3 = tt3->findIndex("primary");
 	UT_ASSERT(prim3 != NULL);

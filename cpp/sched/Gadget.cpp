@@ -39,16 +39,16 @@ void Gadget::send(const Row *row, Rowop::Opcode opcode, Tray *copyTray) const
 	if (row == NULL)
 		return; // nothing to do
 
-	if (mode_ != SM_IGNORE || copyTray != NULL) {
+	if (mode_ != EM_IGNORE || copyTray != NULL) {
 		Autoref<Rowop> rop = new Rowop(label_, opcode, row);
 		switch(mode_) {
-		case SM_SCHEDULE:
+		case EM_SCHEDULE:
 			unit_->schedule(rop);
 			break;
-		case SM_FORK:
+		case EM_FORK:
 			unit_->fork(rop);
 			break;
-		case SM_CALL:
+		case EM_CALL:
 			unit_->call(rop);
 			break;
 		default:
@@ -69,9 +69,9 @@ void Gadget::sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray 
 	if (row == NULL)
 		return; // nothing to do
 
-	if (mode_ != SM_IGNORE || copyTray != NULL) {
+	if (mode_ != EM_IGNORE || copyTray != NULL) {
 		Autoref<Rowop> rop = new Rowop(label_, opcode, row, mode_);
-		if (mode_ != SM_IGNORE)
+		if (mode_ != EM_IGNORE)
 			dest->push_back(rop);
 		if (copyTray != NULL)
 			copyTray->push_back(rop);
@@ -79,10 +79,10 @@ void Gadget::sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray 
 }
 
 Valname enqModes[] = {
-	{ Gadget::SM_SCHEDULE, "SM_SCHEDULE" },
-	{ Gadget::SM_FORK, "SM_FORK" },
-	{ Gadget::SM_CALL, "SM_CALL" },
-	{ Gadget::SM_IGNORE, "SM_IGNORE" },
+	{ Gadget::EM_SCHEDULE, "EM_SCHEDULE" },
+	{ Gadget::EM_FORK, "EM_FORK" },
+	{ Gadget::EM_CALL, "EM_CALL" },
+	{ Gadget::EM_IGNORE, "EM_IGNORE" },
 	{ -1, NULL }
 };
 
