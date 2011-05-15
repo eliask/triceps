@@ -57,7 +57,26 @@ public:
 	// Then pop that frame, restoring the stack of queues.
 	void callTray(const_Onceref<Tray> tray);
 
-	// Enqueue each record from the tray according to its enqMode
+	// Enqueue the rowop with the chosen mode. This is mostly for convenience
+	// of Perl code but can be used in other places too, performs a switch
+	// and calls one of the actula methods.
+	// @param em - enqueuing mode, Gadget::EnqMode
+	// @param rop - Rowop
+	void enqueue(int em, Onceref<Rowop> rop);
+	// Enqueue the tray with the chosen mode. This is mostly for convenience
+	// of Perl code but can be used in other places too, performs a switch
+	// and calls one of the actula methods.
+	// @param em - enqueuing mode, Gadget::EnqMode
+	// @param tray - tray of rowops
+	void enqueueTray(int em, const_Onceref<Tray> tray);
+
+	// Enqueue each record from the tray according to its enqMode.
+	// "Delayed" here doesn't mean that the processing will be delayed,
+	// it's for use in case if a Gadget collects the rowops instead
+	// of processin gthem immediately, and only then (thus already "delayed")
+	// enqueues them.
+	// No similar call for Rowop, because it can be easily replaced 
+	// with enqueue(rop->getEnqMode(), rop).
 	void enqueueDelayedTray(const_Onceref<Tray> tray);
 
 	// Extract and execute the next record from the innermost frame.

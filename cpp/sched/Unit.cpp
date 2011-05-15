@@ -128,21 +128,53 @@ void Unit::callTray(const_Onceref<Tray> tray)
 		popFrame();
 }
 
+void Unit::enqueue(int em, Onceref<Rowop> rop)
+{
+	switch(em) {
+	case Gadget::EM_SCHEDULE:
+		schedule(rop);
+		break;
+	case Gadget::EM_FORK:
+		fork(rop);
+		break;
+	case Gadget::EM_CALL:
+		call(rop);
+		break;
+	case Gadget::EM_IGNORE:
+		break;
+	default:
+		fprintf(stderr, "Triceps API violation: Invalid enqueueing mode %d\n", em);
+		abort();
+		break;
+	}
+}
+
+void Unit::enqueueTray(int em, const_Onceref<Tray> tray)
+{
+	switch(em) {
+	case Gadget::EM_SCHEDULE:
+		scheduleTray(tray);
+		break;
+	case Gadget::EM_FORK:
+		forkTray(tray);
+		break;
+	case Gadget::EM_CALL:
+		callTray(tray);
+		break;
+	case Gadget::EM_IGNORE:
+		break;
+	default:
+		fprintf(stderr, "Triceps API violation: Invalid enqueueing mode %d\n", em);
+		abort();
+		break;
+	}
+}
+
 void Unit::enqueueDelayedTray(const_Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it) {
 		Rowop *rop = *it;
-		switch(rop->getEnqMode()) {
-		case Gadget::EM_SCHEDULE:
-			schedule(rop);
-			break;
-		case Gadget::EM_FORK:
-			fork(rop);
-			break;
-		case Gadget::EM_CALL:
-			call(rop);
-			break;
-		}
+		enqueue(rop->getEnqMode(), rop);
 	}
 }
 

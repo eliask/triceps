@@ -11,6 +11,7 @@
 #include <type/CompactRowType.h>
 #include <common/StringUtil.h>
 #include <sched/Unit.h>
+#include <sched/Gadget.h>
 
 // Make fields of all simple types
 void mkfields(RowType::FieldVec &fields)
@@ -265,7 +266,7 @@ public:
 	virtual void execute(Rowop *arg) const
 	{
 		unit_->call(sub1_);
-		unit_->call(sub2_);
+		unit_->enqueue(Gadget::EM_CALL, sub2_);
 	}
 
 	Autoref<Rowop> sub1_, sub2_;
@@ -284,7 +285,7 @@ public:
 	virtual void execute(Rowop *arg) const
 	{
 		unit_->fork(sub1_);
-		unit_->fork(sub2_);
+		unit_->enqueue(Gadget::EM_FORK, sub2_);
 	}
 
 	Autoref<Rowop> sub1_, sub2_;
@@ -368,7 +369,7 @@ UTESTCASE scheduling(Utest *utest)
 	Autoref<Rowop> op5 = new Rowop(lab5, Rowop::OP_NOP, NULL);
 
 	unit->schedule(op4);
-	unit->schedule(op5);
+	unit->enqueue(Gadget::EM_SCHEDULE, op5);
 	UT_ASSERT(!unit->empty());
 
 	// now run it
@@ -419,18 +420,44 @@ UTESTCASE scheduling(Utest *utest)
 	tlog = trace->getBuffer()->print();
 	UT_IS(tlog, expect_sched);
 
+	// the same schedule through enqueueTray
+
+	trace->clearBuffer();
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "");
+
+	tray->clear(); // make the same train contents again
+	tray->push_back(op4);
+	tray->push_back(op5);
+
+	unit->enqueueTray(Gadget::EM_SCHEDULE, tray);
+
+	unit->drainFrame(); // run and check the result
+	UT_ASSERT(unit->empty());
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, expect_sched);
+
 	// try the tray version of fork() - produces the same result
 	trace->clearBuffer();
 	tlog = trace->getBuffer()->print();
 	UT_IS(tlog, "");
-	tray->clear();
 
-	tray->push_back(op4);
-	tray->push_back(op5);
-
-	unit->forkTray(tray);
+	unit->forkTray(tray); // reuse the tray contents from before
 
 	unit->drainFrame();
+	UT_ASSERT(unit->empty());
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, expect_sched);
+
+	// the same schedule through enqueueTray
+
+	trace->clearBuffer();
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "");
+
+	unit->enqueueTray(Gadget::EM_FORK, tray); // reuse the tray contents from before
+
+	unit->drainFrame(); // run and check the result
 	UT_ASSERT(unit->empty());
 	tlog = trace->getBuffer()->print();
 	UT_IS(tlog, expect_sched);
