@@ -81,6 +81,16 @@ bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em);
 // @return - true on success or false on error
 bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op);
 
+// Enqueue one argument in a unit. The argument may be either a Rowop or a Tray,
+// detected automatically. Checks for errors and populates the error messages.
+// @param funcName - calling function name, for error messages
+// @param u - unit where to enqueue
+// @param em - enqueuing mode
+// @param arg - argument (should be Rowop or Tray reference)
+// @param i - argument number, for error messages
+// @return - true on success, false on error
+bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i);
+
 // Label that executes Perl code
 class PerlLabel : public Label
 {

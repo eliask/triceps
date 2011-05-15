@@ -301,6 +301,37 @@ bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
 	return true;
 }
 
+bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
+{
+	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+		WrapRowop *wrop = (WrapRowop *)SvIV((SV*)SvRV( arg ));
+		WrapTray *wtray = (WrapTray *)wrop;
+		if (wrop != 0 && !wrop->badMagic()) {
+			Rowop *rop = wrop->get();
+			if (rop->getLabel()->getUnit() != u) {
+				setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
+					rop->getLabel()->getName().c_str(), rop->getLabel()->getUnit()->getName().c_str()) );
+				return false;
+			}
+			u->enqueue(em, rop);
+		} else if (wtray != 0 && !wtray->badMagic()) {
+			if (wtray->getParent() != u) {
+				setErrMsg( strprintf("%s: argument %d is a Tray from a wrong unit %s", funcName, i,
+					wtray->getParent()->getName().c_str()) );
+				return false;
+			}
+			u->enqueueTray(em, wtray->get());
+		} else {
+			setErrMsg( strprintf("%s: argument %d has an incorrect magic for either Rowop or Tray", funcName, i) );
+			return false;
+		}
+	} else{
+		setErrMsg( strprintf("%s: argument %d is not a blessed SV reference to Rowop", funcName, i) );
+		return false;
+	}
+	return true;
+}
+
 ///////////////////////// PerlLabel ///////////////////////////////////////////////
 
 PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, SV *code) :

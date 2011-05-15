@@ -194,4 +194,5 @@ $v = $u1->empty();
 ok($v);
 
 # XXX test scheduling for errors
+# XXX test that the execution order in scheduling is correct - as in t_Unit.cpp
 # XXX test scheduling of dying function
