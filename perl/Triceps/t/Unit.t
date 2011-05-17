@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 42 };
+BEGIN { plan tests => 57 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -169,6 +169,8 @@ ok(ref $trayem, "Triceps::Tray");
 
 ##################### schedule ##################################
 
+# schedule 
+
 $v = $u1->empty();
 ok($v);
 
@@ -190,6 +192,68 @@ ok($history, "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
 $history = "";
 $u1->drainFrame();
 ok($history, "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\nx xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+# fork
+
+$v = $u1->fork($rop11, $tray2, $rop12, $trayem);
+ok($v);
+$v = $u1->empty();
+ok(!$v);
+$history = "";
+$u1->drainFrame();
+ok($history, 
+	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+# call
+
+$history = "";
+$v = $u1->call($rop11, $tray2, $rop12, $trayem);
+ok($v);
+# no drain, CALL gets executed immediately
+ok($history, 
+	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+# enqueue with constant
+
+$v = $u1->enqueue(&Triceps::EM_FORK, $rop11, $tray2, $rop12, $trayem);
+ok($v);
+$v = $u1->empty();
+ok(!$v);
+$history = "";
+$u1->drainFrame();
+ok($history, 
+	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+# enqueue with string
+
+$v = $u1->enqueue("EM_SCHEDULE", $rop11, $tray2, $rop12, $trayem);
+ok($v);
+$v = $u1->empty();
+ok(!$v);
+$history = "";
+$u1->drainFrame();
+ok($history, 
+	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
 

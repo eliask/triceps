@@ -48,6 +48,56 @@ schedule(WrapUnit *self, ...)
 	OUTPUT:
 		RETVAL
 
+# see comment for schedule
+int
+fork(WrapUnit *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::fork";
+		clearErrMsg();
+		Unit *u = self->get();
+		for (int i = 1; i < items; i++) {
+			if (!enqueueSv(funcName, u, Gadget::EM_FORK, ST(i), i))
+				XSRETURN_UNDEF;
+		}
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+# see comment for schedule
+int
+call(WrapUnit *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::call";
+		clearErrMsg();
+		Unit *u = self->get();
+		for (int i = 1; i < items; i++) {
+			if (!enqueueSv(funcName, u, Gadget::EM_CALL, ST(i), i))
+				XSRETURN_UNDEF;
+		}
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+# see comment for schedule
+int
+enqueue(WrapUnit *self, SV *enqMode, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::enqueue";
+		clearErrMsg();
+		Unit *u = self->get();
+		Gadget::EnqMode em;
+
+		if (!parseEnqMode(funcName, enqMode, em))
+			XSRETURN_UNDEF;
+
+		for (int i = 2; i < items; i++) {
+			if (!enqueueSv(funcName, u, em, ST(i), i))
+				XSRETURN_UNDEF;
+		}
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 callNext(WrapUnit *self)
 	CODE:
