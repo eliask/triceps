@@ -154,6 +154,13 @@ private:
 	extern WrapMagic magicWrap##what; \
 	typedef Wrap<magicWrap##what, what> Wrap##what
 
+// same but for a nested class
+// @param typewhat - class to be wrapped
+// @param what - name for the wrapper
+#define DEFINE_WRAP_NESTED_CLASS(typewhat, what) \
+	extern WrapMagic magicWrap##what; \
+	typedef Wrap<magicWrap##what, typewhat> Wrap##what
+
 // @param typewhat - class that defines the type of value (like RowType)
 // @param refwhat - C++ reference class, to be used instead of plain Autoref, that keep 
 //        reference to both type and value
@@ -174,6 +181,7 @@ DEFINE_WRAP(IndexType);
 DEFINE_WRAP(TableType);
 
 DEFINE_WRAP(Unit);
+DEFINE_WRAP_NESTED_CLASS(Unit::Tracer, UnitTracer);
 DEFINE_WRAP_IDENT(Unit, Tray);
 DEFINE_WRAP(Label);
 DEFINE_WRAP(Gadget);
