@@ -376,8 +376,9 @@ void PerlLabel::execute(Rowop *arg) const
 	SvREFCNT_dec(svlab);
 
 	if (SvTRUE(ERRSV)) {
-		// XXXX If in eval, may cause issues by doing longjmp(), so maybe better just warn and/or exit(1)?
-		Perl_croak(aTHX_ "Fatal error in unit %s label %s handler: %s", 
+		// If in eval, croak may cause issues by doing longjmp(), so mbetter just warn.
+		// Would exit(1) be better?
+		warn("Error in unit %s label %s handler: %s", 
 			getUnit()->getName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
 
 	}

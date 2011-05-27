@@ -11,8 +11,10 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
+use ExtUtils::testlib;
+
 use Test;
-BEGIN { plan tests => 57 };
+BEGIN { plan tests => 60 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -257,6 +259,21 @@ ok($history,
 $v = $u1->empty();
 ok($v);
 
-# XXX test scheduling for errors
+#############################################################
+# XXX test scheduling for error catching
+
+$elab1 = $u1->makeLabel($rt1, "elab1", sub { die "an error in label handler" } );
+ok(ref $elab1, "Triceps::Label");
+
+$erop = $elab1->makeRowop("OP_INSERT", $row1);
+ok(ref $erop, "Triceps::Rowop");
+
+print STDERR "Expect error message from unit u1 label elab1 handler\n";
+$v = $u1->schedule($erop);
+$u1->drainFrame();
+ok($v);
+
+#############################################################
+
 # XXX test that the execution order in scheduling is correct - as in t_Unit.cpp
 # XXX test scheduling of dying function
