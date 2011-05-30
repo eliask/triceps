@@ -211,6 +211,7 @@ makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
 		RETVAL
 
 # make a label with executable Perl code
+# XXX add extra Perl arguments to pass to code
 WrapLabel *
 makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *code)
 	CODE:

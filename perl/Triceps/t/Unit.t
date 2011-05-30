@@ -260,7 +260,7 @@ $v = $u1->empty();
 ok($v);
 
 #############################################################
-# XXX test scheduling for error catching
+# test scheduling for error catching
 
 $elab1 = $u1->makeLabel($rt1, "elab1", sub { die "an error in label handler" } );
 ok(ref $elab1, "Triceps::Label");

@@ -36,7 +36,7 @@ vtest: pure_all
 qtest: test
 
 clean::
-	rm -f core.* *.core core vgcore.* test.vg 
+	rm -f core.* *.core core vgcore.* test.vg Makefile.old
 
 clobber:
 	rm Triceps.o
