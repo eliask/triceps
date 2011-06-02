@@ -213,22 +213,22 @@ makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
 # make a label with executable Perl code
 # XXX add extra Perl arguments to pass to code
 WrapLabel *
-makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *code)
+makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 	CODE:
 		static char funcName[] =  "Triceps::Unit::makeLabel";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Label";
 
-		if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
-			setErrMsg( "Triceps::Unit::makeLabel: code must be a reference to Perl function" );
-			XSRETURN_UNDEF;
-		}
-
 		clearErrMsg();
 		Unit *unit = self->get();
 		RowType *rt = wrt->get();
 
-		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, code));
+		Onceref<PerlCallback> cb = new PerlCallback();
+		PerlCallbackInitialize(cb, funcName, 3, items-3);
+		if (cb->code_ == NULL)
+			XSRETURN_UNDEF; // error message is already set
+
+		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, cb));
 	OUTPUT:
 		RETVAL
 

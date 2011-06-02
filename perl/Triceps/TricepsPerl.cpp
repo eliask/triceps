@@ -332,23 +332,73 @@ bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
 	return true;
 }
 
-///////////////////////// PerlLabel ///////////////////////////////////////////////
+///////////////////////// PerlCallback ///////////////////////////////////////////////
 
-PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, SV *code) :
-	Label(unit, rtype, name)
+PerlCallback::PerlCallback() :
+	code_(NULL)
+{ }
+
+PerlCallback::~PerlCallback()
 {
+	clear();
+}
+
+void PerlCallback::clear()
+{
+	if (code_) {
+		SvREFCNT_dec(code_);
+		code_ = NULL;
+	}
+	if (!args_.empty()) {
+		for (size_t i = 0; i < args_.size(); i++) {
+			SvREFCNT_dec(args_[i]);
+		}
+		args_.clear();
+	}
+}
+
+bool PerlCallback::setCode(SV *code, const char *fname)
+{
+	clear();
+
+	if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
+		setErrMsg( string(fname) + ": code must be a reference to Perl function" );
+		return false;
+	}
+
 	code_ = newSV(0);
 	sv_setsv(code_, code);
+	return true;
 }
 
-PerlLabel::~PerlLabel()
+// Append another argument to args_.
+// @param arg - argument value to append; will make a copy of it.
+void PerlCallback::appendArg(SV *arg)
 {
-	SvREFCNT_dec(code_);
+	SV *argcp = newSV(0);
+	sv_setsv(argcp, arg);
+	args_.push_back(argcp);
 }
+
+///////////////////////// PerlLabel ///////////////////////////////////////////////
+
+PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Onceref<PerlCallback> cb) :
+	Label(unit, rtype, name),
+	cb_(cb)
+{ }
+
+PerlLabel::~PerlLabel()
+{ }
 
 void PerlLabel::execute(Rowop *arg) const
 {
 	dSP;
+
+	if (cb_.isNull()) {
+		warn("Error in unit %s label %s handler: attempted to call the label that has been cleared", 
+			getUnit()->getName().c_str(), getName().c_str());
+		return;
+	}
 
 	WrapRowop *wrop = new WrapRowop(arg);
 	SV *svrop = newSV(0);
@@ -358,25 +408,19 @@ void PerlLabel::execute(Rowop *arg) const
 	SV *svlab = newSV(0);
 	sv_setref_pv(svlab, "Triceps::Label", (void *)wlab);
 
-	ENTER; SAVETMPS;
+	PerlCallbackStartCall(cb_);
 
-	PUSHMARK(SP); 
 	XPUSHs(svlab);
 	XPUSHs(svrop);
-	PUTBACK; 
 
-	call_sv(code_, G_VOID|G_EVAL);
-
-	SPAGAIN;
-
-	FREETMPS; LEAVE;
+	PerlCallbackDoCall(cb_);
 
 	// this calls the DELETE methods on wrappers
 	SvREFCNT_dec(svrop);
 	SvREFCNT_dec(svlab);
 
 	if (SvTRUE(ERRSV)) {
-		// If in eval, croak may cause issues by doing longjmp(), so mbetter just warn.
+		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
 		// Would exit(1) be better?
 		warn("Error in unit %s label %s handler: %s", 
 			getUnit()->getName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));

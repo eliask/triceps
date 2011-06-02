@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 60 };
+BEGIN { plan tests => 61 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -111,6 +111,15 @@ sub exe_history # (label, rowop)
 		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "]\n";
 }
 
+sub exe_history_xargs # (label, rowop, args...)
+{
+	my $label = shift @_;
+	my $rowop = shift @_;
+	our $history;
+	$history .= "x " . $label->getName() . " op=" . Triceps::opcodeString($rowop->getOpcode()) 
+		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "] args=[" . join(',', @_) . "]\n";
+}
+
 sub exe_die # (label, rowop)
 {
 	my ($label, $rowop) = @_;
@@ -123,7 +132,7 @@ ok(ref $dumlab, "Triceps::Label");
 
 $xlab1 = $u1->makeLabel($rt1, "xlab1", \&exe_history);
 ok(ref $xlab1, "Triceps::Label");
-$xlab2 = $u1->makeLabel($rt1, "xlab2", \&exe_history);
+$xlab2 = $u1->makeLabel($rt1, "xlab2", \&exe_history_xargs, "a", "b");
 ok(ref $xlab2, "Triceps::Label");
 
 $dielab = $u1->makeLabel($rt1, "dielab", \&exe_die);
@@ -189,11 +198,11 @@ ok($history, "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
 
 $history = "";
 $u1->callNext();
-ok($history, "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
+ok($history, "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text] args=[a,b]\n");
 
 $history = "";
 $u1->drainFrame();
-ok($history, "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\nx xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+ok($history, "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text] args=[a,b]\nx xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
 
@@ -207,8 +216,8 @@ $history = "";
 $u1->drainFrame();
 ok($history, 
 	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text] args=[a,b]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text] args=[a,b]\n" 
 	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
@@ -221,8 +230,8 @@ ok($v);
 # no drain, CALL gets executed immediately
 ok($history, 
 	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text] args=[a,b]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text] args=[a,b]\n" 
 	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
@@ -237,8 +246,8 @@ $history = "";
 $u1->drainFrame();
 ok($history, 
 	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text] args=[a,b]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text] args=[a,b]\n" 
 	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
@@ -253,8 +262,8 @@ $history = "";
 $u1->drainFrame();
 ok($history, 
 	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" 
+	. "x xlab2 op=OP_INSERT row=[123, 456, 789, 3.14, text] args=[a,b]\n"
+	. "x xlab2 op=OP_DELETE row=[123, 456, 789, 3.14, text] args=[a,b]\n" 
 	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
@@ -273,7 +282,12 @@ $v = $u1->schedule($erop);
 $u1->drainFrame();
 ok($v);
 
+print STDERR "Expect error message from unit u1 label xlab1 handler about label that has been cleared\n";
+$v = $u1->call($rop11);
+$xlab1->clear(); # now the label could not call anything any more
+$v = $u1->call($rop11);
+ok($v);
+
 #############################################################
 
 # XXX test that the execution order in scheduling is correct - as in t_Unit.cpp
-# XXX test scheduling of dying function

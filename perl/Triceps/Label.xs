@@ -166,7 +166,6 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 	OUTPUT:
 		RETVAL
 
-# add getCode() for PerlLabel
 # for PerlLabel, returns the reference to code
 SV *
 getCode(WrapLabel *self)
@@ -178,10 +177,26 @@ getCode(WrapLabel *self)
 			setErrMsg("Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
 			XSRETURN_UNDEF; 
 		}
+		SV *code = plab->getCode();
+		if (code == NULL)
+			XSRETURN_UNDEF; 
 		SV *ret = newSV(0);
-		sv_setsv(ret, plab->getCode());
+		sv_setsv(ret, code);
 		RETVAL = ret;
 	OUTPUT:
 		RETVAL
+
+# for PerlLabel, clear the callback
+void
+clear(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		PerlLabel *plab = dynamic_cast<PerlLabel *>(lab);
+		if (plab == NULL) {
+			setErrMsg("Triceps::Label::clear: label is not a Perl Label, has no Perl code");
+			XSRETURN_UNDEF; 
+		}
+		plab->clear();
 
 # XXX add the rest of methods!

@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 32 };
+BEGIN { plan tests => 34 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -139,7 +139,13 @@ ok($res, "plab");
 $res = $plab->getCode();
 ok($res, \&plab_exec);
 
+$plab->clear();
+ok($! . "", "");
+
 $res = $lb->getCode();
 ok(! defined $res);
 ok($! . "", "Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
+
+$lb->clear();
+ok($! . "", "Triceps::Label::clear: label is not a Perl Label, has no Perl code");
 
