@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 31 };
+BEGIN { plan tests => 43 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -37,6 +37,11 @@ ok(&Triceps::OP_DELETE, 2);
 ok(&Triceps::OCF_INSERT, 1);
 ok(&Triceps::OCF_DELETE, 2);
 
+ok(&Triceps::TW_BEFORE, 0);
+ok(&Triceps::TW_BEFORE_DRAIN, 1);
+ok(&Triceps::TW_BEFORE_CHAINED, 2);
+ok(&Triceps::TW_AFTER, 3);
+
 # reverse translation of constants
 ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
 ok(&Triceps::emString(&Triceps::EM_FORK), "EM_FORK");
@@ -52,6 +57,16 @@ ok(&Triceps::opcodeString(0x333), "[ID]");
 ok(&Triceps::ocfString(&Triceps::OCF_INSERT), "OCF_INSERT");
 ok(&Triceps::ocfString(&Triceps::OCF_DELETE), "OCF_DELETE");
 ok(&Triceps::ocfString(999), undef);
+
+ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE), "TW_BEFORE");
+ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_DRAIN), "TW_BEFORE_DRAIN");
+ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_CHAINED), "TW_BEFORE_CHAINED");
+ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER), "TW_AFTER");
+
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE), "before");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_DRAIN), "drain");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_CHAINED), "before-chained");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER), "after");
 
 # tests of the opcodes
 

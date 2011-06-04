@@ -428,6 +428,63 @@ void PerlLabel::execute(Rowop *arg) const
 	}
 }
 
+///////////////////////// UnitTracerPerl ///////////////////////////////////////////////
+
+UnitTracerPerl::UnitTracerPerl(Onceref<PerlCallback> cb) :
+	cb_(cb)
+{ }
+
+void UnitTracerPerl::execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when)
+{
+	dSP;
+
+	if (cb_.isNull()) {
+		warn("Error in unit %s tracer: attempted to call the tracer that has been cleared", 
+			unit->getName().c_str());
+		return;
+	}
+
+	SV *svunit = newSV(0);
+	sv_setref_pv(svunit, "Triceps::Unit", (void *)(new WrapUnit(unit)));
+
+	SV *svlab = newSV(0);
+	sv_setref_pv(svlab, "Triceps::Label", (void *)(new WrapLabel(const_cast<Label *>(label))));
+
+	SV *svfrlab = newSV(0);
+	if (fromLabel != NULL)
+		sv_setref_pv(svfrlab, "Triceps::Label", (void *)(new WrapLabel(const_cast<Label *>(fromLabel))));
+
+	SV *svrop = newSV(0);
+	sv_setref_pv(svrop, "Triceps::Rowop", (void *)(new WrapRowop(rop)));
+
+	SV *svwhen = newSViv(when);
+
+	PerlCallbackStartCall(cb_);
+
+	XPUSHs(svunit);
+	XPUSHs(svlab);
+	XPUSHs(svfrlab);
+	XPUSHs(svrop);
+	XPUSHs(svwhen);
+
+	PerlCallbackDoCall(cb_);
+
+	// this calls the DELETE methods on wrappers
+	SvREFCNT_dec(svunit);
+	SvREFCNT_dec(svlab);
+	SvREFCNT_dec(svfrlab);
+	SvREFCNT_dec(svrop);
+	SvREFCNT_dec(svwhen);
+
+	if (SvTRUE(ERRSV)) {
+		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
+		// Would exit(1) be better?
+		warn("Error in unit %s tracer: %s", 
+			unit->getName().c_str(), SvPV_nolen(ERRSV));
+
+	}
+}
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 

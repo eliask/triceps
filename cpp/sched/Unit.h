@@ -114,8 +114,13 @@ public:
 		// XXX should there be events on enqueueing?
 	};
 
-	// convert the when-code to a human-readable string
-	static const char *tracerWhenString(TracerWhen when);
+	// convert the when-code to a string
+	static const char *tracerWhenString(int when, const char *def = "???");
+	static int stringTracerWhen(const char *when);
+	
+	// convert the when-code to a more human-readable string (better for debug messages and such)
+	static const char *tracerWhenHumanString(int when, const char *def = "???");
+	static int humanStringTracerWhen(const char *when);
 
 	// The type of tracer callback functor: inherit from it and redefine your own execute()
 	class Tracer : public Mtarget

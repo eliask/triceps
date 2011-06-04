@@ -7,6 +7,7 @@
 
 #include <sched/Unit.h>
 #include <sched/Gadget.h>
+#include <common/StringUtil.h>
 
 namespace TRICEPS_NS {
 
@@ -33,7 +34,7 @@ void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fr
 		return;
 
 	string res = strprintf("unit %p '%s' %s label %p '%s' ",
-		unit, unit->getName().c_str(), tracerWhenString(when),
+		unit, unit->getName().c_str(), tracerWhenHumanString(when),
 		label, label->getName().c_str());
 
 	if (fromLabel != NULL) {
@@ -57,7 +58,7 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 		return;
 
 	string res = strprintf("unit '%s' %s label '%s' ", 
-		unit->getName().c_str(), tracerWhenString(when), label->getName().c_str());
+		unit->getName().c_str(), tracerWhenHumanString(when), label->getName().c_str());
 
 	if (fromLabel != NULL) {
 		res.append("(chain '");
@@ -222,20 +223,40 @@ void Unit::popFrame()
 	}
 }
 
-const char *Unit::tracerWhenString(TracerWhen when)
+Valname twhens[] = {
+	{ Unit::TW_BEFORE, "TW_BEFORE" },
+	{ Unit::TW_BEFORE_DRAIN, "TW_BEFORE_DRAIN" },
+	{ Unit::TW_BEFORE_CHAINED, "TW_BEFORE_CHAINED" },
+	{ Unit::TW_AFTER, "TW_AFTER" },
+	{ -1, NULL }
+};
+
+Valname humanTwhens[] = {
+	{ Unit::TW_BEFORE, "before" },
+	{ Unit::TW_BEFORE_DRAIN, "drain" },
+	{ Unit::TW_BEFORE_CHAINED, "before-chained" },
+	{ Unit::TW_AFTER, "after" },
+	{ -1, NULL }
+};
+
+const char *Unit::tracerWhenString(int when, const char *def)
 {
-	switch(when) {
-	case TW_BEFORE:
-		return "before";
-	case TW_BEFORE_DRAIN:
-		return "drain";
-	case TW_BEFORE_CHAINED:
-		return "before-chained";
-	case TW_AFTER:
-		return "after";
-	default:
-		return "???unknown???";
-	}
+	return enum2string(twhens, when, def);
+}
+
+int Unit::stringTracerWhen(const char *when)
+{
+	return string2enum(twhens, when);
+}
+
+const char *Unit::tracerWhenHumanString(int when, const char *def)
+{
+	return enum2string(humanTwhens, when, def);
+}
+
+int Unit::humanStringTracerWhen(const char *when)
+{
+	return string2enum(humanTwhens, when);
 }
 
 void Unit::setTracer(Onceref<Tracer> tracer)

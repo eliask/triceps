@@ -132,6 +132,23 @@ same(WrapUnit *self, WrapUnit *other)
 	OUTPUT:
 		RETVAL
 
+# operations on unit name
+char *
+getName(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = (char *)u->getName().c_str();
+	OUTPUT:
+		RETVAL
+
+void 
+setName(WrapUnit *self, char *name)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		u->setName(name);
+
 WrapTable *
 makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 	CODE:

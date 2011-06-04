@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 14 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -23,21 +23,65 @@ ok(1); # If we made it this far, we're ok.
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
+################### canned tracer #############################
+
 $ts1 = Triceps::UnitTracerStringName->new();
 ok(ref $ts1, "Triceps::UnitTracerStringName");
 
-$tp1 = Triceps::UnitTracerPerl->new();
+$ts2 = Triceps::UnitTracerStringName->new(verbose => 1);
+ok(ref $ts2, "Triceps::UnitTracerStringName");
+
+$ts3 = Triceps::UnitTracerStringName->new(verbose => 0);
+ok(ref $ts3, "Triceps::UnitTracerStringName");
+
+$ts4 = Triceps::UnitTracerStringName->new(0);
+ok (!defined $ts4);
+ok($! . "", "Usage: Triceps::UnitTracerStringName::new(CLASS, optionName, optionValue, ...), option names and values must go in pairs");
+
+$ts4 = Triceps::UnitTracerStringName->new(unknown => 1);
+ok (!defined $ts4);
+ok($! . "", "Triceps::UnitTracerStringName::new: unknown option 'unknown'");
+
+# XXX actually test the tracers!!!
+
+################### perl tracer #############################
+
+my $tlog; # perl tracer will be adding messages here
+
+sub tracerCb() # unit, label, fromLabel, rop, when, extra
+{
+	my ($unit, $label, $from, $rop, $when, @extra) = @_;
+	my $msg;
+
+	$msg = "unit '" . $unit->getName() . "'. " . Triceps::tracerWhenHumanString($when) . " label '" . $label->getName() . "' ";
+	if (defined $fromLabel) {
+		$msg .= "(chain '" . $fromLabel->getName() . "') ";
+	}
+	$msg .= "op '" . Triceps::opcodeString($rop->getOpcode()) . "' [" . join(',', @extra) . "]\n";
+	$tlog .= $msg;
+}
+
+$tp1 = Triceps::UnitTracerPerl->new(\&tracerCb);
 ok(ref $tp1, "Triceps::UnitTracerPerl");
 
-$v = $ts1->testSubclassCall();
+$tp2 = Triceps::UnitTracerPerl->new(\&tracerCb, "a", "b");
+ok(ref $tp2, "Triceps::UnitTracerPerl");
+
+# XXX actually test the tracers!!!
+
+#######################
+# this has nothing to do with tracers as such, just a test that the Parl class
+# inheritance passes through correctly from the C++ classes
+
+$v = $ts1->__testSubclassCall();
 ok($v, "UnitTracerStringName");
 
-$v = $tp1->testSubclassCall();
+$v = $tp1->__testSubclassCall();
 ok($v, "UnitTracerPerl");
 
-$v = $ts1->testSuperclassCall();
+$v = $ts1->__testSuperclassCall();
 ok($v, 1);
 
-$v = $tp1->testSuperclassCall();
+$v = $tp1->__testSuperclassCall();
 ok($v, 1);
 

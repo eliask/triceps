@@ -142,3 +142,24 @@ emString(int val)
 	OUTPUT:
 		RETVAL
 
+char *tracerWhenString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Unit::tracerWhenString(val, NULL);
+		if (res == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *tracerWhenHumanString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Unit::tracerWhenHumanString(val, NULL);
+		if (res == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+# XXX also add functions to translate from string to enum

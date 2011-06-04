@@ -12,17 +12,6 @@
 
 #include "TricepsPerl.h"
 
-// for now just a dummy, to fill out later
-class PerlUnitTracer : public Unit::Tracer
-{
-public:
-	// from Unit::Tracer
-	virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when)
-	{
-		// XXX call a Perl function
-	}
-};
-
 MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracer
 ###################################################################################
 
@@ -35,7 +24,7 @@ DESTROY(WrapUnitTracer *self)
 
 # to test a common call
 int
-testSuperclassCall(WrapUnitTracer *self)
+__testSuperclassCall(WrapUnitTracer *self)
 	CODE:
 		RETVAL = 1;
 	OUTPUT:
@@ -74,7 +63,7 @@ new(char *CLASS, ...)
 
 # to test a subclass call
 char *
-testSubclassCall(WrapUnitTracer *self)
+__testSubclassCall(WrapUnitTracer *self)
 	CODE:
 		clearErrMsg();
 		Unit::Tracer *tracer = self->get();
@@ -90,24 +79,34 @@ MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracerPerl
 
 # XXX for now just create a dummy object
 WrapUnitTracer *
-new(char *CLASS)
+new(char *CLASS, ...)
 	CODE:
+		static char funcName[] =  "Triceps::UnitTracerPerl::new";
 		clearErrMsg();
-		RETVAL = new WrapUnitTracer(new PerlUnitTracer());
+
+		Onceref<PerlCallback> cb = new PerlCallback();
+		PerlCallbackInitialize(cb, funcName, 1, items-1);
+		if (cb->code_ == NULL)
+			XSRETURN_UNDEF; // error message is already set
+
+		RETVAL = new WrapUnitTracer(new UnitTracerPerl(cb));
 	OUTPUT:
 		RETVAL
 
 # to test a subclass call
 char *
-testSubclassCall(WrapUnitTracer *self)
+__testSubclassCall(WrapUnitTracer *self)
 	CODE:
 		clearErrMsg();
 		Unit::Tracer *tracer = self->get();
-		PerlUnitTracer *ptr = dynamic_cast<PerlUnitTracer *>(tracer);
+		UnitTracerPerl *ptr = dynamic_cast<UnitTracerPerl *>(tracer);
 		if (ptr == NULL)
 			XSRETURN_UNDEF;
 		RETVAL = (char *)"UnitTracerPerl";
 	OUTPUT:
 		RETVAL
+
+# XXX add getCode
+# XXX getCode should return an array?
 
 # XXX put in the real logic!

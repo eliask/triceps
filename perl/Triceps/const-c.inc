@@ -74,6 +74,12 @@ __END__
 			break;
 		}
 		break;
+	case 'T':
+		*iv_return = Unit::stringTracerWhen(name);
+		if (*iv_return == -1)
+			return PERL_constant_NOTFOUND;
+		return PERL_constant_ISIV;
+		break;
 	}
 	return PERL_constant_NOTFOUND;
 }

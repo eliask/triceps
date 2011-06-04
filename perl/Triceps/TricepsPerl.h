@@ -219,6 +219,26 @@ protected:
 	Autoref<PerlCallback> cb_;
 };
 
+// A tracer that executes Perl code.
+class UnitTracerPerl : public Unit::Tracer
+{
+public:
+	// @param cb - callback object
+	UnitTracerPerl(Onceref<PerlCallback> cb);
+
+	// Clear the callback
+	void clear()
+	{
+		cb_ = NULL;
+	}
+
+	// from Unit::Tracer
+	virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when);
+
+protected:
+	Autoref<PerlCallback> cb_;
+};
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 
