@@ -4,6 +4,7 @@
 //
 // Helper functions for Perl wrapper.
 
+#include <typeinfo>
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -28,6 +29,11 @@ void clearErrMsg()
 		sv_setpvn(errsv, "", 0);
 	}
 }
+
+// XXX Add mode when all the error messages will be fatal?
+// This will work only with exit(1), not croak() because croak() would mess up C++ stack.
+
+// XXX Should also set the numeric value to EINVAL?
 
 void setErrMsg(const std::string &msg)
 {
@@ -330,6 +336,24 @@ bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
 		return false;
 	}
 	return true;
+}
+
+char *translateUnitTracerSubclass(const Unit::Tracer *tr)
+{
+	static char base[] = "Triceps::UnitTracer";
+	static char strn[] = "Triceps::UnitTracerStringName";
+	static char pl[] = "Triceps::UnitTracerPerl";
+	try {
+		const type_info &trinfo = typeid(*tr);
+		if (trinfo == typeid(Unit::StringNameTracer))
+			return strn;
+		else if (trinfo == typeid(UnitTracerPerl))
+			return pl;
+		else
+			return base;
+	} catch(...) {
+		abort();
+	}
 }
 
 ///////////////////////// PerlCallback ///////////////////////////////////////////////

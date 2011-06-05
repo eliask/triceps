@@ -12,6 +12,8 @@
 
 #include "TricepsPerl.h"
 
+// see also translateUnitTracerSubclass() in TricepsPerl.*
+
 MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracer
 ###################################################################################
 
@@ -27,6 +29,17 @@ int
 __testSuperclassCall(WrapUnitTracer *self)
 	CODE:
 		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+# check whether both refs point to the same object
+int
+same(WrapUnitTracer *self, WrapUnitTracer *other)
+	CODE:
+		clearErrMsg();
+		Unit::Tracer *t = self->get();
+		Unit::Tracer *ot = other->get();
+		RETVAL = (t == ot);
 	OUTPUT:
 		RETVAL
 
@@ -60,6 +73,28 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
+# getBuffer() would imply getting the error buffer, so call it just print()
+char *
+print(WrapUnitTracer *self)
+	CODE:
+		clearErrMsg();
+		Unit::Tracer *tracer = self->get();
+		Unit::StringNameTracer *sntr = dynamic_cast<Unit::StringNameTracer *>(tracer);
+		if (sntr == NULL)
+			XSRETURN_UNDEF;
+		string msg = sntr->getBuffer()->print();
+		RETVAL = (char *)msg.c_str();
+	OUTPUT:
+		RETVAL
+
+void
+clearBuffer(WrapUnitTracer *self)
+	CODE:
+		clearErrMsg();
+		Unit::Tracer *tracer = self->get();
+		Unit::StringNameTracer *sntr = dynamic_cast<Unit::StringNameTracer *>(tracer);
+		if (sntr != NULL)
+			sntr->clearBuffer();
 
 # to test a subclass call
 char *
@@ -77,7 +112,6 @@ __testSubclassCall(WrapUnitTracer *self)
 MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracerPerl
 ###################################################################################
 
-# XXX for now just create a dummy object
 WrapUnitTracer *
 new(char *CLASS, ...)
 	CODE:
@@ -108,5 +142,3 @@ __testSubclassCall(WrapUnitTracer *self)
 
 # XXX add getCode
 # XXX getCode should return an array?
-
-# XXX put in the real logic!

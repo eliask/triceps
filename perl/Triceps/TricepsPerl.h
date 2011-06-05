@@ -91,6 +91,14 @@ bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op);
 // @return - true on success, false on error
 bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i);
 
+// The Unit::Tracer subclasses hierarchy is partially exposed to Perl. So an Unit::Tracer
+// object can not be returned to Perl by a simple wrapping and blessing to a fixed class.
+// Instead its recognised subclasses must be blessed to the correct Perl classes.
+// This function returns the correct perl class for blessing.
+// @param tr - tracer object (must not be NULL!!!)
+// @return - perl class name, in a static string (which must be never modified!)
+char *translateUnitTracerSubclass(const Unit::Tracer *tr);
+
 // An encapsulation of a Perl callback: used to remember a reference
 // to Perl code and to the optional arguments to it.
 // Since Perl uses macros for the function call sequences,

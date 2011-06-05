@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 61 };
+BEGIN { plan tests => 89 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -289,5 +289,142 @@ $v = $u1->call($rop11);
 ok($v);
 
 #############################################################
+# tracer ops
+
+$v = $u1->getTracer();
+ok(! defined $v);
+ok($! . "", "");
+
+$trsn1 = Triceps::UnitTracerStringName->new();
+ok(ref $trsn1, "Triceps::UnitTracerStringName");
+
+$u1->setTracer($trsn1);
+$v = $u1->getTracer();
+ok(ref $v, "Triceps::UnitTracerStringName");
+ok($trsn1->same($v));
+
+$trp1 = Triceps::UnitTracerPerl->new(sub {});
+ok(ref $trp1, "Triceps::UnitTracerPerl");
+
+$u1->setTracer($trp1);
+$v = $u1->getTracer();
+ok(ref $v, "Triceps::UnitTracerPerl");
+ok($trp1->same($v));
+
+$u1->setTracer(undef);
+ok($! . "", "");
+
+$v = $u1->getTracer();
+ok(! defined $v);
+ok($! . "", "");
+
+# try to set an invalid value
+$u1->setTracer(10);
+ok($! . "", "Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer");
+
+$u1->setTracer($u1);
+ok($! . "", "Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer");
+
+#############################################################
+# test all 3 kinds of scheduling for correct functioning - as in t_Unit.cpp scheduling()
+# uses UnitTracerStringName, so tests it too
+
+if (0) {
+sub exe_call_two # (label, rowop, sub1, sub2)
+{
+	my ($label, $rowop, $sub1, $sub2) = @_;
+	my $unit = $label->getUnit();
+	$unit->call($sub1);
+	$unit->enqueue(&Triceps::EM_CALL, $sub2);
+}
+
+sub exe_fork_two # (label, rowop, sub1, sub2)
+{
+	my ($label, $rowop, $sub1, $sub2) = @_;
+	my $unit = $label->getUnit();
+	$unit->fork($sub1);
+	$unit->enqueue(&Triceps::EM_FORK, $sub2);
+}
+
+sub exe_sched_two # (label, rowop, sub1, sub2)
+{
+	my ($label, $rowop, $sub1, $sub2) = @_;
+	my $unit = $label->getUnit();
+	$unit->schedule($sub1);
+	$unit->enqueue(&Triceps::EM_SCHEDULE, $sub2);
+}
+} # 0
+
+sub exe_sched_fork_call # (label, rowop, lab1, lab2, lab3, row)
+{
+	my ($label, $rowop, $lab1, $lab2, $lab3, $row) = @_;
+	my $unit = $label->getUnit();
+	$unit->schedule($lab1->makeRowop(&Triceps::OP_INSERT, $row));
+	$unit->schedule($lab1->makeRowop(&Triceps::OP_DELETE, $row));
+	$unit->fork($lab2->makeRowop(&Triceps::OP_INSERT, $row));
+	$unit->fork($lab2->makeRowop(&Triceps::OP_DELETE, $row));
+	$unit->call($lab3->makeRowop(&Triceps::OP_INSERT, $row));
+	$unit->call($lab3->makeRowop(&Triceps::OP_DELETE, $row));
+}
+
+$sntr = Triceps::UnitTracerStringName->new();
+$u1->setTracer($sntr);
+ok($! . "", "");
+
+$s_lab1 = $u1->makeDummyLabel($rt1, "lab1");
+ok(ref $s_lab1, "Triceps::Label");
+$s_lab2 = $u1->makeDummyLabel($rt1, "lab2");
+ok(ref $s_lab2, "Triceps::Label");
+$s_lab3 = $u1->makeDummyLabel($rt1, "lab3");
+ok(ref $s_lab3, "Triceps::Label");
+
+$s_lab4 = $u1->makeLabel($rt1, "lab4", \&exe_sched_fork_call, $s_lab1, $s_lab2, $s_lab3, $row1);
+ok(ref $s_lab4, "Triceps::Label");
+$s_lab5 = $u1->makeLabel($rt1, "lab5", \&exe_sched_fork_call, $s_lab1, $s_lab2, $s_lab3, $row1);
+ok(ref $s_lab5, "Triceps::Label");
+
+$s_op4 = $s_lab4->makeRowop(&Triceps::OP_NOP, $row1);
+ok(ref $s_op4, "Triceps::Rowop");
+$s_op5 = $s_lab5->makeRowop(&Triceps::OP_NOP, $row1);
+ok(ref $s_op5, "Triceps::Rowop");
+
+$s_expect =
+	"unit 'u1' before label 'lab4' op OP_NOP\n"
+	. "unit 'u1' before label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' before label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab2' op OP_DELETE\n"
+
+	. "unit 'u1' before label 'lab5' op OP_NOP\n"
+	. "unit 'u1' before label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' before label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab2' op OP_DELETE\n"
+
+	. "unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	;
+
+# execute with scheduling of op4, op5
+
+$u1->schedule($s_op4);
+ok($! . "", "");
+$u1->enqueue(&Triceps::EM_SCHEDULE, $s_op5);
+ok($! . "", "");
+ok(!$u1->empty());
+
+$u1->drainFrame();
+ok($u1->empty());
+
+$v = $sntr->print();
+ok($v, $s_expect);
+
+# check the buffer cleaning of string tracer
+$sntr->clearBuffer();
+ok($! . "", "");
+$v = $sntr->print();
+ok($v, "");
 
 # XXX test that the execution order in scheduling is correct - as in t_Unit.cpp

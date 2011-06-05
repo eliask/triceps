@@ -99,6 +99,12 @@ public:
 		name_ = name;
 	}
 
+	// XXX There is an issue with potential circular references, when the labels
+	// refer to each other with Autorefs, and the topology includes a loop.
+	// Then the labels in the loop will never be freed. A potential solution
+	// would be for the loop to keep track of all the labels, and let the
+	// user program call a clearing request to all of them (through an added method).
+
 	// Tracing interface.
 	// Often it's hard to figure out, how a certain result got produced.
 	// This allows the user to trace the whole execution sequence.

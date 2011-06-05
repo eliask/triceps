@@ -121,7 +121,7 @@ empty(WrapUnit *self)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same type object
+# check whether both refs point to the same object
 int
 same(WrapUnit *self, WrapUnit *other)
 	CODE:
@@ -148,6 +148,44 @@ setName(WrapUnit *self, char *name)
 		clearErrMsg();
 		Unit *u = self->get();
 		u->setName(name);
+
+# operations on tracer
+WrapUnitTracer *
+getTracer(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		Autoref<Unit::Tracer> tracer = u->getTracer();
+		if (tracer.isNull())
+			XSRETURN_UNDEF;
+
+		// find the class to use for blessing
+		char *CLASS = translateUnitTracerSubclass(tracer.get());
+		RETVAL = new WrapUnitTracer(tracer);
+	OUTPUT:
+		RETVAL
+
+# use SV* for argument because may pass undef
+void
+setTracer(WrapUnit *self, SV *arg)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		Unit::Tracer *tracer = NULL;
+		if (SvOK(arg)) {
+			if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+				WrapUnitTracer *twrap = (WrapUnitTracer *)SvIV((SV*)SvRV( arg ));
+				if (twrap == 0 || twrap->badMagic()) {
+					setErrMsg( "Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer" );
+					XSRETURN_UNDEF;
+				}
+				tracer = twrap->get();
+			} else{
+				setErrMsg( "Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer" );
+				XSRETURN_UNDEF;
+			}
+		} // otherwise leave the tracer as NULL
+		u->setTracer(tracer);
 
 WrapTable *
 makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)

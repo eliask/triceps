@@ -251,8 +251,10 @@ UTESTCASE rowop(Utest *utest)
 	UT_IS(op3->getRow(), r1.get());
 }
 
+#if 0 // {
 // for scheduling test, make labels that push more labels
 // onto the queue in different ways.
+// (note that memory management here works only because there are no loops in the graph)
 class LabelCallTwo : public Label
 {
 public:
@@ -309,6 +311,7 @@ public:
 
 	Autoref<Rowop> sub1_, sub2_;
 };
+#endif // }
 
 class LabelSchedForkCall : public Label
 {

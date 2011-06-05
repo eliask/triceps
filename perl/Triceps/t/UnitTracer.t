@@ -42,7 +42,7 @@ $ts4 = Triceps::UnitTracerStringName->new(unknown => 1);
 ok (!defined $ts4);
 ok($! . "", "Triceps::UnitTracerStringName::new: unknown option 'unknown'");
 
-# XXX actually test the tracers!!!
+# execution tested in Unit.t
 
 ################### perl tracer #############################
 
