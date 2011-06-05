@@ -188,13 +188,13 @@ getCode(WrapLabel *self)
 
 # for PerlLabel, clear the callback
 void
-clear(WrapLabel *self)
+clearCode(WrapLabel *self)
 	CODE:
 		clearErrMsg();
 		Label *lab = self->get();
 		PerlLabel *plab = dynamic_cast<PerlLabel *>(lab);
 		if (plab == NULL) {
-			setErrMsg("Triceps::Label::clear: label is not a Perl Label, has no Perl code");
+			setErrMsg("Triceps::Label::clearCode: label is not a Perl Label, has no Perl code");
 			XSRETURN_UNDEF; 
 		}
 		plab->clear();

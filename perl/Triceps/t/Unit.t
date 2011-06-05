@@ -284,7 +284,7 @@ ok($v);
 
 print STDERR "Expect error message from unit u1 label xlab1 handler about label that has been cleared\n";
 $v = $u1->call($rop11);
-$xlab1->clear(); # now the label could not call anything any more
+$xlab1->clearCode(); # now the label could not call anything any more
 $v = $u1->call($rop11);
 ok($v);
 

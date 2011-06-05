@@ -139,13 +139,13 @@ ok($res, "plab");
 $res = $plab->getCode();
 ok($res, \&plab_exec);
 
-$plab->clear();
+$plab->clearCode();
 ok($! . "", "");
 
 $res = $lb->getCode();
 ok(! defined $res);
 ok($! . "", "Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
 
-$lb->clear();
-ok($! . "", "Triceps::Label::clear: label is not a Perl Label, has no Perl code");
+$lb->clearCode();
+ok($! . "", "Triceps::Label::clearCode: label is not a Perl Label, has no Perl code");
 
