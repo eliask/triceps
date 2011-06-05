@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 95 };
+BEGIN { plan tests => 101 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -490,5 +490,36 @@ ok($u1->empty());
 $v = $sntr->print();
 ok($v, $s_expect_verbose);
 
+### same again but with Perl tracer
+
+sub tracerCb() # unit, label, fromLabel, rop, when, extra
+{
+	my ($unit, $label, $from, $rop, $when, @extra) = @_;
+	my $msg;
+	our $history;
+
+	$msg = "unit '" . $unit->getName() . "' " . Triceps::tracerWhenHumanString($when) . " label '" . $label->getName() . "' ";
+	if (defined $fromLabel) {
+		$msg .= "(chain '" . $fromLabel->getName() . "') ";
+	}
+	$msg .= "op " . Triceps::opcodeString($rop->getOpcode()) . "\n";
+	$history .= $msg;
+}
+
+undef $history;
+$ptr = Triceps::UnitTracerPerl->new(\&tracerCb);
+$u1->setTracer($ptr);
+ok($! . "", "");
+
+$u1->fork($s_op4);
+ok($! . "", "");
+$u1->enqueue("EM_FORK", $s_op5);
+ok($! . "", "");
+ok(!$u1->empty());
+
+$u1->drainFrame();
+ok($u1->empty());
+
+ok($history, $s_expect_verbose);
 
 # XXX test that the execution order in scheduling is correct - as in t_Unit.cpp

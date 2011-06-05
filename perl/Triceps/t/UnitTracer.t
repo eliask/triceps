@@ -53,11 +53,11 @@ sub tracerCb() # unit, label, fromLabel, rop, when, extra
 	my ($unit, $label, $from, $rop, $when, @extra) = @_;
 	my $msg;
 
-	$msg = "unit '" . $unit->getName() . "'. " . Triceps::tracerWhenHumanString($when) . " label '" . $label->getName() . "' ";
+	$msg = "unit '" . $unit->getName() . "' " . Triceps::tracerWhenHumanString($when) . " label '" . $label->getName() . "' ";
 	if (defined $fromLabel) {
 		$msg .= "(chain '" . $fromLabel->getName() . "') ";
 	}
-	$msg .= "op '" . Triceps::opcodeString($rop->getOpcode()) . "' [" . join(',', @extra) . "]\n";
+	$msg .= "op " . Triceps::opcodeString($rop->getOpcode()) . "' [" . join(',', @extra) . "]\n";
 	$tlog .= $msg;
 }
 
