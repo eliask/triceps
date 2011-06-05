@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 89 };
+BEGIN { plan tests => 95 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -407,11 +407,56 @@ $s_expect =
 	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
 	;
 
+$s_expect_verbose =
+	"unit 'u1' before label 'lab4' op OP_NOP\n"
+	. "unit 'u1' before label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab4' op OP_NOP\n"
+	. "unit 'u1' before label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab4' op OP_NOP\n"
+	. "unit 'u1' before label 'lab5' op OP_NOP\n"
+	. "unit 'u1' before label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab5' op OP_NOP\n"
+	. "unit 'u1' before label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab5' op OP_NOP\n"
+	. "unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab1' op OP_DELETE\n"
+	;
+
 # execute with scheduling of op4, op5
 
 $u1->schedule($s_op4);
 ok($! . "", "");
-$u1->enqueue(&Triceps::EM_SCHEDULE, $s_op5);
+$u1->enqueue("EM_SCHEDULE", $s_op5);
 ok($! . "", "");
 ok(!$u1->empty());
 
@@ -426,5 +471,24 @@ $sntr->clearBuffer();
 ok($! . "", "");
 $v = $sntr->print();
 ok($v, "");
+
+### repeat the same with the verbose tracer and fork() instead of schedule()
+
+$sntr = Triceps::UnitTracerStringName->new(verbose => 1);
+$u1->setTracer($sntr);
+ok($! . "", "");
+
+$u1->fork($s_op4);
+ok($! . "", "");
+$u1->enqueue("EM_FORK", $s_op5);
+ok($! . "", "");
+ok(!$u1->empty());
+
+$u1->drainFrame();
+ok($u1->empty());
+
+$v = $sntr->print();
+ok($v, $s_expect_verbose);
+
 
 # XXX test that the execution order in scheduling is correct - as in t_Unit.cpp
