@@ -87,7 +87,7 @@ getdef(WrapRowType *self)
 
 # the row factory, from a hash-style name-value list
 WrapRow *
-makerow_hs(WrapRowType *self, ...)
+makeRowHash(WrapRowType *self, ...)
 	CODE:
 		clearErrMsg();
 		RowType *rt = self->get();
@@ -102,7 +102,7 @@ makerow_hs(WrapRowType *self, ...)
 		// and can not have lists.
 
 		if (items % 2 != 1) {
-			setErrMsg("Usage: Triceps::RowType::makerow_hs(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
+			setErrMsg("Usage: Triceps::RowType::makeRowHash(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
 			XSRETURN_UNDEF;
 		}
 
@@ -116,7 +116,7 @@ makerow_hs(WrapRowType *self, ...)
 			const char *fname = (const char *)SvPV_nolen(ST(i));
 			int idx  = rt->findIdx(fname);
 			if (idx < 0) {
-				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Triceps::RowType::makerow_hs", fname));
+				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Triceps::RowType::makeRowHash", fname));
 				XSRETURN_UNDEF;
 			}
 			const RowType::Field &finfo = rt->fields()[idx];
@@ -125,7 +125,7 @@ makerow_hs(WrapRowType *self, ...)
 				fields[idx].setNull();
 			} else {
 				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makerow_hs", fname));
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makeRowHash", fname));
 					XSRETURN_UNDEF;
 				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
@@ -143,7 +143,7 @@ makerow_hs(WrapRowType *self, ...)
 # the row factory, from an array of values in the exact order (like CSV files),
 # filling the missing values at the end with nulls
 WrapRow *
-makerow_ar(WrapRowType *self, ...)
+makeRowArray(WrapRowType *self, ...)
 	CODE:
 		clearErrMsg();
 		RowType *rt = self->get();
@@ -153,7 +153,7 @@ makerow_ar(WrapRowType *self, ...)
 		int nf = rt->fieldCount();
 
 		if (items > nf + 1) {
-			setErrMsg(strprintf("Triceps::RowType::makerow_ar: %d args, only %d fields in ", items-1, nf) + rt->print(NOINDENT));
+			setErrMsg(strprintf("Triceps::RowType::makeRowArray: %d args, only %d fields in ", items-1, nf) + rt->print(NOINDENT));
 			XSRETURN_UNDEF;
 		}
 
@@ -168,7 +168,7 @@ makerow_ar(WrapRowType *self, ...)
 
 			if (SvOK(ST(i))) { // undef translates to null, which is already set
 				if (SvROK(ST(i)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makerow_ar", fname));
+					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makeRowArray", fname));
 					XSRETURN_UNDEF;
 				}
 				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i), fname);
@@ -256,3 +256,5 @@ print(WrapRowType *self, ...)
 		RETVAL = (char *)result.c_str();
 	OUTPUT:
 		RETVAL
+
+# XXX add a way to get back the type-name field definition list

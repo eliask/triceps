@@ -158,7 +158,7 @@ $history = "";
 	d => 3.14,
 	e => "text",
 );
-$row1 = $rt1->makerow_hs(@dataset1);
+$row1 = $rt1->makeRowHash(@dataset1);
 ok(ref $row1, "Triceps::Row");
 
 $rop11 = $xlab1->makeRowop("OP_INSERT", $row1);

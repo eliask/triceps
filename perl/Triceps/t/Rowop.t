@@ -92,7 +92,7 @@ ok(ref $lb, "Triceps::Label");
 	d => 3.14,
 	e => "text",
 );
-$row1 = $rt1->makerow_hs(@dataset1);
+$row1 = $rt1->makeRowHash(@dataset1);
 ok(ref $row1, "Triceps::Row");
 
 @dataset2 = (
@@ -102,7 +102,7 @@ ok(ref $row1, "Triceps::Row");
 	xd => 3.14,
 	xe => "text",
 );
-$row2 = $rt2->makerow_hs(@dataset2);
+$row2 = $rt2->makeRowHash(@dataset2);
 ok(ref $row2, "Triceps::Row");
 
 @dataset3 = (
@@ -112,7 +112,7 @@ ok(ref $row2, "Triceps::Row");
 	c => 3e15+0,
 	d => 3.14,
 );
-$row3 = $rt3->makerow_hs(@dataset3);
+$row3 = $rt3->makeRowHash(@dataset3);
 ok(ref $row3, "Triceps::Row");
 
 ######################### factory  #############################

@@ -100,7 +100,7 @@ ok(ref $lb2, "Triceps::Label");
 	d => 3.14,
 	e => "text",
 );
-$row1 = $rt1->makerow_hs(@dataset1);
+$row1 = $rt1->makeRowHash(@dataset1);
 ok(ref $row1, "Triceps::Row");
 
 $rop11 = $lb1->makeRowop("OP_INSERT", $row1);

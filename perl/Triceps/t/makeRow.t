@@ -47,7 +47,7 @@ ok(ref $rt3, "Triceps::RowType");
 
 #################### creating from hashes ######################
 
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	a => "uint8",
 	b => 123,
 	c => 3e15,
@@ -65,11 +65,11 @@ ok(ref $r1, "Triceps::Row");
 	d => 3.14,
 	e => "string",
 );
-$r1 = $rt1->makerow_hs(%data1);
+$r1 = $rt1->makeRowHash(%data1);
 ok(ref $r1, "Triceps::Row");
 
 # try giving a non-numeric but convertible value to a numeric field
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	a => "uint8",
 	b => "123",
 	c => 3e15,
@@ -80,7 +80,7 @@ ok(ref $r1, "Triceps::Row");
 
 # try giving a non-numeric and non-convertible value to a numeric field
 print STDERR "Ignore the following message about non-numeric, if any\n";
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	a => "uint8",
 	b => "z123",
 	c => 3e15,
@@ -90,7 +90,7 @@ $r1 = $rt1->makerow_hs(
 ok(ref $r1, "Triceps::Row");
 
 # test that scalar can be transparently set to arrays
-$r1 = $rt3->makerow_hs(
+$r1 = $rt3->makeRowHash(
 	a => "uint8",
 	b => 123,
 	c => 3e15,
@@ -99,7 +99,7 @@ $r1 = $rt3->makerow_hs(
 );
 ok(ref $r1, "Triceps::Row");
 
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	a => undef,
 	b => 123,
 	c => 3e15,
@@ -108,11 +108,11 @@ $r1 = $rt1->makerow_hs(
 ok(ref $r1, "Triceps::Row");
 
 # all-null row
-$r1 = $rt1->makerow_hs();
+$r1 = $rt1->makeRowHash();
 ok(ref $r1, "Triceps::Row");
 
 # try all the errors
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	a => "uint8",
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
@@ -120,28 +120,28 @@ $r1 = $rt1->makerow_hs(
 	e => "string",
 );
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makerow_hs: attempting to set an array into scalar field 'b'");
+ok($! . "", "Triceps::RowType::makeRowHash: attempting to set an array into scalar field 'b'");
 
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	z => "uint8",
 	c => 3e15,
 	d => 3.14,
 	e => "string",
 );
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makerow_hs: attempting to set an unknown field 'z'");
+ok($! . "", "Triceps::RowType::makeRowHash: attempting to set an unknown field 'z'");
 
-$r1 = $rt1->makerow_hs(
+$r1 = $rt1->makeRowHash(
 	a => undef,
 	b => 123,
 	c => 3e15,
 	"e"
 );
 ok(!defined $r1);
-ok($! . "", "Usage: Triceps::RowType::makerow_hs(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
+ok($! . "", "Usage: Triceps::RowType::makeRowHash(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
 
 # array fields
-$r1 = $rt3->makerow_hs(
+$r1 = $rt3->makeRowHash(
 	a => "uint8",
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
@@ -151,7 +151,7 @@ $r1 = $rt3->makerow_hs(
 ok(ref $r1, "Triceps::Row");
 #print STDERR "\n", $r1->hexdump;
 
-$r1 = $rt3->makerow_hs(
+$r1 = $rt3->makeRowHash(
 	a => [ "uint8" ],
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
@@ -162,7 +162,7 @@ ok(!defined $r1);
 ok($! . "", "Triceps field 'a' data conversion: array reference may not be used for string and uint8");
 
 # errors related to array fields
-$r1 = $rt3->makerow_hs(
+$r1 = $rt3->makeRowHash(
 	a => "uint8",
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
@@ -170,9 +170,9 @@ $r1 = $rt3->makerow_hs(
 	e => [ "string" ],
 );
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makerow_hs: attempting to set an array into scalar field 'e'");
+ok($! . "", "Triceps::RowType::makeRowHash: attempting to set an array into scalar field 'e'");
 
-$r1 = $rt3->makerow_hs(
+$r1 = $rt3->makeRowHash(
 	a => "uint8",
 	b => { "a" , 0x456 },
 	c => 3e15,
@@ -184,7 +184,7 @@ ok($! . "", "Triceps field 'b' data conversion: reference not to an array");
 
 #################### creating from CSV-style arrays ######################
 
-$r1 = $rt1->makerow_ar(
+$r1 = $rt1->makeRowArray(
 	"uint8",
 	123,
 	3e15,
@@ -194,7 +194,7 @@ $r1 = $rt1->makerow_ar(
 ok(ref $r1, "Triceps::Row");
 
 # test that scalar can be transparently set to arrays
-$r1 = $rt3->makerow_ar(
+$r1 = $rt3->makeRowArray(
 	"uint8",
 	123,
 	3e15,
@@ -204,11 +204,11 @@ $r1 = $rt3->makerow_ar(
 ok(ref $r1, "Triceps::Row");
 
 # all-null row
-$r1 = $rt1->makerow_ar();
+$r1 = $rt1->makeRowArray();
 ok(ref $r1, "Triceps::Row");
 
 # try all the errors
-$r1 = $rt1->makerow_ar(
+$r1 = $rt1->makeRowArray(
 	"uint8",
 	[ 0x123, 0x456 ],
 	3e15,
@@ -216,19 +216,19 @@ $r1 = $rt1->makerow_ar(
 	"string",
 );
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makerow_ar: attempting to set an array into scalar field 'b'");
+ok($! . "", "Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'b'");
 
-$r1 = $rt1->makerow_ar(
+$r1 = $rt1->makeRowArray(
 	a => undef,
 	b => 123,
 	c => 3e15,
 	"e"
 );
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makerow_ar: 7 args, only 5 fields in row { uint8 a, int32 b, int64 c, float64 d, string e, }");
+ok($! . "", "Triceps::RowType::makeRowArray: 7 args, only 5 fields in row { uint8 a, int32 b, int64 c, float64 d, string e, }");
 
 # array fields
-$r1 = $rt3->makerow_ar(
+$r1 = $rt3->makeRowArray(
 	"uint8",
 	[ 0x123, 0x456 ],
 	3e15,
@@ -238,7 +238,7 @@ $r1 = $rt3->makerow_ar(
 ok(ref $r1, "Triceps::Row");
 #print STDERR "\n", $r1->hexdump;
 
-$r1 = $rt3->makerow_ar(
+$r1 = $rt3->makeRowArray(
 	[ "uint8" ],
 	[ 0x123, 0x456 ],
 	3e15,
@@ -249,7 +249,7 @@ ok(!defined $r1);
 ok($! . "", "Triceps field 'a' data conversion: array reference may not be used for string and uint8");
 
 # errors related to array fields
-$r1 = $rt3->makerow_ar(
+$r1 = $rt3->makeRowArray(
 	"uint8",
 	[ 0x123, 0x456 ],
 	3e15,
@@ -257,9 +257,9 @@ $r1 = $rt3->makerow_ar(
 	[ "string" ],
 );
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makerow_ar: attempting to set an array into scalar field 'e'");
+ok($! . "", "Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'e'");
 
-$r1 = $rt3->makerow_ar(
+$r1 = $rt3->makeRowArray(
 	"uint8",
 	{ "a" , 0x456 },
 	3e15,

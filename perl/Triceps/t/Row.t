@@ -74,7 +74,7 @@ ok(ref $rt3, "Triceps::RowType");
 	d => 3.14,
 	e => "string",
 );
-$r1 = $rt1->makerow_hs( @dataset1);
+$r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 # this result is dependent on the machine byte order, so it's not for final tests
@@ -92,7 +92,7 @@ ok(join(',', @d1), join(',', @dataset1));
 	d => undef,
 	e => undef,
 );
-$r2 = $rt1->makerow_hs( @dataset2);
+$r2 = $rt1->makeRowHash( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
 @d2 = $r2->to_hs();
@@ -108,7 +108,7 @@ ok(join(',', map {defined $_? $_ : "-"} @d2), join(',', map {defined $_? $_ : "-
 	e => "string",
 );
 #print STDERR "\n dataset:", &row2string(@dataset3), "\n";
-$r3 = $rt3->makerow_hs( @dataset3);
+$r3 = $rt3->makeRowHash( @dataset3);
 ok(ref $r3, "Triceps::Row");
 
 # this result is dependent on the machine byte order, so it's not for final tests
@@ -127,7 +127,7 @@ ok(&row2string(@d3), &row2string(@dataset3));
 	e => "string",
 );
 #print STDERR "\n dataset:", &row2string(@dataset4), "\n";
-$r4 = $rt3->makerow_hs( @dataset4);
+$r4 = $rt3->makeRowHash( @dataset4);
 ok(ref $r4, "Triceps::Row");
 
 # this result is dependent on the machine byte order, so it's not for final tests
@@ -147,7 +147,7 @@ ok(&row2string(@d4), &row2string(@dataset4));
 	3.14,
 	"string",
 );
-$r1 = $rt1->makerow_ar( @dataset1);
+$r1 = $rt1->makeRowArray( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 # this result is dependent on the machine byte order, so it's not for final tests
@@ -163,7 +163,7 @@ ok(join(',', @d1), join(',', @dataset1));
 	undef,
 	3e15+0,
 );
-$r2 = $rt1->makerow_ar( @dataset2);
+$r2 = $rt1->makeRowArray( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
 @d2 = $r2->to_ar();
@@ -179,7 +179,7 @@ ok(&row2string(@d2), &row2string(undef,undef,3e15+0,undef,undef));
 	"string",
 );
 #print STDERR "\n dataset:", &row2string(@dataset3), "\n";
-$r3 = $rt3->makerow_ar( @dataset3);
+$r3 = $rt3->makeRowArray( @dataset3);
 ok(ref $r3, "Triceps::Row");
 
 # this result is dependent on the machine byte order, so it's not for final tests
@@ -198,7 +198,7 @@ ok(&row2string(@d3), &row2string(@dataset3));
 	"string",
 );
 #print STDERR "\n dataset:", &row2string(@dataset4), "\n";
-$r4 = $rt3->makerow_ar( @dataset4);
+$r4 = $rt3->makeRowArray( @dataset4);
 ok(ref $r4, "Triceps::Row");
 
 # this result is dependent on the machine byte order, so it's not for final tests
@@ -218,7 +218,7 @@ ok(&row2string(@d4), &row2string(@dataset4));
 	d => 3.14,
 	e => "string",
 );
-$r1 = $rt1->makerow_hs( @dataset1);
+$r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 $r2 = $r1->copymod(
@@ -279,7 +279,7 @@ ok(&row2string(@d2), &row2string(@dataset2));
 	d => [ 3.14, 2.71, 3.123456789012345+0 ],
 	e => "string",
 );
-$r1 = $rt3->makerow_hs( @dataset1);
+$r1 = $rt3->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 @dataset3 = (
@@ -369,7 +369,7 @@ ok($! . "", "Triceps::Row::copymod: attempting to set an unknown field 'z'");
 	d => 3.14,
 	e => "string",
 );
-$r1 = $rt1->makerow_hs( @dataset1);
+$r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 $r2 = $r1->copymod(
@@ -379,7 +379,7 @@ ok(!defined $r2);
 ok($! . "", "Triceps::Row::copymod: attempting to set an array into scalar field 'b'");
 
 # setting an array for uint8
-$r1 = $rt3->makerow_hs( @dataset1);
+$r1 = $rt3->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 $r2 = $r1->copymod(
@@ -398,7 +398,7 @@ ok($! . "", "Triceps field 'a' data conversion: array reference may not be used 
 	d => 3.14,
 	e => "string",
 );
-$r1 = $rt1->makerow_hs( @dataset1);
+$r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
 ok($r1->get("a"), "uint8");
@@ -419,7 +419,7 @@ ok($! . "", "Triceps::Row::get: unknown field 'z'");
 	d => undef,
 	e => undef,
 );
-$r2 = $rt1->makerow_hs( @dataset2);
+$r2 = $rt1->makeRowHash( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
 ok(!defined $r2->get("a"));
@@ -433,7 +433,7 @@ ok($! . "", "");
 	d => [ 3.14, 2.71, 3.123456789012345+0 ],
 	e => "string",
 );
-$r1 = $rt3->makerow_hs( @dataset3);
+$r1 = $rt3->makeRowHash( @dataset3);
 ok(ref $r1, "Triceps::Row");
 
 ok($r1->get("a"), "bytesbytes");
@@ -452,7 +452,7 @@ ok(&row2string(@$v), &row2string(@{$dataset3[7]}));
 	d => undef,
 	e => undef,
 );
-$r2 = $rt3->makerow_hs( @dataset2);
+$r2 = $rt3->makeRowHash( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
 ok(!defined $r2->get("a"));
