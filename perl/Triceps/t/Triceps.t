@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 43 };
+BEGIN { plan tests => 67 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -42,6 +42,35 @@ ok(&Triceps::TW_BEFORE_DRAIN, 1);
 ok(&Triceps::TW_BEFORE_CHAINED, 2);
 ok(&Triceps::TW_AFTER, 3);
 
+# translation of constant strings
+
+ok(&Triceps::stringEm("EM_SCHEDULE"), &Triceps::EM_SCHEDULE);
+ok(&Triceps::stringEm("EM_FORK"), &Triceps::EM_FORK);
+ok(&Triceps::stringEm("EM_CALL"), &Triceps::EM_CALL);
+ok(&Triceps::stringEm("EM_IGNORE"), &Triceps::EM_IGNORE);
+ok(&Triceps::stringEm("xxx"), undef);
+
+ok(&Triceps::stringOpcode("OP_NOP"), &Triceps::OP_NOP);
+ok(&Triceps::stringOpcode("OP_INSERT"), &Triceps::OP_INSERT);
+ok(&Triceps::stringOpcode("OP_DELETE"), &Triceps::OP_DELETE);
+ok(&Triceps::stringOpcode("xxx"), undef);
+
+ok(&Triceps::stringOcf("OCF_INSERT"), &Triceps::OCF_INSERT);
+ok(&Triceps::stringOcf("OCF_DELETE"), &Triceps::OCF_DELETE);
+ok(&Triceps::stringOcf("xxx"), undef);
+
+ok(&Triceps::stringTracerWhen("TW_BEFORE"), &Triceps::TW_BEFORE);
+ok(&Triceps::stringTracerWhen("TW_BEFORE_DRAIN"), &Triceps::TW_BEFORE_DRAIN);
+ok(&Triceps::stringTracerWhen("TW_BEFORE_CHAINED"), &Triceps::TW_BEFORE_CHAINED);
+ok(&Triceps::stringTracerWhen("TW_AFTER"), &Triceps::TW_AFTER);
+ok(&Triceps::stringTracerWhen("xxx"), undef);
+
+ok(&Triceps::humanStringTracerWhen("before"), &Triceps::TW_BEFORE);
+ok(&Triceps::humanStringTracerWhen("drain"), &Triceps::TW_BEFORE_DRAIN);
+ok(&Triceps::humanStringTracerWhen("before-chained"), &Triceps::TW_BEFORE_CHAINED);
+ok(&Triceps::humanStringTracerWhen("after"), &Triceps::TW_AFTER);
+ok(&Triceps::humanStringTracerWhen("xxx"), undef);
+
 # reverse translation of constants
 ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
 ok(&Triceps::emString(&Triceps::EM_FORK), "EM_FORK");
@@ -62,11 +91,13 @@ ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE), "TW_BEFORE");
 ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_DRAIN), "TW_BEFORE_DRAIN");
 ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_CHAINED), "TW_BEFORE_CHAINED");
 ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER), "TW_AFTER");
+ok(&Triceps::tracerWhenString(999), undef);
 
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE), "before");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_DRAIN), "drain");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_CHAINED), "before-chained");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER), "after");
+ok(&Triceps::tracerWhenHumanString(999), undef);
 
 # tests of the opcodes
 

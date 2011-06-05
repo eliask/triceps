@@ -117,4 +117,3 @@ getEnqMode(WrapRowop *self)
 	OUTPUT:
 		RETVAL
 
-# XXX do opcodeString(), ocfString()?

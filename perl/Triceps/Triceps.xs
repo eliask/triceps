@@ -109,6 +109,66 @@ isNop(int op)
 	OUTPUT:
 		RETVAL
 
+############ conversions of strings to enum constants #############################
+# (this duplicates the Triceps:: constant definitions but comes useful once in a while
+# the error values are converted to undefs
+
+int
+stringOpcode(char *val)
+	CODE:
+		clearErrMsg();
+		int res = Rowop::stringOpcode(val);
+		if (res == Rowop::OP_BAD)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
+int
+stringOcf(char *val)
+	CODE:
+		clearErrMsg();
+		int res = Rowop::stringOcf(val);
+		if (res == -1)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
+int
+stringEm(char *val)
+	CODE:
+		clearErrMsg();
+		int res = Gadget::stringEm(val);
+		if (res == -1)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
+int
+stringTracerWhen(char *val)
+	CODE:
+		clearErrMsg();
+		int res = Unit::stringTracerWhen(val);
+		if (res == -1)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
+int
+humanStringTracerWhen(char *val)
+	CODE:
+		clearErrMsg();
+		int res = Unit::humanStringTracerWhen(val);
+		if (res == -1)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
+
 ############ conversions of constants back to string #############################
 
 char *
@@ -161,5 +221,3 @@ char *tracerWhenHumanString(int val)
 		RETVAL = (char *)res;
 	OUTPUT:
 		RETVAL
-
-# XXX also add functions to translate from string to enum

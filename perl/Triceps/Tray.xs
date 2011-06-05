@@ -125,4 +125,3 @@ push(WrapTray *self, ...)
 	OUTPUT:
 		RETVAL
 
-# XXX add tests
