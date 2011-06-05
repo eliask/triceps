@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 102 };
+BEGIN { plan tests => 114 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -333,7 +333,7 @@ ok($! . "", "Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer")
 
 #############################################################
 # test all 3 kinds of scheduling for correct functioning - as in t_Unit.cpp scheduling()
-# uses UnitTracerStringName, so tests it too
+# uses UnitTracerStringName and UnitTracerPerl, so tests them too
 
 if (0) {
 sub exe_call_two # (label, rowop, sub1, sub2)
@@ -528,3 +528,72 @@ ok($u1->empty());
 
 ok($history, $s_expect_verbose);
 
+#############################################################
+# test the chaining - as in t_Unit.cpp scheduling()
+
+$sntr = Triceps::UnitTracerStringName->new(verbose => 1);
+$u1->setTracer($sntr);
+ok($! . "", "");
+
+$c_lab1 = $u1->makeDummyLabel($rt1, "lab1");
+ok(ref $c_lab1, "Triceps::Label");
+$c_lab2 = $u1->makeDummyLabel($rt1, "lab2");
+ok(ref $c_lab2, "Triceps::Label");
+$c_lab3 = $u1->makeDummyLabel($rt1, "lab3");
+ok(ref $c_lab3, "Triceps::Label");
+
+$c_op1 = $c_lab1->makeRowop(&Triceps::OP_INSERT, $row1);
+ok(ref $c_op1, "Triceps::Rowop");
+$c_op2 = $c_lab1->makeRowop(&Triceps::OP_DELETE, $row1);
+ok(ref $c_op2, "Triceps::Rowop");
+
+$v = $c_lab1->chain($c_lab2);
+ok($v);
+$v = $c_lab1->chain($c_lab3);
+ok($v);
+$v = $c_lab2->chain($c_lab3);
+ok($v);
+
+$u1->schedule($c_op1);
+$u1->schedule($c_op2);
+ok(!$u1->empty());
+
+$u1->drainFrame();
+ok($u1->empty());
+
+$c_expect =
+	"unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' drain label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' before-chained label 'lab1' op OP_INSERT\n"
+		. "unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT\n"
+		. "unit 'u1' drain label 'lab2' (chain 'lab1') op OP_INSERT\n"
+		. "unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_INSERT\n"
+			. "unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT\n"
+			. "unit 'u1' drain label 'lab3' (chain 'lab2') op OP_INSERT\n"
+			. "unit 'u1' after label 'lab3' (chain 'lab2') op OP_INSERT\n"
+		. "unit 'u1' after label 'lab2' (chain 'lab1') op OP_INSERT\n"
+
+		. "unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT\n"
+		. "unit 'u1' drain label 'lab3' (chain 'lab1') op OP_INSERT\n"
+		. "unit 'u1' after label 'lab3' (chain 'lab1') op OP_INSERT\n"
+	. "unit 'u1' after label 'lab1' op OP_INSERT\n"
+
+	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' drain label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' before-chained label 'lab1' op OP_DELETE\n"
+		. "unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE\n"
+		. "unit 'u1' drain label 'lab2' (chain 'lab1') op OP_DELETE\n"
+		. "unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_DELETE\n"
+			. "unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE\n"
+			. "unit 'u1' drain label 'lab3' (chain 'lab2') op OP_DELETE\n"
+			. "unit 'u1' after label 'lab3' (chain 'lab2') op OP_DELETE\n"
+		. "unit 'u1' after label 'lab2' (chain 'lab1') op OP_DELETE\n"
+
+		. "unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE\n"
+		. "unit 'u1' drain label 'lab3' (chain 'lab1') op OP_DELETE\n"
+		. "unit 'u1' after label 'lab3' (chain 'lab1') op OP_DELETE\n"
+	. "unit 'u1' after label 'lab1' op OP_DELETE\n"
+	;
+
+$v = $sntr->print();
+ok($v, $c_expect);

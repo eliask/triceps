@@ -103,6 +103,7 @@ getRow(WrapRowop *self)
 		static char CLASS[] = "Triceps::Row";
 		clearErrMsg();
 		Rowop *rop = self->get();
+		// XXX Should it check for row being NULL? C++ code can create that...
 		RETVAL = new WrapRow(const_cast<RowType *>(rop->getLabel()->getType()), const_cast<Row *>(rop->getRow()));
 	OUTPUT:
 		RETVAL

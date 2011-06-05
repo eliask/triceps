@@ -67,7 +67,7 @@ ok(ref $tp1, "Triceps::UnitTracerPerl");
 $tp2 = Triceps::UnitTracerPerl->new(\&tracerCb, "a", "b");
 ok(ref $tp2, "Triceps::UnitTracerPerl");
 
-# XXX actually test the tracers!!!
+# execution tested in Unit.t
 
 #######################
 # this has nothing to do with tracers as such, just a test that the Parl class
