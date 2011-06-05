@@ -522,4 +522,3 @@ ok($u1->empty());
 
 ok($history, $s_expect_verbose);
 
-# XXX test that the execution order in scheduling is correct - as in t_Unit.cpp
