@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 101 };
+BEGIN { plan tests => 102 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -36,6 +36,12 @@ $v = $u1->same($u1);
 ok($v);
 $v = $u1->same($u2);
 ok(!$v);
+
+###################### name setting #################################
+
+$u2->setName("unit2");
+$v = $u2->getName();
+ok($v, "unit2");
 
 ###################### makeTable prep #################################
 
