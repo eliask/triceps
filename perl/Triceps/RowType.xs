@@ -214,4 +214,45 @@ match(WrapRowType *self, WrapRowType *other)
 	OUTPUT:
 		RETVAL
 
-# XXX add print()
+# print(self, [ indent, [ subindent ] ])
+#   indent - default "", undef means "print everything in a signle line
+#   subindent - default "  "
+char *
+print(WrapRowType *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::RowType::print";
+		clearErrMsg();
+		RowType *rt = self->get();
+
+		if (items > 3) {
+			setErrMsg( strprintf("Usage: %s(RowType [, indent  [, subindent ] ])", funcName));
+			XSRETURN_UNDEF;
+		}
+
+		string indent, subindent;
+		const string *indarg = &indent;
+
+		if (items > 1) { // parse indent
+			if (SvOK(ST(1))) {
+				const char *p;
+				STRLEN len;
+				p = SvPV(ST(1), len);
+				indent.assign(p, len);
+			} else {
+				indarg = &NOINDENT;
+			}
+		}
+		if (items > 2) { // parse subindent
+			const char *p;
+			STRLEN len;
+			p = SvPV(ST(2), len);
+			subindent.assign(p, len);
+		} else {
+			subindent.assign("  ");
+		}
+
+		string result;
+		rt->printTo(result, *indarg, subindent);
+		RETVAL = (char *)result.c_str();
+	OUTPUT:
+		RETVAL
