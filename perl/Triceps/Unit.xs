@@ -287,4 +287,4 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 	OUTPUT:
 		RETVAL
 
-# XXX add the rest of methods
+# XXX add enqueueDelayedTray(), and maybe keeping track of all labels
