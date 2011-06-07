@@ -247,6 +247,44 @@ protected:
 	Autoref<PerlCallback> cb_;
 };
 
+// A common macro to print the contents of assorted objects.
+// See RowType.xs for an example of usage
+#define GEN_PRINT_METHOD(subtype)  \
+		static char funcName[] =  "Triceps::" #subtype "::print"; \
+		clearErrMsg(); \
+		subtype *rt = self->get(); \
+		\
+		if (items > 3) { \
+			setErrMsg( strprintf("Usage: %s(RowType [, indent  [, subindent ] ])", funcName)); \
+			XSRETURN_UNDEF; \
+		} \
+		\
+		string indent, subindent; \
+		const string *indarg = &indent; \
+		\
+		if (items > 1) { /* parse indent */ \
+			if (SvOK(ST(1))) { \
+				const char *p; \
+				STRLEN len; \
+				p = SvPV(ST(1), len); \
+				indent.assign(p, len); \
+			} else { \
+				indarg = &NOINDENT; \
+			} \
+		} \
+		if (items > 2) { /* parse subindent */ \
+			const char *p; \
+			STRLEN len; \
+			p = SvPV(ST(2), len); \
+			subindent.assign(p, len); \
+		} else { \
+			subindent.assign("  "); \
+		} \
+		\
+		string res; \
+		rt->printTo(res, *indarg, subindent); \
+		XPUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size())));
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 

@@ -94,16 +94,13 @@ newFifo(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
-# print the description
-# XXX add indenting?
+# print(self, [ indent, [ subindent ] ])
+#   indent - default "", undef means "print everything in a signle line"
+#   subindent - default "  "
 SV *
-print(WrapIndexType *self)
+print(WrapIndexType *self, ...)
 	PPCODE:
-		clearErrMsg();
-		IndexType *ixt = self->get();
-		string res;
-		ixt->printTo(res);
-		PUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size())));
+		GEN_PRINT_METHOD(IndexType)
 
 # type comparisons
 int

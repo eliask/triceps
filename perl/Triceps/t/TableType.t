@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 29 };
+BEGIN { plan tests => 31 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -86,6 +86,8 @@ ok(!$res);
 
 $res = $tt1->print();
 ok($res, "table (\n  row {\n    uint8 a,\n    int32 b,\n    int64 c,\n    float64 d,\n    string e,\n  }\n) {\n  HashedIndex(b, c, ) {\n    FifoIndex() fifo,\n  } primary,\n  FifoIndex() second,\n}");
+$res = $tt1->print(undef);
+ok($res, "table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { HashedIndex(b, c, ) { FifoIndex() fifo, } primary, FifoIndex() second, }");
 
 ###################### find #################################
 
@@ -96,6 +98,8 @@ ok($res, "FifoIndex()");
 $it2 = $tt1->findIndex("primary");
 $res = $it2->print();
 ok($res, "HashedIndex(b, c, ) {\n  FifoIndex() fifo,\n}");
+$res = $it2->print(undef);
+ok($res, "HashedIndex(b, c, ) { FifoIndex() fifo, }");
 
 $it2 = $tt1->findIndex("xxx");
 ok(!defined($it2));

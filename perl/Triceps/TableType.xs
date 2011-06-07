@@ -32,16 +32,13 @@ Triceps::TableType::new(WrapRowType *wrt)
 
 # XXX add copy()?
 
-# print the description
-# XXX add indenting?
+# print(self, [ indent, [ subindent ] ])
+#   indent - default "", undef means "print everything in a signle line"
+#   subindent - default "  "
 SV *
-print(WrapTableType *self)
+print(WrapTableType *self, ...)
 	PPCODE:
-		clearErrMsg();
-		TableType *tbt = self->get();
-		string res;
-		tbt->printTo(res);
-		PUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size())));
+		GEN_PRINT_METHOD(TableType)
 
 # type comparisons
 int
