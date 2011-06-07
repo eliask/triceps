@@ -58,6 +58,12 @@ __END__
 			return PERL_constant_NOTFOUND;
 		return PERL_constant_ISIV;
 		break;
+	case 'I':
+		*iv_return = IndexType::stringIndexId(name);
+		if (*iv_return == -1)
+			return PERL_constant_NOTFOUND;
+		return PERL_constant_ISIV;
+		break;
 	case 'O':
 		switch(name[1]) {
 		case 'P':

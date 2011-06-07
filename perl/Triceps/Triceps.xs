@@ -168,6 +168,17 @@ humanStringTracerWhen(char *val)
 	OUTPUT:
 		RETVAL
 
+int
+stringIndexId(char *val)
+	CODE:
+		clearErrMsg();
+		int res = IndexType::stringIndexId(val);
+		if (res == -1)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
 
 ############ conversions of constants back to string #############################
 
@@ -221,3 +232,14 @@ char *tracerWhenHumanString(int val)
 		RETVAL = (char *)res;
 	OUTPUT:
 		RETVAL
+
+char *indexIdString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = IndexType::indexIdString(val, NULL);
+		if (res == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+

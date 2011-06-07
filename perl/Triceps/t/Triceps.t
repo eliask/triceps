@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 81 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -41,6 +41,11 @@ ok(&Triceps::TW_BEFORE, 0);
 ok(&Triceps::TW_BEFORE_DRAIN, 1);
 ok(&Triceps::TW_BEFORE_CHAINED, 2);
 ok(&Triceps::TW_AFTER, 3);
+
+ok(&Triceps::IT_ROOT, 0);
+ok(&Triceps::IT_HASHED, 1);
+ok(&Triceps::IT_FIFO, 2);
+ok(&Triceps::IT_LAST, 3);
 
 # translation of constant strings
 
@@ -71,6 +76,12 @@ ok(&Triceps::humanStringTracerWhen("before-chained"), &Triceps::TW_BEFORE_CHAINE
 ok(&Triceps::humanStringTracerWhen("after"), &Triceps::TW_AFTER);
 ok(&Triceps::humanStringTracerWhen("xxx"), undef);
 
+ok(&Triceps::stringIndexId("IT_ROOT"), &Triceps::IT_ROOT);
+ok(&Triceps::stringIndexId("IT_HASHED"), &Triceps::IT_HASHED);
+ok(&Triceps::stringIndexId("IT_FIFO"), &Triceps::IT_FIFO);
+ok(&Triceps::stringIndexId("IT_LAST"), &Triceps::IT_LAST);
+ok(&Triceps::stringIndexId("xxx"), undef);
+
 # reverse translation of constants
 ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
 ok(&Triceps::emString(&Triceps::EM_FORK), "EM_FORK");
@@ -98,6 +109,12 @@ ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_DRAIN), "drain");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_CHAINED), "before-chained");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER), "after");
 ok(&Triceps::tracerWhenHumanString(999), undef);
+
+ok(&Triceps::indexIdString(&Triceps::IT_ROOT), "IT_ROOT");
+ok(&Triceps::indexIdString(&Triceps::IT_HASHED), "IT_HASHED");
+ok(&Triceps::indexIdString(&Triceps::IT_FIFO), "IT_FIFO");
+ok(&Triceps::indexIdString(&Triceps::IT_LAST), "IT_LAST");
+ok(&Triceps::indexIdString(999), undef);
 
 # tests of the opcodes
 

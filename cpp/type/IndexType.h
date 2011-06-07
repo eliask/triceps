@@ -128,6 +128,14 @@ public:
 	virtual bool equals(const Type *t) const;
 	virtual bool match(const Type *t) const;
 
+	// Convert the IndexId to string and back
+	// @param enval - enum value
+	// @param def - default string to return if not a known value
+	static const char *indexIdString(int enval, const char *def = "???");
+	// @param str - string value
+	// @return - if unknown, returns -1
+	static int stringIndexId(const char *str);
+
 	// The idea of the configuration methods is that they return back "this",
 	// making possible to chain them together with "->".
 	// The index types may be configured until they are initialized (as a part

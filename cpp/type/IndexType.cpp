@@ -5,13 +5,14 @@
 //
 // Type for creation of indexes in the tables.
 
+#include <set>
 #include <type/TableType.h>
 #include <type/GroupHandleType.h>
 #include <type/AggregatorType.h>
 #include <table/Index.h>
 #include <table/Table.h>
 #include <table/Aggregator.h>
-#include <set>
+#include <common/StringUtil.h>
 
 namespace TRICEPS_NS {
 
@@ -782,6 +783,24 @@ Index *IndexType::findNestedIndex(int nestPos, const Table *table, const RowHand
 	if (myinst == NULL)
 		return NULL;
 	return myinst->findNested(what, nestPos);
+}
+
+Valname indexids[] = {
+	{ IndexType::IT_ROOT, "IT_ROOT" },
+	{ IndexType::IT_HASHED, "IT_HASHED" },
+	{ IndexType::IT_FIFO, "IT_FIFO" },
+	{ IndexType::IT_LAST, "IT_LAST" },
+	{ -1, NULL }
+};
+
+const char *IndexType::indexIdString(int enval, const char *def)
+{
+	return enum2string(indexids, enval, def);
+}
+
+int IndexType::stringIndexId(const char *str)
+{
+	return string2enum(indexids, str);
 }
 
 }; // TRICEPS_NS
