@@ -38,9 +38,8 @@ hexdump(WrapRow *self)
 		RETVAL
 
 # convert to an array of name-value pairs, suitable for setting into a hash
-# XXX rename toHash
 SV *
-to_hs(WrapRow *self)
+toHash(WrapRow *self)
 	PPCODE:
 		clearErrMsg();
 		RowType *t = self->ref_.getType();
@@ -58,9 +57,8 @@ to_hs(WrapRow *self)
 		}
 
 # convert to an array of data values, like CSV
-# XXX rename toArray
 SV *
-to_ar(WrapRow *self)
+toArray(WrapRow *self)
 	PPCODE:
 		clearErrMsg();
 		RowType *t = self->ref_.getType();
@@ -153,7 +151,7 @@ get(WrapRow *self, char *fname)
 		bool notNull = t->getField(r, i, data, dlen);
 		XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 
-# check whether both refs point to the same type object
+# check whether both refs point to the same object
 int
 same(WrapRow *self, WrapRow *other)
 	CODE:

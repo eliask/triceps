@@ -114,7 +114,7 @@ sub exe_history # (label, rowop)
 	my ($label, $rowop) = @_;
 	our $history;
 	$history .= "x " . $label->getName() . " op=" . Triceps::opcodeString($rowop->getOpcode()) 
-		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "]\n";
+		. " row=[" . join(", ", $rowop->getRow()->toArray()) . "]\n";
 }
 
 sub exe_history_xargs # (label, rowop, args...)
@@ -123,14 +123,14 @@ sub exe_history_xargs # (label, rowop, args...)
 	my $rowop = shift @_;
 	our $history;
 	$history .= "x " . $label->getName() . " op=" . Triceps::opcodeString($rowop->getOpcode()) 
-		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "] args=[" . join(',', @_) . "]\n";
+		. " row=[" . join(", ", $rowop->getRow()->toArray()) . "] args=[" . join(',', @_) . "]\n";
 }
 
 sub exe_die # (label, rowop)
 {
 	my ($label, $rowop) = @_;
 	die "xdie " . $label->getName() . " op=" . Triceps::opcodeString($rowop->getOpcode()) 
-		. " row=[" . join(", ", $rowop->getRow()->to_ar()) . "]";
+		. " row=[" . join(", ", $rowop->getRow()->toArray()) . "]";
 }
 
 $dumlab = $u1->makeDummyLabel($rt1, "dumlab");

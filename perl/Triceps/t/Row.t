@@ -81,7 +81,7 @@ ok(ref $r1, "Triceps::Row");
 # but just for debugging
 # print STDERR "\n", $r1->hexdump;
 
-@d1 = $r1->to_hs();
+@d1 = $r1->toHash();
 ok(join(',', @d1), join(',', @dataset1));
 
 # nulls
@@ -95,7 +95,7 @@ ok(join(',', @d1), join(',', @dataset1));
 $r2 = $rt1->makeRowHash( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(join(',', map {defined $_? $_ : "-"} @d2), join(',', map {defined $_? $_ : "-"} @dataset2));
 #print STDERR "\n dataset d2: ", &row2string(@d2), "\n";
 
@@ -115,7 +115,7 @@ ok(ref $r3, "Triceps::Row");
 # but just for debugging
 #print STDERR "\n", $r3->hexdump;
 
-@d3 = $r3->to_hs();
+@d3 = $r3->toHash();
 ok(&row2string(@d3), &row2string(@dataset3));
 
 # arrays with nulls
@@ -134,7 +134,7 @@ ok(ref $r4, "Triceps::Row");
 # but just for debugging
 #print STDERR "\n", $r4->hexdump;
 
-@d4 = $r4->to_hs();
+@d4 = $r4->toHash();
 ok(&row2string(@d4), &row2string(@dataset4));
 
 ########################### array CSV-like format ################################
@@ -154,7 +154,7 @@ ok(ref $r1, "Triceps::Row");
 # but just for debugging
 # print STDERR "\n", $r1->hexdump;
 
-@d1 = $r1->to_ar();
+@d1 = $r1->toArray();
 ok(join(',', @d1), join(',', @dataset1));
 
 # nulls and auto-filling
@@ -166,7 +166,7 @@ ok(join(',', @d1), join(',', @dataset1));
 $r2 = $rt1->makeRowArray( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
-@d2 = $r2->to_ar();
+@d2 = $r2->toArray();
 ok(&row2string(@d2), &row2string(undef,undef,3e15+0,undef,undef));
 #print STDERR "\n dataset d2: ", &row2string(@d2), "\n";
 
@@ -186,7 +186,7 @@ ok(ref $r3, "Triceps::Row");
 # but just for debugging
 #print STDERR "\n", $r3->hexdump;
 
-@d3 = $r3->to_ar();
+@d3 = $r3->toArray();
 ok(&row2string(@d3), &row2string(@dataset3));
 
 # arrays with nulls
@@ -205,7 +205,7 @@ ok(ref $r4, "Triceps::Row");
 # but just for debugging
 #print STDERR "\n", $r4->hexdump;
 
-@d4 = $r4->to_ar();
+@d4 = $r4->toArray();
 ok(&row2string(@d4), &row2string(@dataset4));
 
 ########################### copymod ################################
@@ -226,7 +226,7 @@ $r2 = $r1->copymod(
 	e => "changed",
 );
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(
 	a => "uint8",
 	b => 456,
@@ -235,7 +235,7 @@ ok(&row2string(@d2), &row2string(
 	e => "changed",
 ));
 # check that the original row didn't change
-@d2 = $r1->to_hs();
+@d2 = $r1->toHash();
 ok(&row2string(@d2), &row2string(@dataset1));
 
 # replacing all fields
@@ -248,7 +248,7 @@ ok(&row2string(@d2), &row2string(@dataset1));
 );
 $r2 = $r1->copymod(@dataset2);
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset2));
 
 # replacing non-nulls with nulls
@@ -261,13 +261,13 @@ ok(&row2string(@d2), &row2string(@dataset2));
 );
 $r2 = $r1->copymod(@dataset3);
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset3));
 
 # replacing nulls with non-nulls
 $r2 = $r2->copymod(@dataset2);
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset2));
 
 # arrays 
@@ -294,10 +294,10 @@ $r2 = $r1->copymod(
 	b => [ 950, 888, 123, 456, 789 ],
 );
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset3));
 # check that the original row didn't change
-@d2 = $r1->to_hs();
+@d2 = $r1->toHash();
 ok(&row2string(@d2), &row2string(@dataset1));
 
 # replacing all fields, with scalars
@@ -310,7 +310,7 @@ ok(&row2string(@d2), &row2string(@dataset1));
 );
 $r2 = $r1->copymod(@dataset2);
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(
 	a => "bytes",
 	b => [ 789, ],
@@ -329,19 +329,19 @@ ok(&row2string(@d2), &row2string(
 );
 $r2 = $r1->copymod(@dataset3);
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset3));
 
 # replacing nulls with non-nulls
 $r2 = $r2->copymod(@dataset3);
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset3));
 
 # changing nothing
 $r2 = $r1->copymod();
 ok(ref $r2, "Triceps::Row");
-@d2 = $r2->to_hs();
+@d2 = $r2->toHash();
 ok(&row2string(@d2), &row2string(@dataset1));
 
 # wrong arg number
