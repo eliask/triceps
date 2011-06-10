@@ -47,9 +47,9 @@ void mkfdata(FdataVec &fd)
 Onceref<TableType> mktabtype(Onceref<RowType> rt)
 {
 	return (new TableType(rt))
-			->addIndex("primary", (new HashedIndexType(
+			->addSubIndex("primary", (new HashedIndexType(
 				(new NameSet())->add("b")
-				))->addNested("level2", new HashedIndexType(
+				))->addSubIndex("level2", new HashedIndexType(
 					(new NameSet())->add("c")
 				)
 			)
@@ -88,9 +88,9 @@ UTESTCASE badName(Utest *utest)
 
 	// Adds aggregators with names duplicating the embedded gadgets
 	Autoref<TableType> tt = ( new TableType(rt1))
-			->addIndex("primary", (new HashedIndexType(
+			->addSubIndex("primary", (new HashedIndexType(
 				(new NameSet())->add("b")
-				))->addNested("level2", (new HashedIndexType(
+				))->addSubIndex("level2", (new HashedIndexType(
 						(new NameSet())->add("c")
 					))->setAggregator(
 						new BasicAggregatorType("in", rt1, recordHistory)
@@ -121,9 +121,9 @@ UTESTCASE tableops(Utest *utest)
 
 	// same as mktabtype but adds an aggregator to count collapses
 	Autoref<TableType> tt = ( new TableType(rt1))
-			->addIndex("primary", (new HashedIndexType(
+			->addSubIndex("primary", (new HashedIndexType(
 				(new NameSet())->add("b")
-				))->addNested("level2", (new HashedIndexType(
+				))->addSubIndex("level2", (new HashedIndexType(
 						(new NameSet())->add("c")
 					))->setAggregator(
 						new BasicAggregatorType("onLevel2", rt1, recordHistory)
@@ -143,10 +143,10 @@ UTESTCASE tableops(Utest *utest)
 	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
 	UT_ASSERT(!t.isNull());
 
-	IndexType *prim = tt->findIndex("primary");
+	IndexType *prim = tt->findSubIndex("primary");
 	UT_ASSERT(prim != NULL);
 
-	IndexType *sec = prim->findNested("level2");
+	IndexType *sec = prim->findSubIndex("level2");
 	UT_ASSERT(sec != NULL);
 
 	// above here was a copy of primaryIndex()

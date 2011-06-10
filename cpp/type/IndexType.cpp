@@ -193,7 +193,7 @@ IndexType::IndexType(const IndexType &orig) :
 IndexType::~IndexType()
 { }
 
-IndexType *IndexType::addNested(const string &name, Onceref<IndexType> index)
+IndexType *IndexType::addSubIndex(const string &name, Onceref<IndexType> index)
 {
 	if (initialized_) {
 		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);

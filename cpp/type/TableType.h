@@ -47,12 +47,12 @@ public:
 	// The index remembered is actually a copy of original, so all the settings
 	// need to be done before calling here. This also means that to access indexes
 	// in a table, their types need to be obtained from TableType after it is initialized,
-	// using findIndex/findNested.
+	// using findSubIndex.
 	//
 	// @param name - name of the index
 	// @param index - the index
 	// @return - this
-	TableType *addIndex(const string &name, IndexType *index);
+	TableType *addSubIndex(const string &name, IndexType *index);
 
 	// Check the whole table definition and derive the internal
 	// structures. The result gets returned by getErrors().
@@ -88,17 +88,17 @@ public:
 	// Works only after initialization.
 	// @param name - name of the index
 	// @return - index, or NULL if not found
-	IndexType *findIndex(const string &name) const;
+	IndexType *findSubIndex(const string &name) const;
 
 	// Find the first index type of given IndexId
 	// Works only after initialization.
 	// @param it - type enum of the nested index
 	// @return - pointer to the nested index or NULL if none matches
-	IndexType *findIndexByIndexId(IndexType::IndexId it) const;
+	IndexType *findSubIndexById(IndexType::IndexId it) const;
 
 	// Return the first leaf index type.
 	// If no indexes defined, returns NULL.
-	IndexType *firstLeafIndex() const;
+	IndexType *getFirstLeaf() const;
 
 protected:
 	Autoref<RootIndexType> root_; // the root of index tree

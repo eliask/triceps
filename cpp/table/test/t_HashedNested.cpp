@@ -47,9 +47,9 @@ void mkfdata(FdataVec &fd)
 Onceref<TableType> mktabtype(Onceref<RowType> rt)
 {
 	return TableType::make(rt)
-		->addIndex("primary", HashedIndexType::make(
+		->addSubIndex("primary", HashedIndexType::make(
 				NameSet::make()->add("b")
-			)->addNested("level2", HashedIndexType::make(
+			)->addSubIndex("level2", HashedIndexType::make(
 					NameSet::make()->add("c")
 				)
 			)
@@ -112,9 +112,9 @@ UTESTCASE withError(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = TableType::make(rt1)
-		->addIndex("primary", HashedIndexType::make(
+		->addSubIndex("primary", HashedIndexType::make(
 				NameSet::make()->add("b")
-			)->addNested("level2", HashedIndexType::make(
+			)->addSubIndex("level2", HashedIndexType::make(
 					NameSet::make()->add("x")
 				)
 			)
@@ -142,9 +142,9 @@ UTESTCASE tableops(Utest *utest)
 
 	// same as mktabtype but adds an aggregator to count collapses
 	Autoref<TableType> tt = ( new TableType(rt1))
-			->addIndex("primary", (new HashedIndexType(
+			->addSubIndex("primary", (new HashedIndexType(
 				(new NameSet())->add("b")
-				))->addNested("level2", (new HashedIndexType(
+				))->addSubIndex("level2", (new HashedIndexType(
 						(new NameSet())->add("c")
 					))->setAggregator(
 						new BasicAggregatorType("agg", rt1, countCollapses)
@@ -162,10 +162,10 @@ UTESTCASE tableops(Utest *utest)
 	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 
-	IndexType *prim = tt->findIndex("primary");
+	IndexType *prim = tt->findSubIndex("primary");
 	UT_ASSERT(prim != NULL);
 
-	IndexType *sec = prim->findNested("level2");
+	IndexType *sec = prim->findSubIndex("level2");
 	UT_ASSERT(sec != NULL);
 
 	// above here was a copy of primaryIndex()
@@ -312,7 +312,7 @@ UTESTCASE queuing(Utest *utest)
 
 	// t0 is a table with a single index
 	Autoref<TableType> tt0 = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("c")) // same as the inner key of tt1
 		);
 

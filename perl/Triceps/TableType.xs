@@ -73,9 +73,9 @@ same(WrapTableType *self, WrapTableType *other)
 
 # add an index
 WrapTableType *
-addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
+addSubIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 	CODE:
-		static char funcName[] =  "Triceps::TableType::addIndex";
+		static char funcName[] =  "Triceps::TableType::addSubIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::TableType";
 
@@ -89,21 +89,21 @@ addIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 
 		IndexType *ixsub = sub->get();
 		// can't just return self because it will upset the refcount
-		RETVAL = new WrapTableType(tbt->addIndex(subname, ixsub));
+		RETVAL = new WrapTableType(tbt->addSubIndex(subname, ixsub));
 	OUTPUT:
 		RETVAL
 
 # find a nested index by name
 WrapIndexType *
-findIndex(WrapTableType *self, char *subname)
+findSubIndex(WrapTableType *self, char *subname)
 	CODE:
-		static char funcName[] =  "Triceps::TableType::findIndex";
+		static char funcName[] =  "Triceps::TableType::findSubIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		TableType *tbt = self->get();
-		IndexType *ixsub = tbt->findIndex(subname);
+		IndexType *ixsub = tbt->findSubIndex(subname);
 		if (ixsub == NULL) {
 			setErrMsg(strprintf("%s: unknown nested index '%s'", funcName, subname));
 			XSRETURN_UNDEF;
@@ -114,15 +114,15 @@ findIndex(WrapTableType *self, char *subname)
 
 # get the first leaf sub-index
 WrapIndexType *
-firstLeafIndex(WrapTableType *self)
+getFirstLeaf(WrapTableType *self)
 	CODE:
-		static char funcName[] =  "Triceps::TableType::firstLeafIndex";
+		static char funcName[] =  "Triceps::TableType::getFirstLeaf";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		TableType *tbt = self->get();
-		IndexType *leaf = tbt->firstLeafIndex();
+		IndexType *leaf = tbt->getFirstLeaf();
 		if (leaf == NULL) {
 			setErrMsg(strprintf("%s: table type has no indexes defined", funcName));
 			XSRETURN_UNDEF;

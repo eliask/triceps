@@ -52,7 +52,7 @@ UTESTCASE fifoIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = TableType::make(rt1)
-		->addIndex("fifo", FifoIndexType::make()
+		->addSubIndex("fifo", FifoIndexType::make()
 		);
 
 	UT_ASSERT(tt);
@@ -180,7 +180,7 @@ UTESTCASE fifoIndexLimit(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType(2)
+		->addSubIndex("fifo", new FifoIndexType(2)
 		);
 
 	UT_ASSERT(tt);
@@ -281,7 +281,7 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", (new FifoIndexType())
+		->addSubIndex("fifo", (new FifoIndexType())
 			->setLimit(2)
 			->setJumping(true)
 		);
@@ -388,10 +388,10 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = TableType::make(rt1)
-		->addIndex("primary", HashedIndexType::make(
+		->addSubIndex("primary", HashedIndexType::make(
 				NameSet::make()->add("b")->add("c")
 			)
-		)->addIndex("fifo", FifoIndexType::make(2)
+		)->addSubIndex("fifo", FifoIndexType::make(2)
 		);
 
 	UT_ASSERT(tt);
@@ -406,7 +406,7 @@ UTESTCASE fifoIndexLimitReplace(Utest *utest)
 	UT_IS(t->getInputLabel()->getName(), "t.in");
 	UT_IS(t->getLabel()->getName(), "t.out");
 
-	IndexType *fifot = tt->findIndex("fifo");
+	IndexType *fifot = tt->findSubIndex("fifo");
 	UT_ASSERT(fifot != NULL);
 
 	// create a matrix of records
@@ -528,8 +528,8 @@ UTESTCASE fifoIndexLimitNoReplace(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType(2)
-		)->addIndex("primary", (new HashedIndexType(
+		->addSubIndex("fifo", new FifoIndexType(2)
+		)->addSubIndex("primary", (new HashedIndexType(
 			(new NameSet())->add("b")->add("c")
 			))
 		);
@@ -634,14 +634,14 @@ UTESTCASE deepNested(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = TableType::make(rt1)
-		->addIndex("parallel1", FifoIndexType::make()
-		)->addIndex("level1", HashedIndexType::make(
+		->addSubIndex("parallel1", FifoIndexType::make()
+		)->addSubIndex("level1", HashedIndexType::make(
 				NameSet::make()->add("b")
-			)->addNested("parallel2", FifoIndexType::make()
-			)->addNested("level2", HashedIndexType::make(
+			)->addSubIndex("parallel2", FifoIndexType::make()
+			)->addSubIndex("level2", HashedIndexType::make(
 					NameSet::make()->add("c")
-				)->addNested("parallel3", FifoIndexType::make()
-				)->addNested("level3", FifoIndexType::make()
+				)->addSubIndex("parallel3", FifoIndexType::make()
+				)->addSubIndex("level3", FifoIndexType::make()
 				)
 			)
 		);
@@ -654,17 +654,17 @@ UTESTCASE deepNested(Utest *utest)
 	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
 	UT_ASSERT(!t.isNull());
 
-	Autoref<IndexType> parallel1 = tt->findIndex("parallel1");
+	Autoref<IndexType> parallel1 = tt->findSubIndex("parallel1");
 	UT_ASSERT(!parallel1.isNull());
-	Autoref<IndexType> level1 = tt->findIndex("level1");
+	Autoref<IndexType> level1 = tt->findSubIndex("level1");
 	UT_ASSERT(!level1.isNull());
-	Autoref<IndexType> parallel2 = tt->findIndex("level1")->findNested("parallel2");
+	Autoref<IndexType> parallel2 = tt->findSubIndex("level1")->findSubIndex("parallel2");
 	UT_ASSERT(!parallel2.isNull());
-	Autoref<IndexType> level2 = tt->findIndex("level1")->findNested("level2");
+	Autoref<IndexType> level2 = tt->findSubIndex("level1")->findSubIndex("level2");
 	UT_ASSERT(!level2.isNull());
-	Autoref<IndexType> parallel3 = tt->findIndex("level1")->findNested("level2")->findNested("parallel3");
+	Autoref<IndexType> parallel3 = tt->findSubIndex("level1")->findSubIndex("level2")->findSubIndex("parallel3");
 	UT_ASSERT(!parallel3.isNull());
-	Autoref<IndexType> level3 = tt->findIndex("level1")->findNested("level2")->findNested("level3");
+	Autoref<IndexType> level3 = tt->findSubIndex("level1")->findSubIndex("level2")->findSubIndex("level3");
 	UT_ASSERT(!level3.isNull());
 
 	// create a matrix of records

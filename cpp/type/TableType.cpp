@@ -22,13 +22,13 @@ TableType::TableType(Onceref<RowType> rt) :
 TableType::~TableType()
 { }
 
-TableType *TableType::addIndex(const string &name, IndexType *index)
+TableType *TableType::addSubIndex(const string &name, IndexType *index)
 {
 	if (initialized_) {
 		fprintf(stderr, "Triceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
-	root_->addNested(name, index);
+	root_->addSubIndex(name, index);
 	return this;
 }
 
@@ -153,21 +153,21 @@ Onceref<Table> TableType::makeTable(Unit *unit, Gadget::EnqMode emode, const str
 	return new Table(unit, emode, name, this, rowType_, rhType_);
 }
 
-IndexType *TableType::findIndex(const string &name) const
+IndexType *TableType::findSubIndex(const string &name) const
 {
 	if (root_.isNull())
 		return NULL;
-	return root_->findNested(name);
+	return root_->findSubIndex(name);
 }
 
-IndexType *TableType::findIndexByIndexId(IndexType::IndexId it) const
+IndexType *TableType::findSubIndexById(IndexType::IndexId it) const
 {
 	if (root_.isNull())
 		return NULL;
-	return root_->findNestedByIndexId(it);
+	return root_->findSubIndexById(it);
 }
 
-IndexType *TableType::firstLeafIndex() const
+IndexType *TableType::getFirstLeaf() const
 {
 	if (root_.isNull() || root_->isLeaf())
 		return NULL;

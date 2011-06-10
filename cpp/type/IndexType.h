@@ -148,12 +148,12 @@ public:
 	// The nested index remembered is actually a copy of original, so all the settings
 	// need to be done before calling here. This also means that to access indexes
 	// in a table, their types need to be obtained from TableType after it is initialized,
-	// using findIndex/findNested.
+	// using findSubIndex.
 	//
 	// @param name - name of the nested index
 	// @param index - the nested index
 	// @return - this
-	IndexType *addNested(const string &name, Onceref<IndexType> index);
+	IndexType *addSubIndex(const string &name, Onceref<IndexType> index);
 
 	// For access of subclasses to the subtype id.
 	IndexId getIndexId() const
@@ -194,7 +194,7 @@ public:
 	// checking only the final result.
 	// @param name - name of the index
 	// @return - index type, or NULL if not found
-	IndexType *findNested(const string &name) const
+	IndexType *findSubIndex(const string &name) const
 	{
 		if (this == NULL)
 			return NULL;
@@ -206,7 +206,7 @@ public:
 	// checking only the final result.
 	// @param it - type enum of the nested index
 	// @return - index type, or NULL if not found
-	IndexType *findNestedByIndexId(IndexId it) const
+	IndexType *findSubIndexById(IndexId it) const
 	{
 		if (this == NULL)
 			return NULL;
@@ -214,7 +214,7 @@ public:
 	}
 
 	// Return the vector of nested indexes, for iteration
-	const IndexTypeVec &getNested() const
+	const IndexTypeVec &getSubIndexes() const
 	{
 		return nested_;
 	}

@@ -94,6 +94,16 @@ newFifo(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
+int
+same(WrapIndexType *self, WrapIndexType *other)
+	CODE:
+		clearErrMsg();
+		IndexType *ixself = self->get();
+		IndexType *ixother = other->get();
+		RETVAL = (ixself == ixother);
+	OUTPUT:
+		RETVAL
+
 # print(self, [ indent, [ subindent ] ])
 #   indent - default "", undef means "print everything in a signle line"
 #   subindent - default "  "
@@ -135,9 +145,9 @@ isLeaf(WrapIndexType *self)
 
 # add a nested index
 WrapIndexType *
-addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
+addSubIndex(WrapIndexType *self, char *subname, WrapIndexType *sub)
 	CODE:
-		static char funcName[] =  "Triceps::IndexType::addNested";
+		static char funcName[] =  "Triceps::IndexType::addSubIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
@@ -151,21 +161,21 @@ addNested(WrapIndexType *self, char *subname, WrapIndexType *sub)
 
 		IndexType *ixsub = sub->get();
 		// can't just return self because it will upset the refcount
-		RETVAL = new WrapIndexType(ixt->addNested(subname, ixsub));
+		RETVAL = new WrapIndexType(ixt->addSubIndex(subname, ixsub));
 	OUTPUT:
 		RETVAL
 
 # find a nested index by name
 WrapIndexType *
-findNested(WrapIndexType *self, char *subname)
+findSubIndex(WrapIndexType *self, char *subname)
 	CODE:
-		static char funcName[] =  "Triceps::IndexType::findNested";
+		static char funcName[] =  "Triceps::IndexType::findSubIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
 		clearErrMsg();
 		IndexType *ixt = self->get();
-		IndexType *ixsub = ixt->findNested(subname);
+		IndexType *ixsub = ixt->findSubIndex(subname);
 		if (ixsub == NULL) {
 			setErrMsg(strprintf("%s: unknown nested index '%s'", funcName, subname));
 			XSRETURN_UNDEF;

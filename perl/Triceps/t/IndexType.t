@@ -107,7 +107,7 @@ ok($res, 0);
 
 # reuse $it1..$it5 from the last tests, modify them
 
-$it2 = $it2->addNested(level2 => $it3->addNested(level3 => $it5));
+$it2 = $it2->addSubIndex(level2 => $it3->addSubIndex(level3 => $it5));
 ok(ref $it2, "Triceps::IndexType");
 $res = $it1->equals($it2);
 ok($res, 0);
@@ -123,16 +123,16 @@ ok($res, 0);
 $res = $it3->isLeaf(); 
 ok($res, 0);
 
-$res = $it2->findNested("level2");
+$res = $it2->findSubIndex("level2");
 ok(ref $it2, "Triceps::IndexType");
 $res = $res->equals($it3);
 ok($res, 1);
 
-$res = $it2->findNested("xxx");
+$res = $it2->findSubIndex("xxx");
 ok(!defined($res));
-ok($! . "", "Triceps::IndexType::findNested: unknown nested index 'xxx'");
+ok($! . "", "Triceps::IndexType::findSubIndex: unknown nested index 'xxx'");
 
-$it6 = $it2->findNested("level2")->findNested("level3");
+$it6 = $it2->findSubIndex("level2")->findSubIndex("level3");
 ok(ref $it6, "Triceps::IndexType");
 $res = $it6->equals($it5);
 ok($res, 1);

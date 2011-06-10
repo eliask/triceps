@@ -52,7 +52,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -79,7 +79,7 @@ UTESTCASE uninitialized(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -99,7 +99,7 @@ UTESTCASE withError(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("x")->add("e"))
 		);
 
@@ -122,7 +122,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -134,25 +134,25 @@ UTESTCASE tableops(Utest *utest)
 	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
 	UT_ASSERT(!t.isNull());
 
-	IndexType *prim = tt->findIndex("primary");
+	IndexType *prim = tt->findSubIndex("primary");
 	UT_ASSERT(prim != NULL);
 
 	// other instance, for checking of errors
 	Autoref<Table> t2 = tt->makeTable(unit, Table::EM_IGNORE, "t2");
 	UT_ASSERT(!t2.isNull());
-	IndexType *prim2 = tt->findIndex("primary");
+	IndexType *prim2 = tt->findSubIndex("primary");
 	UT_ASSERT(prim2 != NULL);
 
 	// 3rd instance, with its own type, for checking of errors
 	Autoref<TableType> tt3 = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 	UT_ASSERT(tt3);
 	tt3->initialize();
 	Autoref<Table> t3 = tt3->makeTable(unit, Table::EM_IGNORE, "t3");
 	UT_ASSERT(!t3.isNull());
-	IndexType *prim3 = tt3->findIndex("primary");
+	IndexType *prim3 = tt3->findSubIndex("primary");
 	UT_ASSERT(prim3 != NULL);
 
 	// above here was a copy of primaryIndex()

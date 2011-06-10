@@ -66,12 +66,12 @@ $rt3 = Triceps::RowType->new( # used later
 ok(ref $rt3, "Triceps::RowType");
 
 $it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
-	->addNested("fifo", Triceps::IndexType->newFifo()
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
 	);
 ok(ref $it1, "Triceps::IndexType");
 
 $tt1 = Triceps::TableType->new($rt1)
-	->addIndex("grouping", $it1);
+	->addSubIndex("grouping", $it1);
 ok(ref $tt1, "Triceps::TableType");
 
 $res = $tt1->initialize();

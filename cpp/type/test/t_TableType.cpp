@@ -50,7 +50,7 @@ UTESTCASE emptyTable(Utest *utest)
 	Autoref<TableType> tt = new TableType(rt1);
 
 	UT_ASSERT(tt);
-	UT_IS(tt->firstLeafIndex(), NULL);
+	UT_IS(tt->getFirstLeaf(), NULL);
 
 	tt->initialize();
 	UT_ASSERT(tt->getErrors()->hasError());
@@ -66,7 +66,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -102,18 +102,18 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { HashedIndex(a, e, ) primary, }");
 
 	// get back the initialized types
-	IndexType *prim = tt->findIndex("primary");
+	IndexType *prim = tt->findSubIndex("primary");
 	UT_ASSERT(prim != NULL);
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_HASHED), prim);
-	UT_IS(tt->firstLeafIndex(), prim);
+	UT_IS(tt->findSubIndexById(IndexType::IT_HASHED), prim);
+	UT_IS(tt->getFirstLeaf(), prim);
 
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_LAST), NULL);
-	UT_IS(tt->findIndex("nosuch"), NULL);
+	UT_IS(tt->findSubIndexById(IndexType::IT_LAST), NULL);
+	UT_IS(tt->findSubIndex("nosuch"), NULL);
 
-	UT_IS(prim->findNested("nosuch"), NULL);
-	UT_IS(prim->findNested("nosuch")->findNested("nothat"), NULL);
-	UT_IS(prim->findNestedByIndexId(IndexType::IT_LAST), NULL);
-	UT_IS(prim->findNested("nosuch")->findNestedByIndexId(IndexType::IT_LAST), NULL);
+	UT_IS(prim->findSubIndex("nosuch"), NULL);
+	UT_IS(prim->findSubIndex("nosuch")->findSubIndex("nothat"), NULL);
+	UT_IS(prim->findSubIndexById(IndexType::IT_LAST), NULL);
+	UT_IS(prim->findSubIndex("nosuch")->findSubIndexById(IndexType::IT_LAST), NULL);
 }
 
 UTESTCASE badRow(Utest *utest)
@@ -126,7 +126,7 @@ UTESTCASE badRow(Utest *utest)
 	UT_ASSERT(rt1->getErrors()->hasError());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -141,7 +141,7 @@ UTESTCASE badRow(Utest *utest)
 UTESTCASE nullRow(Utest *utest)
 {
 	Autoref<TableType> tt = (new TableType(NULL))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -162,7 +162,7 @@ UTESTCASE badIndexName(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("", new HashedIndexType(
+		->addSubIndex("", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		);
 
@@ -183,7 +183,7 @@ UTESTCASE nullIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", NULL)
+		->addSubIndex("primary", NULL)
 		;
 
 	UT_ASSERT(tt);
@@ -203,10 +203,10 @@ UTESTCASE dupIndexName(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		)
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
 		)
 		;
@@ -228,9 +228,9 @@ UTESTCASE primaryNested(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", (new HashedIndexType(
+		->addSubIndex("primary", (new HashedIndexType(
 			(new NameSet())->add("a")->add("e")))
-			->addNested("level2", new HashedIndexType(
+			->addSubIndex("level2", new HashedIndexType(
 				(new NameSet())->add("a")->add("e"))
 			)
 		)
@@ -265,18 +265,18 @@ UTESTCASE primaryNested(Utest *utest)
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { HashedIndex(a, e, ) { HashedIndex(a, e, ) level2, } primary, }");
 
 	// get back the initialized types
-	IndexType *prim = tt->findIndex("primary");
+	IndexType *prim = tt->findSubIndex("primary");
 	if (UT_ASSERT(prim != NULL))
 		return;
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_HASHED), prim);
+	UT_IS(tt->findSubIndexById(IndexType::IT_HASHED), prim);
 
-	IndexType *sec = prim->findNested("level2");
+	IndexType *sec = prim->findSubIndex("level2");
 	if (UT_ASSERT(sec != NULL))
 		return;
-	UT_IS(prim->findNestedByIndexId(IndexType::IT_HASHED), sec);
+	UT_IS(prim->findSubIndexById(IndexType::IT_HASHED), sec);
 
-	UT_IS(sec->findNested("nosuch"), NULL);
-	UT_IS(sec->findNestedByIndexId(IndexType::IT_LAST), NULL);
+	UT_IS(sec->findSubIndex("nosuch"), NULL);
+	UT_IS(sec->findSubIndexById(IndexType::IT_LAST), NULL);
 }
 
 UTESTCASE primaryBadField(Utest *utest)
@@ -288,7 +288,7 @@ UTESTCASE primaryBadField(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("primary", new HashedIndexType(
+		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("x")->add("e"))
 		)
 		;
@@ -310,7 +310,7 @@ UTESTCASE fifoIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType()
+		->addSubIndex("fifo", new FifoIndexType()
 		);
 
 	UT_ASSERT(tt);
@@ -345,9 +345,9 @@ UTESTCASE fifoIndex(Utest *utest)
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex() fifo, }");
 
 	// get back the initialized types
-	IndexType *prim = tt->findIndex("fifo");
+	IndexType *prim = tt->findSubIndex("fifo");
 	UT_ASSERT(prim != NULL);
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_FIFO), prim);
+	UT_IS(tt->findSubIndexById(IndexType::IT_FIFO), prim);
 }
 
 UTESTCASE fifoIndexLimit(Utest *utest)
@@ -359,7 +359,7 @@ UTESTCASE fifoIndexLimit(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType(15)
+		->addSubIndex("fifo", new FifoIndexType(15)
 		);
 
 	UT_ASSERT(tt);
@@ -394,9 +394,9 @@ UTESTCASE fifoIndexLimit(Utest *utest)
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15) fifo, }");
 
 	// get back the initialized types
-	IndexType *prim = tt->findIndex("fifo");
+	IndexType *prim = tt->findSubIndex("fifo");
 	UT_ASSERT(prim != NULL);
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_FIFO), prim);
+	UT_IS(tt->findSubIndexById(IndexType::IT_FIFO), prim);
 }
 
 UTESTCASE fifoIndexJumping(Utest *utest)
@@ -408,7 +408,7 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType(15, true)
+		->addSubIndex("fifo", new FifoIndexType(15, true)
 		);
 
 	UT_ASSERT(tt);
@@ -443,9 +443,9 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15 jumping) fifo, }");
 
 	// get back the initialized types
-	IndexType *prim = tt->findIndex("fifo");
+	IndexType *prim = tt->findSubIndex("fifo");
 	UT_ASSERT(prim != NULL);
-	UT_IS(tt->findIndexByIndexId(IndexType::IT_FIFO), prim);
+	UT_IS(tt->findSubIndexById(IndexType::IT_FIFO), prim);
 }
 
 UTESTCASE fifoBadJumping(Utest *utest)
@@ -457,7 +457,7 @@ UTESTCASE fifoBadJumping(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", new FifoIndexType(0, true)
+		->addSubIndex("fifo", new FifoIndexType(0, true)
 		)
 		;
 
@@ -478,8 +478,8 @@ UTESTCASE fifoBadNested(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addIndex("fifo", (new FifoIndexType())
-			->addNested("level2", new HashedIndexType(
+		->addSubIndex("fifo", (new FifoIndexType())
+			->addSubIndex("level2", new HashedIndexType(
 				(new NameSet())->add("a")->add("e"))
 			)
 		)

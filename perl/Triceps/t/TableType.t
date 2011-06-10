@@ -34,7 +34,7 @@ $rt1 = Triceps::RowType->new( # used later
 ok(ref $rt1, "Triceps::RowType");
 
 $it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
-	->addNested("fifo", Triceps::IndexType->newFifo()
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
 	);
 ok(ref $it1, "Triceps::IndexType");
 
@@ -46,15 +46,15 @@ ok(ref $tt1, "Triceps::TableType");
 $ret = $tt1->rowType();
 ok(ref $ret, "Triceps::RowType");
 
-###################### addIndex #################################
+###################### addSubIndex #################################
 
 # tt2 actually refers to the same C++ object as tt1
-$tt2 = $tt1->addIndex("primary", $it1);
+$tt2 = $tt1->addSubIndex("primary", $it1);
 ok(ref $tt2, "Triceps::TableType");
 
 
 $tt3 = Triceps::TableType->new($rt1)
-	->addIndex("primary", $it1);
+	->addSubIndex("primary", $it1);
 ok(ref $tt3, "Triceps::TableType");
 
 ###################### equals #################################
@@ -69,7 +69,7 @@ ok($res);
 $res = $tt1->equals($tt3);
 ok($res);
 
-$tt1->addIndex("second", Triceps::IndexType->newFifo());
+$tt1->addSubIndex("second", Triceps::IndexType->newFifo());
 # they still point to the same object!
 $res = $tt1->equals($tt2);
 ok($res);
@@ -91,21 +91,21 @@ ok($res, "table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { Ha
 
 ###################### find #################################
 
-$it2 = $tt1->firstLeafIndex();
+$it2 = $tt1->getFirstLeaf();
 $res = $it2->print();
 ok($res, "FifoIndex()");
 
-$it2 = $tt1->findIndex("primary");
+$it2 = $tt1->findSubIndex("primary");
 $res = $it2->print();
 ok($res, "HashedIndex(b, c, ) {\n  FifoIndex() fifo,\n}");
 $res = $it2->print(undef);
 ok($res, "HashedIndex(b, c, ) { FifoIndex() fifo, }");
 
-$it2 = $tt1->findIndex("xxx");
+$it2 = $tt1->findSubIndex("xxx");
 ok(!defined($it2));
 
 $tt4 = Triceps::TableType->new($rt1);
-$it2 = $tt4->firstLeafIndex();
+$it2 = $tt4->getFirstLeaf();
 ok(!defined($it2));
 
 ###################### initialization #################################
@@ -126,12 +126,12 @@ ok($res, 1);
 ok($! . "", "");
 
 # check that still can find indexes
-$it2 = $tt1->firstLeafIndex();
+$it2 = $tt1->getFirstLeaf();
 $res = $it2->print();
 ok($res, "FifoIndex()");
 
 # adding indexes is not allowed any more
-$res = $tt1->addIndex("second", Triceps::IndexType->newFifo());
+$res = $tt1->addSubIndex("second", Triceps::IndexType->newFifo());
 ok(!defined $res);
-ok($! . "", "Triceps::TableType::addIndex: table is already initialized, can not add indexes any more");
+ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can not add indexes any more");
 
