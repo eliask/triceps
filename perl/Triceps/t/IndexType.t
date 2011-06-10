@@ -11,8 +11,10 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
+use ExtUtils::testlib;
+
 use Test;
-BEGIN { plan tests => 56 };
+BEGIN { plan tests => 68 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -76,6 +78,8 @@ ok($! . "", "Triceps::IndexType::newFifo: unknown option 'zzz'");
 
 $it1 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
 ok(ref $it1, "Triceps::IndexType");
+$res = $it1->getIndexId();
+ok($res, &Triceps::IT_HASHED);
 $it2 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
 ok(ref $it2, "Triceps::IndexType");
 $it3 = Triceps::IndexType->newHashed(key => [ "c", "d" ]);
@@ -84,6 +88,8 @@ $it4 = Triceps::IndexType->newHashed(key => [ "e" ]);
 ok(ref $it4, "Triceps::IndexType");
 $it5 = Triceps::IndexType->newFifo();
 ok(ref $it5, "Triceps::IndexType");
+$res = $it5->getIndexId();
+ok($res, &Triceps::IT_FIFO);
 
 $res = $it1->equals($it2);
 ok($res, 1);
@@ -145,6 +151,28 @@ $res = $it6->equals($it5);
 ok($res, 1);
 $res = $it6->print();
 ok($res, "FifoIndex()");
+
+$it6 = $it3->findSubIndexById("IT_FIFO");
+ok(ref $it6, "Triceps::IndexType");
+$res = $it6->equals($it5);
+ok($res, 1);
+
+$it6 = $it3->findSubIndexById(&Triceps::IT_FIFO);
+ok(ref $it6, "Triceps::IndexType");
+$res = $it6->equals($it5);
+ok($res, 1);
+
+$it6 = $it3->findSubIndexById(&Triceps::IT_ROOT);
+ok(!defined $it6);
+ok($! . "", "Triceps::IndexType::findSubIndexById: no nested index with type id 'IT_ROOT' (0)");
+
+$it6 = $it3->findSubIndexById(999);
+ok(!defined $it6);
+ok($! . "", "Triceps::IndexType::findSubIndexById: no nested index with type id '???' (999)");
+
+$it6 = $it3->findSubIndexById("xxx");
+ok(!defined $it6);
+ok($! . "", "Triceps::IndexType::findSubIndexById: unknown IndexId string 'xxx', if integer was meant, it has to be cast");
 
 $it6 = $it2->getFirstLeaf();
 ok(ref $it6, "Triceps::IndexType");

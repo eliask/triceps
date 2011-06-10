@@ -184,6 +184,30 @@ findSubIndex(WrapIndexType *self, char *subname)
 	OUTPUT:
 		RETVAL
 
+# find a nested index by type id
+WrapIndexType *
+findSubIndexById(WrapIndexType *self, SV *idarg)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::findSubIndexById";
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+
+		IndexType::IndexId id;
+		if (!parseIndexId(funcName, idarg, id))
+			XSRETURN_UNDEF;
+
+		IndexType *ixsub = ixt->findSubIndexById(id);
+		if (ixsub == NULL) {
+			setErrMsg(strprintf("%s: no nested index with type id '%s' (%d)", funcName, IndexType::indexIdString(id), id));
+			XSRETURN_UNDEF;
+		}
+		RETVAL = new WrapIndexType(ixsub);
+	OUTPUT:
+		RETVAL
+
 # get the first leaf sub-index
 WrapIndexType *
 getFirstLeaf(WrapIndexType *self)
@@ -197,6 +221,16 @@ getFirstLeaf(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+# get the index type identity
+int
+getIndexId(WrapIndexType *self)
+	CODE:
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		RETVAL = ixt->getIndexId();
+	OUTPUT:
+		RETVAL
+
 # check if the type has been initialized
 int
 isInitialized(WrapIndexType *self)
@@ -207,4 +241,3 @@ isInitialized(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
-# XXX dealing with IndexId requires constants, so leave a lone for now...

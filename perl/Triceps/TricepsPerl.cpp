@@ -307,6 +307,24 @@ bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
 	return true;
 }
 
+bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id)
+{
+	int intid;
+	// accept idarg as either number of name
+	if (SvIOK(idarg)) {
+		intid = SvIV(idarg);
+	} else {
+		const char *idname = SvPV_nolen(idarg);
+		intid = IndexType::stringIndexId(idname);
+		if (intid < 0) {
+			setErrMsg(strprintf("%s: unknown IndexId string '%s', if integer was meant, it has to be cast", funcName, idname));
+			return false;
+		}
+	}
+	id = (IndexType::IndexId)intid;
+	return true;
+}
+
 bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
 {
 	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {

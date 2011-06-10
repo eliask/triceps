@@ -11,8 +11,10 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
+use ExtUtils::testlib;
+
 use Test;
-BEGIN { plan tests => 31 };
+BEGIN { plan tests => 39 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -103,6 +105,24 @@ ok($res, "HashedIndex(b, c, ) { FifoIndex() fifo, }");
 
 $it2 = $tt1->findSubIndex("xxx");
 ok(!defined($it2));
+
+$it2 = $tt1->findSubIndexById("IT_FIFO");
+ok(ref $it2, "Triceps::IndexType");
+
+$it2 = $tt1->findSubIndexById(&Triceps::IT_FIFO);
+ok(ref $it2, "Triceps::IndexType");
+
+$it2 = $tt1->findSubIndexById(&Triceps::IT_ROOT);
+ok(!defined $it2);
+ok($! . "", "Triceps::TableType::findSubIndexById: no nested index with type id 'IT_ROOT' (0)");
+
+$it2 = $tt1->findSubIndexById(999);
+ok(!defined $it2);
+ok($! . "", "Triceps::TableType::findSubIndexById: no nested index with type id '???' (999)");
+
+$it2 = $tt1->findSubIndexById("xxx");
+ok(!defined $it2);
+ok($! . "", "Triceps::TableType::findSubIndexById: unknown IndexId string 'xxx', if integer was meant, it has to be cast");
 
 $tt4 = Triceps::TableType->new($rt1);
 $it2 = $tt4->getFirstLeaf();

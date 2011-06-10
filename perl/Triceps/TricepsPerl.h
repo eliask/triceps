@@ -81,6 +81,14 @@ bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em);
 // @return - true on success or false on error
 bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op);
 
+// Parse an IndexId as an integer or string constant to an enum.
+// On error calls setErrMsg and returns false.
+// @param funcName - calling function name, for error messages
+// @param idarg - SV containing the value to parse
+// @param id - place to return the parsed value
+// @return - true on success or false on error
+bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id);
+
 // Enqueue one argument in a unit. The argument may be either a Rowop or a Tray,
 // detected automatically. Checks for errors and populates the error messages.
 // @param funcName - calling function name, for error messages

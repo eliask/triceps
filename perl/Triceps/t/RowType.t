@@ -11,6 +11,8 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
+use ExtUtils::testlib;
+
 use Test;
 BEGIN { plan tests => 33 };
 use Triceps;

@@ -112,6 +112,30 @@ findSubIndex(WrapTableType *self, char *subname)
 	OUTPUT:
 		RETVAL
 
+# find a nested index by type id
+WrapIndexType *
+findSubIndexById(WrapTableType *self, SV *idarg)
+	CODE:
+		static char funcName[] =  "Triceps::TableType::findSubIndexById";
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		TableType *tbt = self->get();
+
+		IndexType::IndexId id;
+		if (!parseIndexId(funcName, idarg, id))
+			XSRETURN_UNDEF;
+
+		IndexType *ixsub = tbt->findSubIndexById(id);
+		if (ixsub == NULL) {
+			setErrMsg(strprintf("%s: no nested index with type id '%s' (%d)", funcName, IndexType::indexIdString(id), id));
+			XSRETURN_UNDEF;
+		}
+		RETVAL = new WrapIndexType(ixsub);
+	OUTPUT:
+		RETVAL
+
 # get the first leaf sub-index
 WrapIndexType *
 getFirstLeaf(WrapTableType *self)
@@ -130,8 +154,6 @@ getFirstLeaf(WrapTableType *self)
 		RETVAL = new WrapIndexType(leaf);
 	OUTPUT:
 		RETVAL
-
-# XXX dealing with IndexId requires constants, so leave a lone for now...
 
 # check if the type has been initialized
 int
