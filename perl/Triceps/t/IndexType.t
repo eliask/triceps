@@ -12,7 +12,7 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test;
-BEGIN { plan tests => 53 };
+BEGIN { plan tests => 56 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -87,6 +87,8 @@ ok(ref $it5, "Triceps::IndexType");
 
 $res = $it1->equals($it2);
 ok($res, 1);
+$res = $it1->same($it2);
+ok($res, 0);
 $res = $it1->equals($it3);
 ok($res, 0);
 $res = $it1->equals($it4);
@@ -107,8 +109,10 @@ ok($res, 0);
 
 # reuse $it1..$it5 from the last tests, modify them
 
-$it2 = $it2->addSubIndex(level2 => $it3->addSubIndex(level3 => $it5));
-ok(ref $it2, "Triceps::IndexType");
+$it21 = $it2->addSubIndex(level2 => $it3->addSubIndex(level3 => $it5));
+ok(ref $it21, "Triceps::IndexType");
+$res = $it2->same($it21);
+ok($res, 1);
 $res = $it1->equals($it2);
 ok($res, 0);
 $res = $it1->match($it2);
@@ -123,9 +127,12 @@ ok($res, 0);
 $res = $it3->isLeaf(); 
 ok($res, 0);
 
-$res = $it2->findSubIndex("level2");
-ok(ref $it2, "Triceps::IndexType");
-$res = $res->equals($it3);
+$it21 = $it2->findSubIndex("level2");
+ok(ref $it21, "Triceps::IndexType");
+$res = $it21->equals($it3); # equals but not the same, because the indexes get copied!
+ok($res, 1);
+$it22 = $it2->findSubIndex("level2");
+$res = $it21->same($it22);
 ok($res, 1);
 
 $res = $it2->findSubIndex("xxx");
