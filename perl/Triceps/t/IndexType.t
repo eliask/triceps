@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 68 };
+BEGIN { plan tests => 82 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -80,8 +80,13 @@ $it1 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->getIndexId();
 ok($res, &Triceps::IT_HASHED);
-$it2 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
+
+# uninitializedness of copies tested in Table.t
+$it2 = $it1->copy();
 ok(ref $it2, "Triceps::IndexType");
+$res = $it1->equals($it2);
+ok($res, 1);
+
 $it3 = Triceps::IndexType->newHashed(key => [ "c", "d" ]);
 ok(ref $it3, "Triceps::IndexType");
 $it4 = Triceps::IndexType->newHashed(key => [ "e" ]);
@@ -115,6 +120,9 @@ ok($res, 0);
 
 # reuse $it1..$it5 from the last tests, modify them
 
+@res = $it2->getSubIndexes();
+ok($#res, -1);
+
 $it21 = $it2->addSubIndex(level2 => $it3->addSubIndex(level3 => $it5));
 ok(ref $it21, "Triceps::IndexType");
 $res = $it2->same($it21);
@@ -125,6 +133,26 @@ $res = $it1->match($it2);
 ok($res, 0);
 $res = $it2->print();
 ok($res, "HashedIndex(a, b, ) {\n  HashedIndex(c, d, ) {\n    FifoIndex() level3,\n  } level2,\n}");
+
+@res = $it2->getSubIndexes();
+ok($#res, 1);
+ok($res[0], "level2");
+ok(ref $res[1], "Triceps::IndexType");
+$res = $it3->equals($res[1]);
+ok($res, 1);
+
+$it21 = $it2->addSubIndex(order => $it5);
+ok(ref $it21, "Triceps::IndexType");
+@res = $it2->getSubIndexes();
+ok($#res, 3);
+ok($res[0], "level2");
+ok(ref $res[1], "Triceps::IndexType");
+$res = $it3->equals($res[1]);
+ok($res, 1);
+ok($res[2], "order");
+ok(ref $res[3], "Triceps::IndexType");
+$res = $it5->equals($res[3]);
+ok($res, 1);
 
 $res = $it1->isLeaf();
 ok($res, 1);
@@ -182,7 +210,7 @@ $it6 = $it5->getFirstLeaf();
 ok(ref $it6, "Triceps::IndexType");
 $res = $it6->equals($it5);
 
-###################### nested #################################
+###################### other small stuff #################################
 
 $res = $it2->isInitialized();
 ok($res, 0);

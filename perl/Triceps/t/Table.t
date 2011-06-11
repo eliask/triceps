@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 11 };
+BEGIN { plan tests => 15 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -74,3 +74,11 @@ ok(ref $res, "Triceps::Unit");
 
 $tt2 = $t1->getType();
 ok($tt1->same($tt2));
+
+# copying of types after initialization
+$it3 = $tt1->findSubIndex("grouping");
+ok(ref $it3, "Triceps::IndexType");
+ok($it3->isInitialized());
+$it4 = $it3->copy();
+ok(ref $it4, "Triceps::IndexType");
+ok(!$it4->isInitialized());

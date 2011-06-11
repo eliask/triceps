@@ -94,6 +94,20 @@ newFifo(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
+# make an uninitialized copy
+WrapIndexType *
+copy(WrapIndexType *self)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::addSubIndex";
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		RETVAL = new WrapIndexType(ixt->copy());
+	OUTPUT:
+		RETVAL
+
 int
 same(WrapIndexType *self, WrapIndexType *other)
 	CODE:
@@ -209,6 +223,26 @@ findSubIndexById(WrapIndexType *self, SV *idarg)
 	OUTPUT:
 		RETVAL
 
+# returns an array of paired values (name => type)
+SV *
+getSubIndexes(WrapIndexType *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+
+		const IndexTypeVec &nested = ixt->getSubIndexes();
+		for (IndexTypeVec::const_iterator it = nested.begin(); it != nested.end(); ++it) {
+			const IndexTypeRef &ref = *it;
+			
+			XPUSHs(sv_2mortal(newSVpvn(ref.name_.c_str(), ref.name_.size())));
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapIndexType(ref.index_.get())) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
 # get the first leaf sub-index
 WrapIndexType *
 getFirstLeaf(WrapIndexType *self)
@@ -242,3 +276,5 @@ isInitialized(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+
+# XXX setAggregator

@@ -39,6 +39,12 @@ public:
 class IndexTypeVec: public  vector<IndexTypeRef>
 {
 public:
+	// This class is not really public.
+	// In the future should probably add wrappers to the right base classes
+	// and make most of it protected. 
+	// All the that normal users should do is read the IndexTypeRefs,
+	// not touching the other methods.
+	
 	IndexTypeVec();
 	IndexTypeVec(size_t size);
 	// Populate with the copy of the original types

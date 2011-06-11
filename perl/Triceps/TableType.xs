@@ -195,3 +195,4 @@ rowType(WrapTableType *self)
 	OUTPUT:
 		RETVAL
 
+# XXX add getSubIndexes()

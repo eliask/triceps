@@ -222,4 +222,3 @@ print(WrapRowType *self, ...)
 	PPCODE:
 		GEN_PRINT_METHOD(RowType)
 
-# XXX add a way to get back the type-name field definition list
