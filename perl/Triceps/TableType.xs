@@ -72,6 +72,7 @@ same(WrapTableType *self, WrapTableType *other)
 		RETVAL
 
 # add an index
+# XXX accept multiple subname-sub pairs as arguments
 WrapTableType *
 addSubIndex(WrapTableType *self, char *subname, WrapIndexType *sub)
 	CODE:

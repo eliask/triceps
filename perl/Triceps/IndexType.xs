@@ -144,6 +144,7 @@ isLeaf(WrapIndexType *self)
 		RETVAL
 
 # add a nested index
+# XXX accept multiple subname-sub pairs as arguments
 WrapIndexType *
 addSubIndex(WrapIndexType *self, char *subname, WrapIndexType *sub)
 	CODE:

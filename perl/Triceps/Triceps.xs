@@ -213,7 +213,8 @@ emString(int val)
 	OUTPUT:
 		RETVAL
 
-char *tracerWhenString(int val)
+char *
+tracerWhenString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Unit::tracerWhenString(val, NULL);
@@ -223,7 +224,8 @@ char *tracerWhenString(int val)
 	OUTPUT:
 		RETVAL
 
-char *tracerWhenHumanString(int val)
+char *
+tracerWhenHumanString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Unit::tracerWhenHumanString(val, NULL);
@@ -233,7 +235,8 @@ char *tracerWhenHumanString(int val)
 	OUTPUT:
 		RETVAL
 
-char *indexIdString(int val)
+char *
+indexIdString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = IndexType::indexIdString(val, NULL);
