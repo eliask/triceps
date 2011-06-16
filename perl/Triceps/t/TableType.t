@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 39 };
+BEGIN { plan tests => 48 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -50,10 +50,13 @@ ok(ref $ret, "Triceps::RowType");
 
 ###################### addSubIndex #################################
 
+@res = $tt1->getSubIndexes();
+ok($#res, -1);
+
 # tt2 actually refers to the same C++ object as tt1
 $tt2 = $tt1->addSubIndex("primary", $it1);
 ok(ref $tt2, "Triceps::TableType");
-
+ok($tt2->same($tt1));
 
 $tt3 = Triceps::TableType->new($rt1)
 	->addSubIndex("primary", $it1);
@@ -83,6 +86,19 @@ $res = $tt1->same($tt2);
 ok($res);
 $res = $tt1->same($tt3);
 ok(!$res);
+
+###################### getSubIndexes #################################
+
+@res = $tt1->getSubIndexes();
+ok($#res, 3);
+ok($res[0], "primary");
+ok(ref $res[1], "Triceps::IndexType");
+$res = $it1->equals($res[1]);
+ok($res, 1);
+ok($res[2], "second");
+ok(ref $res[3], "Triceps::IndexType");
+$res = $res[3]->getIndexId();
+ok($res, &Triceps::IT_FIFO);
 
 ###################### print #################################
 

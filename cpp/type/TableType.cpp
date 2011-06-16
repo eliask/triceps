@@ -155,21 +155,22 @@ Onceref<Table> TableType::makeTable(Unit *unit, Gadget::EnqMode emode, const str
 
 IndexType *TableType::findSubIndex(const string &name) const
 {
-	if (root_.isNull())
-		return NULL;
 	return root_->findSubIndex(name);
 }
 
 IndexType *TableType::findSubIndexById(IndexType::IndexId it) const
 {
-	if (root_.isNull())
-		return NULL;
 	return root_->findSubIndexById(it);
+}
+
+const IndexTypeVec &TableType::getSubIndexes() const
+{
+	return root_->getSubIndexes();
 }
 
 IndexType *TableType::getFirstLeaf() const
 {
-	if (root_.isNull() || root_->isLeaf())
+	if (root_->isLeaf())
 		return NULL;
 	return root_->getFirstLeaf();
 }

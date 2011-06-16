@@ -137,6 +137,26 @@ findSubIndexById(WrapTableType *self, SV *idarg)
 	OUTPUT:
 		RETVAL
 
+# returns an array of paired values (name => type)
+SV *
+getSubIndexes(WrapTableType *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		TableType *tbt = self->get();
+
+		const IndexTypeVec &nested = tbt->getSubIndexes();
+		for (IndexTypeVec::const_iterator it = nested.begin(); it != nested.end(); ++it) {
+			const IndexTypeRef &ref = *it;
+			
+			XPUSHs(sv_2mortal(newSVpvn(ref.name_.c_str(), ref.name_.size())));
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapIndexType(ref.index_.get())) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
 # get the first leaf sub-index
 WrapIndexType *
 getFirstLeaf(WrapTableType *self)
@@ -195,4 +215,3 @@ rowType(WrapTableType *self)
 	OUTPUT:
 		RETVAL
 
-# XXX add getSubIndexes()

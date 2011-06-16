@@ -97,7 +97,7 @@ public:
 	IndexType *findSubIndexById(IndexType::IndexId it) const;
 
 	// Return the vector of nested indexes, for iteration
-	// XXX add: const IndexTypeVec &getSubIndexes() const
+	const IndexTypeVec &getSubIndexes() const;
 
 	// Return the first leaf index type.
 	// If no indexes defined, returns NULL.
