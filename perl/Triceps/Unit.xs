@@ -98,6 +98,28 @@ enqueue(WrapUnit *self, SV *enqMode, ...)
 	OUTPUT:
 		RETVAL
 
+# This is a call with a very special purpose, so even though it's possible
+# to enqueue the rows one by one with their modes too, the use case is really
+# only for the tray, and the only tray.
+int
+enqueueDelayedTray(WrapUnit *self, WrapTray *tray)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::enqueueDelayedTray";
+		clearErrMsg();
+		Unit *u = self->get();
+		Tray *tr = tray->get();
+	
+		if (tray->getParent() != u) {
+			setErrMsg( strprintf("%s: tray is from a wrong unit %s", funcName,
+				tray->getParent()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
+		u->enqueueDelayedTray(tr);
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 callNext(WrapUnit *self)
 	CODE:
@@ -266,7 +288,6 @@ makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
 		RETVAL
 
 # make a label with executable Perl code
-# XXX add extra Perl arguments to pass to code
 WrapLabel *
 makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 	CODE:
@@ -287,4 +308,3 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 	OUTPUT:
 		RETVAL
 
-# XXX add enqueueDelayedTray(), and maybe keeping track of all labels
