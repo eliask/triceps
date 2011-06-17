@@ -74,4 +74,52 @@ getUnit(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
+# XXX test the methods below
+
+# check whether both refs point to the same type object
+int
+same(WrapTable *self, WrapTable *other)
+	CODE:
+		clearErrMsg();
+		Table *t = self->get();
+		Table *ot = other->get();
+		RETVAL = (t == ot);
+	OUTPUT:
+		RETVAL
+
+WrapRowType *
+getRowType(WrapTable *self)
+	CODE:
+		clearErrMsg();
+		Table *tab = self->get();
+
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+		RETVAL = new WrapRowType(const_cast<RowType *>(tab->getRowType()));
+	OUTPUT:
+		RETVAL
+
+char *
+getName(WrapTable *self)
+	CODE:
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = (char *)t->getName().c_str();
+	OUTPUT:
+		RETVAL
+
+# this may be 64-bit, and IV is guaranteed to be pointer-sized
+IV
+size(WrapTable *self)
+	CODE:
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = t->size();
+	OUTPUT:
+		RETVAL
+
+#WrapRowHandle *
+#makeRowHandle(WrapTable *self, WrapRow *row)
+
 # XXX add the rest of methods
+
