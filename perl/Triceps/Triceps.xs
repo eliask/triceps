@@ -20,6 +20,7 @@ extern "C" {
 XS(boot_Triceps__Label); 
 XS(boot_Triceps__Row); 
 XS(boot_Triceps__Rowop); 
+XS(boot_Triceps__RowHandle); 
 XS(boot_Triceps__RowType); 
 XS(boot_Triceps__IndexType); 
 XS(boot_Triceps__TableType); 
@@ -47,6 +48,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__Rowop(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__RowHandle(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Triceps items=%d sp=%p mark=%p\n", items, sp, mark);
