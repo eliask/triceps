@@ -21,6 +21,21 @@ class Table;
 class RowHandle : public Starget
 {
 public:
+	// The properly public part of the interface.
+	
+	const Row *getRow() const
+	{
+		return row_;
+	}
+
+	bool isInTable() const
+	{
+		return (flags_ & F_INTABLE);
+	}
+
+public:
+	// This part of the API is for the internals of the tables.
+	
 	// flags describing the state of handle
 	enum Flags {
 		F_INTABLE = 0x01, // the handle is currently stored in the table and can be used as an interator in it
@@ -54,16 +69,6 @@ public:
 	T *get(intptr_t offset) const
 	{
 		return (T *)at(offset);
-	}
-
-	const Row *getRow() const
-	{
-		return row_;
-	}
-
-	bool isInTable() const
-	{
-		return (flags_ & F_INTABLE);
 	}
 
 protected:
