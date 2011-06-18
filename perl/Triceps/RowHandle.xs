@@ -53,4 +53,4 @@ isInTable(WrapRowHandle *self)
 	OUTPUT:
 		RETVAL
 
-# XXX test it
+# tested in Table.t

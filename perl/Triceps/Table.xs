@@ -74,8 +74,6 @@ getUnit(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
-# XXX test the methods below
-
 # check whether both refs point to the same type object
 int
 same(WrapTable *self, WrapTable *other)
@@ -118,8 +116,33 @@ size(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
-#WrapRowHandle *
-#makeRowHandle(WrapTable *self, WrapRow *row)
+WrapRowHandle *
+makeRowHandle(WrapTable *self, WrapRow *row)
+	CODE:
+		static char funcName[] =  "Triceps::Table::makeRowHandle";
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		Row *r = row->get();
+		RowType *rt = row->ref_.getType();
+
+		if (!rt->equals(t->getRowType())) {
+			string msg = strprintf("%s: table and row types do not match, in table: ", funcName);
+			t->getRowType()->printTo(msg, NOINDENT);
+			msg.append(", in row: ");
+			rt->printTo(msg, NOINDENT);
+
+			setErrMsg(msg);
+			XSRETURN_UNDEF;
+		}
+
+		RETVAL = new WrapRowHandle(t, t->makeRowHandle(r));
+	OUTPUT:
+		RETVAL
+
+# XXX test the methods below
 
 # XXX add the rest of methods
 

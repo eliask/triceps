@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 15 };
+BEGIN { plan tests => 33 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -57,6 +57,49 @@ ok($res, 1);
 $t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
 ok(ref $t1, "Triceps::Table");
 
+### table 2 with a different type
+
+@def2 = (
+	a => "uint8[]",
+	b => "int32[]",
+	c => "int64[]",
+	d => "float64[]",
+	e => "string",
+);
+$rt2 = Triceps::RowType->new( # used later
+	@def2
+);
+ok(ref $rt2, "Triceps::RowType");
+
+$tt2 = Triceps::TableType->new($rt2)
+	->addSubIndex("grouping", $it1); # reuse it1 !
+ok(ref $tt2, "Triceps::TableType");
+
+$res = $tt2->initialize();
+ok($res, 1);
+
+$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+ok(ref $t2, "Triceps::Table");
+
+########################## basic functions #################################################
+
+# currently there is no way to get 2 different refs to the same table
+$res = $t1->same($t1);
+ok($res);
+
+$res = $t1->same($t2);
+ok(!$res);
+
+$res = $t1->getName();
+ok($res, "tab1");
+
+$rtt = $t1->getRowType();
+ok(ref $rtt, "Triceps::RowType");
+ok($rt1->same($rtt));
+
+$res = $t1->size();
+ok($res, 0); # no data in the table yet
+
 ########################## get label #################################################
 
 $lb = $t1->getInputLabel();
@@ -82,3 +125,42 @@ ok($it3->isInitialized());
 $it4 = $it3->copy();
 ok(ref $it4, "Triceps::IndexType");
 ok(!$it4->isInitialized());
+
+########################## makeRowHandle  #################################################
+
+@dataset1 = (
+	a => "uint8",
+	b => 123,
+	c => 3e15+0,
+	d => 3.14,
+	e => "string",
+);
+$r1 = $rt1->makeRowHash( @dataset1);
+ok(ref $r1, "Triceps::Row");
+
+@dataset2 = (
+	a => "uint8",
+	b => [ 123 ],
+	c => [ 3e15+0 ],
+	d => [ 3.14 ],
+	e => "string",
+);
+$r2 = $rt2->makeRowHash( @dataset2);
+ok(ref $r2, "Triceps::Row");
+
+$rh1 = $t1->makeRowHandle($r1);
+ok(ref $rh1, "Triceps::RowHandle");
+
+$rh2 = $t1->makeRowHandle($r2);
+ok(!defined $rh2);
+ok($! . "", "Triceps::Table::makeRowHandle: table and row types do not match, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+
+########################## tests of RowHandle  #################################################
+
+# XXX test RowHandle::same() later
+$res = $rh1->isInTable();
+ok(!$res);
+
+$res = $rh1->getRow();
+ok(ref $res, "Triceps::Row");
+ok($r1->same($res));
