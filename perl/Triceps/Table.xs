@@ -12,6 +12,62 @@
 
 #include "TricepsPerl.h"
 
+namespace Triceps
+{
+namespace TricepsPerl 
+{
+
+// Parse the argument as either a RowHandle (then return it directly)
+// or a Row (then create a RowHandle from it). On errors returns NULL
+// and sets the message.
+// @patab tab - table where the handle will be used
+// @param funcName - calling function name, for error messages
+// @param arg - the incoming argument
+// @return - a RowHandle, or NULL on error
+RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
+{
+	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+		WrapRowHandle *wrh = (WrapRowHandle *)SvIV((SV*)SvRV( arg ));
+		if (wrh == 0) {
+			setErrMsg( string(funcName) + ": row argument is NULL and not a valid SV reference to Row or RowHandle" );
+			return NULL;
+		}
+		if (!wrh->badMagic()) {
+			if (wrh->ref_.getTable() != tab) {
+				setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+					funcName, wrh->ref_.getTable()->getName().c_str()) );
+				return NULL;
+			}
+			return wrh->get();
+		}
+		WrapRow *wr = (WrapRow *)wrh;
+		if (wr->badMagic()) {
+			setErrMsg( string(funcName) + ": row argument has an incorrect magic for Row or RowHandle" );
+			return NULL;
+		}
+
+		Row *r = wr->get();
+		RowType *rt = wr->ref_.getType();
+
+		if (!rt->equals(tab->getRowType())) {
+			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
+			tab->getRowType()->printTo(msg, NOINDENT);
+			msg.append(", in row: ");
+			rt->printTo(msg, NOINDENT);
+
+			setErrMsg(msg);
+			return NULL;
+		}
+		return tab->makeRowHandle(r);
+	} else{
+		setErrMsg( string(funcName) + ": row argument is not a blessed SV reference to Row or RowHandle" );
+		return NULL;
+	}
+}
+
+}; // Triceps::TricepsPerl
+}; // Triceps
+
 MODULE = Triceps::Table		PACKAGE = Triceps::Table
 ###################################################################################
 
@@ -129,7 +185,7 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 		RowType *rt = row->ref_.getType();
 
 		if (!rt->equals(t->getRowType())) {
-			string msg = strprintf("%s: table and row types do not match, in table: ", funcName);
+			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
 			t->getRowType()->printTo(msg, NOINDENT);
 			msg.append(", in row: ");
 			rt->printTo(msg, NOINDENT);
@@ -143,6 +199,24 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 		RETVAL
 
 # XXX test the methods below
+
+# returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
+# XXX add copyTray argument
+int
+insert(WrapTable *self, SV *rowarg)
+	CODE:
+		static char funcName[] =  "Triceps::Table::insert";
+
+		clearErrMsg();
+		Table *t = self->get();
+
+		RowHandle *rh = parseRowOrHandle(t, funcName, rowarg);
+		if (rh == NULL)
+			XSRETURN_UNDEF;
+
+		RETVAL = t->insert(rh);
+	OUTPUT:
+		RETVAL
 
 # XXX add the rest of methods
 

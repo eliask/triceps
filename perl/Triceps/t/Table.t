@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 33 };
+BEGIN { plan tests => 46 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -153,7 +153,10 @@ ok(ref $rh1, "Triceps::RowHandle");
 
 $rh2 = $t1->makeRowHandle($r2);
 ok(!defined $rh2);
-ok($! . "", "Triceps::Table::makeRowHandle: table and row types do not match, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+ok($! . "", "Triceps::Table::makeRowHandle: table and row types are not equal, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+
+$rh2 = $t2->makeRowHandle($r2);
+ok(ref $rh2, "Triceps::RowHandle");
 
 ########################## tests of RowHandle  #################################################
 
@@ -164,3 +167,33 @@ ok(!$res);
 $res = $rh1->getRow();
 ok(ref $res, "Triceps::Row");
 ok($r1->same($res));
+
+########################## basic ops  #################################################
+
+$res = $t1->insert($rh1);
+ok($res == 1);
+$res = $t1->size();
+ok($res, 1);
+
+$res = $t1->insert($r1);
+ok($res == 1);
+$res = $t1->size();
+ok($res, 2); # they get collected in a FIFO
+
+# bad args
+$res = $t1->insert(0);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: row argument is not a blessed SV reference to Row or RowHandle");
+
+$res = $t1->insert($t2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: row argument has an incorrect magic for Row or RowHandle");
+
+$res = $t1->insert($r2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: table and row types are not equal, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+
+$res = $t1->insert($rh2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: row argument is a RowHandle in a wrong table tab2");
+
