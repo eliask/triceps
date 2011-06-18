@@ -76,7 +76,19 @@ toArray(WrapTray *self)
 			XPUSHs(ropv);
 		}
 
-void *
+# gets the size without a full conversion to array
+IV 
+size(WrapTray *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Tray";
+		clearErrMsg();
+		Tray *t = self->get();
+		RETVAL = t->size();
+	OUTPUT:
+		RETVAL
+
+void
 clear(WrapTray *self)
 	CODE:
 		clearErrMsg();

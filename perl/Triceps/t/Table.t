@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 46 };
+BEGIN { plan tests => 67 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -28,6 +28,9 @@ ok(1); # If we made it this far, we're ok.
 
 $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
+
+$u2 = Triceps::Unit->new("u2");
+ok(ref $u2, "Triceps::Unit");
 
 @def1 = (
 	a => "uint8",
@@ -72,7 +75,7 @@ $rt2 = Triceps::RowType->new( # used later
 ok(ref $rt2, "Triceps::RowType");
 
 $tt2 = Triceps::TableType->new($rt2)
-	->addSubIndex("grouping", $it1); # reuse it1 !
+	->addSubIndex("grouping", Triceps::IndexType->newHashed(key => [ "b", "c" ]) ); 
 ok(ref $tt2, "Triceps::TableType");
 
 $res = $tt2->initialize();
@@ -180,6 +183,34 @@ ok($res == 1);
 $res = $t1->size();
 ok($res, 2); # they get collected in a FIFO
 
+# with copyTray: more interesting if the rows get replaced
+
+$ctr = $u1->makeTray();
+ok(ref $ctr, "Triceps::Tray");
+
+$res = $t2->insert($rh2, $ctr);
+ok($res == 1);
+$res = $t2->size();
+ok($res, 1);
+$res = $ctr->size();
+ok($res, 1);
+@arr = $ctr->toArray();
+ok($arr[0]->getOpcode(), &Triceps::OP_INSERT);
+ok($r2->same($arr[0]->getRow()));
+
+$ctr->clear();
+ok($ctr->size(), 0);
+$res = $t2->insert($r2, $ctr);
+ok($res == 1);
+$res = $t2->size();
+ok($res, 1); # old record gets pushed out
+ok($ctr->size(), 2); # both delete and insert
+@arr = $ctr->toArray();
+ok($arr[0]->getOpcode(), &Triceps::OP_DELETE);
+ok($r2->same($arr[0]->getRow()));
+ok($arr[1]->getOpcode(), &Triceps::OP_INSERT);
+ok($r2->same($arr[1]->getRow()));
+
 # bad args
 $res = $t1->insert(0);
 ok(!defined $res);
@@ -196,4 +227,17 @@ ok($! . "", "Triceps::Table::insert: table and row types are not equal, in table
 $res = $t1->insert($rh2);
 ok(!defined $res);
 ok($! . "", "Triceps::Table::insert: row argument is a RowHandle in a wrong table tab2");
+
+$res = $t1->insert($rh1, 0);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: copyTray is not a blessed SV reference to WrapTray");
+
+$res = $t1->insert($rh1, $t2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: copyTray has an incorrect magic for WrapTray");
+
+$ctr2 = $u2->makeTray();
+$res = $t1->insert($rh1, $ctr2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::insert: copyTray is from a wrong unit u2, table in unit u1");
 

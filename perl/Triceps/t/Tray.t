@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 53 };
+BEGIN { plan tests => 56 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -120,6 +120,7 @@ ok(ref $rop22, "Triceps::Rowop");
 $tray1 = $u1->makeTray($rop11, $rop12);
 ok(ref $tray1, "Triceps::Tray");
 
+ok($tray1->size(), 2);
 @arr = $tray1->toArray();
 ok($#arr, 1);
 ok($rop11->same($arr[0]));
@@ -135,6 +136,7 @@ ok($u1->same($v));
 $tray2 = $tray1->copy();
 ok(ref $tray2, "Triceps::Tray");
 ok(!$tray1->same($tray2));
+ok($tray2->size(), 2);
 @arr = $tray2->toArray();
 ok($#arr, 1);
 ok($rop11->same($arr[0]));
@@ -142,6 +144,7 @@ ok($rop12->same($arr[1]));
 
 # clear the copy
 $tray2->clear();
+ok($tray2->size(), 0);
 @arr = $tray2->toArray();
 ok($#arr, -1);
 @arr = $tray1->toArray();

@@ -65,6 +65,27 @@ RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 	}
 }
 
+// Parse the copyTray argument for table ops.
+Tray *parseCopyTray(Table *tab, const char *funcName, SV *arg)
+{
+	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+		WrapTray *wt = (WrapTray *)SvIV((SV*)SvRV( arg ));
+		if (wt == 0 || wt->badMagic()) {
+			setErrMsg( string(funcName) + ": copyTray has an incorrect magic for WrapTray" );
+			return NULL;
+		}
+		if (wt->getParent() != tab->getUnit()) {
+			setErrMsg( strprintf("%s: copyTray is from a wrong unit %s, table in unit %s", funcName,
+				wt->getParent()->getName().c_str(), tab->getUnit()->getName().c_str()) );
+			return NULL;
+		}
+		return wt->get();
+	} else{
+		setErrMsg( string(funcName) + ": copyTray is not a blessed SV reference to WrapTray" );
+		return NULL;
+	}
+}
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 
@@ -201,11 +222,12 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 # XXX test the methods below
 
 # returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
-# XXX add copyTray argument
 int
-insert(WrapTable *self, SV *rowarg)
+insert(WrapTable *self, SV *rowarg, ...)
 	CODE:
 		static char funcName[] =  "Triceps::Table::insert";
+		if (items != 2 && items != 3)
+		   Perl_croak(aTHX_ "Usage: %s(self, rowarg [, copyTray])", funcName);
 
 		clearErrMsg();
 		Table *t = self->get();
@@ -214,7 +236,14 @@ insert(WrapTable *self, SV *rowarg)
 		if (rh == NULL)
 			XSRETURN_UNDEF;
 
-		RETVAL = t->insert(rh);
+		Tray *ctr = NULL;
+		if (items == 3) {
+			ctr = parseCopyTray(t, funcName, ST(2));
+			if (ctr ==  NULL)
+				XSRETURN_UNDEF;
+		}
+
+		RETVAL = t->insert(rh, ctr);
 	OUTPUT:
 		RETVAL
 
