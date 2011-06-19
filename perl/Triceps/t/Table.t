@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 70 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -177,6 +177,13 @@ $res = $t1->insert($rh1);
 ok($res == 1);
 $res = $t1->size();
 ok($res, 1);
+$res = $rh1->isInTable();
+ok($res);
+
+# inserting 2nd time returns 0
+$res = $t1->insert($rh1);
+ok($res == 0);
+ok(defined $res);
 
 $res = $t1->insert($r1);
 ok($res == 1);
