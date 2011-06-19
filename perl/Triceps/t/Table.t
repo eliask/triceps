@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 70 };
+BEGIN { plan tests => 86 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -173,6 +173,7 @@ ok($r1->same($res));
 
 ########################## basic ops  #################################################
 
+# insert
 $res = $t1->insert($rh1);
 ok($res == 1);
 $res = $t1->size();
@@ -180,11 +181,12 @@ ok($res, 1);
 $res = $rh1->isInTable();
 ok($res);
 
-# inserting 2nd time returns 0
+# inserting the same row 2nd time returns 0
 $res = $t1->insert($rh1);
 ok($res == 0);
 ok(defined $res);
 
+# insert a Row directly
 $res = $t1->insert($r1);
 ok($res == 1);
 $res = $t1->size();
@@ -195,7 +197,7 @@ ok($res, 2); # they get collected in a FIFO
 $ctr = $u1->makeTray();
 ok(ref $ctr, "Triceps::Tray");
 
-$res = $t2->insert($rh2, $ctr);
+$res = $t2->insert($r2, $ctr);
 ok($res == 1);
 $res = $t2->size();
 ok($res, 1);
@@ -207,7 +209,7 @@ ok($r2->same($arr[0]->getRow()));
 
 $ctr->clear();
 ok($ctr->size(), 0);
-$res = $t2->insert($r2, $ctr);
+$res = $t2->insert($rh2, $ctr);
 ok($res == 1);
 $res = $t2->size();
 ok($res, 1); # old record gets pushed out
@@ -247,4 +249,43 @@ $ctr2 = $u2->makeTray();
 $res = $t1->insert($rh1, $ctr2);
 ok(!defined $res);
 ok($! . "", "Triceps::Table::insert: copyTray is from a wrong unit u2, table in unit u1");
+
+# remove
+$res = $t1->remove($rh1);
+ok($res, 1);
+$res = $t1->size();
+ok($res, 1);
+$res = $rh1->isInTable();
+ok(!$res);
+
+# remove with copyTray
+$ctr->clear();
+ok($rh2->isInTable());
+$res = $t2->remove($rh2, $ctr);
+ok($res, 1);
+ok(!$rh2->isInTable());
+$res = $t2->size();
+ok($res, 0);
+$res = $ctr->size();
+ok($res, 1);
+@arr = $ctr->toArray();
+ok($arr[0]->getOpcode(), &Triceps::OP_DELETE);
+ok($r2->same($arr[0]->getRow()));
+
+# attempt to remove a row not in table
+$ctr->clear();
+$res = $t2->remove($rh2, $ctr);
+ok($res, 1);
+$res = $ctr->size();
+ok($res, 0);
+
+# bad args
+$res = $t1->remove($rh2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::remove: row argument is a RowHandle in a wrong table tab2");
+
+$ctr2 = $u2->makeTray();
+$res = $t1->remove($rh1, $ctr2);
+ok(!defined $res);
+ok($! . "", "Triceps::Table::remove: copyTray is from a wrong unit u2, table in unit u1");
 

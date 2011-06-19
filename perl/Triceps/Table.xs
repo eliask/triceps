@@ -23,7 +23,7 @@ namespace TricepsPerl
 // @patab tab - table where the handle will be used
 // @param funcName - calling function name, for error messages
 // @param arg - the incoming argument
-// @return - a RowHandle, or NULL on error
+// @return - a RowHandle, or NULL on error; put it into Rhref because handle may be just created!!!
 RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 {
 	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
@@ -232,8 +232,8 @@ insert(WrapTable *self, SV *rowarg, ...)
 		clearErrMsg();
 		Table *t = self->get();
 
-		RowHandle *rh = parseRowOrHandle(t, funcName, rowarg);
-		if (rh == NULL)
+		Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
+		if (rhr.isNull())
 			XSRETURN_UNDEF;
 
 		Tray *ctr = NULL;
@@ -243,7 +243,37 @@ insert(WrapTable *self, SV *rowarg, ...)
 				XSRETURN_UNDEF;
 		}
 
-		RETVAL = t->insert(rh, ctr);
+		RETVAL = t->insert(rhr.get(), ctr);
+	OUTPUT:
+		RETVAL
+
+# returns 1 normally, undef on incorrect arguments
+int
+remove(WrapTable *self, WrapRowHandle *wrh, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Table::remove";
+		if (items != 2 && items != 3)
+		   Perl_croak(aTHX_ "Usage: %s(self, rowHandle [, copyTray])", funcName);
+
+		clearErrMsg();
+		Table *t = self->get();
+		RowHandle *rh = wrh->get();
+
+		if (wrh->ref_.getTable() != t) {
+			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				funcName, wrh->ref_.getTable()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
+		Tray *ctr = NULL;
+		if (items == 3) {
+			ctr = parseCopyTray(t, funcName, ST(2));
+			if (ctr ==  NULL)
+				XSRETURN_UNDEF;
+		}
+
+		t->remove(rh, ctr);
+		RETVAL = 1;
 	OUTPUT:
 		RETVAL
 
