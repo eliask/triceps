@@ -38,7 +38,12 @@ RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 					funcName, wrh->ref_.getTable()->getName().c_str()) );
 				return NULL;
 			}
-			return wrh->get();
+			RowHandle *rh = wrh->get();
+			if (rh == NULL) {
+				setErrMsg( strprintf("%s: RowHandle is NULL", funcName) );
+				return NULL;
+			}
+			return rh;
 		}
 		WrapRow *wr = (WrapRow *)wrh;
 		if (wr->badMagic()) {
@@ -219,8 +224,6 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 	OUTPUT:
 		RETVAL
 
-# XXX test the methods below
-
 # returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
 int
 insert(WrapTable *self, SV *rowarg, ...)
@@ -247,7 +250,7 @@ insert(WrapTable *self, SV *rowarg, ...)
 	OUTPUT:
 		RETVAL
 
-# returns 1 normally, undef on incorrect arguments
+# returns 1 normally, or undef on incorrect arguments
 int
 remove(WrapTable *self, WrapRowHandle *wrh, ...)
 	CODE:
@@ -258,6 +261,11 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 		clearErrMsg();
 		Table *t = self->get();
 		RowHandle *rh = wrh->get();
+
+		if (rh == NULL) {
+			setErrMsg( strprintf("%s: RowHandle is NULL", funcName) );
+			XSRETURN_UNDEF;
+		}
 
 		if (wrh->ref_.getTable() != t) {
 			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
@@ -277,5 +285,120 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 	OUTPUT:
 		RETVAL
 
-# XXX add the rest of methods
+# XXX test the methods below
+
+# undef is used for the end-iterator
+
+WrapRowHandle *
+begin(WrapTable *self)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = new WrapRowHandle(t, t->begin());
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+beginIdx(WrapTable *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		IndexType *idx = widx->get();
+		RETVAL = new WrapRowHandle(t, t->beginIdx(idx));
+	OUTPUT:
+		RETVAL
+
+WrapRowHandle *
+next(WrapTable *self, WrapRowHandle *wcur)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RowHandle *cur = wcur->get(); // NULL is OK
+		RETVAL = new WrapRowHandle(t, t->next(cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+nextIdx(WrapTable *self, WrapIndexType *widx, WrapRowHandle *wcur)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		IndexType *idx = widx->get();
+		RowHandle *cur = wcur->get(); // NULL is OK
+		RETVAL = new WrapRowHandle(t, t->nextIdx(idx, cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+firstOfGroupIdx(WrapTable *self, WrapIndexType *widx, WrapRowHandle *wcur)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		IndexType *idx = widx->get();
+		RowHandle *cur = wcur->get(); // NULL is OK
+		RETVAL = new WrapRowHandle(t, t->firstOfGroupIdx(idx, cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+nextGroupIdx(WrapTable *self, WrapIndexType *widx, WrapRowHandle *wcur)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+		IndexType *idx = widx->get();
+		RowHandle *cur = wcur->get(); // NULL is OK
+		RETVAL = new WrapRowHandle(t, t->nextGroupIdx(idx, cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+find(WrapTable *self, SV *rowarg)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+		static char funcName[] =  "Triceps::Table::find";
+		if (items != 2 && items != 3)
+		   Perl_croak(aTHX_ "Usage: %s(self, rowarg)", funcName);
+
+		clearErrMsg();
+		Table *t = self->get();
+
+		Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
+		if (rhr.isNull())
+			XSRETURN_UNDEF;
+
+		RETVAL = new WrapRowHandle(t, t->find(rhr.get()));
+	OUTPUT:
+		RETVAL
+
+WrapRowHandle *
+findIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+		static char funcName[] =  "Triceps::Table::findIdx";
+		if (items != 2 && items != 3)
+		   Perl_croak(aTHX_ "Usage: %s(self, rowarg)", funcName);
+
+		clearErrMsg();
+		Table *t = self->get();
+		IndexType *idx = widx->get();
+
+		Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
+		if (rhr.isNull())
+			XSRETURN_UNDEF;
+
+		RETVAL = new WrapRowHandle(t, t->findIdx(idx, rhr.get()));
+	OUTPUT:
+		RETVAL
 
