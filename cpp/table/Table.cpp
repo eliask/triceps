@@ -270,7 +270,7 @@ RowHandle *Table::nextGroupIdx(IndexType *ixt, const RowHandle *cur) const
 	return ixt->nextGroupIdx(this, cur);
 }
 
-RowHandle *Table::find(IndexType *ixt, const RowHandle *what) const
+RowHandle *Table::findIdx(IndexType *ixt, const RowHandle *what) const
 {
 	if (ixt == NULL || ixt->getTabtype() != type_)
 		return NULL;
@@ -278,7 +278,7 @@ RowHandle *Table::find(IndexType *ixt, const RowHandle *what) const
 	return ixt->findRecord(this, what);
 }
 
-RowHandle *Table::findRow(IndexType *ixt, const Row *row) const
+RowHandle *Table::findRowIdx(IndexType *ixt, const Row *row) const
 {
 	if (row == NULL)
 		return NULL;
@@ -286,7 +286,7 @@ RowHandle *Table::findRow(IndexType *ixt, const Row *row) const
 	RowHandle *rh = makeRowHandle(row);
 	rh->incref();
 
-	RowHandle *res = find(ixt, rh);
+	RowHandle *res = findIdx(ixt, rh);
 
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);

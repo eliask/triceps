@@ -208,13 +208,13 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(t->insert(rh21));
 
 	// see that they can be found by index
-	iter = t->find(sec, rh11);
+	iter = t->findIdx(sec, rh11);
 	UT_IS(iter, rh11);
-	iter = t->find(sec, rh12);
+	iter = t->findIdx(sec, rh12);
 	UT_IS(iter, rh12);
-	iter = t->find(sec, rh21);
+	iter = t->findIdx(sec, rh21);
 	UT_IS(iter, rh21);
-	iter = t->find(sec, rh22);
+	iter = t->findIdx(sec, rh22);
 	UT_IS(iter, rh22);
 
 	// now must have 4 records, grouped by field b
@@ -260,11 +260,11 @@ UTESTCASE tableops(Utest *utest)
 	UT_IS(i, 4);
 
 	// check that the newly inserted record can be found by find on the same key
-	iter = t->find(sec, rh11);
+	iter = t->findIdx(sec, rh11);
 	UT_IS(iter, iter2);
 
 	// check that search on a non-leaf index returns NULL
-	iter = t->find(prim, rh11);
+	iter = t->findIdx(prim, rh11);
 	UT_IS(iter, NULL);
 
 	// check that iteration with NULL doesn't crash
@@ -274,7 +274,7 @@ UTESTCASE tableops(Utest *utest)
 	t->remove(iter2);
 
 	// check that the record is not there any more
-	iter = t->find(sec, rh11);
+	iter = t->findIdx(sec, rh11);
 	UT_ASSERT(iter == NULL);
 
 	// check that now have 3 records

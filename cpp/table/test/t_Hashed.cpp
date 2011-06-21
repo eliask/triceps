@@ -184,17 +184,17 @@ UTESTCASE tableops(Utest *utest)
 	UT_IS(iter, NULL);
 
 	// check that the newly inserted record can be found by find on the same key
-	iter = t->find(prim, rh1);
+	iter = t->findIdx(prim, rh1);
 	UT_ASSERT(iter == iter2);
-	iter = t->findRow(prim, r1);
+	iter = t->findRowIdx(prim, r1);
 	UT_ASSERT(iter == iter2);
 
 	// check that the type is shared between tables
-	iter = t->find(prim2, rh1);
+	iter = t->findIdx(prim2, rh1);
 	UT_ASSERT(iter == iter2);
 
 	// check that the finding by other table type's index returns NULL
-	iter = t->find(prim3, rh1);
+	iter = t->findIdx(prim3, rh1);
 	UT_ASSERT(iter == NULL);
 
 	// check that iteration with NULL doesn't crash
@@ -233,12 +233,12 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(iter == NULL);
 
 	// find and remove the 1st record
-	iter = t->find(prim, rh1);
+	iter = t->findIdx(prim, rh1);
 	UT_ASSERT(iter != NULL);
 	t->remove(iter);
 
 	// check that the record is not there any more
-	iter = t->find(prim, rh1);
+	iter = t->findIdx(prim, rh1);
 	UT_ASSERT(iter == NULL);
 
 	// check that now have 2 records

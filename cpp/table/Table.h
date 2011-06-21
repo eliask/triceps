@@ -142,19 +142,19 @@ public:
 	// @return - the matching (accoriding to this index) row in the table,
 	//     or NULL if not found or if the index is non-leaf; an index that has 
 	//     multiple matching rows, may return any of them but preferrably the first one.
-	RowHandle *find(IndexType *ixt, const RowHandle *what) const;
+	RowHandle *findIdx(IndexType *ixt, const RowHandle *what) const;
 
 	// Find the matching element using the default (first leaf) index.
 	RowHandle *find(const RowHandle *what) const
 	{
-		return find(firstLeaf_, what);
+		return findIdx(firstLeaf_, what);
 	}
 
 	// The same but creates RowHandle from a Row internally.
-	RowHandle *findRow(IndexType *ixt, const Row *what) const;
+	RowHandle *findRowIdx(IndexType *ixt, const Row *what) const;
 	RowHandle *findRow(const Row *what) const
 	{
-		return findRow(firstLeaf_, what);
+		return findRowIdx(firstLeaf_, what);
 	}
 
 protected:
