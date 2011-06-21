@@ -224,6 +224,22 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 	OUTPUT:
 		RETVAL
 
+# XXX test makeNullRowHandle
+# I'm not sure if there is much use for it, but just in case...
+WrapRowHandle *
+makeNullRowHandle(WrapTable *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->get();
+
+		RETVAL = new WrapRowHandle(t, NULL);
+	OUTPUT:
+		RETVAL
+
+
 # returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
 int
 insert(WrapTable *self, SV *rowarg, ...)
@@ -287,7 +303,7 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 
 # XXX test the methods below
 
-# undef is used for the end-iterator
+# RowHandle with NULL pointer in it is used for the end-iterator
 
 WrapRowHandle *
 begin(WrapTable *self)
