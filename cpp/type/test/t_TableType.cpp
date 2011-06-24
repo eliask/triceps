@@ -273,6 +273,7 @@ UTESTCASE primaryNested(Utest *utest)
 	IndexType *sec = prim->findSubIndex("level2");
 	if (UT_ASSERT(sec != NULL))
 		return;
+	UT_IS(prim->getTabtype(), tt);
 	UT_IS(prim->findSubIndexById(IndexType::IT_HASHED), sec);
 
 	UT_IS(sec->findSubIndex("nosuch"), NULL);

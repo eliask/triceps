@@ -241,6 +241,13 @@ public:
 		return initialized_;
 	}
 
+	// Get the reference to the table type that owns this index type
+	// (or NULL if not in the table type).
+	TableType *getTabtype() const
+	{
+		return tabtype_;
+	}
+
 protected:
 	friend class IndexTypeVec;
 	friend class TableType;
@@ -276,11 +283,6 @@ protected:
 		tabtype_ = tabtype;
 		parent_ = parent;
 		nestPos_ = pos;
-	}
-
-	TableType *getTabtype() const
-	{
-		return tabtype_;
 	}
 
 	// Initialize and validate.
