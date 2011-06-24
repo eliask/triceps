@@ -276,5 +276,22 @@ isInitialized(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+WrapTableType *
+getTabtype(WrapIndexType *self)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::getTabtype";
+		// for casting of return value
+		static char CLASS[] = "Triceps::TableType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		TableType *tt = ixt->getTabtype();
+		if (tt == NULL) {
+			setErrMsg(strprintf("%s: this index type does not belong to an initialized table type", funcName));
+			XSRETURN_UNDEF;
+		}
+		RETVAL = new WrapTableType(tt);
+	OUTPUT:
+		RETVAL
 
 # XXX setAggregator

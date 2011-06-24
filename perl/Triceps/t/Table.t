@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 86 };
+BEGIN { plan tests => 105 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -52,6 +52,9 @@ ok(ref $it1, "Triceps::IndexType");
 $tt1 = Triceps::TableType->new($rt1)
 	->addSubIndex("grouping", $it1);
 ok(ref $tt1, "Triceps::TableType");
+
+$it1cp = $tt1->findSubIndex("grouping");
+ok(ref $it1cp, "Triceps::IndexType");
 
 $res = $tt1->initialize();
 ok($res, 1);
@@ -153,6 +156,11 @@ ok(ref $r2, "Triceps::Row");
 
 $rh1 = $t1->makeRowHandle($r1);
 ok(ref $rh1, "Triceps::RowHandle");
+ok(!$rh1->isNull());
+
+$rhn1 = $t1->makeNullRowHandle();
+ok(ref $rhn1, "Triceps::RowHandle");
+ok($rhn1->isNull());
 
 $rh2 = $t1->makeRowHandle($r2);
 ok(!defined $rh2);
@@ -170,6 +178,14 @@ ok(!$res);
 $res = $rh1->getRow();
 ok(ref $res, "Triceps::Row");
 ok($r1->same($res));
+
+$res = $rhn1->getRow();
+ok(!defined $res);
+ok($! . "", "Triceps::RowHandle::getRow: RowHandle is NULL");
+
+$res = $rhn1->isInTable();
+ok(!defined $res);
+ok($! . "", "Triceps::RowHandle::isInTable: RowHandle is NULL");
 
 ########################## basic ops  #################################################
 
@@ -192,7 +208,27 @@ ok($res == 1);
 $res = $t1->size();
 ok($res, 2); # they get collected in a FIFO
 
-# with copyTray: more interesting if the rows get replaced
+# basic iteration
+
+$rhit = $t1->begin();
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh1));
+$rhit = $t1->next($rhit);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok(!$rhit->same($rh1)); # that one was auto-created
+$rhit = $t1->next($rhit);
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+ok($rhit->same($rhn1));
+$rhit = $t1->next($rhit); # try going beyond the end
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+
+#
+
+# insert with copyTray: more interesting if the rows get replaced
 
 $ctr = $u1->makeTray();
 ok(ref $ctr, "Triceps::Tray");
@@ -220,7 +256,7 @@ ok($r2->same($arr[0]->getRow()));
 ok($arr[1]->getOpcode(), &Triceps::OP_INSERT);
 ok($r2->same($arr[1]->getRow()));
 
-# bad args
+# bad args insert
 $res = $t1->insert(0);
 ok(!defined $res);
 ok($! . "", "Triceps::Table::insert: row argument is not a blessed SV reference to Row or RowHandle");
@@ -279,7 +315,7 @@ ok($res, 1);
 $res = $ctr->size();
 ok($res, 0);
 
-# bad args
+# bad args remove
 $res = $t1->remove($rh2);
 ok(!defined $res);
 ok($! . "", "Triceps::Table::remove: row argument is a RowHandle in a wrong table tab2");

@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 82 };
+BEGIN { plan tests => 84 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -29,6 +29,10 @@ $it1 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
 ok($res, "HashedIndex(a, b, )");
+
+$res = $it1->getTabtype();
+ok(!defined $res);
+ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type");
 
 $it1 = Triceps::IndexType->newHashed("key");
 ok(!defined($it1));

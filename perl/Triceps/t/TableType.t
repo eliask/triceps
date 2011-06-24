@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 48 };
+BEGIN { plan tests => 54 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -57,6 +57,11 @@ ok($#res, -1);
 $tt2 = $tt1->addSubIndex("primary", $it1);
 ok(ref $tt2, "Triceps::TableType");
 ok($tt2->same($tt1));
+
+# a copy of the index is added, the original is left unchanged
+$res = $it1->getTabtype();
+ok(!defined $res);
+ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type");
 
 $tt3 = Triceps::TableType->new($rt1)
 	->addSubIndex("primary", $it1);
@@ -113,6 +118,11 @@ $it2 = $tt1->getFirstLeaf();
 $res = $it2->print();
 ok($res, "FifoIndex()");
 
+# until the table type is initialized, indexes still don't know about it...
+$res = $it2->getTabtype();
+ok(!defined $res);
+ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type");
+
 $it2 = $tt1->findSubIndex("primary");
 $res = $it2->print();
 ok($res, "HashedIndex(b, c, ) {\n  FifoIndex() fifo,\n}");
@@ -165,6 +175,10 @@ ok($! . "", "");
 $it2 = $tt1->getFirstLeaf();
 $res = $it2->print();
 ok($res, "FifoIndex()");
+
+$res = $it2->getTabtype();
+ok(ref $res, "Triceps::TableType");
+ok($tt1->same($res));
 
 # adding indexes is not allowed any more
 $res = $tt1->addSubIndex("second", Triceps::IndexType->newFifo());

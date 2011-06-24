@@ -224,7 +224,6 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 	OUTPUT:
 		RETVAL
 
-# XXX test makeNullRowHandle
 # I'm not sure if there is much use for it, but just in case...
 WrapRowHandle *
 makeNullRowHandle(WrapTable *self)
@@ -324,6 +323,13 @@ beginIdx(WrapTable *self, WrapIndexType *widx)
 		clearErrMsg();
 		Table *t = self->get();
 		IndexType *idx = widx->get();
+
+		static char funcName[] =  "Triceps::Table::beginIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+
 		RETVAL = new WrapRowHandle(t, t->beginIdx(idx));
 	OUTPUT:
 		RETVAL
@@ -336,6 +342,14 @@ next(WrapTable *self, WrapRowHandle *wcur)
 		clearErrMsg();
 		Table *t = self->get();
 		RowHandle *cur = wcur->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::Table::next";
+		if (wcur->ref_.getTable() != t) {
+			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				funcName, wcur->ref_.getTable()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
 		RETVAL = new WrapRowHandle(t, t->next(cur));
 	OUTPUT:
 		RETVAL
@@ -349,6 +363,18 @@ nextIdx(WrapTable *self, WrapIndexType *widx, WrapRowHandle *wcur)
 		Table *t = self->get();
 		IndexType *idx = widx->get();
 		RowHandle *cur = wcur->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::Table::nextIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+		if (wcur->ref_.getTable() != t) {
+			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				funcName, wcur->ref_.getTable()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
 		RETVAL = new WrapRowHandle(t, t->nextIdx(idx, cur));
 	OUTPUT:
 		RETVAL
@@ -362,6 +388,18 @@ firstOfGroupIdx(WrapTable *self, WrapIndexType *widx, WrapRowHandle *wcur)
 		Table *t = self->get();
 		IndexType *idx = widx->get();
 		RowHandle *cur = wcur->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::Table::firstOfGroupIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+		if (wcur->ref_.getTable() != t) {
+			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				funcName, wcur->ref_.getTable()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
 		RETVAL = new WrapRowHandle(t, t->firstOfGroupIdx(idx, cur));
 	OUTPUT:
 		RETVAL
@@ -375,6 +413,18 @@ nextGroupIdx(WrapTable *self, WrapIndexType *widx, WrapRowHandle *wcur)
 		Table *t = self->get();
 		IndexType *idx = widx->get();
 		RowHandle *cur = wcur->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::Table::nextGroupIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+		if (wcur->ref_.getTable() != t) {
+			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				funcName, wcur->ref_.getTable()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
 		RETVAL = new WrapRowHandle(t, t->nextGroupIdx(idx, cur));
 	OUTPUT:
 		RETVAL
@@ -409,6 +459,11 @@ findIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 		clearErrMsg();
 		Table *t = self->get();
 		IndexType *idx = widx->get();
+
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
 
 		Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
 		if (rhr.isNull())
