@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 84 };
+BEGIN { plan tests => 86 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -69,6 +69,11 @@ $it1 = Triceps::IndexType->newFifo(limit => 10, jumping => 1);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
 ok($res, "FifoIndex(limit=10 jumping)");
+
+$it1 = Triceps::IndexType->newFifo(reverse => 1);
+ok(ref $it1, "Triceps::IndexType");
+$res = $it1->print();
+ok($res, "FifoIndex( reverse)");
 
 $it1 = Triceps::IndexType->newFifo("key");
 ok(!defined($it1));

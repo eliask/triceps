@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 105 };
+BEGIN { plan tests => 117 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -50,11 +50,16 @@ $it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
 ok(ref $it1, "Triceps::IndexType");
 
 $tt1 = Triceps::TableType->new($rt1)
-	->addSubIndex("grouping", $it1);
+	->addSubIndex("grouping", $it1)
+	->addSubIndex("reverse", Triceps::IndexType->newFifo(reverse => 1))
+	;
 ok(ref $tt1, "Triceps::TableType");
 
 $it1cp = $tt1->findSubIndex("grouping");
 ok(ref $it1cp, "Triceps::IndexType");
+
+$itrev = $tt1->findSubIndex("reverse");
+ok(ref $itrev, "Triceps::IndexType");
 
 $res = $tt1->initialize();
 ok($res, 1);
@@ -209,7 +214,6 @@ $res = $t1->size();
 ok($res, 2); # they get collected in a FIFO
 
 # basic iteration
-
 $rhit = $t1->begin();
 ok(ref $rhit, "Triceps::RowHandle");
 ok(!$rhit->isNull());
@@ -226,7 +230,22 @@ $rhit = $t1->next($rhit); # try going beyond the end
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 
-#
+# iteration with index, use the reverse for a change
+$rhit = $t1->beginIdx($itrev);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok(!$rhit->same($rh1)); # that one was auto-created
+$rhit = $t1->nextIdx($itrev, $rhit);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh1));
+$rhit = $t1->nextIdx($itrev, $rhit);
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+ok($rhit->same($rhn1));
+$rhit = $t1->nextIdx($itrev, $rhit); # try going beyond the end
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
 
 # insert with copyTray: more interesting if the rows get replaced
 

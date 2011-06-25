@@ -72,6 +72,7 @@ newFifo(char *CLASS, ...)
 
 		size_t limit = 0;
 		bool jumping = false;
+		bool reverse = false;
 
 		if (items % 2 != 1) {
 			setErrMsg(strprintf("Usage: %s(CLASS, optionName, optionValue, ...), option names and values must go in pairs", funcName));
@@ -84,13 +85,15 @@ newFifo(char *CLASS, ...)
 				limit = SvIV(val); // may overflow if <0 but we don't care
 			} else if (!strcmp(opt, "jumping")) {
 				jumping = SvIV(val);
+			} else if (!strcmp(opt, "reverse")) {
+				reverse = SvIV(val);
 			} else {
 				setErrMsg(strprintf("%s: unknown option '%s'", funcName, opt));
 				XSRETURN_UNDEF;
 			}
 		}
 
-		RETVAL = new WrapIndexType(new FifoIndexType(limit, jumping));
+		RETVAL = new WrapIndexType(new FifoIndexType(limit, jumping, reverse));
 	OUTPUT:
 		RETVAL
 
@@ -294,4 +297,5 @@ getTabtype(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+# XXX isJumping, isReverse etc.
 # XXX setAggregator
