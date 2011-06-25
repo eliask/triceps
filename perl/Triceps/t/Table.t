@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 117 };
+BEGIN { plan tests => 134 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -246,6 +246,35 @@ ok($rhit->same($rhn1));
 $rhit = $t1->nextIdx($itrev, $rhit); # try going beyond the end
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
+
+# group search
+$rhit = $t1->firstOfGroupIdx($itrev, $rh1);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok(!$rhit->same($rh1)); # that one was auto-created
+$rhit = $t1->nextGroupIdx($itrev, $rh1);
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+
+# find
+$rhit = $t1->find($r1);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh1)); # finds the first watching
+$rhit = $t1->find($t1->makeRowHandle($r1));
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh1)); # finds the first watching
+
+# find with index (reverse fifo searches still in the direct order)
+$rhit = $t1->findIdx($itrev, $r1);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh1)); # finds the first watching
+$rhit = $t1->findIdx($itrev, $t1->makeRowHandle($r1));
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh1)); # finds the first watching
 
 # insert with copyTray: more interesting if the rows get replaced
 
