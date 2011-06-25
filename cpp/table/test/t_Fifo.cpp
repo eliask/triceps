@@ -53,6 +53,7 @@ UTESTCASE fifoIndex(Utest *utest)
 
 	Autoref<TableType> tt = TableType::make(rt1)
 		->addSubIndex("fifo", FifoIndexType::make()
+		)->addSubIndex("reverse", FifoIndexType::make()->setReverse(true)
 		);
 
 	UT_ASSERT(tt);
@@ -66,6 +67,9 @@ UTESTCASE fifoIndex(Utest *utest)
 	UT_ASSERT(t->getLabel() != NULL);
 	UT_IS(t->getInputLabel()->getName(), "t.in");
 	UT_IS(t->getLabel()->getName(), "t.out");
+
+	Autoref<IndexType> revixt = tt->findSubIndex("reverse");
+	UT_ASSERT(revixt);
 
 	// create a matrix of records
 
@@ -113,6 +117,18 @@ UTESTCASE fifoIndex(Utest *utest)
 	iter = t->next(iter);
 	UT_IS(iter, rh22);
 	iter = t->next(iter);
+	UT_IS(iter, NULL);
+
+	// check the iteration by reverse index
+	iter = t->beginIdx(revixt);
+	UT_IS(iter, rh22);
+	iter = t->nextIdx(revixt, iter);
+	UT_IS(iter, rh21);
+	iter = t->nextIdx(revixt, iter);
+	UT_IS(iter, rh12);
+	iter = t->nextIdx(revixt, iter);
+	UT_IS(iter, rh11);
+	iter = t->nextIdx(revixt, iter);
 	UT_IS(iter, NULL);
 
 	// do the finds

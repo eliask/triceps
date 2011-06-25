@@ -20,13 +20,15 @@ public:
 	// @param limit - the record count limit, or 0 for unlimited
 	// @param jumping - flag: this is a jumping index, i.e. when the count limit is
 	//        overfilled, all the current records will be flushed out. "Overfilled"
-	//        mans that the flush will happen only on the insertion of the next
+	//        means that the flush will happen only on the insertion of the next
 	//        record that would be pushing the size over the limit.
-	FifoIndexType(size_t limit = 0, bool jumping = false);
+	// @param reverse - flag: this index is iterated (but not searched nor flushed!) in reverse
+	//        order.
+	FifoIndexType(size_t limit = 0, bool jumping = false, bool reverse = false);
 	// Constructors duplicated as make() for syntactically better usage.
-	static FifoIndexType *make(size_t limit = 0, bool jumping = false)
+	static FifoIndexType *make(size_t limit = 0, bool jumping = false, bool reverse = false)
 	{
-		return new FifoIndexType(limit, jumping);
+		return new FifoIndexType(limit, jumping, reverse);
 	}
 
 	// from Type
@@ -51,10 +53,17 @@ public:
 		return jumping_;
 	}
 
+	bool isReverse() const
+	{
+		return reverse_;
+	}
+
 	// Set the limit later (only until initialized).
 	FifoIndexType *setLimit(size_t limit);
 	// Set the jumping flag later (only until initialized).
 	FifoIndexType *setJumping(bool jumping);
+	// Set the reverse flag later (only until initialized).
+	FifoIndexType *setReverse(bool reverse);
 
 protected:
 	// interface for the index instances
@@ -84,6 +93,7 @@ protected:
 	intptr_t rhOffset_; // offset of this index's data in table's row handle
 	size_t limit_; // 0 means unlimited
 	bool jumping_; // flag: this is a jumping index
+	bool reverse_; // flag: iteration goes in the reverse order
 };
 
 }; // TRICEPS_NS

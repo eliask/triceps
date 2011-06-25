@@ -12,17 +12,19 @@
 
 namespace TRICEPS_NS {
 
-FifoIndexType::FifoIndexType(size_t limit, bool jumping) :
+FifoIndexType::FifoIndexType(size_t limit, bool jumping, bool reverse) :
 	IndexType(IT_FIFO),
 	limit_(limit),
-	jumping_(jumping)
+	jumping_(jumping),
+	reverse_(reverse)
 { 
 }
 
 FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
 	IndexType(orig),
 	limit_(orig.limit_),
-	jumping_(orig.jumping_)
+	jumping_(orig.jumping_),
+	reverse_(orig.reverse_)
 {
 }
 
@@ -46,6 +48,16 @@ FifoIndexType *FifoIndexType::setJumping(bool jumping)
 	return this;
 }
 
+FifoIndexType *FifoIndexType::setReverse(bool reverse)
+{
+	if (initialized_) {
+		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
+		abort();
+	}
+	reverse_ = reverse;
+	return this;
+}
+
 bool FifoIndexType::equals(const Type *t) const
 {
 	if (this == t)
@@ -56,7 +68,9 @@ bool FifoIndexType::equals(const Type *t) const
 	
 	const FifoIndexType *fit = static_cast<const FifoIndexType *>(t);
 
-	return (limit_ == fit->limit_ && jumping_ == fit->jumping_);
+	return (limit_ == fit->limit_ 
+		&& jumping_ == fit->jumping_
+		&& reverse_ == fit->reverse_);
 }
 
 void FifoIndexType::printTo(string &res, const string &indent, const string &subindent) const
@@ -66,6 +80,8 @@ void FifoIndexType::printTo(string &res, const string &indent, const string &sub
 		res.append(strprintf("limit=%zd", limit_));
 	if (jumping_)
 		res.append(" jumping");
+	if (reverse_)
+		res.append(" reverse");
 	res.append(")");
 }
 

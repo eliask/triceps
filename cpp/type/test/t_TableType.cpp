@@ -408,6 +408,16 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
+	Autoref<FifoIndexType> it0 = FifoIndexType::make(15, true);
+	UT_ASSERT(it0);
+	UT_ASSERT(it0->isJumping());
+
+	Autoref<FifoIndexType> it0cp = dynamic_cast<FifoIndexType*>(it0->copy());
+	UT_ASSERT(it0cp->isJumping());
+
+	it0->setJumping(false);
+	UT_ASSERT(!it0->isJumping());
+
 	Autoref<TableType> tt = (new TableType(rt1))
 		->addSubIndex("fifo", new FifoIndexType(15, true)
 		);
@@ -442,6 +452,65 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 		fflush(stdout);
 	}
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15 jumping) fifo, }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findSubIndex("fifo");
+	UT_ASSERT(prim != NULL);
+	UT_IS(tt->findSubIndexById(IndexType::IT_FIFO), prim);
+}
+
+UTESTCASE fifoIndexReverse(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<FifoIndexType> it0 = FifoIndexType::make(0, false, true);
+	UT_ASSERT(it0);
+	UT_ASSERT(it0->isReverse());
+
+	Autoref<FifoIndexType> it0cp = dynamic_cast<FifoIndexType*>(it0->copy());
+	UT_ASSERT(it0cp->isReverse());
+
+	it0->setReverse(false);
+	UT_ASSERT(!it0->isReverse());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("fifo", new FifoIndexType(0, false, true)
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	// repeated initialization should be fine
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  FifoIndex( reverse) fifo,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex( reverse) fifo, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("fifo");

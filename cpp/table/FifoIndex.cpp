@@ -38,7 +38,10 @@ const IndexType *FifoIndex::getType() const
 
 RowHandle *FifoIndex::begin() const
 {
-	return first_;
+	if (type_->isReverse())
+		return last_;
+	else
+		return first_;
 }
 
 RowHandle *FifoIndex::next(const RowHandle *cur) const
@@ -47,7 +50,10 @@ RowHandle *FifoIndex::next(const RowHandle *cur) const
 		return NULL;
 
 	RhSection *rs = getSection(cur);
-	return rs->next_;
+	if (type_->isReverse())
+		return rs->prev_;
+	else
+		return rs->next_;
 }
 
 const GroupHandle *FifoIndex::nextGroup(const GroupHandle *cur) const
