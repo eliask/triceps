@@ -300,8 +300,6 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 	OUTPUT:
 		RETVAL
 
-# XXX test the methods below
-
 # RowHandle with NULL pointer in it is used for the end-iterator
 
 WrapRowHandle *
