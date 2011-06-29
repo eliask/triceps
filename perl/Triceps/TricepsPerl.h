@@ -11,6 +11,9 @@
 
 // ###################################################################################
 
+#ifndef __Triceps_TricepsPerl_h__
+#define __Triceps_TricepsPerl_h__
+
 using namespace Triceps;
 
 namespace Triceps
@@ -298,3 +301,4 @@ protected:
 
 using namespace Triceps::TricepsPerl;
 
+#endif // __Triceps_TricepsPerl_h__
