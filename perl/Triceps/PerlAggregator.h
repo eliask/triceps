@@ -4,7 +4,7 @@
 //
 // The Triceps aggregator for Perl calls and the wrapper for it.
 
-// Include the Perl headers in TricepsPerl.h before this one.
+// Include TricepsPerl.h and PerlCallback.h before this one.
 
 #include <type/AggregatorType.h>
 #include <sched/AggregatorGadget.h>
@@ -12,8 +12,8 @@
 
 // ###################################################################################
 
-#ifndef __Triceps_PerlAggregator_h__
-#define __Triceps_PerlAggregator_h__
+#ifndef __TricepsPerl_PerlAggregator_h__
+#define __TricepsPerl_PerlAggregator_h__
 
 using namespace Triceps;
 
@@ -28,8 +28,11 @@ public:
 	
 	// @param name - name for aggregators' gadget in the table, will be tablename.name
 	// @param rt - type of rows produced by this aggregator, will be referenced
-	// @param cb - callback, will be referenced
-	PerlAggregatorType(const string &name, const RowType *rt, Onceref<PerlCallback> cb);
+	// @param cbConstructor - callback for construction of sv_ in aggregator, may be NULL, 
+	//        will be referenced
+	// @param cbHandler - callback for execution of aggregator, will be referenced
+	PerlAggregatorType(const string &name, const RowType *rt, 
+		Onceref<PerlCallback> cbConstructor, Onceref<PerlCallback> cbHandler);
 
 	// from AggregatorType
 	virtual AggregatorType *copy() const;
@@ -40,7 +43,8 @@ public:
 protected:
 	friend class PerlAggregator;
 
-	Autoref<PerlCallback> cb_;
+	Autoref<PerlCallback> cbConstructor_; // constructs sv_ for makeAggregator
+	Autoref<PerlCallback> cbHandler_; // handler called from PerlAggregator
 };
 
 class PerlAggregator : public Aggregator
@@ -56,20 +60,18 @@ public:
 		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray);
 
-	// XXX add some way to initialize sv_;
+	// Set a new value in sv_, increases the refcount.
+	void setsv(SV *sv);
 protected:
 	SV *sv_; // maye be used to keep the arbitrary Perl values
 };
 
-extern WrapMagic magicWrapPerlAggregatorType;
-typedef Wrap<magicWrapPerlAggregatorType, PerlAggregatorType> WrapPerlAggregatorType;
-
-extern WrapMagic magicWrapPerlAggregator;
-typedef Wrap<magicWrapPerlAggregator, PerlAggregator> WrapPerlAggregator;
+extern WrapMagic magicWrapAggregatorType;
+typedef Wrap<magicWrapAggregatorType, PerlAggregatorType> WrapAggregatorType;
 
 }; // Triceps::TricepsPerl
 }; // Triceps
 
 using namespace Triceps::TricepsPerl;
 
-#endif // __Triceps_PerlAggregator_h__
+#endif // __TricepsPerl_PerlAggregator_h__

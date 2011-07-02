@@ -11,6 +11,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "PerlCallback.h"
 
 // see also translateUnitTracerSubclass() in TricepsPerl.*
 

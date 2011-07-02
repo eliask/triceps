@@ -138,7 +138,7 @@ ok($v, "row { uint8 a, int32 b, int64 c, float64 d, string e, }");
 
 $v = $rt1->print(undef, "    ", "zzzz");
 ok(!defined $v);
-ok ($! . "", "Usage: Triceps::RowType::print(RowType [, indent  [, subindent ] ])");
+ok ($! . "", "Usage: Triceps::RowType::print(self [, indent  [, subindent ] ])");
 
 $v = $rt3->print();
 ok($v, "row {\n  uint8[] a,\n  int32[] b,\n  int64[] c,\n  float64[] d,\n  string e,\n}");

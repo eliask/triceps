@@ -12,6 +12,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "PerlCallback.h"
 #include "PerlAggregator.h"
 
 // ###################################################################################
@@ -25,9 +26,11 @@ namespace TricepsPerl
 
 // ####################### PerlAggregatorType ########################################
 
-PerlAggregatorType::PerlAggregatorType(const string &name, const RowType *rt, Onceref<PerlCallback> cb):
+PerlAggregatorType::PerlAggregatorType(const string &name, const RowType *rt, 
+		Onceref<PerlCallback> cbConstructor, Onceref<PerlCallback> cbHandler):
 	AggregatorType(name, rt),
-	cb_(cb)
+	cbConstructor_(cbConstructor),
+	cbHandler_(cbHandler)
 { }
 
 AggregatorType *PerlAggregatorType::copy() const
@@ -59,6 +62,14 @@ PerlAggregator::~PerlAggregator()
 		SvREFCNT_dec(sv_);
 }
 
+void PerlAggregator::setsv(SV *sv)
+{
+	if (sv_ != NULL)
+		SvREFCNT_dec(sv_);
+	sv_= sv;
+	SvREFCNT_inc(sv_);
+}
+
 void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index,
 	const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 	AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
@@ -68,8 +79,7 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 
 // ########################## wraps ##################################################
 
-WrapMagic magicWrapPerlAggregatorType = { "PAggTyp" };
-WrapMagic magicWrapPerlAggregator = { "PAggreg" };
+WrapMagic magicWrapAggregatorType = { "AggType" };
 
 }; // Triceps::TricepsPerl
 }; // Triceps

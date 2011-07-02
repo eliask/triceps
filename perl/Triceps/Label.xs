@@ -11,6 +11,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "PerlCallback.h"
 
 MODULE = Triceps::Label		PACKAGE = Triceps::Label
 

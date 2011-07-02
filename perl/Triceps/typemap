@@ -16,6 +16,8 @@ WrapTable *	O_WRAP_OBJECT
 WrapIndex *	O_WRAP_OBJECT
 WrapRowHandle *	O_WRAP_OBJECT
 
+WrapAggregatorType *	O_WRAP_OBJECT
+
 OUTPUT
 # The Perl object is blessed into 'CLASS', which should be a
 # char* having the name of the package for the blessing.

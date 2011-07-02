@@ -11,8 +11,8 @@
 
 // ###################################################################################
 
-#ifndef __Triceps_TricepsPerl_h__
-#define __Triceps_TricepsPerl_h__
+#ifndef __TricepsPerl_TricepsPerl_h__
+#define __TricepsPerl_TricepsPerl_h__
 
 using namespace Triceps;
 
@@ -110,154 +110,6 @@ bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i);
 // @return - perl class name, in a static string (which must be never modified!)
 char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 
-// An encapsulation of a Perl callback: used to remember a reference
-// to Perl code and to the optional arguments to it.
-// Since Perl uses macros for the function call sequences,
-// this encapsulation also gets used from macros.
-//
-// A catch is that the code args (ir even the code, as a closure)
-// may reference back to the object that holds this callback, thus
-// creating a reference loop. To break this loop, the callback needs
-// to be explicitly cleared before disposing of its owner object.
-class  PerlCallback : public Starget
-{
-public:
-	PerlCallback();
-	~PerlCallback(); // clears
-
-	// Clear the contents, decrementing the references to objects.
-	void clear();
-
-	// Set code_. Implicitly does clear();
-	// @param code - Perl code reference for processing the rows; will check
-	//               for correctness; will make a copy of it (because if keeping a reference,
-	//               SV may change later, a copy is guaranteed to stay the same).
-	// @param fname - caller function name, for error messages
-	// @return - true on success, false (and error code) on failure.
-	bool setCode(SV *code, const char *fname);
-
-	// Append another argument to args_.
-	// @param arg - argument value to append; will make a copy of it.
-	void appendArg(SV *arg);
-
-public:
-	// for macros, the internals must be public
-	SV *code_; // the code reference
-	vector<SV *> args_; // optional arguments for the code
-
-private:
-	PerlCallback(const PerlCallback &);
-	void operator=(const PerlCallback &);
-};
-
-// Initialize the PerlCallback object. On failure sets code_ to NULL and sets the error message.
-// @param cb - callback object poniter
-// @param fname - function name, for error messages
-// @param first - index of the first argument, that must represent a code reference
-// @param count - count of arguments, if less than 1 then considered an error
-#define PerlCallbackInitialize(cb, fname, first, count) \
-	do { \
-		int _i = first, _c = count; \
-		if (_c < 1) { \
-			cb->clear(); \
-			setErrMsg( string(fname) + ": missing Perl callback function reference argument" ); \
-			break; \
-		} \
-		if (!cb->setCode(ST(_i), fname)) \
-			break; \
-		while (--_c > 0) /* pre-ops to skip the code */ \
-			cb->appendArg(ST(++_i)); \
-	} while(0)
-
-// The normal call is done as follows:
-//   if (cb) {
-//       PerlCallbackStartCall(cb);
-//       ... push fixed arguments ...
-//       PerlCallbackDoCall(cb);
-//       if (SvTRUE(ERRSV)) {
-//           ... print a warning ...
-//       }
-//   }
-
-// Start the call sequence.
-// @param cb - callback object poniter
-#define PerlCallbackStartCall(cb) \
-	do { \
-		ENTER; SAVETMPS; \
-		PUSHMARK(SP); \
-	} while(0)
-
-// Complete the call sequence
-// @param cb - callback object poniter
-#define PerlCallbackDoCall(cb) \
-	do { \
-		const vector<SV *> &_av = cb->args_; \
-		if (!_av.empty()) { \
-			for (size_t _i = 0; _i < _av.size(); ++_i) { \
-				XPUSHs(_av[_i]); \
-			} \
-		} \
-		PUTBACK;  \
-		call_sv(cb->code_, G_VOID|G_EVAL); \
-		SPAGAIN; \
-		FREETMPS; LEAVE; \
-	} while(0)
-
-// Label that executes Perl code
-class PerlLabel : public Label
-{
-public:
-	
-	// @param unit - the unit where this label belongs
-	// @param rtype - type of row to be handled by this label
-	// @param name - a human-readable name of this label, for tracing
-	// @param cb - callback object
-	PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Onceref<PerlCallback> cb);
-	~PerlLabel();
-
-	// Get back the code reference (don't give it directly to random Perl code,
-	// make a copy!)
-	SV *getCode() const
-	{
-		if (cb_.isNull())
-			return NULL;
-		else
-			return cb_->code_;
-	}
-
-	// Clear the callback
-	void clear()
-	{
-		cb_ = NULL;
-	}
-
-protected:
-	// from Label
-	virtual void execute(Rowop *arg) const;
-
-	Autoref<PerlCallback> cb_;
-};
-
-// A tracer that executes Perl code.
-class UnitTracerPerl : public Unit::Tracer
-{
-public:
-	// @param cb - callback object
-	UnitTracerPerl(Onceref<PerlCallback> cb);
-
-	// Clear the callback
-	void clear()
-	{
-		cb_ = NULL;
-	}
-
-	// from Unit::Tracer
-	virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when);
-
-protected:
-	Autoref<PerlCallback> cb_;
-};
-
 // A common macro to print the contents of assorted objects.
 // See RowType.xs for an example of usage
 #define GEN_PRINT_METHOD(subtype)  \
@@ -266,7 +118,7 @@ protected:
 		subtype *rt = self->get(); \
 		\
 		if (items > 3) { \
-			setErrMsg( strprintf("Usage: %s(RowType [, indent  [, subindent ] ])", funcName)); \
+			setErrMsg( strprintf("Usage: %s(self [, indent  [, subindent ] ])", funcName)); \
 			XSRETURN_UNDEF; \
 		} \
 		\
@@ -301,4 +153,4 @@ protected:
 
 using namespace Triceps::TricepsPerl;
 
-#endif // __Triceps_TricepsPerl_h__
+#endif // __TricepsPerl_TricepsPerl_h__
