@@ -24,8 +24,6 @@ DESTROY(WrapAggregatorType *self)
 		delete self;
 
 
-# XXX test the methods below
-
 # XXX should wrt and name change places?
 # @param CLASS - name of type being constructed
 # @param wrt - row type of the aggregation result
@@ -59,4 +57,57 @@ new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...
 	OUTPUT:
 		RETVAL
 
+# make an uninitialized copy
+WrapAggregatorType *
+copy(WrapAggregatorType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::AggregatorType";
+
+		clearErrMsg();
+		PerlAggregatorType *agt = self->get();
+		RETVAL = new WrapAggregatorType(static_cast<PerlAggregatorType *>( agt->copy() ));
+	OUTPUT:
+		RETVAL
+
+int
+same(WrapAggregatorType *self, WrapAggregatorType *other)
+	CODE:
+		clearErrMsg();
+		PerlAggregatorType *agself = self->get();
+		PerlAggregatorType *agother = other->get();
+		RETVAL = (agself == agother);
+	OUTPUT:
+		RETVAL
+
+# print(self, [ indent, [ subindent ] ])
+#   indent - default "", undef means "print everything in a signle line"
+#   subindent - default "  "
+SV *
+print(WrapAggregatorType *self, ...)
+	PPCODE:
+		GEN_PRINT_METHOD(PerlAggregatorType)
+
+# type comparisons
+int
+equals(WrapAggregatorType *self, WrapAggregatorType *other)
+	CODE:
+		clearErrMsg();
+		PerlAggregatorType *agself = self->get();
+		PerlAggregatorType *agother = other->get();
+		RETVAL = agself->equals(agother);
+	OUTPUT:
+		RETVAL
+
+int
+match(WrapAggregatorType *self, WrapAggregatorType *other)
+	CODE:
+		clearErrMsg();
+		PerlAggregatorType *agself = self->get();
+		PerlAggregatorType *agother = other->get();
+		RETVAL = agself->match(agother);
+	OUTPUT:
+		RETVAL
+
+# XXX test the methods below
 

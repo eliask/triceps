@@ -103,7 +103,6 @@ newFifo(char *CLASS, ...)
 WrapIndexType *
 copy(WrapIndexType *self)
 	CODE:
-		static char funcName[] =  "Triceps::IndexType::addSubIndex";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
 
@@ -214,7 +213,7 @@ setAggregator(WrapIndexType *self, WrapAggregatorType *wagg)
 
 # returns undef if no aggregator type set
 WrapAggregatorType *
-getAggregator(WrapIndexType *self, WrapAggregatorType *wagg)
+getAggregator(WrapIndexType *self)
 	CODE:
 		static char funcName[] =  "Triceps::IndexType::getAggregator";
 		// for casting of return value

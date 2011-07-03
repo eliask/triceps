@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 94 };
+BEGIN { plan tests => 96 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -238,7 +238,7 @@ $rt1 = Triceps::RowType->new( # used later
 );
 ok(ref $rt1, "Triceps::RowType");
 
-$res = $it1->getAggregator($agt1);
+$res = $it1->getAggregator();
 ok(!defined $res);
 
 $agt1 = Triceps::AggregatorType->new($rt1, "agg", undef, sub { 0; } );
@@ -248,8 +248,11 @@ $res = $it1->setAggregator($agt1);
 ok(ref $res, "Triceps::IndexType");
 ok($it1->same($res));
 
-$res = $it1->getAggregator($agt1);
-ok(ref $res, "Triceps::AggregatorType"); # can not check for sameness because it's a copy
+$res = $it1->getAggregator();
+ok(ref $res, "Triceps::AggregatorType"); 
+ok($agt1->equals($res)); # can not check for sameness because it's a copy
+$res2 = $it1->getAggregator();
+ok($res->same($res2)); # each time returns a new reference to the same object
 
 $res = $it1->print();
 ok($res, "index HashedIndex(a, b, ) {\n  aggregator (\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  ) agg\n}");

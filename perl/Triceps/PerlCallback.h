@@ -48,6 +48,9 @@ public:
 	// @param arg - argument value to append; will make a copy of it.
 	void appendArg(SV *arg);
 
+	// Check that the value of the code and args are the same
+	bool equals(const PerlCallback *other) const;
+
 public:
 	// for macros, the internals must be public
 	SV *code_; // the code reference

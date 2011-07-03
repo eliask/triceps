@@ -71,6 +71,60 @@ void PerlCallback::appendArg(SV *arg)
 	args_.push_back(argcp);
 }
 
+bool PerlCallback::equals(const PerlCallback *other) const
+{
+	if (args_.size() != other->args_.size())
+		return false;
+	if ((code_ == NULL) ^ (other->code_ == NULL))
+		return false;
+
+	if (code_ != NULL && SvIV(code_) != SvIV(other->code_)) // same reference
+		return false;
+
+	dSP;
+
+	for (size_t i = 0; i < args_.size(); ++i) {
+		int nv;
+		int result;
+		bool error = false;
+		SV *a1 = args_[i];
+		SV *a2 = other->args_[i];
+
+		ENTER; SAVETMPS; 
+
+		PUSHMARK(SP);
+		XPUSHs(a1);
+		XPUSHs(a2);
+		PUTBACK; 
+
+		const char *func = ((SvIOK(a1) || SvNOK(a1)) && (SvIOK(a2) || SvNOK(a2))) ? "Triceps::_compareNumber" :  "Triceps::_compareText" ;
+		nv = call_pv(func, G_SCALAR|G_EVAL);
+
+		if (SvTRUE(ERRSV)) {
+			warn("Internal error in function %s: %s", func, SvPV_nolen(ERRSV));
+			error = true;
+		}
+
+		SPAGAIN;
+		if (nv < 1) { 
+			result = 1; // doesn't match
+		} else {
+			for (; nv > 1; nv--)
+				POPs;
+			SV *perlres = POPs;
+			result = SvTRUE(perlres);
+		}
+		PUTBACK; 
+
+		FREETMPS; LEAVE;
+
+		if (error || result) // if equal, the comparison will be 0
+			return false;
+	}
+	
+	return true;
+}
+
 ///////////////////////// PerlLabel ///////////////////////////////////////////////
 
 PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Onceref<PerlCallback> cb) :

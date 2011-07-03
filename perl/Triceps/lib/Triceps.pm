@@ -53,6 +53,15 @@ sub AUTOLOAD {
     goto &$AUTOLOAD;
 }
 
+# comparisons that are called from the code in C++ 
+sub _compareText {
+	$_[0] cmp $_[1];
+}
+
+sub _compareNumber {
+	$_[0] <=> $_[1];
+}
+
 require XSLoader;
 XSLoader::load('Triceps', $VERSION);
 

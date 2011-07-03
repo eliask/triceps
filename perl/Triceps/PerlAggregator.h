@@ -40,6 +40,10 @@ public:
 	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const;
 	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const;
 
+	// from Type
+	virtual bool equals(const Type *t) const;
+	virtual bool match(const Type *t) const;
+
 protected:
 	friend class PerlAggregator;
 

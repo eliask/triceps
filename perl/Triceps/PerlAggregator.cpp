@@ -50,6 +50,40 @@ Aggregator *PerlAggregatorType::makeAggregator(Table *table, AggregatorGadget *g
 	return new PerlAggregator(table, gadget);
 }
 
+bool PerlAggregatorType::equals(const Type *t) const
+{
+	if (!AggregatorType::equals(t))
+		return false;
+
+	const PerlAggregatorType *at = static_cast<const PerlAggregatorType *>(t);
+
+	if (cbConstructor_.isNull() ^ at->cbConstructor_.isNull())
+		return false;
+
+	if ( (!cbConstructor_.isNull() && !cbConstructor_->equals(at->cbConstructor_))
+	|| !cbHandler_->equals(at->cbHandler_))
+		return false;
+
+	return true;
+}
+
+bool PerlAggregatorType::match(const Type *t) const
+{
+	if (!AggregatorType::match(t))
+		return false;
+
+	const PerlAggregatorType *at = static_cast<const PerlAggregatorType *>(t);
+
+	if (cbConstructor_.isNull() ^ at->cbConstructor_.isNull())
+		return false;
+
+	if ( (!cbConstructor_.isNull() && !cbConstructor_->equals(at->cbConstructor_))
+	|| !cbHandler_->equals(at->cbHandler_))
+		return false;
+
+	return true;
+}
+
 // ######################## PerlAggregator ###########################################
 
 PerlAggregator::PerlAggregator(Table *table, AggregatorGadget *gadget):
