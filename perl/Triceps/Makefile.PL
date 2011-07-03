@@ -45,9 +45,9 @@ Triceps.c: const-c.inc const-xs.inc
 
 \$(O_FILES): TricepsPerl.h 
 
-AggregatorType.o: PerlAggregator.h
+AggregatorType.o IndexType.o: PerlAggregator.h
 
-AggregatorType.o Label.o Unit.o UnitTracer.o: PerlCallback.h
+AggregatorType.o Label.o Unit.o UnitTracer.o IndexType.o: PerlCallback.h
 
 TricepsPerl.o: PerlCallback.h
 

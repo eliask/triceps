@@ -11,6 +11,8 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "PerlCallback.h"
+#include "PerlAggregator.h"
 
 MODULE = Triceps::IndexType		PACKAGE = Triceps::IndexType
 ###################################################################################
@@ -183,6 +185,51 @@ addSubIndex(WrapIndexType *self, char *subname, WrapIndexType *sub)
 	OUTPUT:
 		RETVAL
 
+WrapIndexType *
+setAggregator(WrapIndexType *self, WrapAggregatorType *wagg)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::setAggregator";
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		PerlAggregatorType *agg = wagg->get();
+
+		if (ixt->isInitialized()) {
+			setErrMsg(strprintf("%s: index is already initialized, can not add indexes any more", funcName));
+			XSRETURN_UNDEF;
+		}
+
+		if (agg->isInitialized()) {
+			setErrMsg(strprintf("%s: aggregator is already initialized, can not add to more indexes", funcName));
+			XSRETURN_UNDEF;
+		}
+
+		ixt->setAggregator(agg);
+		// can't just return self because it will upset the refcount
+		RETVAL = new WrapIndexType(ixt);
+	OUTPUT:
+		RETVAL
+
+# returns undef if no aggregator type set
+WrapAggregatorType *
+getAggregator(WrapIndexType *self, WrapAggregatorType *wagg)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::getAggregator";
+		// for casting of return value
+		static char CLASS[] = "Triceps::AggregatorType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		PerlAggregatorType *agg = dynamic_cast<PerlAggregatorType *>(const_cast<AggregatorType *>(ixt->getAggregator()));
+
+		if (agg == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = new WrapAggregatorType(agg);
+	OUTPUT:
+		RETVAL
+
 # find a nested index by name
 WrapIndexType *
 findSubIndex(WrapIndexType *self, char *subname)
@@ -298,4 +345,3 @@ getTabtype(WrapIndexType *self)
 		RETVAL
 
 # XXX isJumping, isReverse etc.
-# XXX setAggregator

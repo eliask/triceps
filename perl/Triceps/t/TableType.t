@@ -108,15 +108,15 @@ ok($res, &Triceps::IT_FIFO);
 ###################### print #################################
 
 $res = $tt1->print();
-ok($res, "table (\n  row {\n    uint8 a,\n    int32 b,\n    int64 c,\n    float64 d,\n    string e,\n  }\n) {\n  HashedIndex(b, c, ) {\n    FifoIndex() fifo,\n  } primary,\n  FifoIndex() second,\n}");
+ok($res, "table (\n  row {\n    uint8 a,\n    int32 b,\n    int64 c,\n    float64 d,\n    string e,\n  }\n) {\n  index HashedIndex(b, c, ) {\n    index FifoIndex() fifo,\n  } primary,\n  index FifoIndex() second,\n}");
 $res = $tt1->print(undef);
-ok($res, "table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { HashedIndex(b, c, ) { FifoIndex() fifo, } primary, FifoIndex() second, }");
+ok($res, "table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index HashedIndex(b, c, ) { index FifoIndex() fifo, } primary, index FifoIndex() second, }");
 
 ###################### find #################################
 
 $it2 = $tt1->getFirstLeaf();
 $res = $it2->print();
-ok($res, "FifoIndex()");
+ok($res, "index FifoIndex()");
 
 # until the table type is initialized, indexes still don't know about it...
 $res = $it2->getTabtype();
@@ -125,9 +125,9 @@ ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to 
 
 $it2 = $tt1->findSubIndex("primary");
 $res = $it2->print();
-ok($res, "HashedIndex(b, c, ) {\n  FifoIndex() fifo,\n}");
+ok($res, "index HashedIndex(b, c, ) {\n  index FifoIndex() fifo,\n}");
 $res = $it2->print(undef);
-ok($res, "HashedIndex(b, c, ) { FifoIndex() fifo, }");
+ok($res, "index HashedIndex(b, c, ) { index FifoIndex() fifo, }");
 
 $it2 = $tt1->findSubIndex("xxx");
 ok(!defined($it2));
@@ -174,7 +174,7 @@ ok($! . "", "");
 # check that still can find indexes
 $it2 = $tt1->getFirstLeaf();
 $res = $it2->print();
-ok($res, "FifoIndex()");
+ok($res, "index FifoIndex()");
 
 $res = $it2->getTabtype();
 ok(ref $res, "Triceps::TableType");

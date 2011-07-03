@@ -24,6 +24,8 @@ DESTROY(WrapAggregatorType *self)
 		delete self;
 
 
+# XXX test the methods below
+
 # XXX should wrt and name change places?
 # @param CLASS - name of type being constructed
 # @param wrt - row type of the aggregation result
@@ -35,7 +37,7 @@ DESTROY(WrapAggregatorType *self)
 WrapAggregatorType *
 new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...)
 	CODE:
-		static char funcName[] =  "Triceps::IndexType::newHashed";
+		static char funcName[] =  "Triceps::AggregatorType::new";
 		clearErrMsg();
 
 		RowType *rt = wrt->get();
@@ -43,16 +45,18 @@ new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...
 		Onceref<PerlCallback> cbconst; // defaults to NULL
 		if (SvOK(constructor)) {
 			cbconst = new PerlCallback();
-			PerlCallbackInitializeSplit(cbconst, funcName, constructor, 5, items-5);
+			PerlCallbackInitializeSplit(cbconst, "Triceps::AggregatorType::new(constructor)", constructor, 5, items-5);
 			if (cbconst->code_ == NULL)
 				XSRETURN_UNDEF; // error message is already set
 		}
 
 		Onceref<PerlCallback> cbhand = new PerlCallback();
-		PerlCallbackInitialize(cbhand, funcName, 4, items-4);
+		PerlCallbackInitialize(cbhand, "Triceps::AggregatorType::new(handler)", 4, items-4);
 		if (cbhand->code_ == NULL)
 			XSRETURN_UNDEF; // error message is already set
 
 		RETVAL = new WrapAggregatorType(new PerlAggregatorType(name, rt, cbconst, cbhand));
 	OUTPUT:
 		RETVAL
+
+

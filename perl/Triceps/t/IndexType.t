@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 86 };
+BEGIN { plan tests => 94 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -28,7 +28,7 @@ ok(1); # If we made it this far, we're ok.
 $it1 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
-ok($res, "HashedIndex(a, b, )");
+ok($res, "index HashedIndex(a, b, )");
 
 $res = $it1->getTabtype();
 ok(!defined $res);
@@ -63,17 +63,17 @@ ok($! . "", "Triceps::IndexType::newHashed: the required option 'key' is missing
 $it1 = Triceps::IndexType->newFifo();
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
-ok($res, "FifoIndex()");
+ok($res, "index FifoIndex()");
 
 $it1 = Triceps::IndexType->newFifo(limit => 10, jumping => 1);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
-ok($res, "FifoIndex(limit=10 jumping)");
+ok($res, "index FifoIndex(limit=10 jumping)");
 
 $it1 = Triceps::IndexType->newFifo(reverse => 1);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
-ok($res, "FifoIndex( reverse)");
+ok($res, "index FifoIndex( reverse)");
 
 $it1 = Triceps::IndexType->newFifo("key");
 ok(!defined($it1));
@@ -141,7 +141,7 @@ ok($res, 0);
 $res = $it1->match($it2);
 ok($res, 0);
 $res = $it2->print();
-ok($res, "HashedIndex(a, b, ) {\n  HashedIndex(c, d, ) {\n    FifoIndex() level3,\n  } level2,\n}");
+ok($res, "index HashedIndex(a, b, ) {\n  index HashedIndex(c, d, ) {\n    index FifoIndex() level3,\n  } level2,\n}");
 
 @res = $it2->getSubIndexes();
 ok($#res, 1);
@@ -187,7 +187,7 @@ ok(ref $it6, "Triceps::IndexType");
 $res = $it6->equals($it5);
 ok($res, 1);
 $res = $it6->print();
-ok($res, "FifoIndex()");
+ok($res, "index FifoIndex()");
 
 $it6 = $it3->findSubIndexById("IT_FIFO");
 ok(ref $it6, "Triceps::IndexType");
@@ -223,3 +223,35 @@ $res = $it6->equals($it5);
 
 $res = $it2->isInitialized();
 ok($res, 0);
+
+###################### setting aggregator #################################
+
+@def1 = (
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+$rt1 = Triceps::RowType->new( # used later
+	@def1
+);
+ok(ref $rt1, "Triceps::RowType");
+
+$res = $it1->getAggregator($agt1);
+ok(!defined $res);
+
+$agt1 = Triceps::AggregatorType->new($rt1, "agg", undef, sub { 0; } );
+ok(ref $agt1, "Triceps::AggregatorType");
+
+$res = $it1->setAggregator($agt1);
+ok(ref $res, "Triceps::IndexType");
+ok($it1->same($res));
+
+$res = $it1->getAggregator($agt1);
+ok(ref $res, "Triceps::AggregatorType"); # can not check for sameness because it's a copy
+
+$res = $it1->print();
+ok($res, "index HashedIndex(a, b, ) {\n  aggregator (\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  )\n}");
+$res = $it1->print(undef);
+ok($res, "index HashedIndex(a, b, ) { aggregator ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) }");
