@@ -44,34 +44,16 @@ Erref AggregatorType::getErrors() const
 
 void AggregatorType::printTo(string &res, const string &indent, const string &subindent) const
 {
-	string nextindent;
-	const string *passni;
-	if (&indent != &NOINDENT) {
-		nextindent = indent + subindent;
-		passni = &nextindent;
-	} else {
-		passni = &NOINDENT;
-	}
+	string bufindent;
+	const string &passni = nextindent(indent, subindent, bufindent);
 
 	res.append("aggregator (");
 
-	if (&indent != &NOINDENT) {
-		res.append("\n");
-		res.append(nextindent);
-	} else {
-		res.append(" ");
-	}
-	rowType_->printTo(res, *passni, subindent);
+	newlineTo(res, passni);
+	rowType_->printTo(res, passni, subindent);
 
-	if (&indent != &NOINDENT) {
-		res.append("\n");
-		res.append(indent);
-	} else {
-		res.append(" ");
-	}
-
-	
-	res.append(") ");
+	newlineTo(res, indent);
+	res.append(")");
 }
 
 }; // TRICEPS_NS

@@ -14,6 +14,26 @@ namespace TRICEPS_NS {
 
 const string &NOINDENT;
 
+const string &nextindent(const string &indent, const string &subindent, string &target)
+{
+	if (&indent != &NOINDENT) {
+		target = indent + subindent;
+		return target;
+	} else {
+		return NOINDENT;
+	}
+}
+
+void newlineTo(string &res, const string &indent)
+{
+	if (&indent == &NOINDENT)
+		res.append(" ");
+	else {
+		res.append("\n");
+		res.append(indent);
+	}
+}
+
 // maybe a template would be better, but so far looks easier
 // with a macro
 

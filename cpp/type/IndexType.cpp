@@ -102,38 +102,13 @@ bool IndexTypeVec::checkDups(Erref parentErr)
 
 void IndexTypeVec::printTo(string &res, const string &indent, const string &subindent) const
 {
-	if (empty())
-		return; // print nothing
-
-	string nextindent;
-	const string *passni;
-	if (&indent != &NOINDENT) {
-		nextindent = indent + subindent;
-		passni = &nextindent;
-	} else {
-		passni = &NOINDENT;
-	}
-
-	res.append("{");
 	for (IndexTypeVec::const_iterator i = begin(); i != end(); ++i) {
-		if (&indent != &NOINDENT) {
-			res.append("\n");
-			res.append(nextindent);
-		} else {
-			res.append(" ");
-		}
-		i->index_->printTo(res, *passni, subindent);
+		newlineTo(res, indent);
+		i->index_->printTo(res, indent, subindent);
 		res.append(" ");
 		res.append(i->name_);
 		res.append(","); // extra comma after last field doesn't hurt
 	}
-	if (&indent != &NOINDENT) {
-		res.append("\n");
-		res.append(indent);
-	} else {
-		res.append(" ");
-	}
-	res.append("}");
 }
 
 void IndexTypeVec::initRowHandle(RowHandle *rh) const
@@ -212,7 +187,10 @@ IndexType *IndexType::setAggregator(Onceref<AggregatorType> agg)
 		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
 		abort();
 	}
-	agg_ = agg;
+	if (agg.isNull())
+		agg_ = NULL;
+	else
+		agg_ = agg->copy();
 	return this;
 }
 
@@ -324,6 +302,26 @@ void IndexType::collectAggregators(IndexAggTypeVec &aggs)
 		IndexType *ni = nested_[i].index_;
 		if (ni)
 			ni->collectAggregators(aggs);
+	}
+}
+
+void IndexType::printSubelementsTo(string &res, const string &indent, const string &subindent) const
+{
+	string bufindent;
+	const string &passni = nextindent(indent, subindent, bufindent);
+
+	if (!nested_.empty()) {
+		res.append(" {");
+		nested_.printTo(res, passni, subindent);
+		newlineTo(res, indent);
+		res.append("}");
+	}
+	if (!agg_.isNull()) {
+		res.append(" {");
+		newlineTo(res, passni);
+		agg_->printTo(res, passni, subindent);
+		newlineTo(res, indent);
+		res.append("}");
 	}
 }
 

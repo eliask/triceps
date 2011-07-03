@@ -75,7 +75,7 @@ bool FifoIndexType::equals(const Type *t) const
 
 void FifoIndexType::printTo(string &res, const string &indent, const string &subindent) const
 {
-	res.append("FifoIndex(");
+	res.append("index FifoIndex(");
 	if (limit_ != 0)
 		res.append(strprintf("limit=%zd", limit_));
 	if (jumping_)
@@ -83,6 +83,7 @@ void FifoIndexType::printTo(string &res, const string &indent, const string &sub
 	if (reverse_)
 		res.append(" reverse");
 	res.append(")");
+	printSubelementsTo(res, indent, subindent);
 }
 
 IndexType *FifoIndexType::copy() const

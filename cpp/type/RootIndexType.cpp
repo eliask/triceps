@@ -29,10 +29,9 @@ RootIndexType::~RootIndexType()
 void RootIndexType::printTo(string &res, const string &indent, const string &subindent) const
 {
 	if (nested_.empty()) {
-		res.append("{ }"); // make sure that the braces are always present
-	} else {
-		nested_.printTo(res, indent, subindent);
+		res.append(" { }"); // make sure that the braces are always present
 	}
+	printSubelementsTo(res, indent, subindent);
 }
 
 IndexType *RootIndexType::copy() const

@@ -18,6 +18,23 @@ namespace TRICEPS_NS {
 // Doesn't work on all printing functions, just where supported.
 extern const string &NOINDENT;
 
+// Compute the print indent string to pass to the next level.
+// This is a bit complicated by the NOINDENT that has to be passed
+// through as is. Because of this, the return value is a reference,
+// and the location to store the proper extended string is passed 
+// as the target argument.
+// @param indent - indent string of the previous level
+// @param subindent - characters to append for the next indent level
+// @param target - buffer to store the extended indent string
+// @return - if indent was NOINDENT, then reference to NOINDENT, otherwise reference to target
+const string &nextindent(const string &indent, const string &subindent, string &target);
+
+// Append a newline in the value printing. If the indent is NOINDENT
+// then just add a space, otherwise a newline and the proper indenting.
+// @param res - result string to append to
+// @param indent - the indent string for appending
+void newlineTo(string &res, const string &indent);
+
 // Print a byte buffer in hex
 // @param dest - file to print to
 // @param bytes - bytes to dump

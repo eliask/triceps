@@ -90,7 +90,7 @@ UTESTCASE primaryIndex(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  HashedIndex(a, e, ) primary,\n"
+		"  index HashedIndex(a, e, ) primary,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -99,7 +99,7 @@ UTESTCASE primaryIndex(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { HashedIndex(a, e, ) primary, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index HashedIndex(a, e, ) primary, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("primary");
@@ -251,8 +251,8 @@ UTESTCASE primaryNested(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  HashedIndex(a, e, ) {\n"
-		"    HashedIndex(a, e, ) level2,\n"
+		"  index HashedIndex(a, e, ) {\n"
+		"    index HashedIndex(a, e, ) level2,\n"
 		"  } primary,\n"
 		"}"
 	;
@@ -262,7 +262,7 @@ UTESTCASE primaryNested(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { HashedIndex(a, e, ) { HashedIndex(a, e, ) level2, } primary, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index HashedIndex(a, e, ) { index HashedIndex(a, e, ) level2, } primary, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("primary");
@@ -334,7 +334,7 @@ UTESTCASE fifoIndex(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  FifoIndex() fifo,\n"
+		"  index FifoIndex() fifo,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -343,7 +343,7 @@ UTESTCASE fifoIndex(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex() fifo, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index FifoIndex() fifo, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("fifo");
@@ -383,7 +383,7 @@ UTESTCASE fifoIndexLimit(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  FifoIndex(limit=15) fifo,\n"
+		"  index FifoIndex(limit=15) fifo,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -392,7 +392,7 @@ UTESTCASE fifoIndexLimit(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15) fifo, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index FifoIndex(limit=15) fifo, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("fifo");
@@ -442,7 +442,7 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  FifoIndex(limit=15 jumping) fifo,\n"
+		"  index FifoIndex(limit=15 jumping) fifo,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -451,7 +451,7 @@ UTESTCASE fifoIndexJumping(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex(limit=15 jumping) fifo, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index FifoIndex(limit=15 jumping) fifo, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("fifo");
@@ -501,7 +501,7 @@ UTESTCASE fifoIndexReverse(Utest *utest)
 		"    string e,\n"
 		"  }\n"
 		") {\n"
-		"  FifoIndex( reverse) fifo,\n"
+		"  index FifoIndex( reverse) fifo,\n"
 		"}"
 	;
 	if (UT_ASSERT(tt->print() == expect)) {
@@ -510,7 +510,7 @@ UTESTCASE fifoIndexReverse(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { FifoIndex( reverse) fifo, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index FifoIndex( reverse) fifo, }");
 
 	// get back the initialized types
 	IndexType *prim = tt->findSubIndex("fifo");
@@ -561,5 +561,96 @@ UTESTCASE fifoBadNested(Utest *utest)
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'fifo':\n    FifoIndexType currently does not support further nested indexes\n");
+}
+
+void dummyAggregator(Table *table, AggregatorGadget *gadget, Index *index,
+        const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+{
+}
+
+UTESTCASE aggregator(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<AggregatorType> agt1 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator);
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", (new HashedIndexType(
+			(new NameSet())->add("a")->add("e")))
+			->setAggregator(agt1)
+			->addSubIndex("level2", new HashedIndexType(
+				(new NameSet())->add("a")->add("e"))
+			)
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(tt->getErrors().isNull()))
+		return;
+	
+	IndexType *prim = tt->findSubIndex("primary");
+	UT_ASSERT(prim != NULL);
+	const AggregatorType *agt2 = prim->getAggregator();
+	UT_ASSERT(agt2 != NULL);
+	UT_ASSERT(agt2 != agt1.get()); // it must have been copied when set
+
+	const char *expectAgg = 
+		"aggregator (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		")"
+	;
+
+	if (UT_ASSERT(agt2->print() == expectAgg)) {
+		printf("---Expected:---\n%s\n", expectAgg);
+		printf("---Received:---\n%s\n", agt2->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  index HashedIndex(a, e, ) {\n"
+		"    index HashedIndex(a, e, ) level2,\n"
+		"  } {\n"
+		"    aggregator (\n"
+		"      row {\n"
+		"        uint8[10] a,\n"
+		"        int32[] b,\n"
+		"        int64 c,\n"
+		"        float64 d,\n"
+		"        string e,\n"
+		"      }\n"
+		"    )\n"
+		"  } primary,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index HashedIndex(a, e, ) { index HashedIndex(a, e, ) level2, } { aggregator ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) } primary, }");
+
 }
 

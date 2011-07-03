@@ -174,9 +174,16 @@ public:
 	//
 	// May be used only until initialized.
 	//
-	// @param agg - type of the aggregator
+	// @param agg - type of the aggregator, will be copied
 	// @return - this
 	IndexType *setAggregator(Onceref<AggregatorType> agg);
+
+	// Get back the aggregator on this index.
+	// May be NULL if not set.
+	const AggregatorType *getAggregator() const
+	{
+		return agg_;
+	}
 
 	// Make a copy of this type. The copy is always uninitialized, no
 	// matter whther it was made from an initialized one or not.
@@ -303,6 +310,13 @@ protected:
 	// Guaranteed to be called after setNestPos() and initialize().
 	// Adds their errors to this type's indication getErrors() result.
 	void initializeNested();
+
+	// Append the human-readable definition of nested sub-indexes and aggregator to the string.
+	// @param res - the resulting string to append to
+	// @param indent - initial indentation characters, 
+	//        passing NOINDENT prints everything in a single line
+	// @param subindent - indentation characters to add on each level
+	void printSubelementsTo(string &res, const string &indent, const string &subindent) const;
 
 	// Add the agggregator typess from this index recursively to the
 	// table's vector of them.

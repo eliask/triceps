@@ -65,34 +65,17 @@ bool TableType::match(const Type *t) const
 
 void TableType::printTo(string &res, const string &indent, const string &subindent) const
 {
-	string nextindent;
-	const string *passni;
-	if (&indent != &NOINDENT) {
-		nextindent = indent + subindent;
-		passni = &nextindent;
-	} else {
-		passni = &NOINDENT;
-	}
+	string bufindent;
+	const string &passni = nextindent(indent, subindent, bufindent);
 
 	res.append("table (");
 	if (rowType_) {
-		if (&indent != &NOINDENT) {
-			res.append("\n");
-			res.append(nextindent);
-		} else {
-			res.append(" ");
-		}
-		rowType_->printTo(res, *passni, subindent);
-	}
-	if (&indent != &NOINDENT) {
-		res.append("\n");
-		res.append(indent);
-	} else {
-		res.append(" ");
+		newlineTo(res, passni);
+		rowType_->printTo(res, passni, subindent);
 	}
 
-	
-	res.append(") ");
+	newlineTo(res, indent);
+	res.append(")");
 	root_->printTo(res, indent, subindent);
 }
 

@@ -156,7 +156,7 @@ bool HashedIndexType::match(const Type *t) const
 
 void HashedIndexType::printTo(string &res, const string &indent, const string &subindent) const
 {
-	res.append("HashedIndex(");
+	res.append("index HashedIndex(");
 	if (key_) {
 		for (NameSet::iterator i = key_->begin(); i != key_->end(); ++i) {
 			res.append(*i);
@@ -164,10 +164,7 @@ void HashedIndexType::printTo(string &res, const string &indent, const string &s
 		}
 	}
 	res.append(")");
-	if (!nested_.empty()) {
-		res.append(" ");
-		nested_.printTo(res, indent, subindent);
-	}
+	printSubelementsTo(res, indent, subindent);
 }
 
 IndexType *HashedIndexType::copy() const
