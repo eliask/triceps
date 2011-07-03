@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <type/AllTypes.h>
+#include <sched/AggregatorGadget.h>
 #include <common/StringUtil.h>
 
 // Make fields of all simple types
@@ -569,6 +570,47 @@ void dummyAggregator(Table *table, AggregatorGadget *gadget, Index *index,
 {
 }
 
+void dummyAggregator2(Table *table, AggregatorGadget *gadget, Index *index,
+        const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+{
+}
+
+// derive a separate aggregator type, for comparisons
+class MyAggregator : public Aggregator
+{
+public:
+	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
+		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+	{ }
+};
+
+class MyAggregatorType : public AggregatorType
+{
+public:
+	// @param name - name for aggregators' gadget in the table, will be tablename.name
+	// @param rt - type of rows produced by this aggregator, wil be referenced
+	MyAggregatorType(const string &name, const RowType *rt):
+		AggregatorType(name, rt)
+	{ }
+
+	// from AggregatorType
+	virtual AggregatorType *copy() const
+	{
+		return new MyAggregatorType(*this);
+	}
+	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const
+	{
+		return new AggregatorGadget(this, table, intype);
+	}
+	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const
+	{
+		return new MyAggregator();
+	}
+};
+
+
 UTESTCASE aggregator(Utest *utest)
 {
 	RowType::FieldVec fld;
@@ -577,8 +619,98 @@ UTESTCASE aggregator(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	Autoref<AggregatorType> agt1 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator);
+	mkfields(fld);
+	fld[0].name_="x";
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
 
+	mkfields(fld);
+	fld[0].type_ = Type::r_int32;
+	Autoref<RowType> rt3 = new CompactRowType(fld);
+	UT_ASSERT(rt3->getErrors().isNull());
+
+	Autoref<AggregatorType> agt1 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator);
+	
+	// first check the comparisons of aggregators
+	// equals
+	{
+		UT_ASSERT(agt1->equals(agt1));
+		UT_ASSERT(agt1->match(agt1));
+	}
+	{
+		Autoref<AggregatorType> agt2 = agt1->copy();
+		UT_ASSERT(agt1->equals(agt2));
+		UT_ASSERT(agt1->match(agt2));
+	}
+	{
+		Autoref<AggregatorType> agt2 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator);
+		UT_ASSERT(agt1->equals(agt2));
+		UT_ASSERT(agt1->match(agt2));
+	}
+	// matches
+	{
+		Autoref<AggregatorType> agt2 = new BasicAggregatorType("Primary", rt1, dummyAggregator);
+		UT_ASSERT(!agt1->equals(agt2));
+		UT_ASSERT(agt1->match(agt2));
+	}
+	{
+		Autoref<AggregatorType> agt2 = new BasicAggregatorType("onPrimary", rt2, dummyAggregator);
+		UT_ASSERT(!agt1->equals(agt2));
+		UT_ASSERT(agt1->match(agt2));
+	}
+	// non-matches
+	{
+		Autoref<AggregatorType> agt2 = new BasicAggregatorType("onPrimary", rt3, dummyAggregator);
+		UT_ASSERT(!agt1->equals(agt2));
+		UT_ASSERT(!agt1->match(agt2));
+	}
+	{
+		Autoref<AggregatorType> agt2 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator2);
+		UT_ASSERT(!agt1->equals(agt2));
+		UT_ASSERT(!agt1->match(agt2));
+	}
+	{
+		Autoref<AggregatorType> agt2 = new MyAggregatorType("onPrimary", rt1);
+		UT_ASSERT(!agt1->equals(agt2));
+		UT_ASSERT(!agt1->match(agt2));
+	}
+
+	// check the comparisons of types with aggregators
+	Autoref<IndexType> it1 = HashedIndexType::make(
+			(new NameSet())->add("a")->add("e"));
+	
+	// equals and basic presence of aggregator type
+	Autoref<IndexType> it2 = it1->copy();
+	UT_ASSERT(it1->equals(it2));
+	UT_ASSERT(it1->match(it2));
+
+	it1->setAggregator(agt1);
+	UT_ASSERT(!it1->equals(it2));
+	UT_ASSERT(!it1->match(it2));
+
+	it2->setAggregator(agt1);
+	UT_ASSERT(it1->equals(it2));
+	UT_ASSERT(it1->match(it2));
+
+	it2->setAggregator(NULL);
+	UT_ASSERT(!it1->equals(it2));
+	UT_ASSERT(!it1->match(it2));
+
+	// matches
+	it2->setAggregator(new BasicAggregatorType("Primary", rt1, dummyAggregator));
+	UT_ASSERT(!it1->equals(it2));
+	UT_ASSERT(it1->match(it2));
+
+	it2->setAggregator(new BasicAggregatorType("onPrimary", rt2, dummyAggregator));
+	UT_ASSERT(!it1->equals(it2));
+	UT_ASSERT(it1->match(it2));
+
+	// non-match
+	it2->setAggregator(new MyAggregatorType("onPrimary", rt1));
+	UT_ASSERT(!it1->equals(it2));
+	UT_ASSERT(!it1->match(it2));
+
+	// now build the table type
 	Autoref<TableType> tt = (new TableType(rt1))
 		->addSubIndex("primary", (new HashedIndexType(
 			(new NameSet())->add("a")->add("e")))

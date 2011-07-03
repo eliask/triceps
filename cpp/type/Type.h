@@ -83,21 +83,13 @@ public:
 		return equals(&t);
 	}
 	// normally types are referred by autoref, so pointers are more convenient than references
-	virtual bool equals(const Type *t) const
-	{
-		if (this == t) // a shortcut
-			return true;
-		if (typeId_ != t->typeId_)
-			return false;
-		// the rest is up to subclasses
-		return true;
-	}
-	virtual bool match(const Type *t) const
-	{
-		// most types don't have any field names, so it ends up the same as ==,
-		// the rest can redefine this method
-		return equals(t);
-	}
+	virtual bool equals(const Type *t) const;
+	// By default match() calls the virtual equals(), which works well for most of the
+	// types, at least the simple ones.
+	// IMPORTANT: when the subtype's match() method wants to check if the Type part
+	// matches, it must call Type::equals(), not Type::match()! This is because Type::match()
+	// short-circuits to the virtual equals() and does a different thing than you expect.
+	virtual bool match(const Type *t) const;
 
 	// Append the human-readable type definition to a string
 	// @param res - the resulting string to append to

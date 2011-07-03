@@ -5,6 +5,7 @@
 //
 // Aggregator through a basic C-style callback function.
 
+#include <typeinfo>
 #include <type/BasicAggregatorType.h>
 #include <table/BasicAggregator.h>
 #include <sched/AggregatorGadget.h>
@@ -19,6 +20,38 @@ BasicAggregatorType::BasicAggregatorType(const string &name, const RowType *rt, 
 AggregatorType *BasicAggregatorType::copy() const
 {
 	return new BasicAggregatorType(*this);
+}
+
+bool BasicAggregatorType::equals(const Type *t) const
+{
+	if (this == t)
+		return true; // self-comparison, shortcut
+
+	if (!AggregatorType::equals(t))
+		return false;
+	
+	const BasicAggregatorType *bat = static_cast<const BasicAggregatorType *>(t);
+
+	if (cb_ != bat->cb_)
+		return false;
+
+	return true;
+}
+
+bool BasicAggregatorType::match(const Type *t) const
+{
+	if (this == t)
+		return true; // self-comparison, shortcut
+
+	if (!AggregatorType::match(t))
+		return false;
+	
+	const BasicAggregatorType *bat = static_cast<const BasicAggregatorType *>(t);
+
+	if (cb_ != bat->cb_)
+		return false;
+
+	return true;
 }
 
 AggregatorGadget *BasicAggregatorType::makeGadget(Table *table, IndexType *intype) const

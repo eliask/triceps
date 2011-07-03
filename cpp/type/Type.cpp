@@ -52,6 +52,23 @@ Onceref<const SimpleType> Type::findSimpleType(const char *name)
 	return NULL;
 }
 
+bool Type::equals(const Type *t) const
+{
+	if (this == t) // a shortcut
+		return true;
+	if (typeId_ != t->typeId_) {
+		return false;
+	}
+	// the rest is up to subclasses
+	return true;
+}
+bool Type::match(const Type *t) const
+{
+	// most types don't have any field names, so it ends up the same as ==,
+	// the rest can redefine this method
+	return equals(t);
+}
+
 string Type::print(const string &indent, const string &subindent) const
 {
 	string res;

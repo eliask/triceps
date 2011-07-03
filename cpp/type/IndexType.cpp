@@ -220,6 +220,12 @@ bool IndexType::equals(const Type *t) const
 		|| !nested_[i].index_->equals(it->nested_[i].index_))
 			return false;
 	}
+
+	if ((agg_ != 0) ^ (it->agg_ != 0))
+		return false;
+	if (agg_ && !agg_->equals(it->agg_))
+		return false;
+		
 	return true;
 }
 
@@ -228,7 +234,7 @@ bool IndexType::match(const Type *t) const
 	if (this == t)
 		return true; // self-comparison, shortcut
 
-	if (!Type::match(t))
+	if (!Type::equals(t))
 		return false;
 	
 	const IndexType *it = static_cast<const IndexType *>(t);
@@ -243,6 +249,12 @@ bool IndexType::match(const Type *t) const
 		if (!nested_[i].index_->match(it->nested_[i].index_))
 			return false;
 	}
+
+	if ((agg_ != 0) ^ (it->agg_ != 0))
+		return false;
+	if (agg_ && !agg_->match(it->agg_))
+		return false;
+		
 	return true;
 }
 

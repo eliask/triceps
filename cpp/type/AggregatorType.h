@@ -104,6 +104,9 @@ public:
 
 	// from Type
 	virtual Erref getErrors() const;
+	// subclasses would probably want to override this
+	virtual bool equals(const Type *t) const;
+	virtual bool match(const Type *t) const;
 	// subclasses also may want to override printTo() if the default is not good enough
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 

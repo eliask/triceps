@@ -55,7 +55,7 @@ bool TableType::match(const Type *t) const
 	if (this == t)
 		return true; // self-comparison, shortcut
 
-	if (!Type::match(t))
+	if (!Type::equals(t))
 		return false;
 	
 	const TableType *tt = static_cast<const TableType *>(t);

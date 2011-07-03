@@ -33,6 +33,10 @@ public:
 	// @param cb - pointer to the callback function
 	BasicAggregatorType(const string &name, const RowType *rt, Callback *cb);
 
+	// from Type
+	virtual bool equals(const Type *t) const;
+	virtual bool match(const Type *t) const;
+
 	// from AggregatorType
 	virtual AggregatorType *copy() const;
 	// creates just the generic AggregatorGadget, nothing special
