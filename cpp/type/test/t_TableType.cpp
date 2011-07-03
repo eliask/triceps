@@ -609,7 +609,7 @@ UTESTCASE aggregator(Utest *utest)
 		"    float64 d,\n"
 		"    string e,\n"
 		"  }\n"
-		")"
+		") onPrimary"
 	;
 
 	if (UT_ASSERT(agt2->print() == expectAgg)) {
@@ -640,7 +640,7 @@ UTESTCASE aggregator(Utest *utest)
 		"        float64 d,\n"
 		"        string e,\n"
 		"      }\n"
-		"    )\n"
+		"    ) onPrimary\n"
 		"  } primary,\n"
 		"}"
 	;
@@ -650,7 +650,7 @@ UTESTCASE aggregator(Utest *utest)
 		printf("---\n");
 		fflush(stdout);
 	}
-	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index HashedIndex(a, e, ) { index HashedIndex(a, e, ) level2, } { aggregator ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) } primary, }");
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index HashedIndex(a, e, ) { index HashedIndex(a, e, ) level2, } { aggregator ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) onPrimary } primary, }");
 
 }
 

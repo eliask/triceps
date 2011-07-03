@@ -252,6 +252,6 @@ $res = $it1->getAggregator($agt1);
 ok(ref $res, "Triceps::AggregatorType"); # can not check for sameness because it's a copy
 
 $res = $it1->print();
-ok($res, "index HashedIndex(a, b, ) {\n  aggregator (\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  )\n}");
+ok($res, "index HashedIndex(a, b, ) {\n  aggregator (\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  ) agg\n}");
 $res = $it1->print(undef);
-ok($res, "index HashedIndex(a, b, ) { aggregator ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) }");
+ok($res, "index HashedIndex(a, b, ) { aggregator ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) agg }");

@@ -53,7 +53,8 @@ void AggregatorType::printTo(string &res, const string &indent, const string &su
 	rowType_->printTo(res, passni, subindent);
 
 	newlineTo(res, indent);
-	res.append(")");
+	res.append(") ");
+	res.append(name_);
 }
 
 }; // TRICEPS_NS
