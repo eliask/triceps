@@ -88,7 +88,7 @@ private:
 // @param count - count of arguments, if less than 1 then considered an error
 #define PerlCallbackInitialize(cb, fname, first, count) PerlCallbackInitializeSplit(cb, fname, ST(first), (first)+1, (count)-1)
 
-// The normal call is done as follows:
+// The normal void call is done as follows:
 //   if (cb) {
 //       PerlCallbackStartCall(cb);
 //       ... push fixed arguments ...
@@ -96,6 +96,18 @@ private:
 //       if (SvTRUE(ERRSV)) {
 //           ... print a warning ...
 //       }
+//   }
+//
+// The normal call that retuns a scalar is done as follows:
+//   if (cb) {
+//       SV *result = NULL;
+//       PerlCallbackStartCall(cb);
+//       ... push fixed arguments ...
+//       PerlCallbackDoCallScalar(cb, result);
+//       if (SvTRUE(ERRSV)) {
+//           ... print a warning ...
+//       }
+//       ... process the result ...
 //   }
 
 // Start the call sequence.
@@ -107,7 +119,7 @@ private:
 	} while(0)
 
 // Complete the call sequence
-// @param cb - callback object poniter
+// @param cb - callback object pointer
 #define PerlCallbackDoCall(cb) \
 	do { \
 		const vector<SV *> &_av = cb->args_; \
@@ -119,6 +131,34 @@ private:
 		PUTBACK;  \
 		call_sv(cb->code_, G_VOID|G_EVAL); \
 		SPAGAIN; \
+		FREETMPS; LEAVE; \
+	} while(0)
+
+// Complete the call sequence returning a scalar
+// @param cb - callback object pointer
+// @param result - result variable (if call returns nothing, may be left unchanged),
+//        if a non-NULL value is placed there, its refcounter will be increased
+//        before returning
+#define PerlCallbackDoCallScalar(cb, result) \
+	do { \
+		const vector<SV *> &_av = cb->args_; \
+		int _nv; \
+		if (!_av.empty()) { \
+			for (size_t _i = 0; _i < _av.size(); ++_i) { \
+				XPUSHs(_av[_i]); \
+			} \
+		} \
+		PUTBACK;  \
+		_nv = call_sv(cb->code_, G_SCALAR|G_EVAL); \
+		SPAGAIN; \
+		if (_nv >= 1) {  \
+			for (; _nv > 1; _nv--) \
+				POPs; \
+			result = POPs; \
+			if (result != NULL) \
+				SvREFCNT_inc(result); \
+		} \
+		PUTBACK;  \
 		FREETMPS; LEAVE; \
 	} while(0)
 

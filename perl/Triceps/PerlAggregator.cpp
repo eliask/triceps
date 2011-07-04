@@ -108,7 +108,74 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 	AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
 {
-	// XXX do something
+	dSP;
+
+	const PerlAggregatorType *at = static_cast<const PerlAggregatorType *>(gadget->getType());
+
+	WrapTable *wtab = new WrapTable(table);
+	SV *svtab = newSV(0);
+	sv_setref_pv(svtab, "Triceps::Table", (void *)wtab);
+
+	SV *svgadget = newSV(0); // XXX add the gadget
+
+	SV *svindex = newSV(0); // XXX add the index
+
+	WrapIndexType *wpit = new WrapIndexType(const_cast<IndexType *>(parentIndexType));
+	SV *svpit = newSV(0);
+	sv_setref_pv(svpit, "Triceps::IndexType", (void *)wpit);
+
+	SV *svgh = newSV(0); // XXX add the group handle
+
+	WrapTray *wdest = new WrapTray(table->getUnit(), dest);
+	SV *svdest = newSV(0);
+	sv_setref_pv(svdest, "Triceps::Tray", (void *)wdest);
+
+	SV *svaggop = newSViv(aggop);
+
+	SV *svopcode = newSViv(opcode);
+
+	WrapRowHandle *wrh = new WrapRowHandle(table, rh);
+	SV *svrh = newSV(0);
+	sv_setref_pv(svrh, "Triceps::RowHandle", (void *)wrh);
+
+	WrapTray *wcopy = new WrapTray(table->getUnit(), copyTray);
+	SV *svcopy = newSV(0);
+	sv_setref_pv(svcopy, "Triceps::Tray", (void *)wcopy);
+
+	PerlCallbackStartCall(at->cbHandler_);
+
+	XPUSHs(svtab);
+	XPUSHs(svgadget);
+	XPUSHs(svindex);
+	XPUSHs(svpit);
+	XPUSHs(svgh);
+	XPUSHs(svdest);
+	XPUSHs(svaggop);
+	XPUSHs(svopcode);
+	XPUSHs(svrh);
+	XPUSHs(svcopy);
+
+	PerlCallbackDoCall(at->cbHandler_);
+	
+	// this calls the DELETE methods on wrappers
+	SvREFCNT_dec(svtab);
+	SvREFCNT_dec(svgadget);
+	SvREFCNT_dec(svindex);
+	SvREFCNT_dec(svpit);
+	SvREFCNT_dec(svgh);
+	SvREFCNT_dec(svdest);
+	SvREFCNT_dec(svaggop);
+	SvREFCNT_dec(svopcode);
+	SvREFCNT_dec(svrh);
+	SvREFCNT_dec(svcopy);
+
+	if (SvTRUE(ERRSV)) {
+		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
+		// Would exit(1) be better?
+		warn("Error in unit %s aggregator %s handler: %s", 
+			gadget->getUnit()->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
+
+	}
 }
 
 // ########################## wraps ##################################################
