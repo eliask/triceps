@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 81 };
+BEGIN { plan tests => 95 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -46,6 +46,11 @@ ok(&Triceps::IT_ROOT, 0);
 ok(&Triceps::IT_HASHED, 1);
 ok(&Triceps::IT_FIFO, 2);
 ok(&Triceps::IT_LAST, 3);
+
+ok(&Triceps::AO_BEFORE_MOD, 0);
+ok(&Triceps::AO_AFTER_DELETE, 1);
+ok(&Triceps::AO_AFTER_INSERT, 2);
+ok(&Triceps::AO_COLLAPSE, 3);
 
 # translation of constant strings
 
@@ -82,6 +87,12 @@ ok(&Triceps::stringIndexId("IT_FIFO"), &Triceps::IT_FIFO);
 ok(&Triceps::stringIndexId("IT_LAST"), &Triceps::IT_LAST);
 ok(&Triceps::stringIndexId("xxx"), undef);
 
+ok(&Triceps::stringAggOp("AO_BEFORE_MOD"), &Triceps::AO_BEFORE_MOD);
+ok(&Triceps::stringAggOp("AO_AFTER_DELETE"), &Triceps::AO_AFTER_DELETE);
+ok(&Triceps::stringAggOp("AO_AFTER_INSERT"), &Triceps::AO_AFTER_INSERT);
+ok(&Triceps::stringAggOp("AO_COLLAPSE"), &Triceps::AO_COLLAPSE);
+ok(&Triceps::stringAggOp("xxx"), undef);
+
 # reverse translation of constants
 ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
 ok(&Triceps::emString(&Triceps::EM_FORK), "EM_FORK");
@@ -115,6 +126,12 @@ ok(&Triceps::indexIdString(&Triceps::IT_HASHED), "IT_HASHED");
 ok(&Triceps::indexIdString(&Triceps::IT_FIFO), "IT_FIFO");
 ok(&Triceps::indexIdString(&Triceps::IT_LAST), "IT_LAST");
 ok(&Triceps::indexIdString(999), undef);
+
+ok(&Triceps::aggOpString(&Triceps::AO_BEFORE_MOD), "AO_BEFORE_MOD");
+ok(&Triceps::aggOpString(&Triceps::AO_AFTER_DELETE), "AO_AFTER_DELETE");
+ok(&Triceps::aggOpString(&Triceps::AO_AFTER_INSERT), "AO_AFTER_INSERT");
+ok(&Triceps::aggOpString(&Triceps::AO_COLLAPSE), "AO_COLLAPSE");
+ok(&Triceps::aggOpString(999), undef);
 
 # tests of the opcodes
 

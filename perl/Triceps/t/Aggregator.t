@@ -61,7 +61,7 @@ my $aggistory;
 sub aggHandler # (table, gadget, index, parentIndexType, gh, dest, aggop, opcode, rh, copyTray, args...)
 {
 	my ($table, $gadget, $index, $parentIndexType, $gh, $dest, $aggop, $opcode, $rh, $copyTray, @args) = @_;
-	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::opcodeString($opcode);
+	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::aggOpString($aggop) . " " . &Triceps::opcodeString($opcode);
 	my $row = $rh->getRow();
 	if (defined $row) {
 		$agghistory .= " [" . join(", ", $rh->getRow()->toArray()) . "]\n";
@@ -120,4 +120,7 @@ ok($res == 1);
 $res = $t1->insert($r2);
 ok($res == 1);
 
-ok($agghistory, "call (qqqq, 12) OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\ncall (qqqq, 12) OP_DELETE NULL\ncall (qqqq, 12) OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n");
+ok($agghistory, 
+	"call (qqqq, 12) AO_AFTER_INSERT OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
+	. "call (qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (qqqq, 12) AO_AFTER_INSERT OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n");

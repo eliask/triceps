@@ -190,6 +190,17 @@ stringIndexId(char *val)
 	OUTPUT:
 		RETVAL
 
+int
+stringAggOp(char *val)
+	CODE:
+		clearErrMsg();
+		int res = Aggregator::stringAggOp(val);
+		if (res == -1)
+			XSRETURN_UNDEF;
+		RETVAL = res;
+	OUTPUT:
+		RETVAL
+
 
 ############ conversions of constants back to string #############################
 
@@ -251,6 +262,17 @@ indexIdString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = IndexType::indexIdString(val, NULL);
+		if (res == NULL)
+			XSRETURN_UNDEF;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+aggOpString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Aggregator::aggOpString(val, NULL);
 		if (res == NULL)
 			XSRETURN_UNDEF;
 		RETVAL = (char *)res;

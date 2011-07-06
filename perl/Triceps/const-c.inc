@@ -52,6 +52,12 @@ __END__
 		return PERL_constant_NOTFOUND;
 
 	switch(name[0]) {
+	case 'A':
+		*iv_return = Aggregator::stringAggOp(name);
+		if (*iv_return == -1)
+			return PERL_constant_NOTFOUND;
+		return PERL_constant_ISIV;
+		break;
 	case 'E':
 		*iv_return = Gadget::stringEm(name);
 		if (*iv_return == -1)
