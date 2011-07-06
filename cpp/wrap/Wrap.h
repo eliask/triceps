@@ -20,7 +20,7 @@ namespace TRICEPS_NS {
 struct WrapMagic {
 	char v_[8]; // 8 bytes to make a single 64-bit comparison
 
-	bool operator!=(const WrapMagic &wm)
+	bool operator!=(const WrapMagic &wm) const
 	{
 		return (*(int64_t *)v_) != (*(int64_t *)wm.v_);
 	}
