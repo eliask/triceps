@@ -37,7 +37,7 @@ public:
 	{ }
 
 	// returns true if the magic value is bad
-	bool badMagic()
+	bool badMagic() const
 	{
 		return magic_ != magic;
 	}
@@ -76,7 +76,7 @@ public:
 	{ }
 	
 	// returns true if the magic value is bad
-	bool badMagic()
+	bool badMagic() const
 	{
 		return magic_ != magic;
 	}
@@ -113,7 +113,7 @@ public:
 	{ }
 
 	// returns true if the magic value is bad
-	bool badMagic()
+	bool badMagic() const
 	{
 		return magic_ != magic;
 	}
