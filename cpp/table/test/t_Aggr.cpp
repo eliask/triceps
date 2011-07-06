@@ -77,6 +77,22 @@ void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
 	}
 }
 
+UTESTCASE stringConst(Utest *utest)
+{
+	UT_IS(Aggregator::aggOpString(Aggregator::AO_BEFORE_MOD), string("AO_BEFORE_MOD"));
+	UT_IS(Aggregator::aggOpString(Aggregator::AO_AFTER_DELETE), string("AO_AFTER_DELETE"));
+	UT_IS(Aggregator::aggOpString(Aggregator::AO_AFTER_INSERT), string("AO_AFTER_INSERT"));
+	UT_IS(Aggregator::aggOpString(Aggregator::AO_COLLAPSE), string("AO_COLLAPSE"));
+	UT_IS(Aggregator::aggOpString(999), string("???"));
+	UT_IS(Aggregator::aggOpString(999, NULL), NULL);
+
+	UT_IS(Aggregator::stringAggOp("AO_BEFORE_MOD"), Aggregator::AO_BEFORE_MOD);
+	UT_IS(Aggregator::stringAggOp("AO_AFTER_DELETE"), Aggregator::AO_AFTER_DELETE);
+	UT_IS(Aggregator::stringAggOp("AO_AFTER_INSERT"), Aggregator::AO_AFTER_INSERT);
+	UT_IS(Aggregator::stringAggOp("AO_COLLAPSE"), Aggregator::AO_COLLAPSE);
+	UT_IS(Aggregator::stringAggOp("xxx"), -1);
+}
+
 UTESTCASE badName(Utest *utest)
 {
 	RowType::FieldVec fld;
@@ -285,40 +301,40 @@ UTESTCASE tableops(Utest *utest)
 	// now check the history collected by the aggregators
 	const char *expect = 
 		"+insert 11\n"
-		"t.onPrimary ao=AFTER_INSERT op=OP_INSERT count=1\n"
-		"t.onLevel2 ao=AFTER_INSERT op=OP_INSERT count=1\n"
+		"t.onPrimary ao=AO_AFTER_INSERT op=OP_INSERT count=1\n"
+		"t.onLevel2 ao=AO_AFTER_INSERT op=OP_INSERT count=1\n"
 		"+insert 22\n"
-		"t.onPrimary ao=BEFORE_MOD op=OP_DELETE count=1\n"
-		"t.onPrimary ao=AFTER_INSERT op=OP_INSERT count=2\n"
-		"t.onLevel2 ao=AFTER_INSERT op=OP_INSERT count=1\n"
+		"t.onPrimary ao=AO_BEFORE_MOD op=OP_DELETE count=1\n"
+		"t.onPrimary ao=AO_AFTER_INSERT op=OP_INSERT count=2\n"
+		"t.onLevel2 ao=AO_AFTER_INSERT op=OP_INSERT count=1\n"
 		"+insert 12\n"
-		"t.onPrimary ao=BEFORE_MOD op=OP_DELETE count=2\n"
-		"t.onLevel2 ao=BEFORE_MOD op=OP_DELETE count=1\n"
-		"t.onPrimary ao=AFTER_INSERT op=OP_INSERT count=3\n"
-		"t.onLevel2 ao=AFTER_INSERT op=OP_INSERT count=2\n"
+		"t.onPrimary ao=AO_BEFORE_MOD op=OP_DELETE count=2\n"
+		"t.onLevel2 ao=AO_BEFORE_MOD op=OP_DELETE count=1\n"
+		"t.onPrimary ao=AO_AFTER_INSERT op=OP_INSERT count=3\n"
+		"t.onLevel2 ao=AO_AFTER_INSERT op=OP_INSERT count=2\n"
 		"+insert 21\n"
-		"t.onPrimary ao=BEFORE_MOD op=OP_DELETE count=3\n"
-		"t.onLevel2 ao=BEFORE_MOD op=OP_DELETE count=1\n"
-		"t.onPrimary ao=AFTER_INSERT op=OP_INSERT count=4\n"
-		"t.onLevel2 ao=AFTER_INSERT op=OP_INSERT count=2\n"
+		"t.onPrimary ao=AO_BEFORE_MOD op=OP_DELETE count=3\n"
+		"t.onLevel2 ao=AO_BEFORE_MOD op=OP_DELETE count=1\n"
+		"t.onPrimary ao=AO_AFTER_INSERT op=OP_INSERT count=4\n"
+		"t.onLevel2 ao=AO_AFTER_INSERT op=OP_INSERT count=2\n"
 		"+replace 11\n"
-		"t.onPrimary ao=BEFORE_MOD op=OP_DELETE count=4\n"
-		"t.onLevel2 ao=BEFORE_MOD op=OP_DELETE count=2\n"
-		"t.onPrimary ao=AFTER_DELETE op=OP_NOP count=4\n"
-		"t.onLevel2 ao=AFTER_DELETE op=OP_NOP count=2\n"
-		"t.onPrimary ao=AFTER_INSERT op=OP_INSERT count=4\n"
-		"t.onLevel2 ao=AFTER_INSERT op=OP_INSERT count=2\n"
+		"t.onPrimary ao=AO_BEFORE_MOD op=OP_DELETE count=4\n"
+		"t.onLevel2 ao=AO_BEFORE_MOD op=OP_DELETE count=2\n"
+		"t.onPrimary ao=AO_AFTER_DELETE op=OP_NOP count=4\n"
+		"t.onLevel2 ao=AO_AFTER_DELETE op=OP_NOP count=2\n"
+		"t.onPrimary ao=AO_AFTER_INSERT op=OP_INSERT count=4\n"
+		"t.onLevel2 ao=AO_AFTER_INSERT op=OP_INSERT count=2\n"
 		"+remove 11\n"
-		"t.onPrimary ao=BEFORE_MOD op=OP_DELETE count=4\n"
-		"t.onLevel2 ao=BEFORE_MOD op=OP_DELETE count=2\n"
-		"t.onPrimary ao=AFTER_DELETE op=OP_INSERT count=3\n"
-		"t.onLevel2 ao=AFTER_DELETE op=OP_INSERT count=1\n"
+		"t.onPrimary ao=AO_BEFORE_MOD op=OP_DELETE count=4\n"
+		"t.onLevel2 ao=AO_BEFORE_MOD op=OP_DELETE count=2\n"
+		"t.onPrimary ao=AO_AFTER_DELETE op=OP_INSERT count=3\n"
+		"t.onLevel2 ao=AO_AFTER_DELETE op=OP_INSERT count=1\n"
 		"+remove 12\n"
-		"t.onPrimary ao=BEFORE_MOD op=OP_DELETE count=3\n"
-		"t.onLevel2 ao=BEFORE_MOD op=OP_DELETE count=1\n"
-		"t.onPrimary ao=AFTER_DELETE op=OP_INSERT count=2\n"
-		"t.onLevel2 ao=AFTER_DELETE op=OP_INSERT count=0\n"
-		"t.onLevel2 ao=COLLAPSE op=OP_DELETE count=0\n"
+		"t.onPrimary ao=AO_BEFORE_MOD op=OP_DELETE count=3\n"
+		"t.onLevel2 ao=AO_BEFORE_MOD op=OP_DELETE count=1\n"
+		"t.onPrimary ao=AO_AFTER_DELETE op=OP_INSERT count=2\n"
+		"t.onLevel2 ao=AO_AFTER_DELETE op=OP_INSERT count=0\n"
+		"t.onLevel2 ao=AO_COLLAPSE op=OP_DELETE count=0\n"
 	;
 	string hist = aggHistory->print();
 	UT_IS(hist, expect);

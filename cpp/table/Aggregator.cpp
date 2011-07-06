@@ -8,26 +8,29 @@
 #include <common/Common.h>
 #include <table/Aggregator.h>
 #include <sched/AggregatorGadget.h>
+#include <common/StringUtil.h>
 
 namespace TRICEPS_NS {
 
 Aggregator::~Aggregator()
 { }
 
-const char *Aggregator::aggOpString(AggOp code)
+Valname aggOpCodes[] = {
+	{ Aggregator::AO_BEFORE_MOD, "AO_BEFORE_MOD" },
+	{ Aggregator::AO_AFTER_DELETE, "AO_AFTER_DELETE" },
+	{ Aggregator::AO_AFTER_INSERT, "AO_AFTER_INSERT" },
+	{ Aggregator::AO_COLLAPSE, "AO_COLLAPSE" },
+	{ -1, NULL }
+};
+
+const char *Aggregator::aggOpString(int code, const char *def)
 {
-	switch(code) {
-	case AO_BEFORE_MOD:
-		return "BEFORE_MOD";
-	case AO_AFTER_DELETE:
-		return "AFTER_DELETE";
-	case AO_AFTER_INSERT:
-		return "AFTER_INSERT";
-	case AO_COLLAPSE:
-		return "COLLAPSE";
-	default:
-		return "???";
-	}
+	return enum2string(aggOpCodes, code, def);
+}
+
+int Aggregator::stringAggOp(const char *code)
+{
+	return string2enum(aggOpCodes, code);
 }
 
 }; // TRICEPS_NS

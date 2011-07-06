@@ -39,8 +39,9 @@ public:
 		AO_COLLAPSE, // when the group is being collapsed, must not access index any more
 	};
 
-	// Convert the AggOp to string
-	static const char *aggOpString(AggOp code);
+	// Convert the AggOp to string and back
+	static const char *aggOpString(int code, const char *def = "???");
+	static int stringAggOp(const char *code);
 
 	// Handle one operation on the group.
 	// Updates the internal state of the aggregator and possibly sends (delayed) information
