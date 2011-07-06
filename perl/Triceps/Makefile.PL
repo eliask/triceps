@@ -55,6 +55,8 @@ PerlCallback.o: PerlCallback.h
 
 PerlAggregator.o: PerlCallback.h PerlAggregator.h
 
+AggregatorContext.o: WrapAggregatorContext.h
+
 ";
 }
 

@@ -266,6 +266,7 @@ insert(WrapTable *self, SV *rowarg, ...)
 		RETVAL
 
 # returns 1 normally, or undef on incorrect arguments
+# XXX add a version that takes a Row as an argument and does find/remove?
 int
 remove(WrapTable *self, WrapRowHandle *wrh, ...)
 	CODE:
