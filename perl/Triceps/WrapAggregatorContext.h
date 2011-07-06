@@ -27,8 +27,12 @@ namespace TricepsPerl
 // Currently it refers to the components in the same way as the aggregator handler
 // call, by pointers, instead of counted references. This makes it faster but
 // potentially unsafe if the context object is abused and preserved outside of the 
-// aggregator handler call. It must never be kept past the return of the aggregator
-// handler!!!
+// aggregator handler call. So to prevent the abuse the wrapper object is invalidated
+// after the handler returns. Then the XS code can check whether the wrapper is
+// valid, and fail if not (see O_WRAP_INVALIDABLE_OBJECT in typemap).
+// Through the handler call and  until invalidation, the C++ code must keep
+// a reference on the SV pointing here!
+
 extern WrapMagic magicWrapAggregatorContext; // defined in AggregatorContext.xs
 class WrapAggregatorContext
 {
@@ -41,12 +45,24 @@ public:
 		parentIndexType_(parentIndexType),
 		gh_(gh),
 		dest_(dest),
-		copyTray_(copyTray)
+		copyTray_(copyTray),
+		valid_(true)
 	{ }
 
-	bool badMagic()
+	bool badMagic() const
 	{
 		return magic_ != magicWrapAggregatorContext;
+	}
+
+	bool isValid() const
+	{
+		return valid_;
+	}
+
+	// Called after the 
+	void invalidate()
+	{
+		valid_ = false;
 	}
 
 	AggregatorGadget *getGadget() const
@@ -87,6 +103,7 @@ protected:
 	GroupHandle *gh_;
 	Tray *dest_;
 	Tray *copyTray_;
+	bool valid_;
 private:
 	WrapAggregatorContext();
 };

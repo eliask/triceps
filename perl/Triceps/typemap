@@ -17,12 +17,15 @@ WrapIndex *	O_WRAP_OBJECT
 WrapRowHandle *	O_WRAP_OBJECT
 
 WrapAggregatorType *	O_WRAP_OBJECT
-WrapAggregatorContext *	O_WRAP_OBJECT
+WrapAggregatorContext *	O_WRAP_INVALIDABLE_OBJECT
 
 OUTPUT
 # The Perl object is blessed into 'CLASS', which should be a
 # char* having the name of the package for the blessing.
 O_WRAP_OBJECT
+	sv_setref_pv( $arg, CLASS, (void*)$var );
+
+O_WRAP_INVALIDABLE_OBJECT
 	sv_setref_pv( $arg, CLASS, (void*)$var );
 
 INPUT
@@ -31,6 +34,22 @@ O_WRAP_OBJECT
 		$var = ($type)SvIV((SV*)SvRV( $arg ));
 		if ($var == 0 || $var->badMagic()) {
 			setErrMsg( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
+			XSRETURN_UNDEF;
+		}
+	} else{
+		setErrMsg( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
+		XSRETURN_UNDEF;
+	}
+
+O_WRAP_INVALIDABLE_OBJECT
+	if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
+		$var = ($type)SvIV((SV*)SvRV( $arg ));
+		if ($var == 0 || $var->badMagic()) {
+			setErrMsg( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
+			XSRETURN_UNDEF;
+		}
+		if (!$var->isValid()) {
+			setErrMsg( \"${Package}::$func_name(): $var has been already invalidated\" );
 			XSRETURN_UNDEF;
 		}
 	} else{
