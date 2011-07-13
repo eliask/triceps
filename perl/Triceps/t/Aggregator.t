@@ -58,9 +58,13 @@ ok(ref $rt2, "Triceps::RowType");
 # collect the aggregator handler call history
 my $aggistory;
 
-sub aggHandler # (table, gadget, index, parentIndexType, gh, dest, aggop, opcode, rh, copyTray, args...)
+sub aggHandler # (table, context, aggop, opcode, rh, args...)
 {
-	my ($table, $gadget, $index, $parentIndexType, $gh, $dest, $aggop, $opcode, $rh, $copyTray, @args) = @_;
+	my ($table, $context, $aggop, $opcode, $rh, @args) = @_;
+	$agghistory .= "bad context type " . ref($context) unless (ref($context) eq "Triceps::AggregatorContext");
+	$_[1] = 99; # try to spoil the original reference to context
+	undef $context; # if the references are wrong, this would delete the context object and cause a valgrind error later
+
 	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::aggOpString($aggop) . " " . &Triceps::opcodeString($opcode);
 	my $row = $rh->getRow();
 	if (defined $row) {

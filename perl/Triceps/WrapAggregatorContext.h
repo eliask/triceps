@@ -38,7 +38,7 @@ class WrapAggregatorContext
 {
 public:
 	WrapAggregatorContext(AggregatorGadget *gadget, Index *index,
-			IndexType *parentIndexType, GroupHandle *gh, Tray *dest, Tray *copyTray) :
+			const IndexType *parentIndexType, GroupHandle *gh, Tray *dest, Tray *copyTray) :
 		magic_(magicWrapAggregatorContext),
 		gadget_(gadget),
 		index_(index),
@@ -75,7 +75,7 @@ public:
 		return index_;
 	}
 
-	IndexType *getParentIdxType() const
+	const IndexType *getParentIdxType() const
 	{
 		return parentIndexType_;
 	}
@@ -95,11 +95,11 @@ public:
 		return copyTray_;
 	}
 
-protected:
+public:
 	WrapMagic magic_;
 	AggregatorGadget *gadget_;
 	Index *index_;
-	IndexType *parentIndexType_;
+	const IndexType *parentIndexType_;
 	GroupHandle *gh_;
 	Tray *dest_;
 	Tray *copyTray_;

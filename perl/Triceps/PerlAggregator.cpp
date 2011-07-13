@@ -14,6 +14,7 @@
 #include "TricepsPerl.h"
 #include "PerlCallback.h"
 #include "PerlAggregator.h"
+#include "WrapAggregatorContext.h"
 
 // ###################################################################################
 
@@ -116,19 +117,12 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	SV *svtab = newSV(0);
 	sv_setref_pv(svtab, "Triceps::Table", (void *)wtab);
 
-	SV *svgadget = newSV(0); // XXX add the gadget
-
-	SV *svindex = newSV(0); // XXX add the index
-
-	WrapIndexType *wpit = new WrapIndexType(const_cast<IndexType *>(parentIndexType));
-	SV *svpit = newSV(0);
-	sv_setref_pv(svpit, "Triceps::IndexType", (void *)wpit);
-
-	SV *svgh = newSV(0); // XXX add the group handle
-
-	WrapTray *wdest = new WrapTray(table->getUnit(), dest);
-	SV *svdest = newSV(0);
-	sv_setref_pv(svdest, "Triceps::Tray", (void *)wdest);
+	WrapAggregatorContext *ctx = new WrapAggregatorContext(gadget, index, parentIndexType, gh, dest, copyTray);
+	SV *svctx = newSV(0); 
+	sv_setref_pv(svctx, "Triceps::AggregatorContext", (void *)ctx); // takes over the reference
+	// warn("DEBUG PerlAggregator::handle context %p created with refcnt %d ptr %d", ctx, SvREFCNT(svctx), SvROK(svctx));
+	SV *svctxcopy = newSV(0); // makes sure that the context stays referenced even if Perl code thanges its SV
+	sv_setsv(svctxcopy, svctx);
 
 	SV *svaggop = newSViv(aggop);
 
@@ -138,36 +132,28 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	SV *svrh = newSV(0);
 	sv_setref_pv(svrh, "Triceps::RowHandle", (void *)wrh);
 
-	WrapTray *wcopy = new WrapTray(table->getUnit(), copyTray);
-	SV *svcopy = newSV(0);
-	sv_setref_pv(svcopy, "Triceps::Tray", (void *)wcopy);
-
 	PerlCallbackStartCall(at->cbHandler_);
 
 	XPUSHs(svtab);
-	XPUSHs(svgadget);
-	XPUSHs(svindex);
-	XPUSHs(svpit);
-	XPUSHs(svgh);
-	XPUSHs(svdest);
+	XPUSHs(svctx);
 	XPUSHs(svaggop);
 	XPUSHs(svopcode);
 	XPUSHs(svrh);
-	XPUSHs(svcopy);
 
 	PerlCallbackDoCall(at->cbHandler_);
 	
+	// warn("DEBUG PerlAggregator::handle invalidating context");
+	ctx->invalidate(); // context will stop working, even if Perl code kept a reference
+
 	// this calls the DELETE methods on wrappers
 	SvREFCNT_dec(svtab);
-	SvREFCNT_dec(svgadget);
-	SvREFCNT_dec(svindex);
-	SvREFCNT_dec(svpit);
-	SvREFCNT_dec(svgh);
-	SvREFCNT_dec(svdest);
+	// warn("DEBUG PerlAggregator::handle context decrease refcnt %d ptr %d", SvREFCNT(svctx), SvROK(svctx));
+	SvREFCNT_dec(svctx);
+	// warn("DEBUG PerlAggregator::handle context copy decrease refcnt %d ptr %d", SvREFCNT(svctxcopy), SvROK(svctxcopy));
+	SvREFCNT_dec(svctxcopy);
 	SvREFCNT_dec(svaggop);
 	SvREFCNT_dec(svopcode);
 	SvREFCNT_dec(svrh);
-	SvREFCNT_dec(svcopy);
 
 	if (SvTRUE(ERRSV)) {
 		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
@@ -176,6 +162,7 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 			gadget->getUnit()->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
 
 	}
+	// warn("DEBUG PerlAggregator::handle done");
 }
 
 // ########################## wraps ##################################################

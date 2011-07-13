@@ -53,7 +53,7 @@ TricepsPerl.o: PerlCallback.h
 
 PerlCallback.o: PerlCallback.h
 
-PerlAggregator.o: PerlCallback.h PerlAggregator.h
+PerlAggregator.o: PerlCallback.h PerlAggregator.h WrapAggregatorContext.h
 
 AggregatorContext.o: WrapAggregatorContext.h
 
