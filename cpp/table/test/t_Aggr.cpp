@@ -77,6 +77,23 @@ void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
 	}
 }
 
+// a label that counts the records that went through it
+class CounterLabel : public Label
+{
+public:
+	CounterLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name = "") :
+		Label(unit, rtype, name),
+		count_(0)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		++count_;
+	}
+	
+	mutable int count_;
+};
+
 UTESTCASE stringConst(Utest *utest)
 {
 	UT_IS(Aggregator::aggOpString(Aggregator::AO_BEFORE_MOD), string("AO_BEFORE_MOD"));
@@ -165,7 +182,24 @@ UTESTCASE tableops(Utest *utest)
 	IndexType *sec = prim->findSubIndex("level2");
 	UT_ASSERT(sec != NULL);
 
-	// above here was a copy of primaryIndex()
+	// above here was a copy of primaryIndex(), with aggregators added
+	
+	// add the labels for processing of aggregator results
+	Autoref<CounterLabel> countLevel2 = new CounterLabel(unit, rt1, "countLevel2");
+	Autoref<CounterLabel> countPrimary = new CounterLabel(unit, rt1, "countPrimary");
+
+	Label *al;
+
+	al = t->getAggregatorLabel("onLevel2");
+	UT_ASSERT(al != NULL);
+	al->chain(countLevel2);
+
+	al = t->getAggregatorLabel("onPrimary");
+	UT_ASSERT(al != NULL);
+	al->chain(countPrimary);
+
+	al = t->getAggregatorLabel("noSuch");
+	UT_ASSERT(al == NULL);
 
 	// create a matrix of records, across both axes of indexing
 
@@ -342,48 +376,77 @@ UTESTCASE tableops(Utest *utest)
 	// and the history collected by tracer
 	unit->drainFrame();
 	UT_ASSERT(unit->empty());
+
+	UT_IS(countLevel2->count_, 11);
+	UT_IS(countPrimary->count_, 12);
+
 	string tlog = trace->getBuffer()->print();
 
 	string trace_expect = 
 		"unit 'u' before label 't.out' op OP_INSERT\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_INSERT\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_INSERT\n"
 		"unit 'u' before label 't.onPrimary' op OP_DELETE\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_DELETE\n"
 		"unit 'u' before label 't.onLevel2' op OP_DELETE\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_INSERT\n"
 		"unit 'u' before label 't.onPrimary' op OP_DELETE\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_DELETE\n"
 		"unit 'u' before label 't.onLevel2' op OP_DELETE\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_DELETE\n"
 		"unit 'u' before label 't.out' op OP_INSERT\n"
 		"unit 'u' before label 't.onPrimary' op OP_DELETE\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_DELETE\n"
 		"unit 'u' before label 't.onLevel2' op OP_DELETE\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_DELETE\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_DELETE\n"
 		"unit 'u' before label 't.onLevel2' op OP_DELETE\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_DELETE\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_DELETE\n"
 		"unit 'u' before label 't.onLevel2' op OP_DELETE\n"
+		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 
 	;
-	UT_IS(tlog, trace_expect);
+	if (UT_IS(tlog, trace_expect)) {
+		fprintf(stderr, "expected: \"%s\"\n", trace_expect.c_str());
+	}
 
 }

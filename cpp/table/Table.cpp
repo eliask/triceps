@@ -81,6 +81,17 @@ Table::~Table()
 	}
 }
 
+Label *Table::getAggregatorLabel(const string &agname) const
+{
+	// do a simple linear search
+	for (AggGadgetVec::const_iterator it = aggs_.begin(); it != aggs_.end(); ++it) {
+		if ( (*it)->getType()->getName() == agname) {
+			return (*it)->getLabel();
+		}
+	}
+	return NULL;
+}
+
 RowHandle *Table::makeRowHandle(const Row *row) const
 {
 	if (row == NULL)

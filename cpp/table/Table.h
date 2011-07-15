@@ -49,6 +49,13 @@ public:
 		return inputLabel_.get();
 	}
 
+	// Return the label of a named aggregator
+	// (a label seems more convenient than a gadget).
+	// @param agname - aggregator name (names should be unique, if duplicated
+	//        then will return whichever random one)
+	// @return - label of the aggregator, or NULL if not found
+	Label *getAggregatorLabel(const string &agname) const;
+
 	// Get back the table name (overrides the garget method, because that
 	// name has ".out" added to it).
 	const string &getName() const
