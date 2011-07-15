@@ -37,9 +37,10 @@ extern WrapMagic magicWrapAggregatorContext; // defined in AggregatorContext.xs
 class WrapAggregatorContext
 {
 public:
-	WrapAggregatorContext(AggregatorGadget *gadget, Index *index,
+	WrapAggregatorContext(Table *table, AggregatorGadget *gadget, Index *index,
 			const IndexType *parentIndexType, GroupHandle *gh, Tray *dest, Tray *copyTray) :
 		magic_(magicWrapAggregatorContext),
+		table_(table),
 		gadget_(gadget),
 		index_(index),
 		parentIndexType_(parentIndexType),
@@ -59,10 +60,15 @@ public:
 		return valid_;
 	}
 
-	// Called after the 
+	// Called after the handler returns, so that any saved references will be invalid
 	void invalidate()
 	{
 		valid_ = false;
+	}
+
+	Table *getTable() const
+	{
+		return table_;
 	}
 
 	AggregatorGadget *getGadget() const
@@ -95,8 +101,9 @@ public:
 		return copyTray_;
 	}
 
-public:
+protected:
 	WrapMagic magic_;
+	Table *table_;
 	AggregatorGadget *gadget_;
 	Index *index_;
 	const IndexType *parentIndexType_;

@@ -472,3 +472,4 @@ findIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 	OUTPUT:
 		RETVAL
 
+# XXX add getAggregatorLabel()

@@ -117,7 +117,7 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	SV *svtab = newSV(0);
 	sv_setref_pv(svtab, "Triceps::Table", (void *)wtab);
 
-	WrapAggregatorContext *ctx = new WrapAggregatorContext(gadget, index, parentIndexType, gh, dest, copyTray);
+	WrapAggregatorContext *ctx = new WrapAggregatorContext(table, gadget, index, parentIndexType, gh, dest, copyTray);
 	SV *svctx = newSV(0); 
 	sv_setref_pv(svctx, "Triceps::AggregatorContext", (void *)ctx); // takes over the reference
 	// warn("DEBUG PerlAggregator::handle context %p created with refcnt %d ptr %d", ctx, SvREFCNT(svctx), SvROK(svctx));

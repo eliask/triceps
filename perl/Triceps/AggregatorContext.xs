@@ -50,8 +50,53 @@ DESTROY(SV *selfsv)
 		// warn("AggregatorContext %p destroyed!", self);
 		delete self;
 
-void
-debugnotify(WrapAggregatorContext *self)
-	CODE:
-		warn("XXX context at %p", self);
+# XXX test the methods below here
 
+# get the number of rows in the group
+int
+groupSize(WrapAggregatorContext *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->getParentIdxType()->groupSize(self->getGroupHandle());
+	OUTPUT:
+		RETVAL
+
+# iteration on the group
+# RowHandle with NULL pointer in it is used for the end-iterator
+
+WrapRowHandle *
+begin(WrapAggregatorContext *self)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->getTable();
+		Index *idx = self->getIndex();
+		RETVAL = new WrapRowHandle(t, idx->begin());
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+next(WrapAggregatorContext *self, WrapRowHandle *wcur)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->getTable();
+		Index *idx = self->getIndex();
+		RowHandle *cur = wcur->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::AggregatorContext::next";
+		if (wcur->ref_.getTable() != t) {
+			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				funcName, wcur->ref_.getTable()->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+
+		RETVAL = new WrapRowHandle(t, idx->next(cur));
+	OUTPUT:
+		RETVAL
+		
+# XXX add translation to a sibling index, for iteration on it
+
+# XXX add send()
