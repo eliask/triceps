@@ -36,7 +36,7 @@ public:
 		AO_BEFORE_MOD, // before modification
 		AO_AFTER_DELETE, // after row removal has been performed
 		AO_AFTER_INSERT, // after row insertion was performed
-		AO_COLLAPSE, // when the group is being collapsed, must not access index any more
+		AO_COLLAPSE, // when the group is being collapsed
 	};
 
 	// Convert the AggOp to string and back
