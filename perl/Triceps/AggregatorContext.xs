@@ -108,7 +108,61 @@ next(WrapAggregatorContext *self, WrapRowHandle *wcur)
 	OUTPUT:
 		RETVAL
 		
-# XXX add translation to a sibling index, for iteration on it
+# XXX test translation to a sibling index, for iteration on it
+
+# translation to the group in another index: can be done in Perl
+# but more efficient and easier to push it into C++
+WrapRowHandle *
+beginIdx(WrapAggregatorContext *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->getTable();
+		Index *myidx = self->getIndex();
+
+		RowHandle *sample = myidx->begin();
+		if (sample == NULL) {
+			RETVAL = new WrapRowHandle(t, NULL);
+		} else {
+			IndexType *idx = widx->get();
+
+			static char funcName[] =  "Triceps::AggregatorContext::beginIdx";
+			if (idx->getTabtype() != t->getType()) {
+				setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+				XSRETURN_UNDEF;
+			}
+			RETVAL = new WrapRowHandle(t, t->firstOfGroupIdx(idx, sample));
+		}
+	OUTPUT:
+		RETVAL
+
+# translation to the group in another index: can be done in Perl
+# but more efficient and easier to push it into C++
+WrapRowHandle *
+endIdx(WrapAggregatorContext *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->getTable();
+		Index *myidx = self->getIndex();
+
+		RowHandle *sample = myidx->begin();
+		if (sample == NULL) {
+			RETVAL = new WrapRowHandle(t, NULL);
+		} else {
+			IndexType *idx = widx->get();
+
+			static char funcName[] =  "Triceps::AggregatorContext::beginIdx";
+			if (idx->getTabtype() != t->getType()) {
+				setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+				XSRETURN_UNDEF;
+			}
+			RETVAL = new WrapRowHandle(t, t->nextGroupIdx(idx, sample));
+		}
+	OUTPUT:
+		RETVAL
 
 # returns 1 on success, undef on error;
 # enqueueing mode is taken from the aggregator gadget

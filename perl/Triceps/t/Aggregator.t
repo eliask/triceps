@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 53 };
+BEGIN { plan tests => 67 };
 use Triceps;
 ok(2); # If we made it this far, we're ok.
 
@@ -440,5 +440,109 @@ ok($reshistory,
 	. "OP_DELETE  [2, 6000000000000000, 2.71]\n"
 	. "OP_INSERT  [1, 3000000000000000, 3.14]\n"
 	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+);
+
+######################### aggregation with iteration by another index  #############################
+
+# this is not exactly convenient: the other index type can be obtained from table type
+# only after the iterator type is already hardcoded into it, so must go with an external
+# variable
+my $otherIndexType;
+
+sub aggHandler4 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_; # state is taken as part of args
+
+	# calculate b as count(*), c as sum(c), v as last(d)
+	# but iterate on a FIFO index in reverse order, so v actually becomes first(d)
+	my $sum = 0;
+	my $lastd;
+	my $lastrh;
+	my $end = $context->endIdx($otherIndexType);
+	for (my $iterh = $context->beginIdx($otherIndexType); !$iterh->same($end); $iterh = $table->nextIdx($otherIndexType, $iterh)) {
+		$lastrh = $iterh;
+		$sum += $iterh->getRow()->get("c");
+	}
+
+	# this aggregator sends a NULL record after the last delete, the other option
+	# would be to send nothing at all when $context->groupSize()==0
+
+	# otherwise d is left as undef
+	if (defined $lastrh) { 
+		$lastd = $lastrh->getRow()->get("d");
+	}
+
+	my @vals = ( b => $context->groupSize(), c => $sum, v => $lastd );
+	my $res = $context->resultType()->makeRowHash(@vals);
+	$context->send($opcode, $res);
+	# print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
+
+	undef $context; # if the references are wrong, this would delete the context object and cause a valgrind error later
+}
+
+# reset the aggregator result history
+undef $reshistory;
+
+$agt4 = Triceps::AggregatorType->new($rt2, "aggr", undef, \&aggHandler4, "qqqq", 12);
+ok(ref $agt4, "Triceps::AggregatorType");
+
+$it4 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		->setAggregator($agt4)
+	)->addSubIndex("reverse", Triceps::IndexType->newFifo(reverse => 1)
+	);
+ok(ref $it4, "Triceps::IndexType");
+
+# XXX the API is not very good: the index can be reused multiple times
+# in the same table with different ids, but the aggregator in it can't
+$tt4 = Triceps::TableType->new($rt1)
+	->addSubIndex("grouping", $it4)
+	;
+ok(ref $tt4, "Triceps::TableType");
+
+$res = $tt4->initialize();
+ok($res, 1);
+#print STDERR "$!" . "\n";
+
+$t4 = $u1->makeTable($tt4, "EM_SCHEDULE", "tab4");
+ok(ref $t4, "Triceps::Table");
+
+# remember the reverse index for the aggregator
+$otherIndexType = $tt4->findSubIndex("grouping")->findSubIndex("reverse");
+ok(ref $otherIndexType, "Triceps::IndexType");
+
+# connect the history recording label, same one as in test 1
+$res = $t4->getAggregatorLabel("aggr");
+ok(ref $res, "Triceps::Label");
+$res = $res->chain($aggreslab1);
+ok($res, 1);
+
+# send the same records (slightly different order)
+
+$res = $t4->insert($r1);
+#print STDERR "error: $!\n";
+ok($res == 1);
+$res = $t4->insert($r2);
+ok($res == 1);
+$res = $t4->deleteRow($r1);
+ok($res == 1);
+$res = $t4->deleteRow($r2);
+ok($res == 1);
+
+# for the results to propagate through the history label, the unit must run...
+$trsn1->clearBuffer();
+$u1->drainFrame();
+ok($u1->empty());
+#print STDERR "DEBUG trace:\n" . $trsn1->print();
+
+ok($reshistory, 
+	"OP_INSERT  [1, 3000000000000000, 3.14]\n"
+	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+	. "OP_INSERT  [2, 6000000000000000, 3.14]\n"
+	. "OP_DELETE  [2, 6000000000000000, 3.14]\n"
+	. "OP_INSERT  [1, 3000000000000000, 2.71]\n"
+	. "OP_DELETE  [1, 3000000000000000, 2.71]\n"
+	. "OP_INSERT  [0, 0, *undef*]\n"
+	. "OP_DELETE  [0, 0, *undef*]\n"
 );
 
