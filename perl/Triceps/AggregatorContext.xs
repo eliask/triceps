@@ -50,8 +50,6 @@ DESTROY(SV *selfsv)
 		// warn("AggregatorContext %p destroyed!", self);
 		delete self;
 
-# XXX test the methods below here
-
 # get the number of rows in the group
 int
 groupSize(WrapAggregatorContext *self)
@@ -60,6 +58,19 @@ groupSize(WrapAggregatorContext *self)
 		RETVAL = self->getParentIdxType()->groupSize(self->getGroupHandle());
 	OUTPUT:
 		RETVAL
+
+# get the row type of the result
+WrapRowType *
+resultType(WrapAggregatorContext *self)
+	CODE:
+		clearErrMsg();
+
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+		RETVAL = new WrapRowType(const_cast<RowType *>(self->getGadget()->getLabel()->getType()));
+	OUTPUT:
+		RETVAL
+
 
 # iteration on the group
 # RowHandle with NULL pointer in it is used for the end-iterator
@@ -99,4 +110,32 @@ next(WrapAggregatorContext *self, WrapRowHandle *wcur)
 		
 # XXX add translation to a sibling index, for iteration on it
 
-# XXX add send()
+# returns 1 on success, undef on error;
+# enqueueing mode is taken from the aggregator gadget
+int
+send(WrapAggregatorContext *self, SV *opcode, WrapRow *row)
+	CODE:
+		static char funcName[] =  "Triceps::AggregatorContext::send";
+
+		clearErrMsg();
+		Label *lab = self->getGadget()->getLabel();
+		const RowType *lt = lab->getType();
+		const RowType *rt = row->ref_.getType();
+		Row *r = row->ref_.get();
+
+		if ((lt != rt) && !lt->match(rt)) {
+			setErrMsg(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
+				+ lt->print("    ") + "\n  Row:\n    " + rt->print("    ")
+			);
+			XSRETURN_UNDEF;
+		}
+
+		Rowop::Opcode op;
+		if (!parseOpcode(funcName, opcode, op))
+			XSRETURN_UNDEF;
+
+		self->getGadget()->sendDelayed(self->getDest(), r, op, self->getCopyTray());
+
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL

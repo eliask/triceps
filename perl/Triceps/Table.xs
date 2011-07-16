@@ -132,6 +132,24 @@ getOutputLabel(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
+WrapLabel *
+getAggregatorLabel(WrapTable *self, char *aggname)
+	CODE:
+		static char funcName[] =  "Triceps::Table::getAggregatorLabel";
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+
+		clearErrMsg();
+		Table *t = self->get();
+		Label *lab = t->getAggregatorLabel(aggname);
+		if (lab == NULL)  {
+			setErrMsg( strprintf("%s: aggregator '%s' is not defined on table '%s'", funcName, aggname, t->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+		RETVAL = new WrapLabel(lab);
+	OUTPUT:
+		RETVAL
+
 WrapTableType *
 getType(WrapTable *self)
 	CODE:
@@ -472,4 +490,3 @@ findIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 	OUTPUT:
 		RETVAL
 
-# XXX add getAggregatorLabel()

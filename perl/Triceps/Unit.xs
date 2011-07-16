@@ -99,6 +99,7 @@ enqueue(WrapUnit *self, SV *enqMode, ...)
 	OUTPUT:
 		RETVAL
 
+# XXX remove this call, AggregationContext takes care of it internally
 # This is a call with a very special purpose, so even though it's possible
 # to enqueue the rows one by one with their modes too, the use case is really
 # only for the tray, and the only tray.
