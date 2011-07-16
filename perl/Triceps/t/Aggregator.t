@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 39 };
+BEGIN { plan tests => 53 };
 use Triceps;
 ok(2); # If we made it this far, we're ok.
 
@@ -65,7 +65,7 @@ ok(ref $rt2, "Triceps::RowType");
 # collect the aggregator handler call history
 my $aggistory;
 
-sub aggHandler # (table, context, aggop, opcode, rh, state, args...)
+sub aggHandler1 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, @args) = @_; # state is taken as part of args
 	$agghistory .= "bad context type " . ref($context) unless (ref($context) eq "Triceps::AggregatorContext");
@@ -127,7 +127,7 @@ sub append_reshistory
 my $aggreslab1 = $u1->makeLabel($rt2, "aggres1", \&append_reshistory);
 ok(ref $aggreslab1, "Triceps::Label");
 
-$agt1 = Triceps::AggregatorType->new($rt2, "aggr", undef, \&aggHandler, "qqqq", 12);
+$agt1 = Triceps::AggregatorType->new($rt2, "aggr", undef, \&aggHandler1, "qqqq", 12);
 ok(ref $agt1, "Triceps::AggregatorType");
 
 $it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
@@ -299,6 +299,7 @@ $res = $t2->deleteRow($r1);
 ok($res == 1);
 
 # for the results to propagate through the history label, the unit must run...
+$trsn1->clearBuffer();
 $u1->drainFrame();
 ok($u1->empty());
 #print STDERR "DEBUG trace:\n" . $trsn1->print();
@@ -319,7 +320,125 @@ $res = $outside_context->resultType();
 ok(!defined $res);
 ok("$!", "Triceps::AggregatorContext::resultType(): self has been already invalidated");
 
-#######################################################################
+######################### aggregation with both context and iteration  #############################
 
-# XXX example with passing args to state constructor
+# reset the aggregator handler call history
+undef $agghistory;
+
+sub aggHandler3 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	$agghistory .= "bad context type " . ref($context) unless (ref($context) eq "Triceps::AggregatorContext");
+
+	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::aggOpString($aggop) . " " . &Triceps::opcodeString($opcode);
+	my $row = $rh->getRow();
+	if (defined $row) {
+		$agghistory .= " [" . join(", ", $rh->getRow()->toArray()) . "]\n";
+	} else {
+		$agghistory .= " NULL\n";
+	}
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0); # AO_COLLAPSE really gets taken care of here
+
+	if ($aggop == &Triceps::AO_BEFORE_MOD || $aggop == &Triceps::AO_COLLAPSE) {
+		# just resend the last record
+		$context->send($opcode, $state);
+		#print STDERR "DEBUG resent agg result [" . join(", ", $state->toArray()) . "]\n";
+	} else {
+		# recalculate the new state
+
+		# calculate b as count(*), c as sum(c), v as last(d)
+		my $sum = 0;
+		my $lastrh;
+		for (my $iterh = $context->begin(); !$iterh->isNull(); $iterh = $context->next($iterh)) {
+			$lastrh = $iterh;
+			$sum += $iterh->getRow()->get("c");
+		}
+
+		my @vals = ( b => $context->groupSize(), c => $sum, v => $lastrh->getRow()->get("d") );
+		my $res = $context->resultType()->makeRowHash(@vals);
+
+		# rememeber the last record in the state
+		$_[5] = $res;
+
+		$context->send($opcode, $res);
+		#print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
+	}
+}
+
+sub aggConstructor3 # (@args)
+{
+	$agghistory .= "construct (" . join(", ", @_) . ")\n"; # test argument passing to constructor
+	return undef; # a placeholder for a future row reference
+}
+
+# reset the aggregator result history
+undef $reshistory;
+
+$agt3 = Triceps::AggregatorType->new($rt2, "aggr", \&aggConstructor3, \&aggHandler3, "qqqq", 12);
+ok(ref $agt3, "Triceps::AggregatorType");
+
+$it3 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		->setAggregator($agt3)
+	);
+ok(ref $it3, "Triceps::IndexType");
+
+$tt3 = Triceps::TableType->new($rt1)
+	->addSubIndex("grouping", $it3)
+	;
+ok(ref $tt3, "Triceps::TableType");
+
+$res = $tt3->initialize();
+ok($res, 1);
+#print STDERR "$!" . "\n";
+
+$t3 = $u1->makeTable($tt3, "EM_SCHEDULE", "tab3");
+ok(ref $t3, "Triceps::Table");
+
+# connect the history recording label, same one as in test 1
+$res = $t3->getAggregatorLabel("aggr");
+ok(ref $res, "Triceps::Label");
+$res = $res->chain($aggreslab1);
+ok($res, 1);
+
+# send the same records 
+
+$res = $t3->insert($r1);
+#print STDERR "error: $!\n";
+ok($res == 1);
+$res = $t3->insert($r2);
+ok($res == 1);
+$res = $t3->deleteRow($r2);
+ok($res == 1);
+$res = $t3->deleteRow($r1);
+ok($res == 1);
+
+ok($agghistory, 
+	"construct (qqqq, 12)\n"
+	. "call (qqqq, 12) AO_AFTER_INSERT OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
+	. "call (qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (qqqq, 12) AO_AFTER_INSERT OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n"
+	. "call (qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (qqqq, 12) AO_AFTER_DELETE OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n"
+	. "call (qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (qqqq, 12) AO_AFTER_DELETE OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
+	. "call (qqqq, 12) AO_COLLAPSE OP_DELETE NULL\n"
+);
+
+# for the results to propagate through the history label, the unit must run...
+$trsn1->clearBuffer();
+$u1->drainFrame();
+ok($u1->empty());
+#print STDERR "DEBUG trace:\n" . $trsn1->print();
+
+ok($reshistory, 
+	"OP_INSERT  [1, 3000000000000000, 3.14]\n"
+	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+	. "OP_INSERT  [2, 6000000000000000, 2.71]\n"
+	. "OP_DELETE  [2, 6000000000000000, 2.71]\n"
+	. "OP_INSERT  [1, 3000000000000000, 3.14]\n"
+	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+);
 
