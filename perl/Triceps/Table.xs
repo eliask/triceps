@@ -284,7 +284,6 @@ insert(WrapTable *self, SV *rowarg, ...)
 		RETVAL
 
 # returns 1 normally, or undef on incorrect arguments
-# XXX add a version that takes a Row as an argument and does find/remove?
 int
 remove(WrapTable *self, WrapRowHandle *wrh, ...)
 	CODE:
@@ -315,6 +314,45 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 		}
 
 		t->remove(rh, ctr);
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+# version that takes a Row as an argument and acts as a combination of find/remove
+int
+deleteRow(WrapTable *self, WrapRow *wr, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Table::deleteRow";
+		if (items != 2 && items != 3)
+		   Perl_croak(aTHX_ "Usage: %s(self, row [, copyTray])", funcName);
+
+		clearErrMsg();
+		Table *t = self->get();
+		Row *r = wr->get();
+		RowType *rt = wr->ref_.getType();
+
+		if (!rt->equals(t->getRowType())) {
+			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
+			t->getRowType()->printTo(msg, NOINDENT);
+			msg.append(", in row: ");
+			rt->printTo(msg, NOINDENT);
+
+			setErrMsg(msg);
+			XSRETURN_UNDEF;
+		}
+
+		Tray *ctr = NULL;
+		if (items == 3) {
+			ctr = parseCopyTray(t, funcName, ST(2));
+			if (ctr ==  NULL)
+				XSRETURN_UNDEF;
+		}
+
+		// pretty much a copy of Table::InputLabel::execute()
+		Rhref what(t, t->makeRowHandle(r));
+		RowHandle *rh = t->find(what);
+		if (rh != NULL)
+			t->remove(rh, ctr);
 		RETVAL = 1;
 	OUTPUT:
 		RETVAL

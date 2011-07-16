@@ -420,3 +420,4 @@ ok(!defined $res);
 ok($! . "", "Triceps::Table::remove: copyTray is from a wrong unit u2, table in unit u1");
 
 # XXX test getAggregatorLabel()
+# XXX test deleteRow()
