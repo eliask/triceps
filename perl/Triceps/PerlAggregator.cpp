@@ -47,8 +47,23 @@ AggregatorGadget *PerlAggregatorType::makeGadget(Table *table, IndexType *intype
 
 Aggregator *PerlAggregatorType::makeAggregator(Table *table, AggregatorGadget *gadget) const
 {
-	// XXX call the Perl constructor for the per-aggregator SV
-	return new PerlAggregator(table, gadget);
+	SV *state = NULL;
+
+	if (!cbConstructor_.isNull()) {
+		dSP;
+
+		PerlCallbackStartCall(cbConstructor_);
+		PerlCallbackDoCallScalar(cbConstructor_, state);
+		
+		if (SvTRUE(ERRSV)) {
+			// If in eval, croak may cause issues by doing longjmp(), so better just warn.
+			// Would exit(1) be better?
+			warn("Error in unit %s table %s aggregator %s constructor: %s", 
+				gadget->getUnit()->getName().c_str(), table->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
+
+		}
+	}
+	return new PerlAggregator(table, gadget, state);
 }
 
 bool PerlAggregatorType::equals(const Type *t) const
@@ -87,9 +102,12 @@ bool PerlAggregatorType::match(const Type *t) const
 
 // ######################## PerlAggregator ###########################################
 
-PerlAggregator::PerlAggregator(Table *table, AggregatorGadget *gadget):
-	sv_(NULL)
-{ }
+PerlAggregator::PerlAggregator(Table *table, AggregatorGadget *gadget, SV *sv):
+	sv_(sv)
+{ 
+	if (sv_ != NULL)
+		SvREFCNT_inc(sv_);
+}
 
 PerlAggregator::~PerlAggregator()
 {
@@ -102,7 +120,8 @@ void PerlAggregator::setsv(SV *sv)
 	if (sv_ != NULL)
 		SvREFCNT_dec(sv_);
 	sv_= sv;
-	SvREFCNT_inc(sv_);
+	if (sv_ != NULL)
+		SvREFCNT_inc(sv_);
 }
 
 void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index,
@@ -139,6 +158,10 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	XPUSHs(svaggop);
 	XPUSHs(svopcode);
 	XPUSHs(svrh);
+	if (sv_ != NULL)
+		XPUSHs(sv_);
+	else
+		XPUSHs(&PL_sv_undef);
 
 	PerlCallbackDoCall(at->cbHandler_);
 	
@@ -158,8 +181,8 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	if (SvTRUE(ERRSV)) {
 		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
 		// Would exit(1) be better?
-		warn("Error in unit %s aggregator %s handler: %s", 
-			gadget->getUnit()->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
+		warn("Error in unit %s table %s aggregator %s handler: %s", 
+			gadget->getUnit()->getName().c_str(), table->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
 
 	}
 	// warn("DEBUG PerlAggregator::handle done");

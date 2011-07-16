@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 22 };
+BEGIN { plan tests => 39 };
 use Triceps;
 ok(2); # If we made it this far, we're ok.
 
@@ -60,16 +60,19 @@ $rt2 = Triceps::RowType->new( # used later
 );
 ok(ref $rt2, "Triceps::RowType");
 
-######################### basic aggregation  #############################
+######################### basic aggregation, recalculating every time  #############################
 
 # collect the aggregator handler call history
 my $aggistory;
 
-sub aggHandler # (table, context, aggop, opcode, rh, args...)
+sub aggHandler # (table, context, aggop, opcode, rh, state, args...)
 {
-	my ($table, $context, $aggop, $opcode, $rh, @args) = @_;
+	my ($table, $context, $aggop, $opcode, $rh, @args) = @_; # state is taken as part of args
 	$agghistory .= "bad context type " . ref($context) unless (ref($context) eq "Triceps::AggregatorContext");
 	$_[1] = 99; # try to spoil the original reference to context
+
+	$args[0] = "*undef*" 
+		unless (defined $args[0]);
 
 	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::aggOpString($aggop) . " " . &Triceps::opcodeString($opcode);
 	my $row = $rh->getRow();
@@ -81,13 +84,22 @@ sub aggHandler # (table, context, aggop, opcode, rh, args...)
 
 	# calculate b as count(*), c as sum(c), v as last(d)
 	my $sum = 0;
+	my $lastd;
 	my $lastrh;
 	for (my $iterh = $context->begin(); !$iterh->isNull(); $iterh = $context->next($iterh)) {
 		$lastrh = $iterh;
 		$sum += $iterh->getRow()->get("c");
 	}
 
-	my @vals = ( b => $context->groupSize(), c => $sum, v => $lastrh->getRow()->get("d") );
+	# this aggregator sends a NULL record after the last delete, the other option
+	# would be to send nothing at all when $context->groupSize()==0
+
+	# otherwise d is left as undef
+	if (defined $lastrh) { 
+		$lastd = $lastrh->getRow()->get("d");
+	}
+
+	my @vals = ( b => $context->groupSize(), c => $sum, v => $lastd );
 	my $res = $context->resultType()->makeRowHash(@vals);
 	$context->send($opcode, $res);
 	#print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
@@ -103,8 +115,13 @@ sub append_reshistory
 	#print STDERR "DEBUG append_reshistory\n";
 	my $lab = shift;
 	my $rop = shift;
+	my @arow = $rop->getRow()->toArray();
+	# make the warnings about undefined values shut up
+	foreach my $i (@arow) {
+		$i = "*undef*" unless (defined $i);
+	}
 	$reshistory .= &Triceps::opcodeString($rop->getOpcode()) . " " 
-		. " [" . join(", ", $rop->getRow()->toArray()) . "]\n";
+		. " [" . join(", ", @arow) . "]\n";
 }
 
 my $aggreslab1 = $u1->makeLabel($rt2, "aggres1", \&append_reshistory);
@@ -165,11 +182,21 @@ $res = $t1->insert($r1);
 ok($res == 1);
 $res = $t1->insert($r2);
 ok($res == 1);
+$res = $t1->deleteRow($r2);
+ok($res == 1);
+$res = $t1->deleteRow($r1);
+ok($res == 1);
 
 ok($agghistory, 
-	"call (qqqq, 12) AO_AFTER_INSERT OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
-	. "call (qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
-	. "call (qqqq, 12) AO_AFTER_INSERT OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n");
+	"call (*undef*, qqqq, 12) AO_AFTER_INSERT OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
+	. "call (*undef*, qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (*undef*, qqqq, 12) AO_AFTER_INSERT OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n"
+	. "call (*undef*, qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (*undef*, qqqq, 12) AO_AFTER_DELETE OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n"
+	. "call (*undef*, qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
+	. "call (*undef*, qqqq, 12) AO_AFTER_DELETE OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
+	. "call (*undef*, qqqq, 12) AO_COLLAPSE OP_DELETE NULL\n"
+);
 
 # for the results to propagate through the history label, the unit must run...
 $u1->drainFrame();
@@ -179,8 +206,120 @@ ok($u1->empty());
 ok($reshistory, 
 	"OP_INSERT  [1, 3000000000000000, 3.14]\n"
 	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
-	. "OP_INSERT  [2, 6000000000000000, 2.71]\n");
+	. "OP_INSERT  [2, 6000000000000000, 2.71]\n"
+	. "OP_DELETE  [2, 6000000000000000, 2.71]\n"
+	. "OP_INSERT  [1, 3000000000000000, 3.14]\n"
+	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+	. "OP_INSERT  [0, 0, *undef*]\n"
+	. "OP_DELETE  [0, 0, *undef*]\n"
+);
 
-# XXX test context invalidation
-# XXX example with keeping the state!
+######################### basic aggregation, keeping the context  #############################
+
+my $outside_context;
+
+sub aggHandler2 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	#print STDERR "Got state $state " . ref($state) . "\n";
+
+	if (!$rh->isNull()) {
+		# apply the row
+
+		# for field b instead of if() could use $context->groupSize()
+		if ($aggop == &Triceps::AO_AFTER_INSERT) {
+			$state->{"b"}++;
+			$state->{"c"} += $rh->getRow()->get("c");
+		} elsif ($aggop == &Triceps::AO_AFTER_DELETE) {
+			$state->{"b"}--;
+			$state->{"c"} -= $rh->getRow()->get("c");
+		}
+		# here it uses the last seen record, not last in the group!
+		$state->{"v"} = $rh->getRow()->get("d");
+	}
+
+	# this aggregator sends a NULL record after the last delete, the other option
+	# would be to send nothing at all when $context->groupSize()==0
+
+	my $res = $context->resultType()->makeRowHash(%$state);
+	$context->send($opcode, $res);
+	#print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
+
+	$outside_context = $context; # try to access context later
+}
+
+sub aggConstructor2
+{
+	# the state is reference to the last record sent
+	my $state = { b => 0, c => 0, v => 0 };
+	#print STDERR "Constructed state $state " . ref($state) . "\n";
+	return $state;
+}
+
+undef $reshistory;
+
+$agt2 = Triceps::AggregatorType->new($rt2, "aggr", \&aggConstructor2, \&aggHandler2);
+ok(ref $agt2, "Triceps::AggregatorType");
+
+$it2 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		->setAggregator($agt2)
+	);
+ok(ref $it2, "Triceps::IndexType");
+
+$tt2 = Triceps::TableType->new($rt1)
+	->addSubIndex("grouping", $it2)
+	;
+ok(ref $tt2, "Triceps::TableType");
+
+$res = $tt2->initialize();
+ok($res, 1);
+#print STDERR "$!" . "\n";
+
+$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+ok(ref $t2, "Triceps::Table");
+
+# connect the history recording label, same one as in test 1
+$res = $t2->getAggregatorLabel("aggr");
+ok(ref $res, "Triceps::Label");
+$res = $res->chain($aggreslab1);
+ok($res, 1);
+
+# send the same records 
+
+$res = $t2->insert($r1);
+#print STDERR "error: $!\n";
+ok($res == 1);
+$res = $t2->insert($r2);
+ok($res == 1);
+$res = $t2->deleteRow($r2);
+ok($res == 1);
+$res = $t2->deleteRow($r1);
+ok($res == 1);
+
+# for the results to propagate through the history label, the unit must run...
+$u1->drainFrame();
+ok($u1->empty());
+#print STDERR "DEBUG trace:\n" . $trsn1->print();
+
+ok($reshistory, 
+	"OP_INSERT  [1, 3000000000000000, 3.14]\n"
+	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+	. "OP_INSERT  [2, 6000000000000000, 2.71]\n"
+	. "OP_DELETE  [2, 6000000000000000, 2.71]\n"
+	. "OP_INSERT  [1, 3000000000000000, 2.71]\n" # here the definition of last() is different!
+	. "OP_DELETE  [1, 3000000000000000, 2.71]\n"
+	. "OP_INSERT  [0, 0, 3.14]\n" # 3.14 comes from the record being deleted
+	. "OP_DELETE  [0, 0, 3.14]\n"
+);
+
+# test that the remembered context is invalid
+$res = $outside_context->resultType();
+ok(!defined $res);
+ok("$!", "Triceps::AggregatorContext::resultType(): self has been already invalidated");
+
+#######################################################################
+
+# XXX example with passing args to state constructor
 

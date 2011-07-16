@@ -56,7 +56,8 @@ class PerlAggregator : public Aggregator
 public:
 	// @param table - passed to Aggregator
 	// @param gadget - passed to Aggregator
-	PerlAggregator(Table *table, AggregatorGadget *gadget);
+	// @param sv - state SV or NULL, increases its refcount if not NULL
+	PerlAggregator(Table *table, AggregatorGadget *gadget, SV *sv);
 	virtual ~PerlAggregator();
 
 	// from Aggregator
@@ -64,7 +65,7 @@ public:
 		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray);
 
-	// Set a new value in sv_, increases the refcount.
+	// Set a new value in sv_, increases the refcount if not NULL.
 	void setsv(SV *sv);
 protected:
 	SV *sv_; // maye be used to keep the arbitrary Perl values
