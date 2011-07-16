@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 156 };
+BEGIN { plan tests => 174 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -110,6 +110,11 @@ ok($rt1->same($rtt));
 
 $res = $t1->size();
 ok($res, 0); # no data in the table yet
+
+# successful getAggregatorLabel() tested in Aggregator.t, here test a bad arg
+$res = $t1->getAggregatorLabel("zzz");
+ok(!defined $res);
+ok("$!", "Triceps::Table::getAggregatorLabel: aggregator 'zzz' is not defined on table 'tab1'");
 
 ########################## get label #################################################
 
@@ -419,5 +424,50 @@ $res = $t1->remove($rh1, $ctr2);
 ok(!defined $res);
 ok($! . "", "Triceps::Table::remove: copyTray is from a wrong unit u2, table in unit u1");
 
-# XXX test getAggregatorLabel()
-# XXX test deleteRow()
+# clear out the table
+while ( ! ($rhit = $t1->begin())->isNull() ) {
+	#print STDERR "DEBUG begin $rhit size " . $t1->size() . "\n";
+	$t1->remove($rhit);
+}
+# insert back record , before testing of deleteRow
+$res = $t1->insert($rh1);
+ok($res == 1);
+$res = $rh1->isInTable();
+ok($res);
+$res = $t1->insert($r1);
+ok($res == 1);
+$res = $t1->size();
+ok($res, 2); # they get collected in a FIFO
+
+# test deleteRow
+$res = $t1->deleteRow($r1);
+ok($res == 1);
+$res = $t1->size();
+ok($res, 1); 
+$res = $rh1->isInTable(); # $rh1 was first in table, so it would be found and deleted first
+ok(!$res);
+
+# test deleteRow with copyTray
+$ctr->clear();
+$res = $t1->deleteRow($r1, $ctr);
+ok($res == 1);
+$res = $t1->size();
+ok($res, 0); 
+$res = $ctr->size();
+ok($res, 1);
+
+# test deleteRow for non-existing record
+$res = $t1->deleteRow($r1);
+ok(defined $res && $res == 0);
+
+# bad args deleteRow
+eval { $res = $t1->deleteRow($r1, 1, 2) };
+ok($@, "Usage: Triceps::Table::deleteRow(self, row [, copyTray]) at t/Table.t line 464.\n");
+
+$res = $t1->deleteRow($r2);
+ok(!defined $res);
+ok("$!", "Triceps::Table::deleteRow: table and row types are not equal, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+
+$res = $t1->deleteRow($r1, 1);
+ok(!defined $res);
+ok("$!", "Triceps::Table::deleteRow: copyTray is not a blessed SV reference to WrapTray");

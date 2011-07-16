@@ -319,6 +319,7 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 		RETVAL
 
 # version that takes a Row as an argument and acts as a combination of find/remove
+# returns 1 if deleted, 0 if not found, undef on incorrect arguments
 int
 deleteRow(WrapTable *self, WrapRow *wr, ...)
 	CODE:
@@ -348,12 +349,15 @@ deleteRow(WrapTable *self, WrapRow *wr, ...)
 				XSRETURN_UNDEF;
 		}
 
-		// pretty much a copy of Table::InputLabel::execute()
+		// pretty much a copy of C++ Table::InputLabel::execute()
 		Rhref what(t, t->makeRowHandle(r));
 		RowHandle *rh = t->find(what);
-		if (rh != NULL)
+		if (rh != NULL) {
 			t->remove(rh, ctr);
-		RETVAL = 1;
+			RETVAL = 1;
+		} else {
+			RETVAL = 0;
+		}
 	OUTPUT:
 		RETVAL
 
