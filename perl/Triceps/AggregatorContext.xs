@@ -108,8 +108,6 @@ next(WrapAggregatorContext *self, WrapRowHandle *wcur)
 	OUTPUT:
 		RETVAL
 		
-# XXX test translation to a sibling index, for iteration on it
-
 # translation to the group in another index: can be done in Perl
 # but more efficient and easier to push it into C++
 WrapRowHandle *
