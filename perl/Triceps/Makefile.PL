@@ -39,7 +39,7 @@ clean::
 	rm -f core.* *.core core vgcore.* test.vg Makefile.old
 
 clobber:
-	rm Triceps.o
+	rm -f *.o
 
 Triceps.c: const-c.inc const-xs.inc
 
