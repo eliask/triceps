@@ -24,7 +24,6 @@ DESTROY(WrapAggregatorType *self)
 		delete self;
 
 
-# XXX should wrt and name change places?
 # @param CLASS - name of type being constructed
 # @param wrt - row type of the aggregation result
 # @param name - name that will be used to create the aggregator gadget in the table
@@ -108,6 +107,4 @@ match(WrapAggregatorType *self, WrapAggregatorType *other)
 		RETVAL = agself->match(agother);
 	OUTPUT:
 		RETVAL
-
-# XXX test the methods below
 

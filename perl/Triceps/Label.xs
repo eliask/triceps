@@ -168,6 +168,7 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 		RETVAL
 
 # for PerlLabel, returns the reference to code
+# XXX should return code and all paremeters
 SV *
 getCode(WrapLabel *self)
 	CODE:
@@ -200,4 +201,3 @@ clearCode(WrapLabel *self)
 		}
 		plab->clear();
 
-# XXX add the rest of methods!
