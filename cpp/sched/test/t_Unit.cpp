@@ -614,3 +614,68 @@ UTESTCASE chaining(Utest *utest)
 	// uncomment to check visually
 	// printf("StringTracer got:\n%s", trace3->getBuffer()->print().c_str());
 }
+
+// a class to build circular references between labels, to see how they
+// would get resolved
+class CircularLabel: public Label
+{
+public:
+	CircularLabel(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Onceref<Label> refto) :
+		Label(unit, rtype, name),
+		refto_(refto)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{ }
+
+	virtual void clear()
+	{
+		refto_ = NULL;
+		refunit_ = NULL;
+	}
+
+	Autoref<Label> refto_;
+	Autoref<Unit> refunit_; // to create circular refs to the unit
+};
+
+// test that the unit clears the labels when it gets destroyed
+UTESTCASE clearing1(Utest *utest)
+{
+	// make row for setting
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<CircularLabel> lab1 = new CircularLabel(unit, rt1, "lab1", NULL);
+	Autoref<CircularLabel> lab2 = new CircularLabel(unit, rt1, "lab2", lab1);
+	lab1->refto_ = lab2; // create the circularity
+
+	// when the unit get destoryed, the circularity should get resolved
+}
+
+// test that even if Unit is in a circular reference, the UnitClearingTrigger
+// comes to the resque
+UTESTCASE clearing2(Utest *utest)
+{
+	// make row for setting
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<UnitClearingTrigger> cleanTrigger = new UnitClearingTrigger(unit);
+
+	Autoref<CircularLabel> lab1 = new CircularLabel(unit, rt1, "lab1", NULL);
+	Autoref<CircularLabel> lab2 = new CircularLabel(unit, rt1, "lab2", lab1);
+	lab1->refto_ = lab2; // create the circularity
+
+	// create circularity to the Unit
+	lab1->refunit_ = unit;
+	lab2->refunit_ = unit;
+
+	// when the UnitClearingTrigger get destoryed, the circularity should get resolved
+}

@@ -83,6 +83,11 @@ Unit::Unit(const string &name) :
 	queue_.push_front(outerFrame_);
 }
 
+Unit::~Unit()
+{
+	clearLabels();
+}
+
 void Unit::schedule(Onceref<Rowop> rop)
 {
 	outerFrame_->push_back(rop);
@@ -269,6 +274,35 @@ void Unit::trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerW
 	if (!tracer_.isNull()) {
 		tracer_->execute(this, label, fromLabel, rop, when);
 	}
+}
+
+void Unit::clearLabels()
+{
+	for(LabelMap::iterator it = labelMap_.begin(); it != labelMap_.end(); ++it) {
+		it->first->clear();
+	}
+	labelMap_.clear();
+}
+
+void Unit::rememberLabel(Label *lab)
+{
+	labelMap_[lab] = lab;
+}
+
+void  Unit::forgetLabel(Label *lab)
+{
+	labelMap_.erase(lab);
+}
+
+///////////////////////////// UnitClearingTrigger //////////////////////////////////
+
+UnitClearingTrigger::UnitClearingTrigger(Unit *unit) :
+	unit_(unit)
+{ }
+
+UnitClearingTrigger::~UnitClearingTrigger()
+{
+	unit_->clearLabels();
 }
 
 }; // TRICEPS_NS

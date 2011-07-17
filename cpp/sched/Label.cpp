@@ -16,10 +16,12 @@ namespace TRICEPS_NS {
 Label::Label(Unit *unit, const_Onceref<RowType> rtype, const string &name) :
 	type_(rtype),
 	unit_(unit),
-	name_(name)
+	name_(name),
+	cleared_(false)
 {
 	assert(unit);
-	assert(rtype.get());
+	assert(!type_.isNull());
+	unit->rememberLabel(this);
 }
 
 Label::~Label()
@@ -59,6 +61,12 @@ Erref Label::chain(Onceref<Label> lab)
 void Label::clearChained()
 {
 	chained_.clear();
+}
+
+void Label::clear()
+{
+	clearChained();
+	cleared_ = true;
 }
 
 void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const

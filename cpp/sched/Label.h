@@ -51,6 +51,11 @@ public:
 		return type_;
 	}
 
+	Unit *getUnit() const
+	{
+		return unit_;
+	}
+
 	// Chain another label to this one.
 	// Checks for correct row types and for direct loops.
 	// Note that it still would not detect loops with connections through the input
@@ -75,14 +80,33 @@ public:
 		return name_;
 	}
 
+	// XXX any reason to change name after construction?
 	void setName(const string &name)
 	{
 		name_ = name;
 	}
 
-	Unit *getUnit() const
+	// Clear this label's references. 
+	// The topology of inter-label connections may include loops
+	// (not necessarily as chains, but through the user labels and
+	// user logic).  If each label has a reference to the next one, 
+	// that would create a circular reference, and on destruction the
+	// labels will never be freed. So the Unit keeps track of all the 
+	// labels in it, and eventually requests them to clear their stuff,
+	// thus breaking the circular dependency.
+	// The base class implementation is to call clearChained() and set
+	// the cleared flag.
+	// If the subclasses redefine this method (and if there are any
+	// references in them, they should), they still must call
+	// the parent's method.
+	virtual void clear();
+
+	// Check the cleared flag. This flag means that the program is in the
+	// destruction stage, and the Unit has already logically went away,
+	// so no future work must be done.
+	bool isCleared() const
 	{
-		return unit_;
+		return cleared_;
 	}
 
 protected:
@@ -125,6 +149,7 @@ protected:
 	const_Autoref<RowType> type_; // type of the row handled here
 	Unit *unit_; // not a reference, but more of a token
 	string name_; // human-readable name for tracing
+	bool cleared_; // flag: clear() was called, and the label should stop working
 };
 
 // A label that does nothing: typically used as an endpoint for chaining in the 

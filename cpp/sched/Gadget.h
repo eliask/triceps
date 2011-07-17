@@ -115,7 +115,7 @@ protected:
 	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray *copyTray) const;
 
 protected:
-	Autoref<Unit> unit_; // unit where it belongs (not that Unit doesn't have a ref back, ao Autoref is OK)
+	Unit *unit_; // unit where it belongs (not an autoref, to avoid loops)
 	Autoref<Label> label_; // this gadget's label
 	const_Autoref<RowType> type_; // type of rows
 	string name_; // name of the gadget, passed to the label name

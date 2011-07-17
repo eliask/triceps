@@ -12,6 +12,7 @@
 #include <sched/Tray.h>
 #include <sched/Label.h>
 #include <list>
+#include <map>
 
 namespace TRICEPS_NS {
 
@@ -39,6 +40,7 @@ class Unit : public Mtarget
 public:
 	// @param name - a human-readable name of this unit, for tracing
 	Unit(const string &name);
+	~Unit();
 
 	// Append a rowop to the end of the outermost queue frame.
 	void schedule(Onceref<Rowop> rop);
@@ -99,11 +101,27 @@ public:
 		name_ = name;
 	}
 
-	// XXX There is an issue with potential circular references, when the labels
+	// There is an issue with potential circular references, when the labels
 	// refer to each other with Autorefs, and the topology includes a loop.
-	// Then the labels in the loop will never be freed. A potential solution
-	// would be for the loop to keep track of all the labels, and let the
-	// user program call a clearing request to all of them (through an added method).
+	// Then the labels in the loop will never be freed. A solution used here
+	// is for the unit to keep track of all the labels in it, and let the
+	// user program send a clearing request to all of them.
+	// The Unit and all its labels are normally constructed and used in a
+	// single thread (except for the inter-unit communication). So these calls
+	// must be used only from this thread and don't need synchronization.
+	// {
+	
+	// Clear all the labels, then drop the references from Unit to them.
+	void clearLabels();
+
+	// Remember the label. Called from the label constructor.
+	void rememberLabel(Label *lab);
+
+	// Forget one label. May be useful in case if the label needs to
+	// be deleted early, or come such. This does not clear the label!
+	void  forgetLabel(Label *lab);
+
+	// }
 
 	// Tracing interface.
 	// Often it's hard to figure out, how a certain result got produced.
@@ -213,6 +231,25 @@ protected:
 	Tray *innerFrame_; // the current innermost frame (may happen to be the same as outermost)
 	Autoref<Tracer> tracer_; // the tracer object
 	string name_; // human-readable name for tracing
+	// Keeping track of labels
+	typedef map<Label *, Autoref<Label> > LabelMap;
+	LabelMap labelMap_;
+};
+
+// The idea here is to have an object that definitely would not be involved in
+// circular references, even if the Unit is. So when the trigger object 
+// goes out of scope, it can trigger the clearLabels()
+// call in the Unit. Of course, if you use it, it's your responsibility to not
+// involve it in the circular references!
+// The UnitClearingTrigger object must be owned by the same thread as owns Unit.
+class UnitClearingTrigger : public Mtarget
+{
+public:
+	UnitClearingTrigger(Unit *unit);
+	~UnitClearingTrigger();
+
+protected:
+	Autoref<Unit> unit_; // makes sure that the unit doesn't disappear
 };
 
 }; // TRICEPS_NS
