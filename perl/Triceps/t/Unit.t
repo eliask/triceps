@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 123 };
+BEGIN { plan tests => 114 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -273,30 +273,6 @@ ok($history,
 	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
-
-# enqueueDelayedTray
-$ropd1 = $xlab1->makeRowop("OP_INSERT", $row1, &Triceps::EM_SCHEDULE);
-ok(ref $ropd1, "Triceps::Rowop");
-$ropd2 = $xlab1->makeRowop("OP_DELETE", $row1, "EM_CALL");
-ok(ref $ropd2, "Triceps::Rowop");
-$tray1 = $u1->makeTray($ropd1, $ropd2);
-ok(ref $tray1, "Triceps::Tray");
-$history = "";
-$v = $u1->enqueueDelayedTray($tray1);
-ok($v);
-$u1->drainFrame();
-ok($history, 
-	  "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n" # CALL goes before SCHEDULE!
-	. "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
-);
-$v = $u1->empty();
-ok($v);
-
-$tray1 = $u2->makeTray();
-ok(ref $tray1, "Triceps::Tray");
-$v = $u1->enqueueDelayedTray($tray1);
-ok(! defined $v);
-ok($! . "", "Triceps::Unit::enqueueDelayedTray: tray is from a wrong unit unit2");
 
 #############################################################
 # test scheduling for error catching
