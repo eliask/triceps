@@ -51,10 +51,16 @@ public:
 		return type_;
 	}
 
-	Unit *getUnit() const
+	// If the label has been cleared, returns NULL, so name it differently,
+	// preventing the accidental mistakes.
+	Unit *getUnitPtr() const
 	{
-		return unit_;
+		return cleared_? NULL : unit_;
 	}
+
+	// Getting the unit name is typical, so handle the situation with being cleared.
+	// by returning a placeholder.
+	const string &getUnitName() const;
 
 	// Chain another label to this one.
 	// Checks for correct row types and for direct loops.
@@ -87,6 +93,7 @@ public:
 	}
 
 	// Clear this label's references. 
+	// Once cleared, the label can not be called any more.
 	// The topology of inter-label connections may include loops
 	// (not necessarily as chains, but through the user labels and
 	// user logic).  If each label has a reference to the next one, 
@@ -94,12 +101,15 @@ public:
 	// labels will never be freed. So the Unit keeps track of all the 
 	// labels in it, and eventually requests them to clear their stuff,
 	// thus breaking the circular dependency.
-	// The base class implementation is to call clearChained() and set
-	// the cleared flag.
-	// If the subclasses redefine this method (and if there are any
-	// references in them, they should), they still must call
-	// the parent's method.
-	virtual void clear();
+	// The implementation is to call clearSubclass(), then
+	// clearChained() and set the cleared flag.
+	void clear();
+	// The subclasses may add their own clearing code here, to be called
+	// from clear(), by default does nothing.
+	// It's done this way instead of making clear() virtual because in the
+	// subclass it's too easy to forget to call the parent clear(), leading
+	// to some pretty complicated debugging.
+	virtual void clearSubclass();
 
 	// Check the cleared flag. This flag means that the program is in the
 	// destruction stage, and the Unit has already logically went away,

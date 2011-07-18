@@ -177,7 +177,8 @@ UTESTCASE rowop(Utest *utest)
 	Autoref<Label> lab2 = new DummyLabel(unit, rt1, "lab2");
 	Autoref<Label> lab3 = new DummyLabel(unit, rt1, "lab3");
 
-	UT_IS(lab1->getUnit(), unit.get());
+	UT_IS(lab1->getUnitPtr(), unit.get());
+	UT_IS(lab1->getUnitName(), "my unit");
 
 	// now make the rowops
 	Autoref<Rowop> op1 = new Rowop(lab1, Rowop::OP_NOP, NULL);
@@ -629,7 +630,7 @@ public:
 	virtual void execute(Rowop *arg) const
 	{ }
 
-	virtual void clear()
+	virtual void clearSubclass()
 	{
 		refto_ = NULL;
 		refunit_ = NULL;
@@ -667,7 +668,6 @@ UTESTCASE clearing2(Utest *utest)
 	if (UT_ASSERT(rt1->getErrors().isNull())) return;
 
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<UnitClearingTrigger> cleanTrigger = new UnitClearingTrigger(unit);
 
 	Autoref<CircularLabel> lab1 = new CircularLabel(unit, rt1, "lab1", NULL);
 	Autoref<CircularLabel> lab2 = new CircularLabel(unit, rt1, "lab2", lab1);
@@ -678,4 +678,11 @@ UTESTCASE clearing2(Utest *utest)
 	lab2->refunit_ = unit;
 
 	// when the UnitClearingTrigger get destoryed, the circularity should get resolved
+	{ 
+		Autoref<UnitClearingTrigger> cleanTrigger = new UnitClearingTrigger(unit);
+	}
+	// check that the labels got cleared
+	UT_ASSERT(lab1->isCleared());
+	UT_IS(lab1->getUnitPtr(), NULL);
+	UT_IS(lab1->getUnitName(), "[label cleared]");
 }

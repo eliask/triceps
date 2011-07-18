@@ -112,6 +112,7 @@ public:
 	// {
 	
 	// Clear all the labels, then drop the references from Unit to them.
+	// Normally should be called only when the thread is about to exit!
 	void clearLabels();
 
 	// Remember the label. Called from the label constructor.

@@ -27,6 +27,13 @@ Label::Label(Unit *unit, const_Onceref<RowType> rtype, const string &name) :
 Label::~Label()
 { }
 
+// not inside the function, or it will be initialized in screwed-up order
+static string placeholderUnitName = "[label cleared]";
+const string &Label::getUnitName() const
+{
+	return cleared_? placeholderUnitName : unit_->getName();
+}
+
 Erref Label::chain(Onceref<Label> lab)
 {
 	assert(this != NULL);
@@ -65,12 +72,18 @@ void Label::clearChained()
 
 void Label::clear()
 {
+	clearSubclass();
 	clearChained();
 	cleared_ = true;
 }
 
+void Label::clearSubclass()
+{ }
+
 void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 {
+	if (cleared_) // don't try to execute a cleared label
+		return;
 	assert(unit == unit_); // XXX add some better way to report errors than crash? also check when scheduling a tray
 	unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE);
 	execute(arg);
