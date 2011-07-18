@@ -7,6 +7,7 @@ WrapTableType *	O_WRAP_OBJECT
 
 WrapUnit *	O_WRAP_OBJECT
 WrapUnitTracer *	O_WRAP_OBJECT
+WrapUnitClearingTrigger *	O_WRAP_OBJECT
 WrapTray *	O_WRAP_OBJECT
 WrapLabel *	O_WRAP_OBJECT
 WrapGadget *	O_WRAP_OBJECT

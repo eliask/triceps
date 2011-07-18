@@ -140,8 +140,7 @@ void PerlLabel::execute(Rowop *arg) const
 	dSP;
 
 	if (cb_.isNull()) {
-		warn("Error in unit %s label %s handler: attempted to call the label that has been cleared", 
-			getUnit()->getName().c_str(), getName().c_str());
+		warn("Error in label %s handler: attempted to call the label that has been cleared", getName().c_str());
 		return;
 	}
 
@@ -168,7 +167,7 @@ void PerlLabel::execute(Rowop *arg) const
 		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
 		// Would exit(1) be better?
 		warn("Error in unit %s label %s handler: %s", 
-			getUnit()->getName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
+			getUnitName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
 
 	}
 }

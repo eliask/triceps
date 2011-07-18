@@ -19,7 +19,8 @@ MODULE = Triceps::Unit		PACKAGE = Triceps::Unit
 void
 DESTROY(WrapUnit *self)
 	CODE:
-		// warn("Unit destroyed!");
+		Unit *unit = self->get();
+		// warn("Unit %s %p wrap %p destroyed!", unit->getName().c_str(), unit, self);
 		delete self;
 
 
@@ -28,7 +29,10 @@ Triceps::Unit::new(char *name)
 	CODE:
 		clearErrMsg();
 
-		RETVAL = new WrapUnit(new Unit(name));
+		Autoref<Unit> unit = new Unit(name);
+		WrapUnit *wu = new WrapUnit(unit);
+		// warn("Created unit %s %p wrap %p", name, unit.get(), wu);
+		RETVAL = wu;
 	OUTPUT:
 		RETVAL
 
@@ -229,9 +233,9 @@ makeTray(WrapUnit *self, ...)
 					setErrMsg( strprintf("%s: argument %d has an incorrect magic for Rowop", funcName, i) );
 					XSRETURN_UNDEF;
 				}
-				if (var->get()->getLabel()->getUnit() != unit) {
+				if (var->get()->getLabel()->getUnitPtr() != unit) {
 					setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
-						var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnit()->getName().c_str()) );
+						var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnitName().c_str()) );
 					XSRETURN_UNDEF;
 				}
 			} else{
@@ -267,6 +271,7 @@ makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
 		RETVAL
 
 # make a label with executable Perl code
+# XXX add a Perl handler for clear()?
 WrapLabel *
 makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 	CODE:
@@ -286,4 +291,37 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, cb));
 	OUTPUT:
 		RETVAL
+
+# clear the labels, makes the unit non-runnable
+void
+clearLabels(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *unit = self->get();
+		unit->clearLabels();
+
+# make a clearing trigger
+# (once it's destroyed, the unit will get cleared!)
+WrapUnitClearingTrigger *
+makeClearingTrigger(WrapUnit *self)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::makeLabel";
+		// for casting of return value
+		static char CLASS[] = "Triceps::UnitClearingTrigger";
+
+		clearErrMsg();
+		Unit *unit = self->get();
+
+		RETVAL = new WrapUnitClearingTrigger(new UnitClearingTrigger(unit));
+	OUTPUT:
+		RETVAL
+
+MODULE = Triceps::Unit		PACKAGE = Triceps::UnitClearingTrigger
+###################################################################################
+
+void
+DESTROY(WrapUnitClearingTrigger *self)
+	CODE:
+		// warn("UnitClearingTrigger destroyed!");
+		delete self;
 

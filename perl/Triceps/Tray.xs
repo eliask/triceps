@@ -116,9 +116,9 @@ push(WrapTray *self, ...)
 					setErrMsg( strprintf("%s: argument %d has an incorrect magic for Rowop", funcName, i) );
 					XSRETURN_UNDEF;
 				}
-				if (var->get()->getLabel()->getUnit() != unit) {
+				if (var->get()->getLabel()->getUnitPtr() != unit) {
 					setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
-						var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnit()->getName().c_str()) );
+						var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnitName().c_str()) );
 					XSRETURN_UNDEF;
 				}
 			} else{

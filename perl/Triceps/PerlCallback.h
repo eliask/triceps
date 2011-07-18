@@ -185,7 +185,7 @@ public:
 	}
 
 	// Clear the callback
-	void clear()
+	void clearSubclass()
 	{
 		cb_ = NULL;
 	}

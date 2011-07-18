@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 114 };
+BEGIN { plan tests => 122 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -292,7 +292,8 @@ print STDERR "Expect error message from unit u1 label xlab1 handler about label 
 $v = $u1->call($rop11);
 $xlab1->clearCode(); # now the label could not call anything any more
 $v = $u1->call($rop11);
-ok($v);
+ok(!defined $v);
+ok("$!", "Triceps::Unit::call: argument 1 is a Rowop for label xlab1 from a wrong unit [label cleared]");
 
 #############################################################
 # tracer ops
@@ -597,3 +598,29 @@ $c_expect =
 
 $v = $sntr->print();
 ok($v, $c_expect);
+
+#############################################################
+# MUST BE LAST
+# test the unit clearing
+
+# direct
+$v = $xlab2->getUnit();
+ok($u1->same($v));
+$u1->clearLabels();
+$v = $xlab2->getUnit();
+ok(!defined $v);
+ok("$!", "Triceps::Label::getUnit: label has been already cleared");
+
+# with a trigger object
+$u2lab1 = $u2->makeDummyLabel($rt1, "u2lab1");
+ok(ref $u2lab1, "Triceps::Label");
+{
+	my $trig = $u2->makeClearingTrigger();
+	# check that the label is still alive
+	$v = $u2lab1->getUnit();
+	ok($u2->same($v));
+}
+# now the label on u2 should be cleared
+$v = $u2lab1->getUnit();
+ok(!defined $v);
+ok("$!", "Triceps::Label::getUnit: label has been already cleared");

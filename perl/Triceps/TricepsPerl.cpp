@@ -333,9 +333,9 @@ bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
 		WrapTray *wtray = (WrapTray *)wrop;
 		if (wrop != 0 && !wrop->badMagic()) {
 			Rowop *rop = wrop->get();
-			if (rop->getLabel()->getUnit() != u) {
+			if (rop->getLabel()->getUnitPtr() != u) {
 				setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
-					rop->getLabel()->getName().c_str(), rop->getLabel()->getUnit()->getName().c_str()) );
+					rop->getLabel()->getName().c_str(), rop->getLabel()->getUnitName().c_str()) );
 				return false;
 			}
 			u->enqueue(em, rop);

@@ -43,10 +43,15 @@ getUnit(WrapLabel *self)
 	CODE:
 		clearErrMsg();
 		Label *lab = self->get();
+		Unit *unit = lab->getUnitPtr();
+		if (unit == NULL) {
+			setErrMsg("Triceps::Label::getUnit: label has been already cleared");
+			XSRETURN_UNDEF;
+		}
 
 		// for casting of return value
 		static char CLASS[] = "Triceps::Unit";
-		RETVAL = new WrapUnit(lab->getUnit());
+		RETVAL = new WrapUnit(unit);
 	OUTPUT:
 		RETVAL
 
