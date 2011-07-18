@@ -137,3 +137,4 @@ push(WrapTray *self, ...)
 	OUTPUT:
 		RETVAL
 
+# XXX allow and ignore undefs when converting from Perl, and NULLs when converting from C++
