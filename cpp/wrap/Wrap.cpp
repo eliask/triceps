@@ -16,6 +16,7 @@ WrapMagic magicWrapTableType = { "TableT" };
 
 WrapMagic magicWrapUnit = { "Unit" };
 WrapMagic magicWrapUnitTracer = { "UnitTrc" };
+WrapMagic magicWrapUnitClearingTrigger = { "UnClTg" };
 WrapMagic magicWrapTray = { "Tray" };
 WrapMagic magicWrapLabel = { "Label" };
 WrapMagic magicWrapGadget = { "Gadget" };

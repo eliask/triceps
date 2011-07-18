@@ -182,6 +182,7 @@ DEFINE_WRAP(TableType);
 
 DEFINE_WRAP(Unit);
 DEFINE_WRAP_NESTED_CLASS(Unit::Tracer, UnitTracer);
+DEFINE_WRAP(UnitClearingTrigger);
 DEFINE_WRAP_IDENT(Unit, Tray);
 DEFINE_WRAP(Label);
 DEFINE_WRAP(Gadget);

@@ -127,6 +127,7 @@ UTESTCASE scheduling(Utest *utest)
 {
 	// make a unit 
 	Autoref<Unit> unit = new Unit("u");
+	Autoref<UnitClearingTrigger> cleaner = new UnitClearingTrigger(unit);
 	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
 	unit->setTracer(trace);
 
