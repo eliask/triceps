@@ -10,12 +10,14 @@
 
 namespace TRICEPS_NS {
 
+// these are the same, with or without NSPR!
+
 AtomicInt::AtomicInt() :
 	val_(0)
 { }
 
 AtomicInt::AtomicInt(int val) :
-	val_ (val)
+	val_(val)
 { }
 
 }; // TRICEPS_NS

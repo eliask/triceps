@@ -34,14 +34,22 @@ Configurables
 -------------
 
 Currently there is no ./configure script and all the configuration
-changes have to be done by hand. Two most important places to change
-the configuration are the files cpp/Makefile.inc and
-cpp/common/Conf.h. The extra defines in CFLAGS in Makefile.inc can be
-used to override the macros defined in Conf.h.
+changes have to be done by hand. Three most important places to change
+the configuration are the files cpp/Makefile.inc, cpp/common/Conf.h
+and perl/Triceps/Makefile.PL. Makefile.inc and Makefile.PL need to
+be edited consistently, otherwise the code will not build or will crash.
+The extra defines in CFLAGS in Makefile.inc can be used to override
+the macros defined in Conf.h.
 
 The Conf.h macros are:
 
 	TRICEPS_NS - C++ namespace used by Triceps
+
+Makefile.inc and Makefile.PL settings:
+
+    TRICEPS_NSPR4 and -lnspr4 - enables the use of NSPR4 library
+	(primarily for the atomic operations). Enabled by default, disable
+	if you don't have the NSPR4 library.
 
 Other Makefile.inc settings:
 
