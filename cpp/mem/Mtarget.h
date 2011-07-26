@@ -8,8 +8,9 @@
 #ifndef __Triceps_Mtarget_h__
 #define __Triceps_Mtarget_h__
 
-#include <mem/Autoref.h> // just for convenience
 #include <pw/ptwrap.h>
+#include <mem/Autoref.h> // just for convenience
+#include <mem/Atomic.h>
 
 namespace TRICEPS_NS {
 
@@ -36,29 +37,22 @@ public:
 	// the operations on the count
 	void incref() const
 	{
-		mt_mutex_.lock();
-		++count_;
-		mt_mutex_.unlock();
+		count_.inc();
 	}
 
 	int decref() const
 	{
-		mt_mutex_.lock();
-		int c = --count_;
-		mt_mutex_.unlock();
-		return c;
+		return count_.dec();
 	}
 
 	// this one is mostly for unit tests
 	int getref() const
 	{
-		return count_;
+		return count_.get();
 	}
 
-protected:
-	mutable pw::pmutex mt_mutex_;
 private: // the subclasses really shouldn't mess with it
-	mutable int count_;
+	mutable AtomicInt count_;
 };
 
 }; // TRICEPS_NS
