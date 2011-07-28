@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 122 };
+BEGIN { plan tests => 124 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -109,6 +109,8 @@ ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode integer 20");
 
 ###################### make*Label ###############################
 
+my $clearlog; # where the clear function would write its history
+
 sub exe_history # (label, rowop)
 {
 	my ($label, $rowop) = @_;
@@ -133,15 +135,21 @@ sub exe_die # (label, rowop)
 		. " row=[" . join(", ", $rowop->getRow()->toArray()) . "]";
 }
 
+sub log_clear # (label, args)
+{
+	my $label = shift @_;
+	$clearlog .= "clear " . $label->getName() . " args=["  . join(",", @_) . "]\n";
+}
+
 $dumlab = $u1->makeDummyLabel($rt1, "dumlab");
 ok(ref $dumlab, "Triceps::Label");
 
-$xlab1 = $u1->makeLabel($rt1, "xlab1", \&exe_history);
+$xlab1 = $u1->makeLabel($rt1, "xlab1", \&log_clear, \&exe_history);
 ok(ref $xlab1, "Triceps::Label");
-$xlab2 = $u1->makeLabel($rt1, "xlab2", \&exe_history_xargs, "a", "b");
+$xlab2 = $u1->makeLabel($rt1, "xlab2", \&log_clear, \&exe_history_xargs, "a", "b");
 ok(ref $xlab2, "Triceps::Label");
 
-$dielab = $u1->makeLabel($rt1, "dielab", \&exe_die);
+$dielab = $u1->makeLabel($rt1, "dielab", undef, \&exe_die);
 ok(ref $dielab, "Triceps::Label");
 
 $v = $dumlab->chain($xlab2);
@@ -277,7 +285,7 @@ ok($v);
 #############################################################
 # test scheduling for error catching
 
-$elab1 = $u1->makeLabel($rt1, "elab1", sub { die "an error in label handler" } );
+$elab1 = $u1->makeLabel($rt1, "elab1", undef, sub { die "an error in label handler" } );
 ok(ref $elab1, "Triceps::Label");
 
 $erop = $elab1->makeRowop("OP_INSERT", $row1);
@@ -288,12 +296,12 @@ $v = $u1->schedule($erop);
 $u1->drainFrame();
 ok($v);
 
-print STDERR "Expect error message from unit u1 label xlab1 handler about label that has been cleared\n";
 $v = $u1->call($rop11);
-$xlab1->clearCode(); # now the label could not call anything any more
+$xlab1->clear(); # now the label could not call anything any more
 $v = $u1->call($rop11);
 ok(!defined $v);
 ok("$!", "Triceps::Unit::call: argument 1 is a Rowop for label xlab1 from a wrong unit [label cleared]");
+ok($clearlog, "clear xlab1 args=[]\n");
 
 #############################################################
 # tracer ops
@@ -385,9 +393,9 @@ ok(ref $s_lab2, "Triceps::Label");
 $s_lab3 = $u1->makeDummyLabel($rt1, "lab3");
 ok(ref $s_lab3, "Triceps::Label");
 
-$s_lab4 = $u1->makeLabel($rt1, "lab4", \&exe_sched_fork_call, $s_lab1, $s_lab2, $s_lab3, $row1);
+$s_lab4 = $u1->makeLabel($rt1, "lab4", undef, \&exe_sched_fork_call, $s_lab1, $s_lab2, $s_lab3, $row1);
 ok(ref $s_lab4, "Triceps::Label");
-$s_lab5 = $u1->makeLabel($rt1, "lab5", \&exe_sched_fork_call, $s_lab1, $s_lab2, $s_lab3, $row1);
+$s_lab5 = $u1->makeLabel($rt1, "lab5", undef, \&exe_sched_fork_call, $s_lab1, $s_lab2, $s_lab3, $row1);
 ok(ref $s_lab5, "Triceps::Label");
 
 $s_op4 = $s_lab4->makeRowop(&Triceps::OP_NOP, $row1);
@@ -604,9 +612,11 @@ ok($v, $c_expect);
 # test the unit clearing
 
 # direct
+undef $clearlog;
 $v = $xlab2->getUnit();
 ok($u1->same($v));
 $u1->clearLabels();
+ok($clearlog, "clear xlab2 args=[a,b]\n");
 $v = $xlab2->getUnit();
 ok(!defined $v);
 ok("$!", "Triceps::Label::getUnit: label has been already cleared");

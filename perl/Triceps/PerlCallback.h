@@ -170,8 +170,10 @@ public:
 	// @param unit - the unit where this label belongs
 	// @param rtype - type of row to be handled by this label
 	// @param name - a human-readable name of this label, for tracing
-	// @param cb - callback object
-	PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Onceref<PerlCallback> cb);
+	// @param clr - callback object for clearing (may be NULL)
+	// @param cb - callback object for data processing
+	PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, 
+		Onceref<PerlCallback> clr, Onceref<PerlCallback> cb);
 	~PerlLabel();
 
 	// Get back the code reference (don't give it directly to random Perl code,
@@ -185,16 +187,14 @@ public:
 	}
 
 	// Clear the callback
-	void clearSubclass()
-	{
-		cb_ = NULL;
-	}
+	void clearSubclass();
 
 protected:
 	// from Label
 	virtual void execute(Rowop *arg) const;
 
-	Autoref<PerlCallback> cb_;
+	Autoref<PerlCallback> clear_; // the Perl code for clearing (may be NULL)
+	Autoref<PerlCallback> cb_; // the Perl callback for processing data
 };
 
 // A tracer that executes Perl code.

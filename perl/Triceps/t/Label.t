@@ -132,7 +132,7 @@ sub plab_exec # (label, rowop)
 	1;
 }
 
-$plab = $u1->makeLabel($rt1, "plab", \&plab_exec);
+$plab = $u1->makeLabel($rt1, "plab", undef, \&plab_exec);
 ok(ref $plab, "Triceps::Label");
 
 $res = $plab->getName();
@@ -141,13 +141,13 @@ ok($res, "plab");
 $res = $plab->getCode();
 ok($res, \&plab_exec);
 
-$plab->clearCode();
+$plab->clear();
 ok($! . "", "");
 
 $res = $lb->getCode();
 ok(! defined $res);
 ok($! . "", "Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
 
-$lb->clearCode();
-ok($! . "", "Triceps::Label::clearCode: label is not a Perl Label, has no Perl code");
+$lb->clear(); # even a non-Perl label can be cleared
+ok($! . "", "");
 

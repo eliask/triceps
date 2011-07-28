@@ -271,11 +271,16 @@ makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
 		RETVAL
 
 # make a label with executable Perl code
-# XXX add a Perl handler for clear()?
+# @param self - unit where the new label belongs
+# @param wrt - row type for the label
+# @param name - name o fthe label
+# @param clear - the Perl function reference to be called when the label gets cleared,
+#        may be undef
+# @param exec - the Perl function reference for label execution
+# @param ... - extra args used for both clear and exec callbacks
 WrapLabel *
-makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
+makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *clear, SV *exec, ...)
 	CODE:
-		static char funcName[] =  "Triceps::Unit::makeLabel";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Label";
 
@@ -283,12 +288,20 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, ...)
 		Unit *unit = self->get();
 		RowType *rt = wrt->get();
 
+		Onceref<PerlCallback> clr;
+		if (SvOK(clear)) {
+			clr = new PerlCallback();
+			PerlCallbackInitializeSplit(clr, "Triceps::Unit::makeLabel(clear)", clear, 5, items-5);
+			if (clr->code_ == NULL)
+				XSRETURN_UNDEF; // error message is already set
+		}
+
 		Onceref<PerlCallback> cb = new PerlCallback();
-		PerlCallbackInitialize(cb, funcName, 3, items-3);
+		PerlCallbackInitialize(cb, "Triceps::Unit::makeLabel(callback)", 4, items-4);
 		if (cb->code_ == NULL)
 			XSRETURN_UNDEF; // error message is already set
 
-		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, cb));
+		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, cb));
 	OUTPUT:
 		RETVAL
 

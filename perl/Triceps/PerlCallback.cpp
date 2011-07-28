@@ -127,8 +127,10 @@ bool PerlCallback::equals(const PerlCallback *other) const
 
 ///////////////////////// PerlLabel ///////////////////////////////////////////////
 
-PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Onceref<PerlCallback> cb) :
+PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, 
+		Onceref<PerlCallback> clr, Onceref<PerlCallback> cb) :
 	Label(unit, rtype, name),
+	clear_(clr),
 	cb_(cb)
 { }
 
@@ -170,6 +172,38 @@ void PerlLabel::execute(Rowop *arg) const
 			getUnitName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
 
 	}
+}
+
+void PerlLabel::clearSubclass()
+{
+	dSP;
+
+	if (!clear_.isNull()) { // there is a Perl callback for clearing
+		WrapLabel *wlab = new WrapLabel(const_cast<PerlLabel *>(this));
+		SV *svlab = newSV(0);
+		sv_setref_pv(svlab, "Triceps::Label", (void *)wlab);
+
+		PerlCallbackStartCall(clear_);
+
+		XPUSHs(svlab);
+
+		PerlCallbackDoCall(clear_);
+
+		// this calls the DELETE methods on wrappers
+		SvREFCNT_dec(svlab);
+
+		if (SvTRUE(ERRSV)) {
+			// If in eval, croak may cause issues by doing longjmp(), so better just warn.
+			// Would exit(1) be better?
+			warn("Error in unit %s label %s clearing handler: %s", 
+				getUnitName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
+
+		}
+	}
+
+	// eventually drop the callbacks
+	clear_ = NULL;
+	cb_ = NULL;
 }
 
 ///////////////////////// UnitTracerPerl ///////////////////////////////////////////////

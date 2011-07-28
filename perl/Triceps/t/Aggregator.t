@@ -124,7 +124,7 @@ sub append_reshistory
 		. " [" . join(", ", @arow) . "]\n";
 }
 
-my $aggreslab1 = $u1->makeLabel($rt2, "aggres1", \&append_reshistory);
+my $aggreslab1 = $u1->makeLabel($rt2, "aggres1", undef, \&append_reshistory);
 ok(ref $aggreslab1, "Triceps::Label");
 
 $agt1 = Triceps::AggregatorType->new($rt2, "aggr", undef, \&aggHandler1, "qqqq", 12);
