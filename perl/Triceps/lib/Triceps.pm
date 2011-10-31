@@ -1,3 +1,7 @@
+#
+# This file is a part of Triceps.
+# See the file COPYRIGHT for the copyright notice and license information
+#
 package Triceps;
 
 use 5.008000;
@@ -70,6 +74,7 @@ XSLoader::load('Triceps', $VERSION);
 # Subpackages go here
 require Triceps::UnitTracerPerl;
 require Triceps::UnitTracerStringName;
+require Triceps::Opt;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 

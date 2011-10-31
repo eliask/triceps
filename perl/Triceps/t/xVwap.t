@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 24 };
+BEGIN { plan tests => 13 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -173,109 +173,6 @@ ok(&dataToString(@resultData), &dataToString(@expectResultData));
 
 # XXX work in progress...
 
-# a simple reusable class to parse options, should move into the main Triceps
-package parseopt;
-use Carp;
-
-# parse a set of options
-sub parse # ($class, %$instance, %$optdescr, @opts)
-{
-	my $class = shift;
-	my $instance = shift;
-	my $descr = shift; # ref to hash of optionName => defaultValue
-	my ($k, $varr, $v);
-
-	foreach $k (keys %$descr) { # set the defaults
-		$instance->{$k} = $descr->{k}[0];
-	}
-
-	while ($#_ >= 1) { # pick in pairs
-		$k = shift;
-		$v = shift;
-		Carp::confess "Unknown option '$k' for class '$class'"
-			unless exists $descr->{$k};
-		$instance->{$k} = $v;
-	}
-	Carp::confess "Last option '$k' for class '$class' is without a value"
-		unless $#_ == -1;
-
-	# now check the values: must go through all the defined options,
-	# or the missing mandatory options won't be caught
-	foreach $k (keys %$descr) {
-		$varr = $descr->{$k}; # value array: ($defval, \&check)
-		if (defined $varr->[1]) { # run the check
-			&{$varr->[1]}($instance->{$k}, $k, $class, $instance); # will die on error
-		}
-	}
-}
-
-# checking methoods: they share the same signature (with possibly more
-# arguments added) and can be called from the user's checking
-# The signature is:
-# ($optval, $optname, $class, %$instance)
-#    optval - option value that is being tested
-#    optname - option name
-#    class - class name
-#    instance - object instance where all the options can be found
-# If the check fails, the method dies (or confesses).
-
-# check that the option value is not undef
-sub ck_mandatory
-{
-	#print STDERR "\nDEBUG ck_mandatory('" . join("', '", @_) . "')\n";
-	my ($optval, $optname, $class, $instance) = @_;
-	Carp::confess "Option '$optname' must be specified for class '$class'"
-		unless defined $optval;
-}
-
-# tests
-package main;
-
-my $optdef =  {
-	mand => [ undef, \&parseopt::ck_mandatory ],
-	opt => [ 9, undef ],
-	veryopt => [ undef, undef ],
-};
-
-my $testobj = {};
-
-eval {
-	parseopt::parse(MYCLASS, $testobj, $optdef,
-		mand => 1, opt => 2, veryopt => 3);
-};
-ok(!$@);
-ok($testobj->{mand}, 1);
-ok($testobj->{opt}, 2);
-ok($testobj->{veryopt}, 3);
-
-eval {
-	parseopt::parse(MYCLASS, $testobj, $optdef,
-		mand => 9);
-};
-ok(!$@);
-ok($testobj->{mand}, 9);
-ok(!defined $testobj->{opt});
-ok(!defined $testobj->{veryopt});
-
-eval {
-	parseopt::parse(MYCLASS, $testobj, $optdef,
-		mand => 9, zzz => 99);
-};
-ok($@ =~ /^Unknown option 'zzz' for class 'MYCLASS' at .*/);
-
-eval {
-	parseopt::parse(MYCLASS, $testobj, $optdef,
-		mand => 9, "zzz");
-};
-ok($@ =~ /^Last option 'mand' for class 'MYCLASS' is without a value at .*/);
-
-$testobj = {};
-eval {
-	parseopt::parse(MYCLASS, $testobj, $optdef,
-		opt => 9);
-};
-ok($@ =~ /^Option 'mand' must be specified for class 'MYCLASS' at .*/);
-
 ############################# vwap package ####################################
 package vwap2;
 
@@ -308,14 +205,14 @@ sub new # (class, optionName => optionValue ...)
 	my $class = shift;
 	my $self = {};
 
-	parseopt::parse($class, $self, {
-			unit => [ undef, \&parseopt::ck_mandatory ],
-			name => [ undef, \&parseopt::ck_mandatory ],
-			rowType => [ undef, \&parseopt::ck_mandatory ],
-			key => [ undef, \&parseopt::ck_mandatory ],
-			volumeFld => [ undef, \&parseopt::ck_mandatory ],
-			priceFld => [ undef, \&parseopt::ck_mandatory ],
-			vwapFld => [ undef, \&parseopt::ck_mandatory ],
+	Triceps::Opt::parse($class, $self, {
+			unit => [ undef, \&Triceps::Opt::ck_mandatory ],
+			name => [ undef, \&Triceps::Opt::ck_mandatory ],
+			rowType => [ undef, \&Triceps::Opt::ck_mandatory ],
+			key => [ undef, \&Triceps::Opt::ck_mandatory ],
+			volumeFld => [ undef, \&Triceps::Opt::ck_mandatory ],
+			priceFld => [ undef, \&Triceps::Opt::ck_mandatory ],
+			vwapFld => [ undef, \&Triceps::Opt::ck_mandatory ],
 			enqMode => [ &Triceps::EM_FORK, undef ],
 		}, @_);
 	# XXXXXXXXXXXXXXX
