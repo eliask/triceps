@@ -498,6 +498,20 @@ RowHandle *IndexType::firstOfGroupIdx(const Table *table, const RowHandle *cur) 
 	return first;
 }
 
+RowHandle *IndexType::lastOfGroupIdx(const Table *table, const RowHandle *cur) const
+{
+	// logically it's very much like findRecord(), only allows the non-leaf types too
+	
+	// fprintf(stderr, "DEBUG IndexType::lastOfGroupIdx(this=%p, table=%p, cur=%p)\n", this, table, cur);
+
+	const Index *myidx = parent_->findNestedIndex(nestPos_, table, cur);
+	if (myidx == NULL)
+		return NULL;
+	RowHandle *last = myidx->last();
+	// fprintf(stderr, "DEBUG IndexType::lastOfGroupIdx(this=%p, table=%p, cur=%p) return %p\n", this, table, cur, last);
+	return last;
+}
+
 RowHandle *IndexType::nextGroupIdx(const Table *table, const RowHandle *cur) const
 {
 	// logically it's very much like findRecord(), only allows the non-leaf types too

@@ -289,6 +289,14 @@ RowHandle *Table::nextGroupIdx(IndexType *ixt, const RowHandle *cur) const
 	return ixt->nextGroupIdx(this, cur);
 }
 
+RowHandle *Table::lastOfGroupIdx(IndexType *ixt, const RowHandle *cur) const
+{
+	if (ixt == NULL || ixt->getTabtype() != type_ || cur == NULL || !cur->isInTable())
+		return NULL;
+
+	return ixt->lastOfGroupIdx(this, cur);
+}
+
 RowHandle *Table::findIdx(IndexType *ixt, const RowHandle *what) const
 {
 	if (ixt == NULL || ixt->getTabtype() != type_)

@@ -804,6 +804,57 @@ UTESTCASE deepNested(Utest *utest)
 	if (UT_IS(i, 8))
 		return;
 
+	// test the lastOfGroupIdx(), using the collected hist[]
+	i = 0;
+	for (iter = t->beginIdx(level3); iter != NULL; iter = t->nextIdx(level3, iter)) {
+		{
+			int j = i - (i%2) + 1;
+			iter2 = t->lastOfGroupIdx(level3, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    lastOfGroupIdx(level3, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+			// parallel3 has the same order
+			iter2 = t->lastOfGroupIdx(parallel3, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    lastOfGroupIdx(parallel3, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			int j = i - (i%4) + 3;
+			iter2 = t->lastOfGroupIdx(level2, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    lastOfGroupIdx(level2, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			int j = i - (i%8) + 7;
+			iter2 = t->lastOfGroupIdx(level1, iter);
+			if (UT_ASSERT(iter2 == hist[j])) {
+				printf("    lastOfGroupIdx(level1, iter[%d])=%p iter[%d]=%p\n", i, iter2, j, hist[j]);
+				for (int k = 0; k <= i; k++)
+					printf("      [%d]=%p\n", k, hist[k]);
+				fflush(stdout);
+			}
+		}
+		{
+			iter2 = t->lastOfGroupIdx(parallel1, iter);
+			if (UT_ASSERT(iter2 == rh22copy)) {
+				printf("    lastOfGroupIdx(parallel1, iter[%d])=%p expect=%p\n", i, iter2, rh11.get());
+				fflush(stdout);
+			}
+		}
+		++i;
+	}
+
 	// check nextGroupIdx() after the history is built
 	hist[8] = NULL; // going past the contents returns NULL
 	for (i = 0; i < 8; i++) {
@@ -866,6 +917,12 @@ UTESTCASE deepNested(Utest *utest)
 	iter2 = t->firstOfGroupIdx(level3, NULL);
 	UT_IS(iter2, NULL);
 	iter2 = t->firstOfGroupIdx(level1, NULL);
+	UT_IS(iter2, NULL);
+	iter2 = t->lastOfGroupIdx(NULL, hist[0]);
+	UT_IS(iter2, NULL);
+	iter2 = t->lastOfGroupIdx(level3, NULL);
+	UT_IS(iter2, NULL);
+	iter2 = t->lastOfGroupIdx(level1, NULL);
 	UT_IS(iter2, NULL);
 
 	// now the same iteration on a nested index

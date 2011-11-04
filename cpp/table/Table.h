@@ -136,6 +136,14 @@ public:
 	//        is not in table or NULL, returns NULL)
 	RowHandle *firstOfGroupIdx(IndexType *ixt, const RowHandle *cur) const;
 
+	// Return the last row in the same group (according to this index)
+	// as the current row.
+	// @param ixt - index type from this table's type (may be not leaf)
+	// @param cur - the current handle
+	// @return - handle of the last row in the same group (if the current group
+	//        is not in table or NULL, returns NULL)
+	RowHandle *lastOfGroupIdx(IndexType *ixt, const RowHandle *cur) const;
+
 	// Return the first row of the next group (according to this index).
 	// For the nested indexes, a way to skip over all the
 	// remaining records in the current group.
