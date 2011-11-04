@@ -108,6 +108,18 @@ next(WrapAggregatorContext *self, WrapRowHandle *wcur)
 	OUTPUT:
 		RETVAL
 		
+WrapRowHandle *
+last(WrapAggregatorContext *self)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->getTable();
+		Index *idx = self->getIndex();
+		RETVAL = new WrapRowHandle(t, idx->last());
+	OUTPUT:
+		RETVAL
+		
 # translation to the group in another index: can be done in Perl
 # but more efficient and easier to push it into C++
 WrapRowHandle *
