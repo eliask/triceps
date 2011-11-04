@@ -99,7 +99,7 @@ public:
 	// @param row - the row to find matching and remove
 	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true if found and removed, false if not found
-	bool findAndRemoveRow(const Row *row, Tray *copyTray = NULL);
+	bool deleteRow(const Row *row, Tray *copyTray = NULL);
 
 	// Get the handle of the first record in this table.
 	// A random index will be used for iteration. Usually this will be

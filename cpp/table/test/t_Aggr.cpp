@@ -547,7 +547,7 @@ UTESTCASE aggLast(Utest *utest)
 	
 	sval[0] = 'A';
 	r11 = rt1->makeRow(dv);
-	UT_ASSERT(t->findAndRemoveRow(r11));
+	UT_ASSERT(t->deleteRow(r11));
 	
 	// this will be a replacement
 	sval[0] = 'B';
