@@ -350,14 +350,7 @@ deleteRow(WrapTable *self, WrapRow *wr, ...)
 		}
 
 		// pretty much a copy of C++ Table::InputLabel::execute()
-		Rhref what(t, t->makeRowHandle(r));
-		RowHandle *rh = t->find(what);
-		if (rh != NULL) {
-			t->remove(rh, ctr);
-			RETVAL = 1;
-		} else {
-			RETVAL = 0;
-		}
+		RETVAL = t->deleteRow(r, ctr)? 1 : 0;
 	OUTPUT:
 		RETVAL
 
