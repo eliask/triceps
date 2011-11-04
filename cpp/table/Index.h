@@ -48,6 +48,13 @@ public:
 	//       or not in the table or NULL
 	virtual RowHandle *next(const RowHandle *cur) const = 0;
 
+	// Get the handle of the last record in this index.
+	// This is convenient for aggregators. Yes, the last record could be remembered
+	// during iteration but this is so much more convenient. Note that there is no
+	// prev(), at least yet.
+	// @return - the handle, or NULL if the index is empty
+	virtual RowHandle *last() const = 0;
+
 	// For the nested indexes, find the next group in them.
 	// @param cur - the current group in this index
 	// @return - the next group, or NULL if the current group was the last one or was NULL

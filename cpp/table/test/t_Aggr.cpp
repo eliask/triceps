@@ -378,7 +378,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(unit->empty());
 
 	UT_IS(countLevel2->count_, 11);
-	UT_IS(countPrimary->count_, 12);
+	UT_IS(countPrimary->count_, 13);
 
 	string tlog = trace->getBuffer()->print();
 
@@ -390,6 +390,8 @@ UTESTCASE tableops(Utest *utest)
 		"unit 'u' before label 'countLevel2' (chain 't.onLevel2') op OP_INSERT\n"
 
 		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.onPrimary' op OP_DELETE\n"
+		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_DELETE\n"
 		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
 		"unit 'u' before label 'countPrimary' (chain 't.onPrimary') op OP_INSERT\n"
 		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
@@ -450,3 +452,147 @@ UTESTCASE tableops(Utest *utest)
 	}
 
 }
+
+// begin() implementation is common with the iteration on the table,
+// but last() is unique to the aggregator interface, and needs to be tested
+// for all index types.
+
+// An aggregator that gets the last record and
+// records its information in the messages
+// (uses the same aggHistory as recordHistory()),
+// sending nothing.
+void recordLast(Table *table, AggregatorGadget *gadget, Index *index,
+        const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+{
+	int val_b = 9999;
+	const char *val_e = "(none)";
+
+	// pick fields e and b as "interesting" ones
+	RowHandle *lastrh = index->last();
+	if (lastrh != NULL) {
+		val_e = table->getRowType()->getString(lastrh->getRow(), 4); // field e
+		val_b = table->getRowType()->getInt32(lastrh->getRow(), 1, 0); // field b
+	}
+
+	aggHistory->appendMsg(false, strprintf("%s ao=%s op=%s e=%s b=%d",
+		gadget->getName().c_str(), Aggregator::aggOpString(aggop),
+		Rowop::opcodeString(opcode), val_e, val_b));
+}
+
+UTESTCASE aggLast(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	// there no need for a primary index, put the aggregation
+	// index(es) as top-level
+	Autoref<TableType> tt = ( new TableType(rt1))
+			->addSubIndex("Hashed", (new HashedIndexType( // will be the default index
+					(new NameSet())->add("e")
+				))->setAggregator(
+					new BasicAggregatorType("onHashed", rt1, recordLast)
+				)
+			)->addSubIndex("Fifo", (new FifoIndexType(
+				))->setAggregator(
+					new BasicAggregatorType("onFifo", rt1, recordLast)
+				)
+			)->addSubIndex("HashedNested", (new HashedIndexType(
+					(new NameSet())->add("e")
+				))->addSubIndex("innerFifo", new FifoIndexType() 
+					// will always contain one row per fifo because "Hashed" will force it
+				)->setAggregator(
+					new BasicAggregatorType("onHashedNested", rt1, recordLast)
+				)
+			);
+
+	aggHistory = new Errors;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	FdataVec dv;
+	mkfdata(dv);
+
+	char sval[2] = "x"; // one-character string for "e"
+	dv[4].setPtr(true, &sval, sizeof(sval));
+
+	Rowref r11(rt1);
+
+	sval[0] = 'A';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'B';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'C';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'D';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'A';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->findAndRemoveRow(r11));
+	
+	// this will be a replacement
+	sval[0] = 'B';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	string result_expect = 
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
+		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
+		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=C b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=C b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
+		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onHashed ao=AO_AFTER_DELETE op=OP_INSERT e=D b=1234\n"
+		"t.onFifo ao=AO_AFTER_DELETE op=OP_INSERT e=D b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_DELETE op=OP_INSERT e=D b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onHashed ao=AO_AFTER_DELETE op=OP_NOP e=D b=1234\n"
+		"t.onFifo ao=AO_AFTER_DELETE op=OP_NOP e=B b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_DELETE op=OP_NOP e=D b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
+		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
+	;
+	string tlog = aggHistory->print();
+	UT_IS(tlog, result_expect);
+}
+

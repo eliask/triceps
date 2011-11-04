@@ -47,6 +47,11 @@ RowHandle *RootIndex::next(const RowHandle *cur) const
 	return type_->nextIteration(rootg_, cur);
 }
 
+RowHandle *RootIndex::last() const
+{
+	return type_->last(rootg_);
+}
+
 const GroupHandle *RootIndex::nextGroup(const GroupHandle *cur) const
 {
 	// The root index has only one group, nowhere to go next.

@@ -62,6 +62,17 @@ RowHandle *HashedIndex::next(const RowHandle *cur) const
 	}
 }
 
+RowHandle *HashedIndex::last() const
+{
+	if (data_.empty()) {
+		return NULL;
+	} else {
+		Set::iterator it = data_.end();
+		--it; // OK because the set has bidirectional iterators
+		return *it;
+	}
+}
+
 const GroupHandle *HashedIndex::nextGroup(const GroupHandle *cur) const
 {
 	return NULL;

@@ -202,7 +202,7 @@ void RowType::fillFdata(FdataVec &v, int nf)
 	}
 }
 
-uint8_t RowType::getUint8(const Row *row, int nf, int pos)
+uint8_t RowType::getUint8(const Row *row, int nf, int pos) const
 {
 	uint8_t val;
 
@@ -217,7 +217,7 @@ uint8_t RowType::getUint8(const Row *row, int nf, int pos)
 	}
 }
 
-int32_t RowType::getInt32(const Row *row, int nf, int pos)
+int32_t RowType::getInt32(const Row *row, int nf, int pos) const
 {
 	int32_t val;
 
@@ -232,7 +232,7 @@ int32_t RowType::getInt32(const Row *row, int nf, int pos)
 	}
 }
 
-int64_t RowType::getInt64(const Row *row, int nf, int pos)
+int64_t RowType::getInt64(const Row *row, int nf, int pos) const
 {
 	int64_t val;
 
@@ -247,7 +247,7 @@ int64_t RowType::getInt64(const Row *row, int nf, int pos)
 	}
 }
 
-double RowType::getFloat64(const Row *row, int nf, int pos)
+double RowType::getFloat64(const Row *row, int nf, int pos) const
 {
 	double val;
 
@@ -262,7 +262,7 @@ double RowType::getFloat64(const Row *row, int nf, int pos)
 	}
 }
 
-const char *RowType::getString(const Row *row, int nf)
+const char *RowType::getString(const Row *row, int nf) const
 {
 	const char *ptr;
 	intptr_t len;

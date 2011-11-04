@@ -54,8 +54,18 @@ RowHandle *HashedNestedIndex::begin() const
 	Set::iterator it = data_.begin();
 	if (it == data_.end())
 		return NULL;
-	else
-		return type_->beginIteration(static_cast<GroupHandle *>(*it));
+	else {
+		RowHandle *rh = type_->beginIteration(static_cast<GroupHandle *>(*it));
+		if (rh == NULL) {
+			// the first group may be empty while there is another non-empty group:
+			// could happen when a new group is already created but not yet
+			// populated during aggregation
+			while (rh == NULL && ++it != data_.end()) {
+				rh = type_->beginIteration(static_cast<GroupHandle *>(*it));
+			}
+		}
+		return rh;
+	}
 }
 
 RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
@@ -84,6 +94,27 @@ RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
 	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) return NULL\n", this);
 
 	return NULL;
+}
+
+RowHandle *HashedNestedIndex::last() const
+{
+	if (data_.empty()) {
+		return NULL;
+	} else {
+		Set::iterator it = data_.end();
+		// decrease is OK because the set has bidirectional iterators
+		RowHandle *rh = type_->last(static_cast<GroupHandle *>(*--it));
+		if (rh == NULL) {
+			// the last group may be empty while there is another non-empty group:
+			// could happen when a new group is already created but not yet
+			// populated during aggregation
+			Set::iterator first = data_.begin();
+			while (rh == NULL && it != first) {
+				rh = type_->last(static_cast<GroupHandle *>(*--it));
+			}
+		}
+		return rh;
+	}
 }
 
 const GroupHandle *HashedNestedIndex::nextGroup(const GroupHandle *cur) const

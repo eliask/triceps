@@ -474,6 +474,15 @@ public:
 	//      in the group.
 	RowHandle *nextIteration(GroupHandle *gh, const RowHandle *cur) const;
 
+	// Get the last record through the nested indexes:
+	// pick the first index in the group and pass the request there.
+	// It's of the same call type as beginIteration() but there currently
+	// is no way to iterate backwards from the last record.
+	// @param gh - the group instance to iterate on, may be NULL
+	// @return - the last row in the group according to that index's order,
+	//      may be NULL if the group is empty.
+	RowHandle *last(GroupHandle *gh) const;
+
 	// Find an index instance in the group handle.
 	// @param gh - the group instance, may be NULL
 	// @param nestPos - position of the nested index

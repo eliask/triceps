@@ -56,6 +56,14 @@ RowHandle *FifoIndex::next(const RowHandle *cur) const
 		return rs->next_;
 }
 
+RowHandle *FifoIndex::last() const
+{
+	if (type_->isReverse())
+		return first_;
+	else
+		return last_;
+}
+
 const GroupHandle *FifoIndex::nextGroup(const GroupHandle *cur) const
 {
 	return NULL;

@@ -428,6 +428,15 @@ RowHandle *IndexType::nextIteration(GroupHandle *gh, const RowHandle *cur) const
 	return gs->subidx_[0]->next(cur);
 }
 
+RowHandle *IndexType::last(GroupHandle *gh) const
+{
+	if (gh == NULL)
+		return NULL;
+
+	GhSection *gs = getGhSection(gh);
+	return gs->subidx_[0]->last();
+}
+
 RowHandle *IndexType::beginIterationIdx(const Table *table) const
 {
 	// logically it's very much like findRecord(), only allows the non-leaf types too

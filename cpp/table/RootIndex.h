@@ -31,6 +31,7 @@ public:
 	virtual const IndexType *getType() const;
 	virtual RowHandle *begin() const;
 	virtual RowHandle *next(const RowHandle *cur) const;
+	virtual RowHandle *last() const;
 	virtual const GroupHandle *nextGroup(const GroupHandle *cur) const;
 	virtual const GroupHandle *beginGroup() const;
 	virtual const GroupHandle *toGroup(const RowHandle *cur) const;

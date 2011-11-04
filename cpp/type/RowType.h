@@ -177,11 +177,11 @@ public:
 	// @param row - row to operate on
 	// @param nf - field number, starting from 0
 	// @param pos - position of element in field array, 0 by default
-	uint8_t getUint8(const Row *row, int nf, int pos = 0);
-	int32_t getInt32(const Row *row, int nf, int pos = 0);
-	int64_t getInt64(const Row *row, int nf, int pos = 0);
-	double getFloat64(const Row *row, int nf, int pos = 0);
-	const char *getString(const Row *row, int nf);
+	uint8_t getUint8(const Row *row, int nf, int pos = 0) const;
+	int32_t getInt32(const Row *row, int nf, int pos = 0) const;
+	int64_t getInt64(const Row *row, int nf, int pos = 0) const;
+	double getFloat64(const Row *row, int nf, int pos = 0) const;
+	const char *getString(const Row *row, int nf) const;
 	// }
 
 protected:
