@@ -248,6 +248,10 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(iter != NULL);
 	iter = t->next(iter);
 	UT_ASSERT(iter == NULL);
+
+	// test findAndRemove()
+	UT_ASSERT(t->findAndRemoveRow(r3));
+	UT_ASSERT(!t->findAndRemoveRow(r3)); // already removed, not found any more
 }
 
 // queuing is tested in t_HashedNested

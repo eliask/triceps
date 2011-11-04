@@ -26,10 +26,7 @@ void Table::InputLabel::execute(Rowop *arg) const
 	if (arg->isInsert()) {
 		table_->insertRow(arg->getRow()); // ignore the failures
 	} else if (arg->isDelete()) {
-		Rhref what(table_, table_->makeRowHandle(arg->getRow()));
-		RowHandle *rh = table_->find(what);
-		if (rh != NULL)
-			table_->remove(rh);
+		table_->findAndRemoveRow(arg->getRow());
 	}
 }
 
@@ -237,6 +234,17 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	// between themselves they go sort of in parallel.
 	if (!noAggs) 
 		unit_->enqueueDelayedTray(aggTray); 
+}
+
+bool Table::findAndRemoveRow(const Row *row, Tray *copyTray)
+{
+	Rhref what(this, makeRowHandle(row));
+	RowHandle *rh = find(what);
+	if (rh != NULL) {
+		remove(rh, copyTray);
+		return true;
+	}
+	return false;
 }
 
 RowHandle *Table::begin() const
