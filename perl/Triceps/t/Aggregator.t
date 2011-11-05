@@ -454,11 +454,10 @@ sub aggHandler4 # (table, context, aggop, opcode, rh, state, args...)
 	# calculate b as count(*), c as sum(c), v as last(d)
 	# but iterate on a FIFO index in reverse order, so v actually becomes first(d)
 	my $sum = 0;
-	my $lastrh;
-	my $lastd;
 	my $end = $context->endIdx($otherIndexType);
+	my $itlastrh;
 	for (my $iterh = $context->beginIdx($otherIndexType); !$iterh->same($end); $iterh = $table->nextIdx($otherIndexType, $iterh)) {
-		$lastrh = $iterh;
+		$itlastrh = $iterh;
 		$sum += $iterh->getRow()->get("c");
 	}
 
@@ -466,8 +465,14 @@ sub aggHandler4 # (table, context, aggop, opcode, rh, state, args...)
 	# would be to send nothing at all when $context->groupSize()==0
 
 	# otherwise d is left as undef
-	if (defined $lastrh) { 
-		$lastd = $lastrh->getRow()->get("d");
+	my $lastrh = $context->lastIdx($otherIndexType);
+	my $lastd;
+	if (!$lastrh->isNull()) { 
+		if ($lastrh->same($itlastrh)) {
+			$lastd = $lastrh->getRow()->get("d");
+		} else {
+			$lastd = 999999; # if iteration picks a different last record
+		}
 	}
 
 	my @vals = ( b => $context->groupSize(), c => $sum, v => $lastd );

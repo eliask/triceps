@@ -174,6 +174,33 @@ endIdx(WrapAggregatorContext *self, WrapIndexType *widx)
 	OUTPUT:
 		RETVAL
 
+# translation to the group in another index: can be done in Perl
+# but more efficient and easier to push it into C++
+WrapRowHandle *
+lastIdx(WrapAggregatorContext *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->getTable();
+		Index *myidx = self->getIndex();
+
+		RowHandle *sample = myidx->begin();
+		if (sample == NULL) {
+			RETVAL = new WrapRowHandle(t, NULL);
+		} else {
+			IndexType *idx = widx->get();
+
+			static char funcName[] =  "Triceps::AggregatorContext::lastIdx";
+			if (idx->getTabtype() != t->getType()) {
+				setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+				XSRETURN_UNDEF;
+			}
+			RETVAL = new WrapRowHandle(t, t->lastOfGroupIdx(idx, sample));
+		}
+	OUTPUT:
+		RETVAL
+
 # returns 1 on success, undef on error;
 # enqueueing mode is taken from the aggregator gadget
 int
