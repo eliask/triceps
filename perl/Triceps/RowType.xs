@@ -86,6 +86,7 @@ getdef(WrapRowType *self)
 
 
 # the row factory, from a hash-style name-value list
+# XXX add a version that ignores unknown fields, useful for row type conversions
 WrapRow *
 makeRowHash(WrapRowType *self, ...)
 	CODE:
