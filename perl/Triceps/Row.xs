@@ -151,6 +151,19 @@ get(WrapRow *self, char *fname)
 		bool notNull = t->getField(r, i, data, dlen);
 		XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 
+# get the type of the row
+WrapRowType*
+getType(WrapRow *self)
+	CODE:
+		clearErrMsg();
+		RowType *t = self->ref_.getType();
+
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+		RETVAL = new WrapRowType(t);
+	OUTPUT:
+		RETVAL
+
 # check whether both refs point to the same object
 int
 same(WrapRow *self, WrapRow *other)

@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 70 };
+BEGIN { plan tests => 71 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -78,6 +78,7 @@ ok(ref $rt3, "Triceps::RowType");
 );
 $r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
+ok($r1->getType()->same($rt1));
 
 # this result is dependent on the machine byte order, so it's not for final tests
 # but just for debugging
