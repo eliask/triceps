@@ -84,6 +84,53 @@ getdef(WrapRowType *self)
 			XPUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
 		}
 
+# the following methods break up the type definitions for the convenience
+# of row type manipulation from Perl
+
+# get back the field names only (left side of the definition)
+SV *
+getFieldNames(WrapRowType *self)
+	PPCODE:
+		clearErrMsg();
+		RowType *rt = self->get();
+
+		const RowType::FieldVec &fld = rt->fields();
+		int nf = fld.size();
+		for (int i = 0; i < nf; i++) {
+			XPUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
+		}
+
+# get back the field types only (right side of the definition)
+SV *
+getFieldTypes(WrapRowType *self)
+	PPCODE:
+		clearErrMsg();
+		RowType *rt = self->get();
+
+		const RowType::FieldVec &fld = rt->fields();
+		int nf = fld.size();
+		for (int i = 0; i < nf; i++) {
+			string t = fld[i].type_->print();
+			if (fld[i].arsz_ >= 0)
+				t.append("[]");
+			XPUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
+		}
+
+# get back the mapping of field names to their indexes in row type
+# i.e. (field0 => 0, field1 => 1, ...)
+SV *
+getFieldMapping(WrapRowType *self)
+	PPCODE:
+		clearErrMsg();
+		RowType *rt = self->get();
+
+		const RowType::FieldVec &fld = rt->fields();
+		int nf = fld.size();
+		for (int i = 0; i < nf; i++) {
+			XPUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
+			XPUSHs(sv_2mortal(newSViv(i)));
+		}
+
 
 # the row factory, from a hash-style name-value list
 # XXX add a version that ignores unknown fields, useful for row type conversions
