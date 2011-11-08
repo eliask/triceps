@@ -83,4 +83,36 @@ sub ck_mandatory
 		unless defined $optval;
 }
 
+# check that the option value is a reference to a class
+# @param refto - class name (or ARRAY or HASH)
+# @param reftoref (optional) - if refto is ARRAY or HASH, can be used
+#        to specify the type of values in it
+#    
+# XXX test it
+sub ck_ref
+{
+	#print STDERR "\nDEBUG ck_ref('" . join("', '", @_) . "')\n";
+	my ($optval, $optname, $class, $instance, $refto, $reftoref) = @_;
+	return if !defined $optval; # undefined value is OK
+	my $rval = ref $optval;
+	Carp::confess "Option '$optname' of class '$class' must be a reference to '$refto', is '$rval'"
+		unless ($rval eq $refto);
+	if (defined  $reftoref) {
+		if ($rval eq "ARRAY") {
+			foreach my $v (@$optval) {
+				$rval = ref $v;
+				Carp::confess "Option '$optname' of class '$class' must be a reference to '$refto' '$reftoref', is '$refto' '$rval'"
+					unless ($rval eq $reftoref);
+			}
+		} elsif ($rval eq "HASH") {
+			foreach my $v (values %$optval) {
+				$rval = ref $v;
+				Carp::confess "Option '$optname' of class '$class' must be a reference to '$refto' '$reftoref', is '$refto' '$rval'"
+					unless ($rval eq $reftoref);
+			}
+		} else {
+			Carp::confess "Incorrect arguments, may use the second type only if the first is ARRAY or HASH"
+		}
+	}
+}
 1;

@@ -11,7 +11,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 12 };
+BEGIN { plan tests => 20 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -65,3 +65,57 @@ eval {
 };
 ok($@ =~ /^Option 'mand' must be specified for class 'MYCLASS' at .*/);
 
+# test ck_ref
+
+my $optdef2 =  {
+	unit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+	arrunit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "Triceps::Unit") } ],
+	hashunit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "HASH", "Triceps::Unit") } ],
+	unitunit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit", "Triceps::Unit") } ],
+};
+
+my $u1 = Triceps::Unit->new("u1");
+ok(ref $u1, "Triceps::Unit");
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		unit => $u1);
+};
+ok(!$@);
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		arrunit => [ $u1 ] );
+};
+ok(!$@);
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		hashunit => { key => $u1 } );
+};
+ok(!$@);
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		hashunit => { key => "value" } );
+};
+ok($@ =~ /^Option 'hashunit' of class 'MYCLASS' must be a reference to 'HASH' 'Triceps::Unit', is 'HASH' ''.*/);
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		arrunit => [ { key => "value" } ] );
+};
+#print STDERR "$@\n";
+ok($@ =~ /^Option 'arrunit' of class 'MYCLASS' must be a reference to 'ARRAY' 'Triceps::Unit', is 'ARRAY' 'HASH'.*/);
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		unit => { key => $u1 } );
+};
+ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to 'Triceps::Unit', is 'HASH'.*/);
+
+eval {
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+		unitunit => $u1);
+};
+ok($@ =~ /^Incorrect arguments, may use the second type only if the first is ARRAY or HASH.*/);
