@@ -254,3 +254,187 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
 ';
 ok($result1, $expect1);
+
+#######################################################################
+# 2. A class for the straightforward stream-to-table lookup
+
+package LookupJoin;
+
+# Options (mostly mandatory):
+# unit - unit object
+# name - name of this object (will be used to create the names of internal objects)
+# leftRowType - type of the rows that will be used for lookup
+# leftDrop (optional) - reference to array of left-side field names to drop from the
+#    results (default: empty)
+# rightTable - table object where to do the look-ups
+# rightIndex (optional) - type of index in table used for look-up (default: first leaf)
+#    XXX due to bugs in implemetation, index absolutely must be a Hash, not Fifo (not checked now)
+# rightCopy - reference to array of right-side field names to include in the
+#    results
+# rightRename (optional) - reference to array of new names for fields in rightCopy,
+#    undef means "keep the name" (default: keep all names)
+# by - reference to array, containing pairs of field names used for look-up,
+#    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
+#    XXX production version should allow an arbitrary expression on the left?
+# isLeft (optional) - 1 for left join, 0 for full join (default: 1)
+# limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
+#    XXX due to bugs in implemetation, absolutely must be 1
+sub new # (class, optionName => optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+			unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+			name => [ undef, \&Triceps::Opt::ck_mandatory ],
+			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+			leftDrop => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::IndexType") } ],
+			rightCopy => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			rightRename => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			isLeft => [ 1, undef ],
+			limitOne => [ 0, undef ],
+		}, @_);
+
+	if (defined $self->{rightRename}
+	&& $#{$self->{rightRename}} != $#{$self->{rightCopy}}) {
+		Carp::confess("If option rightRename is used, it must be a ref to array of the same size as rightCopy");
+	}
+
+	$self->{rightRowType} = $self->{rightTable}->getRowType();
+
+	my %leftmap = $self->{leftRowType}->getFieldMapping();
+	my @leftfld = $self->{leftRowType}->getFieldNames();
+	my %rightmap = $self->{rightRowType}->getFieldMapping();
+
+	# there seems to be no way to check that the "by" keys match the
+	# keys of the index
+	# XXX add a way to pull the list of keys from index type?
+	# XXX also in production should check the matching []-ness of fields
+
+	# Generate the join function with arguments:
+	# @param self - this object
+	# @param row - row argument
+	# @return - an array of joined rows
+	my $genjoin = '
+		sub  # ($self, $row)
+		{
+			my ($self, $row) = @_;
+
+			# print STDERR "in: ", $row->printP(), "\n";
+
+			my @rowdata = $row->toArray();
+		';
+
+	# create the look-up row (and check that "by" contains the correct field names)
+	$genjoin .= '
+			my $lookuprow = $self->{rightRowType}->makeRowHash(
+				';
+	my @cpby = @{$self->{by}};
+	while ($#cpby >= 0) {
+		my $lf = shift @cpby;
+		my $rt = shift @cpby;
+		Carp::confess("Option 'by' contains an unknown left-side field '$lf'")
+			unless defined $leftmap{$lf};
+		Carp::confess("Option 'by' contains an unknown right-side field '$rt'")
+			unless defined $rightmap{$rt};
+		$genjoin .= $rt . ' => $rowdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
+	}
+	$genjoin .= ");\n\t\t\t";
+
+	# do the look-up
+	if (!defined $self->{rightIndex}) {
+		 $self->{rightIndex} = $self->{rightTable}->getType()->getFirstLeaf();
+	}
+	$genjoin .= '
+			my $rh = $self->{rightTable}->findIdx($self->{rightIndex}, $lookuprow);
+		';
+	if (! $self->{isLeft}) {
+		# a shortcut for full join if nothing is found
+		$genjoin .= '
+			return () if $rh->isNull();
+		';
+	}
+	$genjoin .= '
+			my @rightdata; # defaults to empty, if no data found
+			my @result; # the result rows will be collected here
+		';
+	if ($self->{limitOne}) { # an optimized version that returns no more than one row
+		$genjoin .= '
+			if (!$rh->isNull()) {
+		';
+		# } to match the opening brace inside the string
+	} else {
+		# XXXXX nextGroupIdx() won't work right if the target index is not Fifo,
+		# but then if it is Fifo then the findIdx() won't work right!!!
+		Carp::confess("LookupJoin currently does not support option 'limitOne' value 0");
+		$genjoin .= '
+			my $endrh = $self->{rightTable}->nextGroupIdx($self->{rightIndex}, $rh);
+			while (!$rh->same($endrh)) {
+		';
+		# } to match the opening brace inside the string
+	}
+	# XXXXXXXXXXXXXXXX
+
+	# result will start with a copy of left side, possibly with fields dropped
+	if (defined $self->{leftDrop}) {
+		my %resultmap = %leftmap; 
+		foreach my $f (@{$self->{leftDrop}}) { # indexes in %resultmap won't be correct during dropping, but fixed later
+			Carp::confess("Option 'leftDrop' contains an unknown left-side field '$f'")
+				unless defined $leftmap{$f};
+			delete $resultmap{$f};
+		}
+		my @resultfld;
+		$genjoin .= '
+			my @resproto = (';
+		my $i = 0;
+		foreach my $f (@leftfld) {
+			next unless defined $resultmap{$f};
+			push @resultfld, $f;
+			$resultmap{$f} = $i++; # fix the index
+			$genjoin .= '$rowdata[' . $leftmap{$f} . "],\n\t\t\t\t";
+		}
+		$genjoin .= ");";
+	} else {
+		my %resultmap = %leftmap;
+		my @resultfld = @leftfld;
+		$genjoin .= '
+			my @resproto = @rowdata;
+		';
+	}
+	# XXXXXXXXXXXXXXXX
+
+	if (0) {
+		# perform the look-up
+		my $lookupRow = $rtAccounts->makeRowHash(
+			source => $rowdata{acctSrc},
+			external => $rowdata{acctXtrId},
+		);
+		Carp::confess("$!") unless (defined $lookupRow);
+		my $acctrh = $tAccounts->findIdx($idxAccountsLookup, $lookupRow);
+		# if the translation is not found, in production it might be useful
+		# to send the record to the error handling logic instead
+		if (!$acctrh->isNull()) { 
+			$intacct = $acctrh->getRow()->get("internal");
+		}
+		# create the result
+		my $resultRow = $rtOutTrans->makeRowHash(
+			%rowdata,
+			acct => $intacct,
+		);
+		Carp::confess("$!") unless defined $resultRow;
+		my $resultRowop = $resultLab->makeRowop($rowop->getOpcode(), # pass the opcode
+			$resultRow);
+		Carp::confess("$!") unless defined $resultRowop;
+		Carp::confess("$!") 
+			unless $resultLab->getUnit()->enqueue($enqMode, $resultRowop);
+	}
+	bless $self, $class;
+	return $self;
+}
+
+package main;
+
+# XXX also needs to be tested for errors

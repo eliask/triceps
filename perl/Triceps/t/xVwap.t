@@ -241,6 +241,15 @@ sub dropFields # (@$what, $fldName, $fldType...)
 	return @res;
 }
 
+# Options (all mandatory):
+# unit - unit object
+# name - name of this object (will be used to create the names of internal objects)
+# rowType - type of the input rows
+# key - reference to an array of strings, the aggregation key
+# volumeFld - name of the field to read the trade volume and write the total volume
+# priceFld - name of the field to read the trade price (will be dropped from the result)
+# vwapFld - name of the field to write the VWAP (will be added to result)
+# enqMode - enqueuing mode for the output records, sent to the output label
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
