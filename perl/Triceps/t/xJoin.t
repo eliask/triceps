@@ -267,8 +267,8 @@ package LookupJoin;
 # leftDrop (optional) - reference to array of left-side field names to drop from the
 #    results (default: empty)
 # rightTable - table object where to do the look-ups
-# rightIndex (optional) - type of index in table used for look-up (default: first leaf)
-#    XXX due to bugs in implemetation, index absolutely must be a Hash, not Fifo (not checked now)
+# rightIndex (optional) - name of index in table used for look-up (default: first Hash),
+#    index absolutely must be a Hash (leaf or not), not of any other kind
 # rightCopy - reference to array of right-side field names to include in the
 #    results
 # rightRename (optional) - reference to array of new names for fields in rightCopy,
@@ -278,7 +278,6 @@ package LookupJoin;
 #    XXX production version should allow an arbitrary expression on the left?
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
-#    XXX due to bugs in implemetation, absolutely must be 1
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -290,7 +289,7 @@ sub new # (class, optionName => optionValue ...)
 			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
 			leftDrop => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
-			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::IndexType") } ],
+			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, undef) } ], # a plain string, not a ref
 			rightCopy => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightRename => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
@@ -325,7 +324,7 @@ sub new # (class, optionName => optionValue ...)
 
 			# print STDERR "in: ", $row->printP(), "\n";
 
-			my @rowdata = $row->toArray();
+			my @leftdata = $row->toArray();
 		';
 
 	# create the look-up row (and check that "by" contains the correct field names)
@@ -340,16 +339,37 @@ sub new # (class, optionName => optionValue ...)
 			unless defined $leftmap{$lf};
 		Carp::confess("Option 'by' contains an unknown right-side field '$rt'")
 			unless defined $rightmap{$rt};
-		$genjoin .= $rt . ' => $rowdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
+		$genjoin .= $rt . ' => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
 	}
 	$genjoin .= ");\n\t\t\t";
 
-	# do the look-up
-	if (!defined $self->{rightIndex}) {
-		 $self->{rightIndex} = $self->{rightTable}->getType()->getFirstLeaf();
+	# translate the index
+	if (defined $self->{rightIndex}) {
+		$self->{rightIdxType} = $self->{rightTable}->findSubIndex($self->{rightIndex});
+		Carp::confess("The table does not have a top-level index '" . $self->{rightIndex} . "' for joining")
+			unless defined $self->{rightIdxType};
+		my $ixid  = $self->{rightIdxType}->getIndexId();
+		Carp::confess("The index '" . $self->{rightIndex} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASH as required")
+			unless ($ixid == &Triceps::IT_HASH);
+	} else {
+		$self->{rightIdxType} = $self->{rightTable}->findSubIndexById(&Triceps::IT_HASHED);
+		Carp::confess("The table does not have a top-level Hash index for joining")
+			unless defined $self->{rightIdxType};
 	}
+	if (!$self->{limitOne}) { # would need a sub-index for iteration
+		my @subs = $self->{rightIdxType}->getSubIndexes();
+		if ($#subs < 0) { # no sub-indexes, so guaranteed to match one record
+			$self->{limitOne} = 1;
+		} else {
+			$self->{iterIdxType} = $subs[1]; # first index type object, they go in (name => type) pairs
+			# (all sub-indexes are equivalent for our purpose, just pick first)
+		}
+	}
+
+	# do the look-up
 	$genjoin .= '
-			my $rh = $self->{rightTable}->findIdx($self->{rightIndex}, $lookuprow);
+			my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
+			Carp::confess("$!") unless defined $rh;
 		';
 	if (! $self->{isLeft}) {
 		# a shortcut for full join if nothing is found
@@ -358,7 +378,7 @@ sub new # (class, optionName => optionValue ...)
 		';
 	}
 	$genjoin .= '
-			my @rightdata; # defaults to empty, if no data found
+			my @rightdata; # fields from the right side, defaults to all-undef, if no data found
 			my @result; # the result rows will be collected here
 		';
 	if ($self->{limitOne}) { # an optimized version that returns no more than one row
@@ -367,70 +387,71 @@ sub new # (class, optionName => optionValue ...)
 		';
 		# } to match the opening brace inside the string
 	} else {
-		# XXXXX nextGroupIdx() won't work right if the target index is not Fifo,
-		# but then if it is Fifo then the findIdx() won't work right!!!
-		Carp::confess("LookupJoin currently does not support option 'limitOne' value 0");
 		$genjoin .= '
-			my $endrh = $self->{rightTable}->nextGroupIdx($self->{rightIndex}, $rh);
-			while (!$rh->same($endrh)) {
+			my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
+			for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
 		';
 		# } to match the opening brace inside the string
 	}
-	# XXXXXXXXXXXXXXXX
+
+	# produce the joined record(s)
+	$genjoin .= '
+				my @rightdata = $rh->getRow()->toArray();
+				my @resdata = (';
 
 	# result will start with a copy of left side, possibly with fields dropped
+	my %resultmap = %leftmap; 
+	my @resultfld;
 	if (defined $self->{leftDrop}) {
-		my %resultmap = %leftmap; 
-		foreach my $f (@{$self->{leftDrop}}) { # indexes in %resultmap won't be correct during dropping, but fixed later
+		foreach my $f (@{$self->{leftDrop}}) { # indexes in %resultmap won't be correct in this loop, but fixed later
 			Carp::confess("Option 'leftDrop' contains an unknown left-side field '$f'")
 				unless defined $leftmap{$f};
 			delete $resultmap{$f};
 		}
-		my @resultfld;
-		$genjoin .= '
-			my @resproto = (';
-		my $i = 0;
 		foreach my $f (@leftfld) {
 			next unless defined $resultmap{$f};
 			push @resultfld, $f;
-			$resultmap{$f} = $i++; # fix the index
-			$genjoin .= '$rowdata[' . $leftmap{$f} . "],\n\t\t\t\t";
+			$resultmap{$f} = $#resultfld; # fix the index
+			$genjoin .= '$leftdata[' . $leftmap{$f} . "],\n\t\t\t\t";
 		}
-		$genjoin .= ");";
 	} else {
 		my %resultmap = %leftmap;
 		my @resultfld = @leftfld;
-		$genjoin .= '
-			my @resproto = @rowdata;
-		';
+		$genjoin .= '@leftdata, ';
 	}
-	# XXXXXXXXXXXXXXXX
 
-	if (0) {
-		# perform the look-up
-		my $lookupRow = $rtAccounts->makeRowHash(
-			source => $rowdata{acctSrc},
-			external => $rowdata{acctXtrId},
-		);
-		Carp::confess("$!") unless (defined $lookupRow);
-		my $acctrh = $tAccounts->findIdx($idxAccountsLookup, $lookupRow);
-		# if the translation is not found, in production it might be useful
-		# to send the record to the error handling logic instead
-		if (!$acctrh->isNull()) { 
-			$intacct = $acctrh->getRow()->get("internal");
-		}
-		# create the result
-		my $resultRow = $rtOutTrans->makeRowHash(
-			%rowdata,
-			acct => $intacct,
-		);
-		Carp::confess("$!") unless defined $resultRow;
-		my $resultRowop = $resultLab->makeRowop($rowop->getOpcode(), # pass the opcode
-			$resultRow);
-		Carp::confess("$!") unless defined $resultRowop;
-		Carp::confess("$!") 
-			unless $resultLab->getUnit()->enqueue($enqMode, $resultRowop);
+	# now add the fields from right side
+	my @rightRename;
+	if (defined $self->{rightRename}) {
+		@rightRename = $self->{rightRename};
 	}
+	for (my $i = 0; $i <= $#{$self->{rightCopy}}; $i++) {
+		my $f = $self->{rightCopy}[$i];
+		my $resf = $rightRename[$i];
+		if (!defined $resf || $resf eq "") {
+			$resf = $f;
+		}
+		Carp::confess("Option 'rightCopy' contains an unknown right-side field '$f'")
+			unless defined $rightmap{$f};
+		Carp::confess("Option 'rightCopy'/'rightRename' contains an duplicate result field '$resf'")
+			unless defined $resultmap{$resf};
+
+		push @resultfld, $resf;
+		$resultmap{$resf} = $#resultfld;
+		$genjoin .= '$rightdata[' . $rightmap{$f} . "],\n\t\t\t\t";
+	}
+	$genjoin .= ");";
+	# { matching for the one in the fillowing string
+	$genjoin .= '
+				push @result, $self->{rightRowType}->makeRowArray(@resdata);
+			}
+			return @result;
+		';
+
+	print STDERR "$genjoin\n"; # DEBUG
+
+	eval "\$self->{joiner} = $genjoin;"; # compile!
+
 	bless $self, $class;
 	return $self;
 }
@@ -438,3 +459,5 @@ sub new # (class, optionName => optionValue ...)
 package main;
 
 # XXX also needs to be tested for errors
+
+# the data definitions and examples are shared with example (1)
