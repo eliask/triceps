@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 30 };
+BEGIN { plan tests => 39 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -565,7 +565,7 @@ $tAccounts2 = $vu2->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
 ok(ref $tAccounts2, "Triceps::Table");
 
 #########
-# (2a) inner join with an exactly-matching key that automatically triggers
+# (2a) left join with an exactly-matching key that automatically triggers
 # the limitOne flag to be true, using the direct lookup() call
 
 $join2ab = LookupJoin->new( # will be used in both (2a) and (2b)
@@ -650,4 +650,67 @@ ok($vu2->empty());
 $expect2b = $expect1;
 $expect2b =~ s/out OP/join2ab.out OP/g;
 ok($result2, $expect2b);
+
+
+#########
+# (2c) inner join with an exactly-matching key that automatically triggers
+# the limitOne flag to be true, using the labels
+
+# reuses the same table, whih is already populated
+
+$join2c = LookupJoin->new( # will be used in both (2a) and (2b)
+	unit => $vu2,
+	name => "join2c",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2,
+	rightIndex => "lookupSrcExt",
+	rightCopy => [ "internal" ],
+	rightRename => [ "acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join2c, "LookupJoin");
+
+my $outlab2c = $vu2->makeLabel($join2c->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2c, "Triceps::Label");
+
+ok(ref $join2c->getInputLabel(), "Triceps::Label");
+ok(ref $join2c->getOutputLabel(), "Triceps::Label");
+
+# the output
+ok($join2c->getOutputLabel()->chain($outlab2c));
+
+# this is purely to keep track of the input in the log
+my $inlab2c = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2c, "Triceps::Label");
+ok($inlab2c->chain($join2c->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2c, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2c, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# now the rows with empty right side must be missing
+$expect2c = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2c.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2c.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2c.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2c.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2c.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2c.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2c);
 
