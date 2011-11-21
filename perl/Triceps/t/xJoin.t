@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 22 };
+BEGIN { plan tests => 30 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -257,6 +257,8 @@ ok($result1, $expect1);
 
 #######################################################################
 # 2. A class for the straightforward stream-to-table lookup
+# It had come out with a kind of wide functionality, so it would
+# require multiple tests, marked by letters ("2a" etc.).
 
 package LookupJoin;
 
@@ -278,6 +280,7 @@ package LookupJoin;
 #    XXX production version should allow an arbitrary expression on the left?
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
+# enqMode - enqueuing mode for the output records, sent to the output label
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -295,6 +298,7 @@ sub new # (class, optionName => optionValue ...)
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
+			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
 		}, @_);
 
 	if (defined $self->{rightRename}
@@ -478,20 +482,16 @@ sub new # (class, optionName => optionValue ...)
 	$self->{resultRowType} = Triceps::RowType->new(@resultdef);
 	Carp::confess("$!") unless (ref $self->{resultRowType} eq "Triceps::RowType");
 
-	# postpone the labels for now, just call the lookup function directly
 	# create the input label
-	# $self->{inputLabel} = $self->{unit}->makeLabel($self->{leftRowType}, $self->{name} . ".in", undef, $self->{joiner}, $outlab2, &Triceps::EM_CALL);
-	#ok(ref $inlab2, "Triceps::Label");
+	$self->{inputLabel} = $self->{unit}->makeLabel($self->{leftRowType}, $self->{name} . ".in", 
+		undef, \&handleInput, $self);
+	Carp::confess("$!") unless (ref $self->{inputLabel} eq "Triceps::Label");
 	# create the output label
+	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{resultRowType}, $self->{name} . ".out");
+	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
 
 	bless $self, $class;
 	return $self;
-}
-
-sub getResultRowType() # (self)
-{
-	my $self = shift;
-	return $self->{resultRowType};
 }
 
 # Perofrm the look-up by left row in the right table and return the
@@ -505,6 +505,46 @@ sub lookup() # (self, leftRow)
 	my @result = &{$self->{joiner}}($self, $leftRow);
 	#print STDERR "DEBUG lookup result=(", join(", ", @result), ")\n";
 	return @result;
+}
+
+# Handle the input records 
+# @param label - input label
+# @param rowop - incoming row
+# @param self - this object
+sub handleInput # ($label, $rowop, $self)
+{
+	my ($label, $rowop, $self) = @_;
+
+	my $opcode = $rowop->getOpcode(); # pass the opcode
+
+	my @resRows = &{$self->{joiner}}($self, $rowop->getRow());
+	my $resultLab = $self->{outputLabel};
+	my $enqMode = $self->{enqMode};
+	my $resultRowop;
+	foreach my $resultRow( @resRows ) {
+		$resultRowop = $resultLab->makeRowop($opcode, $resultRow);
+		Carp::confess("$!") unless defined $resultRowop;
+		Carp::confess("$!") 
+			unless $resultLab->getUnit()->enqueue($enqMode, $resultRowop);
+	}
+}
+
+sub getResultRowType() # (self)
+{
+	my $self = shift;
+	return $self->{resultRowType};
+}
+
+sub getInputLabel() # (self)
+{
+	my $self = shift;
+	return $self->{inputLabel};
+}
+
+sub getOutputLabel() # (self)
+{
+	my $self = shift;
+	return $self->{outputLabel};
 }
 
 # XXX for production should add getters for other fields
@@ -524,10 +564,13 @@ my $result2;
 $tAccounts2 = $vu2->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
 ok(ref $tAccounts2, "Triceps::Table");
 
+#########
+# (2a) inner join with an exactly-matching key that automatically triggers
+# the limitOne flag to be true, using the direct lookup() call
 
-$join2 = LookupJoin->new(
+$join2ab = LookupJoin->new( # will be used in both (2a) and (2b)
 	unit => $vu2,
-	name => "joiner",
+	name => "join2ab",
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts2,
 	rightIndex => "lookupSrcExt",
@@ -535,18 +578,19 @@ $join2 = LookupJoin->new(
 	rightRename => [ "acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
+	enqMode => &Triceps::EM_CALL,
 );
-ok(ref $join2, "LookupJoin");
+ok(ref $join2ab, "LookupJoin");
 
-sub calljoin2 # ($label, $rowop, $resultLab)
+sub calljoin2 # ($label, $rowop, $join, $resultLab)
 {
-	my ($label, $rowop, $resultLab) = @_;
+	my ($label, $rowop, $join, $resultLab) = @_;
 
 	$result2 .= $rowop->printP() . "\n";
 
 	my $opcode = $rowop->getOpcode(); # pass the opcode
 
-	my @resRows = $join2->lookup($rowop->getRow());
+	my @resRows = $join->lookup($rowop->getRow());
 	foreach my $resultRow( @resRows ) {
 		my $resultRowop = $resultLab->makeRowop($opcode, $resultRow);
 		Carp::confess("$!") unless defined $resultRowop;
@@ -555,11 +599,11 @@ sub calljoin2 # ($label, $rowop, $resultLab)
 	}
 }
 
-my $outlab2 = $vu2->makeLabel($join2->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
-ok(ref $outlab2, "Triceps::Label");
+my $outlab2a = $vu2->makeLabel($join2ab->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2a, "Triceps::Label");
 
-my $inlab2 = $vu2->makeLabel($rtInTrans, "in", undef, \&calljoin2, $outlab2);
-ok(ref $inlab2, "Triceps::Label");
+my $inlab2a = $vu2->makeLabel($rtInTrans, "in", undef, \&calljoin2, $join2ab, $outlab2a);
+ok(ref $inlab2a, "Triceps::Label");
 
 # fill the accounts table
 &feedInput($tAccounts2->getInputLabel(), &Triceps::OP_INSERT, \@accountData);
@@ -567,11 +611,43 @@ $vu2->drainFrame();
 ok($vu2->empty());
 
 # feed the data
-&feedInput($inlab2, &Triceps::OP_INSERT, \@incomingData);
-&feedInput($inlab2, &Triceps::OP_DELETE, \@incomingData);
+&feedInput($inlab2a, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2a, &Triceps::OP_DELETE, \@incomingData);
 $vu2->drainFrame();
 ok($vu2->empty());
 
 #print STDERR $result2;
 # expect same result as in test 1
 ok($result2, $expect1);
+
+#########
+# (2b) Exact same as 2a, even reuse the same join, but work through its labels
+
+my $outlab2b = $vu2->makeLabel($join2ab->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2b, "Triceps::Label");
+
+ok(ref $join2ab->getInputLabel(), "Triceps::Label");
+ok(ref $join2ab->getOutputLabel(), "Triceps::Label");
+
+# the output
+ok($join2ab->getOutputLabel()->chain($outlab2b));
+
+# this is purely to keep track of the input in the log
+my $inlab2b = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2b, "Triceps::Label");
+ok($inlab2b->chain($join2ab->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2b, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2b, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# expect same result as in test 1, except for different label names
+# (since when a rowop is printed, it prints the name of the label for which it was created)
+$expect2b = $expect1;
+$expect2b =~ s/out OP/join2ab.out OP/g;
+ok($result2, $expect2b);
+
