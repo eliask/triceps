@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 14 };
+BEGIN { plan tests => 22 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -289,7 +289,7 @@ sub new # (class, optionName => optionValue ...)
 			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
 			leftDrop => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
-			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, undef) } ], # a plain string, not a ref
+			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
 			rightCopy => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightRename => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
@@ -304,9 +304,11 @@ sub new # (class, optionName => optionValue ...)
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
+	my @leftdef = $self->{leftRowType}->getdef();
 	my %leftmap = $self->{leftRowType}->getFieldMapping();
 	my @leftfld = $self->{leftRowType}->getFieldNames();
 	my %rightmap = $self->{rightRowType}->getFieldMapping();
+	my @rightdef = $self->{rightRowType}->getdef();
 
 	# there seems to be no way to check that the "by" keys match the
 	# keys of the index
@@ -345,12 +347,12 @@ sub new # (class, optionName => optionValue ...)
 
 	# translate the index
 	if (defined $self->{rightIndex}) {
-		$self->{rightIdxType} = $self->{rightTable}->findSubIndex($self->{rightIndex});
+		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndex($self->{rightIndex});
 		Carp::confess("The table does not have a top-level index '" . $self->{rightIndex} . "' for joining")
 			unless defined $self->{rightIdxType};
 		my $ixid  = $self->{rightIdxType}->getIndexId();
-		Carp::confess("The index '" . $self->{rightIndex} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASH as required")
-			unless ($ixid == &Triceps::IT_HASH);
+		Carp::confess("The index '" . $self->{rightIndex} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
+			unless ($ixid == &Triceps::IT_HASHED);
 	} else {
 		$self->{rightIdxType} = $self->{rightTable}->findSubIndexById(&Triceps::IT_HASHED);
 		Carp::confess("The table does not have a top-level Hash index for joining")
@@ -365,6 +367,64 @@ sub new # (class, optionName => optionValue ...)
 			# (all sub-indexes are equivalent for our purpose, just pick first)
 		}
 	}
+
+	##########################################################################
+	# build the code that will produce one result record from @resdata
+
+	my $genresdata .= '
+				my @resdata = (';
+	# result will start with a copy of left side, possibly with fields dropped
+	my @resultdef;
+	my %resultmap = %leftmap; 
+	my @resultfld;
+	if (defined $self->{leftDrop}) {
+		foreach my $f (@{$self->{leftDrop}}) { # indexes in %resultmap won't be correct in this loop, but fixed later
+			Carp::confess("Option 'leftDrop' contains an unknown left-side field '$f'")
+				unless defined $leftmap{$f};
+			delete $resultmap{$f};
+		}
+		foreach my $f (@leftfld) {
+			next unless defined $resultmap{$f};
+			push @resultdef, $f, $leftdef[$leftmap{$f}*2 + 1];
+			push @resultfld, $f;
+			$resultmap{$f} = $#resultfld; # fix the index
+			$genresdata .= '$leftdata[' . $leftmap{$f} . "],\n\t\t\t\t";
+		}
+	} else {
+		@resultdef = @leftdef;
+		@resultfld = @leftfld;
+		$genresdata .= '@leftdata, ';
+	}
+
+	# now add the fields from right side
+	my @rightRename;
+	if (defined $self->{rightRename}) {
+		@rightRename = @{$self->{rightRename}};
+	}
+	for (my $i = 0; $i <= $#{$self->{rightCopy}}; $i++) {
+		#print STDERR "DEBUG resultmap=(", join (", ", %resultmap), ")\n";
+		my $f = $self->{rightCopy}[$i];
+		my $resf = $rightRename[$i];
+		if (!defined $resf || $resf eq "") {
+			$resf = $f;
+		}
+		Carp::confess("Option 'rightCopy' contains an unknown right-side field '$f'")
+			unless defined $rightmap{$f};
+		Carp::confess("Option 'rightCopy'/'rightRename' contains a duplicate result field '$resf'")
+			if defined $resultmap{$resf};
+
+		push @resultdef, $resf, $rightdef[$rightmap{$f}*2 + 1];
+		push @resultfld, $resf;
+		$resultmap{$resf} = $#resultfld;
+		$genresdata .= '$rightdata[' . $rightmap{$f} . "],\n\t\t\t\t";
+	}
+	$genresdata .= ");";
+	# { matching for the one in the fillowing string
+	$genresdata .= '
+				push @result, $self->{resultRowType}->makeRowArray(@resdata);';
+
+	# end of result record
+	##########################################################################
 
 	# do the look-up
 	$genjoin .= '
@@ -384,80 +444,134 @@ sub new # (class, optionName => optionValue ...)
 	if ($self->{limitOne}) { # an optimized version that returns no more than one row
 		$genjoin .= '
 			if (!$rh->isNull()) {
-		';
+				@rightdata = $rh->getRow()->toArray();
+			}
+' . $genresdata;
 		# } to match the opening brace inside the string
 	} else {
 		$genjoin .= '
-			my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
-			for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
-		';
+			if ($rh->isNull()) {
+' . $genresdata . '
+			} else {
+				my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
+				for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
+					@rightdata = $rh->getRow()->toArray();
+' . $genresdata . '
+				}
+			}';
 		# } to match the opening brace inside the string
 	}
 
-	# produce the joined record(s)
 	$genjoin .= '
-				my @rightdata = $rh->getRow()->toArray();
-				my @resdata = (';
-
-	# result will start with a copy of left side, possibly with fields dropped
-	my %resultmap = %leftmap; 
-	my @resultfld;
-	if (defined $self->{leftDrop}) {
-		foreach my $f (@{$self->{leftDrop}}) { # indexes in %resultmap won't be correct in this loop, but fixed later
-			Carp::confess("Option 'leftDrop' contains an unknown left-side field '$f'")
-				unless defined $leftmap{$f};
-			delete $resultmap{$f};
-		}
-		foreach my $f (@leftfld) {
-			next unless defined $resultmap{$f};
-			push @resultfld, $f;
-			$resultmap{$f} = $#resultfld; # fix the index
-			$genjoin .= '$leftdata[' . $leftmap{$f} . "],\n\t\t\t\t";
-		}
-	} else {
-		my %resultmap = %leftmap;
-		my @resultfld = @leftfld;
-		$genjoin .= '@leftdata, ';
-	}
-
-	# now add the fields from right side
-	my @rightRename;
-	if (defined $self->{rightRename}) {
-		@rightRename = $self->{rightRename};
-	}
-	for (my $i = 0; $i <= $#{$self->{rightCopy}}; $i++) {
-		my $f = $self->{rightCopy}[$i];
-		my $resf = $rightRename[$i];
-		if (!defined $resf || $resf eq "") {
-			$resf = $f;
-		}
-		Carp::confess("Option 'rightCopy' contains an unknown right-side field '$f'")
-			unless defined $rightmap{$f};
-		Carp::confess("Option 'rightCopy'/'rightRename' contains an duplicate result field '$resf'")
-			unless defined $resultmap{$resf};
-
-		push @resultfld, $resf;
-		$resultmap{$resf} = $#resultfld;
-		$genjoin .= '$rightdata[' . $rightmap{$f} . "],\n\t\t\t\t";
-	}
-	$genjoin .= ");";
-	# { matching for the one in the fillowing string
-	$genjoin .= '
-				push @result, $self->{rightRowType}->makeRowArray(@resdata);
-			}
 			return @result;
-		';
+		}';
 
-	print STDERR "$genjoin\n"; # DEBUG
+	#print STDERR "DEBUG $genjoin\n"; # DEBUG
 
+	undef $@;
 	eval "\$self->{joiner} = $genjoin;"; # compile!
+	Carp::confess("Internal error: LookupJoin failed to compile the joiner function:\n$@\n")
+		if $@;
+
+	# now create the result row type
+	#print STDERR "DEBUG result type def = (", join(", ", @resultdef), ")\n"; # DEBUG
+	$self->{resultRowType} = Triceps::RowType->new(@resultdef);
+	Carp::confess("$!") unless (ref $self->{resultRowType} eq "Triceps::RowType");
+
+	# postpone the labels for now, just call the lookup function directly
+	# create the input label
+	# $self->{inputLabel} = $self->{unit}->makeLabel($self->{leftRowType}, $self->{name} . ".in", undef, $self->{joiner}, $outlab2, &Triceps::EM_CALL);
+	#ok(ref $inlab2, "Triceps::Label");
+	# create the output label
 
 	bless $self, $class;
 	return $self;
 }
 
-package main;
+sub getResultRowType() # (self)
+{
+	my $self = shift;
+	return $self->{resultRowType};
+}
 
+# Perofrm the look-up by left row in the right table and return the
+# result rows(s).
+# @param self
+# @param leftRow - left-side row for performing the look-up
+# @return - array of result rows (if not isLeft then may be empty)
+sub lookup() # (self, leftRow)
+{
+	my ($self, $leftRow) = @_;
+	my @result = &{$self->{joiner}}($self, $leftRow);
+	#print STDERR "DEBUG lookup result=(", join(", ", @result), ")\n";
+	return @result;
+}
+
+# XXX for production should add getters for other fields
 # XXX also needs to be tested for errors
 
+package main;
+
 # the data definitions and examples are shared with example (1)
+
+$vu2 = Triceps::Unit->new("vu2");
+ok(ref $vu2, "Triceps::Unit");
+
+# this will record the results
+my $result2;
+
+# the accounts table type is also reused from example (1)
+$tAccounts2 = $vu2->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+ok(ref $tAccounts2, "Triceps::Table");
+
+
+$join2 = LookupJoin->new(
+	unit => $vu2,
+	name => "joiner",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2,
+	rightIndex => "lookupSrcExt",
+	rightCopy => [ "internal" ],
+	rightRename => [ "acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+);
+ok(ref $join2, "LookupJoin");
+
+sub calljoin2 # ($label, $rowop, $resultLab)
+{
+	my ($label, $rowop, $resultLab) = @_;
+
+	$result2 .= $rowop->printP() . "\n";
+
+	my $opcode = $rowop->getOpcode(); # pass the opcode
+
+	my @resRows = $join2->lookup($rowop->getRow());
+	foreach my $resultRow( @resRows ) {
+		my $resultRowop = $resultLab->makeRowop($opcode, $resultRow);
+		Carp::confess("$!") unless defined $resultRowop;
+		Carp::confess("$!") 
+			unless $resultLab->getUnit()->call($resultRowop);
+	}
+}
+
+my $outlab2 = $vu2->makeLabel($join2->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2, "Triceps::Label");
+
+my $inlab2 = $vu2->makeLabel($rtInTrans, "in", undef, \&calljoin2, $outlab2);
+ok(ref $inlab2, "Triceps::Label");
+
+# fill the accounts table
+&feedInput($tAccounts2->getInputLabel(), &Triceps::OP_INSERT, \@accountData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+# feed the data
+&feedInput($inlab2, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# expect same result as in test 1
+ok($result2, $expect1);
