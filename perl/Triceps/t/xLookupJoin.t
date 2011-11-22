@@ -2,7 +2,7 @@
 # This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
-# An application example of joins.
+# An application example of joins between a data stream and a table.
 
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Triceps.t'
