@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 39 };
+BEGIN { plan tests => 57 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -328,7 +328,7 @@ sub new # (class, optionName => optionValue ...)
 		{
 			my ($self, $row) = @_;
 
-			# print STDERR "in: ", $row->printP(), "\n";
+			#print STDERR "DEBUGX LookupJoin in: ", $row->printP(), "\n";
 
 			my @leftdata = $row->toArray();
 		';
@@ -365,6 +365,7 @@ sub new # (class, optionName => optionValue ...)
 	if (!$self->{limitOne}) { # would need a sub-index for iteration
 		my @subs = $self->{rightIdxType}->getSubIndexes();
 		if ($#subs < 0) { # no sub-indexes, so guaranteed to match one record
+			print STDERR "DEBUG auto-deducing limitOne=1 subs=(", join(", ", @subs), ")\n";
 			$self->{limitOne} = 1;
 		} else {
 			$self->{iterIdxType} = $subs[1]; # first index type object, they go in (name => type) pairs
@@ -423,7 +424,6 @@ sub new # (class, optionName => optionValue ...)
 		$genresdata .= '$rightdata[' . $rightmap{$f} . "],\n\t\t\t\t";
 	}
 	$genresdata .= ");";
-	# { matching for the one in the fillowing string
 	$genresdata .= '
 				push @result, $self->{resultRowType}->makeRowArray(@resdata);';
 
@@ -435,42 +435,53 @@ sub new # (class, optionName => optionValue ...)
 			my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
 			Carp::confess("$!") unless defined $rh;
 		';
-	if (! $self->{isLeft}) {
-		# a shortcut for full join if nothing is found
-		$genjoin .= '
-			return () if $rh->isNull();
-		';
-	}
 	$genjoin .= '
 			my @rightdata; # fields from the right side, defaults to all-undef, if no data found
 			my @result; # the result rows will be collected here
 		';
 	if ($self->{limitOne}) { # an optimized version that returns no more than one row
-		$genjoin .= '
+		if (! $self->{isLeft}) {
+			# a shortcut for full join if nothing is found
+			$genjoin .= '
+			return () if $rh->isNull();
+			@rightdata = $rh->getRow()->toArray();
+';
+		} else {
+			$genjoin .= '
 			if (!$rh->isNull()) {
 				@rightdata = $rh->getRow()->toArray();
 			}
-' . $genresdata;
-		# } to match the opening brace inside the string
+';
+		}
+		$genjoin .= $genresdata;
 	} else {
 		$genjoin .= '
 			if ($rh->isNull()) {
-' . $genresdata . '
+				#print STDERR "DEBUGX found NULL\n";
+'; 
+		if ($self->{isLeft}) {
+			$genjoin .= $genresdata;
+		} else {
+			$genjoin .= '
+				return ();';
+		}
+
+		$genjoin .= '
 			} else {
+				#print STDERR "DEBUGX found data\n";
 				my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
 				for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
 					@rightdata = $rh->getRow()->toArray();
 ' . $genresdata . '
 				}
 			}';
-		# } to match the opening brace inside the string
 	}
 
 	$genjoin .= '
 			return @result;
 		}';
 
-	#print STDERR "DEBUG $genjoin\n"; # DEBUG
+	#print STDERR "DEBUG $genjoin\n";
 
 	undef $@;
 	eval "\$self->{joiner} = $genjoin;"; # compile!
@@ -658,7 +669,7 @@ ok($result2, $expect2b);
 
 # reuses the same table, whih is already populated
 
-$join2c = LookupJoin->new( # will be used in both (2a) and (2b)
+$join2c = LookupJoin->new(
 	unit => $vu2,
 	name => "join2c",
 	leftRowType => $rtInTrans,
@@ -714,3 +725,163 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 ';
 ok($result2, $expect2c);
 
+#########
+# (2d) inner join with limitOne = 0
+
+# the accounts table will have 2 copies of each record, for tests (d) and (e)
+$ttAccounts2de = Triceps::TableType->new($rtAccounts)
+	# muliple indexes can be defined for different purposes
+	# (though of course each extra index adds overhead)
+	->addSubIndex("lookupSrcExt", # quick look-up by source and external id
+		Triceps::IndexType->newHashed(key => [ "source", "external" ])
+		->addSubIndex("fifo", Triceps::IndexType->newFifo())
+	)
+; 
+ok(ref $ttAccounts2de, "Triceps::TableType");
+
+$res = $ttAccounts2de->initialize();
+ok($res, 1);
+
+$tAccounts2de = $vu2->makeTable($ttAccounts2de, &Triceps::EM_CALL, "Accounts2de");
+ok(ref $tAccounts2de, "Triceps::Table");
+
+# fill the accounts table
+&feedInput($tAccounts2de->getInputLabel(), &Triceps::OP_INSERT, \@accountData);
+@accountData2de = ( # the second records, with different internal accounts
+	[ "source1", "999", 11 ],
+	[ "source1", "2011", 12 ],
+	[ "source1", "42", 13 ],
+	[ "source2", "ABCD", 11 ],
+	[ "source2", "QWERTY", 12 ],
+	[ "source2", "UIOP", 14 ],
+);
+&feedInput($tAccounts2de->getInputLabel(), &Triceps::OP_INSERT, \@accountData2de);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+# inner join with no limit to 1 record
+$join2d = LookupJoin->new(
+	unit => $vu2,
+	name => "join2d",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2de,
+	rightIndex => "lookupSrcExt",
+	rightCopy => [ "internal" ],
+	rightRename => [ "acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join2d, "LookupJoin");
+
+my $outlab2d = $vu2->makeLabel($join2d->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2d, "Triceps::Label");
+
+# the output
+ok($join2d->getOutputLabel()->chain($outlab2d));
+
+# this is purely to keep track of the input in the log
+my $inlab2d = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2d, "Triceps::Label");
+ok($inlab2d->chain($join2d->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2d, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2d, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# now the rows with empty right side must be missing
+$expect2d = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2d.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+join2d.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="11" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2d.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+join2d.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="11" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2d.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+join2d.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" acct="12" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2d.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+join2d.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" acct="11" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2d.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+join2d.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" acct="11" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2d.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+join2d.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" acct="12" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2d);
+
+#########
+# (2e) left join with limitOne = 0
+
+# left join with no limit to 1 record
+$join2e = LookupJoin->new(
+	unit => $vu2,
+	name => "join2e",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2de,
+	rightIndex => "lookupSrcExt",
+	rightCopy => [ "internal" ],
+	rightRename => [ "acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join2e, "LookupJoin");
+
+my $outlab2e = $vu2->makeLabel($join2e->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2e, "Triceps::Label");
+
+# the output
+ok($join2e->getOutputLabel()->chain($outlab2e));
+
+# this is purely to keep track of the input in the log
+my $inlab2e = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2e, "Triceps::Label");
+ok($inlab2e->chain($join2e->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2e, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2e, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2e = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2e.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+join2e.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="11" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2e.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+join2e.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="11" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2e.out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2e.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+join2e.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" acct="12" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2e.out OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2e.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+join2e.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" acct="11" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2e.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+join2e.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" acct="11" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2e.out OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2e.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+join2e.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" acct="12" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2e.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2e);
