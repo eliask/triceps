@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 57 };
+BEGIN { plan tests => 64 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -365,7 +365,7 @@ sub new # (class, optionName => optionValue ...)
 	if (!$self->{limitOne}) { # would need a sub-index for iteration
 		my @subs = $self->{rightIdxType}->getSubIndexes();
 		if ($#subs < 0) { # no sub-indexes, so guaranteed to match one record
-			print STDERR "DEBUG auto-deducing limitOne=1 subs=(", join(", ", @subs), ")\n";
+			#print STDERR "DEBUG auto-deducing limitOne=1 subs=(", join(", ", @subs), ")\n";
 			$self->{limitOne} = 1;
 		} else {
 			$self->{iterIdxType} = $subs[1]; # first index type object, they go in (name => type) pairs
@@ -885,3 +885,64 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 join2e.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
 ';
 ok($result2, $expect2e);
+
+#########
+# (2f) left join with limitOne = 1, and multiple records available
+
+$join2f = LookupJoin->new(
+	unit => $vu2,
+	name => "join2f",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2de,
+	rightIndex => "lookupSrcExt",
+	rightCopy => [ "internal" ],
+	rightRename => [ "acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+	limitOne => 1,
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join2f, "LookupJoin");
+
+my $outlab2f = $vu2->makeLabel($join2f->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2f, "Triceps::Label");
+
+# the output
+ok($join2f->getOutputLabel()->chain($outlab2f));
+
+# this is purely to keep track of the input in the log
+my $inlab2f = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2f, "Triceps::Label");
+ok($inlab2f->chain($join2f->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2f, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2f, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2f = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2f.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2f.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2f.out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2f.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2f.out OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2f.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2f.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2f.out OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2f.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" acct="2" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2f.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2f);
