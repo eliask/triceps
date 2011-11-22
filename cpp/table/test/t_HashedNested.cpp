@@ -265,7 +265,26 @@ UTESTCASE tableops(Utest *utest)
 
 	// check that search on a non-leaf index returns NULL
 	iter = t->findIdx(prim, rh11);
-	UT_IS(iter, NULL);
+	{
+		// find the end of the group and iterate through to it
+		RowHandle *iter3 = t->nextGroupIdx(sec, iter);
+		int count = 0;
+		while(iter != iter3) {
+			if (UT_ASSERT(iter == iter2 || iter == rh12)) { // order is unpredictable, may be either
+				if (iter != NULL) {
+					fprintf(stderr, "at step %d found b=%d c=%lld\n", count,
+						(int)rt1->getInt32(iter->getRow(), 1),
+						(long long)rt1->getInt64(iter->getRow(), 2));
+				} else {
+					fprintf(stderr, "at step %d got NULL\n", count);
+				}
+				break;
+			}
+			++count;
+			iter = t->nextIdx(prim, iter);
+		}
+		UT_IS(count, 2);
+	}
 
 	// check that iteration with NULL doesn't crash
 	UT_ASSERT(t->next(NULL) == NULL);

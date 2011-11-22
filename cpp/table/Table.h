@@ -159,11 +159,16 @@ public:
 	// an iterator in the table. This finds a row in the table with the
 	// key matching one in a freshly made RowHandle (with Table::makeRowHandle()).
 	//
-	// @param ixt - leaf index type from this table's type
+	// If the index is leaf, finds the matching row. If the index is non-leaf,
+	// finds the first row in the matching group (first according to the first
+	// leaf sub-index of that group). 
+	//
+	// @param ixt - index type from this table's type
 	// @param what - the pattern row
-	// @return - the matching (accoriding to this index) row in the table,
-	//     or NULL if not found or if the index is non-leaf; an index that has 
-	//     multiple matching rows, may return any of them but preferrably the first one.
+	// @return - the matching (according to this index) row in the table,
+	//     or NULL if not found; a leaf index that has multiple matching rows, 
+	//     may return any of them but preferrably the first one; a non-leaf 
+	//     index returns the first row of the matching group.
 	RowHandle *findIdx(IndexType *ixt, const RowHandle *what) const;
 
 	// Find the matching element using the default (first leaf) index.

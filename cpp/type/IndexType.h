@@ -361,9 +361,12 @@ protected:
 	// Find a row in the table, according to this index type.
 	// It goes recursively to the root of the table and then back down, finding the
 	// concrete path of indexes for this row.
+	// If the index is a leaf, it returns the handle of matching row.
+	// If the index is non-leaf, it returns the handle of first row in the
+	// matching group (first according to the order of the first leaf index in the group).
 	// @param table - table where to search
 	// @param what - handle to search for
-	// @return - handle of the row in table or NULL
+	// @return - handle of the row in table or NULL if not found
 	RowHandle *findRecord(const Table *table, const RowHandle *what) const;
 
 	// Finds an instance of this type's index where this row belongs

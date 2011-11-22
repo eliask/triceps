@@ -785,13 +785,17 @@ void IndexType::aggregateCollapse(Tray *dest, Table *table, GroupHandle *gh, Tra
 RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) const
 {
 	// fprintf(stderr, "DEBUG IndexType::findRecord(this=%p, table=%p, what=%p)\n", this, table, what);
-	if (!isLeaf())
-		return NULL;
-
-	const Index *myidx = parent_->findNestedIndex(nestPos_, table, what);
-	if (myidx == NULL)
-		return NULL;
-	return myidx->find(what);
+	if (isLeaf()) {
+		const Index *myidx = parent_->findNestedIndex(nestPos_, table, what);
+		if (myidx == NULL)
+			return NULL;
+		return myidx->find(what);
+	} else {
+		const Index *subidx = findNestedIndex(0, table, what);
+		if (subidx == NULL)
+			return NULL;
+		return subidx->begin();
+	}
 }
 
 Index *IndexType::findInstance(const Table *table, const RowHandle *what) const

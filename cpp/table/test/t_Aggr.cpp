@@ -299,10 +299,6 @@ UTESTCASE tableops(Utest *utest)
 	iter = t->findIdx(sec, rh11);
 	UT_IS(iter, iter2);
 
-	// check that search on a non-leaf index returns NULL
-	iter = t->findIdx(prim, rh11);
-	UT_IS(iter, NULL);
-
 	// check that iteration with NULL doesn't crash
 	UT_ASSERT(t->next(NULL) == NULL);
 
