@@ -74,6 +74,8 @@ XSLoader::load('Triceps', $VERSION);
 # Subpackages go here
 require Triceps::UnitTracerPerl;
 require Triceps::UnitTracerStringName;
+require Triceps::Row;
+require Triceps::Rowop;
 require Triceps::Opt;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.

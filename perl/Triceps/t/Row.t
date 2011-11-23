@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 71 };
+BEGIN { plan tests => 75 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -67,6 +67,7 @@ $rt3 = Triceps::RowType->new( # used later
 ok(ref $rt3, "Triceps::RowType");
 
 ########################### hash format ################################
+# and also test printP, since internally it uses toHash
 
 # non-null scalars
 @dataset1 = (
@@ -86,6 +87,8 @@ ok($r1->getType()->same($rt1));
 
 @d1 = $r1->toHash();
 ok(join(',', @d1), join(',', @dataset1));
+# conversion of "c" may differ on 32-bit machines...
+ok($r1->printP(), "a=\"uint8\" b=\"123\" c=\"3000000000000000\" d=\"3.14\" e=\"string\" ");
 
 # nulls
 @dataset2 = (
@@ -100,6 +103,7 @@ ok(ref $r2, "Triceps::Row");
 
 @d2 = $r2->toHash();
 ok(join(',', map {defined $_? $_ : "-"} @d2), join(',', map {defined $_? $_ : "-"} @dataset2));
+ok($r2->printP(), "c=\"3000000000000000\" ");
 #print STDERR "\n dataset d2: ", &row2string(@d2), "\n";
 
 # arrays
@@ -120,6 +124,8 @@ ok(ref $r3, "Triceps::Row");
 
 @d3 = $r3->toHash();
 ok(&row2string(@d3), &row2string(@dataset3));
+# conversion of "c" may differ on 32-bit machines, and rounding of long pi may also differ...
+ok($r3->printP(), "a=\"uint8\" b=[\"123\", \"456\", \"789\"] c=[\"3000000000000000\", \"42\", \"65535\"] d=[\"3.14\", \"2.71\", \"3.12345678901234\"] e=\"string\" ");
 
 # arrays with nulls
 @dataset4 = (
@@ -139,6 +145,7 @@ ok(ref $r4, "Triceps::Row");
 
 @d4 = $r4->toHash();
 ok(&row2string(@d4), &row2string(@dataset4));
+ok($r4->printP(), "a=\"uint8\" e=\"string\" ");
 
 ########################### array CSV-like format ################################
 

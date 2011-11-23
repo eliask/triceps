@@ -94,6 +94,8 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 	char *xsv;
 
 	// as a special case, strings and utint8 can not be arrays, they're always Perl strings
+	// (an interesting side effect is that if a number is set to an uint8 field, it will
+	// be converted to string first and then set; to avoid this, use chr())
 	switch(ti) {
 	case Type::TT_UINT8:
 	case Type::TT_STRING:

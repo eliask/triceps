@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 48 };
+BEGIN { plan tests => 50 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -118,9 +118,11 @@ $row3 = $rt3->makeRowHash(@dataset3);
 ok(ref $row3, "Triceps::Row");
 
 ######################### factory  #############################
+# and printP
 
 $rop1 = $lb->makeRowop("OP_INSERT", $row1);
 ok(ref $rop1, "Triceps::Rowop");
+ok($rop1->printP(), "tab1.in OP_INSERT a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
 
 $rop = $lb->makeRowop(&Triceps::OP_INSERT, $row1);
 ok(ref $rop, "Triceps::Rowop");
@@ -144,8 +146,10 @@ ok(!defined $rop);
 ok($! . "", "Usage: Triceps::Label::makeRowop(label, opcode, row [, enqMode]), received too many arguments");
 
 # a matching row type is OK
+# (and as printP shows, the row will be logically cast to our row type)
 $rop2 = $lb->makeRowop("OP_DELETE", $row2, "EM_CALL");
 ok(ref $rop2, "Triceps::Rowop");
+ok($rop2->printP(), "tab1.in OP_DELETE a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
 
 $rop = $lb->makeRowop("OP_INSERT", $row3, "EM_CALL");
 ok(!defined $rop);

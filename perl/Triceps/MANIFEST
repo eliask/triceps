@@ -13,6 +13,11 @@ MANIFEST
 ppport.h
 README
 lib/Triceps.pm
+lib/Triceps/Opt.pm
+lib/Triceps/Rowop.pm
+lib/Triceps/Row.pm
+lib/Triceps/UnitTracerPerl.pm
+lib/Triceps/UnitTracerStringName.pm
 t/IndexType.t
 t/Label.t
 t/makeRow.t

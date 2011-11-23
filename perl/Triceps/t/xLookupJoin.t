@@ -40,42 +40,6 @@ sub feedInput # ($label, $opcode, @$dataArray)
 	}
 }
 
-# convert a row to a printable string, with name-value pairs
-# XXX should move into library (and test)
-package  Triceps::Row;
-sub printP # ($self)
-{
-	my $self = shift;
-	my $rt = $self->getType();
-	my @data = $self->toHash();
-	my ($k, $v);
-	my $res;
-	while ($#data >= 0) {
-		$k = shift @data;
-		$v = shift @data;
-		next if !defined $v;
-		if (ref $v) {
-			# it's an array value
-			$res .= "$k=[" . join(", ", map { $_ =~ s/"/\\"/g; "\"$_\"" } @$v) . "] ";
-		} else {
-			$v =~ s/"/\\"/g;
-			$res .= "$k=\"$v\" "
-		}
-	}
-	return $res;
-}
-package main;
-
-# convert a rowop to a printable string, with name-value pairs
-# XXX should move into library (and test)
-package  Triceps::Rowop;
-sub printP # ($self)
-{
-	my $self = shift;
-	return $self->getLabel()->getName() . " " . Triceps::opcodeString($self->getOpcode()) . " " . $self->getRow()->printP();
-}
-package main;
-
 # convert a data set to a string
 sub dataToString # (@dataSet)
 {
