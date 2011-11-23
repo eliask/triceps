@@ -9,7 +9,6 @@
 #define __Triceps_HashedIndexType_h__
 
 #include <type/IndexType.h>
-#include <type/NameSet.h>
 #include <common/Hash.h>
 
 namespace TRICEPS_NS {
@@ -19,6 +18,8 @@ class RowType;
 class HashedIndexType : public IndexType
 {
 public:
+	// Keeps a reference of key. If key is not specified, it
+	// must be set later, before initialization.
 	HashedIndexType(NameSet *key = NULL);
 	// Constructors duplicated as make() for syntactically better usage.
 	static HashedIndexType *make(NameSet *key = NULL)
@@ -28,6 +29,8 @@ public:
 	
 
 	// Set tke key later (until initialized).
+	// Keeps a reference of key. Calling setKey() after the key has
+	// been already set is wrong and will cause a memory leak.
 	HashedIndexType *setKey(NameSet *key);
 
 	// from Type
@@ -36,6 +39,7 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
 	// from IndexType
+	virtual const_Onceref<NameSet> getKey() const;
 	virtual IndexType *copy() const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;

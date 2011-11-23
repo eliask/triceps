@@ -108,6 +108,10 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_IS(tt->findSubIndexById(IndexType::IT_HASHED), prim);
 	UT_IS(tt->getFirstLeaf(), prim);
 
+	Autoref<NameSet> expectKey = (new NameSet())->add("a")->add("e");
+	const_Autoref<NameSet> getKey = prim->getKey();
+	UT_ASSERT(getKey->equals(expectKey));
+
 	UT_IS(tt->findSubIndexById(IndexType::IT_LAST), NULL);
 	UT_IS(tt->findSubIndex("nosuch"), NULL);
 
@@ -350,6 +354,9 @@ UTESTCASE fifoIndex(Utest *utest)
 	IndexType *prim = tt->findSubIndex("fifo");
 	UT_ASSERT(prim != NULL);
 	UT_IS(tt->findSubIndexById(IndexType::IT_FIFO), prim);
+
+	const_Autoref<NameSet> getKey = prim->getKey();
+	UT_ASSERT(getKey.isNull());
 }
 
 UTESTCASE fifoIndexLimit(Utest *utest)

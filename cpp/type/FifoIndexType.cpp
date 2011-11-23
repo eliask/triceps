@@ -58,6 +58,11 @@ FifoIndexType *FifoIndexType::setReverse(bool reverse)
 	return this;
 }
 
+const_Onceref<NameSet> FifoIndexType::getKey() const
+{
+	return const_Onceref<NameSet>(); // NULL, no keys
+}
+
 bool FifoIndexType::equals(const Type *t) const
 {
 	if (this == t)

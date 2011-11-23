@@ -119,6 +119,11 @@ HashedIndexType *HashedIndexType::setKey(NameSet *key)
 	return this;
 }
 
+const_Onceref<NameSet> HashedIndexType::getKey() const
+{
+	return key_;
+}
+
 bool HashedIndexType::equals(const Type *t) const
 {
 	if (this == t)

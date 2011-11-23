@@ -34,6 +34,11 @@ void RootIndexType::printTo(string &res, const string &indent, const string &sub
 	printSubelementsTo(res, indent, subindent);
 }
 
+const_Onceref<NameSet> RootIndexType::getKey() const
+{
+	return const_Onceref<NameSet>(); // NULL, no keys
+}
+
 IndexType *RootIndexType::copy() const
 {
 	return new RootIndexType(*this);

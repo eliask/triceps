@@ -12,6 +12,7 @@
 #include <table/GroupHandle.h>
 #include <table/Aggregator.h>
 #include <common/Errors.h>
+#include <type/NameSet.h>
 
 namespace TRICEPS_NS {
 
@@ -166,6 +167,11 @@ public:
 	{ 
 		return indexId_; 
 	}
+
+	// Get the list of field names that this index uses as keys.
+	// May be NULL if the index has no keys at all or if the key is
+	// calculated as some expression on the fields.
+	virtual const_Onceref<NameSet> getKey() const = 0;
 
 	// Define an aggregator on this index. Each aggregator instance
 	// will work on the instance of this index.

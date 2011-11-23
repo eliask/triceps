@@ -22,6 +22,7 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
 	// from IndexType
+	virtual const_Onceref<NameSet> getKey() const;
 	virtual IndexType *copy() const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
