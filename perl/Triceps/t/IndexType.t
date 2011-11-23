@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 96 };
+BEGIN { plan tests => 98 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -29,6 +29,9 @@ $it1 = Triceps::IndexType->newHashed(key => [ "a", "b" ]);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
 ok($res, "index HashedIndex(a, b, )");
+
+$key = join(",", $it1->getKey());
+ok($key, "a,b");
 
 $res = $it1->getTabtype();
 ok(!defined $res);
@@ -74,6 +77,9 @@ $it1 = Triceps::IndexType->newFifo(reverse => 1);
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
 ok($res, "index FifoIndex( reverse)");
+
+@key = $it1->getKey();
+ok($#key, -1);
 
 $it1 = Triceps::IndexType->newFifo("key");
 ok(!defined($it1));

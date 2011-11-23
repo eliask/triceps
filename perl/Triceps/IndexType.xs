@@ -343,4 +343,20 @@ getTabtype(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+# returns the array of fields that are keys of this index
+# (may be empty if the index is not keyed by fields)
+SV *
+getKey(WrapIndexType *self)
+	PPCODE:
+		clearErrMsg();
+		IndexType *ixt = self->get();
+
+		const_Autoref<NameSet> key = ixt->getKey();
+		if (!key.isNull()) {
+			for (NameSet::const_iterator it = key->begin(); it != key->end(); ++it) {
+				const string &s = *it;
+				XPUSHs(sv_2mortal(newSVpvn(s.c_str(), s.size())));
+			}
+		}
+
 # XXX isJumping, isReverse etc.
