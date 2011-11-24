@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 64 };
+BEGIN { plan tests => 74 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -233,12 +233,18 @@ package LookupJoin;
 # leftDrop (optional) - reference to array of left-side field names to drop from the
 #    results (default: empty)
 # rightTable - table object where to do the look-ups
-# rightIndex (optional) - name of index in table used for look-up (default: first Hash),
+# rightIndex (optional) - name of index type in table used for look-up (default: first Hash),
 #    index absolutely must be a Hash (leaf or not), not of any other kind
 # rightCopy - reference to array of right-side field names to include in the
 #    results
 # rightRename (optional) - reference to array of new names for fields in rightCopy,
 #    undef means "keep the name" (default: keep all names)
+# leftFields (optional) - reference to array of patterns for left fields to pass through,
+#    syntax as described in filterFields(), if not defined then pass everything
+# rightFields (optional) - reference to array of patterns for right fields to pass through,
+#    syntax as described in filterFields(), if not defined then pass everything
+#    (which is probably a bad idea since it would include duplicate fields from the 
+#    index, so override it)
 # by - reference to array, containing pairs of field names used for look-up,
 #    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
 #    XXX production version should allow an arbitrary expression on the left?
@@ -259,6 +265,8 @@ sub new # (class, optionName => optionValue ...)
 			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
 			rightCopy => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightRename => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
@@ -278,9 +286,8 @@ sub new # (class, optionName => optionValue ...)
 	my %rightmap = $self->{rightRowType}->getFieldMapping();
 	my @rightdef = $self->{rightRowType}->getdef();
 
-	# there seems to be no way to check that the "by" keys match the
+	# XXX use getKey() to check that the "by" keys match the
 	# keys of the index
-	# XXX add a way to pull the list of keys from index type?
 	# XXX also in production should check the matching []-ness of fields
 
 	# Generate the join function with arguments:
@@ -468,6 +475,104 @@ sub new # (class, optionName => optionValue ...)
 	bless $self, $class;
 	return $self;
 }
+
+# Process the list of field names according to the filter spec.
+# @param incoming - reference to the original array of field names
+# @param patterns - reference to the array of filter patterns (undef means 
+#   "no filtering, pass as is")
+# @return - an array of filtered field names, positionally mathing the
+#    names in the original array, with undefs for the thrown-away fields
+#
+# Does NOT check for name correctness, duplicates etc.
+#
+# Pattern rules:
+# For each field, all the patterns are applied in order until one of
+# them matches. If none matches, the field gets thrown away by default.
+# The possible pattern formats are:
+#    "regexp" - pass through the field names matching the anchored regexp
+#        (i.e. implicitly wrapped as "^regexp$"). Must not
+#        contain the literal "/" anywhere. And since the field names are
+#        alphanumeric, specifying the field name will pass that field through.
+#        To pass through the rest of fields, use the pattern ".*".
+#    "!regexp" - throw away the field names matching the anchored regexp.
+#    "regexp/regsub" - pass through the field names matching the anchored regexp,
+#        performing a substitution on it. For example, '.*/second_$&/'
+#        would pass through all the fields, prefixing them with "second_".
+#
+# XXX If this works well, it should probably be moved into Triceps::
+sub filterFields() # (\@incoming, \@patterns) # no $self, it's a static method!
+{
+	my $incoming = shift;
+	my $patterns = shift;
+
+	if (!defined $patterns) {
+		return @$incoming; # just pass through everything
+	}
+
+	my (@res, $f, $ff, $t, $p, $pp, $s);
+
+	# since this is normally executed at the model compilation stage,
+	# the performance here doesn't matter a whole lot, and the logic
+	# can be done in the simple non-optimized loops
+	foreach $f (@$incoming) {
+		undef $t;
+		foreach $p (@$patterns) {
+			if ($p =~ /^!(.*)/) { # negative pattern
+				$pp = $1;
+				last if ($f =~ /^$pp$/);
+			} elsif ($p =~ /^([^\/]*)\/([^\/]*)/ ) { # substitution
+				$pp = $1;
+				$s = $2;
+				$ff = $f;
+				if (eval("\$ff =~ s/^$pp\$/$s/;")) { # eval is needed for $s to evaluate right
+					$t = $ff;
+					last;
+				}
+			} else { # simple positive pattern
+				if ($f =~ /^$p$/) {
+					$t = $f;
+					last;
+				}
+			}
+		}
+		push @res, $t;
+	}
+	return @res;
+}
+
+#####################################################
+# A little test of filterFields by itself
+
+@res = &filterFields([ 'abc', 'def' ], undef);
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def"); # all positive if no patterns
+
+@res = &filterFields([ 'abc', 'def', 'ghi' ], [ 'abc', 'def' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def,-");
+
+@res = &filterFields([ 'abc', 'def', 'ghi' ], [ '!abc' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # check for default being "throwaway" even with purely negative
+@res = &filterFields([ 'abc', 'def', 'ghi' ], [ ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # empty pattern means throw away everything
+
+@res = &filterFields([ 'abc', 'def', 'ghi' ], [ '!abc', '.*' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi");
+
+@res = &filterFields([ 'abc', 'adef', 'gahi' ], [ '!abc', 'a.*' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,adef,-"); # first match wins, and check front anchoring
+
+@res = &filterFields([ 'abc', 'adef', 'gahi' ], [ '...' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,-,-"); # anchoring
+
+@res = &filterFields([ 'abc', 'def', 'ghi' ], [ '!a.*', '.*' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi"); # negative pattern
+
+@res = &filterFields([ 'abc', 'def', 'ghi' ], [ '.*/second_$&' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "second_abc,second_def,second_ghi"); # substitution
+
+@res = &filterFields([ 'abc', 'defg', 'ghi' ], [ '(.).(.)/$1x$2' ] );
+main::ok(join(",", map { defined $_? $_ : "-" } @res), "axc,-,gxi"); # anchoring and numbered sub-expressions
+
+#####################################################
 
 # Perofrm the look-up by left row in the right table and return the
 # result rows(s).
