@@ -230,15 +230,9 @@ package LookupJoin;
 # unit - unit object
 # name - name of this object (will be used to create the names of internal objects)
 # leftRowType - type of the rows that will be used for lookup
-# leftDrop (optional) - reference to array of left-side field names to drop from the
-#    results (default: empty)
 # rightTable - table object where to do the look-ups
 # rightIndex (optional) - name of index type in table used for look-up (default: first Hash),
 #    index absolutely must be a Hash (leaf or not), not of any other kind
-# rightCopy - reference to array of right-side field names to include in the
-#    results
-# rightRename (optional) - reference to array of new names for fields in rightCopy,
-#    undef means "keep the name" (default: keep all names)
 # leftFields (optional) - reference to array of patterns for left fields to pass through,
 #    syntax as described in filterFields(), if not defined then pass everything
 # rightFields (optional) - reference to array of patterns for right fields to pass through,
@@ -260,11 +254,8 @@ sub new # (class, optionName => optionValue ...)
 			unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
-			leftDrop => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
-			rightCopy => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
-			rightRename => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
@@ -273,18 +264,15 @@ sub new # (class, optionName => optionValue ...)
 			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
 		}, @_);
 
-	if (defined $self->{rightRename}
-	&& $#{$self->{rightRename}} != $#{$self->{rightCopy}}) {
-		Carp::confess("If option rightRename is used, it must be a ref to array of the same size as rightCopy");
-	}
-
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
 	my @leftdef = $self->{leftRowType}->getdef();
 	my %leftmap = $self->{leftRowType}->getFieldMapping();
 	my @leftfld = $self->{leftRowType}->getFieldNames();
-	my %rightmap = $self->{rightRowType}->getFieldMapping();
+
 	my @rightdef = $self->{rightRowType}->getdef();
+	my %rightmap = $self->{rightRowType}->getFieldMapping();
+	my @rightfld = $self->{rightRowType}->getFieldNames();
 
 	# XXX use getKey() to check that the "by" keys match the
 	# keys of the index
@@ -345,6 +333,50 @@ sub new # (class, optionName => optionValue ...)
 	}
 
 	##########################################################################
+	# build the code that will produce one result record by combining
+	# @leftdata and @rightdata into @resdata
+
+	my $genresdata .= '
+				my @resdata = (';
+	my @resultdef;
+	my %resultmap; 
+	my @resultfld;
+	
+	# reference the variables for access by left/right iterator
+	my %choice = (
+		leftdef => \@leftdef,
+		leftmap => \%leftmap,
+		leftfld => \@leftfld,
+		rightdef => \@rightdef,
+		rightmap => \%rightmap,
+		rightfld => \@rightfld,
+	);
+	for my $side ( ("left", "right") ) {
+		my $orig = $choice{"${side}fld"};
+		my @trans = &filterFields($orig, $self->{"${side}Fields"});
+		my $smap = $choice{"${side}map"};
+		for ($i = 0; $i <= $#trans; $i++) {
+			my $f = $trans[$i];
+			#print STDERR "DEBUG ${side} [$i] is '" . (defined $f? $f : '-undef-') . "'\n";
+			next unless defined $f;
+			if (exists $resultmap{$f}) {
+				Carp::confess("A duplicate field '$f' is produced from  ${side}-side field '"
+					. $orig->[$i] . "'; the preceding fields are: (" . join(", ", @resultfld) . ")" )
+			}
+			my $index = $smap->{$orig->[$i]};
+			#print STDERR "DEBUG   index=$index smap=(" . join(", ", %$smap) . ")\n";
+			push @resultdef, $f, $choice{"${side}def"}->[$index*2 + 1];
+			push @resultfld, $f;
+			$resultmap{$f} = $#resultfld; # fix the index
+			$genresdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
+		}
+	}
+	$genresdata .= ");";
+	$genresdata .= '
+				push @result, $self->{resultRowType}->makeRowArray(@resdata);';
+
+	if(0) {
+	##########################################################################
 	# build the code that will produce one result record from @resdata
 
 	my $genresdata .= '
@@ -397,6 +429,7 @@ sub new # (class, optionName => optionValue ...)
 	$genresdata .= ");";
 	$genresdata .= '
 				push @result, $self->{resultRowType}->makeRowArray(@resdata);';
+	}
 
 	# end of result record
 	##########################################################################
@@ -654,8 +687,7 @@ $join2ab = LookupJoin->new( # will be used in both (2a) and (2b)
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts2,
 	rightIndex => "lookupSrcExt",
-	rightCopy => [ "internal" ],
-	rightRename => [ "acct" ],
+	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
 	enqMode => &Triceps::EM_CALL,
@@ -744,8 +776,7 @@ $join2c = LookupJoin->new(
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts2,
 	rightIndex => "lookupSrcExt",
-	rightCopy => [ "internal" ],
-	rightRename => [ "acct" ],
+	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	enqMode => &Triceps::EM_CALL,
 );
@@ -835,8 +866,7 @@ $join2d = LookupJoin->new(
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts2de,
 	rightIndex => "lookupSrcExt",
-	rightCopy => [ "internal" ],
-	rightRename => [ "acct" ],
+	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	enqMode => &Triceps::EM_CALL,
 );
@@ -898,8 +928,7 @@ $join2e = LookupJoin->new(
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts2de,
 	rightIndex => "lookupSrcExt",
-	rightCopy => [ "internal" ],
-	rightRename => [ "acct" ],
+	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
 	enqMode => &Triceps::EM_CALL,
@@ -964,8 +993,7 @@ $join2f = LookupJoin->new(
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts2de,
 	rightIndex => "lookupSrcExt",
-	rightCopy => [ "internal" ],
-	rightRename => [ "acct" ],
+	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
 	limitOne => 1,
