@@ -239,6 +239,8 @@ package LookupJoin;
 #    syntax as described in filterFields(), if not defined then pass everything
 #    (which is probably a bad idea since it would include duplicate fields from the 
 #    index, so override it)
+# fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
+#    the left record first, then from right record, or if 0, then opposite. (default:1)
 # by - reference to array, containing pairs of field names used for look-up,
 #    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
 #    XXX production version should allow an arbitrary expression on the left?
@@ -258,6 +260,7 @@ sub new # (class, optionName => optionValue ...)
 			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			fieldsLeftFirst => [ 1, undef ],
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
@@ -351,7 +354,9 @@ sub new # (class, optionName => optionValue ...)
 		rightmap => \%rightmap,
 		rightfld => \@rightfld,
 	);
-	for my $side ( ("left", "right") ) {
+	my @order = ($self->{fieldsLeftFirst} ? ("left", "right") : ("right", "left"));
+	#print STDERR "DEBUG order is ", $self->{fieldsLeftFirst}, ": (", join(", ", @order), ")\n";
+	for my $side (@order) {
 		my $orig = $choice{"${side}fld"};
 		my @trans = &filterFields($orig, $self->{"${side}Fields"});
 		my $smap = $choice{"${side}map"};
@@ -778,6 +783,7 @@ $join2c = LookupJoin->new(
 	rightIndex => "lookupSrcExt",
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 0,
 	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2c, "LookupJoin");
@@ -868,6 +874,7 @@ $join2d = LookupJoin->new(
 	rightIndex => "lookupSrcExt",
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 0,
 	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2d, "LookupJoin");
@@ -1043,3 +1050,177 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 join2f.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
 ';
 ok($result2, $expect2f);
+
+#######################################################################
+# 3. A table-to-table join.
+# It's the next step of complexity that still has serious limitations:
+# joining only two tables, and no self-joins.
+# It's implemented in a simple way by tying together 2 LookupJoins.
+
+package JoinTwo;
+
+# Options (mostly mandatory):
+# unit - unit object
+# name - name of this object (will be used to create the names of internal objects)
+# leftTable - table object to join
+# rightTable - table object to join
+# leftIndex - name of index type in left table used for look-up,
+#    index absolutely must be a Hash (leaf or not), not of any other kind
+# rightIndex - name of index type in right table used for look-up,
+#    index absolutely must be a Hash (leaf or not), not of any other kind;
+#    the number and order of fields in left and right indexes must match
+#    since indexes define the fields used for the join; the types of fields
+#    don't have to match exactly since Perl will connvert them if possible
+# leftFields (optional) - reference to array of patterns for left fields to pass through,
+#    syntax as described in filterFields(), if not defined then pass everything
+# rightFields (optional) - reference to array of patterns for right fields to pass through,
+#    syntax as described in filterFields(), if not defined then pass everything
+#    (which may results with the join-condition fields copied twice from both tables).
+# type (optional) - one of: "inner" (default), "left", "right", "outer"
+# enqMode - enqueuing mode for the output records, sent to the output label
+#
+#    XXX add ability to map the join condition fields from both source rows into the
+#    same fields of the result, the joiner knows how to handle this correctly.
+sub new # (class, optionName => optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+	my $i;
+
+	# the logic works by connecting the output of each table in a
+	# LookupJoin of the other table
+
+	&Triceps::Opt::parse($class, $self, {
+			unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+			name => [ undef, \&Triceps::Opt::ck_mandatory ],
+			leftTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+			leftIndex => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
+			rightIndex => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
+			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			type => [ "inner", undef ],
+			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
+		}, @_);
+
+	Carp::confess("Self-joins (the same table on both sides) are not supported") 
+		if $self->{leftTable}->same($self->{rightTable});
+
+	my ($leftLeft, $rightLeft);
+	if ($self->{type} eq "inner") {
+		$leftLeft = 0;
+		$rightLeft = 0;
+	} elsif ($self->{type} eq "left") {
+		$leftLeft = 1;
+		$rightLeft = 0;
+	} elsif ($self->{type} eq "right") {
+		$leftLeft = 0;
+		$rightLeft = 1;
+	} elsif ($self->{type} eq "outer") {
+		$leftLeft = 1;
+		$rightLeft = 1;
+	} else {
+		Carp::confess("Unknown value '" . $self->{type} . "' of option 'type', must be one of inner|left|right|outer");
+	}
+
+	$self->{leftRowType} = $self->{leftTable}->getRowType();
+	$self->{rightRowType} = $self->{rightTable}->getRowType();
+
+	my @leftdef = $self->{leftRowType}->getdef();
+	my %leftmap = $self->{leftRowType}->getFieldMapping();
+	my @leftfld = $self->{leftRowType}->getFieldNames();
+
+	my @rightdef = $self->{rightRowType}->getdef();
+	my %rightmap = $self->{rightRowType}->getFieldMapping();
+	my @rightfld = $self->{rightRowType}->getFieldNames();
+
+	# compare the index definitions, check that the fields match
+	for my $side ( ("left", "right") ) {
+		$self->{"${side}IdxType"} = $self->{"${side}Table"}->getType()->findSubIndex($self->{"${side}Index"});
+		Carp::confess("The $side table does not have a top-level index '" . $self->{"${side}Index"} . "' for joining")
+			unless defined $self->{"${side}IdxType"};
+		my $ixid  = $self->{"${side}IdxType"}->getIndexId();
+		Carp::confess("The $side index '" . $self->{"${side}Index"} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
+			unless ($ixid == &Triceps::IT_HASHED);
+	}
+	@leftkeys = $self->{leftIdxType}->getKey();
+	@rightkeys = $self->{rightIdxType}->getKey();
+	Carp::confess("The count of fields in left and right indexes doesnt match\n  left:  (" 
+			. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  ")
+		unless ($#leftkeys == $#rightkeys);
+
+	my (@leftby, @rightby); # build the "by" specifications for LookupJoin
+	for ($i = 0; $i <= $#leftkeys; $i++) { # check that the array-ness matches
+		push @leftby, $leftkeys[$i], $rightkeys[$i];
+		push @rightby, $rightkeys[$i], $leftkeys[$i];
+
+		my $leftType = $leftdef[ $leftmap{$leftkeys[$i]}*2 + 1];
+		my $rightType = $rightdef[ $rightmap{$rightkeys[$i]}*2 + 1];
+		# for Perl representation, uint8[] is the same as string, so treat it as such
+		$leftType =~ s/uint8\[\]/string/;
+		$rightType =~ s/uint8\[\]/string/;
+		Carp::confess("Mismatched array and scalar fields in key: left " 
+				. $leftkeys[$i] . " " . $leftdef[ $leftmap{$leftkeys[$i]}*2 + 1] . ", right "
+				. $rightkeys[$i] . " " . $rightdef[ $rightmap{$rightkeys[$i]}*2 + 1])
+			if (($leftType =~ /\[\]$/) ^ ($rightType =~ /\[\]$/));
+	}
+
+	# now create the LookupJoins
+	$self->leftLookup = LookupJoin->new(
+		unit => $self->{unit},
+		name => $self->{name} . ".leftLookup",
+		leftRowType => $self->{leftRowType},
+		rightTable => $self->{rightTable},
+		rightIndex => $self->{rightIndex},
+		leftFields => $self->{leftFields},
+		rightFields => $self->{rightFields},
+		fieldsLeftFirst => 1,
+		by => \@leftby,
+		isLeft => $leftLeft,
+		enqMode => $self->{enqMode},
+	);
+	$self->rightLookup = LookupJoin->new(
+		unit => $self->{unit},
+		name => $self->{name} . ".rightLookup",
+		leftRowType => $self->{rightRowType},
+		rightTable => $self->{leftTable},
+		rightIndex => $self->{leftIndex},
+		leftFields => $self->{rightFields},
+		rightFields => $self->{leftFields},
+		fieldsLeftFirst => 0,
+		by => \@rightby,
+		isLeft => $rightLeft,
+		enqMode => $self->{enqMode},
+	);
+
+	# create the output label
+	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{leftLookup}->getResultRowType(), $self->{name} . ".out");
+	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
+
+	# and connect them together
+	$self->{leftTable}->getOutputLabel()->chain($self->{leftLookup}->getInputLabel());
+	$self->{rightTable}->getOutputLabel()->chain($self->{rightLookup}->getInputLabel());
+	$self->{leftLookup}->getOutputLabel()->chain($self->{outputLabel});
+	$self->{rightLookup}->getOutputLabel()->chain($self->{outputLabel});
+
+	bless $self, $class;
+	return $self;
+}
+
+sub getResultRowType() # (self)
+{
+	my $self = shift;
+	return $self->{leftLookup}->getResultRowType();
+}
+
+sub getOutputLabel() # (self)
+{
+	my $self = shift;
+	return $self->{outputLabel};
+}
+
+# XXX for production add more getter methods
+# XXX test JoinTwo for errors
+
+package main;
+

@@ -43,7 +43,7 @@ eval {
 };
 ok(!$@);
 ok($testobj->{mand}, 9);
-ok(!defined $testobj->{opt});
+ok($testobj->{opt}, 9);
 ok(!defined $testobj->{veryopt});
 
 eval {

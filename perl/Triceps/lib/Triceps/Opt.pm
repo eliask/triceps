@@ -39,7 +39,9 @@ sub parse # ($class, %$instance, %$optdescr, @opts)
 	my ($k, $varr, $v);
 
 	foreach $k (keys %$descr) { # set the defaults
-		$instance->{$k} = $descr->{k}[0];
+		$v = $descr->{$k}[0];
+		#print STDERR "DEBUG set $k=(", $v, ")\n";
+		$instance->{$k} = $descr->{$k}[0];
 	}
 
 	while ($#_ >= 1) { # pick in pairs
