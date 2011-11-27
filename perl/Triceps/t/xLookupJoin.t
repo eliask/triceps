@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 99 };
+BEGIN { plan tests => 101 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -226,7 +226,7 @@ ok($result1, $expect1);
 
 package LookupJoin;
 
-# Options (mostly mandatory):
+# Options:
 # unit - unit object
 # name - name of this object (will be used to create the names of internal objects)
 # leftRowType - type of the rows that will be used for lookup
@@ -247,6 +247,13 @@ package LookupJoin;
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
 # enqMode - enqueuing mode for the output records, sent to the output label
+# automaticOnly (optional) - flag: do not support the manual lookup() call, handle
+#    only the automatic feed through through the input label. This allows
+#    to always take the opcode into the account, and is used by JoinTwo. (default: 0)
+# oppositeOuter (optional) - flag: this is a half of a JoinTwo, and the other
+#    half performs an outer (from its standpoint, left) join. For this side,
+#    this means that a successfull lookup must generate a DELETE-INSERT pair.
+#    Requires automaticOnly=1. (default: 0)
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -265,7 +272,12 @@ sub new # (class, optionName => optionValue ...)
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
 			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
+			automaticOnly => [ 0, undef ],
+			oppositeOuter => [ 0, undef ],
 		}, @_);
+
+	Carp::confess("Setting the option flag 'oppositeOuter' requires the setting of 'automaticOnly'")
+		if ($self->{oppositeOuter} && !$self->{automaticOnly});
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
@@ -290,7 +302,7 @@ sub new # (class, optionName => optionValue ...)
 		{
 			my ($self, $row) = @_;
 
-			print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $row->printP(), "\n";
+			#print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $row->printP(), "\n";
 
 			my @leftdata = $row->toArray();
 		';
@@ -337,7 +349,8 @@ sub new # (class, optionName => optionValue ...)
 
 	##########################################################################
 	# build the code that will produce one result record by combining
-	# @leftdata and @rightdata into @resdata
+	# @leftdata and @rightdata into @resdata;
+	# XXX also for oppositeOuter add a special case
 
 	my $genresdata .= '
 				my @resdata = (';
@@ -379,14 +392,14 @@ sub new # (class, optionName => optionValue ...)
 	$genresdata .= ");";
 	$genresdata .= '
 				push @result, $self->{resultRowType}->makeRowArray(@resdata);
-				print STDERR "DEBUGX " . $self->{name} . " +out: ", $result[$#result]->printP(), "\n";';
+				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $result[$#result]->printP(), "\n";';
 
 	# end of result record
 	##########################################################################
 
 	# do the look-up
 	$genjoin .= '
-			print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
+			#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
 			my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
 			Carp::confess("$!") unless defined $rh;
 		';
@@ -399,11 +412,13 @@ sub new # (class, optionName => optionValue ...)
 			# a shortcut for full join if nothing is found
 			$genjoin .= '
 			return () if $rh->isNull();
+			#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
 			@rightdata = $rh->getRow()->toArray();
 ';
 		} else {
 			$genjoin .= '
 			if (!$rh->isNull()) {
+				#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
 				@rightdata = $rh->getRow()->toArray();
 			}
 ';
@@ -412,7 +427,7 @@ sub new # (class, optionName => optionValue ...)
 	} else {
 		$genjoin .= '
 			if ($rh->isNull()) {
-				#print STDERR "DEBUGX found NULL\n";
+				#print STDERR "DEBUGX " . $self->{name} . " found NULL\n";
 '; 
 		if ($self->{isLeft}) {
 			$genjoin .= $genresdata;
@@ -423,7 +438,7 @@ sub new # (class, optionName => optionValue ...)
 
 		$genjoin .= '
 			} else {
-				#print STDERR "DEBUGX found data\n";
+				#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
 				my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
 				for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
 					@rightdata = $rh->getRow()->toArray();
@@ -1124,6 +1139,8 @@ sub new # (class, optionName => optionValue ...)
 		by => \@leftby,
 		isLeft => $leftLeft,
 		enqMode => $self->{enqMode},
+		automaticOnly => 1,
+		oppositeOuter => $rightLeft,
 	);
 	$self->{rightLookup} = LookupJoin->new(
 		unit => $self->{unit},
@@ -1137,6 +1154,8 @@ sub new # (class, optionName => optionValue ...)
 		by => \@rightby,
 		isLeft => $rightLeft,
 		enqMode => $self->{enqMode},
+		automaticOnly => 1,
+		oppositeOuter => $leftLeft,
 	);
 
 	# create the output label
@@ -1328,26 +1347,52 @@ sub feedMixedInput # (@$dataArray)
 	[ $intrans3, &Triceps::OP_INSERT, [ 2, "source2", "ABCD", 200 ] ], 
 	[ $intrans3, &Triceps::OP_INSERT, [ 3, "source3", "ZZZZ", 300 ] ], 
 	[ $intrans3, &Triceps::OP_INSERT, [ 4, "source1", "999", 400 ] ], 
-	[ $intrans3, &Triceps::OP_INSERT, [ 5, "source1", "2011", 50 ] ],
-	#[ $inacct3, &Triceps::OP_DELETE, [ "source1", "999", 1 ] ], # XXX triggets a bug in the table
-	#[ $inacct3, &Triceps::OP_INSERT, [ "source1", "999", 4 ] ],
+	[ $inacct3, &Triceps::OP_DELETE, [ "source1", "999", 1 ] ],
+	[ $inacct3, &Triceps::OP_INSERT, [ "source1", "999", 4 ] ],
 	[ $intrans3, &Triceps::OP_INSERT, [ 4, "source1", "2011", 500 ] ], # will displace the original record
-	[ $intrans3, &Triceps::OP_INSERT, [ 9, "source1", "2011", 5000 ] ], # XXX
-	[ $intrans3, &Triceps::OP_INSERT, [ 10, "source1", "999", 1000 ] ], 
 );
 
 &feedMixedInput(\@data3);
 $vu3->drainFrame();
 ok($vu3->empty());
 
-#ok ($result3a, '');
+ok ($result3a, 
+'join3a.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3a.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3a.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
+join3a.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3a.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
+join3a.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="4" 
+join3a.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
+join3a.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
+join3a.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
+');
+ok ($result3b, 'join3b.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+# XXXX not right, needs to perform a delete, then insert
+join3b.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
+join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
+join3b.rightLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3b.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3b.leftLookup.out OP_INSERT id="3" acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join3b.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
+');
 
-# XXX result not right, DELETE from inacct3 messes up its structure
-print STDERR $result3a;
+# for debugging
+print STDERR $result3b;
 print STDERR "---- acct ----\n";
 print STDERR $res_acct;
 print STDERR "---- trans ----\n";
 print STDERR $res_trans;
-#ok ($result3b, '');
+print STDERR "---- acct dump ----\n";
+for (my $rh = $tAccounts3->beginIdx($idxAccountsLookup); !$rh->isNull(); $rh = $tAccounts3->nextIdx($idxAccountsLookup, $rh)) {
+	print STDERR $rh->getRow()->printP(), "\n";
+}
 #ok ($result3c, '');
 #ok ($result3d, '');
