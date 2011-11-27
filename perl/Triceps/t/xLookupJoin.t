@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 74 };
+BEGIN { plan tests => 99 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -290,7 +290,7 @@ sub new # (class, optionName => optionValue ...)
 		{
 			my ($self, $row) = @_;
 
-			#print STDERR "DEBUGX LookupJoin in: ", $row->printP(), "\n";
+			print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $row->printP(), "\n";
 
 			my @leftdata = $row->toArray();
 		';
@@ -378,69 +378,15 @@ sub new # (class, optionName => optionValue ...)
 	}
 	$genresdata .= ");";
 	$genresdata .= '
-				push @result, $self->{resultRowType}->makeRowArray(@resdata);';
-
-	if(0) {
-	##########################################################################
-	# build the code that will produce one result record from @resdata
-
-	my $genresdata .= '
-				my @resdata = (';
-	# result will start with a copy of left side, possibly with fields dropped
-	my @resultdef;
-	my %resultmap = %leftmap; 
-	my @resultfld;
-	if (defined $self->{leftDrop}) {
-		foreach my $f (@{$self->{leftDrop}}) { # indexes in %resultmap won't be correct in this loop, but fixed later
-			Carp::confess("Option 'leftDrop' contains an unknown left-side field '$f'")
-				unless defined $leftmap{$f};
-			delete $resultmap{$f};
-		}
-		foreach my $f (@leftfld) {
-			next unless defined $resultmap{$f};
-			push @resultdef, $f, $leftdef[$leftmap{$f}*2 + 1];
-			push @resultfld, $f;
-			$resultmap{$f} = $#resultfld; # fix the index
-			$genresdata .= '$leftdata[' . $leftmap{$f} . "],\n\t\t\t\t";
-		}
-	} else {
-		@resultdef = @leftdef;
-		@resultfld = @leftfld;
-		$genresdata .= '@leftdata, ';
-	}
-
-	# now add the fields from right side
-	my @rightRename;
-	if (defined $self->{rightRename}) {
-		@rightRename = @{$self->{rightRename}};
-	}
-	for (my $i = 0; $i <= $#{$self->{rightCopy}}; $i++) {
-		#print STDERR "DEBUG resultmap=(", join (", ", %resultmap), ")\n";
-		my $f = $self->{rightCopy}[$i];
-		my $resf = $rightRename[$i];
-		if (!defined $resf || $resf eq "") {
-			$resf = $f;
-		}
-		Carp::confess("Option 'rightCopy' contains an unknown right-side field '$f'")
-			unless defined $rightmap{$f};
-		Carp::confess("Option 'rightCopy'/'rightRename' contains a duplicate result field '$resf'")
-			if defined $resultmap{$resf};
-
-		push @resultdef, $resf, $rightdef[$rightmap{$f}*2 + 1];
-		push @resultfld, $resf;
-		$resultmap{$resf} = $#resultfld;
-		$genresdata .= '$rightdata[' . $rightmap{$f} . "],\n\t\t\t\t";
-	}
-	$genresdata .= ");";
-	$genresdata .= '
-				push @result, $self->{resultRowType}->makeRowArray(@resdata);';
-	}
+				push @result, $self->{resultRowType}->makeRowArray(@resdata);
+				print STDERR "DEBUGX " . $self->{name} . " +out: ", $result[$#result]->printP(), "\n";';
 
 	# end of result record
 	##########################################################################
 
 	# do the look-up
 	$genjoin .= '
+			print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
 			my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
 			Carp::confess("$!") unless defined $rh;
 		';
@@ -1166,7 +1112,7 @@ sub new # (class, optionName => optionValue ...)
 	}
 
 	# now create the LookupJoins
-	$self->leftLookup = LookupJoin->new(
+	$self->{leftLookup} = LookupJoin->new(
 		unit => $self->{unit},
 		name => $self->{name} . ".leftLookup",
 		leftRowType => $self->{leftRowType},
@@ -1179,7 +1125,7 @@ sub new # (class, optionName => optionValue ...)
 		isLeft => $leftLeft,
 		enqMode => $self->{enqMode},
 	);
-	$self->rightLookup = LookupJoin->new(
+	$self->{rightLookup} = LookupJoin->new(
 		unit => $self->{unit},
 		name => $self->{name} . ".rightLookup",
 		leftRowType => $self->{rightRowType},
@@ -1224,3 +1170,184 @@ sub getOutputLabel() # (self)
 
 package main;
 
+# this will work by creating 2 tables and 4 kinds of joins on them,
+# and then feeding the input data to the tables and producing 
+# 4 join results in parallel.
+
+$vu3 = Triceps::Unit->new("vu3");
+ok(ref $vu3, "Triceps::Unit");
+
+# this will record the results
+my ($result3a, $result3b, $result3c, $result3d);
+
+# the accounts table type is also reused from example (1)
+$tAccounts3 = $vu3->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+ok(ref $tAccounts3, "Triceps::Table");
+$inacct3 = $tAccounts3->getInputLabel();
+ok(ref $inacct3, "Triceps::Label");
+
+# the incoming transactions table here adds an extra id field
+@defTrans3 = ( # a transaction received
+	id => "int32", # transaction id
+	acctSrc => "string", # external system that sent us a transaction
+	acctXtrId => "string", # its name of the account of the transaction
+	amount => "int32", # the amount of transaction (int is easier to check)
+);
+$rtTrans3 = Triceps::RowType->new(
+	@defTrans3
+);
+ok(ref $rtTrans3, "Triceps::RowType");
+$ttTrans3 = Triceps::TableType->new($rtTrans3)
+	# muliple indexes can be defined for different purposes
+	# (though of course each extra index adds overhead)
+	->addSubIndex("primary", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("byAccount", # for joining by account info
+		Triceps::IndexType->newHashed(key => [ "acctSrc", "acctXtrId" ])
+		->addSubIndex("data", Triceps::IndexType->newFifo())
+	)
+; 
+ok(ref $ttTrans3, "Triceps::TableType");
+ok($ttTrans3->initialize());
+$tTrans3 = $vu3->makeTable($ttTrans3, &Triceps::EM_CALL, "Trans");
+ok(ref $tTrans3, "Triceps::Table");
+$intrans3 = $tTrans3->getInputLabel();
+ok(ref $intrans3, "Triceps::Label");
+
+# for debugging, collect the table results
+my $res_acct;
+my $labAccounts3 = $vu3->makeLabel($tAccounts3->getRowType(), "labAccounts3", undef, sub { $res_acct .= $_[1]->printP() . "\n" } );
+ok(ref $labAccounts3, "Triceps::Label");
+ok($tAccounts3->getOutputLabel()->chain($labAccounts3));
+
+my $res_trans;
+my $labTrans3 = $vu3->makeLabel($tTrans3->getRowType(), "labTrans3", undef, sub { $res_trans .= $_[1]->printP() . "\n" } );
+ok(ref $labTrans3, "Triceps::Label");
+ok($tTrans3->getOutputLabel()->chain($labTrans3));
+
+# create the joins
+# inner
+my $join3a = JoinTwo->new(
+	unit => $vu3,
+	name => "join3a",
+	leftTable => $tTrans3,
+	rightTable => $tAccounts3,
+	leftIndex => "byAccount",
+	rightIndex => "lookupSrcExt",
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	type => "inner",
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join3a, "JoinTwo");
+
+my $outlab3a = $vu3->makeLabel($join3a->getResultRowType(), "out3a", undef, sub { $result3a .= $_[1]->printP() . "\n" } );
+ok(ref $outlab3a, "Triceps::Label");
+ok($join3a->getOutputLabel()->chain($outlab3a));
+
+# outer
+my $join3b = JoinTwo->new(
+	unit => $vu3,
+	name => "join3b",
+	leftTable => $tTrans3,
+	rightTable => $tAccounts3,
+	leftIndex => "byAccount",
+	rightIndex => "lookupSrcExt",
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	type => "outer",
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join3b, "JoinTwo");
+
+my $outlab3b = $vu3->makeLabel($join3b->getResultRowType(), "out3b", undef, sub { $result3b .= $_[1]->printP() . "\n" } );
+ok(ref $outlab3b, "Triceps::Label");
+ok($join3b->getOutputLabel()->chain($outlab3b));
+
+# left
+my $join3c = JoinTwo->new(
+	unit => $vu3,
+	name => "join3c",
+	leftTable => $tTrans3,
+	rightTable => $tAccounts3,
+	leftIndex => "byAccount",
+	rightIndex => "lookupSrcExt",
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	type => "left",
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join3c, "JoinTwo");
+
+my $outlab3c = $vu3->makeLabel($join3c->getResultRowType(), "out3c", undef, sub { $result3c .= $_[1]->printP() . "\n" } );
+ok(ref $outlab3c, "Triceps::Label");
+ok($join3c->getOutputLabel()->chain($outlab3c));
+
+# right
+my $join3d = JoinTwo->new(
+	unit => $vu3,
+	name => "join3d",
+	leftTable => $tTrans3,
+	rightTable => $tAccounts3,
+	leftIndex => "byAccount",
+	rightIndex => "lookupSrcExt",
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	type => "right",
+	enqMode => &Triceps::EM_CALL,
+);
+ok(ref $join3d, "JoinTwo");
+
+my $outlab3d = $vu3->makeLabel($join3d->getResultRowType(), "out3d", undef, sub { $result3d .= $_[1]->printP() . "\n" } );
+ok(ref $outlab3d, "Triceps::Label");
+ok($join3d->getOutputLabel()->chain($outlab3d));
+
+# now send the data
+# helper function to feed the input data to a mix of labels
+# @param dataArray - ref to an array of row descriptions, each of which is a ref to array of:
+#    label, opcode, ref to array of fields
+sub feedMixedInput # (@$dataArray)
+{
+	my $dataArray = shift;
+	foreach my $entry (@$dataArray) {
+		my ($label, $opcode, $tuple) = @$entry;
+		my $unit = $label->getUnit();
+		my $rt = $label->getType();
+		my $rowop = $label->makeRowop($opcode, $rt->makeRowArray(@$tuple));
+		$unit->schedule($rowop);
+	}
+}
+
+@data3 = (
+	[ $intrans3, &Triceps::OP_INSERT, [ 1, "source1", "999", 100 ] ], 
+	[ $inacct3, &Triceps::OP_INSERT, [ "source1", "999", 1 ] ],
+	[ $inacct3, &Triceps::OP_INSERT, [ "source1", "2011", 2 ] ],
+	[ $inacct3, &Triceps::OP_INSERT, [ "source1", "42", 3 ] ],
+	[ $inacct3, &Triceps::OP_INSERT, [ "source2", "ABCD", 1 ] ],
+	[ $intrans3, &Triceps::OP_INSERT, [ 2, "source2", "ABCD", 200 ] ], 
+	[ $intrans3, &Triceps::OP_INSERT, [ 3, "source3", "ZZZZ", 300 ] ], 
+	[ $intrans3, &Triceps::OP_INSERT, [ 4, "source1", "999", 400 ] ], 
+	[ $intrans3, &Triceps::OP_INSERT, [ 5, "source1", "2011", 50 ] ],
+	#[ $inacct3, &Triceps::OP_DELETE, [ "source1", "999", 1 ] ], # XXX triggets a bug in the table
+	#[ $inacct3, &Triceps::OP_INSERT, [ "source1", "999", 4 ] ],
+	[ $intrans3, &Triceps::OP_INSERT, [ 4, "source1", "2011", 500 ] ], # will displace the original record
+	[ $intrans3, &Triceps::OP_INSERT, [ 9, "source1", "2011", 5000 ] ], # XXX
+	[ $intrans3, &Triceps::OP_INSERT, [ 10, "source1", "999", 1000 ] ], 
+);
+
+&feedMixedInput(\@data3);
+$vu3->drainFrame();
+ok($vu3->empty());
+
+#ok ($result3a, '');
+
+# XXX result not right, DELETE from inacct3 messes up its structure
+print STDERR $result3a;
+print STDERR "---- acct ----\n";
+print STDERR $res_acct;
+print STDERR "---- trans ----\n";
+print STDERR $res_trans;
+#ok ($result3b, '');
+#ok ($result3c, '');
+#ok ($result3d, '');
