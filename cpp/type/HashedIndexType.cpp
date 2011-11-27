@@ -28,10 +28,11 @@ bool HashedIndexType::Less::operator() (const RowHandle *r1, const RowHandle *r2
 	RhSection *rs2 = r2->get<RhSection>(rhOffset_);
 
 	{
-		Hash::SValue hdf= (Hash::SValue)(rs1->hash_ - rs2->hash_);
-		if (hdf < 0)
+		Hash::SValue h1 = rs1->hash_;
+		Hash::SValue h2= rs2->hash_;
+		if (h1 < h2)
 			return true;
-		if (hdf > 0)
+		if (h1 > h2)
 			return false;
 	}
 

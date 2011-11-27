@@ -787,6 +787,7 @@ RowHandle *IndexType::findRecord(const Table *table, const RowHandle *what) cons
 	// fprintf(stderr, "DEBUG IndexType::findRecord(this=%p, table=%p, what=%p)\n", this, table, what);
 	if (isLeaf()) {
 		const Index *myidx = parent_->findNestedIndex(nestPos_, table, what);
+		// fprintf(stderr, "DEBUG IndexType::findRecord(this=%p, table=%p, what=%p) found idx=%p\n", this, table, what, myidx);
 		if (myidx == NULL)
 			return NULL;
 		return myidx->find(what);

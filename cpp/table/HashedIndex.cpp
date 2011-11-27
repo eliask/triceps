@@ -38,6 +38,7 @@ const IndexType *HashedIndex::getType() const
 RowHandle *HashedIndex::begin() const
 {
 	Set::iterator it = data_.begin();
+	// fprintf(stderr, "DEBUG HashedIndex::begin(this=%p) found %p (of %d)\n", this, (it == data_.end()?NULL:*it), (int)data_.size());
 	if (it == data_.end())
 		return NULL;
 	else
@@ -53,6 +54,7 @@ RowHandle *HashedIndex::next(const RowHandle *cur) const
 	RhSection *rs = less_->getSection(cur);
 	Set::iterator it = rs->iter_;
 	++it;
+	// fprintf(stderr, "DEBUG HashedIndex::next(this=%p, cur=%p) found %p (of %d)\n", this, cur, (it == data_.end()?NULL:*it), (int)data_.size());
 	if (it == data_.end()) {
 		// fprintf(stderr, "DEBUG HashedIndex::next(this=%p) return NULL\n", this);
 		return NULL;
@@ -91,6 +93,7 @@ const GroupHandle *HashedIndex::toGroup(const RowHandle *cur) const
 RowHandle *HashedIndex::find(const RowHandle *what) const
 {
 	Set::iterator it = data_.find(const_cast<RowHandle *>(what));
+	// fprintf(stderr, "DEBUG HashedIndex::find(this=%p, what=%p) found %p (of %d)\n", this, what, (it == data_.end()?NULL:*it), (int)data_.size());
 	if (it == data_.end())
 		return NULL;
 	else
@@ -117,12 +120,13 @@ void HashedIndex::insert(RowHandle *rh)
 	assert(res.second); // must always succeed
 	RhSection *rs = less_->getSection(rh);
 	rs->iter_ = res.first;
-	// fprintf(stderr, "DEBUG HashedIndex::insert(this=%p, rh=%p)\n", this, rh);
+	// fprintf(stderr, "DEBUG HashedIndex::insert(this=%p, rh=%p, rs=%p)\n", this, rh, rs);
 }
 
 void HashedIndex::remove(RowHandle *rh)
 {
 	RhSection *rs = less_->getSection(rh);
+	// fprintf(stderr, "DEBUG HashedIndex::remove(this=%p, rh=%p, rs=%p)\n", this, rh, rs);
 	data_.erase(rs->iter_);
 }
 
