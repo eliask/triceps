@@ -247,13 +247,6 @@ package LookupJoin;
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
 # enqMode - enqueuing mode for the output records, sent to the output label
-# automaticOnly (optional) - flag: do not support the manual lookup() call, handle
-#    only the automatic feed through through the input label. This allows
-#    to always take the opcode into the account, and is used by JoinTwo. (default: 0)
-# oppositeOuter (optional) - flag: this is a half of a JoinTwo, and the other
-#    half performs an outer (from its standpoint, left) join. For this side,
-#    this means that a successfull lookup must generate a DELETE-INSERT pair.
-#    Requires automaticOnly=1. (default: 0)
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -272,12 +265,7 @@ sub new # (class, optionName => optionValue ...)
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
 			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
-			automaticOnly => [ 0, undef ],
-			oppositeOuter => [ 0, undef ],
 		}, @_);
-
-	Carp::confess("Setting the option flag 'oppositeOuter' requires the setting of 'automaticOnly'")
-		if ($self->{oppositeOuter} && !$self->{automaticOnly});
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
@@ -350,7 +338,6 @@ sub new # (class, optionName => optionValue ...)
 	##########################################################################
 	# build the code that will produce one result record by combining
 	# @leftdata and @rightdata into @resdata;
-	# XXX also for oppositeOuter add a special case
 
 	my $genresdata .= '
 				my @resdata = (';
@@ -466,6 +453,273 @@ sub new # (class, optionName => optionValue ...)
 	# create the input label
 	$self->{inputLabel} = $self->{unit}->makeLabel($self->{leftRowType}, $self->{name} . ".in", 
 		undef, \&handleInput, $self);
+	Carp::confess("$!") unless (ref $self->{inputLabel} eq "Triceps::Label");
+	# create the output label
+	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{resultRowType}, $self->{name} . ".out");
+	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
+
+	bless $self, $class;
+	return $self;
+}
+
+# A version that creates a lookup join that always feeds through the input
+# label and does not support the lookup() call. This allows
+# to always take the opcode into the account, and is used by JoinTwo.
+# Would it be better as an option in new(), or maybe as a separate class?
+# So far a separate constructor looks like the easiest option that
+# does not muddle the basic code, but on the other hand leads to code duplication.
+#
+# Options:
+# unit - unit object
+# name - name of this object (will be used to create the names of internal objects)
+# leftRowType - type of the rows that will be used for lookup
+# rightTable - table object where to do the look-ups
+# rightIndex (optional) - name of index type in table used for look-up (default: first Hash),
+#    index absolutely must be a Hash (leaf or not), not of any other kind
+# leftFields (optional) - reference to array of patterns for left fields to pass through,
+#    syntax as described in filterFields(), if not defined then pass everything
+# rightFields (optional) - reference to array of patterns for right fields to pass through,
+#    syntax as described in filterFields(), if not defined then pass everything
+#    (which is probably a bad idea since it would include duplicate fields from the 
+#    index, so override it)
+# fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
+#    the left record first, then from right record, or if 0, then opposite. (default:1)
+# by - reference to array, containing pairs of field names used for look-up,
+#    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
+#    XXX production version should allow an arbitrary expression on the left?
+# isLeft (optional) - 1 for left join, 0 for full join (default: 1)
+# limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
+# enqMode - enqueuing mode for the output records, sent to the output label
+# oppositeOuter (optional) - flag: this is a half of a JoinTwo, and the other
+#    half performs an outer (from its standpoint, left) join. For this side,
+#    this means that a successfull lookup must generate a DELETE-INSERT pair.
+#    (default: 0)
+sub newAutomatic # (class, optionName => optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+			unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+			name => [ undef, \&Triceps::Opt::ck_mandatory ],
+			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
+			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			fieldsLeftFirst => [ 1, undef ],
+			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			isLeft => [ 1, undef ],
+			limitOne => [ 0, undef ],
+			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
+			oppositeOuter => [ 0, undef ],
+		}, @_);
+
+	$self->{rightRowType} = $self->{rightTable}->getRowType();
+
+	my @leftdef = $self->{leftRowType}->getdef();
+	my %leftmap = $self->{leftRowType}->getFieldMapping();
+	my @leftfld = $self->{leftRowType}->getFieldNames();
+
+	my @rightdef = $self->{rightRowType}->getdef();
+	my %rightmap = $self->{rightRowType}->getFieldMapping();
+	my @rightfld = $self->{rightRowType}->getFieldNames();
+
+	# XXX use getKey() to check that the "by" keys match the
+	# keys of the index
+	# XXX also in production should check the matching []-ness of fields
+
+	# Generate the join function with arguments:
+	# @param self - this object
+	# @param row - row argument
+	# @return - an array of joined rows
+	my $genjoin = '
+		sub # ($inLabel, $rowop, $self)
+		{
+			my ($inLabel, $rowop, $self) = @_;
+			#print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $rowop->printP(), "\n";
+
+			my $opcode = $rowop->getOpcode(); # pass the opcode
+			my $row = $rowop->getRow();
+
+			my @leftdata = $row->toArray();
+
+			my $resRowType = $self->{resultRowType};
+			my $resLabel = $self->{outputLabel};
+			my $enqMode = $self->{enqMode};
+		';
+
+	# create the look-up row (and check that "by" contains the correct field names)
+	$genjoin .= '
+			my $lookuprow = $self->{rightRowType}->makeRowHash(
+				';
+	my @cpby = @{$self->{by}};
+	while ($#cpby >= 0) {
+		my $lf = shift @cpby;
+		my $rt = shift @cpby;
+		Carp::confess("Option 'by' contains an unknown left-side field '$lf'")
+			unless defined $leftmap{$lf};
+		Carp::confess("Option 'by' contains an unknown right-side field '$rt'")
+			unless defined $rightmap{$rt};
+		$genjoin .= $rt . ' => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
+	}
+	$genjoin .= ");\n\t\t\t";
+
+	# translate the index
+	if (defined $self->{rightIndex}) {
+		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndex($self->{rightIndex});
+		Carp::confess("The table does not have a top-level index '" . $self->{rightIndex} . "' for joining")
+			unless defined $self->{rightIdxType};
+		my $ixid  = $self->{rightIdxType}->getIndexId();
+		Carp::confess("The index '" . $self->{rightIndex} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
+			unless ($ixid == &Triceps::IT_HASHED);
+	} else {
+		$self->{rightIdxType} = $self->{rightTable}->findSubIndexById(&Triceps::IT_HASHED);
+		Carp::confess("The table does not have a top-level Hash index for joining")
+			unless defined $self->{rightIdxType};
+	}
+	if (!$self->{limitOne}) { # would need a sub-index for iteration
+		my @subs = $self->{rightIdxType}->getSubIndexes();
+		if ($#subs < 0) { # no sub-indexes, so guaranteed to match one record
+			#print STDERR "DEBUG auto-deducing limitOne=1 subs=(", join(", ", @subs), ")\n";
+			$self->{limitOne} = 1;
+		} else {
+			$self->{iterIdxType} = $subs[1]; # first index type object, they go in (name => type) pairs
+			# (all sub-indexes are equivalent for our purpose, just pick first)
+		}
+	}
+
+	##########################################################################
+	# build the code that will produce one result record by combining
+	# @leftdata and @rightdata into @resdata;
+	# also for oppositeOuter add a special case for the opposite opcode 
+	# and empty right data in @oppdata
+
+	my $genresdata .= '
+				my @resdata = (';
+	my $genoppdata .= '
+				my @oppdata = (';
+
+	my @resultdef;
+	my %resultmap; 
+	my @resultfld;
+	
+	# reference the variables for access by left/right iterator
+	my %choice = (
+		leftdef => \@leftdef,
+		leftmap => \%leftmap,
+		leftfld => \@leftfld,
+		rightdef => \@rightdef,
+		rightmap => \%rightmap,
+		rightfld => \@rightfld,
+	);
+	my @order = ($self->{fieldsLeftFirst} ? ("left", "right") : ("right", "left"));
+	#print STDERR "DEBUG order is ", $self->{fieldsLeftFirst}, ": (", join(", ", @order), ")\n";
+	for my $side (@order) {
+		my $orig = $choice{"${side}fld"};
+		my @trans = &filterFields($orig, $self->{"${side}Fields"});
+		my $smap = $choice{"${side}map"};
+		for ($i = 0; $i <= $#trans; $i++) {
+			my $f = $trans[$i];
+			#print STDERR "DEBUG ${side} [$i] is '" . (defined $f? $f : '-undef-') . "'\n";
+			next unless defined $f;
+			if (exists $resultmap{$f}) {
+				Carp::confess("A duplicate field '$f' is produced from  ${side}-side field '"
+					. $orig->[$i] . "'; the preceding fields are: (" . join(", ", @resultfld) . ")" )
+			}
+			my $index = $smap->{$orig->[$i]};
+			#print STDERR "DEBUG   index=$index smap=(" . join(", ", %$smap) . ")\n";
+			push @resultdef, $f, $choice{"${side}def"}->[$index*2 + 1];
+			push @resultfld, $f;
+			$resultmap{$f} = $#resultfld; # fix the index
+			$genresdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
+			if ($side eq "left") {
+				$genoppdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
+			} else {
+				$genoppdata .= "undef,\n\t\t\t\t"; # empty filler for right side
+			}
+		}
+	}
+	$genresdata .= ');
+				my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
+				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
+				Carp::confess("$!") unless defined $resrowop;
+				Carp::confess("$!") 
+					unless $resLabel->getUnit()->enqueue($enqMode, $resrowop);
+				';
+	# XXX add genoppdata
+
+	# end of result record
+	##########################################################################
+
+	# do the look-up
+	$genjoin .= '
+			#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
+			my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
+			Carp::confess("$!") unless defined $rh;
+		';
+	$genjoin .= '
+			my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+			my @result; # the result rows will be collected here
+		';
+	if ($self->{limitOne}) { # an optimized version that returns no more than one row
+		if (! $self->{isLeft}) {
+			# a shortcut for full join if nothing is found
+			$genjoin .= '
+			return () if $rh->isNull();
+			#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
+			@rightdata = $rh->getRow()->toArray();
+';
+		} else {
+			$genjoin .= '
+			if (!$rh->isNull()) {
+				#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
+				@rightdata = $rh->getRow()->toArray();
+			}
+';
+		}
+		$genjoin .= $genresdata;
+	} else {
+		$genjoin .= '
+			if ($rh->isNull()) {
+				#print STDERR "DEBUGX " . $self->{name} . " found NULL\n";
+'; 
+		if ($self->{isLeft}) {
+			$genjoin .= $genresdata;
+		} else {
+			$genjoin .= '
+				return ();';
+		}
+
+		$genjoin .= '
+			} else {
+				#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
+				my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
+				for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
+					@rightdata = $rh->getRow()->toArray();
+' . $genresdata . '
+				}
+			}';
+	}
+
+	$genjoin .= '
+		}';
+
+	#print STDERR "DEBUG $genjoin\n";
+
+	undef $@;
+	eval "\$self->{joinerAutomatic} = $genjoin;"; # compile!
+	Carp::confess("Internal error: LookupJoin failed to compile the joiner function:\n$@\n")
+		if $@;
+
+	# now create the result row type
+	#print STDERR "DEBUG result type def = (", join(", ", @resultdef), ")\n"; # DEBUG
+	$self->{resultRowType} = Triceps::RowType->new(@resultdef);
+	Carp::confess("$!") unless (ref $self->{resultRowType} eq "Triceps::RowType");
+
+	# create the input label
+	$self->{inputLabel} = $self->{unit}->makeLabel($self->{leftRowType}, $self->{name} . ".in", 
+		undef, $self->{joinerAutomatic}, $self);
 	Carp::confess("$!") unless (ref $self->{inputLabel} eq "Triceps::Label");
 	# create the output label
 	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{resultRowType}, $self->{name} . ".out");
@@ -1127,7 +1381,7 @@ sub new # (class, optionName => optionValue ...)
 	}
 
 	# now create the LookupJoins
-	$self->{leftLookup} = LookupJoin->new(
+	$self->{leftLookup} = LookupJoin->newAutomatic(
 		unit => $self->{unit},
 		name => $self->{name} . ".leftLookup",
 		leftRowType => $self->{leftRowType},
@@ -1139,10 +1393,9 @@ sub new # (class, optionName => optionValue ...)
 		by => \@leftby,
 		isLeft => $leftLeft,
 		enqMode => $self->{enqMode},
-		automaticOnly => 1,
 		oppositeOuter => $rightLeft,
 	);
-	$self->{rightLookup} = LookupJoin->new(
+	$self->{rightLookup} = LookupJoin->newAutomatic(
 		unit => $self->{unit},
 		name => $self->{name} . ".rightLookup",
 		leftRowType => $self->{rightRowType},
@@ -1154,7 +1407,6 @@ sub new # (class, optionName => optionValue ...)
 		by => \@rightby,
 		isLeft => $rightLeft,
 		enqMode => $self->{enqMode},
-		automaticOnly => 1,
 		oppositeOuter => $leftLeft,
 	);
 
