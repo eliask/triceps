@@ -633,10 +633,10 @@ sub newAutomatic # (class, optionName => optionValue ...)
 			push @resultfld, $f;
 			$resultmap{$f} = $#resultfld; # fix the index
 			$genresdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
-			if ($side eq "left") {
+			if ($side eq "right") {
 				$genoppdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
 			} else {
-				$genoppdata .= "undef,\n\t\t\t\t"; # empty filler for right side
+				$genoppdata .= "undef,\n\t\t\t\t"; # empty filler for left (our) side
 			}
 		}
 	}
@@ -648,6 +648,15 @@ sub newAutomatic # (class, optionName => optionValue ...)
 					unless $resLabel->getUnit()->enqueue($enqMode, $resrowop);
 				';
 	# XXX add genoppdata
+	$genoppdata .= ');
+				my $opprowop = $resLabel->makeRowop(
+					&Triceps::isInsert($opcode)? &Triceps::OP_DELETE : &Triceps::OP_INSERT,
+					, $resRowType->makeRowArray(@oppdata));
+				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $opprowop->printP(), "\n";
+				Carp::confess("$!") unless defined $opprowop;
+				Carp::confess("$!") 
+					unless $resLabel->getUnit()->enqueue($enqMode, $opprowop);
+				';
 
 	# end of result record
 	##########################################################################
@@ -678,7 +687,23 @@ sub newAutomatic # (class, optionName => optionValue ...)
 			}
 ';
 		}
-		$genjoin .= $genresdata;
+		if ($self->{oppositeOuter}) {
+			$genjoin .= '
+			if (!$rh->isNull()) {
+				if (&Triceps::isInsert($opcode)) {
+' . $genoppdata . '
+' . $genresdata . '
+				} elsif (&Triceps::isDelete($opcode)) {
+' . $genresdata . '
+' . $genoppdata . '
+				}
+			} else {
+' . $genresdata . '
+			}
+';
+		} else {
+			$genjoin .= $genresdata;
+		}
 	} else {
 		$genjoin .= '
 			if ($rh->isNull()) {
@@ -696,14 +721,27 @@ sub newAutomatic # (class, optionName => optionValue ...)
 				#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
 				my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
 				for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
-					@rightdata = $rh->getRow()->toArray();
+					@rightdata = $rh->getRow()->toArray();';
+		if ($self->{oppositeOuter}) {
+			$genjoin .= '
+					if (&Triceps::isInsert($opcode)) {
+' . $genoppdata . '
 ' . $genresdata . '
+					} elsif (&Triceps::isDelete($opcode)) {
+' . $genresdata . '
+' . $genoppdata . '
+					}
+';
+		} else {
+			$genjoin .= $genresdata;
+		}
+		$genjoin .= '
 				}
 			}';
 	}
 
 	$genjoin .= '
-		}';
+		}'; # end of function
 
 	#print STDERR "DEBUG $genjoin\n";
 
@@ -1619,20 +1657,29 @@ join3a.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3a.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3a.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
-ok ($result3b, 'join3b.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
-# XXXX not right, needs to perform a delete, then insert
+ok ($result3b, 'XXX this is still not right: when handling oppositeOuter, must check whether this row is the only match or not
+join3b.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3b.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
 join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
 join3b.rightLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3b.leftLookup.out OP_DELETE ac_source="source2" ac_external="ABCD" ac_internal="1" 
 join3b.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
 join3b.leftLookup.out OP_INSERT id="3" acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join3b.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" 
 join3b.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
 join3b.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3b.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" 
 join3b.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3b.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
 join3b.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
 
