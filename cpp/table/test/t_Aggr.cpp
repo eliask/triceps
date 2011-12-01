@@ -486,7 +486,7 @@ UTESTCASE aggLast(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	// there no need for a primary index, put the aggregation
+	// there is no need for a primary index, put the aggregation
 	// index(es) as top-level
 	Autoref<TableType> tt = ( new TableType(rt1))
 			->addSubIndex("Hashed", (new HashedIndexType( // will be the default index
@@ -550,6 +550,7 @@ UTESTCASE aggLast(Utest *utest)
 	r11 = rt1->makeRow(dv);
 	UT_ASSERT(t->insertRow(r11));
 	
+	// XXX this result depends on ordering of records in hash
 	string result_expect = 
 		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
 		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
@@ -557,24 +558,24 @@ UTESTCASE aggLast(Utest *utest)
 		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
 		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
 		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
-		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
 		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
-		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
-		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
 		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
-		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
-		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
 		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=C b=1234\n"
-		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=B b=1234\n"
-		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
 		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=C b=1234\n"
-		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=B b=1234\n"
-		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
+		"t.onHashed ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
 		"t.onFifo ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
-		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=D b=1234\n"
-		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onHashedNested ao=AO_AFTER_INSERT op=OP_INSERT e=A b=1234\n"
+		"t.onHashed ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
 		"t.onFifo ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
-		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=D b=1234\n"
+		"t.onHashedNested ao=AO_BEFORE_MOD op=OP_DELETE e=A b=1234\n"
 		"t.onHashed ao=AO_AFTER_DELETE op=OP_INSERT e=D b=1234\n"
 		"t.onFifo ao=AO_AFTER_DELETE op=OP_INSERT e=D b=1234\n"
 		"t.onHashedNested ao=AO_AFTER_DELETE op=OP_INSERT e=D b=1234\n"
