@@ -11,10 +11,36 @@
 #include <common/Common.h>
 #include <sched/Tray.h>
 #include <sched/Label.h>
+#include <sched/FrameMark.h>
 #include <list>
 #include <map>
 
 namespace TRICEPS_NS {
+
+// One frame of the Unit's scheduling queue.
+class UnitFrame : public Tray
+{
+public:
+	~UnitFrame();
+
+	// Mark this frame
+	// @param mk - mark added to this frame (if it happens to point to another frame,
+	//    it will be removed from there first).
+	void mark(Onceref<FrameMark> mk);
+
+	// Check whether this frame has any marks on it.
+	bool isMarked() const
+	{
+		return !markList_.isNull();
+	}
+
+protected:
+	Autoref <FrameMark> markList_; // head of the single-linked list of marks at this frame
+
+	// A mark that is being reassigned points to this frame.
+	// Free it up for reassignment by dropping from this frame's list.
+	void dropFromList(FrameMark *what);
+};
 
 // The basic execution unit ties together a buch of tables, code and scheduling.
 // It lives inside one thread and always executes sequentially. But nothing really
@@ -226,15 +252,19 @@ protected:
 protected:
 	// the scheduling queue, trays work as stack frames on it
 	// (there might be a more efficient way to do it, but for now it's good enough)
-	typedef list< Autoref<Tray> > TrayList;
-	TrayList queue_;
-	Tray *outerFrame_; // the outermost frame
-	Tray *innerFrame_; // the current innermost frame (may happen to be the same as outermost)
+	typedef list< Autoref<UnitFrame> > FrameList;
+	FrameList queue_;
+	UnitFrame *outerFrame_; // the outermost frame
+	UnitFrame *innerFrame_; // the current innermost frame (may happen to be the same as outermost)
 	Autoref<Tracer> tracer_; // the tracer object
 	string name_; // human-readable name for tracing
 	// Keeping track of labels
 	typedef map<Label *, Autoref<Label> > LabelMap;
 	LabelMap labelMap_;
+
+private:
+	Unit(const Unit &);
+	void operator=(const Unit &);
 };
 
 // The idea here is to have an object that definitely would not be involved in

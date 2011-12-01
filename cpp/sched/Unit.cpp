@@ -11,6 +11,39 @@
 
 namespace TRICEPS_NS {
 
+///////////////////////////// UnitFrame //////////////////////////////////
+
+UnitFrame::~UnitFrame()
+{
+	if (!markList_.isNull()) // when a frame is popped, all its marks are forgotten
+		markList_->clear();
+}
+
+void UnitFrame::mark(Onceref<FrameMark> mk)
+{
+	// first see if the mark has to be reassigned
+	UnitFrame *oldf = mk->getFrame();
+	if (oldf == this) // already here
+		return;
+	if (oldf != NULL)
+		oldf->dropFromList(mk);
+
+	// now point it here
+	mk->set(this, markList_);
+	markList_ = mk;
+}
+
+void UnitFrame::dropFromList(FrameMark *what)
+{
+	if (markList_.get() == what) {
+		Autoref <FrameMark> m = what; // make sure that it doesn't get destroyed yet
+		markList_ = what->next_;
+		what->reset();
+	} else if (!markList_.isNull()) {
+		markList_->dropFromList(what);
+	}
+}
+
 ///////////////////////////// Unit::Tracer //////////////////////////////////
 
 Unit::Tracer::~Tracer()
@@ -79,7 +112,7 @@ Unit::Unit(const string &name) :
 	name_(name)
 {
 	// the outermost frame is always present
-	innerFrame_ = outerFrame_ = new Tray;
+	innerFrame_ = outerFrame_ = new UnitFrame;
 	queue_.push_front(outerFrame_);
 }
 
@@ -212,8 +245,8 @@ bool Unit::empty() const
 
 bool Unit::pushFrame()
 {
-	if (!innerFrame_->empty()) {
-		innerFrame_ = new Tray;
+	if (!innerFrame_->empty() || innerFrame_->isMarked()) {
+		innerFrame_ = new UnitFrame;
 		queue_.push_front(innerFrame_);
 		return true;
 	} else
