@@ -213,7 +213,7 @@ public:
 	// Constructor from a plain pointer.
 	// @param t - the type of the row (may be NULL if row is NULL)
 	// @param r - the row, may be NULL
-	Rowref(RowType *t, Row *r = NULL) :
+	Rowref(const RowType *t, Row *r = NULL) :
 		type_(t), 
 		row_(r)
 	{
@@ -223,7 +223,7 @@ public:
 	// Constructor from a field value set.
 	// @param t - the type of the row (may be NULL if row is NULL)
 	// @param data - data to put into the row (not const because of possible nulls extension)
-	Rowref(RowType *t, FdataVec &data) :
+	Rowref(const RowType *t, FdataVec &data) :
 		type_(t), 
 		row_(t->makeRow(data))
 	{
@@ -261,7 +261,7 @@ public:
 	{
 		return row_;
 	}
-	RowType *getType() const // should this return Autoref?
+	const RowType *getType() const // should this return Autoref?
 	{
 		return type_.get();
 	}
@@ -302,7 +302,7 @@ public:
 		return *this;
 	}
 	// for multiple arguments, have to use a method...
-	void assign(RowType *t, Row *r)
+	void assign(const RowType *t, Row *r)
 	{
 		drop();
 		type_ = t;
@@ -357,7 +357,7 @@ protected:
 	}
 
 protected:
-	Autoref<RowType> type_;
+	const_Autoref<RowType> type_;
 	Row *row_;
 };
 
