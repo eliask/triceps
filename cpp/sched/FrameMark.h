@@ -23,7 +23,9 @@ class FrameMark : public Starget
 	friend class UnitFrame;
 
 public:
-	FrameMark() :
+	FrameMark(const string &name) :
+		name_(name),
+		unit_(NULL),
 		frame_(NULL)
 	{ }
 
@@ -32,8 +34,15 @@ public:
 		assert(frame_ == NULL);
 	}
 
+	const string &getName() const
+	{
+		return name_;
+	}
+
 protected:
-	// if frame_ is NULL, next_ is also guaranteed to be NULL
+	string name_;
+	// if frame_ is NULL, unit_ and next_ are also guaranteed to be NULL
+	Unit *unit_; // where the mark points, gets set together with frame_
 	UnitFrame *frame_; // what is marked (not Autoref, to avoid circular references)
 	Autoref <FrameMark> next_; // there may be multiple marks on a frame, forming a list
 
@@ -48,6 +57,7 @@ protected:
 	{
 		next_ = NULL;
 		frame_ = NULL;
+		unit_ = NULL;
 	}
 
 	// Go recursively through the list and drop a mark from it.
@@ -58,11 +68,13 @@ protected:
 	void dropFromList(FrameMark *what);
 
 	// Add this mark to a frame's list.
+	// @param unit - unit owning the frame
 	// @param frame - frame where it's added
 	// @param list - the previous contents of the frame's list
-	void set(UnitFrame *frame, Onceref<FrameMark> list) 
+	void set(Unit *unit, UnitFrame *frame, Onceref<FrameMark> list) 
 	{
 		frame_ = frame;
+		unit_ = unit;
 		next_ = list;
 	}
 
@@ -70,6 +82,12 @@ protected:
 	UnitFrame *getFrame() const
 	{
 		return frame_;
+	}
+
+	// A way for unit to check that the mark points to it.
+	Unit *getUnit() const
+	{
+		return unit_;
 	}
 
 private:

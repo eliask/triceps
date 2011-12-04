@@ -15,11 +15,18 @@ namespace TRICEPS_NS {
 
 UnitFrame::~UnitFrame()
 {
-	if (!markList_.isNull()) // when a frame is popped, all its marks are forgotten
-		markList_->clear();
+	clear();
 }
 
-void UnitFrame::mark(Onceref<FrameMark> mk)
+void UnitFrame::clear()
+{
+	if (!markList_.isNull()) { // when a frame is popped, all its marks are forgotten
+		markList_->clear();
+		markList_ = NULL;
+	}
+}
+
+void UnitFrame::mark(Unit *unit, Onceref<FrameMark> mk)
 {
 	// first see if the mark has to be reassigned
 	UnitFrame *oldf = mk->getFrame();
@@ -29,7 +36,7 @@ void UnitFrame::mark(Onceref<FrameMark> mk)
 		oldf->dropFromList(mk);
 
 	// now point it here
-	mk->set(this, markList_);
+	mk->set(unit, this, markList_);
 	markList_ = mk;
 }
 
@@ -148,23 +155,21 @@ void Unit::forkTray(const_Onceref<Tray> tray)
 void Unit::call(Onceref<Rowop> rop)
 {
 	// here a little optimization allows to avoid pushing extra frames
-	bool pushed = pushFrame();
+	pushFrame();
 
 	rop->getLabel()->call(this, rop); // also drains the frame
 
-	if (pushed)
-		popFrame();
+	popFrame();
 }
 
 void Unit::callTray(const_Onceref<Tray> tray)
 {
-	bool pushed = pushFrame();
+	pushFrame();
 
 	forkTray(tray);
 	drainFrame();
 
-	if (pushed)
-		popFrame();
+	popFrame();
 }
 
 void Unit::enqueue(int em, Onceref<Rowop> rop)
@@ -217,18 +222,54 @@ void Unit::enqueueDelayedTray(const_Onceref<Tray> tray)
 	}
 }
 
+void Unit::setMark(Onceref<FrameMark> mark)
+{
+	if (innerFrame_ == outerFrame_) {
+		// at outermost frame: clear the mark
+		UnitFrame *oldf = mark->getFrame();
+		if (oldf != NULL)
+			oldf->dropFromList(mark);
+	} else {
+		// mark the parent frame
+		FrameList::iterator it = queue_.begin();
+		(*++it)->mark(this, mark);
+	}
+}
+
+void Unit::loopAt(FrameMark *mark, Onceref<Rowop> rop)
+{
+	UnitFrame *f = mark->getFrame();
+	if (f == NULL) {
+		outerFrame_->push_back(rop);
+	} else {
+		assert(mark->getUnit() == this);
+		f->push_back(rop);
+	}
+}
+
+void Unit::loopTrayAt(FrameMark *mark, const_Onceref<Tray> tray)
+{
+	UnitFrame *f = mark->getFrame();
+	if (f == NULL) {
+		f = outerFrame_;
+	} else {
+		assert(mark->getUnit() == this);
+	}
+	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
+		f->push_back(*it);
+}
+
 void Unit::callNext()
 {
 	if (!innerFrame_->empty()) {
 		Autoref<Rowop> rop = innerFrame_->front();
 		innerFrame_->pop_front();
 
-		bool pushed = pushFrame();
+		pushFrame();
 
 		rop->getLabel()->call(this, rop); // also drains the frame
 
-		if (pushed)
-			popFrame();
+		popFrame();
 	}
 }
 
@@ -243,22 +284,29 @@ bool Unit::empty() const
 	return innerFrame_ == outerFrame_ && innerFrame_->empty();
 }
 
-bool Unit::pushFrame()
+void Unit::pushFrame()
 {
-	if (!innerFrame_->empty() || innerFrame_->isMarked()) {
+	if (freePool_.empty()) {
 		innerFrame_ = new UnitFrame;
 		queue_.push_front(innerFrame_);
-		return true;
-	} else
-		return false;
+	} else {
+		innerFrame_ = freePool_.front();
+		queue_.push_front(innerFrame_);
+		freePool_.pop_front(); // only after it has been pushed onto queue
+	}
+	// fprintf(stderr, "DEBUG Unit::pushFrame (%d) new %p\n", (int)queue_.size(), innerFrame_);
 }
 
 void Unit::popFrame()
 {
+	// fprintf(stderr, "DEBUG Unit::popFrame (%d) was %p\n", (int)queue_.size(), innerFrame_);
 	if (innerFrame_ != outerFrame_) { // never pop the outermost frame
+		innerFrame_->clear();
+		freePool_.push_front(innerFrame_); // save for later
 		queue_.pop_front();
 		innerFrame_ = queue_.front();
 	}
+	// fprintf(stderr, "DEBUG Unit::popFrame (%d) now %p\n", (int)queue_.size(), innerFrame_);
 }
 
 Valname twhens[] = {

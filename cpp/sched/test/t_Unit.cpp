@@ -686,3 +686,259 @@ UTESTCASE clearing2(Utest *utest)
 	UT_IS(lab1->getUnitPtr(), NULL);
 	UT_IS(lab1->getUnitName(), "[label cleared]");
 }
+
+class TestFrameMark: public FrameMark
+{
+public:
+	TestFrameMark(const string &name) :
+		FrameMark(name)
+	{ }
+
+	Unit *getUnit() const
+	{
+		return unit_;
+	}
+
+	UnitFrame *getFrame() const
+	{
+		return frame_;
+	}
+
+	FrameMark *getNext() const
+	{
+		return next_.get();
+	}
+};
+
+// For marks to be set properly, it must happen with at least one
+// frame already on the stack, so do it by calling this label
+class LabelTestMarks : public Label
+{
+public:
+	LabelTestMarks(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Utest *utest) :
+		Label(unit, rtype, name),
+		utest_(utest)
+	{ }
+
+	virtual void execute(Rowop *rop) const
+	{
+		Utest *utest = utest_; // variable expected by all macros
+		Unit *unit1 = unit_;
+
+		Autoref<Unit> unit2 = new Unit("u2");
+
+		Autoref<TestFrameMark> mark1 = new TestFrameMark("m1");
+		Autoref<TestFrameMark> mark2 = new TestFrameMark("m2");
+		Autoref<TestFrameMark> mark3 = new TestFrameMark("m3");
+
+		UT_IS(mark1->getUnit(), NULL);
+		UT_IS(mark1->getFrame(), NULL);
+		UT_IS(mark1->getNext(), NULL);
+
+		// set 3 marks on the same frame
+		unit1->setMark(mark1);
+		UT_IS(mark1->getUnit(), unit1);
+		UT_ASSERT(mark1->getFrame() != NULL);
+		UT_IS(mark1->getNext(), NULL);
+
+		unit1->setMark(mark2);
+		UT_IS(mark2->getUnit(), unit1);
+		UT_IS(mark2->getFrame(), mark1->getFrame());
+		UT_IS(mark2->getNext(), mark1.get());
+
+		unit1->setMark(mark3);
+		UT_IS(mark3->getUnit(), unit1);
+		UT_IS(mark3->getFrame(), mark1->getFrame());
+		UT_IS(mark3->getNext(), mark2.get());
+
+		// move the marks to a different unit, effectively clearing them
+		// because there are no frames pushed on that unit yet
+		// (this is not something to do in production but a convenient test)
+
+		// middle mark
+		unit2->setMark(mark2);
+		UT_IS(mark2->getUnit(), NULL);
+		UT_IS(mark2->getFrame(), NULL);
+		UT_IS(mark2->getNext(), NULL);
+
+		// end-of-list mark
+		unit2->setMark(mark1);
+		UT_IS(mark1->getUnit(), NULL);
+		UT_IS(mark1->getFrame(), NULL);
+		UT_IS(mark1->getNext(), NULL);
+
+		// the only mark left
+		unit2->setMark(mark3);
+		UT_IS(mark3->getUnit(), NULL);
+		UT_IS(mark3->getFrame(), NULL);
+		UT_IS(mark3->getNext(), NULL);
+	}
+
+	Utest *utest_;
+};
+
+UTESTCASE frameMarks(Utest *utest)
+{
+	Autoref<Unit> unit1 = new Unit("u1");
+
+	// make a row for calling a label
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv)); // the initial row to start the loop
+	if (UT_ASSERT(!r1.isNull())) return;
+
+	// build the label
+	Autoref<LabelTestMarks> lab = new LabelTestMarks(unit1, rt1, "lab", utest);
+	unit1->call(new Rowop(lab, Rowop::OP_NOP, r1)); // and call it
+	// the label doe sthe rest
+}
+
+class LabelStartLoop : public Label
+{
+public:
+	LabelStartLoop(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Label *next, TestFrameMark *mark) :
+		Label(unit, rtype, name),
+		next_(next),
+		mark_(mark)
+	{ }
+
+	virtual void execute(Rowop *rop) const
+	{
+		// fprintf(stderr, "DEBUG LabelStartLoop mark was at %p\n", mark_->getFrame());
+		unit_->setMark(mark_);
+		int32_t val = type_->getInt32(rop->getRow(), 1, 0);
+		// fprintf(stderr, "DEBUG LabelStartLoop mark set to %p val=%d\n", mark_->getFrame(), val);
+
+		if (val >= 3)
+			return; // end of loop
+
+		if (val == 0) {
+			unit_->fork(new Rowop(next_, Rowop::OP_NOP, rop->getRow()));
+			unit_->fork(new Rowop(next_, Rowop::OP_NOP, rop->getRow()));
+			unit_->fork(new Rowop(next_, Rowop::OP_NOP, rop->getRow()));
+		} else {
+			unit_->call(new Rowop(next_, Rowop::OP_INSERT, rop->getRow()));
+		}
+		// fprintf(stderr, "DEBUG LabelStartLoop mark eventually at %p\n", mark_->getFrame());
+	}
+
+	Label *next_;
+	TestFrameMark *mark_;
+};
+
+class LabelNextLoop : public Label
+{
+public:
+	LabelNextLoop(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Label *next, TestFrameMark *mark) :
+		Label(unit, rtype, name),
+		next_(next),
+		mark_(mark)
+	{ }
+
+	virtual void execute(Rowop *rop) const
+	{
+		int32_t val = type_->getInt32(rop->getRow(), 1, 0);
+		++val;
+
+		FdataVec dv;
+		mkfdata(dv);
+		dv[1].setPtr(true, &val, sizeof(val));
+
+		Rowref r(type_,  type_->makeRow(dv));
+
+		// fprintf(stderr, "DEBUG LabelNextLoop mark at %p val increased to %d\n", mark_->getFrame(), val);
+		unit_->loopAt(mark_, new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
+	}
+
+	Label *next_;
+	TestFrameMark *mark_;
+};
+
+
+UTESTCASE markLoop(Utest *utest)
+{
+	// make a unit 
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer(false);
+	unit->setTracer(trace);
+
+	// make row for setting
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	FdataVec dv;
+	mkfdata(dv);
+	int32_t zero = 0;
+	dv[1].setPtr(true, &zero, sizeof(zero));
+	Rowref r1(rt1,  rt1->makeRow(dv)); // the initial row to start the loop
+	if (UT_ASSERT(!r1.isNull())) return;
+
+	Autoref<TestFrameMark> mark1 = new TestFrameMark("mark1");
+	UT_IS(mark1->getUnit(), NULL);
+
+	// build the labels
+	Autoref<LabelStartLoop> lstart = new LabelStartLoop(unit, rt1, "lstart", NULL, mark1);
+	Autoref<LabelNextLoop> lnext = new LabelNextLoop(unit, rt1, "lnext", lstart.get(), mark1);
+	lstart->next_ = lnext.get();
+	Autoref<DummyLabel> ldummy = new DummyLabel(unit, rt1, "ldummy");
+
+	// send a record to unset mark - same as schedule()
+	UT_ASSERT(unit->empty());
+	unit->schedule(new Rowop(ldummy, Rowop::OP_DELETE, r1)); // to precede the loop
+	unit->loopAt(mark1, new Rowop(lstart, Rowop::OP_NOP, r1));
+	unit->schedule(new Rowop(ldummy, Rowop::OP_INSERT, r1)); // to follow after the loop
+	UT_ASSERT(!unit->empty());
+
+	// run the loop
+	unit->drainFrame();
+	UT_ASSERT(unit->empty());
+
+	string tlog;
+	tlog = trace->getBuffer()->print();
+
+	string expect_sched = 
+		"unit 'u' before label 'ldummy' op OP_DELETE\n"
+		"unit 'u' before label 'lstart' op OP_NOP\n"
+
+		// these have been enqueued with EM_FORK on lnext
+		"unit 'u' before label 'lnext' op OP_NOP\n"
+		"unit 'u' before label 'lnext' op OP_NOP\n"
+		"unit 'u' before label 'lnext' op OP_NOP\n"
+
+		// lnext puts things to the outermost frame
+		"unit 'u' before label 'ldummy' op OP_INSERT\n"
+
+		// these go in this order because of the EM_CALL on lnext
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+	;
+
+	UT_IS(tlog, expect_sched);
+}

@@ -17,22 +17,31 @@
 
 namespace TRICEPS_NS {
 
+class Unit;
+
 // One frame of the Unit's scheduling queue.
 class UnitFrame : public Tray
 {
+	friend class Unit;
 public:
+	// clears the marks as well
 	~UnitFrame();
 
 	// Mark this frame
+	// @param - Unit identity, to pass to the mark
 	// @param mk - mark added to this frame (if it happens to point to another frame,
 	//    it will be removed from there first).
-	void mark(Onceref<FrameMark> mk);
+	void mark(Unit *unit, Onceref<FrameMark> mk);
 
 	// Check whether this frame has any marks on it.
 	bool isMarked() const
 	{
 		return !markList_.isNull();
 	}
+
+	// Clear the marks from frame when it's moved from queue
+	// into the free pool
+	void clear();
 
 protected:
 	Autoref <FrameMark> markList_; // head of the single-linked list of marks at this frame
@@ -107,6 +116,29 @@ public:
 	// with enqueue(rop->getEnqMode(), rop).
 	void enqueueDelayedTray(const_Onceref<Tray> tray);
 
+	// Set the start-of-loop mark to the parent frame.
+	// The frame one higher than current is used because the current
+	// executing label is the first label of the loop, and when it
+	// started execution, it had a new frame created. When a rowop will
+	// be enqueued at the mark and eventually executed, it will also
+	// have a new frame created for it. For that frame to be at the
+	// same level as the current frame, the label must be one level up.
+	// If the unit is at the outermost frame (which could happen only
+	// if someone calls setMark() outside of the scheduled execution),
+	// the mark will be cleared. This will cause the data queued to
+	// that mark to go to the outermost frame.
+	// @param mark - mark to set
+	void setMark(Onceref<FrameMark> mark);
+	// Append a rowop to the end of the queue frame pointed by mark.
+	// (The frame gets marked at the start of the loop).
+	// If the mark points to no frame, append to the outermost queue frame:
+	// the logic here is that if a record in the loop gets delayed by
+	// time wait, when it continues, it should be scheduled there.
+	void loopAt(FrameMark *mark, Onceref<Rowop> rop);
+	// Append the contents of a tray to the end of the queue frame pointed by mark.
+	// If the mark points to no frame, append to the outermost queue frame.
+	void loopTrayAt(FrameMark *mark, const_Onceref<Tray> tray);
+
 	// Extract and execute the next record from the innermost frame.
 	void callNext();
 	// Execute until the current stack frame drains.
@@ -145,7 +177,7 @@ public:
 	void rememberLabel(Label *lab);
 
 	// Forget one label. May be useful in case if the label needs to
-	// be deleted early, or come such. This does not clear the label!
+	// be deleted early, or some such. This does not clear the label!
 	void  forgetLabel(Label *lab);
 
 	// }
@@ -242,11 +274,10 @@ public:
 
 	// }
 protected:
-	// Push a new frame onto the stack, unless the current frame is empty
-	// @return - true if the frame was actually pushed
-	bool pushFrame();
+	// Push a new frame onto the stack.
+	void pushFrame();
 
-	// Pop the current frame from stack. It doesn't check whether the frame is empty.
+	// Pop the current frame from stack.
 	void popFrame();
 
 protected:
@@ -254,6 +285,7 @@ protected:
 	// (there might be a more efficient way to do it, but for now it's good enough)
 	typedef list< Autoref<UnitFrame> > FrameList;
 	FrameList queue_;
+	FrameList freePool_; // when frames are popped from queue, they're cached here
 	UnitFrame *outerFrame_; // the outermost frame
 	UnitFrame *innerFrame_; // the current innermost frame (may happen to be the same as outermost)
 	Autoref<Tracer> tracer_; // the tracer object
