@@ -52,7 +52,7 @@ RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 		}
 
 		Row *r = wr->get();
-		RowType *rt = wr->ref_.getType();
+		const RowType *rt = wr->ref_.getType();
 
 		if (!rt->equals(tab->getRowType())) {
 			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
@@ -226,7 +226,7 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 		clearErrMsg();
 		Table *t = self->get();
 		Row *r = row->get();
-		RowType *rt = row->ref_.getType();
+		const RowType *rt = row->ref_.getType();
 
 		if (!rt->equals(t->getRowType())) {
 			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
@@ -330,7 +330,7 @@ deleteRow(WrapTable *self, WrapRow *wr, ...)
 		clearErrMsg();
 		Table *t = self->get();
 		Row *r = wr->get();
-		RowType *rt = wr->ref_.getType();
+		const RowType *rt = wr->ref_.getType();
 
 		if (!rt->equals(t->getRowType())) {
 			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);

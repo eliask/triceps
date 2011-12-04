@@ -30,7 +30,7 @@ hexdump(WrapRow *self)
 	CODE:
 		clearErrMsg();
 		string dump;
-		RowType *t = self->ref_.getType();
+		const RowType *t = self->ref_.getType();
 		Row *r = self->ref_.get();
 		t->hexdumpRow(dump, r);
 		RETVAL = (char *)dump.c_str();
@@ -42,7 +42,7 @@ SV *
 toHash(WrapRow *self)
 	PPCODE:
 		clearErrMsg();
-		RowType *t = self->ref_.getType();
+		const RowType *t = self->ref_.getType();
 		Row *r = self->ref_.get();
 		const RowType::FieldVec &fld = t->fields();
 		int nf = fld.size();
@@ -61,7 +61,7 @@ SV *
 toArray(WrapRow *self)
 	PPCODE:
 		clearErrMsg();
-		RowType *t = self->ref_.getType();
+		const RowType *t = self->ref_.getType();
 		Row *r = self->ref_.get();
 		const RowType::FieldVec &fld = t->fields();
 		int nf = fld.size();
@@ -78,7 +78,7 @@ WrapRow *
 copymod(WrapRow *self, ...)
 	CODE:
 		clearErrMsg();
-		RowType *rt = self->ref_.getType();
+		const RowType *rt = self->ref_.getType();
 		Row *r = self->ref_.get();
 
 		// for casting of return value
@@ -136,7 +136,7 @@ SV *
 get(WrapRow *self, char *fname)
 	PPCODE:
 		clearErrMsg();
-		RowType *t = self->ref_.getType();
+		const RowType *t = self->ref_.getType();
 		Row *r = self->ref_.get();
 		const RowType::FieldVec &fld = t->fields();
 
@@ -156,11 +156,11 @@ WrapRowType*
 getType(WrapRow *self)
 	CODE:
 		clearErrMsg();
-		RowType *t = self->ref_.getType();
+		const RowType *t = self->ref_.getType();
 
 		// for casting of return value
 		static char CLASS[] = "Triceps::RowType";
-		RETVAL = new WrapRowType(t);
+		RETVAL = new WrapRowType(const_cast<RowType *>(t));
 	OUTPUT:
 		RETVAL
 

@@ -176,7 +176,7 @@ private:
 	typedef WrapIdent<magicWrap##what, parent, what> Wrap##what
 
 DEFINE_WRAP(RowType);
-DEFINE_WRAP2(RowType, Rowref, Row);
+DEFINE_WRAP2(const RowType, Rowref, Row);
 DEFINE_WRAP(IndexType);
 DEFINE_WRAP(TableType);
 
