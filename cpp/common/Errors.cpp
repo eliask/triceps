@@ -81,4 +81,10 @@ string Errors::print(const string &indent, const string &subindent)
 	return res;
 }
 
+void Errors::clear()
+{
+	elist_.clear();
+	error_ = false;
+}
+
 }; // TRICEPS_NS

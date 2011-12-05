@@ -106,6 +106,9 @@ public:
 		return elist_.size();
 	}
 
+	// clear the contents
+	void clear();
+
 public:
 	// All the error messages are stored in these pairs, where both
 	// components are optional

@@ -838,10 +838,11 @@ class LabelNextLoop : public Label
 {
 public:
 	LabelNextLoop(Unit *unit, Onceref<RowType> rtype, const string &name,
-			Label *next, TestFrameMark *mark) :
+			Label *next, TestFrameMark *mark, bool useTray) :
 		Label(unit, rtype, name),
 		next_(next),
-		mark_(mark)
+		mark_(mark),
+		useTray_(useTray)
 	{ }
 
 	virtual void execute(Rowop *rop) const
@@ -856,11 +857,18 @@ public:
 		Rowref r(type_,  type_->makeRow(dv));
 
 		// fprintf(stderr, "DEBUG LabelNextLoop mark at %p val increased to %d\n", mark_->getFrame(), val);
-		unit_->loopAt(mark_, new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
+		if (useTray_) {
+			unit_->loopAt(mark_, new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
+		} else {
+			Autoref<Tray> tray = new Tray;
+			tray->push_back(new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
+			unit_->loopTrayAt(mark_, tray);
+		}
 	}
 
 	Label *next_;
 	TestFrameMark *mark_;
+	bool useTray_;
 };
 
 
@@ -890,7 +898,7 @@ UTESTCASE markLoop(Utest *utest)
 
 	// build the labels
 	Autoref<LabelStartLoop> lstart = new LabelStartLoop(unit, rt1, "lstart", NULL, mark1);
-	Autoref<LabelNextLoop> lnext = new LabelNextLoop(unit, rt1, "lnext", lstart.get(), mark1);
+	Autoref<LabelNextLoop> lnext = new LabelNextLoop(unit, rt1, "lnext", lstart.get(), mark1, false);
 	lstart->next_ = lnext.get();
 	Autoref<DummyLabel> ldummy = new DummyLabel(unit, rt1, "ldummy");
 
@@ -939,6 +947,25 @@ UTESTCASE markLoop(Utest *utest)
 		"unit 'u' before label 'lstart' op OP_DELETE\n"
 		"unit 'u' before label 'lstart' op OP_DELETE\n"
 	;
+
+	UT_IS(tlog, expect_sched);
+
+	// change mode to use tray and repeat
+	lnext->useTray_ = true;
+	trace->clearBuffer();
+	
+	// send a record to unset mark - same as schedule()
+	UT_ASSERT(unit->empty());
+	unit->schedule(new Rowop(ldummy, Rowop::OP_DELETE, r1)); // to precede the loop
+	unit->loopAt(mark1, new Rowop(lstart, Rowop::OP_NOP, r1));
+	unit->schedule(new Rowop(ldummy, Rowop::OP_INSERT, r1)); // to follow after the loop
+	UT_ASSERT(!unit->empty());
+
+	// run the loop
+	unit->drainFrame();
+	UT_ASSERT(unit->empty());
+
+	tlog = trace->getBuffer()->print();
 
 	UT_IS(tlog, expect_sched);
 }

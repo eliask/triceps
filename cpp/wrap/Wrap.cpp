@@ -21,6 +21,7 @@ WrapMagic magicWrapTray = { "Tray" };
 WrapMagic magicWrapLabel = { "Label" };
 WrapMagic magicWrapGadget = { "Gadget" };
 WrapMagic magicWrapRowop = { "Rowop" };
+WrapMagic magicWrapFrameMark = { "FrMark" };
 
 WrapMagic magicWrapTable = { "Table" };
 WrapMagic magicWrapIndex = { "Index" };

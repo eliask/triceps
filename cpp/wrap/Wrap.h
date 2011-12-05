@@ -187,6 +187,7 @@ DEFINE_WRAP_IDENT(Unit, Tray);
 DEFINE_WRAP(Label);
 DEFINE_WRAP(Gadget);
 DEFINE_WRAP(Rowop);
+DEFINE_WRAP(FrameMark);
 
 DEFINE_WRAP(Table);
 DEFINE_WRAP(Index);

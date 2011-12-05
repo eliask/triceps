@@ -32,6 +32,10 @@ UTESTCASE simple(Utest *utest)
 
 	UT_IS(e1->print(), "msg1\nmsg2\n");
 	UT_IS(e2->print(), "");
+
+	e1->clear();
+	UT_ASSERT(!e1->hasError());
+	UT_IS(e1->print(), "");
 }
 
 UTESTCASE nested(Utest *utest)

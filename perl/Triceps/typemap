@@ -12,6 +12,7 @@ WrapTray *	O_WRAP_OBJECT
 WrapLabel *	O_WRAP_OBJECT
 WrapGadget *	O_WRAP_OBJECT
 WrapRowop *	O_WRAP_OBJECT
+WrapFrameMark *	O_WRAP_OBJECT
 
 WrapTable *	O_WRAP_OBJECT
 WrapIndex *	O_WRAP_OBJECT

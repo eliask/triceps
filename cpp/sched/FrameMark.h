@@ -39,6 +39,13 @@ public:
 		return name_;
 	}
 
+	// A way for unit to check that the mark points to it.
+	// Also used in XS code.
+	Unit *getUnit() const
+	{
+		return unit_;
+	}
+
 protected:
 	string name_;
 	// if frame_ is NULL, unit_ and next_ are also guaranteed to be NULL
@@ -82,12 +89,6 @@ protected:
 	UnitFrame *getFrame() const
 	{
 		return frame_;
-	}
-
-	// A way for unit to check that the mark points to it.
-	Unit *getUnit() const
-	{
-		return unit_;
 	}
 
 private:

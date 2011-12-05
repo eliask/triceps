@@ -608,6 +608,9 @@ $v = $sntr->print();
 ok($v, $c_expect);
 
 #############################################################
+# frame marks are tested in FrameMark.t
+
+#############################################################
 # MUST BE LAST
 # test the unit clearing
 

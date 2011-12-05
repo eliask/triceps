@@ -328,7 +328,7 @@ bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id)
 	return true;
 }
 
-bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
+bool enqueueSv(char *funcName, Unit *u, FrameMark *mark, Gadget::EnqMode em, SV *arg, int i)
 {
 	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
 		WrapRowop *wrop = (WrapRowop *)SvIV((SV*)SvRV( arg ));
@@ -340,14 +340,20 @@ bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i)
 					rop->getLabel()->getName().c_str(), rop->getLabel()->getUnitName().c_str()) );
 				return false;
 			}
-			u->enqueue(em, rop);
+			if (mark)
+				u->loopAt(mark, rop);
+			else
+				u->enqueue(em, rop);
 		} else if (wtray != 0 && !wtray->badMagic()) {
 			if (wtray->getParent() != u) {
 				setErrMsg( strprintf("%s: argument %d is a Tray from a wrong unit %s", funcName, i,
 					wtray->getParent()->getName().c_str()) );
 				return false;
 			}
-			u->enqueueTray(em, wtray->get());
+			if (mark)
+				u->loopTrayAt(mark, wtray->get());
+			else
+				u->enqueueTray(em, wtray->get());
 		} else {
 			setErrMsg( strprintf("%s: argument %d has an incorrect magic for either Rowop or Tray", funcName, i) );
 			return false;

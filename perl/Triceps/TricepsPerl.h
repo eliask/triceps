@@ -96,11 +96,13 @@ bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id);
 // detected automatically. Checks for errors and populates the error messages.
 // @param funcName - calling function name, for error messages
 // @param u - unit where to enqueue
-// @param em - enqueuing mode
+// @param mark - loop mark, if not NULL then used to fork at this frame and em 
+//     is ignored
+// @param em - enqueuing mode (used if mark is not NULL)
 // @param arg - argument (should be Rowop or Tray reference)
 // @param i - argument number, for error messages
 // @return - true on success, false on error
-bool enqueueSv(char *funcName, Unit *u, Gadget::EnqMode em, SV *arg, int i);
+bool enqueueSv(char *funcName, Unit *u, FrameMark *mark, Gadget::EnqMode em, SV *arg, int i);
 
 // The Unit::Tracer subclasses hierarchy is partially exposed to Perl. So an Unit::Tracer
 // object can not be returned to Perl by a simple wrapping and blessing to a fixed class.

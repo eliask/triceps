@@ -46,7 +46,7 @@ schedule(WrapUnit *self, ...)
 		clearErrMsg();
 		Unit *u = self->get();
 		for (int i = 1; i < items; i++) {
-			if (!enqueueSv(funcName, u, Gadget::EM_SCHEDULE, ST(i), i))
+			if (!enqueueSv(funcName, u, NULL, Gadget::EM_SCHEDULE, ST(i), i))
 				XSRETURN_UNDEF;
 		}
 		RETVAL = 1;
@@ -61,7 +61,7 @@ fork(WrapUnit *self, ...)
 		clearErrMsg();
 		Unit *u = self->get();
 		for (int i = 1; i < items; i++) {
-			if (!enqueueSv(funcName, u, Gadget::EM_FORK, ST(i), i))
+			if (!enqueueSv(funcName, u, NULL, Gadget::EM_FORK, ST(i), i))
 				XSRETURN_UNDEF;
 		}
 		RETVAL = 1;
@@ -76,7 +76,7 @@ call(WrapUnit *self, ...)
 		clearErrMsg();
 		Unit *u = self->get();
 		for (int i = 1; i < items; i++) {
-			if (!enqueueSv(funcName, u, Gadget::EM_CALL, ST(i), i))
+			if (!enqueueSv(funcName, u, NULL, Gadget::EM_CALL, ST(i), i))
 				XSRETURN_UNDEF;
 		}
 		RETVAL = 1;
@@ -96,7 +96,38 @@ enqueue(WrapUnit *self, SV *enqMode, ...)
 			XSRETURN_UNDEF;
 
 		for (int i = 2; i < items; i++) {
-			if (!enqueueSv(funcName, u, em, ST(i), i))
+			if (!enqueueSv(funcName, u, NULL, em, ST(i), i))
+				XSRETURN_UNDEF;
+		}
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+# work with marks
+void
+setMark(WrapUnit *self, WrapFrameMark *wm)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::setMark";
+		clearErrMsg();
+		Unit *u = self->get();
+		FrameMark *mark = wm->get();
+		u->setMark(mark);
+
+# see comment for schedule
+int
+loopAt(WrapUnit *self, WrapFrameMark *wm, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::loopAt";
+		clearErrMsg();
+		Unit *u = self->get();
+		FrameMark *mark = wm->get();
+		Unit *mu = mark->getUnit();
+		if (mu != NULL && mu != u) {
+			setErrMsg( strprintf("%s: mark belongs to a different unit '%s'", funcName, mu->getName().c_str()) );
+			XSRETURN_UNDEF;
+		}
+		for (int i = 2; i < items; i++) {
+			if (!enqueueSv(funcName, u, mark, Gadget::EM_FORK, ST(i), i))
 				XSRETURN_UNDEF;
 		}
 		RETVAL = 1;
