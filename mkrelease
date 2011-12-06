@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# This file is a part of Triceps.
+# See the file COPYRIGHT for the copyright notice and license information
+#
+#
+# Building of a release package.
+
+PRODUCT=triceps
+INFO=`svn info .` || exit 1
+URL=`echo "$INFO" | sed -n 's/^URL: //p'`
+[ -n "$URL" ] || { echo "Could not find SVN URL" >&2; exit 1; }
+VERSION=`basename "$URL"`
+
+DIR="$PRODUCT-$VERSION"
+[ -r "$DIR" ] && {
+	rm -rf "$DIR" || exit 1
+}
+
+svn export "$URL" "$DIR" || exit 1
+tar czvf "$DIR.tgz" "$DIR"
+
+echo
+echo "Building the exported code to make sure..."
+make -C "$DIR" all test || exit 1

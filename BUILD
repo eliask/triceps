@@ -91,3 +91,8 @@ Other interesting make targets:
 	memory corruption
 
 	qtest - run the unit tests quickly, without valgrind
+
+	release - export from SVN a clean copy of the code and create
+		a release package. The package name will be triceps-<version>.tgz,
+		where the <version> is taken from the SVN directory name, from
+		where the current directory is checked out.

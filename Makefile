@@ -14,3 +14,6 @@ install uninstall:
 
 perl/Triceps/Makefile: perl/Triceps/Makefile.PL
 	cd perl/Triceps && perl Makefile.PL
+
+release:
+	./mkrelease
