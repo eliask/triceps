@@ -3,7 +3,11 @@ How to build Triceps.
 
 The tested build environment is Linux Fedora 11. The Perl build system
 should make it work automatically on the other Unix environments as
-well.
+well but it has not been tested in practice.
+
+The normal build expectation is for the 64-bit machines. The 32-bit
+machines should work (and the code even includes the special cases for
+them) but have been untested at the moment.
 
 Prerequisites
 -------------
@@ -67,28 +71,20 @@ The C++ libraries will be created under cpp/build.
 The Perl libraries will be created under perl/Triceps/blib.
 
 The tests are normally run with valgrind for the C++ part, without valgrind
-for the Perl part.
-
-[XXX install and uninstall dont' work yet]
-To install:
-
-	make install
-
-To uninstall:
-
-	make uninstall
-
+for the Perl part. The reason is that Perl produces lots of false positives,
+and the suppressions depend on particular Perl versions and are not
+exactly reliable.
 
 Other interesting make targets:
 
 	clobber - remove the object files, forcing the libraries to be
-	rebuilt
+		rebuilt next time
 
 	mktest - build the C++ unit tests, this requires that the
-	libraries are already built
+		libraries are already built
 
 	vtest - run the unit tests with valgrind, checking for leaks and
-	memory corruption
+		memory corruption
 
 	qtest - run the unit tests quickly, without valgrind
 
@@ -96,3 +92,70 @@ Other interesting make targets:
 		a release package. The package name will be triceps-<version>.tgz,
 		where the <version> is taken from the SVN directory name, from
 		where the current directory is checked out.
+
+Installation
+------------
+
+To install in the system-wide default Perl location:
+
+	make install
+
+To install under a particular subdirectory (here $HOME/inst):
+
+	make install DESTDIR=$HOME/inst
+
+Only the Perl files are installed, not the C++ files. If the files were 
+installed not in the default Perl location, Perl would have to be run
+with option -I; for example:
+
+	perl -I $HOME/inst/usr/local/lib64/perl5/site_perl/5.10.0
+
+(the exact path depends on your Perl version). The alternative way is to
+specify the location inside the Perl scripts as
+
+	use lib "$ENV{HOME}/inst/usr/local/lib64/perl5/site_perl/5.10.0";
+
+(your exact location will vary depending on the Perl version and machine
+architecture).
+
+To play with small examples, it might be easier to not install at all
+but put them directly into the directory perl/Triceps/t in the Triceps
+distribution. In this case, use in them
+
+	use ExtUtils::testlib;
+
+to make Perl find the Triceps libraries directly in the build
+directories.
+
+To build your C++ code with Triceps, simply specify the location of Triceps
+sources and built libraries with options -I and -L. For example:
+
+	TRICEPSBASE=$(HOME)/srcs/triceps-0.99
+	CFLAGS+= -I$(TRICEPSBASE)/cpp -L$(TRICEPSBASE)/cpp/build -ltriceps
+
+If you build your code with the dynamic library, the best practice is to
+copy the libtriceps.so to the same directory where your binary is
+located and specify its location with the build flags:
+
+	CFLAGS+="-Wl,-rpath='$$ORIGIN/."
+
+It might be easier to build your code with the static library: just
+instead of -ltriceps, link explicitly with
+$(TRICEPSBASE)/cpp/build/libtriceps.a.
+
+The uninstall luck varies with your version of Perl. If you're lucky,
+the following command would perform the uninstall:
+
+	make uninstall
+
+(add DESTDIR if you used it for install). However in the recent Perl
+versions the uninstall feature has been deprecated. At best it would
+print the list of commands that can be used to perform the uninstall.
+In Perl 5.10 the uninstall does not understand the DESTDIR setting, so
+for that case the easiest way may be to delete the whole DESTDIR. Or
+find the packaging list and remove the files listed there. The packaging
+list is located in a file named like
+
+	$DESTDIR/usr/local/lib64/perl5/site_perl/5.10.0/x86_64-linux-thread-multi/auto/Triceps/.packlist
+
+again, depending on your exact Perl version and configuration.

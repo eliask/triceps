@@ -11,6 +11,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
+#use lib "$ENV{HOME}/inst/usr/local/lib64/perl5/site_perl/5.10.0";
 use ExtUtils::testlib;
 
 use Test;
