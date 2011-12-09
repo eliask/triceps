@@ -9,11 +9,10 @@ installed by default.  It can be installed from CPAN
 <http://search.cpan.org/~mschwern/Test-Simple/lib/Test/Simple.pm>,
 but the old tests are just as good for my purposes.
 
-Biceps.0 contains the clean as-generated directory,
-so that the manual changes can be traced easily.
-I'm still learning how to generate the Perl makefiles
-and such right, so I need these crutches.
-It's still called Biceps.0 because it was generated in the days when the
-project was named Biceps.
+See Biceps.0 in the tag 0.99-pre for the original clean as-generated
+directory, so that the manual changes can be traced easily.  It's named
+Biceps.0 because it was generated in the days when the project was named
+Biceps.
 
 The magic setting for the verbose test progress is TEST_VERBOSE=1.
+To see the nice diff of multi-line values, set PERL_TEST_DIFF="diff -c".
