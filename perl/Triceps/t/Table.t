@@ -1,4 +1,5 @@
 #
+# (C) Copyright 2011 Sergey A. Babkin.
 # This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
@@ -462,7 +463,7 @@ ok(defined $res && $res == 0);
 
 # bad args deleteRow
 eval { $res = $t1->deleteRow($r1, 1, 2) };
-ok($@, "Usage: Triceps::Table::deleteRow(self, row [, copyTray]) at t/Table.t line 464.\n");
+ok($@, "Usage: Triceps::Table::deleteRow(self, row [, copyTray]) at t/Table.t line 465.\n");
 
 $res = $t1->deleteRow($r2);
 ok(!defined $res);
