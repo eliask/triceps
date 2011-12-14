@@ -1,0 +1,24 @@
+What is Triceps
+===============
+
+It happened that I've worked for a while on and with the Complex Event
+Processing (CEP) systems. I've worked for a few years on the internals
+of the Aleri CEP engine, then after Aleri acquired Coral8, some on the
+Coral8 engine, then after Sybase gobbled up them both, I've designed and
+did the early implementation of a fair bit of the Sybase CEP R5. After
+that I've moved on to Deutsche Bank and got the experience from the
+other side: using the CEP systems, primarily the former Coral8, now
+known as Sybase CEP R4.
+
+This made me feel that writing the CEP models is unnecessarily
+difficult. Even the essentially simple things take too much effort. I've
+had this feeling before as well, but one thing is to have it in
+abstract, and another is to grind against it every day.
+
+Which in turn led me to thinking about making my own open-source CEP
+system, where I could try out the ideas I get, and make the streaming
+models easier to write. Thus the Triceps project was born. For a while
+it was called Biceps, until I learned of the existence of a recearch
+project called BiCEP. It's spelled differently, and is in a
+substantially differnt area of CEP work, but it's easier to avoid
+confusion, so I went one better and renamed it Triceps.
