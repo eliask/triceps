@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 2 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
