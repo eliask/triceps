@@ -3,7 +3,7 @@
 # This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
-# A simple Hello World example/
+# A simple Hello World example.
 
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Triceps.t'
