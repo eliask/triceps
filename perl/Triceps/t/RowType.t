@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 39 };
+BEGIN { plan tests => 41 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -109,6 +109,15 @@ $rt2 = Triceps::RowType->new(
 );
 ok(!defined $rt2);
 ok($! . "", "Usage: Triceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
+
+# schema inheritance
+$rt2 = Triceps::RowType->new(
+	$rt1->getdef(),
+	z => "string"
+);
+ok(ref $rt2, "Triceps::RowType");
+@xdef2 = $rt2->getdef();
+ok(join(",", @xdef2), join(",", @def1, "z", "string"));
 
 ######################### comparisons ###########################################
 
