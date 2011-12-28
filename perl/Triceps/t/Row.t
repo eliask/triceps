@@ -16,7 +16,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 75 };
+BEGIN { plan tests => 77 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -148,6 +148,18 @@ ok(ref $r4, "Triceps::Row");
 @d4 = $r4->toHash();
 ok(&row2string(@d4), &row2string(@dataset4));
 ok($r4->printP(), "a=\"uint8\" e=\"string\" ");
+
+# test the escaping in printP
+@dataset5 = (
+	a => "-\\-\"-\\-\"",
+	b => undef,
+	c => undef,
+	d => undef,
+	e => "+\\+\"+\\+\"",
+);
+$r5 = $rt3->makeRowHash( @dataset5);
+ok(ref $r5, "Triceps::Row");
+ok($r5->printP(), "a=\"-\\\\-\\\"-\\\\-\\\"\" e=\"+\\\\+\\\"+\\\\+\\\"\" ");
 
 ########################### array CSV-like format ################################
 

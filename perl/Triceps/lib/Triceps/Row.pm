@@ -21,8 +21,9 @@ sub printP # ($self)
 		next if !defined $v;
 		if (ref $v) {
 			# it's an array value
-			$res .= "$k=[" . join(", ", map { $_ =~ s/"/\\"/g; "\"$_\"" } @$v) . "] ";
+			$res .= "$k=[" . join(", ", map { $_ =~ s/\\/\\\\/g; $_ =~ s/"/\\"/g; "\"$_\"" } @$v) . "] ";
 		} else {
+			$v =~ s/\\/\\\\/g;
 			$v =~ s/"/\\"/g;
 			$res .= "$k=\"$v\" "
 		}
