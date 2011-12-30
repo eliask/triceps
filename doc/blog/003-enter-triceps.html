@@ -1,0 +1,25 @@
+Enter Triceps 
+
+The Triceps development has been largely shaped by two considerations:
+
+It has to be different from the Sybase products on which I worked. This is helpful from both legal standpoint and from marketing standpoint: Sybase and StreamBase already have similar products that compete head to head. There is no use getting into the same fray without major resources.
+
+It has to be small. I can't spend the same amount of effort on Triceps as a large company, or even as a small one. Not only this saves time but also allows the modifications to be easy and fast. The point of Triceps is to experiment with the CEP language to make it easy to use: try out the ideas, make sure that they work well, or replace them with other ideas. The companies with a large established product can't really afford the radical changes: they have invested much effort into the product, and are stuck with supporting it and providing compatibility into the future.
+
+Both of these considerations point into the same direction: an embeddable CEP system. Adapting an integrated system for an embedded usage is not easy, so it's a good open niche. Yeah, there is Esper, but from a cursory look, it seems to have the same issues as Coral8/StreamBase.
+
+And an embeddable system saves on a lot of components.
+
+For starters, no IDE. Anyway, I find the IDEs pretty useless for development in general, and especially for the CEP development. Though it comes handy once in a while for the analysis of the code and debugging.
+
+No new language, no need to develop compilers, virtual machines, function libraries, external callout APIs. Well, the major goal of Triceps is actually the development of a new and better language. But it's one of these paradoxes: Aleri does the relational logic looking like procedural, Coral8 and StreamBase do the procedural logic looking like relational, and Triceps is a design of a language without a language. Eventually there probably will be a language, to be mixed with the parent one. But for now a lot can be done by simply using the Triceps library in an existing scripting language. The existing scripting languages are already powerful, fast, and also allow the dynamic compilation.
+
+No separate server executable, no need to control it, and no custom network protocols: the users can put the code directly into their executables and devise any protocols they please. Well, it's not a real good answer for the protocols, since it means that everyone who wants to communicate the streaming data for Triceps over the network has to implement these protocols from scratch. So eventually Triceps will provide a default implementation. But it doesn't have to be done right away.
+
+No data persistence&nbsp; for now either. It's a nice feature, and I have some ideas about it too, but it requires a large amount of work, and doesn't really affect the API. 
+
+The language used to implement Triceps is C++, and the scripting language is Perl. Nothing really prevents embedding Triceps into other languages but it's not going to happen anywhere soon. The reason being that extra code adds weight and makes the changes more difficult.
+
+The multithreading support has been a major consideration from the start. All the C++ code has been written with the multithreading in mind. However for the first release the multithreading did not propagate into the Perl API yet.
+
+Even though Triceps is an experimental system, that does not imply that it's of a toy quality. The code is written in production quality to start with, with a full array of unit tests.

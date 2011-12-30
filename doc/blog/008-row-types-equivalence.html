@@ -1,0 +1,50 @@
+Row types equivalence
+
+The Triceps objects are usually strongly typed. A label handles rows of a certain type. A table stores rows of a certain type.
+
+However there may be multiple ways to check whether a row fits for a certain type:
+<ul>
+<li>It may be a row of the exact same type, created with the same type object.</li>
+<li>It may be a row of another type but one with the exact same definition.</li>
+<li>It may be a row of another type that has the same number of fields and field types but different field names. The field names (and everything else in Triceps) are case-sensitive.</li>
+</ul>
+The types may be compared for these conditions using the methods:
+
+<pre>$rt1-&gt;same($rt2)
+$rt1-&gt;equals($rt2)
+$rt1-&gt;match($rt2)
+</pre>
+
+The comparisons are hierarchical: if two type references are the same, they would also be equal and matching; two equal types are also matching.
+
+Most of objects would accept the rows of any matching type (this may change or become adjustable in the future). However if the rows are not of the same type, this check involves a performance penalty. If the types are the same, the comparison is limited to comparing the pointers. But if not, then the whole type definition has to be compared. So every time a row of a different type is passed, it would involve the overhead of type comparison.
+
+For example:
+
+<pre>my @schema = (
+&nbsp; a =&gt; "int32",
+&nbsp; b =&gt; "string"
+);
+
+my $rt1 = Triceps::RowType-&gt;new(@schema) or die "$!";
+# $rt2 is equal to $rt1: same field names and field types
+my $rt2 = Triceps::RowType-&gt;new(@schema) or die "$!";
+# $rt3&nbsp; matches $rt1 and $rt2: same field types but different names
+my $rt3 = Triceps::RowType-&gt;new(
+&nbsp; A =&gt; "int32",
+&nbsp; B =&gt; "string"
+) or die "$!";
+
+my $lab = $unit-&gt;makeDummyLabel($rt1, "lab") or die "$!";
+# same type, efficient
+my $rop1 = $lab-&gt;makeRowop(&amp;Triceps::OP_INSERT,
+&nbsp; $rt1-&gt;makeRowArray(1, "x")) or die "$!";
+# different row type, involves a comparison overhead
+my $rop2 = $lab-&gt;makeRowop(&amp;Triceps::OP_INSERT,
+&nbsp; $rt2-&gt;makeRowArray(1, "x")) or die "$!";
+# different row type, involves a comparison overhead
+my $rop3 = $lab-&gt;makeRowop(&amp;Triceps::OP_INSERT,
+&nbsp; $rt3-&gt;makeRowArray(1, "x")) or die "$!";
+</pre>
+
+A dummy label used here is a label that does nothing (its usefulness will be explained later).

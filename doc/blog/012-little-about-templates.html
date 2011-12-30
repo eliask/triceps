@@ -1,0 +1,80 @@
+a little about templates
+
+Since people have started commenting about templates, let me show a bit more, what do I mean by them on a simple example.
+
+Coral8 doesn't provide a way to query the windows directly, especially when the CCL is compiled without debugging. So you're expected to make your own. People at DB have developed a nice pattern that goes approximately like this:
+
+<pre>// some window that we want to make queryable
+create window w_my schema s_my
+keep last per key_a per key_b
+keep 1 week;
+
+// the stream to send the query requests
+// (the schema can be shared by all simple queries) 
+create schema s_query (
+&nbsp; qqq_id string // unique id of the query
+);
+create input stream query_my schema s_query;
+
+// the stream to return the results
+// (all result streams will inherit a partial schema)
+create schema s_result (
+&nbsp; qqq_id string, // returns back the id received in the query
+&nbsp; qqq_end boolean, // will be TRUE in the special end indicator record
+);
+create output stream result_my schema inherits from s_result, s_my;
+
+// now process the query
+insert into result_my
+select q.qqq_id, NULL, w.*
+from s_query as q, w_my as w;
+
+// the end marker
+insert into result_my (qqq_id, qqq_end)
+select qqq_id, TRUE
+from s_query;
+</pre>
+
+To query the window, a program would select a unique query id, subscribe to result_my with a filter (qqq_id = unique_id) and send a record of (unique_id) into query_my.&nbsp; Then it would sit and collect the result rows. Finally it would get a row with qqq_end = TRUE and disconnect.
+
+This is&nbsp; a fairly large amount of code to be repeated for every window. What I would like to to instead is to just write
+
+<pre>create window w_my schema s_my
+keep last per key_a per key_b
+keep 1 week;
+make_queryable(w_my);
+</pre>
+
+and have the template make_queryable expand into the rest of the code (obviously, the schema definitions would not need to be expanded repeatedly, they would go into an include file).
+
+To make things more interesting, it would be nice to have the query filter the results by some field values. Nothing as fancy as SQL, just by equality to some fields. Suppose, s_my includes the fields field_c and field_d, and we want to be able to filter by them. Then the query can be done as:
+
+<pre>create input stream query_my schema inherits from s_query (
+&nbsp; field_c integer,
+&nbsp; field_d string
+);
+
+// result_my is the same as before...
+
+// query with filtering (in a rather inefficient way) 
+insert into result_my
+select q.qqq_id, NULL, w.*
+from s_query as q, w_my as w
+where
+&nbsp; (q.field_c is null or q.field_c = w.field_c)
+&nbsp; and (q.field_d is null or q.field_d = w.field_d);
+
+// the end marker is as before
+insert into result_my (qqq_id, qqq_end)
+select qqq_id, TRUE
+from s_query;
+</pre>
+
+It would be nice then to create this kind of query as a template instantiation
+
+<pre>make_query(w_my, (field_c, field_d));
+</pre>
+
+If there weren't already an entrenched tradition at DB, I would not write directly in CCL at all. I would have made a macro language that would generate CCL. Of course, then the IDE would see only the results of the code generation and could not be used directly to write code in it, but who cares, IDEs are useless for this purpose anyway.
+
+Interestingly, there already are people who do that kind of things. Some people actually prefer the Aleri XML format because it's easier for them to generate the code in XML. (I don't exactly see why generating the code in XML would be easier but there are all kinds of weird XML-based infrastructures out there).

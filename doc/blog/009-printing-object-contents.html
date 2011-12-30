@@ -1,0 +1,61 @@
+printing the object contents
+
+When debugging the programs, it's important to find from the error messages, what is going on, what kinds of objects are getting involved. Because of this, most of the Triceps objects provide a way to print out their contents into a string. This is done with the method <tt>print()</tt>. The simplest use is as follows:
+
+<pre>$message = "Error in object " . $object-&gt;print();
+</pre>
+
+Most of the objects tend to have a pretty complicated internal structure and are printed on multiple lines. They look better when the components are appropriately indented. The default call prints as if the basic message is un-indented, and indents every extra level by 2 spaces.
+
+This can be changed with extra arguments. The general format of print() is:
+
+<pre>$object-&gt;print(<i>[indent, [subindent] ]</i>)
+</pre>
+
+where <i>indent</i> is the initial indentation, and <i>subindent</i> is the additional indentation for every level. So the default print() is equivalent to print("", "&nbsp; ").
+
+A special case is
+
+<pre>$object-&gt;print(undef)
+</pre>
+
+It prints the object in a single line, without line breaks.
+
+The row types support the print() method. Here is an example of how a type would get printed:
+
+<pre>$rt1 = Triceps::RowType-&gt;new(
+&nbsp; a =&gt; "uint8",
+&nbsp; b =&gt; "int32",
+&nbsp; c =&gt; "int64",
+&nbsp; d =&gt; "float64",
+&nbsp; e =&gt; "string",
+);
+</pre>
+
+Then <tt>$rt1-&gt;print()</tt> produces:
+
+<pre>row {
+&nbsp; uint8 a,
+&nbsp; int32 b,
+&nbsp; int64 c,
+&nbsp; float64 d,
+&nbsp; string e,
+}
+</pre>
+
+With extra arguments <tt>$rt1-&gt;print("++", "--")</tt>:
+
+<pre>row {
+++--uint8 a,
+++--int32 b,
+++--int64 c,
+++--float64 d,
+++--string e,
+++}
+</pre>
+
+And finally with an undef argument <tt>$rt1-&gt;print(undef)</tt>:
+
+<pre>row { uint8 a, int32 b, int64 c, float64 d, string e, }
+</pre>
+

@@ -1,0 +1,29 @@
+Triceps constants 
+
+Triceps has a number of symbolic constants that are grouped into essentially enums. The constants themselves will be introduced with the classes that use them, but here is the general description common to them all.
+
+In Perl they all are placed into the same namespace. Each group of constants (that can be thought of as an enum) gets its name prefix. For example, the operation codes are all prefixed with OP_, the enqueueing modes with EM_, and so on.
+
+The underlying constants are all integer. The way to give symbolic names to constants in Perl is to define a function without arguments that would return the value. Each constant has such a function defined for it. For example, the opcode for the "insert" operation is the result of&nbsp; function Triceps::OP_INSERT. 
+
+Most methods that take constants as arguments are also smart enough to recognise the constant names as strings, and automatically convert them to integers. For example, the following calls are equivalent:
+
+<pre>$label-&gt;makeRowop(&amp;Triceps::OP_INSERT, ...);
+$label-&gt;makeRowop("OP_INSERT", ...);
+</pre>
+
+However the version with Triceps::OP_INSERT is more efficient. The ampersand (function call designator in Perl) is usually optional, but I tend to use it for clarity.
+
+What if you need to print out a constant in a message? Triceps provides the conversion functions for each group of constants. They generally are named Triceps::<i>something</i>String. For example,
+
+<pre>print &amp;Triceps::opcodeString(&amp;Triceps::OP_INSERT);
+</pre>
+
+would print "OP_INSERT". If the argument is out of range of the valid enums, it would return <b>undef</b> (but not set any error message in $!).
+
+There also are functions to convert from strings to constant values. They generally are named Triceps::string<i>Something</i>. For example,
+
+<pre>&amp;Triceps::stringOpcode("OP_INSERT")
+</pre>
+
+would return the integer value of Triceps::OP_INSERT. If the string name is not valid for this kind of constants, it would also return <b>undef</b>.

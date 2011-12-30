@@ -1,0 +1,118 @@
+Rows
+
+The rows in Triceps always belong to some row type, and are always immutable. Once a row is created, it can not be changed. This allows it to be referenced from multiple places, instead of copying the whole row value. Naturally, a row may be passed and shared between multiple threads.
+
+The row type provides the constructor methods for the rows:
+
+<pre>$row = $rowType-&gt;makeRowArray(<i>fieldValue1, ..., fieldValueN</i>);
+$row = $rowType-&gt;makeRowHash(<i>fieldName =&gt; fieldValue, ...</i>);
+</pre>
+
+Here $row is a reference to the resulting row. As usual, in case of error it will be left as undef, with the error message in $! (to be changed later to dying on error). 
+
+In the array form, the values for the fields go in the same order as they are specified in the row type (if there are too few values, the rest will be considered NULL, having too many values is an error).
+
+The Perl value of <b>undef</b> is treated as NULL. 
+
+In the hash form, the fields are specified as name-value pairs. If the same field is specified multiple times, the last value will overwrite all the previous ones.&nbsp; The unspecified fields will be left as NULL. Again, the arguments of the function actually are an array, but if you pass a hash, its contents will be converted to an array on the calling stack.
+
+If the performance is important, the array form is more efficient, since the hash form has to translate internally the field names to indexes.
+
+The row itself and its type don't know anything about any keys and such. So any fields may be left as NULL.
+
+Some examples:
+
+<pre>$row&nbsp; = $rowType-&gt;makeRowArray(@fields) or die "$!";
+$row&nbsp; = $rowType-&gt;makeRowArray($a, $b, $c) or die "$!";
+$row&nbsp; = $rowType-&gt;makeRowHash(%fields) or die "$!";
+$row&nbsp; = $rowType-&gt;makeRowHash(a =&gt; $a, b =&gt; $b) or die "$!";
+</pre>
+
+The usual Perl conversions are applied to the values. So for example, if you pass an integer 1 for a string field, it will be converted to the string "1". Or if you pass a string "" for an integer field, it will be converted to 0. 
+
+If a field is an array (as always, except for uint8[] which is represented as a Perl string), its value is a Perl array reference (or undef). For example:
+
+<pre>$rt1 = Triceps::RowType-&gt;new(
+&nbsp; a =&gt; "uint8[]",
+&nbsp; b =&gt; "int32[]",
+) or die "$!";
+$row = $rt1-&gt;makeRowArray("abcd", [1, 2, 3]) or die "$!";
+</pre>
+
+An empty array will become a NULL value. So the following two are equivalent:
+
+<pre>$row = $rt1-&gt;makeRowArray("abcd", []) or die "$!";
+$row = $rt1-&gt;makeRowArray("abcd", undef) or die "$!";
+</pre>
+
+Remember that an array field may not contain NULL values. So any undefs in the array fields will be silently converted to zeroes. The following two are equivalent:
+
+<pre>$row = $rt1-&gt;makeRowArray("abcd", [undef, undef]) or die "$!";
+$row = $rt1-&gt;makeRowArray("abcd", [0, 0]) or die "$!";
+</pre>
+
+The row also provides a way to copy itself, modifying the values of selected fields:
+
+<pre>$row2 = $row1-&gt;copymod(<i>fieldName =&gt; fieldValue, ...</i>);
+</pre>
+
+The fields that are not explicitly specified will be left unchanged. Since the rows are immutable, this is the closest thing to the field assignment. copymod() is generally&nbsp; more&nbsp; efficient than extracting the row into an array or hash, replacing a few of them with new values and constructing a new row. It bypasses a the binary-to-Perl-to-binary conversions for the unchanged fields.
+
+The row knows its type. It can be obtained as
+
+<pre>$row-&gt;getType()
+</pre>
+
+Note that this will create a new Perl wrapper to the underlying type object. So if you do:
+
+<pre>$rt1 = ...;
+$row = $rt1-&gt;makeRow...;
+$rt2 = $row-&gt;getType();
+</pre>
+
+then $rt1 will not be equal to $rt2 by direct Perl comparison ($rt1 != $rt2). However both $rt1 and $rt2 will refer to the same row type object, so $rt1-&gt;same($rt2) will be true.
+
+The row references can also be compared for sameness:
+
+<pre>$row1-&gt;same($row2)
+</pre>
+
+The row contents can be extracted back into Perl representation as
+
+<pre>@adata = $row-&gt;toArray();
+%hdata = $row-&gt;toHash();
+</pre>
+
+Again, the NULL fields will become undefs, and the array fields (unless they are NULL) will become Perl array references. Since the empty array fields are equivalent to NULL array fields, on extraction back they will be treated the same as NULL fields, and become undefs.
+
+There is also a convenience function to get one field from a row at a time by name:
+
+<pre>$value = $row-&gt;get("fieldName");
+</pre>
+
+If you need to access only a few fields from a big row, get() is more efficient (and easier to write) that extracting the whole row with toHash() or even with toArray(). But don't forget that every time you call get(), it creates a new Perl value, which may be pretty involved if the value is an array.&nbsp; So the most efficient way then for the values that get reused is to call get() , remember the result in a Perl variable, and then reuse that variable.
+
+There is also a way to conveniently print a rows contents, usually for the debugging purposes:
+
+<pre>$result = $row-&gt;printP();
+</pre>
+
+The name printP is an artifact of implementation: it shows that this method is implemented in Perl and uses the default Perl conversions of values to strings. The uint8[] arrays are printed directly as strings. The result is a sequence of name="value" or name=["value", "value", "value"] for all the non-NULL fields. The backslashes and double quotes inside the values are escaped by backslashes in Perl style. For example, reusing the row type above,
+
+<pre>$row = $rt1-&gt;makeRowArray('ab\ "cd"', [0, 0]) or die "$!";
+print $row-&gt;printP(), "\n"; 
+</pre>
+
+will produce
+
+<pre>a="ab\\ \"cd\"" b=["0", "0"] 
+</pre>
+
+
+
+Finally, there is a deep debugging method:
+
+<pre>$result = $row-&gt;hexdump()
+</pre>
+
+That dumps the raw bytes of the row's binary format, and is useful only to debug the more weird issues.

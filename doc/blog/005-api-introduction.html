@@ -1,0 +1,10 @@
+API introduction
+
+As mentioned before, at the moment Triceps provides the APIs in C++ and Perl. They are similar but not quite the same, because the nature of the compiled and scripted languages is different. The C++ API is more direct and expects discipline from the programmer: if some incorrect arguments are passed, everything might crash. The Perl API should never crash. It should detect any incorrect use and report an orderly error. Besides, the idioms of the scripted languages are different from the compiled languages, and different usages become convenient.
+
+
+The Perl API is implemented in XS. Some people, may wonder, why not SWIG? SWIG would automatically export the API into many languages, not just Perl. The problem with SWIG is that it just maps the API one to one.&nbsp; And this doesn't work any good, it makes some very ugly APIs with abilities to crash. Which then have to be wrapped into more scripting code before they become usable. So then why bother with SWIG, easier to just use the scripting language's native extension methods. Another benefit of the native support is the access to the correct memory management.
+
+In general, I've tried to avoid the premature optimization. The idea is to get it working at all first, and then bother about working fast. Except for the cases when the need for optimization looked obvious, and the logic intertwined with the general design strongly ehough, that if done one way, would be difficult to change in the future. We'll see, if these "obvious" cases really turn out to be the obvious wins, or will they become a premature-optimization mess.
+
+Going forward, I'll try to split the subjects into the separate posts, centered around Perl API, C++ API, or guts of the (C++) implementation and tag them as such. Feel free to pick only the ones you're interested in.Some of the posts still will be general, and have all three tags.

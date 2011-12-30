@@ -1,0 +1,122 @@
+we're not in 1950s any more, or are we?
+
+Part of the complexity with CCL programming is that the CCL programs tend to feel very broken-up, with the flow of the logic jumping all over the place.
+
+Consider a simple example: some incoming financial information may identify the securities by either RIC (Reuters identifier) or SEDOL or&nbsp; ISIN, and before processing it further we want to convert them all to ISIN (since the fundamentally same security may be identified in multiple ways when it's traded in multiple countries). 
+
+This can be expressed in CCL approximately like this (no guarantees about the correctness of this code, since I don't have a compiler to try it out):
+
+<pre>// the incoming data
+create schema s_incoming (
+&nbsp; id_type string, // identifier type: RIC, SEDOL or ISIN
+&nbsp; id_value string, // the value of the identifier
+&nbsp; // add another 90 fields of payload...
+);
+
+// the normalized data
+create schema s_normalized (
+&nbsp; isin string, // the identity is normalized to ISIN
+&nbsp; // add another 90 fields of payload...
+);
+
+// schema for the identifier translation tables
+create schema s_translation (
+&nbsp; from string, // external id value (RIC or SEDOL)
+&nbsp; isin string, // the translation to ISIN
+);
+
+// the windows defining the translations from RIC and SEDOL to ISIN
+create window w_trans_ric schema s_translation
+&nbsp; keep last per from;
+create window w_trans_sedol schema s_translation
+&nbsp; keep last per from;
+
+create input stream i_incoming schema s_incoming;
+create stream incoming_ric&nbsp; schema s_incoming;
+create stream incoming_sedol&nbsp; schema s_incoming;
+create stream incoming_isin&nbsp; schema s_incoming;
+create output stream o_normalized schema s_normalized;
+
+insert
+&nbsp; when id_type = 'RIC' then incoming_ric
+&nbsp; when id_type = 'SEDOL' then incoming_sedol
+&nbsp; when id_type = 'ISIN' then incoming_isin
+select *
+from i_incoming;
+
+insert into o_normalized
+select
+&nbsp; w.isin,
+&nbsp; i. ... // the other 90 fields
+from
+&nbsp; incoming_ric as i join w_tranc_ric as w
+&nbsp; &nbsp; on i.id_value =&nbsp; w.from;
+
+insert into o_normalized
+select
+&nbsp; w.isin,
+&nbsp; i. ... // the other 90 fields
+from
+&nbsp; incoming_sedol as i join w_tranc_sedol as w
+&nbsp; &nbsp; on i.id_value =&nbsp; w.from;
+
+insert into o_normalized
+select
+&nbsp; i.id_value,
+&nbsp; i. ... // the other 90 fields
+from
+&nbsp; incoming_isin; 
+</pre>
+
+Not exactly easy, is it, even with the copying of payload data skipped? You may notice that what it does could also be expressed as procedural pseudo-code:
+
+<pre>// the incoming data
+struct s_incoming (
+&nbsp; string id_type, // identifier type: RIC, SEDOL or ISIN
+&nbsp; string id_value, // the value of the identifier
+&nbsp; // add another 90 fields of payload...
+);
+
+// schema for the identifier translation tables
+struct s_translation (
+&nbsp; string from, // external id value (RIC or SEDOL)
+&nbsp; string isin, // the translation to ISIN
+);
+
+// the windows defining the translations from RIC and SEDOL to ISIN
+table s_translation w_trans_ric
+  key from;
+table s_translation w_trans_sedol
+  key from;
+
+s_incoming i_incoming;
+string isin;
+
+if (i_incoming.id_type == 'RIC') {
+  isin = lookup(w_trans_ric, 
+    w_trans_ric.from == i_incoming.id_value
+  ).isin;
+} elsif (i_incoming.id_type == 'SEDOL') {
+  isin = lookup(w_trans_sedol, 
+    w_trans_sedol.from == i_incoming.id_value
+  ).isin;
+} elsif (i_incoming.id_type == 'ISIN') {
+  isin = i_incoming.id_value;
+}
+
+if (isin != NULL) {
+  output o_ normalized(isin,
+    i_incoming.(* except id_type, id_value)
+  );
+}
+</pre>
+
+Basically, writing in CCL feels like programming in Fortran in the 50s: lots of labels, lots of GOTOs. Each stream is essentially a label, when looking from the procedural standpoint. It's actually worse than Fortran, since all the labels have to be pre-defined (with types!). And there isn't even the normal sequential flow, each statement must be followed by a GOTO, like on those machines with magnetic-drum main memory.
+
+This is very much like the example in <a href="http://www.amazon.com/gp/product/1451536615?ie=UTF8&amp;tag=thepracofpara-20&amp;linkCode=as2&amp;camp=1789&amp;creative=390957&amp;creativeASIN=1451536615">my book</a>, in section 6.4. <i>Queues as the sole synchronization mechanism</i>. You can alook at the draft text <a href="http://web.newsguy.com/sab123/tpopp/06odata.txt">online</a>. This similarity is not accidental: the CCL streams are queues, and they are the only communication mechanism in CCL.
+
+The SQL statement structure also adds to the confusion: each statement has the destination followed by the source of the data, so each statement reads like it flows backwards.
+
+In Triceps I aim to do better. It is not as smooth as the shown pseudo-code yet, but things are moving in this direction. I have a few ideas about improving this pseudo-code too but they would have to wait until another day.
+
+P.S. I don't seem to be able to post comments. I'm not sure, what is wrong with the Blogspot engine. But answering the comment, yeah, I don't know much about Esper. Both Coral8 and Streambase also have the .* syntax, and Aleri has a similar ExtendStream. However that copies all the fields, without dropping any of them (like id_type and id_value here).

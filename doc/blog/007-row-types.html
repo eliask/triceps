@@ -1,0 +1,112 @@
+Row types
+
+In Triceps the relational data is stored and passed around as rows (once in a while I call them records, which is the same thing here).&nbsp; Each row belongs to a certain type, that defines the types of the fields. Each field may belong to one of the simple types:
+
+uint8
+int32
+int64
+float64
+string
+
+I like the explicit specification of the data size, so it's not some mysterious "double" but an explicit "float64".
+
+uint8 is the type intended to represent the raw bytes. So, for example, when they are compared, they should be compared as raw bytes, not according to the locale. Since Perl stores the raw bytes in strings, and its pack() and unpack() functions operate on strings, The Perl side of Triceps extracts the uint8 values from records into Perl strings, and the other way around. 
+
+The string type is intended to represent a text string in whatever current locale (at some point it may become always UTF-8, this question is open for now).
+
+Perl on the 32-bit machines has an issue with int64: it has no type to represent it directly. Because of that, when the int64 values are passed to Perl on the 32-bit machines, they are converted into the floating-point numbers. This gives only 54 bits (including sign) of precision, but that's close enough. Anyway, the 32-bit machines are obsolete by now, and Triceps it targeted towards the 64-bit machines.
+
+On the 64-bit machines both int32 and int64 translate to the Perl 64-bit integers.
+
+Note that there is no special type for timestamps. As of version 1.0 there is no time-based processing inside Triceps, but that does not prevent you from passing around timestamps as data and use them in your logic.&nbsp; Just store the timestamps as integers (or, if you prefer, as floating point numbers). When the time-based processing will be added to Perl, the plan is to still use the int64 to store the number of microseconds since the Unix epoch. My experience with the time types in the other CEP systems is that they cause nothing but confusion.
+
+A row type is created from a sequence of (field-name, field-type) string pairs, for example:
+
+<pre>$rt1 = Triceps::RowType-&gt;new(
+&nbsp; a =&gt; "uint8",
+&nbsp; b =&gt; "int32",
+&nbsp; c =&gt; "int64",
+&nbsp; d =&gt; "float64",
+&nbsp; e =&gt; "string",
+) or die "$!";
+</pre>
+
+Even though the pairs look like a hash, don't use an actual hash to create row types! The order of pairs in a hash is unpredictable, while the order of fields in a row type usually matters.
+
+In an actual row the field may have a value or be NULL. The NULLs are represented in Perl as <tt>undef</tt>.
+
+The&nbsp; real-world records tend to be pretty wide and contain repetitive data. Hundreds of fields are not unusual, and I know of a case when an Aleri customer wanted to have records of two thousand fields (and succeeded). This just begs for arrays. So the Triceps rows allow the array fields. They are specified by adding "[]" at the end of field type. The arrays may only be made up of fixed-width data, so no arrays of strings.
+
+<pre>$rt2 = Triceps::RowType-&gt;new(
+&nbsp; a =&gt; "uint8[]",
+&nbsp; b =&gt; "int32[]",
+&nbsp; c =&gt; "int64[]",
+&nbsp; d =&gt; "float64[]",
+&nbsp; e =&gt; "string", # no arrays of strings!
+) or die "$!";</pre>
+
+The arrays are of variable length, whatever array data passed when a row is created determines its length. The individual elements in the array may not be NULL (and if undefs are passed in the array used to construct the row, they will be replaced with 0s). The whole array field may be NULL, and this situation is equivalent to an empty array.
+
+The type uint8 is typically used in arrays, "uint8[]" is the Triceps way to define a blob field. In Perl the "uint8[]" is represented as a string value, same as a simple "unit8".
+
+The rest of array values are represented in Perl as references to Perl arrays, containing the actual values.
+
+The row type objects provide a way for introspection:
+
+<pre>$rt-&gt;getdef()
+</pre>
+
+returns back the array of pairs used to create this type. It can be used among other things for the schema inheritance. For example, the multi-part messages with daily unique ids can be defined as:
+
+<pre>$rtMsgKey = Triceps::RowType-&gt;new(
+&nbsp; date =&gt; "string",
+&nbsp; id =&gt; "int32",
+) or die "$!";
+
+$rtMsg = Triceps::RowType-&gt;new(
+&nbsp; $rtMsgKey-&gt;getdef(),
+&nbsp; from =&gt; "string",
+&nbsp; to =&gt; "string",
+&nbsp; subject =&gt; "string",
+) or die "$!";
+
+$rtMsgPart = Triceps::RowType-&gt;new(
+&nbsp; $rtMsgKey-&gt;getdef(),
+&nbsp; type =&gt; "string",
+&nbsp; payload =&gt; "string",
+) or die "$!";
+</pre>
+
+The meaning here is the same as in the CCL example:
+
+<pre>create schema rtMsgKey (
+  string date,
+  integer id
+);
+create schema rtMsg inherits from rtMsgKey (
+  string from,
+  string to,
+  string subject
+);
+create schema rtMsgPart inherits from rtMsgKey (
+  string type,
+  string payload
+);
+</pre>
+
+The grand plan is to provide some better ways of defining the commonality of fields between row types. It should include the ability to rename fields, to avoid conflicts, and to remember this equivalence to be reused in the further joins without the need to write it over and over again. But it has not come to the implementation stage yet.
+
+<pre>$rt-&gt;getFieldNames()
+</pre>
+
+returns the array of field names only.
+
+<pre>$rt-&gt;getFieldTypes()
+</pre>
+
+returns the array of field types only.
+
+<pre>$rt-&gt;getFieldMapping()
+</pre>
+
+returns the array of pairs that map the field names to their indexes in the field definitions. It can be stored into a hash and used for name-to-index translation. It's used mostly in the templates, to generate code that accesses data in the rows by field index (which is more efficient than access by name). For example, for <tt>rtMsgKey</tt> defined above it would return <tt>(date =&gt; 0, id =&gt; 1)</tt>.
