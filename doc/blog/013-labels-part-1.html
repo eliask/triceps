@@ -1,0 +1,77 @@
+Labels, part 1
+
+In each CEP engine there are two kinds of logic: One is to get some request, look up some state, maybe update some state, and return the result. The other has to do with the maintenance of the state: make sure that when one part of the state is changed, the change propagates consistently through the rest of it. If we take a common RDBMS for an analog, the first kind would be like the ad-hoc queries, the second kind will be like the triggers. The CEP engines are very much like database engines driven by triggers, so the second kind tends to account for a lot of code.
+
+The first kind of logic is often very nicely accommodated by the procedural logic. The second kind often (but not always) can benefit for a more relational, SQLy definition. Also, when every every SQL statement executes, it gets compiled first into the procedural form, and only then executes as the procedural code.
+
+The Triceps approach is tilted toward procedural execution. That is, the procedural definitions come out of the box, and then the high-level relational logic can be defined with templates and code generators.
+
+These bits of code, especially where the first and second kind connect, need some way to pass the data and operations between them. In Triceps these connection points are called Labels.
+
+The streaming data rows enter the procedural logic through a label. Each row causes one call on the label. From the functional standpoint they are the same as Coral8 Streams, as has been shown <a href="http://babkin-cep.blogspot.com/2011/12/were-not-in-1950s-any-more-or-are-we.html">earlier in the introduction</a>. Except that in Triceps the labels get not just rows but operations on rows, as in Aleri: a combination of a row and an operation code. The name is "labels" because Triceps has been built around the more procedural ideas, and when looked at from that side, the labels are targets of calls and GOTOs.
+
+If the streaming model is defined as a data flow graph, each arrow in the graph is essentially a GOTO operation, and each node is a label.
+
+A Triceps label is not quite a GOTO label, since the actual procedural control always returns back after executing the label's code. It can be thought of as a label of a function or procedure. But if the caller does nothing but immedially return after getting the control back, it works very much like a GOTO label.
+
+Each label accepts operations on rows of a certain type.
+
+Each label belongs to a certain execution unit, so a label can be used only strictly inside one thread and can not be shared between threads.
+
+Each label may have some code to execute when it receives a row operation. The labels without code can be useful too.
+
+A Triceps model contains the straightforward code and the mode complex stateful elements, such as tables, aggregators, joiners (which may be implemented in C++ or in Perl, or created as user templates). These stateful elements would have some input labels, where the actions may be sent to them (and the actions may also be done as direct method calls), and output labels, where they would produce the indications of the changed state and/or responses to the queries. The output labels are typically the ones without code ("dummy labels"). They do nothing by themselves, but can pass the data to the other labels. This passing of data is achieved by <i>chaining</i> the labels: when a label is called, it will first execute its own code (if it has any), and then call the same operation on whatever labels are chained from it. Which may have more labels chained from them in turn. So, to pass the data, chain the input label of the following element to the output label of the previous element.
+
+The execution unit provides methods to construct labels. A dummy label is constructed as:
+
+<pre>$label = $unit-&gt;makeDummyLabel($rowType, "name");
+</pre>
+
+It takes as arguments the type of rows that the label will accept and the symbolic name of the label. The name can be any but for the ease of debugging it's better to give the same name as the label variable.
+
+The label with Perl code is constructed as follows:
+
+<pre>$label = $unit-&gt;makeLabel($rowType, "name", \&amp;clearSub,
+&nbsp; \&amp;execSub, <i>args...</i>);
+</pre>
+
+The row type and name arguments are the same as for the dummy label. The following arguments provide the references to the Perl functions that perform the actions. execSub is the function that executes to handle the incoming rows. It gets the arguments:
+
+<pre>execSub($label, $rowop, <i>args...</i>)</pre>
+
+Here $label is this label, $rowop is the row operation, and <i>args</i> are the same as extra arguments specified at the label creation.
+
+The row operation actually contains the label reference, so why pass it the second time? The reason lies in the chaining. The current label may be chained, possibly through multiple levels, to some original label, and the rowop will refer to that original label. So the extra argument lets the code find the current label.
+
+The clearSub deals with the destruction. Remember that the <a href="http://babkin-cep.blogspot.com/2011/12/memory-management.html">Triceps memory management</a>chainings, and also drops all the references to execSub, clearSub and arguments. But before these references are dropped, clearSub gets a chance to execute and clear any application-level data. It gets as argument the label reference all the args from the label constructor:
+
+<pre>clearSub($label, <i>args...</i>) 
+</pre>
+
+A typical case is&nbsp; to keep the state of a stateful element in a hash:
+
+<pre>package MyElement;
+
+sub new # (class, unit, name...)
+{
+&nbsp; my ($class, $unit, $name) = @_; 
+&nbsp; my $self = {};
+&nbsp; ... 
+&nbsp; $self-&gt;inLabel = $unit-&gt;makeLabel(..., \&amp;clear, \&amp;handle, $self);
+&nbsp; $self-&gt;outLabel = $unit-&gt;makeDummyLabel(...);
+&nbsp; ...
+&nbsp; bless $self, $class;
+&nbsp; return $self;
+}
+</pre>
+
+Then the clearing function can wipe out the whole state of the element by undefining its hash:
+
+<pre>sub clear # (label, self)
+{
+&nbsp; my ($label, $self) = @_;
+&nbsp; undef %$self;
+}
+</pre>
+
+Either of execSub and clearSub can be specified as <b>undef</b>. Though a label with an undefined execSub is essentially a dummy label, only more heavyweight.
