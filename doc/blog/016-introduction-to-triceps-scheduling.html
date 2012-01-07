@@ -1,0 +1,9 @@
+Introduction to Triceps scheduling
+
+The main point of an execution unit in Triceps is scheduling of the execution of the row operations. It keeps a queue of the operations and selects, which one to execute next. The scheduling is important for a predictable execution order within a single thread.
+
+There are multiple approaches to scheduling. Aleri essentially doesn't have any, except for the flow control between threads, because each its element is a separate thread. Coral8 has an intricate scheduling algorithm. Sybase R5 has the same logic as Coral8 inside each thread. StreamBase presumably also has some.
+
+The scheduling logic in Triceps is different from the other CEP systems. The Coral8 logic looks at first like the only reasonable way to go, but could not be used for three reasons: First, it's a trade secret, so it can't be simply reused. If I'd never seen it, that would not be an issue but I've worked on it and implemented its version for R5. Second, it relies on the properties that the compiler computes from the model graph analysis. Triceps has no compiler, and could not do this. Third, in reality it simply doesn't work that well. There are quite a few cases when the Coral8 scheduler comes up with a strange and troublesome execution order.
+
+For a while I've hoped that Triceps would need no scheduler at all, and everything would be handled by the procedural calls.This has proved to have its own limitations, and thus the labels and their scheduling were born. The Triceps scheduling still has issues to resolve, but overall still feels much better than the Coral8 one.
