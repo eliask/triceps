@@ -2,16 +2,14 @@ Row operations
 
 A row operation (also known as rowop) in Triceps is an unit of work for a label. It's always destined for a particular label (which could also pass it to its chained labels), and has a row to process and an opcode. The defined opcodes are:
 
-<pre>
-Triceps::OP_NOP
+<pre>Triceps::OP_NOP
 Triceps::OP_INSERT
 Triceps::OP_DELETE
 </pre>
 
 A row operation is constructed as:
 
-<pre>
-$rowop = $label-&gt;makeRowop($opcode, $row);
+<pre>$rowop = $label-&gt;makeRowop($opcode, $row);
 </pre>
 
 The opcode may be specified as a Triceps constant or as one of the strings "OP_NOP", "OP_INSERT", "OP_DELETE". Historically, there is also an optional extra argument for enqueuing mode but it's already obsolete.
@@ -20,68 +18,78 @@ Since the labels are single-threaded, the rowops are single-threaded too. The ro
 
 The references to rowops can be compared as usual
 
-<pre>
-$rowop1-&gt;same($rowop2)
+<pre>$rowop1-&gt;same($rowop2)
 </pre>
 
 returns true if both point to the same rowop object.
 
 The rowop data can be extracted back:
 
-<pre>
-$label = $rowop-&gt;getLabel();
+<pre>$label = $rowop-&gt;getLabel();
 $opcode = $rowop-&gt;getOpcode();
 $row = $rowop-&gt;getRow();
 </pre>
 
 A copy of rowop (not just another reference but an honest separate copied object) can be created with
 
-<pre>
-$rowop2 = $rowop1-&gt;copy();
+<pre>$rowop2 = $rowop1-&gt;copy();
 </pre>
 
 However, since the rowops are immutable, a reference is just as good as a copy. This method is historic and will likely be removed or modified.
 
 There also are calls to directly check the meaning of the opcode:
 
-<pre>
-$rowop-&gt;isNop()
+<pre>$rowop-&gt;isNop()
 $rowop-&gt;isInsert()
 $rowop-&gt;isDelete()
 </pre>
 
 The typical idiom for handling a label is:
 
-<pre>
-if ($rowop-&gt;isInsert()) {
+<pre>if ($rowop-&gt;isInsert()) {
 &nbsp; # handle the insert logic ...
 } elsif($rowop-&gt;isDelete()) {
 &nbsp; # handle the delete logic...
 }
 </pre>
 
+:$
 The NOPs get silently ignored in this idiom, as they should be. Generally there is no point in creation of the rowops with NOP opcode, unless you want to use them for some weird logic.
 
 The main Triceps package also provides functions to check the extracted opcodes:
 
-<pre>
-Triceps::isNop($opcode)
+<pre>Triceps::isNop($opcode)
 Triceps::isInsert($opcode)
 Triceps::isDelete($opcode)
 </pre>
 
 The same-named methods of Rowop are just the more convenient and efficient ways to say
 
-<pre>
-Triceps::isNop($rowop-&gt;getOpcode())
+<pre>Triceps::isNop($rowop-&gt;getOpcode())
 Triceps::isInsert($rowop-&gt;getOpcode())
 Triceps::isDelete($rowop-&gt;getOpcode())
 </pre>
 
 The functions to convert between the opcode integer values and strings are
 
-<pre>
-$opcode = &amp;Triceps::stringOpcode($opcodeName);
-$opcodeName = &amp;Triceps::opcodeString($opcode);
+<pre>$opcode = &amp;Triceps::stringOpcode($opcodeName);
+$opcodeName = &amp;Triceps::opcodeString($opcode);&nbsp;</pre>
+
+A Rowop can be printed (usually for debugging purposes) with
+
+<pre>$string = $rowop-&gt;printP(); 
 </pre>
 
+Just as with a row, printP() means that it's implemented in Perl. In the future a print() done right in C++ may be added, but for now I try to keep all the interpretation of the data on the Perl side. The following example gives an idea of the format in which the rowops get printed:
+
+<pre>$lb = $unit-&gt;makeDummyLabel($rt, "lb");
+$rowop = $lb-&gt;makeRowop(&amp;Triceps::OP_INSERT, $row);
+print $rowop-&gt;printP(), "\n";
+</pre>
+
+would produce
+
+<pre>lb OP_INSERT a="123" b="456" c="3000000000000000" d="3.14" e="text" 
+</pre>
+
+The row contents is printed through Row::printP(), so it has the same format.
