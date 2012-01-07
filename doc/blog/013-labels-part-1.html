@@ -43,7 +43,11 @@ Here $label is this label, $rowop is the row operation, and <i>args</i> are the 
 
 The row operation actually contains the label reference, so why pass it the second time? The reason lies in the chaining. The current label may be chained, possibly through multiple levels, to some original label, and the rowop will refer to that original label. So the extra argument lets the code find the current label.
 
-The clearSub deals with the destruction. Remember that the <a href="http://babkin-cep.blogspot.com/2011/12/memory-management.html">Triceps memory management</a>chainings, and also drops all the references to execSub, clearSub and arguments. But before these references are dropped, clearSub gets a chance to execute and clear any application-level data. It gets as argument the label reference all the args from the label constructor:
+The clearSub deals with the destruction. Remember that the <a href="http://babkin-cep.blogspot.com/2011/12/memory-management.html">Triceps memory management</a> uses the reference counting, which does not like the reference loops. The reference loops cause the objects to be never freed. It's no big deal if the data structures exist until the program exit anyway but becomes a memory leak if they are created and deleted dynamically.
+
+If the labels are arranged in a cyclic graph, they refear to each other and create a reference loop. So the execution unit keeps track of all its labels, and when it gets destoryed, clears them up, breaking up the loops. 
+
+The clearing of a label drops all the references to execSub, clearSub and arguments, and clears all the chainings. But before anything else is done, clearSub gets a chance to execute and clear any application-level data. It gets as argument the label reference all the args from the label constructor:
 
 <pre>clearSub($label, <i>args...</i>) 
 </pre>
@@ -75,3 +79,5 @@ Then the clearing function can wipe out the whole state of the element by undefi
 </pre>
 
 Either of execSub and clearSub can be specified as <b>undef</b>. Though a label with an undefined execSub is essentially a dummy label, only more heavyweight.
+
+Another potential for reference loops is between the&nbsp; execution unit and the labels. A unit keeps a reference to all its labels. So the labels can not keep a reference to the unit. And they don't. Internally they have a plain pointer.&nbsp; Note however that in the example shown the labels have a Perl reference to the object where they belong. If that object is to have a Perl reference to the unit, it would create a reference loop, and the object will never be destroyed and never clear the labels. So generally the objects should never keep references to the unit. The unit also provides another way around this situation: it has a way to force the label clearing when a helper object gets destroyed. It will be described later.

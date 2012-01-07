@@ -1,0 +1,51 @@
+Labels, part 2
+
+As a heads up, I've noticed that a few paragraphs were accidentally dropped from the part 1, so I've re-written them and updated that post. If you read it before, please re-read it Now, continuing.
+
+The chaining of labels is done with the call:
+
+<pre>$label1-&gt;chain($label2) or die "$!";
+</pre>
+
+A label can not be chained to itself, neither directly nor through other intermediate labels. The row types of the labels must be equal (this is more strict than for queueing up the row operations for labels and might change one or the other way in the future).
+
+A label's chainings can be cleared with
+
+<pre>$label1-&gt;clearChained();
+</pre>
+
+It returns nothing, and clears the chainings from this&nbsp; label. There is no way to unchain some selected labels.
+
+The whole label can be cleared with
+
+<pre>$label1-&gt;clear();
+</pre>
+
+This is fully equivalent to what happens when an execution unit clears the labels: it calls the clear function (if any) and clears the chainings. Note that the labels that used to be chained from this one do not get cleared themselves, they're only unchained from this one.
+
+Labels have the usual way of comparing the references:
+
+<pre>$label1-&gt;same($label2)
+</pre>
+
+returns true if both references point to the same label object.
+
+The labels introspection can be done with:
+
+<pre>$rowType = $label-&gt;getType();
+$unit = $label-&gt;getUnit();
+$name = $label-&gt;getName();
+@chainedLabels = $label-&gt;getChain();
+$execSubRef = $label-&gt;getCode();
+</pre>
+
+If the label has been cleared, getUnit() will return an <b>undef</b>. getChain() returns an array of references to the chained labels. getCode() is actually half-done because it returns just the Perl function reference to the execution handler but not its arguments, nor reference to the clearing function. It will be changed in the future to fix these issues.
+
+There is also a way to change the label's name:
+
+<pre>$label-&gt;setName($name);
+</pre>
+
+It returns nothing, and there is probably no reason to call it. It will likely be removed in the future.
+
+The label also provides a constructor method for row operations, which will be described in the next post.
