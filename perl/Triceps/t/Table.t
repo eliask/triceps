@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 174 };
+BEGIN { plan tests => 187 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -282,6 +282,8 @@ ok(ref $rhit, "Triceps::RowHandle");
 ok(!$rhit->isNull());
 ok($rhit->same($rh1)); # finds the first watching
 
+# findBy is better to be done on t2, since it has a direct hash index, see below
+
 # insert with copyTray: more interesting if the rows get replaced
 
 $ctr = $u1->makeTray();
@@ -309,6 +311,53 @@ ok($arr[0]->getOpcode(), &Triceps::OP_DELETE);
 ok($r2->same($arr[0]->getRow()));
 ok($arr[1]->getOpcode(), &Triceps::OP_INSERT);
 ok($r2->same($arr[1]->getRow()));
+
+# findBy
+$rhit = $t2->findBy( # just the key fields
+	b => [ 123 ],
+	c => [ 3e15+0 ],
+);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh2)); 
+
+$rhit = $t2->findBy( # just the key fields - an absent row
+	b => [ 456 ],
+	c => [ 3e15+0 ],
+);
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+
+eval { $rhit = $t2->findBy( # invalid fields, making it to fail
+	zz => [ 456 ],
+	c => [ 3e15+0 ],
+); };
+ok($@ =~ /^Triceps::RowType::makeRowHash: attempting to set an unknown field 'zz' at .*\n\tTriceps::Table::findBy.*/) or print STDERR "got: $@\n";
+
+# findIdxBy
+$it2m = $t2->getType()->findSubIndex("grouping");
+ok(ref $it2m, "Triceps::IndexType");
+
+$rhit = $t2->findIdxBy($it2m, # just the key fields
+	b => [ 123 ],
+	c => [ 3e15+0 ],
+);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok($rhit->same($rh2)); 
+
+$rhit = $t2->findIdxBy($it2m, # just the key fields - an absent row
+	b => [ 456 ],
+	c => [ 3e15+0 ],
+);
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+
+eval { $rhit = $t2->findIdxBy($it2m, # invalid fields, making it to fail
+	zz => [ 456 ],
+	c => [ 3e15+0 ],
+); };
+ok($@ =~ /^Triceps::RowType::makeRowHash: attempting to set an unknown field 'zz' at .*\n\tTriceps::Table::findIdxBy.*/) or print STDERR "got: $@\n";
 
 # bad args insert
 $res = $t1->insert(0);
@@ -463,7 +512,7 @@ ok(defined $res && $res == 0);
 
 # bad args deleteRow
 eval { $res = $t1->deleteRow($r1, 1, 2) };
-ok($@, "Usage: Triceps::Table::deleteRow(self, row [, copyTray]) at t/Table.t line 465.\n");
+ok($@ =~ /^Usage: Triceps::Table::deleteRow\(self, row \[, copyTray\]\) at .*/) or print STDERR "got: $@\n";
 
 $res = $t1->deleteRow($r2);
 ok(!defined $res);

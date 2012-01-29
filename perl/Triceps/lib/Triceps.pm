@@ -77,6 +77,7 @@ require Triceps::UnitTracerPerl;
 require Triceps::UnitTracerStringName;
 require Triceps::Row;
 require Triceps::Rowop;
+require Triceps::Table;
 require Triceps::Opt;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
@@ -117,9 +118,9 @@ Sergey A. Babkin, E<lt>babkin@users.sf.netE<gt> or E<lt>sab123@hotmail.comE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2011 by Sergey  A.Babkin
+Copyright (C) 2011-2012 by Sergey A.Babkin
 
-This library distributed under the Lesser GPL license version 3.0.
+This library distributed under the Triceps edition of Lesser GPL license version 3.0.
 
 
 =cut
