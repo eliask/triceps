@@ -1,0 +1,108 @@
+Basic scheduling
+
+The Triceps scheduler provides 3 basic ways of executing of a label:
+
+<ul>
+<li>Call: execute the label right now, including all the nested calls. All of this will be completed after the call returns.</li>
+<li>Fork: execute the label after the current label returns but before anything else is done. Obviously, if multiple labels are forked, they will execute in order after the current label returns (but before its caller gets the control back).</li>
+<li>Schedule: execute the label after everything else is done.</li>
+</ul>
+How it works inside:
+
+A scheduler in the execution unit keeps a stack of queues. Each queue is essentially a stack frame. The stack always contains at least one queue, which is called the outermost stack frame.&nbsp; 
+
+When the new rowops come from the outside world, they are added with schedule() to that stack frame. That's what schedule() does: always adds messages to the outermost stack frame. If rowops 1, 2 and 3 are added, the stack looks like this:
+
+[1, 2, 3]
+
+The unit method drainFrame() is then used to process the rowops. It makes the unit call each label on the innermost frame (which is at the moment the same as outermost frame) in order.
+
+First it calls the rowop 1. It's removed from the queue, then a new frame is pushed onto the stack
+
+[ ]
+[2, 3]
+
+Then the rowop 1 executes. If it calls rowop 4, another frame is pushed onto the stack
+
+[ ]
+[ ]
+[2, 3]
+
+then the rowop 4 executes. After it is finished (not calling any other rowops), the outermost empty frame is popped before the execution of rowop 1 continues.
+
+[ ]
+[2, 3]
+
+
+Suppose then rowop 1 forks rowops 5 and 6. They are appended to the innermost frame.
+
+[5, 6]
+[2, 3]
+
+If rowop 1 calls rowop 7, again a frame is pushed onto the stack before it executes
+
+[ ]
+[5, 6]
+[2, 3]
+
+
+Again, note that a call does not put the target rowop into any scheduler queue. The identity of rowop being processed is just kept in the call context. A call also involves a direct C++ call on the thread stack, and if any Perl code is involved, a Perl call too. Because of this, if you nest the calls too deeply, you may run out of the thread stack space.
+
+Returning back to the sequence, after the call of rowop 7 completes, the scheduler stack returns to
+
+[5, 6]
+[2, 3]
+
+
+Suppose now the execution of rowop 1 completes. But its call is not done yet, because its stack queue is not empty. The scheduler calls drainFrame() recursively, which picks the next rowop from the innermost queue (rowop 5), and calls it, pushing a new stack frame and executing the rowop 5 code:
+
+[ ]
+[6]
+[2, 3]
+
+If rowop 5 forks rowop 8, the stack becomes:
+
+[8]
+[6]
+[2, 3]
+
+When the execution of rowop 5 returns, its queue is also not empty. So the scheduler calls rowop 8. During its execution the stack is:
+
+[ ]
+[ ]
+[6]
+[2, 3]
+
+Suppose the rowop 8 doesn't call or fork anything else and returns. Its innermost queue is empty, so the call completes and pops the stack frame.
+
+[ ]
+[6]
+[2, 3]
+
+Now the queue of rowop 5 is also empty, so its call completes and pops the stack frame.
+
+[6]
+[2, 3]
+
+The call of rowop 6 begins.
+
+[ ]
+[ ]
+[2, 3]
+
+Suppose rowop 6 calls schedule() of rowop 9. Rowop 9 is then added to the outermost queue:
+
+[ ]
+[ ]
+[2, 3, 9]
+
+Rowop 6 then returns, its queue is empty, so it's popped and its call completes.
+
+[ ]
+[2, 3, 9]
+
+Now the queue of rowop 1 has become empty, so it's popped from the stack and the call fo rowop 1 completes.
+
+[2, 3, 9]
+
+The unit method drainFrame() keeps running, now taking the rowop 2 and executing it, and so on, until the outermost queue becomes empty, and drainFrame() returns.
