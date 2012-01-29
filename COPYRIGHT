@@ -1,4 +1,4 @@
-(C) Copyright 2011 Sergey A. Babkin.
+(C) Copyright 2011-2012 Sergey A. Babkin.
 
 The Triceps project is dual-licensed under 2 licenses:
   1. GNU LGPL v3 (Triceps version), as specified in the file LGPL
@@ -21,15 +21,14 @@ between the commercial companies in the past.
 The difference between the text of the original LGPL version 3 and the Triceps
 version is as follows:
 
-   An "Application" is any work that makes use of an interface provided
- by the Library, but which is not otherwise based on the Library.
-+An Application solves a particular user task and does not provide a 
-+general Complex Event Processing functionality.
- Defining a subclass of a class defined by the Library is deemed a mode
--of using an interface provided by the Library.
-+of using an interface provided by the Library, if this subclass does not
-+provide direct access to the Library interface from outside of the
-+Application.
+  An "Application" is any work that makes use of an interface provided
+by the Library, but which is not otherwise based on the Library.
+An Application solves a particular user task and does not provide a 
+general Complex Event Processing functionality.
+Defining a subclass of a class defined by the Library is deemed a mode
+of using an interface provided by the Library, if this subclass does not
+provide direct access to the Library interface from outside of the
+Application.
 
 Parts of this package have been included from other packages, and are covered by
 their own license. Such code includes:
