@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 3 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -121,4 +121,40 @@ ok($result,
 	"Received 'world' 1 times\n" .
 	"Received 'table' 2 times\n" .
 	"Unknown command 'goodbye'\n"
-)
+);
+
+#########################
+# An example of a wrapper over the table class
+
+package MyTable;
+our @ISA = qw(Triceps::Table);
+
+sub new # (class, unit, args of makeTable...)
+{
+	my $class = shift;
+	my $unit = shift;
+	my $self = $unit->makeTable(@_);
+	return undef unless defined $self;
+	bless $self, $class;
+	return $self;
+}
+
+package main;
+
+{
+	my $hwunit = Triceps::Unit->new("hwunit") or die "$!";
+	my $rtCount = Triceps::RowType->new(
+		address => "string",
+		count => "int32",
+	) or die "$!";
+
+	my $ttCount = Triceps::TableType->new($rtCount)
+		->addSubIndex("byAddress", 
+			Triceps::IndexType->newHashed(key => [ "address" ])
+		)
+	or die "$!";
+	$ttCount->initialize() or die "$!";
+
+	my $tCount = MyTable->new($hwunit, $ttCount, &Triceps::EM_CALL, "tCount") or die "$!";
+	ok(ref $tCount, "MyTable");
+}
