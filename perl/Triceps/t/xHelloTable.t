@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 4 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -158,3 +158,91 @@ package main;
 	my $tCount = MyTable->new($hwunit, $ttCount, &Triceps::EM_CALL, "tCount") or die "$!";
 	ok(ref $tCount, "MyTable");
 }
+
+#########################
+# Example with the rowops used with the table.
+
+sub helloWorldLabels()
+{
+	my $hwunit = Triceps::Unit->new("hwunit") or die "$!";
+	my $rtCount = Triceps::RowType->new(
+		address => "string",
+		count => "int32",
+	) or die "$!";
+
+	my $ttCount = Triceps::TableType->new($rtCount)
+		->addSubIndex("byAddress", 
+			Triceps::IndexType->newHashed(key => [ "address" ])
+		)
+	or die "$!";
+	$ttCount->initialize() or die "$!";
+
+	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or die "$!";
+
+	my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
+		"lbPrintCount", undef, sub { # (label, rowop)
+			my ($label, $rowop) = @_;
+			my $row = $rowop->getRow();
+			&send(&Triceps::opcodeString($rowop->getOpcode), " '", 
+				$row->get("address"), "', count ", $row->get("count"), "\n");
+		} ) or die "$!";
+	$tCount->getOutputLabel()->chain($lbPrintCount) or die "$!";
+
+	# the updates will be sent here, for the tables to process
+	my $lbTableInput = $tCount->getInputLabel();
+
+	while(&readLine()) {
+		chomp;
+		my @data = split(/\W+/);
+
+		# the common part: find if there already is a count for this address
+		my $pattern = $rtCount->makeRowHash(
+			address => $data[1]
+		) or die "$!";
+		my $rhFound = $tCount->find($pattern) or die "$!";
+		my $cnt = 0;
+		if (!$rhFound->isNull()) {
+			$cnt = $rhFound->getRow()->get("count");
+		}
+
+		if ($data[0] =~ /^hello$/i) {
+			$hwunit->schedule($lbTableInput->makeRowop(&Triceps::OP_INSERT,
+				$lbTableInput->getType()->makeRowHash(
+					address => $data[1],
+					count => $cnt+1,
+				))
+			) or die "$!";
+		} elsif ($data[0] =~ /^clear$/i) {
+			$hwunit->schedule($lbTableInput->makeRowop(&Triceps::OP_DELETE,
+				$lbTableInput->getType()->makeRowHash(address => $data[1]))
+			) or die "$!";
+		} else {
+			&send("Unknown command '$data[0]'\n");
+		}
+		$hwunit->drainFrame();
+	}
+}
+
+#########################
+# test the last example
+
+@input = (
+	"Hello, table!\n",
+	"Hello, world!\n",
+	"Hello, table!\n",
+	"clear, table\n",
+	"Hello, table!\n",
+	"goodbye, world\n",
+);
+$result = undef;
+&helloWorldLabels();
+ok($result, 
+	"OP_INSERT 'table', count 1\n" .
+	"OP_INSERT 'world', count 1\n" .
+	"OP_DELETE 'table', count 1\n" .
+	"OP_INSERT 'table', count 2\n" .
+	"OP_DELETE 'table', count 2\n" .
+	"OP_INSERT 'table', count 1\n" .
+	"Unknown command 'goodbye'\n"
+);
+
