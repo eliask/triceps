@@ -1,0 +1,31 @@
+CEP: why bother?
+
+So far I've been writing largely in assumption that the readers would have an idea of what the Complex Event Processing is, and comparing to the other existing systems. It's a decent assumption for a quick start: if people have found Triceps, they've likely come through some CEP-related links, and know, what they are looking for.
+
+But hopefully there will be novices as well, so let me have a go at describing the basics too.
+
+If you look at Wikipedia, it has separate articles for the Event Stream Processing and the Complex Event Processing. In reality it's all the same thing, with the naming driven by the marketing. I would not be surprised if someone invents yet another name, and everyone will start jumping on that bandwagon too.
+
+In general a CEP system can be thought of as a black box, where the input events come in, propagate in some way through that black box, and come out as the processed output events. There is also an idea that the processing should happen fast, though the definitions of "fast" vary widely.
+
+
+If we open the lid on the box, there are at least three ways to think of its contents:
+<ul>
+<li>a spreadsheet on steroids</li>
+<li>a data flow machine&nbsp;</li>
+<li>a database driven by triggers </li>
+</ul>
+
+Hopefully you've seen a spreadsheet before. The cells in it are tied together by formulas. You change one cell, and the machine goes and recalculates everything that depends on it. So does a CEP system. If we look closer, we can discern the CEP engine (which is like the spreadsheet software), the CEP model (like the formulas in the spreadheet) and the state (like the current values in the spreadsheet).&nbsp; An incoming event is like a change in an input cell, and the outgoing events are the updates of the values in the spreadsheet. Only a CEP system hand handle some very complicated formulas and many millions of records. There actually are products that connect the Excel spreadsheets with the behind-the-curtain computations in a CEP system, with the results coming back to the spreadsheet cells.&nbsp; Pretty much every commercial CEP provider has a product that does that through the Excel RT interface. The way these models are written are not exactly pretty, but the results are, combining the nice presentation of spreadsheets and the speed and power of CEP.
+
+A data flow machine, where the processing elements are exchanging messages, is your typical academical look at CEP. The events represented as data rows are the messages, and the CEP model describes the connections between the processing elements and their internal logic. This approach naturally maps to the multiprocessing, with each processing element becoming a separate thread. The hiccup is that the research in the dataflow machines tends to prefer the non-looped topologies. The loops in the connections complicate the things.
+
+And many real-world relational databases already work very similarly to the CEP systems. They have constraints and triggers propagating the constraints. A trigger propagates an update on one table to an update on another table. It's like a formula in a spreasheet or a logical connection in a dataflow graph. Yet the databases usually miss two things: the propagation of the output events and the notion of "fast". The lack of propagation of the output events is totally baffling to me: the RDBMS engines already write the output event stream as the redo log. Why not send them also in some generalized format, XML or something? Then people realize that yes, they do want to get the output events and start writing some strange add-ons and aftermarket solutions like the log scrubbers. This has been a mystery to me for some 15 years. I mean, how more obvious can it be? But nobody budges. Well, with the CEP systems gaining popularity and the need to connect them to the databases, I think it will eventually grow on the database vendors that a decent event feed is a compatitive advantage, and I think it will happen somewhere soon. The felling of "fast" or lack thereof has to do with the databases being stored on disks. The growth of CEP has concided with the growth in RAM sizes, and the data is usually kept completely in memory. People who deploy CEP tend to want the performance not of hundreds or thousands but hundreds of thousands events per second. The second part of "fast" is connected with the transactions. In a traditional RDBMS a single event with all its downstream effects is one transaction. Which is safe but may cause lots of conflicts. The CEP systems usually allow to break up the logic into multiple loosely-dependent layers, thus cutting on the overhead.
+
+How are the CEP systems used?
+
+Despite what Wikipedia says, the pattern detection is <b>NOT</b> your typical usage, by a wide, wide margin. The typical usage is for the data aggregation: lots and lots of individual events come in, and you want to aggregate them to keep a concise and consistent picture for the decision-making.&nbsp; The actual decision making can be done by humans or again by the CEP systems. The usages in the uses I know of vary from ad-click aggregation to the decisions to make a market trade, or watching whether the bank's end-of-day balance falls within the regulations.
+
+A related use would be for the general alert consoles. The data aggregation is what they do too. The last time I looked up close (around 2006), the processing in the BMC Patrol and Nagios was just plain inadequate for anything useful, and I had to hand-code the data collection and console logic. But the CEP would have been just the ticket. I think, the only reaosn why it has not been widespread yet is that the commercial CEP licenses had cost a lot. But with the all-you-can-eat pricing of Sybase, and with the OpenSource systems, this is gradually changing.
+
+Well, and there is also the pattern matching. It has been lagging behind the aggregation but growing too.

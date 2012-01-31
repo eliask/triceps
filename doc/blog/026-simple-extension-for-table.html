@@ -1,0 +1,58 @@
+a simple extension for a table
+
+When I wrote the example for the last post, I've got a bit annoyed that to look up a row in a table I had to make a pattern row manually and then search for it. It looked easy to fix: just add a method findBy() that would take the (fieldNam, fieldValue) pairs for the keys, create the row and call find(). Then the code in "Hello, table" example
+
+<pre>my $pattern = $rtCount-&gt;makeRowHash(
+&nbsp; address =&gt; $data[1]
+) or die "$!";
+my $rhFound = $tCount-&gt;find($pattern) or die "$!";
+</pre>
+
+becomes
+
+<pre>my $rhFound = $tCount-&gt;findBy(
+&nbsp; address =&gt; $data[1]
+) or die "$!";
+</pre>
+
+Naturally, it's not in version 0.99 but will be available in 1.00. The implementation is fairly simple. There is no reason why a class can't mix the XS methods and plain Perl methods. So I've added the file lib/Triceps/Table.pm, added it to be imported in lib/Triceps.pm, and put the Perl method in there:
+
+<pre>package Triceps::Table;
+use Carp;
+
+sub findBy # (self, fieldName =&gt; fieldValue, ...)
+{
+&nbsp; my $self = shift;
+&nbsp; my $row = $self-&gt;getRowType()-&gt;makeRowHash(@_) or Carp::confess "$!";
+&nbsp; return $self-&gt;find($row);
+}
+</pre>
+
+Carp::confess() is a better kind of die(), I'll will discuss it in more detail later. Fairly simple and straightforward. If you see something missing, you can also always extend Triceps in the same way.
+
+However if you change the Triceps code directly like I did, you'll have an issue with the next Triceps release: it woudl overwrite your file and your change would be lost. This can be solved in one of two ways. The first way is to write me an e-mail, describe your new useful change, and send me a context diff with its code. If I like it, I'll include it into the Triceps code base.
+
+The second way comes useful if you want to keep the change to yourself, or if you sent it to me and I didn't like it: just make your own wrapper of the Table class and add the new method there. Then use your class instead of Triceps::Table. For example:
+
+<pre>package MyTable;
+our @ISA = qw(Triceps::Table);
+
+sub new # (class, unit, args of makeTable...)
+{
+&nbsp; my $class = shift;
+&nbsp; my $unit = shift;
+&nbsp; my $self = $unit-&gt;makeTable(@_);
+&nbsp; return undef unless defined $self;
+&nbsp; bless $self, $class;
+&nbsp; return $self;
+}
+
+sub myFindBy { ... }
+
+package main;
+...
+my $tCount = MyTable-&gt;new(
+&nbsp; $hwunit, $ttCount, &amp;Triceps::EM_CALL, "tCount") or die "$!";
+</pre>
+
+That's  also a simplest template: a modifying wrapper for one class.

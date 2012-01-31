@@ -1,0 +1,75 @@
+Yes bundling
+
+Even though Triceps does no bundling in scheduling, there still is a need to store the sequences of row operations. This is an important distinction, since the stored sequences are to be scheduled somewhere in the future (or maybe not scheduled at all, but iterated through manually). If and when they get scheduled, they will be unbundled. The ordered storage only provides the order for that future scheduling or iteration.
+
+The easiest way to store rowops is to put them into the Perl arrays, like:
+
+<pre>my @ops = ($rowop1, $rowop2);
+push @ops, $rowop3;
+</pre>
+
+However the C++ internals of Triceps do not know about the Perl arrays. And some of them work directly with the sequences of rowops. So Triceps defines an internal sort-of-equivalent of Perl array for rowops, called a <b>Tray</b>.
+
+The trays have first been used to "catch" the side effects of operations on the stateful elements, so the name "tray" came from the metaphor "put a tray under it to catch the drippings".
+
+The trays get created as:
+
+<pre>$tray = $unit-&gt;makeTray($rowop, ...) or die "$!";
+</pre>
+
+A tray always stores rowops for only one unit. It can be only used in one thread.&nbsp; A tray can be used in all the scheduling functions, just like the direct rowops:
+
+<pre>$unit-&gt;call($tray);
+$unit-&gt;fork($tray);
+$unit-&gt;schedule($tray);
+$unit-&gt;loopAt($mark, $tray);
+</pre>
+
+Moreover, the single rowops and&nbsp; trays can be mixed in the multiple arguments of these functions, like:
+
+<pre>$unit-&gt;call($rowopStartPkg, $tray, $rowopEndPkg);
+</pre>
+
+In this example nothing really stops you from placing the start and end rows into the tray too. A tray may contain the rowops of any types mixed in any order. This is by design, and it's an important feature that allows to build the protocol blocks out of rowops and perform an orderly data exchange. This feature is an absolute necessity for proper inter-process and inter-thread communication.
+
+The ability to send the rows of multiple types through the same channel in order is a must, and its lack makes the communication with some other CEP systems exceedingly difficult. Coral8 supports only one stream per connection. Aleri (and I believe Sybase R5) allows to send multiple streams through the same connection but has no guarantees of order between them. I don't know about the others, check yourself.
+
+To iterate on a tray, it can be converted to a Perl array:
+
+<pre>@array = $tray-&gt;toArray();
+</pre>
+
+The size of the tray (the count of rowops in it) can be read directly without a conversion, and the unit can be read back too:
+
+<pre>$size = $tray-&gt;size();
+$traysUnit = $tray-&gt;getUnit();
+</pre>
+
+Another way to create a tray is by copying an existing one:
+
+<pre>$tray2 = $tray1-&gt;copy();
+</pre>
+
+This copies the contents (which is the references to the rowops) and does not create any ties between the trays. The copying is really just a more efficient way to do
+
+<pre>$tray2 = $tray1-&gt;getUnit()-&gt;makeTray($tray1-&gt;toArray());
+</pre>
+
+The tray references can be checked, whether they point to the same tray object:
+
+<pre>$result = $tray1-&gt;same($tray2);
+</pre>
+
+The contents of a tray may be cleared. Which is convenient and more efficient than discarding a tray and creating another one:
+
+<pre>$tray-&gt;clear();
+</pre>
+
+The data may be added to any tray:
+
+<pre>$tray-&gt;push($rowop, ...);
+</pre>
+
+Multiple rowops can be pushed in a single call. There are no other Perl-like operations on a tray: it's either create from a set of rowops, push, or convert to Perl array.
+
+Note that the trays are mutable, unlike the rows and rowops. Multiple references to a tray will see the same contents. If a rowop is added to a tray through one reference, it will be visible through all the others.

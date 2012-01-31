@@ -1,0 +1,118 @@
+Execution Unit
+
+After discussing the principles of scheduling in Triceps, let's get down to the nuts and bolts.
+
+An execution unit represents one logical thread of Triceps. In some special cases more that one unit per actual thread may be useful, but never one unit shared between threads.
+
+A unit is created as:
+
+<pre>$myUnit = Triceps::Unit-&gt;new("name") or die "$!";
+</pre>
+
+The name argument as usual is used for later debugging, and by convention should be the same as the name of the unite variable ("myUnit" in this case). The name can also be changed later:
+
+<pre>$myUnit-&gt;setName("newName");
+</pre>
+
+It returns no value. Though in practice there is no good reason for it, and this call will likely be removed in the future. The name can be received back:
+
+<pre>$name = $myUnit-&gt;getName();
+</pre>
+
+Also, as usual, the variable $myName here contains a reference to the actual unit object, and two references can be compared, whether they refer to the same object:
+
+<pre>$result = $unit1-&gt;same($unit2);
+</pre>
+
+The rowops are enqueued with the calls:
+
+<pre>$unit-&gt;call($rowop, ...) or die "$!";
+$unit-&gt;fork($rowop, ...) or die "$!";
+$unit-&gt;schedule($rowop, ...) or die "$!"; 
+</pre>
+
+Also there is a call that selects the enqueueing mode by argument:
+
+<pre>$unit-&gt;enqueque($mode, $rowop, ...) or die "$!";
+</pre>
+
+Multiple rowops can be specified as arguments. Calling these functions with multiple arguments produces the same result as doing multiple calls with one argument at a time. Not only rowops but also <i>trays</i> (to be discussed later) of rowops can be used as arguments.
+
+The mode for enqueue() is one of either Triceps constants
+
+<pre>&amp;Triceps::EM_CALL
+&amp;Triceps::EM_FORK
+&amp;Triceps::EM_SCHEDULE
+</pre>
+
+or the matching strings "EM_CALL", "EM_FORK", "EM_SCHEDULE". As usual, the constant form is more efficient. There are calls to convert between the constant and string representations:
+
+<pre>$string = &amp;Triceps::emString($value);
+$value = &amp;Triceps::stringEm($string);
+</pre>
+
+As usual, if the value can not be translated they return <b>undef</b>.
+
+The frame marks for looping are created as their own class:
+
+<pre>$mark = Triceps::FrameMark-&gt;new("name") or die "$!";
+</pre>
+
+The name can be received back from the mark:
+
+<pre>$name = $mark-&gt;getName();
+</pre>
+
+Other than that, the frame marks are completely opaque, and can be used only for the loop scheduling. Not even the same() method is supported for them at the moment, though it probably will be in the future. The mark gets set and used as:
+
+<pre>$unit-&gt;setMark($mark);
+$unit-&gt;loopAt($mark, $rowop, ...) or die "$!";
+</pre>
+
+The rowop arguments of the loopAt() are the same as for the other enqueueing functions.
+
+The methods for creation of labels <a href="http://www.blogger.com/2012/01/labels-part-1.html">have been already discussed</a>. There also are similar methods for creation of tables and trays that will be discussed later:
+
+<pre>$label = $unit-&gt;makeDummyLabel($rowType, "name") or die "$!";
+$label = $unit-&gt;makeLabel($rowType, "name",
+&nbsp; $clearSub, $execSub, @args) or die "$!";
+$table = $unit-&gt;makeTable($tableType, $endMode, "name") or die "$!";
+$tray = $unit-&gt;makeTray(@rowops) or die "$!"; 
+</pre>
+
+The unit can be checked for the emptiness of its queues:
+
+<pre>$result = $unit-&gt;empty();
+</pre>
+
+The functions for execution are:
+
+<pre>$unit-&gt;callNext();
+$unit-&gt;drainFrame();
+</pre>
+
+The callNext() takes one label from the top stack frame queue and calls it. If the innermost frame happens to be empty, it does nothing. The drainFrame() calls the rowops from the top stack frame until it becomes empty. This includes any rowops that may be created and enqueued as part of the execution of the previous rowops.
+
+A typical way of processing the incoming rowops in a loop is:
+
+<pre>$stop = 0; 
+while (!$stop) {
+&nbsp; $rowop = readRowop(); # some user-defined function
+&nbsp; $unit-&gt;schedule($rowop);
+&nbsp; $unit-&gt;drainFrame();
+} 
+</pre>
+
+All the unit's labels get cleared with the call
+
+<pre>$unit-&gt;clearLabels();
+</pre>
+
+To not forget calling it, a separate clearing trigger object can be created:
+
+<pre>my $clearUnit = $unit-&gt;makeClearingTrigger();
+</pre>
+
+The variable $clearUnit would normally be a global (in a thread) variable. Don't copy the reference to the other variables! Then when the thread completes and the global variables get destroyed, the trigger object will be also destroyed, and will trigger the clearing of the unit's labels, thus breaking up any reference loops and allowing to destroy the bits and pieces.
+
+The only item left is the tracers, and they will be described in a separate post.

@@ -1,0 +1,133 @@
+loop scheduling
+
+The easiest way to schedule the loops is to do it procedurally, something like this:
+
+<pre>foreach my $row (@rowset) {
+&nbsp; $unit-&gt;call($lbA-&gt;makeRowop(&amp;Triceps::OP_INSERT, $row)); 
+}
+</pre>
+
+However the labels topologically connected into a loop can come handy as well. Some logic may be easier to express this way. Suppose the model contains the labels connected in a loop:
+
+<pre>X-&gt;A-&gt;B-&gt;C-&gt;Y</pre>
+<pre>&nbsp;&nbsp; ^     |</pre>
+<pre>&nbsp;&nbsp; +-----+</pre>
+
+
+Suppose a rowop X1 is scheduled for label X, and causes the loop executed twice, with rowops X1, A2, B3, C4, A5, B6, C7, Y8. If each operation is done as a CALL, the stack grows like this: It starts with X1 scheduled.
+
+[X1]
+
+Which then gets executed, with its own execution frame (marked as such for clarity:
+
+[ ] of X1
+[ ]
+
+Which then calls A2:
+
+[ ] of A2
+[ ] of X1
+[ ]
+
+By the time the execution comes to Y8, the stack looks like:
+
+[ ] of Y8
+[ ] of C7
+[ ] of B6
+[ ] of A5
+[ ] of C4
+[ ] of B3
+[ ] of A2
+[ ] of X1
+[ ]
+
+The loop has been converted into recursion, and the whole length of execution is the deep of the recursion. If the loop executes a million times, the stack will be two million levels deep. Worse yet, it's not just the Triceps scheduler stack that grows, it's also the process (C++) stack.
+
+Would things be better with FORK instead of CALL used throughout the loop? It starts the&nbsp; same way:
+
+[X1]
+
+Then X1 executes, gets its own frame and forks A2:
+
+[A2] of X1
+[ ]
+
+Then A2 executes, gets its own frame and forks B3:
+
+[B3] of A2
+[ ] of X1
+[ ]
+
+By the end of the loop the picture becomes exactly the same as with CALL. For a while I've thought that optimizing out the empty stack frames would solve the problem, but no, that doesn't work: the problem is that the C++ process stack keeps growing no matter what. The jump back in the loop needs to be placed into an earlier stack frame.
+
+One way to do it would be to use the SCHEDULE operation in C to jump back to A, placing the rowop A5 back onto the outermost frame. The scheduler stack at the end of C4 would look like:
+
+[ ] of C4
+[ ] of B3
+[ ] of A2
+[ ] of X1
+[A5]
+
+Then the stack would unwind back to
+
+[A5]
+
+and the next iteration of the loop will start afresh. The problem here is that if X1 wanted to complete the loop and then do something, it can't. By the time the second iteration of the loop starts, X1 is completely gone. It would be better to be able to enqueue the next execution of the loop at the specific point of the stack.
+
+Here the concept of the frame mark comes in: a frame mark is a token object, completely opaque to the program. It can be used only in two operations:
+
+<ul>
+<li>setMark() remembers the  position in the frame stack, just outside the current frame</li>
+<li>loopAt() enqueues a rowop at the marked frame</li>
+</ul>
+
+Then the loop wold have its mark object M. The label A will execute setMark(M), and the label C will execute loopAt(M, rowop(A)). The rest of the execution can as well use call().
+
+When A2 calls setMark(M), the stack will look like this:
+
+[ ] of A2
+[ ] of X1 * mark M
+[ ]
+
+The mark M remembers the frame one outer to the current one. The stack at the end of C4, after it has called loopAt(M, A5), is:
+
+[ ] of C4
+[ ] of B3
+[ ] of A2
+[A5] of X1 * mark M
+[ ]
+
+The stack then unwinds until A5 starts its execution:
+
+[ ] of A5
+[ ] of X1 * mark M
+[ ]
+
+Each iteration starts with a fresh stack, and the stack depth is limited to one iteration. The nested loops can also be properly executed.
+
+Now, why does the mark is placed on the frame that is one out from the current one? Suppose that it did remember the current frame. Then at the end of C4 the stack will be:
+
+[ ] of C4
+[ ] of B3
+[A5] of A2 * mark M
+[ ] of X1
+[ ]
+
+The stack will unwind until A5. Which would then have its own frame pushed onto the stack, and call setMark(M) again, moving the mark to its own frame:
+
+[ ] of A5 * mark M
+[ ] of A2  
+[ ] of X1
+[ ]
+
+So on each iteration of the loop one extra frame will be pushed onto the stack, and the mark moved by one level. A loop executing a million times will push a million frames, which is bad. Marking the next outer frame prevents this.&nbsp; Another option would have been to put the mark in X, but that would mean that every loop must have a preceding label that just marks the frame (well, and potentially could do the other initializations too), which seems to be too annoying.
+
+However as things are, another problem is that if X does call(A2), when it returns, the loop would not be completed yet, only the first iteration would be completed. To have the whole loop completed, there would have to be another label W, and when W does call(X1), the loop would be completed.
+
+This is still messy, and I'm still thinking about the ways to improve the situation.
+
+What happens after the stack unwinds past the mark? The mark gets unset. When someone calls loopAt() with an unset mark, the rowop is enqueued in the outermost frame, having the same effect as schedule().
+
+rowop sets the condition, it would free that original row and make it continue through the loop.&nbsp; Eventually the loop will come to the looping point, calling loopAt(). But the original mark will be long unset. Scheduling at the outermost frame seems to be a logical thing to do at this point. 
+
+What if setMark() is called when there is only one frame on the stack? Then there is no second frame outer to it. The mark will simply be left unset.

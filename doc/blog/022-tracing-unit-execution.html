@@ -1,0 +1,124 @@
+Tracing the unit execution
+
+When developing the CEP models, there always comes the question: WTF has just happened? How did it manage get this result? Followed by subscribing to many intermediate results and trying to piece together the execution order.
+
+Triceps provides two solutions for this situation: First, the procedural approach should make the logic much easier to follow. Second, it has a ready way to trace the execution and then read the trace in one piece. It can also be used to analyze any variables on the fly, and possibly stop the execution and enter some manual mode.
+
+The idea here is simple: provide the Unit with a method that will be called:
+<ul>
+<li>before a label executes</li>
+<li>after the label executes but before draining its frame</li>
+<li>after the frame is drained but before the chained labels execute</li>
+<li>after all the execution caused by a label is completed</li>
+</ul>
+By the way, this is a correction to the previously described execution order: it was incorrect, the chained labels are executed after draining the frame of the original label, not before it.&nbsp; And this applies recursively.
+
+For the simple tracing, there is a small simple tracer provided. It actually executes directly as compiled in C++, so it's fairly efficient:
+
+<pre>$tracer = Triceps::UnitTracerStringName(<i>option</i> =&gt; <i>value</i>) or die "$!";
+</pre>
+
+The only option supported is "verbose", which may be 0 (default) or non-0. If it's 0 (false), the tracer will record a message only before executing each label. If true, it will record a message after each stage. The class is named UnitTracerStringName because it records the execution trace in the string format, including the names of the labels. The tracer is set into the unit:
+
+<pre>$unit-&gt;setTracer($tracer); die "$!" if ($! ne "");
+$oldTracer = $unit-&gt;getTracer();
+</pre>
+
+If no tracer was previously set, getTracer() will return <b>undef</b>. And <b>undef</b> can also be used as an argument of setTracer(), to cancel any previously set tracing. setTracer() is actually not done very cleanly now, because it may return an error, yet it always returns an undef. So the only way to check for an error is to check whether the string value of "$!" is empty. This will be fixed in the future.
+
+As the unit runs, the tracing information gets collected in the tracer object. It can be extracted back with:
+
+<pre>$data = $tracer-&gt;print();
+</pre>
+
+This does not reset the trace. To reset it, use:
+
+<pre>$tracer-&gt;clearBuffer();
+</pre>
+
+Here is an example of a fairly involved verbose trace:
+
+<pre>unit 'u' before label 'lab1' op OP_INSERT
+unit 'u' drain label 'lab1' op OP_INSERT
+unit 'u' before-chained label 'lab1' op OP_INSERT
+unit 'u' before label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u' drain label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u' before label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u' drain label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u' after label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u' after label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u' before label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u' drain label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u' after label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u' after label 'lab1' op OP_INSERT
+unit 'u' before label 'lab1' op OP_DELETE
+unit 'u' drain label 'lab1' op OP_DELETE
+unit 'u' before-chained label 'lab1' op OP_DELETE
+unit 'u' before label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u' drain label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u' before label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u' drain label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u' after label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u' after label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u' before label 'lab3' (chain 'lab1') op OP_DELETE
+unit 'u' drain label 'lab3' (chain 'lab1') op OP_DELETE
+unit 'u' after label 'lab3' (chain 'lab1') op OP_DELETE
+</pre>
+
+In non-verbose mode the same trace would be:
+
+<pre>unit 'u' before label 'lab1' op OP_INSERT
+unit 'u' before label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u' before label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u' before label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u' before label 'lab1' op OP_DELETE
+unit 'u' before label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u' before label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u' before label 'lab3' (chain 'lab1') op OP_DELETE
+</pre>
+
+The actual contents of the records is not printed in either case. This is basically because the tracer is implemented in C++, and I've been trying to keep the knowledge of the meaning of the simple data types out of the C++ code as much as possible for now. But it can be implemented with a Perl tracer.
+
+A Perl tracer is created with:
+
+<pre>$tracer = Triceps::UnitTracerPerl-&gt;new($sub, args...) or die "$!";
+</pre>
+
+The arguments are a reference to a function, and optionally arguments for it. The resulting tracer can be used in the unit's setTracer() as usual.
+
+Also the tracer references support the call same():
+
+<pre>$result = $tracer1-&gt;same($tracer2);
+</pre>
+
+They can be caller safely for either kind of tracer, including mixing them together. Of course, the tracers of different kinds definitely would not be the same tracer object.
+
+The function of the Perl tracer gets called as:
+
+<pre>sub($unit, $label, $fromLabel, $rowop, $when, args...)
+</pre>
+
+The arguments are:
+<ul>
+<li>$unit is the usual unit reference</li>
+<li>$label is the current label being traced</li>
+<li>$fromLabel is the parent label in the chaining (would be <b>undef</b> if the current label is called directly, without chaining from anything)</li>
+<li>$rowop is the current row operation</li>
+<li>TW_BEFORE, Triceps::TW_BEFORE_DRAIN, Triceps::TW_BEFORE_CHAINED, Triceps::TW_AFTER), the prefix TW stands for "tracer when"</li>
+<li>args are the extra arguments passed from the tracer creation</li>
+</ul>
+The TW constants can as usual be converted to and from strings with the calls
+
+<pre>$string = &amp;Triceps::tracerWhenString($value);
+$value = &amp;Triceps::stringTracerWhen($string);
+</pre>
+
+There also are the conversion functions with strings more suitable for the human-readable messages: "before", "drain", "before-chained", "drain". These are actually the conversions used in the UnitTracerStringName. The functions for them are:
+
+<pre>$string = &amp;Triceps::tracerWhenHumanString($value);
+$value = &amp;Triceps::humanStringTracerWhen($string);
+</pre>
+
+The Perl tracers allow to execute any arbitrary actions when tracing.

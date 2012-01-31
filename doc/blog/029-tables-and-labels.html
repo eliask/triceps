@@ -1,0 +1,99 @@
+Tables and labels
+
+A table does not have to be operated in a procedural way. It can be plugged into the the scheduler machinery. Whenever a table is created, two labels are created with it.
+
+The input label is for sending the modification rowops to the table.&nbsp; The table provides the handler for it that applies the incoming rowops to the table. The output label propagates the modifications done to the table.&nbsp; It is a dummy label, and does nothing by itself. It's there for chaining the other labels to it. The output rowop comes quite handy to propagate the table's modifications to the rest of the state.
+
+Note that the rowops coming through these two labels aren't necessarily the same. If a DELETE rowop comes to the input label, referring to a row that is not in the table, it will not propagate. If an INSERT rowop comes in and causes another row to be replaced, the replaced row will be sent to the output label as a DELETE rowop first.
+
+Well, if you need to look up records from the table, the look-ups are still done in the procedural way by calling the table methods. 
+
+So, let's make a version of "Hello, table" example that passes the records through the labels. Since it will print the information about the updates to the table as they happen, there is no more use having a separate command for that. But for another demonstration let's add a command that would clear the counter. And, without further introduction, here is the code:
+
+<pre>my $hwunit = Triceps::Unit-&gt;new("hwunit") or die "$!";
+my $rtCount = Triceps::RowType-&gt;new(
+&nbsp; address =&gt; "string",
+&nbsp; count =&gt; "int32",
+) or die "$!";
+
+my $ttCount = Triceps::TableType-&gt;new($rtCount)
+&nbsp; -&gt;addSubIndex("byAddress",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "address" ])
+&nbsp; )
+or die "$!";
+$ttCount-&gt;initialize() or die "$!";
+
+my $tCount = $hwunit-&gt;makeTable($ttCount, &amp;Triceps::EM_CALL, "tCount") or die "$!";
+
+my $lbPrintCount = $hwunit-&gt;makeLabel($tCount-&gt;getRowType(),
+&nbsp; "lbPrintCount", undef, sub { # (label, rowop)
+&nbsp;&nbsp;&nbsp; my ($label, $rowop) = @_;
+&nbsp;&nbsp;&nbsp; my $row = $rowop-&gt;getRow();
+&nbsp;&nbsp;&nbsp; print(&amp;Triceps::opcodeString($rowop-&gt;getOpcode), " '",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $row-&gt;get("address"), "', count ", $row-&gt;get("count"), "\n");
+&nbsp; } ) or die "$!";
+$tCount-&gt;getOutputLabel()-&gt;chain($lbPrintCount) or die "$!";
+
+# the updates will be sent here, for the tables to process
+my $lbTableInput = $tCount-&gt;getInputLabel();
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/\W+/);
+
+&nbsp; # the common part: find if there already is a count for this address
+&nbsp; my $pattern = $rtCount-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; address =&gt; $data[1]
+&nbsp; ) or die "$!";
+&nbsp; my $rhFound = $tCount-&gt;find($pattern) or die "$!";
+&nbsp; my $cnt = 0;
+&nbsp; if (!$rhFound-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp; $cnt = $rhFound-&gt;getRow()-&gt;get("count");
+&nbsp; }
+
+&nbsp; if ($data[0] =~ /^hello$/i) {
+&nbsp;&nbsp;&nbsp; $hwunit-&gt;schedule($lbTableInput-&gt;makeRowop(&amp;Triceps::OP_INSERT,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $lbTableInput-&gt;getType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; address =&gt; $data[1],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; count =&gt; $cnt+1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ))
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp; } elsif ($data[0] =~ /^clear$/i) {
+&nbsp;&nbsp;&nbsp; $hwunit-&gt;schedule($lbTableInput-&gt;makeRowop(&amp;Triceps::OP_DELETE,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $lbTableInput-&gt;getType()-&gt;makeRowHash(address =&gt; $data[1]))
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; print("Unknown command '$data[0]'\n");
+&nbsp; }
+&nbsp; $hwunit-&gt;drainFrame();
+}
+</pre>
+
+Here is an example of input (in cursive) and output:
+
+<pre><i>Hello, table!</i>
+OP_INSERT 'table', count 1
+<i>Hello, world!</i>
+OP_INSERT 'world', count 1
+<i>Hello, table!</i>
+OP_DELETE 'table', count 1
+OP_INSERT 'table', count 2
+<i>clear, table</i>
+OP_DELETE 'table', count 2
+<i>Hello, table!</i>
+OP_INSERT 'table', count 1
+</pre>
+
+The references to the input and output labels of a table are gotten with:
+
+<pre>$label = $table-&gt;getInputLabel();
+$label = $table-&gt;getOutputLabel();
+</pre>
+
+The output label in this example then gets another label chained to it, the one that prints what is coming to it. The input label receives a translation of the commands coming from the user.
+
+The inserts work in a fairly straightforward way. The deletes require only the key to be populated. Internally a delete really translates to a find, followed by the removal of the record if it was found (more on the details of that later).
+
+As you can see in the&nbsp; example output, when the first record for a key is inserted, it's just an insert. But when the second "hello" is received, the insert causes the old row to be deleted first, and produces a delete followed by the new insert on the table's output. Now, depending on what you want, just sending the consequent inserts of rows with the same keys, and relying on the table's internal consistency to turn them into updates, might be a good thing or not. Overall it's a dirty way to write but sometimes it comes convenient. The clean way is to do the explicit deletes first.
+
+For the closing thought, creating these rowops through all the nested calls is fairly annoying, and could use some simplification like find() had with findBy().

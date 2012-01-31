@@ -1,0 +1,67 @@
+Hello, tables!
+
+The tables are the basic units of statekeeping in Triceps. Let's start with a basic example.
+
+<pre>use Triceps;
+
+my $hwunit = Triceps::Unit-&gt;new("hwunit") or die "$!";
+my $rtCount = Triceps::RowType-&gt;new(
+&nbsp; address =&gt; "string",
+&nbsp; count =&gt; "int32",
+) or die "$!";
+
+my $ttCount = Triceps::TableType-&gt;new($rtCount)
+&nbsp; -&gt;addSubIndex("byAddress", 
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "address" ])
+&nbsp; ) 
+or die "$!";
+$ttCount-&gt;initialize() or die "$!";
+
+my $tCount = $hwunit-&gt;makeTable($ttCount, &amp;Triceps::EM_CALL, "tCount") or die "$!";
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/\W+/);
+
+&nbsp; # the common part: find if there already is a count for this address
+&nbsp; my $pattern = $rtCount-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; address =&gt; $data[1]
+&nbsp; ) or die "$!";
+&nbsp; my $rhFound = $tCount-&gt;find($pattern) or die "$!";
+&nbsp; my $cnt = 0;
+&nbsp; if (!$rhFound-&gt;isNull()) { 
+&nbsp;&nbsp;&nbsp; $cnt = $rhFound-&gt;getRow()-&gt;get("count");
+&nbsp; } 
+
+&nbsp; if ($data[0] =~ /^hello$/i) { 
+&nbsp;&nbsp;&nbsp; my $new = $rtCount-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; address =&gt; $data[1],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; count =&gt; $cnt+1,
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp;&nbsp;&nbsp; $tCount-&gt;insert($new) or die "$!";
+&nbsp; } elsif ($data[0] =~ /^count$/i) { 
+&nbsp;&nbsp;&nbsp; print("Received '", $data[1], "' ", $cnt + 0, " times\n");
+&nbsp; } else { 
+&nbsp;&nbsp;&nbsp; print("Unknown command '$data[0]'\n");
+&nbsp; } 
+}
+</pre>
+
+What happens here? The code reads the lines from standard input, uses the first word as a command and the second work as a key. It counts, how many times each key has been hello-ed, and prints this count back on the command "count".
+
+Here the table is read and modified using the direct procedural calls. As you can see, there isn't even any need for unit scheduling and such.&nbsp; There is a scheduler-based interface too, it will be shown later.&nbsp; But in many cases the direct access is easier. Indeed, this particular example could have been implemented with the plain Perl hashes. Nothing wrong with that either. Well, at some future point the tables will be supporting the on-disk persistence, but no reason to bother much about that now: things are likely to change a dozen times yet before that happens. Feel free to just use the Perl data structures if they make the code easier.
+
+A table is created through a table type. This allows to stamp out duplicate tables of the same type, which can get handy when the multithreading will be added. A table is local to a thread. A table type can be shared between threads. So the only way to look up something directly in another thread's table is to keep its local copy, which can be easily done by creating a copy table from the same type.
+
+
+In reality, right now all the business with table types separated from the tables is more pain than gain. It not only adds extra steps but also makes difficult to define a template that acts on a table by defining extra features on it. Something will be done about it, I have a few ideas.
+
+The table type gets first created and configured, then initialized. After a table type is initialized, it can not be changed any more. That's the point of the initialization call: tell the table that all the configuration has been done, and it can go immutable now. A table type must be fully initialized in one thread before it can be shared with other threads. The historic reason for this API is that it mirrors the C++ API, which has turned out not to look that good in Perl. It's another candidate for a change. 
+
+A table type gets the row type and at least one index. Here it's a hashed index by the field <b>address</b>. The table is then created from the table type, enqueueing mode (just use EM_CALL always, this argument will be removed in the future), and given a name.
+
+The rows can then be inserted into the table (and removed, not shown in this example). The default behavior of the hashed index is to replace the old row if a new row with the same key is inserted.
+
+The search in the table is done by creating a sample row with the key fields set, and then calling find() on it. Which returns a RowHandle object. A RowHandle is essentially an iterator in the table. Even if the row is not found, a RowHandle will be still returned but it will be null, which is checked for by $rh-&gt;isNull().
+
+This is just the tip of the iceberg. The tables in Triceps have a lot more features.

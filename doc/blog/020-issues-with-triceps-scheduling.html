@@ -1,0 +1,13 @@
+Issues with Triceps scheduling
+
+Some of the issues have been already mentioned in the description of the loop scheduling: it's a bit confusing that the frame mark is placed on the next outer scheduling stack frame and not on the current one. This leads to the interesting effects in execution order.
+
+But there are issues with the basic execution too:
+
+The schedule() call, when used from inside the scheduled code, introduces unpredictability in the execution order: it puts the rowop after the last rowop in the outermost stack frame. But the outermost stack frame contains the queue of rowops that come from the outside. This means that the exact order of execution will depend on the timing of the rowops arriving from outside. Because of this, if the repeatable execution order is important, schedule() should be used only for the rowops coming from the outside.
+
+The same issue happens with the loops that have been temporarily stopped and then resumed on arrival of more data from outside. The mark of such a loop will be unset when the loop continues, and looping at this mark will be equivalent to schedule(), having the same repeatability problem.
+
+The call fork() is not exactly useful. Its main purpose was when I've thought that it's the solution to the problem of the loops. Which it has turned out to not solve, and another solution had to be devised. Now it really doesn't have much use, and will probably be removed in the future.
+
+I have a few ideas for solutions of these issues, but they will need a bit more experimentation. Just keep in mind that the scheduling will be reformed in the future. It will still have the same general shape but differ in detail.
