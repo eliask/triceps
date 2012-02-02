@@ -98,6 +98,10 @@ sub helloWorldDirect()
 			$tCount->insert($new) or die "$!";
 		} elsif ($data[0] =~ /^count$/i) {
 			&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
+		} elsif ($data[0] =~ /^dump$/i) {
+			for (my $rhi = $tCount->begin(); !$rhi->isNull(); $rhi = $tCount->next($rhi)) {
+				&send($rhi->getRow->printP(), "\n");
+			}
 		} else {
 			&send("Unknown command '$data[0]'\n");
 		}
@@ -113,13 +117,17 @@ sub helloWorldDirect()
 	"Hello, table!\n",
 	"count world\n",
 	"Count table\n",
+	"dump\n",
 	"goodbye, world\n",
 );
 $result = undef;
 &helloWorldDirect();
+# XXX the result depends on the hashing order
 ok($result, 
 	"Received 'world' 1 times\n" .
 	"Received 'table' 2 times\n" .
+	"address=\"world\" count=\"1\" \n" .
+	"address=\"table\" count=\"2\" \n" .
 	"Unknown command 'goodbye'\n"
 );
 
