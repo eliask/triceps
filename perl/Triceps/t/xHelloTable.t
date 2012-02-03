@@ -102,6 +102,18 @@ sub helloWorldDirect()
 			for (my $rhi = $tCount->begin(); !$rhi->isNull(); $rhi = $tCount->next($rhi)) {
 				&send($rhi->getRow->printP(), "\n");
 			}
+		} elsif ($data[0] =~ /^delete$/i) {
+			my $res = $tCount->deleteRow($rtCount->makeRowHash(
+				address => $data[1],
+			));
+			die "$!" unless defined $res;
+			&send("Address '", $data[1], "' is not found\n") unless $res;
+		} elsif ($data[0] =~ /^remove$/i) {
+			if (!$rhFound->isNull()) {
+				$tCount->remove($rhFound) or die "$!";
+			} else {
+				&send("Address '", $data[1], "' is not found\n");
+			}
 		} else {
 			&send("Unknown command '$data[0]'\n");
 		}
@@ -118,6 +130,12 @@ sub helloWorldDirect()
 	"count world\n",
 	"Count table\n",
 	"dump\n",
+	"delete x\n",
+	"delete world\n",
+	"count world\n",
+	"remove y\n",
+	"remove table\n",
+	"count table\n",
 	"goodbye, world\n",
 );
 $result = undef;
@@ -128,6 +146,10 @@ ok($result,
 	"Received 'table' 2 times\n" .
 	"address=\"world\" count=\"1\" \n" .
 	"address=\"table\" count=\"2\" \n" .
+	"Address 'x' is not found\n" .
+	"Received 'world' 0 times\n" .
+	"Address 'y' is not found\n" .
+	"Received 'table' 0 times\n" .
 	"Unknown command 'goodbye'\n"
 );
 
