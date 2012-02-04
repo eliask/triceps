@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 187 };
+BEGIN { plan tests => 192 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -224,15 +224,17 @@ $rhit = $t1->begin();
 ok(ref $rhit, "Triceps::RowHandle");
 ok(!$rhit->isNull());
 ok($rhit->same($rh1));
+
 $rhit = $t1->next($rhit);
 ok(ref $rhit, "Triceps::RowHandle");
 ok(!$rhit->isNull());
 ok(!$rhit->same($rh1)); # that one was auto-created
-$rhit = $t1->next($rhit);
+# try as a method of RowHandle
+$rhit = $rhit->next();
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 ok($rhit->same($rhn1));
-$rhit = $t1->next($rhit); # try going beyond the end
+$rhit = $rhit->next(); # try going beyond the end
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 
@@ -245,11 +247,12 @@ $rhit = $t1->nextIdx($itrev, $rhit);
 ok(ref $rhit, "Triceps::RowHandle");
 ok(!$rhit->isNull());
 ok($rhit->same($rh1));
-$rhit = $t1->nextIdx($itrev, $rhit);
+# try as a method of RowHandle
+$rhit = $rhit->nextIdx($itrev);
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 ok($rhit->same($rhn1));
-$rhit = $t1->nextIdx($itrev, $rhit); # try going beyond the end
+$rhit = $rhit->nextIdx($itrev); # try going beyond the end
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 
@@ -259,6 +262,15 @@ ok(ref $rhit, "Triceps::RowHandle");
 ok(!$rhit->isNull());
 ok(!$rhit->same($rh1)); # that one was auto-created
 $rhit = $t1->nextGroupIdx($itrev, $rh1);
+ok(ref $rhit, "Triceps::RowHandle");
+ok($rhit->isNull());
+
+# group search as a method of RowHandle
+$rhit = $rh1->firstOfGroupIdx($itrev);
+ok(ref $rhit, "Triceps::RowHandle");
+ok(!$rhit->isNull());
+ok(!$rhit->same($rh1)); # that one was auto-created
+$rhit = $rh1->nextGroupIdx($itrev);
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 

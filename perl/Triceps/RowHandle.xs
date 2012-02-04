@@ -80,4 +80,80 @@ isNull(WrapRowHandle *self)
 	OUTPUT:
 		RETVAL
 
+# methods that duplicate the table's navigation, done more straightforward:
+# with the table reference taken from the WrapRowHandle
+
+WrapRowHandle *
+next(WrapRowHandle *self)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->ref_.getTable();
+		RowHandle *cur = self->get(); // NULL is OK
+
+		RETVAL = new WrapRowHandle(t, t->next(cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+nextIdx(WrapRowHandle *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->ref_.getTable();
+		IndexType *idx = widx->get();
+		RowHandle *cur = self->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::RowHandle::nextIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+
+		RETVAL = new WrapRowHandle(t, t->nextIdx(idx, cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+firstOfGroupIdx(WrapRowHandle *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->ref_.getTable();
+		IndexType *idx = widx->get();
+		RowHandle *cur = self->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::RowHandle::firstOfGroupIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+
+		RETVAL = new WrapRowHandle(t, t->firstOfGroupIdx(idx, cur));
+	OUTPUT:
+		RETVAL
+		
+WrapRowHandle *
+nextGroupIdx(WrapRowHandle *self, WrapIndexType *widx)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+
+		clearErrMsg();
+		Table *t = self->ref_.getTable();
+		IndexType *idx = widx->get();
+		RowHandle *cur = self->get(); // NULL is OK
+
+		static char funcName[] =  "Triceps::RowHandle::nextGroupIdx";
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+
+		RETVAL = new WrapRowHandle(t, t->nextGroupIdx(idx, cur));
+	OUTPUT:
+		RETVAL
+		
 # tested in Table.t
