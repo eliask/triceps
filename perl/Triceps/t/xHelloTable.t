@@ -114,6 +114,13 @@ sub helloWorldDirect()
 			} else {
 				&send("Address '", $data[1], "' is not found\n");
 			}
+		} elsif ($data[0] =~ /^clear$/i) {
+			my $rhi = $tCount->begin(); 
+			while (!$rhi->isNull()) {
+				my $rhnext = $tCount->next($rhi);
+				$tCount->remove($rhi) or die("$!");
+				$rhi = $rhnext;
+			}
 		} else {
 			&send("Unknown command '$data[0]'\n");
 		}
@@ -136,6 +143,13 @@ sub helloWorldDirect()
 	"remove y\n",
 	"remove table\n",
 	"count table\n",
+	"Hello, table!\n",
+	"Hello, table!\n",
+	"Hello, table!\n",
+	"Hello, world!\n",
+	"count table\n",
+	"clear\n",
+	"dump\n",
 	"goodbye, world\n",
 );
 $result = undef;
@@ -150,6 +164,7 @@ ok($result,
 	"Received 'world' 0 times\n" .
 	"Address 'y' is not found\n" .
 	"Received 'table' 0 times\n" .
+	"Received 'table' 3 times\n" .
 	"Unknown command 'goodbye'\n"
 );
 
