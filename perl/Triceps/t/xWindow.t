@@ -233,10 +233,10 @@ while(&readLine) {
 	my $rTrade = $rtTrade->makeRowArray(@data) or die "$!";
 	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
 		or die "$!";
-	$uTrades->schedule($rowop) or die "$!";
-	$uTrades->drainFrame();
+	$uTrades->call($rowop) or die "$!";
 	&printAverage();
 	undef $rLastMod; # clear for the next iteration
+	$uTrades->drainFrame(); # just in case, for completeness
 }
 
 }; # Secondary
