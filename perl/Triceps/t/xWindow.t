@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 3 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -58,6 +58,7 @@ sub sendX # (@message)
 }
 
 #########################
+# the simple window
 
 sub doWindow {
 
@@ -163,3 +164,132 @@ New contents:
   id="6" symbol="BBB" price="300" size="300" 
 '
 );
+
+#########################
+# the window with primary and secondary index
+
+sub doSecondary {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+			->addSubIndex("last2",
+				Triceps::IndexType->newFifo(limit => 2)
+			)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# remember the index type by symbol, for searching on it
+my $itSymbol = $ttWindow->findSubIndex("bySymbol") or die "$!";
+# remember the FIFO index, for finding the start of the group
+my $itLast2 = $itSymbol->findSubIndex("last2") or die "$!";
+
+# remember, which was the last row modified
+my $rLastMod;
+my $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
+	undef, sub { # (label, rowop)
+		$rLastMod = @_[1]->getRow();
+	}) or die "$!";
+$tWindow->getOutputLabel()->chain($lbRememberLastMod) or die "$!";
+
+# Print the average price of the symbol in the last modified row
+sub printAverage # (row)
+{
+	return unless defined $rLastMod;
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or die "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or die "$!";
+	&send("Contents:\n");
+	my ($avg, $sum, $count);
+	for (my $rhi = $rhFirst; 
+			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
+		&send("  ", $rhi->getRow()->printP(), "\n");
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	if ($count != 0) {
+		$avg = $sum/$count;
+	}
+	&send("Average price: $avg\n");
+}
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	my $op = shift @data; # string opcode, if incorrect then will die later
+	my $rTrade = $rtTrade->makeRowArray(@data) or die "$!";
+	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
+		or die "$!";
+	$uTrades->schedule($rowop) or die "$!";
+	$uTrades->drainFrame();
+	&printAverage();
+	undef $rLastMod; # clear for the next iteration
+}
+
+}; # Secondary
+
+#########################
+#  run the example
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,4,BBB,200,200\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,6,BBB,300,300\n",
+	"OP_DELETE,3\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&doSecondary();
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+Average price: 10
+OP_INSERT,2,BBB,100,100
+Contents:
+  id="2" symbol="BBB" price="100" size="100" 
+Average price: 100
+OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+Average price: 15
+OP_INSERT,4,BBB,200,200
+Contents:
+  id="2" symbol="BBB" price="100" size="100" 
+  id="4" symbol="BBB" price="200" size="200" 
+Average price: 150
+OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+Average price: 25
+OP_INSERT,6,BBB,300,300
+Contents:
+  id="4" symbol="BBB" price="200" size="200" 
+  id="6" symbol="BBB" price="300" size="300" 
+Average price: 250
+OP_DELETE,3
+Contents:
+  id="5" symbol="AAA" price="30" size="30" 
+Average price: 30
+OP_DELETE,5
+Contents:
+Average price: 
+');
