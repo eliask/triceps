@@ -35,7 +35,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_; # have the inputs overlap in result, as on screen
+	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -90,7 +90,7 @@ my $itLast2 = $itSymbol->findSubIndex("last2") or die "$!";
 # print out the changes to the table as they happen
 my $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
 	undef, sub { # (label, rowop)
-		&send(@_[1]->printP(), "\n"); # print the change
+		&send($_[1]->printP(), "\n"); # print the change
 	}) or die "$!";
 $tWindow->getOutputLabel()->chain($lbWindowPrint) or die "$!";
 
@@ -190,19 +190,21 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or die "$!";
 $ttWindow->initialize() or die "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
+# ZZZ use local, not my, because printAverage() needs to access it,
+# and here we are inside a function, not at global lever as it might seem
+local $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or die "$!";
 
 # remember the index type by symbol, for searching on it
-my $itSymbol = $ttWindow->findSubIndex("bySymbol") or die "$!";
+local $itSymbol = $ttWindow->findSubIndex("bySymbol") or die "$!";
 # remember the FIFO index, for finding the start of the group
-my $itLast2 = $itSymbol->findSubIndex("last2") or die "$!";
+local $itLast2 = $itSymbol->findSubIndex("last2") or die "$!";
 
 # remember, which was the last row modified
-my $rLastMod;
+local $rLastMod;
 my $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
-		$rLastMod = @_[1]->getRow();
+		$rLastMod = $_[1]->getRow();
 	}) or die "$!";
 $tWindow->getOutputLabel()->chain($lbRememberLastMod) or die "$!";
 
@@ -213,14 +215,15 @@ sub printAverage # (row)
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or die "$!";
 	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or die "$!";
 	&send("Contents:\n");
-	my ($avg, $sum, $count);
+	my $avg = ''; # ZZZ make the test warnings shut up
+	my ($sum, $count);
 	for (my $rhi = $rhFirst; 
 			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
 		&send("  ", $rhi->getRow()->printP(), "\n");
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	if ($count != 0) {
+	if ($count) {
 		$avg = $sum/$count;
 	}
 	&send("Average price: $avg\n");
