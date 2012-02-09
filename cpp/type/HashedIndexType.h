@@ -69,17 +69,6 @@ protected:
 		// from TreeIndexType::Less
 		virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const;
 
-		// Calculate and remember the hash value for a row.
-		// This is not part of the comparator as such but just a
-		// convenient place to put this computation.
-		void initHash(RowHandle *rh);
-
-		// Get the section in the row handle
-		RhSection *getSection(const RowHandle *rh) const
-		{
-			return rh->get<RhSection>(rhOffset_);
-		}
-
 	protected:
 		const vector<int32_t> &keyFld_; // indexes of key fields in the record
 		intptr_t rhOffset_; // offset of this index's data in table's row handle

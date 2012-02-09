@@ -75,26 +75,6 @@ bool HashedIndexType::Less::operator() (const RowHandle *r1, const RowHandle *r2
 	return false; // gets here only on equal values
 }
 
-void HashedIndexType::Less::initHash(RowHandle *rh)
-{
-	Hash::Value hash = Hash::basis_;
-
-	int nf = keyFld_.size();
-	for (int i = 0; i < nf; i++) {
-		int idx = keyFld_[i];
-		const char *v;
-		intptr_t len;
-
-		rt_->getField(rh->getRow(), idx, v, len);
-		hash = Hash::append(hash, v, len);
-	}
-
-	RhSection *rs = rh->get<RhSection>(rhOffset_);
-	// initialize the iterator by calling its constructor
-	new(rs) RhSection;
-	rs->hash_ = hash;
-}
-
 //////////////////////////// HashedIndexType /////////////////////////
 
 HashedIndexType::HashedIndexType(NameSet *key) :
@@ -218,9 +198,6 @@ Index *HashedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 
 void HashedIndexType::initRowHandleSection(RowHandle *rh) const
 {
-	// Less *lessop = static_cast<Less *>(less_.get());
-	// XXX lessop->initHash(rh);
-
 	Hash::Value hash = Hash::basis_;
 
 	int nf = keyFld_.size();
