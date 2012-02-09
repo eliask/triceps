@@ -14,16 +14,16 @@
 
 namespace TRICEPS_NS {
 
-class HashedIndexType;
 class RowType;
 
 class HashedNestedIndex: public Index
 {
 	friend class HashedIndexType;
+	friend class TreeIndexType;
 
 public:
-	typedef HashedIndexType::Less Less;
-	typedef HashedIndexType::Set Set;
+	typedef TreeIndexType::Less Less;
+	typedef TreeIndexType::Set Set;
 
 	// @param tabtype - type of table where this index belongs
 	// @param table - the actual table where this index belongs

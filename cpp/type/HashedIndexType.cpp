@@ -18,8 +18,8 @@ namespace TRICEPS_NS {
 //////////////////////////// HashedIndexType::Less  /////////////////////////
 
 HashedIndexType::Less::Less(const RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld)  :
+	TreeIndexType::Less(rt),
 	keyFld_(keyFld),
-	rt_(rt),
 	rhOffset_(rhOffset)
 { }
 
@@ -98,13 +98,13 @@ void HashedIndexType::Less::initHash(RowHandle *rh)
 //////////////////////////// HashedIndexType /////////////////////////
 
 HashedIndexType::HashedIndexType(NameSet *key) :
-	IndexType(IT_HASHED),
+	TreeIndexType(IT_HASHED),
 	key_(key)
 {
 }
 
 HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
-	IndexType(orig)
+	TreeIndexType(orig)
 {
 	if (!orig.key_.isNull()) {
 		key_ = new NameSet(*orig.key_);
@@ -218,7 +218,26 @@ Index *HashedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 
 void HashedIndexType::initRowHandleSection(RowHandle *rh) const
 {
-	less_->initHash(rh);
+	// Less *lessop = static_cast<Less *>(less_.get());
+	// XXX lessop->initHash(rh);
+
+	Hash::Value hash = Hash::basis_;
+
+	int nf = keyFld_.size();
+	const RowType *rt = tabtype_->rowType();
+	for (int i = 0; i < nf; i++) {
+		int idx = keyFld_[i];
+		const char *v;
+		intptr_t len;
+
+		rt->getField(rh->getRow(), idx, v, len);
+		hash = Hash::append(hash, v, len);
+	}
+
+	RhSection *rs = rh->get<RhSection>(rhOffset_);
+	// initialize the iterator by calling its constructor
+	new(rs) RhSection;
+	rs->hash_ = hash;
 }
 
 void HashedIndexType::clearRowHandleSection(RowHandle *rh) const
