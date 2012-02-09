@@ -23,7 +23,6 @@ class HashedNestedIndex: public Index
 
 public:
 	typedef HashedIndexType::Less Less;
-	typedef HashedIndexType::RhSection RhSection;
 	typedef HashedIndexType::Set Set;
 
 	// @param tabtype - type of table where this index belongs

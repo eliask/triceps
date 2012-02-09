@@ -52,8 +52,7 @@ RowHandle *HashedIndex::next(const RowHandle *cur) const
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
 
-	RhSection *rs = less_->getSection(cur);
-	Set::iterator it = rs->iter_;
+	Set::iterator it = type_->getIter(cur);
 	++it;
 	// fprintf(stderr, "DEBUG HashedIndex::next(this=%p, cur=%p) found %p (of %d)\n", this, cur, (it == data_.end()?NULL:*it), (int)data_.size());
 	if (it == data_.end()) {
@@ -119,16 +118,14 @@ void HashedIndex::insert(RowHandle *rh)
 {
 	pair<Set::iterator, bool> res = data_.insert(const_cast<RowHandle *>(rh));
 	assert(res.second); // must always succeed
-	RhSection *rs = less_->getSection(rh);
-	rs->iter_ = res.first;
-	// fprintf(stderr, "DEBUG HashedIndex::insert(this=%p, rh=%p, rs=%p)\n", this, rh, rs);
+	type_->setIter(rh, res.first);
+	// fprintf(stderr, "DEBUG HashedIndex::insert(this=%p, rh=%p, rs=%p)\n", this, rh, type_->getSection(rh));
 }
 
 void HashedIndex::remove(RowHandle *rh)
 {
-	RhSection *rs = less_->getSection(rh);
-	// fprintf(stderr, "DEBUG HashedIndex::remove(this=%p, rh=%p, rs=%p)\n", this, rh, rs);
-	data_.erase(rs->iter_);
+	// fprintf(stderr, "DEBUG HashedIndex::remove(this=%p, rh=%p, rs=%p)\n", this, rh, type_->getSection(rh));
+	data_.erase(type_->getIter(rh));
 }
 
 void HashedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray)

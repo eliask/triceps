@@ -187,7 +187,7 @@ void HashedIndexType::initialize()
 
 	errors_ = new Errors;
 
-	rhOffset_ = tabtype_->rhType()->allocate(sizeof(HashedIndex::RhSection));
+	rhOffset_ = tabtype_->rhType()->allocate(sizeof(RhSection));
 
 	// find the fields
 	const RowType *rt = tabtype_->rowType();
