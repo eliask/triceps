@@ -514,7 +514,7 @@ public:
 	// @param rh - new row about to be inserted
 	// @param replaced - set to add the handles of replaced rows
 	// @return - true if insertion is allowed, false if not
-	bool groupReplacementPolicy(GroupHandle *gh, const RowHandle *rh, RhSet &replaced) const;
+	bool groupReplacementPolicy(GroupHandle *gh, RowHandle *rh, RhSet &replaced) const;
 
 	// Insert a new row into each index in the group.
 	// Increases the size in the group handle.

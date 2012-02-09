@@ -173,9 +173,9 @@ Index *HashedNestedIndex::findNested(const RowHandle *what, int nestPos) const
 	}
 }
 
-bool HashedNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
+bool HashedNestedIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
 {
-	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
+	Set::iterator it = data_.find(rh);
 	// the result of find() has to be stored now in rh, to avoid look-up on insert
 	type_->setIter(rh, it);
 	GroupHandle *gh;

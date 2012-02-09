@@ -100,7 +100,7 @@ Index *FifoIndex::findNested(const RowHandle *what, int nestPos) const
 	return NULL;
 }
 
-bool FifoIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
+bool FifoIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
 {
 	size_t limit = type_->getLimit();
 	if (limit == 0)

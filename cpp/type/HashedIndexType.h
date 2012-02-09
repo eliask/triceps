@@ -103,10 +103,12 @@ protected:
 	// used by copy()
 	HashedIndexType(const HashedIndexType &orig);
 
+#if 0 // { not used any more
 	RhSection *getSection(const RowHandle *rh) const
 	{
 		return rh->get<RhSection>(rhOffset_);
 	}
+#endif // }
 
 	// can be used only if the row is known to be in the table
 	Set::iterator getIter(const RowHandle *rh) const
@@ -115,8 +117,7 @@ protected:
 	}
 	
 	// remember the iterator of the row in the table
-	// XXX constness of row handle is wrong here
-	void setIter(const RowHandle *rh, const Set::iterator &iter) const
+	void setIter(RowHandle *rh, const Set::iterator &iter) const
 	{
 		rh->get<RhSection>(rhOffset_)->iter_ = iter;
 	}

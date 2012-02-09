@@ -43,7 +43,7 @@ public:
 	virtual const GroupHandle *beginGroup() const;
 	virtual const GroupHandle *toGroup(const RowHandle *cur) const;
 	virtual RowHandle *find(const RowHandle *what) const;
-	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced);
+	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced);
 	virtual void insert(RowHandle *rh);
 	virtual void remove(RowHandle *rh);
 	virtual void aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray);

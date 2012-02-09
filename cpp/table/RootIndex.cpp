@@ -83,7 +83,7 @@ Index *RootIndex::findNested(const RowHandle *what, int nestPos) const
 	return idx;
 }
 
-bool RootIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
+bool RootIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
 {
 	// fprintf(stderr, "DEBUG RootIndex::replacementPolicy(this=%p, rh=%p)\n", this, rh);
 	if (rootg_ == NULL) {

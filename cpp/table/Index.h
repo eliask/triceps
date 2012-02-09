@@ -120,10 +120,11 @@ protected:
 	// the group and do the nested call.
 	// Because of all this, this method is NOT const.
 	//
-	// @param rh - new row about to be inserted
+	// @param rh - new row about to be inserted. If this index is non-leaf,
+	//     on return rh will have the group iterator populated in it.
 	// @param replaced - set to add the handles of replaced rows
 	// @return - true if insertion is allowed, false if not
-	virtual bool replacementPolicy(const RowHandle *rh, RhSet &replaced) = 0;
+	virtual bool replacementPolicy(RowHandle *rh, RhSet &replaced) = 0;
 
 	// Insert the row into the index.
 	// This is called after the replacement policy has been executed.

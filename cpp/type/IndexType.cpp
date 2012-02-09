@@ -614,7 +614,7 @@ Index *IndexType::groupToIndex(GroupHandle *gh, size_t nestPos) const
 	return gs->subidx_[nestPos];
 }
 
-bool IndexType::groupReplacementPolicy(GroupHandle *gh, const RowHandle *rh, RhSet &replaced) const
+bool IndexType::groupReplacementPolicy(GroupHandle *gh, RowHandle *rh, RhSet &replaced) const
 {
 	if (gh == NULL)
 		return true;

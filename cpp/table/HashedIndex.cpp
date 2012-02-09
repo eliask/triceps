@@ -106,9 +106,9 @@ Index *HashedIndex::findNested(const RowHandle *what, int nestPos) const
 	return NULL;
 }
 
-bool HashedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
+bool HashedIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
 {
-	Set::iterator old = data_.find(const_cast<RowHandle *>(rh));
+	Set::iterator old = data_.find(rh);
 	// XXX for now just silently replace the old value with the same key
 	if (old != data_.end())
 		replaced.insert(*old);
