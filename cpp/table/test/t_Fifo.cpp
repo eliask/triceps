@@ -12,7 +12,6 @@
 #include <type/AllTypes.h>
 #include <common/StringUtil.h>
 #include <table/Table.h>
-#include <table/HashedIndex.h>
 #include <mem/Rhref.h>
 
 // Make fields of all simple types

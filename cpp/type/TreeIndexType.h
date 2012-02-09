@@ -32,11 +32,10 @@ protected:
 		IndexType(orig)
 	{ }
 
-	virtual ~TreeIndexType();
-
+protected:
 	// index instance interface
-	friend class HashedIndex;
-	friend class HashedNestedIndex;
+	friend class TreeIndex;
+	friend class TreeNestedIndex;
 
 	// Comparator base class for the row objects
 	class Less : public Starget
@@ -77,12 +76,11 @@ protected:
 	};
 
 
-#if 0 // { not used any more
+	// not used any more except for debugging
 	BasicRhSection *getSection(const RowHandle *rh) const
 	{
 		return rh->get<BasicRhSection>(rhOffset_);
 	}
-#endif // }
 
 	// can be used only if the row is known to be in the table
 	Set::iterator getIter(const RowHandle *rh) const

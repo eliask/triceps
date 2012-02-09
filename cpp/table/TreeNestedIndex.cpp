@@ -6,22 +6,22 @@
 //
 // Implementation of a simple primary key with further nesting.
 
-#include <table/HashedNestedIndex.h>
-#include <type/HashedIndexType.h>
+#include <table/TreeNestedIndex.h>
+#include <type/TreeIndexType.h>
 #include <type/RowType.h>
 
 namespace TRICEPS_NS {
 
-//////////////////////////// HashedNestedIndex /////////////////////////
+//////////////////////////// TreeNestedIndex /////////////////////////
 
-HashedNestedIndex::HashedNestedIndex(const TableType *tabtype, Table *table, const HashedIndexType *mytype, Less *lessop) :
+TreeNestedIndex::TreeNestedIndex(const TableType *tabtype, Table *table, const TreeIndexType *mytype, Less *lessop) :
 	Index(tabtype, table),
 	data_(*lessop),
 	type_(mytype),
 	less_(lessop)
 { }
 
-HashedNestedIndex::~HashedNestedIndex()
+TreeNestedIndex::~TreeNestedIndex()
 {
 	vector<GroupHandle *> groups;
 	groups.reserve(data_.size());
@@ -37,7 +37,7 @@ HashedNestedIndex::~HashedNestedIndex()
 	}
 }
 
-void HashedNestedIndex::clearData()
+void TreeNestedIndex::clearData()
 {
 	// pass recursively into the groups
 	for (Set::iterator it = data_.begin(); it != data_.end(); ++it) {
@@ -45,12 +45,12 @@ void HashedNestedIndex::clearData()
 	}
 }
 
-const IndexType *HashedNestedIndex::getType() const
+const IndexType *TreeNestedIndex::getType() const
 {
 	return type_;
 }
 
-RowHandle *HashedNestedIndex::begin() const
+RowHandle *TreeNestedIndex::begin() const
 {
 	Set::iterator it = data_.begin();
 	if (it == data_.end())
@@ -69,9 +69,9 @@ RowHandle *HashedNestedIndex::begin() const
 	}
 }
 
-RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
+RowHandle *TreeNestedIndex::next(const RowHandle *cur) const
 {
-	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p, cur=%p)\n", this, cur);
+	// fprintf(stderr, "DEBUG TreeNestedIndex::next(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL || !cur->isInTable())
 		return NULL;
 
@@ -81,23 +81,23 @@ RowHandle *HashedNestedIndex::next(const RowHandle *cur) const
 		return NULL; // should never happen
 
 	RowHandle *res = type_->nextIteration(static_cast<GroupHandle *>(*it), cur);
-	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
+	// fprintf(stderr, "DEBUG TreeNestedIndex::next(this=%p) nextIteration local return=%p\n", this, res);
 	if (res != NULL)
 		return res;
 
 	// otherwise try the next groups until find a non-empty one
 	for (++it; it != data_.end(); ++it) {
 		RowHandle *res = type_->beginIteration(static_cast<GroupHandle *>(*it));
-		// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) beginIteration return=%p\n", this, res);
+		// fprintf(stderr, "DEBUG TreeNestedIndex::next(this=%p) beginIteration return=%p\n", this, res);
 		if (res != NULL)
 			return res;
 	}
-	// fprintf(stderr, "DEBUG HashedNestedIndex::next(this=%p) return NULL\n", this);
+	// fprintf(stderr, "DEBUG TreeNestedIndex::next(this=%p) return NULL\n", this);
 
 	return NULL;
 }
 
-RowHandle *HashedNestedIndex::last() const
+RowHandle *TreeNestedIndex::last() const
 {
 	if (data_.empty()) {
 		return NULL;
@@ -118,20 +118,20 @@ RowHandle *HashedNestedIndex::last() const
 	}
 }
 
-const GroupHandle *HashedNestedIndex::nextGroup(const GroupHandle *cur) const
+const GroupHandle *TreeNestedIndex::nextGroup(const GroupHandle *cur) const
 {
-	// fprintf(stderr, "DEBUG HashedNestedIndex::nextGroup(this=%p, cur=%p)\n", this, cur);
+	// fprintf(stderr, "DEBUG TreeNestedIndex::nextGroup(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL)
 		return NULL;
 	Set::iterator it = type_->getIter(cur);
 	++it;
 	if (it == data_.end())
 		return NULL; 
-	// fprintf(stderr, "DEBUG HashedNestedIndex::nextGroup(this=%p, cur=%p) return %p\n", this, cur, *it);
+	// fprintf(stderr, "DEBUG TreeNestedIndex::nextGroup(this=%p, cur=%p) return %p\n", this, cur, *it);
 	return static_cast<const GroupHandle *>(*it);
 }
 
-const GroupHandle *HashedNestedIndex::beginGroup() const
+const GroupHandle *TreeNestedIndex::beginGroup() const
 {
 	if (data_.empty())
 		return NULL;
@@ -139,47 +139,47 @@ const GroupHandle *HashedNestedIndex::beginGroup() const
 		return static_cast<const GroupHandle *>(*data_.begin());
 }
 
-const GroupHandle *HashedNestedIndex::toGroup(const RowHandle *cur) const
+const GroupHandle *TreeNestedIndex::toGroup(const RowHandle *cur) const
 {
 	Set::iterator it = type_->getIter(cur); // row is known to be in the table
 	return static_cast<const GroupHandle *>(*it);
 }
 
-RowHandle *HashedNestedIndex::find(const RowHandle *what) const
+RowHandle *TreeNestedIndex::find(const RowHandle *what) const
 {
 	return NULL; // no records directly here
 }
 
-Index *HashedNestedIndex::findNested(const RowHandle *what, int nestPos) const
+Index *TreeNestedIndex::findNested(const RowHandle *what, int nestPos) const
 {
-	// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p, what=%p, nestPos=%d)\n", this, what, nestPos);
+	// fprintf(stderr, "DEBUG TreeNestedIndex::findNested(this=%p, what=%p, nestPos=%d)\n", this, what, nestPos);
 	if (what == NULL) {
 		if (data_.empty())
 			return NULL;
 		Set::iterator it = data_.begin();
 		Index *idx = type_->groupToIndex(static_cast<GroupHandle *>(*it), nestPos);
-		// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return index %p\n", this, idx);
+		// fprintf(stderr, "DEBUG TreeNestedIndex::findNested(this=%p) return index %p\n", this, idx);
 		return idx;
 	} else {
 		Set::iterator it = data_.find(const_cast<RowHandle *>(what));
 		if (it == data_.end()) {
-			// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return NULL\n", this);
+			// fprintf(stderr, "DEBUG TreeNestedIndex::findNested(this=%p) return NULL\n", this);
 			return NULL;
 		} else {
 			Index *idx = type_->groupToIndex(static_cast<GroupHandle *>(*it), nestPos);
-			// fprintf(stderr, "DEBUG HashedNestedIndex::findNested(this=%p) return index %p\n", this, idx);
+			// fprintf(stderr, "DEBUG TreeNestedIndex::findNested(this=%p) return index %p\n", this, idx);
 			return idx;
 		}
 	}
 }
 
-bool HashedNestedIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
+bool TreeNestedIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
 {
 	Set::iterator it = data_.find(rh);
 	// the result of find() has to be stored now in rh, to avoid look-up on insert
 	type_->setIter(rh, it);
 	GroupHandle *gh;
-	// fprintf(stderr, "DEBUG HashedNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
+	// fprintf(stderr, "DEBUG TreeNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
 	if (it == data_.end()) {
 		gh = type_->makeGroupHandle(rh, table_);
@@ -193,21 +193,21 @@ bool HashedNestedIndex::replacementPolicy(RowHandle *rh, RhSet &replaced)
 	return type_->groupReplacementPolicy(gh, rh, replaced);
 }
 
-void HashedNestedIndex::insert(RowHandle *rh)
+void TreeNestedIndex::insert(RowHandle *rh)
 {
 	Set::iterator it = type_->getIter(rh); // has been initialized in replacementPolicy()
-	// fprintf(stderr, "DEBUG HashedNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
+	// fprintf(stderr, "DEBUG TreeNestedIndex::insert(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
 	type_->groupInsert(static_cast<GroupHandle *>(*it), rh);
 }
 
-void HashedNestedIndex::remove(RowHandle *rh)
+void TreeNestedIndex::remove(RowHandle *rh)
 {
 	Set::iterator it = type_->getIter(rh); // row is known to be in the table
 	type_->groupRemove(static_cast<GroupHandle *>(*it), rh);
 }
 
-void HashedNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
+void TreeNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
 {
 	for(RhSet::iterator rsi = rows.begin(); rsi != rows.end(); ++rsi) {
 		RowHandle *rh = *rsi;
@@ -216,7 +216,7 @@ void HashedNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
 	}
 }
 
-void HashedNestedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray)
+void TreeNestedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray)
 {
 	SplitMap splitRows, splitAlready;
 	splitRhSet(rows, splitRows);
@@ -234,7 +234,7 @@ void HashedNestedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhS
 	}
 }
 
-void HashedNestedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
+void TreeNestedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
 {
 	SplitMap splitRows, splitFuture;
 	splitRhSet(rows, splitRows);
@@ -252,9 +252,9 @@ void HashedNestedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, cons
 	}
 }
 
-bool HashedNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray)
+bool TreeNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray)
 {
-	// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
+	// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	
 	// split the set into subsets by iterator
 	SplitMap split;
@@ -265,9 +265,9 @@ bool HashedNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTr
 	// handle each subset's group
 	for(SplitMap::iterator smi = split.begin(); smi != split.end(); ++smi) {
 		GroupHandle *gh = smi->first;
-		// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p\n", this, gh);
+		// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p) gh=%p\n", this, gh);
 		if (type_->groupCollapse(dest, gh, smi->second, copyTray)) {
-			// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p destroying\n", this, gh);
+			// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p) gh=%p destroying\n", this, gh);
 			// call the aggregators to process collapse
 			if (!type_->groupAggs_.empty()) {
 				type_->aggregateCollapse(dest, table_, gh, copyTray);
@@ -277,7 +277,7 @@ bool HashedNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTr
 			if (gh->decref() <= 0)
 				type_->destroyGroupHandle(gh);
 		} else {
-			// fprintf(stderr, "DEBUG HashedNestedIndex::collapse(this=%p) gh=%p not collapsing\n", this, gh);
+			// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p) gh=%p not collapsing\n", this, gh);
 			// a group objects to being collapsed
 			res = false;
 		}

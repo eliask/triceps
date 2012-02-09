@@ -49,9 +49,7 @@ public:
 	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const;
 
 protected:
-	// index instance interface
-	friend class HashedIndex;
-	friend class HashedNestedIndex;
+	// specialization from TreeIndex
 
 	// section in the RowHandle, placed at rhOffset_
 	struct RhSection : public BasicRhSection

@@ -6,19 +6,18 @@
 //
 // Implementation of a simple primary key with further nesting.
 
-#ifndef __Triceps_HashedNestedIndex_h__
-#define __Triceps_HashedNestedIndex_h__
+#ifndef __Triceps_TreeNestedIndex_h__
+#define __Triceps_TreeNestedIndex_h__
 
 #include <table/Index.h>
-#include <type/HashedIndexType.h>
+#include <type/TreeIndexType.h>
 
 namespace TRICEPS_NS {
 
 class RowType;
 
-class HashedNestedIndex: public Index
+class TreeNestedIndex: public Index
 {
-	friend class HashedIndexType;
 	friend class TreeIndexType;
 
 public:
@@ -29,8 +28,8 @@ public:
 	// @param table - the actual table where this index belongs
 	// @param mytype - type that created this index
 	// @param lessop - less functor class for the key, this index assumes is ownership
-	HashedNestedIndex(const TableType *tabtype, Table *table, const HashedIndexType *mytype, Less *lessop);
-	~HashedNestedIndex();
+	TreeNestedIndex(const TableType *tabtype, Table *table, const TreeIndexType *mytype, Less *lessop);
+	~TreeNestedIndex();
 
 	// from Index
 	virtual void clearData();
@@ -58,10 +57,10 @@ protected:
 	void splitRhSet(const RhSet &rows, SplitMap &dest);
 
 	Set data_; // the data store
-	Autoref<const HashedIndexType> type_; // type of this index
+	Autoref<const TreeIndexType> type_; // type of this index
 	Less *less_; // the comparator object, owned by the type
 };
 
 }; // TRICEPS_NS
 
-#endif // __Triceps_HashedNestedIndex_h__
+#endif // __Triceps_TreeNestedIndex_h__

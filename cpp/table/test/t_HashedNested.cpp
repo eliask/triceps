@@ -12,7 +12,6 @@
 #include <type/AllTypes.h>
 #include <common/StringUtil.h>
 #include <table/Table.h>
-#include <table/HashedIndex.h>
 #include <type/BasicAggregatorType.h>
 #include <table/BasicAggregator.h>
 #include <mem/Rhref.h>

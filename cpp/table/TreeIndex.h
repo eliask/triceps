@@ -6,19 +6,18 @@
 //
 // Implementation of a simple primary key.
 
-#ifndef __Triceps_HashedIndex_h__
-#define __Triceps_HashedIndex_h__
+#ifndef __Triceps_TreeIndex_h__
+#define __Triceps_TreeIndex_h__
 
 #include <table/Index.h>
-#include <type/HashedIndexType.h>
+#include <type/TreeIndexType.h>
 
 namespace TRICEPS_NS {
 
 class RowType;
 
-class HashedIndex: public Index
+class TreeIndex: public Index
 {
-	friend class HashedIndexType;
 	friend class TreeIndexType;
 
 public:
@@ -29,8 +28,8 @@ public:
 	// @param table - the actual table where this index belongs
 	// @param mytype - type that created this index
 	// @param lessop - less functor class for the key, this index assumes is ownership
-	HashedIndex(const TableType *tabtype, Table *table, const HashedIndexType *mytype, Less *lessop);
-	~HashedIndex();
+	TreeIndex(const TableType *tabtype, Table *table, const TreeIndexType *mytype, Less *lessop);
+	~TreeIndex();
 
 	// from Index
 	virtual void clearData();
@@ -52,10 +51,10 @@ public:
 
 protected:
 	Set data_; // the data store
-	Autoref<const HashedIndexType> type_; // type of this index
+	Autoref<const TreeIndexType> type_; // type of this index
 	Less *less_; // the comparator object, owned by the type
 };
 
 }; // TRICEPS_NS
 
-#endif // __Triceps_HashedIndex_h__
+#endif // __Triceps_TreeIndex_h__

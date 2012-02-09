@@ -8,8 +8,8 @@
 
 #include <type/HashedIndexType.h>
 #include <type/TableType.h>
-#include <table/HashedIndex.h>
-#include <table/HashedNestedIndex.h>
+#include <table/TreeIndex.h>
+#include <table/TreeNestedIndex.h>
 #include <table/Table.h>
 #include <string.h>
 
@@ -191,9 +191,9 @@ Index *HashedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	|| errors_->hasError())
 		return NULL; 
 	if (nested_.empty())
-		return new HashedIndex(tabtype, table, this, less_);
+		return new TreeIndex(tabtype, table, this, less_);
 	else
-		return new HashedNestedIndex(tabtype, table, this, less_);
+		return new TreeNestedIndex(tabtype, table, this, less_);
 }
 
 void HashedIndexType::initRowHandleSection(RowHandle *rh) const

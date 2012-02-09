@@ -16,9 +16,4 @@ namespace TRICEPS_NS {
 TreeIndexType::Less::~Less()
 { }
 
-//////////////////////////// TreeIndexType /////////////////////////
-
-TreeIndexType::~TreeIndexType()
-{ }
-
 }; // TRICEPS_NS
