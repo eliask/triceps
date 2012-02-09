@@ -113,6 +113,13 @@ protected:
 	{
 		return rh->get<RhSection>(rhOffset_)->iter_;
 	}
+	
+	// remember the iterator of the row in the table
+	// XXX constness of row handle is wrong here
+	void setIter(const RowHandle *rh, const Set::iterator &iter) const
+	{
+		rh->get<RhSection>(rhOffset_)->iter_ = iter;
+	}
 
 protected:
 	Autoref<NameSet> key_;

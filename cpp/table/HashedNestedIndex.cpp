@@ -123,7 +123,7 @@ const GroupHandle *HashedNestedIndex::nextGroup(const GroupHandle *cur) const
 	// fprintf(stderr, "DEBUG HashedNestedIndex::nextGroup(this=%p, cur=%p)\n", this, cur);
 	if (cur == NULL)
 		return NULL;
-	Set::iterator it = type_->getSection(cur)->iter_;
+	Set::iterator it = type_->getIter(cur);
 	++it;
 	if (it == data_.end())
 		return NULL; 
@@ -177,7 +177,7 @@ bool HashedNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 {
 	Set::iterator it = data_.find(const_cast<RowHandle *>(rh));
 	// the result of find() has to be stored now in rh, to avoid look-up on insert
-	type_->getSection(rh)->iter_ = it;
+	type_->setIter(rh, it);
 	GroupHandle *gh;
 	// fprintf(stderr, "DEBUG HashedNestedIndex::replacementPolicy(this=%p, rh=%p) put iterValid=%d\n", this, rh, it != data_.end());
 
@@ -185,8 +185,8 @@ bool HashedNestedIndex::replacementPolicy(const RowHandle *rh, RhSet &replaced)
 		gh = type_->makeGroupHandle(rh, table_);
 		gh->incref();
 		pair<Set::iterator, bool> res = data_.insert(gh);
-		type_->getSection(rh)->iter_ = res.first;
-		type_->getSection(gh)->iter_ = res.first;
+		type_->setIter(rh, res.first);
+		type_->setIter(gh, res.first);
 	} else {
 		gh = static_cast<GroupHandle *>(*it);
 	}
