@@ -123,6 +123,7 @@ public:
 		IT_ROOT, // RootIndexType
 		IT_HASHED, // HashedIndexType
 		IT_FIFO, // FifoIndexType
+		IT_SORTED, // SortedIndexType
 		// add new types here
 		IT_LAST
 	};

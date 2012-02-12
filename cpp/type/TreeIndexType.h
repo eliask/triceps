@@ -32,13 +32,11 @@ protected:
 		IndexType(orig)
 	{ }
 
-protected:
-	// index instance interface
-	friend class TreeIndex;
-	friend class TreeNestedIndex;
-
+public:
+	// index instance interface: the part made public for the sorted indexes
+	
 	// Comparator base class for the row objects
-	class Less : public Starget
+	class Less : public Mtarget
 	{
 	public:
 		// Creates and keeps the reference to rt.
@@ -58,6 +56,11 @@ protected:
 		Less();
 	};
 
+protected:
+	// index instance interface
+	friend class TreeIndex;
+	friend class TreeNestedIndex;
+
 	// Not a set of Autoref<RowHandle> because the row is owned by the whole table once,
 	// not by each index; this also improves the performance a lot.
 	// Also important to use a reference to Less, not Less itself, because 
@@ -65,6 +68,8 @@ protected:
 	typedef set<RowHandle *, Less &> Set; // storage for the records
 	typedef set<GroupHandle *, Less &> NestedSet; // storage for the nested groups
 
+public:
+	// again public for the sorted index comparators
 	// section in the RowHandle, placed at rhOffset_
 	struct BasicRhSection {
 		void *operator new(size_t size, void *where) // placement
@@ -75,7 +80,7 @@ protected:
 		Set::iterator iter_; // location of this handle in the set
 	};
 
-
+protected:
 	// not used any more except for debugging
 	BasicRhSection *getSection(const RowHandle *rh) const
 	{
