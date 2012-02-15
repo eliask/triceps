@@ -146,9 +146,9 @@ Index *SortedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	|| errors_->hasError())
 		return NULL; 
 	if (nested_.empty())
-		return new TreeIndex(tabtype, table, this, less_);
+		return new TreeIndex(tabtype, table, this, sc_);
 	else
-		return new TreeNestedIndex(tabtype, table, this, less_);
+		return new TreeNestedIndex(tabtype, table, this, sc_);
 }
 
 void SortedIndexType::initRowHandleSection(RowHandle *rh) const

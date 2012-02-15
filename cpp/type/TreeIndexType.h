@@ -102,7 +102,6 @@ protected:
 protected:
 	// the fields get set by the subclasses in initialize()
 	intptr_t rhOffset_; // offset of this index's data in table's row handle
-	Autoref<Less> less_;
 };
 
 }; // TRICEPS_NS

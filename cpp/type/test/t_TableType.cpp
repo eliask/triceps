@@ -4,7 +4,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of table and primary index types creation.
+// Test of table and index types creation.
 
 #include <utest/Utest.h>
 #include <string.h>
@@ -59,7 +59,7 @@ UTESTCASE emptyTable(Utest *utest)
 	UT_IS(tt->getErrors()->print(), "no indexes are defined\n");
 }
 
-UTESTCASE primaryIndex(Utest *utest)
+UTESTCASE hashedIndex(Utest *utest)
 {
 	RowType::FieldVec fld;
 	mkfields(fld);
@@ -225,7 +225,7 @@ UTESTCASE dupIndexName(Utest *utest)
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 2 name 'primary' is used more than once\n");
 }
 
-UTESTCASE primaryNested(Utest *utest)
+UTESTCASE hashedNested(Utest *utest)
 {
 	RowType::FieldVec fld;
 	mkfields(fld);
@@ -286,7 +286,7 @@ UTESTCASE primaryNested(Utest *utest)
 	UT_IS(sec->findSubIndexById(IndexType::IT_LAST), NULL);
 }
 
-UTESTCASE primaryBadField(Utest *utest)
+UTESTCASE hashedBadField(Utest *utest)
 {
 	RowType::FieldVec fld;
 	mkfields(fld);
@@ -570,6 +570,189 @@ UTESTCASE fifoBadNested(Utest *utest)
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'fifo':\n    FifoIndexType currently does not support further nested indexes\n");
+}
+
+class MySortCondition : public SortedIndexCondition
+{
+public:
+	// @param returnError - flag: return an initialization error for testing
+	MySortCondition(bool returnError) :
+		returnError_(returnError)
+	{ }
+
+	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
+	{
+		if (rt_.isNull())
+			errors->appendMsg(true, "Uninitialized rt_");
+		if (returnError_) {
+			errors->appendMsg(true, "A test error");
+		} else {
+			SortedIndexCondition::initialize(errors, tabtype, indtype);
+		}
+	}
+
+	// no internal configuration, all copies are the same
+	virtual bool equals(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual bool match(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+	{
+		res.append("MySorted()");
+	}
+	virtual SortedIndexCondition *copy() const
+	{
+		return new MySortCondition(*this);
+	}
+
+	virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const
+	{
+		return (r1 < r2); // really just a placeholder, not a valid comparison
+	}
+
+	bool returnError_;
+};
+
+UTESTCASE sortedIndex(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<IndexType> it = new SortedIndexType(new MySortCondition(false));
+	UT_ASSERT(it);
+	Autoref<IndexType> itcopy = it->copy();
+	UT_ASSERT(itcopy);
+	UT_ASSERT(it != itcopy);
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", it
+		)->addSubIndex("secondary", itcopy
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	// repeated initialization should not be an issue
+	tt->initialize();
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  index MySorted() primary,\n"
+		"  index MySorted() secondary,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index MySorted() primary, index MySorted() secondary, }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findSubIndex("primary");
+	UT_ASSERT(prim != NULL);
+	UT_IS(tt->findSubIndexById(IndexType::IT_SORTED), prim);
+	UT_IS(tt->getFirstLeaf(), prim);
+	UT_IS(tt->findSubIndexById(IndexType::IT_HASHED), NULL);
+}
+
+UTESTCASE sortedIndexBad(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", new SortedIndexType(new MySortCondition(true))
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(!tt->getErrors().isNull());
+	UT_ASSERT(tt->getErrors()->hasError());
+
+	UT_IS(tt->getErrors()->print(), 
+		"index error:\n"
+		"  nested index 1 'primary':\n"
+		"    A test error\n");
+}
+
+UTESTCASE sortedNested(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", (new SortedIndexType(new MySortCondition(false)))
+			->addSubIndex("level2", new HashedIndexType(
+				(new NameSet())->add("a")->add("e"))
+			)
+		)
+		;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(tt->getErrors().isNull()))
+		return;
+	
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32[] b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  index MySorted() {\n"
+		"    index HashedIndex(a, e, ) level2,\n"
+		"  } primary,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index MySorted() { index HashedIndex(a, e, ) level2, } primary, }");
+
+	// get back the initialized types
+	IndexType *prim = tt->findSubIndex("primary");
+	if (UT_ASSERT(prim != NULL))
+		return;
+	UT_IS(tt->findSubIndexById(IndexType::IT_SORTED), prim);
+
+	IndexType *sec = prim->findSubIndex("level2");
+	if (UT_ASSERT(sec != NULL))
+		return;
+	UT_IS(prim->getTabtype(), tt);
+	UT_IS(prim->findSubIndexById(IndexType::IT_HASHED), sec);
 }
 
 void dummyAggregator(Table *table, AggregatorGadget *gadget, Index *index,

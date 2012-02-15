@@ -4,7 +4,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of table creation iwth a primary index.
+// Test of table creation with a primary index.
 
 #include <utest/Utest.h>
 #include <string.h>
@@ -263,7 +263,7 @@ UTESTCASE tableops(Utest *utest)
 	iter = t->findIdx(sec, rh11);
 	UT_IS(iter, iter2);
 
-	// check that search on a non-leaf index returns NULL
+	// check that search on a non-leaf index returns the start of group
 	iter = t->findIdx(prim, rh11);
 	{
 		// find the end of the group and iterate through to it

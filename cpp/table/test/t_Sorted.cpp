@@ -4,7 +4,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of table creation with a primary index.
+// Test of table creation with a sorted index.
 
 #include <utest/Utest.h>
 #include <string.h>
@@ -42,6 +42,66 @@ void mkfdata(FdataVec &fd)
 	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
 }
 
+// sort by field "b"
+class MySortB : public SortedIndexCondition
+{
+public:
+	// no internal configuration, all copies are the same
+	virtual bool equals(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual bool match(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+	{
+		res.append("MySortB()");
+	}
+	virtual SortedIndexCondition *copy() const
+	{
+		return new MySortB(*this);
+	}
+
+	virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const
+	{
+		int32_t a = rt_->getInt32(r1->getRow(), 1);
+		int32_t b = rt_->getInt32(r2->getRow(), 1);
+		return (a < b);
+	}
+};
+
+// sort by field "c"
+class MySortC : public SortedIndexCondition
+{
+public:
+	// no internal configuration, all copies are the same
+	virtual bool equals(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual bool match(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+	{
+		res.append("MySortC()");
+	}
+	virtual SortedIndexCondition *copy() const
+	{
+		return new MySortC(*this);
+	}
+
+	virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const
+	{
+		int64_t a = rt_->getInt64(r1->getRow(), 2);
+		int64_t b = rt_->getInt64(r2->getRow(), 2);
+		return (a < b);
+	}
+};
+
 UTESTCASE primaryIndex(Utest *utest)
 {
 	RowType::FieldVec fld;
@@ -52,8 +112,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addSubIndex("primary", new HashedIndexType(
-			(new NameSet())->add("a")->add("e"))
+		->addSubIndex("primary", new SortedIndexType(new MySortB())
 		);
 
 	UT_ASSERT(tt);
@@ -61,55 +120,12 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
 	UT_ASSERT(!t.isNull());
 	UT_ASSERT(t->getInputLabel() != NULL);
 	UT_ASSERT(t->getLabel() != NULL);
 	UT_IS(t->getInputLabel()->getName(), "t.in");
 	UT_IS(t->getLabel()->getName(), "t.out");
-}
-
-UTESTCASE uninitialized(Utest *utest)
-{
-	RowType::FieldVec fld;
-	mkfields(fld);
-
-	Autoref<Unit> unit = new Unit("u");
-	Autoref<RowType> rt1 = new CompactRowType(fld);
-	UT_ASSERT(rt1->getErrors().isNull());
-
-	Autoref<TableType> tt = (new TableType(rt1))
-		->addSubIndex("primary", new HashedIndexType(
-			(new NameSet())->add("a")->add("e"))
-		);
-
-	UT_ASSERT(tt);
-
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
-	UT_ASSERT(t.isNull());
-}
-
-UTESTCASE withError(Utest *utest)
-{
-	RowType::FieldVec fld;
-	mkfields(fld);
-
-	Autoref<Unit> unit = new Unit("u");
-	Autoref<RowType> rt1 = new CompactRowType(fld);
-	UT_ASSERT(rt1->getErrors().isNull());
-
-	Autoref<TableType> tt = (new TableType(rt1))
-		->addSubIndex("primary", new HashedIndexType(
-			(new NameSet())->add("x")->add("e"))
-		);
-
-	UT_ASSERT(tt);
-	tt->initialize();
-	UT_ASSERT(!tt->getErrors().isNull());
-	UT_ASSERT(tt->getErrors()->hasError());
-
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
-	UT_ASSERT(t.isNull());
 }
 
 UTESTCASE tableops(Utest *utest)
@@ -122,8 +138,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(rt1->getErrors().isNull());
 
 	Autoref<TableType> tt = (new TableType(rt1))
-		->addSubIndex("primary", new HashedIndexType(
-			(new NameSet())->add("a")->add("e"))
+		->addSubIndex("primary", new SortedIndexType(new MySortB())
 		);
 
 	UT_ASSERT(tt);
@@ -145,8 +160,7 @@ UTESTCASE tableops(Utest *utest)
 
 	// 3rd instance, with its own type, for checking of errors
 	Autoref<TableType> tt3 = (new TableType(rt1))
-		->addSubIndex("primary", new HashedIndexType(
-			(new NameSet())->add("a")->add("e"))
+		->addSubIndex("primary", new SortedIndexType(new MySortB())
 		);
 	UT_ASSERT(tt3);
 	tt3->initialize();
@@ -160,6 +174,8 @@ UTESTCASE tableops(Utest *utest)
 	RowHandle *iter;
 	FdataVec dv;
 	mkfdata(dv);
+	int32_t one = 1;
+	dv[1].setPtr(true, &one, sizeof(one));
 	Rowref r1(rt1,  rt1->makeRow(dv));
 	Rhref rh1(t, t->makeRowHandle(r1));
 
@@ -201,34 +217,39 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(t->next(NULL) == NULL);
 
 	// add 2nd record
-	const char *key2 = "key2";
-	dv[4].setPtr(true, key2, sizeof(key2));
+	int32_t two = 2;
+	dv[1].setPtr(true, &two, sizeof(two));
 	Rowref r2(rt1, rt1->makeRow(dv));
 
 	UT_ASSERT(t->insertRow(r2));
 
-	// check that now have 2 records
+	// check that now have 2 records, in the right order
 	iter = t->begin();
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r1);
 	iter = t->next(iter);
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r2);
 	iter = t->next(iter);
 	UT_ASSERT(iter == NULL);
 
-	// add 3rd record
-	const char *key3 = "key3";
-	dv[4].setPtr(true, key3, sizeof(key3));
+	// add 3rd record, in order before the first
+	int32_t zero = 0;
+	dv[1].setPtr(true, &zero, sizeof(zero));
 	Rowref r3(rt1, rt1->makeRow(dv));
 
 	UT_ASSERT(t->insertRow(r3));
 
-	// check that now have 3 records
+	// check that now have 3 records, in the correct order
 	iter = t->begin();
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r3);
 	iter = t->next(iter);
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r1);
 	iter = t->next(iter);
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r2);
 	iter = t->next(iter);
 	UT_ASSERT(iter == NULL);
 
@@ -241,11 +262,13 @@ UTESTCASE tableops(Utest *utest)
 	iter = t->findIdx(prim, rh1);
 	UT_ASSERT(iter == NULL);
 
-	// check that now have 2 records
+	// check that now have 2 records, still in correct order
 	iter = t->begin();
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r3);
 	iter = t->next(iter);
-	UT_ASSERT(iter != NULL);
+	if (UT_ASSERT(iter != NULL)) return;
+	UT_ASSERT(iter->getRow() == r2);
 	iter = t->next(iter);
 	UT_ASSERT(iter == NULL);
 
@@ -254,4 +277,3 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(!t->deleteRow(r3)); // already removed, not found any more
 }
 
-// queuing is tested in t_HashedNested

@@ -52,6 +52,9 @@ public:
 	// SortedIndexType would return false before it gets here.
 	// SortedIndexType compares them using typeid().
 	//
+	// If the sorting condition is hardcoded and takes no arguments,
+	// simply return true.
+	//
 	// The TreeIndexType::Less::rt_ will be likely NOT set yet at this time!!!
 	virtual bool equals(const SortedIndexCondition *sc) const = 0;
 	virtual bool match(const SortedIndexCondition *sc) const = 0;
@@ -156,6 +159,11 @@ class SortedIndexType : public TreeIndexType
 public:
 	// @param sc - the object defining the sorting order 
 	SortedIndexType(Onceref<SortedIndexCondition> sc);
+	// Constructors duplicated as make() for syntactically better usage.
+	static SortedIndexType *make(Onceref<SortedIndexCondition> sc)
+	{
+		return new SortedIndexType(sc);
+	}
 
 	// Get back the condition, just in case.
 	SortedIndexCondition *getCondition() const

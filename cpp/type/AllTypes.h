@@ -12,6 +12,7 @@
 #include <type/AllSimpleTypes.h>
 #include <type/CompactRowType.h>
 #include <type/HashedIndexType.h>
+#include <type/SortedIndexType.h>
 #include <type/FifoIndexType.h>
 #include <type/RootIndexType.h>
 #include <type/TableType.h>

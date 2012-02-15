@@ -80,6 +80,7 @@ protected:
 	HashedIndexType(const HashedIndexType &orig);
 
 protected:
+	Autoref<Less> less_;
 	Autoref<NameSet> key_;
 	vector<int32_t> keyFld_; // indexes of key fields in the record
 };

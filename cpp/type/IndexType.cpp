@@ -828,6 +828,7 @@ Valname indexids[] = {
 	{ IndexType::IT_ROOT, "IT_ROOT" },
 	{ IndexType::IT_HASHED, "IT_HASHED" },
 	{ IndexType::IT_FIFO, "IT_FIFO" },
+	{ IndexType::IT_SORTED, "IT_SORTED" },
 	{ IndexType::IT_LAST, "IT_LAST" },
 	{ -1, NULL }
 };
