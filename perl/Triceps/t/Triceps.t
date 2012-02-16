@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 95 };
+BEGIN { plan tests => 98 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -46,7 +46,8 @@ ok(&Triceps::TW_AFTER, 3);
 ok(&Triceps::IT_ROOT, 0);
 ok(&Triceps::IT_HASHED, 1);
 ok(&Triceps::IT_FIFO, 2);
-ok(&Triceps::IT_LAST, 3);
+ok(&Triceps::IT_SORTED, 3);
+ok(&Triceps::IT_LAST, 4);
 
 ok(&Triceps::AO_BEFORE_MOD, 0);
 ok(&Triceps::AO_AFTER_DELETE, 1);
@@ -85,6 +86,7 @@ ok(&Triceps::humanStringTracerWhen("xxx"), undef);
 ok(&Triceps::stringIndexId("IT_ROOT"), &Triceps::IT_ROOT);
 ok(&Triceps::stringIndexId("IT_HASHED"), &Triceps::IT_HASHED);
 ok(&Triceps::stringIndexId("IT_FIFO"), &Triceps::IT_FIFO);
+ok(&Triceps::stringIndexId("IT_SORTED"), &Triceps::IT_SORTED);
 ok(&Triceps::stringIndexId("IT_LAST"), &Triceps::IT_LAST);
 ok(&Triceps::stringIndexId("xxx"), undef);
 
@@ -125,6 +127,7 @@ ok(&Triceps::tracerWhenHumanString(999), undef);
 ok(&Triceps::indexIdString(&Triceps::IT_ROOT), "IT_ROOT");
 ok(&Triceps::indexIdString(&Triceps::IT_HASHED), "IT_HASHED");
 ok(&Triceps::indexIdString(&Triceps::IT_FIFO), "IT_FIFO");
+ok(&Triceps::indexIdString(&Triceps::IT_SORTED), "IT_SORTED");
 ok(&Triceps::indexIdString(&Triceps::IT_LAST), "IT_LAST");
 ok(&Triceps::indexIdString(999), undef);
 
