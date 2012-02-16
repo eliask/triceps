@@ -61,7 +61,6 @@ Aggregator *PerlAggregatorType::makeAggregator(Table *table, AggregatorGadget *g
 			// Would exit(1) be better?
 			warn("Error in unit %s table %s aggregator %s constructor: %s", 
 				gadget->getUnit()->getName().c_str(), table->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
-
 		}
 	}
 	return new PerlAggregator(table, gadget, state);
@@ -74,14 +73,8 @@ bool PerlAggregatorType::equals(const Type *t) const
 
 	const PerlAggregatorType *at = static_cast<const PerlAggregatorType *>(t);
 
-	if (cbConstructor_.isNull() ^ at->cbConstructor_.isNull())
-		return false;
-
-	if ( (!cbConstructor_.isNull() && !cbConstructor_->equals(at->cbConstructor_))
-	|| !cbHandler_->equals(at->cbHandler_))
-		return false;
-
-	return true;
+	return callbackEquals(cbConstructor_, at->cbConstructor_)
+		&& callbackEquals(cbHandler_, at->cbHandler_);
 }
 
 bool PerlAggregatorType::match(const Type *t) const
@@ -91,14 +84,8 @@ bool PerlAggregatorType::match(const Type *t) const
 
 	const PerlAggregatorType *at = static_cast<const PerlAggregatorType *>(t);
 
-	if (cbConstructor_.isNull() ^ at->cbConstructor_.isNull())
-		return false;
-
-	if ( (!cbConstructor_.isNull() && !cbConstructor_->equals(at->cbConstructor_))
-	|| !cbHandler_->equals(at->cbHandler_))
-		return false;
-
-	return true;
+	return callbackEquals(cbConstructor_, at->cbConstructor_)
+		&& callbackEquals(cbHandler_, at->cbHandler_);
 }
 
 // ######################## PerlAggregator ###########################################

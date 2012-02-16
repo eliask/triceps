@@ -126,6 +126,15 @@ bool PerlCallback::equals(const PerlCallback *other) const
 	return true;
 }
 
+bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2)
+{
+	if (p1 == NULL || p2 == NULL) {
+		return p1 == p2;
+	} else {
+		return p1->equals(p2);
+	}
+}
+
 ///////////////////////// PerlLabel ///////////////////////////////////////////////
 
 PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, 

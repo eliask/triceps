@@ -24,7 +24,7 @@ namespace TricepsPerl
 // Since Perl uses macros for the function call sequences,
 // this encapsulation also gets used from macros.
 //
-// A catch is that the code args (ir even the code, as a closure)
+// A catch is that the code args (or even the code, as a closure)
 // may reference back to the object that holds this callback, thus
 // creating a reference loop. To break this loop, the callback needs
 // to be explicitly cleared before disposing of its owner object.
@@ -61,6 +61,9 @@ private:
 	PerlCallback(const PerlCallback &);
 	void operator=(const PerlCallback &);
 };
+
+// equality comparison for two pointers to PerlCallback
+bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2);
 
 // Initialize the PerlCallback object. On failure sets code_ to NULL and sets the error message.
 // (The code reference is split from the arguments).
