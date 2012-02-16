@@ -83,4 +83,17 @@ UTESTCASE nested(Utest *utest)
 
 	e4->appendMsg(true, "msg4");
 	UT_IS(e4->print(), "from e2\n  from e1\n    msg1\n  child error flag\n  from e3\n    msg3\nmsg4\n");
+
+	Erref e5 = new Errors;
+	e5->appendMultiline(true, "");
+	UT_IS(e5->print(), "");
+	e5->appendMultiline(true, "\n");
+	UT_IS(e5->print(), "");
+	e5->appendMultiline(true, "line1\nline2");
+	UT_IS(e5->print(), "line1\nline2\n");
+	e5->appendMultiline(true, "line3\nline4\n");
+	UT_IS(e5->print(), "line1\nline2\nline3\nline4\n");
+	e5->appendMultiline(true, "\nline5\n");
+	UT_IS(e5->print(), "line1\nline2\nline3\nline4\nline5\n");
+
 }

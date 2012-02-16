@@ -47,6 +47,12 @@ public:
 	// @param msg - the error message
 	void appendMsg(bool e, const string &msg);
 
+	// Append a direct error message.
+	// @param e - flag: true if error, false if warning
+	// @param msg - the error message that may contain line breaks in it,
+	//        those will be broken up into the separate messages
+	void appendMultiline(bool e, const string &msg);
+
 	// Add information about a child's errors.
 	// If the child had the error flag set, sets the error flag here too.
 	// @msg - message describing the child, will be added only if the

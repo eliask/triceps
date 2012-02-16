@@ -49,6 +49,20 @@ void Errors::appendMsg(bool e, const string &msg)
 	elist_.push_back(Epair(msg, NULL));
 }
 
+void Errors::appendMultiline(bool e, const string &msg)
+{
+	error_ = (error_ || e);
+	string::size_type from = 0, to = 0;
+	while (to < msg.size()) {
+		to = msg.find('\n', from);
+		if (to == string::npos)
+			to = msg.size();
+		if (to != 0)
+			elist_.push_back(Epair(msg.substr(from, to-from), NULL));
+		from = to = to+1;
+	}
+}
+
 void Errors::replaceMsg(const string &msg)
 {
 	size_t n = elist_.size();
