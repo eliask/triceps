@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 6 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -596,4 +596,39 @@ tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="30"
 OP_DELETE,5
 Contents:
 tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30" 
+');
+
+#########################
+#  run the same example, demonstrating an issue with a missing DELETE
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,5,BBB,30,30\n",
+);
+$result = undef;
+&doManualAgg2();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
+OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
+OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
+OP_INSERT,5,BBB,30,30
+Contents:
+  id="5" symbol="BBB" price="30" size="30" 
+tAvgPrice.out OP_INSERT symbol="BBB" id="5" price="30" 
 ');
