@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 4 };
+BEGIN { plan tests => 5 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -343,7 +343,7 @@ $tWindow->getOutputLabel()->chain($lbRememberLastMod) or die "$!";
 #####
 # a manual aggregation: average price
 
-my $rtAvgPrice = Triceps::RowType->new(
+local $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
@@ -351,7 +351,7 @@ my $rtAvgPrice = Triceps::RowType->new(
 
 # place to send the average: could be a dummy label, but to keep the
 # code smalled also print the rows here, instead of in a separate label
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+local $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
 	}) or die "$!";
@@ -434,4 +434,166 @@ Contents:
 lbAverage OP_INSERT symbol="AAA" id="5" price="30" 
 OP_DELETE,5
 Contents:
+');
+
+#########################
+# the window with a manual aggregator and a helper table
+
+sub doManualAgg2 {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+			->addSubIndex("last2",
+				Triceps::IndexType->newFifo(limit => 2)
+			)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+# ZZZ use local, not my, because printAverage() needs to access it,
+# and here we are inside a function, not at global lever as it might seem
+local $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# remember the index type by symbol, for searching on it
+local $itSymbol = $ttWindow->findSubIndex("bySymbol") or die "$!";
+# remember the FIFO index, for finding the start of the group
+local $itLast2 = $itSymbol->findSubIndex("last2") or die "$!";
+
+# remember, which was the last row modified
+local $rLastMod;
+my $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
+	undef, sub { # (label, rowop)
+		$rLastMod = $_[1]->getRow();
+	}) or die "$!";
+$tWindow->getOutputLabel()->chain($lbRememberLastMod) or die "$!";
+
+#####
+# a manual aggregation: average price
+
+local $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or die "$!";
+
+my $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+	)
+or die "$!";
+$ttAvgPrice->initialize() or die "$!";
+# ZZZ use local, not my, because printAverage() needs to access it,
+# and here we are inside a function, not at global lever as it might seem
+local $tAvgPrice = $uTrades->makeTable($ttAvgPrice, 
+	&Triceps::EM_CALL, "tAvgPrice") or die "$!";
+local $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or die "$!";
+
+# place to send the average: could be a dummy label, but to keep the
+# code smalled also print the rows here, instead of in a separate label
+local $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or die "$!";
+$tAvgPrice->getOutputLabel()->chain($lbAverage) or die "$!";
+
+# Send the average price of the symbol in the last modified row
+sub computeAverage2 # (row)
+{
+	return unless defined $rLastMod;
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or die "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or die "$!";
+	&send("Contents:\n");
+	my $avg = ''; # ZZZ make the test warnings shut up
+	my ($sum, $count);
+	my $rhLast;
+	for (my $rhi = $rhFirst; 
+			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
+		&send("  ", $rhi->getRow()->printP(), "\n");
+		$rhLast = $rhi;
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	if ($count) {
+		$avg = $sum/$count;
+		$uTrades->call($lbAvgPriceHelper->makeRowop(&Triceps::OP_INSERT,
+			$rtAvgPrice->makeRowHash(
+				symbol => $rhLast->getRow()->get("symbol"),
+				id => $rhLast->getRow()->get("id"),
+				price => $avg
+			)
+		));
+	} else {
+		$uTrades->call($lbAvgPriceHelper->makeRowop(&Triceps::OP_DELETE,
+			$rtAvgPrice->makeRowHash(
+				symbol => $rLastMod->get("symbol"),
+			)
+		));
+	}
+}
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	my $op = shift @data; # string opcode, if incorrect then will die later
+	my $rTrade = $rtTrade->makeRowArray(@data) or die "$!";
+	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
+		or die "$!";
+	$uTrades->call($rowop) or die "$!";
+	&computeAverage2();
+	undef $rLastMod; # clear for the next iteration
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+}; # ManualAgg2
+
+#########################
+#  run the example
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_DELETE,3\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&doManualAgg2();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
+OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
+OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
+OP_DELETE,3
+Contents:
+  id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="30" 
+OP_DELETE,5
+Contents:
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30" 
 ');
