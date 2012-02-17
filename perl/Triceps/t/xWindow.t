@@ -302,7 +302,7 @@ Average price:
 
 sub doManualAgg1 {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+local $uTrades = Triceps::Unit->new("uTrades") or die "$!";
 my $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
@@ -441,7 +441,7 @@ Contents:
 
 sub doManualAgg2 {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+local $uTrades = Triceps::Unit->new("uTrades") or die "$!";
 my $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
