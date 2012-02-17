@@ -606,6 +606,7 @@ tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30"
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_INSERT,5,BBB,30,30\n",
+	"OP_INSERT,7,AAA,40,40\n",
 );
 $result = undef;
 &doManualAgg2();
@@ -631,4 +632,10 @@ OP_INSERT,5,BBB,30,30
 Contents:
   id="5" symbol="BBB" price="30" size="30" 
 tAvgPrice.out OP_INSERT symbol="BBB" id="5" price="30" 
+OP_INSERT,7,AAA,40,40
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="7" symbol="AAA" price="40" size="40" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="7" price="30" 
 ');
