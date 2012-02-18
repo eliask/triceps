@@ -363,7 +363,7 @@ sub computeAverage # (row)
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or die "$!";
 	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or die "$!";
 	&send("Contents:\n");
-	my $avg = ''; # ZZZ make the test warnings shut up
+	my $avg = 0;
 	my ($sum, $count);
 	my $rhLast;
 	for (my $rhi = $rhFirst; 
@@ -515,7 +515,7 @@ sub computeAverage2 # (row)
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or die "$!";
 	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or die "$!";
 	&send("Contents:\n");
-	my $avg = ''; # ZZZ make the test warnings shut up
+	my $avg = 0;
 	my ($sum, $count);
 	my $rhLast;
 	for (my $rhi = $rhFirst; 
@@ -527,19 +527,15 @@ sub computeAverage2 # (row)
 	}
 	if ($count) {
 		$avg = $sum/$count;
-		$uTrades->call($lbAvgPriceHelper->makeRowop(&Triceps::OP_INSERT,
-			$rtAvgPrice->makeRowHash(
-				symbol => $rhLast->getRow()->get("symbol"),
-				id => $rhLast->getRow()->get("id"),
-				price => $avg
-			)
-		));
+		$uTrades->makeHashCall($lbAvgPriceHelper, &Triceps::OP_INSERT,
+			symbol => $rhLast->getRow()->get("symbol"),
+			id => $rhLast->getRow()->get("id"),
+			price => $avg
+		);
 	} else {
-		$uTrades->call($lbAvgPriceHelper->makeRowop(&Triceps::OP_DELETE,
-			$rtAvgPrice->makeRowHash(
-				symbol => $rLastMod->get("symbol"),
-			)
-		));
+		$uTrades->makeHashCall($lbAvgPriceHelper, &Triceps::OP_DELETE,
+			symbol => $rLastMod->get("symbol"),
+		);
 	}
 }
 
