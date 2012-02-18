@@ -73,10 +73,12 @@ XSLoader::load('Triceps', $VERSION);
 # Preloaded methods go here.
 
 # Subpackages go here
+require Triceps::Unit;
 require Triceps::UnitTracerPerl;
 require Triceps::UnitTracerStringName;
 require Triceps::Row;
 require Triceps::Rowop;
+require Triceps::Label;
 require Triceps::Table;
 require Triceps::Opt;
 

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 50 };
+BEGIN { plan tests => 66 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -155,6 +155,48 @@ ok($rop2->printP(), "tab1.in OP_DELETE a=\"123\" b=\"456\" c=\"3000000000000000\
 $rop = $lb->makeRowop("OP_INSERT", $row3, "EM_CALL");
 ok(!defined $rop);
 ok($! . "", "Triceps::Label::makeRowop: row types do not match\n  Label:\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  Row:\n    row {\n      string e,\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n    }");
+
+####
+# convenience factories
+
+$rop = $lb->makeRowopHash("OP_INSERT", @dataset1);
+ok(ref $rop, "Triceps::Rowop");
+ok($rop->printP(), "tab1.in OP_INSERT a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
+
+$rop = $lb->makeRowopHash(&Triceps::OP_DELETE, @dataset1);
+ok(ref $rop, "Triceps::Rowop");
+ok($rop->printP(), "tab1.in OP_DELETE a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
+
+$rop = $lb->makeRowopArray("OP_INSERT", $row1->toArray());
+ok(ref $rop, "Triceps::Rowop");
+ok($rop->printP(), "tab1.in OP_INSERT a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
+
+$rop = $lb->makeRowopArray(&Triceps::OP_DELETE, $row1->toArray());
+ok(ref $rop, "Triceps::Rowop");
+ok($rop->printP(), "tab1.in OP_DELETE a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
+
+# errors
+$rop = $lb->makeRowopHash("OP_INSET", @dataset1);
+ok(!defined $rop);
+ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast");
+
+$rop = $lb->makeRowopArray("OP_INSET", $row1->toArray());
+ok(!defined $rop);
+ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast");
+
+undef $rop;
+eval {
+	$rop = $lb->makeRowopHash("OP_INSERT", "zzz" => 123);
+};
+ok(!defined $rop);
+ok($@ =~ /^Triceps::RowType::makeRowHash: attempting to set an unknown field 'zzz'/);
+
+undef $rop;
+eval {
+	$rop = $lb->makeRowopArray("OP_INSERT", [1, 2, 3]);
+};
+ok(!defined $rop);
+ok($@ =~ /^Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'a'/);
 
 ######################### copy and sameness #############################
 
