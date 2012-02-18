@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 124 };
+BEGIN { plan tests => 140 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -167,6 +167,7 @@ $history = "";
 	d => 3.14,
 	e => "text",
 );
+@datavalues1 = (123, 456, 789, 3.14, "text");
 $row1 = $rt1->makeRowHash(@dataset1);
 ok(ref $row1, "Triceps::Row");
 
@@ -282,6 +283,64 @@ ok($history,
 	. "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
 $v = $u1->empty();
 ok($v);
+
+#############################################################
+# scheduling combined with construction (except with frame marks,
+# those are in FrameMark.t)
+
+# schedule
+$v = $u1->empty();
+ok($v);
+
+$history = "";
+$v = $u1->makeHashSchedule($xlab1, "OP_INSERT", @dataset1);
+ok($v);
+#print STDERR $! . "\n";
+$v = $u1->empty();
+ok(!$v);
+$u1->callNext();
+ok($history, "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+$history = "";
+$v = $u1->makeArraySchedule($xlab1, "OP_DELETE", @datavalues1);
+ok($v);
+#print STDERR $! . "\n";
+$v = $u1->empty();
+ok(!$v);
+$u1->callNext();
+ok($history, "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+$v = $u1->empty();
+ok($v);
+
+# call
+$history = "";
+$v = $u1->makeHashCall($xlab1, "OP_INSERT", @dataset1);
+ok($v);
+ok($history, "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n");
+
+$history = "";
+$v = $u1->makeArrayCall($xlab1, "OP_DELETE", @datavalues1);
+ok($v);
+ok($history, "x xlab1 op=OP_DELETE row=[123, 456, 789, 3.14, text]\n");
+
+# schedule error handling, 
+# selective touch-testing: different errors for different calls
+eval {
+	$v = $u1->makeHashSchedule($xlab1, "OP_INSET", @dataset1);
+};
+ok($@ =~ /^Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast/);
+
+eval {
+	$v = $u1->makeHashCall($xlab1, "OP_INSERT", zzz => 1);
+};
+ok($@ =~ /^Triceps::RowType::makeRowHash: attempting to set an unknown field 'zzz'/);
+
+eval {
+	$v = $u1->makeArraySchedule(666, "OP_DELETE", @datavalues1);
+};
+ok($@ =~ /^Can't call method "makeRowopArray" without a package or object reference/);
 
 #############################################################
 # test scheduling for error catching
