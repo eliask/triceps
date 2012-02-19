@@ -1,0 +1,55 @@
+The proper aggregation, part 2
+
+And here is an example of the output from the last aggregation example (as usual, the input lines are in italics):
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+<i>OP_DELETE,5</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" </pre>
+
+As you can see, it's exactly the same as from the manual aggregation example with the helper table, minus the debugging printout of the group contents. However here it's done without the helper table: instead the aggregation function is called before and after each update.
+
+This presents a memory vs CPU compromise: a helper table uses more memory but requires less CPU for the aggregation computations (presumably, the insertion of the row into the table is less computationally intensive than the iteration through the original records).
+
+The managed aggregators can be made to work with a helper table too: just chain a helper table to the aggregator's label, and in the aggregator computation add
+
+<pre>return if ($opcode == &amp;Triceps::OP_DELETE
+&nbsp; &amp;&amp; $context-&gt;groupSize() != 1);
+</pre>
+
+This would skip all the DELETEs except for the last one, before the group collapses.
+
+There is also a way to optimize this logic right inside the aggregator: remember the last INSERT row sent, and on DELETE just resend the same row. This remembered last state can also be used for the other interesting optimizations that will be shown later.
+
+Which approach is better, depends on the particular case. If you need to store the results of aggregation in a table for the future look-ups anyway, then that table is no extra overhead.&nbsp; That's what the Aleri system does internally: since each element in its model keeps a primary-indexed table ("materialized view") of the result, that table is used whenever possible to generate the DELETEs without involving any logic. Or the extra optimization inside the aggregator can seriously improve the performance on the large groups. Sometimes you may want both. 
+
+Now let's look at the example that went wrong with the manual aggregation:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_INSERT,5,BBB,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="5" price="30" 
+<i>OP_INSERT,7,AAA,40,40</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="30"
+</pre>
+
+Here it goes right. Triceps recognizes that the second INSERT with id=5 moves the row to another group. So it performs the aggregation logic for both groups. First for the group where the row gets removed, it updates the aggregator result with a DELETE and INSERT (note that <b>id</b> became 3, since it's now the last row left in that group). Then the group where the row gets added, and since there was nothing in that group before, it generates only an INSERT.
+
