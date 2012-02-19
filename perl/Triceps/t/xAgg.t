@@ -95,15 +95,15 @@ sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow();
+	my $rLast = $context->last()->getRow() or die "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	);
-	$context->send($opcode, $res);
+	) or die "$!";
+	$context->send($opcode, $res) or die "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
