@@ -62,7 +62,7 @@ sub sendX # (@message)
 
 sub doNonAdditive {
 
-local $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -73,7 +73,7 @@ my $rtTrade = Triceps::RowType->new(
 ) or die "$!";
 
 # the aggregation result
-local $rtAvgPrice = Triceps::RowType->new(
+my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
@@ -125,7 +125,7 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or die "$!";
 
 # label to print the result of aggregation
-local $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
 	}) or die "$!";
