@@ -1,0 +1,144 @@
+More of the manual aggregation
+
+Returning to the last table example, it prints the aggregated information&nbsp; (the average price of two records). This can be fairly easily changed to put the information into the rows and send them on as labels. The function printAverage() morphs into computeAverage():
+
+<pre>my $rtAvgPrice = Triceps::RowType-&gt;new(
+&nbsp; symbol =&gt; "string", # symbol traded
+&nbsp; id =&gt; "int32", # last trade's id
+&nbsp; price =&gt; "float64", # avg price of the last 2 trades
+) or die "$!";
+
+# place to send the average: could be a dummy label, but to keep the
+# code smalled also print the rows here, instead of in a separate label
+my $lbAverage = $uTrades-&gt;makeLabel($rtAvgPrice, "lbAverage",
+&nbsp; undef, sub { # (label, rowop)
+&nbsp;&nbsp;&nbsp; print($_[1]-&gt;printP(), "\n");
+&nbsp; }) or die "$!";
+
+# Send the average price of the symbol in the last modified row
+sub computeAverage # (row)
+{
+&nbsp; return unless defined $rLastMod;
+&nbsp; my $rhFirst = $tWindow-&gt;findIdx($itSymbol, $rLastMod) or die "$!";
+&nbsp; my $rhEnd = $rhFirst-&gt;nextGroupIdx($itLast2) or die "$!";
+&nbsp; print("Contents:\n");
+&nbsp; my $avg;
+&nbsp; my ($sum, $count);
+&nbsp; my $rhLast;
+&nbsp; for (my $rhi = $rhFirst;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; !$rhi-&gt;same($rhEnd); $rhi = $rhi-&gt;nextIdx($itLast2)) {
+&nbsp;&nbsp;&nbsp; print("&nbsp; ", $rhi-&gt;getRow()-&gt;printP(), "\n");
+&nbsp;&nbsp;&nbsp; $rhLast = $rhi;
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; }
+&nbsp; if ($count) {
+&nbsp;&nbsp;&nbsp; $avg = $sum/$count;
+&nbsp;&nbsp;&nbsp; $uTrades-&gt;call($lbAverage-&gt;makeRowop(&amp;Triceps::OP_INSERT,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symbol =&gt; $rhLast-&gt;getRow()-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; id =&gt; $rhLast-&gt;getRow()-&gt;get("id"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; ));
+&nbsp; }
+}
+</pre>
+
+For the demonstration, the aggregated records sent to $lbAverage get printed. The records being aggregated are printed during the iteration too. And here is a sample run's result, with the input records shown in italics:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+lbAverage OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+lbAverage OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+Contents:
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+lbAverage OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+Contents:
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+lbAverage OP_INSERT symbol="AAA" id="5" price="30" 
+<i>OP_DELETE,5</i>
+Contents:
+</pre>
+
+There are a couple of things to notice about it: it produces only the INSERT rowops, no DELETEs, and when the last record of the group is removed, that event produces nothing.
+
+The first item is mildly problematic because the processing downstream from here might not be able to handle the updates properly without the DELETE rowops. It can be worked around fairly easily by connecting another table, with the same primary key as the aggregation key, to store the aggregation results. That table would automatically transform the repeated INSERTs on the same key to a DELETE-INSERT sequence.
+
+The second item is actually pretty bad because it means that the last record deleted gets stuck in the aggregation results. The Coral8 solution for this situation is to send a row with all non-key fields set to NULL, to reset them (interestingly, it's a relatively recent addition, that bug took Coral8 years to notice). But with the opcodes available, we can as well send a DELETE rowop with a similar contents, the helper table will fill in the rest of the fields, and produce a clean DELETE.
+
+All this can be done by the following changes. Add the table, remember its input label in $lbAvgPriceHelper. It will be used to send the aggregated rows instead of $tAvgPrice.
+
+<pre>my $ttAvgPrice = Triceps::TableType-&gt;new($rtAvgPrice)
+&nbsp; -&gt;addSubIndex("bySymbol",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp; )
+or die "$!";
+$ttAvgPrice-&gt;initialize() or die "$!";
+my $tAvgPrice = $uTrades-&gt;makeTable($ttAvgPrice,
+&nbsp; &amp;Triceps::EM_CALL, "tAvgPrice") or die "$!";
+my $lbAvgPriceHelper = $tAvgPrice-&gt;getInputLabel() or die "$!";
+</pre>
+
+Then still use $tAvgPrice to print the records coming out, but now connect it after the helper table:
+
+<pre>$tAvgPrice-&gt;getOutputLabel()-&gt;chain($lbAverage) or die "$!";
+</pre>
+
+And in computeAverage() change the destination label and add the case for when the group becomes empty:
+
+<pre>...
+&nbsp; if ($count) {
+&nbsp;&nbsp;&nbsp; $avg = $sum/$count;
+&nbsp;&nbsp;&nbsp; $uTrades-&gt;call($lbAvgPriceHelper-&gt;makeRowop(&amp;Triceps::OP_INSERT,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symbol =&gt; $rhLast-&gt;getRow()-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; id =&gt; $rhLast-&gt;getRow()-&gt;get("id"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; ));
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; $uTrades-&gt;call($lbAvgPriceHelper-&gt;makeRowop(&amp;Triceps::OP_DELETE,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symbol =&gt; $rLastMod-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; ));
+&nbsp; }
+...
+</pre>
+
+Then the output of the same example becomes:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+Contents:
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+Contents:
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="30" 
+<i>OP_DELETE,5</i>
+Contents:
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30" </pre>
+
+All fixed, the proper DELETEs are coming out.

@@ -1,0 +1,16 @@
+iterating more like an iterator 
+
+I've started writing about why the call to move the iterator to the next row has to be done as $table-&gt;next($rh) and not just $rh-&gt;next(). A look in the code has shown that there really aren't any.
+
+Or, more exactly, the reasons are purely historical: The method was written as a direct mirror of the one in C++, and in C++ the RowHandle does not have enough information for that. But in the Perl API the row handle object carries extra information for the type safety: the reference to a table that can be handily reused for the other purposes.
+
+This situation has had upset me much, and I've set at once to rectify it. So, now you can call directly:
+
+<pre>$rh = $rh-&gt;next();
+</pre>
+
+Obviously, it's not in the 0.99 package, but it will be in 1.0.
+
+And while I'm at it, let me also explain why the C++ interface is different. Remember that every row in the table has a row handle. This makes the large tables sensitive to the size of row handles. If a table as a million rows, every extra byte in the row handle means extra megabyte of memory used. Finding the next row for iteration does require a pointer to the table, and that would be extra 8 bytes per each handle. I kind of try to resist the temptations of premature optimization, except where it's absolutely straightforward, and this is one of the straightforward cases.
+
+However in the Perl APIs the objects are not direct references to the C++ objects. They are wrappers that carry the extra information for the safe type-checking (on the other hand, the C++ API is unsafe and assumes that the caller knows what he is doing). Memory-wise this is not much overhead, since normally not many objects are referred from Perl at the same time. And once a row handle is placed into the table, it does not bring its Perl wrapper there with it.

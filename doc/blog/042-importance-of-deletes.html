@@ -1,0 +1,37 @@
+The importance of DELETEs 
+
+Why did the last example worry so much about the DELETEs? Because without them, relying on just INSERTs for updates, it's easy to create bugs. The last example itself has an issue with handling the row replacement by INSERTs. Can you spot it from reading the code?
+
+Here is run example that highlights the issue (as usual, the input lines are in italics):
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+Contents:
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_INSERT,5,BBB,30,30</i>
+Contents:
+&nbsp; id="5" symbol="BBB" price="30" size="30" 
+tAvgPrice.out OP_INSERT symbol="BBB" id="5" price="30"
+<i>OP_INSERT,7,AAA,40,40</i>
+Contents:
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+&nbsp; id="7" symbol="AAA" price="40" size="40" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="7" price="30" 
+</pre>
+
+The row with id=5 has been replaced to change the symbol from AAA to BBB. This act changes both the groups of AAA and of BBB, removing the row from the first one and inserting it into the second one. Yet only the output for BBB came out. The printout of the next row with id=7 and symbol=AAA shows that the row with id=5 has been indeed removed from the group AAA. It even corrects the result. But until that row came in, the average for the symbol AAA remained unchanged and incorrect.
+
+There are multiple ways to fix this issue but first it had to be noticed. Which requires a lot of attention to detail. It's much better to avoid these bugs in the first place by sending the clean and nice input.

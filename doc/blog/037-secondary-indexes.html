@@ -1,0 +1,140 @@
+Secondary indexes 
+
+The last example dealt only with the row inserts, because it could not handle the deletions that well. What if the trades may get cancelled and have to be removed from the table? There is a solution to this problem: add one more index. Only this time not nested but in parallel. The indexes in the table type become tree-formed:
+
+<pre>TableType
++-IndexType Hash "byId" (id)
++-IndexType Hash "bySymbol" (symbol)
+&nbsp; +-IndexType Fifo "last2"
+</pre>
+
+It's very much like the common relational databases where you can define multiple indexes on the same table. Both indexes <b>byId</b> and <b>bySymbol</b> (together with its nested sub-index) refer to the same set of rows stored in the table. Only <b>byId</b> allows to easily find the records by the unique id, while<b> bySymbol</b> is responsible for keeping then grouped by the symbol, in FIFO order. It could be said that <b>byId</b> is the primary index (since it has a unique key) and <b>bySymbol</b> is a secondary one (since it does the grouping) but from the Triceps'es standpoint they are pretty much equal and parallel to each other.
+
+To illustrate the point, here is a modified version of the previous example. 
+
+<pre>my $uTrades = Triceps::Unit-&gt;new("uTrades") or die "$!";
+my $rtTrade = Triceps::RowType-&gt;new(
+&nbsp; id =&gt; "int32", # trade unique id
+&nbsp; symbol =&gt; "string", # symbol traded
+&nbsp; price =&gt; "float64",
+&nbsp; size =&gt; "float64", # number of shares traded
+) or die "$!";
+
+my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("bySymbol",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("last2",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 2)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+or die "$!";
+$ttWindow-&gt;initialize() or die "$!";
+my $tWindow = $uTrades-&gt;makeTable($ttWindow,
+&nbsp; &amp;Triceps::EM_CALL, "tWindow") or die "$!";
+
+# remember the index type by symbol, for searching on it
+my $itSymbol = $ttWindow-&gt;findSubIndex("bySymbol") or die "$!";
+# remember the FIFO index, for finding the start of the group
+my $itLast2 = $itSymbol-&gt;findSubIndex("last2") or die "$!";
+
+# remember, which was the last row modified
+my $rLastMod;
+my $lbRememberLastMod = $uTrades-&gt;makeLabel($rtTrade, "lbRememberLastMod",
+&nbsp; undef, sub { # (label, rowop)
+&nbsp;&nbsp;&nbsp; $rLastMod = $_[1]-&gt;getRow();
+&nbsp; }) or die "$!";
+$tWindow-&gt;getOutputLabel()-&gt;chain($lbRememberLastMod) or die "$!";
+
+# Print the average price of the symbol in the last modified row
+sub printAverage # (row)
+{
+&nbsp; return unless defined $rLastMod;
+&nbsp; my $rhFirst = $tWindow-&gt;findIdx($itSymbol, $rLastMod) or die "$!";
+&nbsp; my $rhEnd = $rhFirst-&gt;nextGroupIdx($itLast2) or die "$!";
+&nbsp; print("Contents:\n");
+&nbsp; my $avg;
+&nbsp; my ($sum, $count);
+&nbsp; for (my $rhi = $rhFirst;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; !$rhi-&gt;same($rhEnd); $rhi = $rhi-&gt;nextIdx($itLast2)) {
+&nbsp;&nbsp;&nbsp; print("&nbsp; ", $rhi-&gt;getRow()-&gt;printP(), "\n");
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; }
+&nbsp; if ($count) {
+&nbsp;&nbsp;&nbsp; $avg = $sum/$count;
+&nbsp; }
+&nbsp; print("Average price: $avg\n");
+}
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/);
+&nbsp; my $op = shift @data; # string opcode, if incorrect then will die later
+&nbsp; my $rTrade = $rtTrade-&gt;makeRowArray(@data) or die "$!";
+&nbsp; my $rowop = $tWindow-&gt;getInputLabel()-&gt;makeRowop($op, $rTrade)
+&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; $uTrades-&gt;call($rowop) or die "$!";
+&nbsp; &amp;printAverage();
+&nbsp; undef $rLastMod; # clear for the next iteration
+&nbsp; $uTrades-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+
+And an example of its work, with the input lines shown in italics:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+Average price: 10
+<i>OP_INSERT,2,BBB,100,100</i>
+Contents:
+&nbsp; id="2" symbol="BBB" price="100" size="100" 
+Average price: 100
+<i>OP_INSERT,3,AAA,20,20</i>
+Contents:
+&nbsp; id="1" symbol="AAA" price="10" size="10" 
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+Average price: 15
+<i>OP_INSERT,4,BBB,200,200</i>
+Contents:
+&nbsp; id="2" symbol="BBB" price="100" size="100" 
+&nbsp; id="4" symbol="BBB" price="200" size="200" 
+Average price: 150
+<i>OP_INSERT,5,AAA,30,30</i>
+Contents:
+&nbsp; id="3" symbol="AAA" price="20" size="20" 
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+Average price: 25
+<i>OP_INSERT,6,BBB,300,300</i>
+Contents:
+&nbsp; id="4" symbol="BBB" price="200" size="200" 
+&nbsp; id="6" symbol="BBB" price="300" size="300" 
+Average price: 250
+<i>OP_DELETE,3</i>
+Contents:
+&nbsp; id="5" symbol="AAA" price="30" size="30" 
+Average price: 30
+<i>OP_DELETE,5</i>
+Contents:
+Average price: </pre>
+
+The input has changed: now an extra column is prepended to it, containing the opcode for the row. The updates to the table are not printed any more, but the calculated average price is printed after the new contents of the group.
+
+In the code, the first obvious addition is the extra index in the table type. The label that used to print the updates is gone, and replaced with another one, that remembers the last modified row in a global variable.
+
+That last modified row is then used in the function printAverage(). Why? As you can see in the last two input rows with OP_DELETE, the trade id is the only field required to find and delete a row using the index byId. However to print the group contents by symbol, we need to know the symbol. If we try to find the symbol by looking up the row after the deletion, we will find nothing, because the row will already be deleted. We could look up the row in the table before the deletion, and remember it,&nbsp; and afterwards do the look-up of the group by it. But since on deletion the row with&nbsp; will come to the table's output label anyway, we can just remember it instead of doing the first manual look-up.
+
+Note that in this example, unlike the previous one, there are no two ways of finding the group any more: after deletion the row handle will not be in the table any more, and could not be used to jump directly to the beginning of its group.
+
+In printAverage() it could happen that all the rows of that symbols will be gone, and the group will disappear. This situation is handled nicely: findIdx() will return a NULL row handle, with which then nextGroupIdx() will also return a NULL row handle. The for-loop will make no iterations, the $count will be 0 (or, well, undefined), the $avg will be left undefined as well. In result no rows and no average value are printed, as you can see in the reaction to the last input row in the sample ouput.
+
+The main loop then gets reduced to reading the input, splitting the line, separating the opcode, calling the table's input label, and printing the average. The auto-conversion from the opcode name is used when constructing the rowop. Normally it's not a good practice, since the program will die if it finds a bad rowop in the input, but good enough for a small example. Directly using $uTrades-&gt;call() instead of schedule() is also a little unorthodox but perfectly fine. In this particular case either way doesn't matter. However with call() the whole code can be transplanted into a label's handler function as is, with average being calculated immediately after the table changes.
+
+After the average is calculated, $rLastMod is reset to prevent it from accidentally affecting the next row, if the next row is an attempt to delete a trade id that is not in the table any more.
+
+The final $uTrades-&gt;drainFrame() is there purely for completeness. In this case we know that nothing will be scheduled by the labels downstream from the table, and there will be nothing to drain.
+
+Now, an interesting question is: how does the table know, that to delete a row, it has to find it using the field <b>id</b>? Or, since the deletion internally uses find(), the more precise question is: how does find() know that it has to use the index <b>byId</b>? It doesn't use any magic. It simply goes by the first index defined in the table. That's why the index <b>byId</b> has been very carefully placed before <b>bySymbol</b>. The same principle applies to all the other functions like next(), that use an index but don't receive one as an argument: the first index is always the default index.

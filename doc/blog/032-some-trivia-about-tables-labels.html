@@ -1,0 +1,7 @@
+Some trivia about table's labels
+
+I'm not sure whether I've made it clear before, but I want to drive one point home: the table's output label propagates all the changes done to the table. How the changes were made, through a rowop on the input label, or through the procedural calls, doesn't matter. All of them will always come to the output label.
+
+Incidentally, the table's labels do have the symbolic names. They are produced from the table name by adding a dot and "in" or "out". The table named "table" will have the labels "table.in" and "table.out".
+
+That's pretty much the Triceps convention: use the dotted notation to name the objects that belong to the internals of the other objects.

@@ -1,0 +1,25 @@
+Iteration through a table
+
+Let's add a dump of the table contents to the "Hello, table" example, either one of them. For that, the code needs to go through every record in the table:
+
+<pre>&nbsp;&nbsp;&nbsp; elsif ($data[0] =~ /^dump$/i) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; for (my $rhi = $tCount-&gt;begin();
+          !$rhi-&gt;isNull(); $rhi = $tCount-&gt;next($rhi)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print($rhi-&gt;getRow-&gt;printP(), "\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp; }
+</pre>
+
+This code would work in either version of the example, updated either procedurally or through the input label. Here is an example of its output:
+
+<pre>address="world" count="1"
+address="table" count="2"
+</pre>
+
+As you can see, the row handle works kind of like an STL iterator.&nbsp; Well, not <i>quite</i> like an STL iterator: you can't just increase it, you have to ask the table to give you the next one.
+
+The order of the rows in the printout is the same as the order of rows in the table's index. Which is no particular order, since it's a hashed index. As long as you stay with the same 64-bit AMD64 architecture (with LSB-first byte order), it will stay the same on different runs. But switching to a 32-bit machine or to an MSB-first byte order (such as a SPARC, if you can still find one) will change the hash calculation, and with it the resulting row order.
+
+At the moment Triceps doesn't have an index that would keep the rows in a defined sorting order. It's not by design, it's just a result of the corner-cutting. A sorted index will be added in the future.
+
+The some goes for the iteration order: right now the iteration can only be done in the forward order. The backward iteration is in the plans but not implemented yet.

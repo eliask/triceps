@@ -1,0 +1,36 @@
+Rowop creation wrappers 
+
+When writing the examples, I've got kind of tired of making all these 3-level-nested method calls to pass a set of data to a label. So now I've added a bunch of convenience wrappers for that purpose. The row-sending part from the manual example in computeAverage() now looks much simpler:
+
+<pre>&nbsp; if ($count) {
+&nbsp;&nbsp;&nbsp; $avg = $sum/$count;
+&nbsp;&nbsp;&nbsp; $uTrades-&gt;makeHashCall($lbAvgPriceHelper, &amp;Triceps::OP_INSERT,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symbol =&gt; $rhLast-&gt;getRow()-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; id =&gt; $rhLast-&gt;getRow()-&gt;get("id"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp;&nbsp;&nbsp; );
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; $uTrades-&gt;makeHashCall($lbAvgPriceHelper, &amp;Triceps::OP_DELETE,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symbol =&gt; $rLastMod-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp; );
+&nbsp; }
+</pre>
+
+The full list of the methods added is:
+
+<pre>$label-&gt;makeRowopHash($opcode, $fieldName =&gt; $fieldValue, ...)
+$label-&gt;makeRowopArray($opcode, $fieldValue, ...)
+
+$unit-&gt;makeHashCall($label, $opcode, $fieldName =&gt; $fieldValue, ...)
+$unit-&gt;makeArrayCall($label, $opcode, $fieldValue, ...)
+
+$unit-&gt;makeHashSchedule($label, $opcode, $fieldName =&gt; $fieldValue, ...)
+$unit-&gt;makeArraySchedule($label, $opcode, $fieldValue, ...)
+
+$unit-&gt;makeHashLoopAt($mark, $label, $opcode, $fieldName =&gt; $fieldValue, ...)
+$unit-&gt;makeArrayLoopAt($mark, $label, $opcode, $fieldValue, ...)
+</pre>
+
+The label methods amount to calling&nbsp; makeRowHash() or makeRowArray() on their row type, and then wrapping the result into makeRowop(). The unit methods call the new label methods to create the rowop and then call, schedule of loop it. There aren't similar wrappers for forking or general enqueueing because those methods are not envisioned to be used often.
+
+In the future the convenience methods will move into the C++ code and will become not only more convenient but also more efficient.

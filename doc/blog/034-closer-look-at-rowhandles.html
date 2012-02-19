@@ -1,0 +1,48 @@
+A closer look at RowHandles
+
+A few uses of the RowHandles have been shown by now. So, what is a RowHandle? As Captain Obvious would say, RowHandle is a class (or package, in Perl terms) implementing a row handle.
+
+A RowHandle keeps a table's service information (including the index data) for a single data row, including of course a reference to the row itself. Each row is stored in the table through its handle. A RowHandle always belongs to a particular table, the RowHandles can not be shared nor moved between two tables, even if the tables are of the same type. Obviously, since the tables are single-threaded, the RowHandles may not be shared between the threads either.
+
+However a RowHandle may exist without being inserted into a table. In this case it still belongs to that table but is not included in the index, and will be destroyed as soon as all the references to it disappear.
+
+The insertion of a row into a table actually happens in two steps:
+<ul>
+<li>A RowHandle is created for a row.</li>
+<li>This new handle is inserted into the table.</li>
+</ul>
+
+This is done with the following code:
+
+<pre>$rh = $table-&gt;makeRowHandle($row) or die "$!";
+$result = $table-&gt;insert($rh);
+die "$!" unless defined $result;
+</pre>
+
+Only it just so happens that to make life easier, the method $table-&gt;insert() has been made to accept either a row handle or directly a row. If it finds a row, it makes a handle for it behind the curtains and then proceeds with the insertion of that handle. Passing a row directly is also more efficient because the row handle creation then happens entirely in the C++ code, without surfacing into Perl.
+
+A handle can be created for any row of an equal type.
+
+The insert() method has three possibilities of the return code: <b>undef</b> means that some major logical error has occurred (such as an attempt to insert a row of a wrong type), 1 means that the row has been inserted successfully, and 0 means that the row has been rejected. An attempt to insert a NULL handle or a handle that is already in the table will cause a rejection. Also the table's index may reject a row with duplicate key (though right now this option is not implemented, and the hash index silently replaces the old row with the new one).
+
+There is a method to find out if a row handle is in the table or not:
+
+<pre>$result = $rh-&gt;isInTable();
+</pre>
+
+Though it's used mostly for debugging, when some strange things start going on.
+
+The method find() is similar to insert(): the "proper" way is to give it a row handle, but the more efficient way is to give it a row, and it will create the handle for it as needed before performing a search.
+
+Now you might wonder: huh, find() takes a row handle and returns a row handle? What's the point? Why not just use the first row handle? Well, those are different handles:
+<ul>
+<li>The argument handle is normally not in the table. It's created brand new from a row that contains the keys that you want to find, just for the purpose of searching.</li>
+<li>The returned handle is always in the table (of course, unless it's NULL). It can be further used to extract back the row data, and/or for iteration.</li>
+</ul>
+Though nothing really prevents you from searching for a handle that is already in the table. You'll just get back the same handle, after gratuitously spending some CPU time. (There are exceptions to this, with the more complex indexes that will be described later).
+
+Why do you need to create new a row handle just for the search? Due to the internal mechanics of the implementation. A handle stores the helper information for the index. For example, the hash index calculates the hash value of all&nbsp; the row's key fields once and stores it in the row handle. Despite it being called a hash index, it really stores the data in a tree, with the hash value used to speed up the comparisons for the tree order. It's much easier to make both the insert() and find() work with the hash value and record reference stored in the same way than to implement them differently. Because of this, find() uses an exactly same row handle argument format as insert().
+
+Can you create multiple row handles referring to the same row? Sure, knock yourself out. From the table's perspective it's the same thing as multiple row handles to multiple copied of the row with the same values in them, only using less memory.
+
+There is more to the row handles than has been touched upon yet. It will all be revealed when more of the table features are described.

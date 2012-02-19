@@ -1,0 +1,10 @@
+Deaths and confessions
+
+Following up on an earlier note, let's look at the Carp package. It's a standard part of modern Perl, so all you need to do is just say
+
+<pre>use Carp;
+</pre>
+
+It provides the smarter ways to report the fatal errors found in the libraries. The problem with the simple die() is that it reports an error but prints only the location where it has been called, which may be ten layers deep inside a library,&nbsp; not a full stack trace. The functions in Carp fix that. The most interesting one is confess(). It works just like die() but prints the whole stack trace.
+
+The full description of Carp is available at <a href="http://perldoc.perl.org/Carp.html">http://perldoc.perl.org/Carp.html</a>.It has more functions: for warnings, and to report only the location of the call from the user code to the library.&nbsp; However I find a full stack trace more helpful in any case.

@@ -1,0 +1,48 @@
+Deleting a row
+
+Deleting a row from a table through the input label is simple: send a rowop with OP_DELETE, it will find the row and delete it. That's not even interesting for an example: same code as for the insert, different opcode. In the procedural way the same can be done with the method deleteRow(). The added code for "Hello, table" is:
+
+<pre>&nbsp;&nbsp;&nbsp; elsif ($data[0] =~ /^delete$/i) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $res = $tCount-&gt;deleteRow($rtCount-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; address =&gt; $data[1],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; die "$!" unless defined $res;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print("Address '", $data[1], "' is not found\n") unless $res;
+&nbsp;&nbsp;&nbsp; }
+</pre>
+
+The result allows to differentiate between 3 cases: row found and deleted (1), row not found (0), a grossly misformatted call (undef). If the absence of the row doesn't matter, it could be written in an one-liner form:
+
+<pre>die "$!" unless defined $tCount-&gt;deleteRow(...);
+</pre>
+
+However we already find the row handle in advance. For this case a more efficient form is available:
+
+<pre>&nbsp;&nbsp;&nbsp; elsif ($data[0] =~ /^remove$/i) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!$rhFound-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $tCount-&gt;remove($rhFound) or die "$!";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print("Address '", $data[1], "' is not found\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+</pre>
+
+It removes a specific row handle from the table. In whichever way you find it, you can remove it. Removing a NULL handle would be an error.
+
+After a handle is removed from the table, it continues to exist, as long as there are references to it. It could even be inserted back into the table. However until (and unless) it's inserted back, it can not be used for iteration any more. Calling $table-&gt;next() on a handle that is not in the table would just return a NULL handle.
+
+So, as an example, here is the implementation of the command "clear" for "Hello, table" that clears all the table contents:
+
+<pre>&nbsp;&nbsp;&nbsp; elsif ($data[0] =~ /^clear$/i) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $rhi = $tCount-&gt;begin(); 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; while (!$rhi-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $rhnext = $tCount-&gt;next($rhi);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $tCount-&gt;remove($rhi) or die("$!");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $rhnext;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp; }
+</pre>
+
+Note that it first remembers the next row for iteration and only then removes the current row.
+
+There isn't any method to delete multiple rows at once. Every row has to be deleted by itself. Though of course nothing prevents anyone from writing a function&nbsp; that would delete multiple or all rows. Such library functions will grow over time.
