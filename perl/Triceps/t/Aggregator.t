@@ -100,8 +100,8 @@ sub aggHandler1 # (table, context, aggop, opcode, rh, state, args...)
 	}
 
 	my @vals = ( b => $context->groupSize(), c => $sum, v => $lastd );
-	my $res = $context->resultType()->makeRowHash(@vals);
-	$context->send($opcode, $res);
+	$context->makeHashSend($opcode, @vals);
+	#my $res = $context->resultType()->makeRowHash(@vals);
 	#print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
 
 	undef $context; # if the references are wrong, this would delete the context object and cause a valgrind error later
@@ -243,7 +243,8 @@ sub aggHandler2 # (table, context, aggop, opcode, rh, state, args...)
 	# would be to send nothing at all when $context->groupSize()==0
 
 	my $res = $context->resultType()->makeRowHash(%$state);
-	$context->send($opcode, $res);
+	# this is weird, but provides a way to test makeArraySend()
+	$context->makeArraySend($opcode, $res->toArray());
 	#print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
 
 	$outside_context = $context; # try to access context later
