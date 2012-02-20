@@ -130,6 +130,11 @@ newPerlSorted(char *CLASS, char *sortName, SV *initialize, SV *compare, ...)
 				XSRETURN_UNDEF; // error message is already set
 		}
 
+		if (cbInit.isNull() && cbCompare.isNull()) {
+			setErrMsg(strprintf("%s: at least one of init and comparator function arguments must be not undef", funcName));
+			XSRETURN_UNDEF;
+		}
+
 		RETVAL = new WrapIndexType(new SortedIndexType(new PerlSortCondition(sortName, cbInit, cbCompare)));
 	OUTPUT:
 		RETVAL
@@ -394,4 +399,42 @@ getKey(WrapIndexType *self)
 			}
 		}
 
-# XXX isJumping, isReverse etc.
+# For a PerlSortedIndex: set the comparator function
+# @param compare - function to call to compare the row keys
+# @param ... - arguments for the comparator
+# @returns - 1 on success or undef on error
+int
+setComparator(WrapIndexType *self, SV *compare, ...)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::setComparator";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+
+		PerlSortCondition *psc = NULL;
+		SortedIndexType *sit = dynamic_cast<SortedIndexType *>(ixt);
+		if (sit != NULL) {
+			psc = dynamic_cast<PerlSortCondition *>(sit->getCondition());
+		}
+		if (psc == NULL) {
+			setErrMsg(strprintf("%s: this index type is not a PerlSortedIndex", funcName));
+			XSRETURN_UNDEF;
+		}
+		
+		Onceref<PerlCallback> cbCompare; // defaults to NULL
+		if (SvOK(compare)) {
+			cbCompare = new PerlCallback();
+			PerlCallbackInitializeSplit(cbCompare, funcName, compare, 2, items-2);
+			if (cbCompare->code_ == NULL)
+				XSRETURN_UNDEF; // error message is already set
+		}
+
+		if (!psc->setComparator(cbCompare)) {
+			setErrMsg(strprintf("%s: this index type is already initialized and can not be changed", funcName));
+			XSRETURN_UNDEF;
+		}
+		RETVAL = 1; // success
+	OUTPUT:
+		RETVAL
+
+# XXX isJumping, isReverse etc., or maybe better do it as getOptions()
