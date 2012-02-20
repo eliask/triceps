@@ -82,7 +82,7 @@ $r1 = $rt1->makeRowHash(
 ok(ref $r1, "Triceps::Row");
 
 # try giving a non-numeric and non-convertible value to a numeric field
-print STDERR "Ignore the following message about non-numeric, if any\n";
+print STDERR "\nIgnore the following message about non-numeric, if any\n";
 $r1 = $rt1->makeRowHash(
 	a => "uint8",
 	b => "z123",

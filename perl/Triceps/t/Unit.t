@@ -351,7 +351,7 @@ ok(ref $elab1, "Triceps::Label");
 $erop = $elab1->makeRowop("OP_INSERT", $row1);
 ok(ref $erop, "Triceps::Rowop");
 
-print STDERR "Expect error message from unit u1 label elab1 handler\n";
+print STDERR "\nExpect error message from unit u1 label elab1 handler\n";
 $v = $u1->schedule($erop);
 $u1->drainFrame();
 ok($v);

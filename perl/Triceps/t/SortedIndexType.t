@@ -209,19 +209,19 @@ ok($res, "index PerlSortedIndex(basic)");
 	$comp = sub {
 		die "test a death in PerlSortedIndex comparator\n";
 	};
-	print STDERR "Expect message(s) like: Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator\n";
+	print STDERR "\nExpect message(s) like: Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator\n";
 	ok($res = $t1->insert($r11));
 
 	# a string return value in comparator
 	$comp = sub {
 		return "zzz";
 	};
-	print STDERR "Expect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
+	print STDERR "\nExpect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
 	ok($res = $t1->insert($r11));
 
 	# no return value in comparator - same error message as before
 	$comp = undef;
-	print STDERR "Expect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
+	print STDERR "\nExpect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
 	ok($res = $t1->insert($r11));
 
 };
