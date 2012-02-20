@@ -14,6 +14,7 @@
 #include "TricepsPerl.h"
 #include "PerlCallback.h"
 #include "PerlAggregator.h"
+#include "PerlSortCondition.h"
 
 MODULE = Triceps::IndexType		PACKAGE = Triceps::IndexType
 ###################################################################################
@@ -97,6 +98,38 @@ newFifo(char *CLASS, ...)
 		}
 
 		RETVAL = new WrapIndexType(new FifoIndexType(limit, jumping, reverse));
+	OUTPUT:
+		RETVAL
+
+# create a PerlSortedIndex
+# that uses a Perl comparison function
+# @param CLASS - name of type being constructed
+# @param initialize - function reference used to perform the index type initialization
+# @param compare - function reference used to compare the keys for the sorting order
+# @param ... - extra args used for both initialize and compare functions
+WrapIndexType *
+newPerlSorted(char *CLASS, SV *initialize, SV *compare, ...)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::newPerlSorted";
+		clearErrMsg();
+
+		Onceref<PerlCallback> cbInit; // defaults to NULL
+		if (SvOK(initialize)) {
+			cbInit = new PerlCallback();
+			PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 3, items-3);
+			if (cbInit->code_ == NULL)
+				XSRETURN_UNDEF; // error message is already set
+		}
+
+		Onceref<PerlCallback> cbCompare; // defaults to NULL
+		if (SvOK(compare)) {
+			cbCompare = new PerlCallback();
+			PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 3, items-3);
+			if (cbCompare->code_ == NULL)
+				XSRETURN_UNDEF; // error message is already set
+		}
+
+		RETVAL = new WrapIndexType(new SortedIndexType(new PerlSortCondition(cbInit, cbCompare)));
 	OUTPUT:
 		RETVAL
 

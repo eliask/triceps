@@ -87,12 +87,12 @@ bool PerlSortCondition::operator() (const RowHandle *r1, const RowHandle *r2) co
 	SV *svr2 = newSV(0);
 	sv_setref_pv(svr2, "Triceps::Row", (void *)wr2);
 
-	PerlCallbackStartCall(cbInitialize_);
+	PerlCallbackStartCall(cbCompare_);
 	XPUSHs(svr1);
 	XPUSHs(svr2);
 
 	SV *svrcode = NULL;
-	PerlCallbackDoCallScalar(cbInitialize_, svrcode);
+	PerlCallbackDoCallScalar(cbCompare_, svrcode);
 
 	SvREFCNT_dec(svr1);
 	SvREFCNT_dec(svr2);
@@ -136,37 +136,36 @@ void PerlSortCondition::initialize(Erref &errors, TableType *tabtype, SortedInde
 	svRowType_ = newSV(0);
 	sv_setref_pv(svRowType_, "Triceps::RowType", (void *)wrowt);
 
-	if (cbInitialize_.isNull())
-		return; // nothing to do
+	if (!cbInitialize_.isNull()) {
+		WrapTableType *wtabt = new WrapTableType(tabtype);
+		SV *svtabt = newSV(0);
+		sv_setref_pv(svtabt, "Triceps::TableType", (void *)wtabt);
 
-	WrapTableType *wtabt = new WrapTableType(tabtype);
-	SV *svtabt = newSV(0);
-	sv_setref_pv(svtabt, "Triceps::TableType", (void *)wtabt);
+		WrapIndexType *widxt = new WrapIndexType(indtype);
+		SV *svidxt = newSV(0);
+		sv_setref_pv(svidxt, "Triceps::IndexType", (void *)widxt);
 
-	WrapIndexType *widxt = new WrapIndexType(indtype);
-	SV *svidxt = newSV(0);
-	sv_setref_pv(svidxt, "Triceps::IndexType", (void *)widxt);
+		PerlCallbackStartCall(cbInitialize_);
+		XPUSHs(svtabt);
+		XPUSHs(svidxt);
+		XPUSHs(svRowType_);
 
-	PerlCallbackStartCall(cbInitialize_);
-	XPUSHs(svtabt);
-	XPUSHs(svidxt);
-	XPUSHs(svRowType_);
+		SV *sverrmsg = NULL;
+		PerlCallbackDoCallScalar(cbInitialize_, sverrmsg);
 
-	SV *sverrmsg = NULL;
-	PerlCallbackDoCallScalar(cbInitialize_, sverrmsg);
+		// this calls the DELETE methods on wrappers
+		SvREFCNT_dec(svtabt);
+		SvREFCNT_dec(svidxt);
 
-	// this calls the DELETE methods on wrappers
-	SvREFCNT_dec(svtabt);
-	SvREFCNT_dec(svidxt);
+		if (sverrmsg != NULL && SvTRUE(sverrmsg)) {
+			errors->appendMultiline(true, SvPV_nolen(sverrmsg));
+			return;
+		}
 
-	if (sverrmsg != NULL && SvTRUE(sverrmsg)) {
-		errors->appendMultiline(true, SvPV_nolen(sverrmsg));
-		return;
-	}
-
-	if (SvTRUE(ERRSV)) {
-		errors->appendMultiline(true, SvPV_nolen(ERRSV));
-		return;
+		if (SvTRUE(ERRSV)) {
+			errors->appendMultiline(true, SvPV_nolen(ERRSV));
+			return;
+		}
 	}
 
 	// the comparator must be set by now, or it's an error
