@@ -104,11 +104,12 @@ newFifo(char *CLASS, ...)
 # create a PerlSortedIndex
 # that uses a Perl comparison function
 # @param CLASS - name of type being constructed
+# @param sortName - name of the sorto condition (for messages about comparator fatal errors)
 # @param initialize - function reference used to perform the index type initialization
 # @param compare - function reference used to compare the keys for the sorting order
 # @param ... - extra args used for both initialize and compare functions
 WrapIndexType *
-newPerlSorted(char *CLASS, SV *initialize, SV *compare, ...)
+newPerlSorted(char *CLASS, char *sortName, SV *initialize, SV *compare, ...)
 	CODE:
 		static char funcName[] =  "Triceps::IndexType::newPerlSorted";
 		clearErrMsg();
@@ -116,7 +117,7 @@ newPerlSorted(char *CLASS, SV *initialize, SV *compare, ...)
 		Onceref<PerlCallback> cbInit; // defaults to NULL
 		if (SvOK(initialize)) {
 			cbInit = new PerlCallback();
-			PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 3, items-3);
+			PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 4, items-4);
 			if (cbInit->code_ == NULL)
 				XSRETURN_UNDEF; // error message is already set
 		}
@@ -124,12 +125,12 @@ newPerlSorted(char *CLASS, SV *initialize, SV *compare, ...)
 		Onceref<PerlCallback> cbCompare; // defaults to NULL
 		if (SvOK(compare)) {
 			cbCompare = new PerlCallback();
-			PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 3, items-3);
+			PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 4, items-4);
 			if (cbCompare->code_ == NULL)
 				XSRETURN_UNDEF; // error message is already set
 		}
 
-		RETVAL = new WrapIndexType(new SortedIndexType(new PerlSortCondition(cbInit, cbCompare)));
+		RETVAL = new WrapIndexType(new SortedIndexType(new PerlSortCondition(sortName, cbInit, cbCompare)));
 	OUTPUT:
 		RETVAL
 

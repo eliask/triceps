@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 40 };
+BEGIN { plan tests => 48 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -45,7 +45,7 @@ ok(ref $rt1, "Triceps::RowType");
 #########################
 # with no initializer, only comparator
 
-$it1 = Triceps::IndexType->newPerlSorted(undef, sub {
+$it1 = Triceps::IndexType->newPerlSorted("basic", undef, sub {
 	#print STDERR "comparing\n";
 	#print STDERR "      ", $_[0]->printP(), "\n";
 	#print STDERR "      ", $_[1]->printP(), "\n";
@@ -56,7 +56,7 @@ $it1 = Triceps::IndexType->newPerlSorted(undef, sub {
 });
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
-ok($res, "index PerlSortedIndex()");
+ok($res, "index PerlSortedIndex(basic)");
 
 {
 	$tt1 = Triceps::TableType->new($rt1)
@@ -174,3 +174,54 @@ ok($res, "index PerlSortedIndex()");
 	ok($iter->isNull());
 };
 
+#########################
+# test the catching of errors in comparator
+# with no initializer, only comparator
+
+{
+	my $comp; # pointer to the actual comparator
+	$it3 = Triceps::IndexType->newPerlSorted("bad", undef, sub {
+		return unless defined $comp; # with no value
+		return &$comp(@_);
+	});
+	ok(ref $it1, "Triceps::IndexType");
+
+	$tt1 = Triceps::TableType->new($rt1)
+		->addSubIndex("primary", $it3)
+	;
+	ok(ref $tt1, "Triceps::TableType");
+
+	$res = $tt1->initialize();
+	ok($res, 1);
+	#print STDERR "$!" . "\n";
+
+	$t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	ok(ref $t1, "Triceps::Table");
+
+	$r11 = $rt1->makeRowHash(b => 1, c => 1);
+	$r12 = $rt1->makeRowHash(b => 1, c => 2);
+
+	# inserting the 1st row doesn't trigger a comparator
+	ok($res = $t1->insert($r12));
+	# insert 2nd row, to trigger the error messages
+
+	# a death in comparator
+	$comp = sub {
+		die "test a death in PerlSortedIndex comparator\n";
+	};
+	print STDERR "Expect message(s) like: Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator\n";
+	ok($res = $t1->insert($r11));
+
+	# a string return value in comparator
+	$comp = sub {
+		return "zzz";
+	};
+	print STDERR "Expect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
+	ok($res = $t1->insert($r11));
+
+	# no return value in comparator - same error message as before
+	$comp = undef;
+	print STDERR "Expect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
+	ok($res = $t1->insert($r11));
+
+};

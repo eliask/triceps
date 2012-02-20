@@ -20,12 +20,13 @@ namespace Triceps
 namespace TricepsPerl 
 {
 
-PerlSortCondition::PerlSortCondition(Onceref<PerlCallback> cbInit, Onceref<PerlCallback> cbCompare) :
+PerlSortCondition::PerlSortCondition(const char *sortName, Onceref<PerlCallback> cbInit, Onceref<PerlCallback> cbCompare) :
 	cbInitialize_(cbInit), 
 	cbCompare_(cbCompare),
 	initialized_(false),
 	svRowType_(NULL),
-	tabType_(NULL)
+	tabType_(NULL),
+	name_(sortName)
 { }
 
 // always makes an uninitialized copy!
@@ -34,7 +35,8 @@ PerlSortCondition::PerlSortCondition(const PerlSortCondition &other) :
 	cbCompare_(other.cbCompare_),
 	initialized_(false),
 	svRowType_(NULL),
-	tabType_(NULL)
+	tabType_(NULL),
+	name_(other.name_) // name stays the same!
 { }
 
 PerlSortCondition::~PerlSortCondition()
@@ -62,7 +64,9 @@ bool PerlSortCondition::match(const SortedIndexCondition *sc) const
 
 void PerlSortCondition::printTo(string &res, const string &indent, const string &subindent) const
 {
-	res.append("PerlSortedIndex()");
+	res.append("PerlSortedIndex(");
+	res.append(name_);
+	res.append(")");
 }
 
 SortedIndexCondition *PerlSortCondition::copy() const
@@ -101,16 +105,16 @@ bool PerlSortCondition::operator() (const RowHandle *r1, const RowHandle *r2) co
 
 	if (SvTRUE(ERRSV)) {
 		// Would exit(1) be better?
-		warn("Error in table type %s PerlSortedIndex comparator: %s", 
-			"" /*tabType_->getName().c_str()*/, SvPV_nolen(ERRSV));
+		warn("Error in PerlSortedIndex(%s) comparator: %s", 
+			name_.c_str(), SvPV_nolen(ERRSV));
 	} else if (svrcode == NULL) {
 		// Would exit(1) be better?
-		warn("Error in table type %s PerlSortedIndex comparator: comparator returned no value", 
-			"" /*tabType_->getName().c_str()*/);
+		warn("Error in PerlSortedIndex(%s) comparator: comparator returned no value", 
+			name_.c_str());
 	} else if (!SvIOK(svrcode)) {
 		// Would exit(1) be better?
-		warn("Error in table type %s PerlSortedIndex comparator: comparator returned a non-integer value '%s'", 
-			"" /*tabType_->getName().c_str()*/, SvPV_nolen(svrcode));
+		warn("Error in PerlSortedIndex(%s) comparator: comparator returned a non-integer value '%s'", 
+			name_.c_str(), SvPV_nolen(svrcode));
 	} else {
 		result = (SvIV(svrcode) < 0); // the Less
 	}
@@ -170,7 +174,7 @@ void PerlSortCondition::initialize(Erref &errors, TableType *tabtype, SortedInde
 
 	// the comparator must be set by now, or it's an error
 	if (cbCompare_.isNull()) {
-		errors->appendMsg(true, "the mandatory comparator Perl function is not set");
+		errors->appendMsg(true, "the mandatory comparator Perl function is not set by PerlSortedIndex(" + name_ + ")");
 	}
 
 	initialized_ = true;
