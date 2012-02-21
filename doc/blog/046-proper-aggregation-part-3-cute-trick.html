@@ -1,0 +1,70 @@
+The proper aggregation, part 3 (a cute trick)
+
+Let's look again at the sample aggregation output with row deletion, from the last post:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+<i>OP_DELETE,5</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"</pre>
+
+When the row with id=3 is deleted, the average price reverts to "30", which is the price of the trade with id=5, not the average of trades with id 1 and 5. This is because when the row with id=5 was inserted, it pushed out the row with id=1. Deleting the record with id=3 does not put that row with id=1 back (you can see the group contents in an even earlier printout with the manual aggregation). Like the toothpaste, once out of the tube, it's not easy to put back.
+
+But for this particular kind of toothpaste there is a trick: keep more rows in the group just in case but use only the last ones for the actual aggregation. To allow an occasional deletion of a single row, we can keep 3 rows instead of 2.
+
+So, change the table definition:
+
+<pre>...
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 3)
+... 
+</pre>
+
+and modify the aggregator function to use only the last 2 rows from the group, even if more are available:
+
+<pre>...
+&nbsp; my $skip = $context-&gt;groupSize()-2;
+&nbsp; my $sum = 0;
+&nbsp; my $count = 0;
+&nbsp; for (my $rhi = $context-&gt;begin(); !$rhi-&gt;isNull();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $context-&gt;next($rhi)) {
+&nbsp;&nbsp;&nbsp; if ($skip &gt; 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $skip--;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; next;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; }
+&nbsp; my $rLast = $context-&gt;last()-&gt;getRow() or die "$!";
+&nbsp; my $avg = $sum/$count;
+...
+</pre>
+
+The output from this version becomes:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="20" 
+<i>OP_DELETE,5</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+</pre>
+
+Now after "OP_DELETE,3" the average price becomes 20, the average of 10 and 30, because the row with id=1 comes into play again. Can you repeat that in the SQLy languages?
+
+This version stores one extra row and thus can handle only one deletion (until the deleted row's spot gets pushed out of the window naturally, then it can handle another). It can not handle the arbitrary modifications properly. If you insert another row with id=3 for the same symbol AAA, the new version will be placed again at the end of the window. It it was the last row anyway, that is fine. But if it was not the last, as in this example, that would be an incorrect order that will produce incorrect results.
