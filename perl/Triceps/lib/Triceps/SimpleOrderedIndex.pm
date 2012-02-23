@@ -23,7 +23,7 @@ sub new # ($class, $fieldName => $direction...)
 	while ($#_ >= 0) {
 		my $fld = shift;
 		my $dir = shift;
-		$sortName .= $fld . ' ' . $dir . ', ';
+		$sortName .= quotemeta($fld) . ' ' . quotemeta($dir) . ', ';
 	}
 
 	$self = Triceps::IndexType->newPerlSorted(

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 35 };
+BEGIN { plan tests => 37 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -168,8 +168,22 @@ ok(ref $rt1, "Triceps::RowType");
 			)
 		);
 	ok(ref $tt1, "Triceps::TableType");
+	$res = $tt1->print();
+	#print $res, "\n";
+	ok($res, "table (\n  row {\n    int32 a\"b,\n  }\n) {\n  index PerlSortedIndex(SimpleOrder a\\\"b ASC, ) sorted,\n}");
+
 	$res = $tt1->initialize();
 	#print "$!\n";
 	ok($res);
+
+	my $tt2 = Triceps::TableType->new($rt2)
+		->addSubIndex("sorted", 
+			Triceps::SimpleOrderedIndex->new(
+				'a"b' => "A'SC",
+			)
+		);
+	$res = $tt2->print();
+	#print $res, "\n";
+	ok($res, "table (\n  row {\n    int32 a\"b,\n  }\n) {\n  index PerlSortedIndex(SimpleOrder a\\\"b A\\'SC, ) sorted,\n}");
 }
 
