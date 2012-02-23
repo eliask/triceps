@@ -74,8 +74,7 @@ sub init # ($tabt, $idxt, $rowt, @args)
 			next;
 		}
 
-		my $getter = "->get(\"" . quotemeta($f) . "\""
-			. (defined $pos? ", " . $pos : "") . ")";
+		my $getter = "->get(\"" . quotemeta($f) . "\")";
 
 		$compare .= "  $connector \$_[$left]$getter $cmp \$_[$right]$getter\n";
 
@@ -91,6 +90,7 @@ sub init # ($tabt, $idxt, $rowt, @args)
 		$errors .= $rowt->print();
 	} else {
 		# compile the comparison
+		#print STDERR "DEBUG Triceps::SimpleOrderedIndex::init: comparison function:\n$compare\n";
 		my $cmpfunc = eval $compare 
 			or return "Triceps::SimpleOrderedIndex::init: internal error when compiling the compare function:\n"
 				. "$@\n"
