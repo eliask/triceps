@@ -82,6 +82,7 @@ require Triceps::Label;
 require Triceps::Table;
 require Triceps::AggregatorContext;
 require Triceps::Opt;
+require Triceps::SimpleOrderedIndex;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
