@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 97 };
+BEGIN { plan tests => 123 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -41,6 +41,57 @@ $rt1 = Triceps::RowType->new( # used later
 	@def1
 );
 ok(ref $rt1, "Triceps::RowType");
+
+#########################
+# basic functions: sameness etc
+
+sub f1 { return 0; }
+sub f2 { return 0; }
+sub f3 { return 0; }
+
+{
+	my $it1 = Triceps::IndexType->newPerlSorted("sort", \&f1, \&f2);
+	ok(ref $it1, "Triceps::IndexType");
+	ok($it1->same($it1));
+	ok($it1->equals($it1));
+	ok($it1->match($it1));
+
+	my $it2 = Triceps::IndexType->newPerlSorted("sort2", \&f1, \&f2); # different name
+	ok(ref $it2, "Triceps::IndexType");
+	ok(!$it1->same($it2));
+	ok(!$it1->equals($it2));
+	ok($it1->match($it2));
+
+	my $it3 = Triceps::IndexType->newPerlSorted("sort", \&f1, \&f2, "a"); # extra arg
+	ok(ref $it3, "Triceps::IndexType");
+	ok(!$it1->equals($it3));
+	ok(!$it1->match($it3));
+
+	my $it4 = Triceps::IndexType->newPerlSorted("sort", \&f1, undef); # diff compare
+	ok(ref $it4, "Triceps::IndexType");
+	ok(!$it1->equals($it4));
+	ok(!$it1->match($it4));
+
+	my $it5 = Triceps::IndexType->newPerlSorted("sort", undef, \&f2); # diff init
+	ok(ref $it5, "Triceps::IndexType");
+	ok(!$it1->equals($it5));
+	ok(!$it1->match($it5));
+
+	my $it6 = $it1->copy(); # copy
+	ok(ref $it6, "Triceps::IndexType");
+	ok(!$it1->same($it6));
+	ok($it1->equals($it6));
+	ok($it1->match($it6));
+
+	my $it7 = Triceps::IndexType->newPerlSorted("sort", \&f2, \&f1); # diff functions
+	ok(ref $it7, "Triceps::IndexType");
+	ok(!$it1->same($it7));
+	ok(!$it1->equals($it7));
+	ok(!$it1->match($it7));
+
+	my @keys = $it1->getKey();
+	ok($#keys, -1);
+}
 
 #########################
 # with no initializer, only comparator
@@ -467,11 +518,12 @@ sub noComparator # (tabt, idxt, rowt,  comparator, cmpargs...)
 # non-function as a callback
 
 {
-	my $it2 = Triceps::IndexType->newPerlSorted("badInit", 1, undef, "a");
+	my $it2;
+	$it2 = Triceps::IndexType->newPerlSorted("badInit", 1, undef, "a");
 	ok(!defined $it2);
 	ok("$!", "Triceps::IndexType::newPerlSorted(initialize): code must be a reference to Perl function");
 
-	my $it2 = Triceps::IndexType->newPerlSorted("badInit", undef, 1, "a");
+	$it2 = Triceps::IndexType->newPerlSorted("badInit", undef, 1, "a");
 	ok(!defined $it2);
 	ok("$!", "Triceps::IndexType::newPerlSorted(compare): code must be a reference to Perl function");
 }

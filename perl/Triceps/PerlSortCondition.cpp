@@ -50,7 +50,8 @@ bool PerlSortCondition::equals(const SortedIndexCondition *sc) const
 {
 	const PerlSortCondition *psc = dynamic_cast<const PerlSortCondition *>(sc);
 
-	return callbackEquals(cbInitialize_, psc->cbInitialize_)
+	return name_ == psc->name_
+		&& callbackEquals(cbInitialize_, psc->cbInitialize_)
 		&& callbackEquals(cbCompare_, psc->cbCompare_);
 }
 
