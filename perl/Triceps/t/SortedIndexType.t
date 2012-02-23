@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 123 };
+BEGIN { plan tests => 124 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -114,6 +114,9 @@ ok($res, "index PerlSortedIndex(basic)");
 		->addSubIndex("primary", $it1)
 	;
 	ok(ref $tt1, "Triceps::TableType");
+
+	$res = $tt1->print();
+	ok($res, "table (\n  row {\n    uint8 a,\n    int32 b,\n    int64 c,\n    float64 d,\n    string e,\n  }\n) {\n  index PerlSortedIndex(basic) primary,\n}");
 
 	$res = $tt1->initialize();
 	ok($res, 1);
