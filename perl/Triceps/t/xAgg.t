@@ -770,7 +770,7 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	$context->send($opcode, $res) or die "$!";
 }
 
-sub initRememberLast7 #  (@args)
+sub initAverage7 #  (@args)
 {
 	return { lastrow => undef, price_sum => 0 };
 }
@@ -784,7 +784,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		->addSubIndex("last2",
 			Triceps::IndexType->newFifo(limit => 2)
 			->setAggregator(Triceps::AggregatorType->new(
-				$rtAvgPrice, "aggrAvgPrice", \&initRememberLast7, \&computeAverage7)
+				$rtAvgPrice, "aggrAvgPrice", \&initAverage7, \&computeAverage7)
 			)
 		)
 	)
@@ -925,7 +925,7 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 	) or die "$!";
 }
 
-sub initRememberLast8 #  (@args)
+sub initAverage8 #  (@args)
 {
 	return { price_sum => 0 };
 }
@@ -939,7 +939,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		->addSubIndex("last2",
 			Triceps::IndexType->newFifo(limit => 2)
 			->setAggregator(Triceps::AggregatorType->new(
-				$rtAvgPrice, "aggrAvgPrice", \&initRememberLast8, \&computeAverage8)
+				$rtAvgPrice, "aggrAvgPrice", \&initAverage8, \&computeAverage8)
 			)
 		)
 	)
