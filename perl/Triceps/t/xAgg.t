@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 8 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -689,6 +689,144 @@ while(&readLine) {
 );
 $result = undef;
 &doRememberLastNR();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+OP_INSERT,2,BBB,100,100
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
+OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+OP_INSERT,4,BBB,200,200
+tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
+OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+OP_DELETE,3
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+OP_DELETE,5
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
+');
+
+#########################
+# the aggregator that performs the simple additive aggrgeation
+# and carries all the state
+
+sub doSimpleAdditiveState {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+# the aggregation result
+my $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or die "$!";
+
+# aggregation handler: recalculate the average each time the easy way
+sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	my $rowchg;
+	
+	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
+	if ($aggop == &Triceps::AO_BEFORE_MOD) { 
+		$context->send($opcode, $state->{lastrow}) or die "$!";
+		return;
+	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
+		$rowchg = -1;
+	} elsif ($aggop == &Triceps::AO_AFTER_INSERT) { 
+		$rowchg = 1;
+	} else { # AO_COLLAPSE, also has opcode OP_DELETE
+		return
+	}
+
+	#print STDERR "sum was ", $state->{price_sum}, "\n";
+	$state->{price_sum} += $rowchg * $rh->getRow()->get("price");
+	$state->{count} += $rowchg;
+	#print STDERR "sum now ", $state->{price_sum}, ", count ", $state->{count}, "\n";
+
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+
+	my $rLast = $context->last()->getRow() or die "$!";
+	my $avg = ($state->{count} == 0? 0 : $state->{price_sum}/$state->{count});
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or die "$!";
+	$state->{lastrow} = $res;
+
+	$context->send($opcode, $res) or die "$!";
+}
+
+sub initRememberLast7 #  (@args)
+{
+	return { lastrow => undef, price_sum => 0, count => 0 };
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", \&initRememberLast7, \&computeAverage7)
+			)
+		)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# label to print the result of aggregation
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or die "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
+	or die "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
+		or die "$!";
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+}; # SimpleAdditive
+
+#########################
+#  run the same input as with manual aggregation
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,4,BBB,200,200\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_DELETE,3\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&doSimpleAdditiveState();
 #print $result;
 ok($result, 
 'OP_INSERT,1,AAA,10,10
