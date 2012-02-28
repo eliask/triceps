@@ -364,7 +364,7 @@ UTESTCASE tableops(Utest *utest)
 		"t.onLevel2 ao=AO_BEFORE_MOD op=OP_DELETE count=1\n"
 		"t.onPrimary ao=AO_AFTER_DELETE op=OP_INSERT count=2\n"
 		"t.onLevel2 ao=AO_AFTER_DELETE op=OP_INSERT count=0\n"
-		"t.onLevel2 ao=AO_COLLAPSE op=OP_DELETE count=0\n"
+		"t.onLevel2 ao=AO_COLLAPSE op=OP_NOP count=0\n"
 	;
 	string hist = aggHistory->print();
 	UT_IS(hist, expect);

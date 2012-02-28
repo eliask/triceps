@@ -778,7 +778,7 @@ void IndexType::aggregateCollapse(Tray *dest, Table *table, GroupHandle *gh, Tra
 			const IndexAggTypePair &iap = groupAggs_[i];
 			aggs[i]->handle(table, table->getAggregatorGadget(iap.agg_->getPos()), 
 				gs->subidx_[iap.index_->nestPos_], this, gh, dest,
-				Aggregator::AO_COLLAPSE, Rowop::OP_DELETE, NULL, copyTray);
+				Aggregator::AO_COLLAPSE, Rowop::OP_NOP, NULL, copyTray);
 		}
 	}
 }

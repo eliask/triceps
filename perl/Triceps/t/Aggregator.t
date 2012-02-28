@@ -195,7 +195,7 @@ ok($agghistory,
 	. "call (*undef*, qqqq, 12) AO_AFTER_DELETE OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n"
 	. "call (*undef*, qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
 	. "call (*undef*, qqqq, 12) AO_AFTER_DELETE OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
-	. "call (*undef*, qqqq, 12) AO_COLLAPSE OP_DELETE NULL\n"
+	. "call (*undef*, qqqq, 12) AO_COLLAPSE OP_NOP NULL\n"
 );
 
 # for the results to propagate through the history label, the unit must run...
@@ -211,7 +211,7 @@ ok($reshistory,
 	. "OP_INSERT  [1, 3000000000000000, 3.14]\n"
 	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
 	. "OP_INSERT  [0, 0, *undef*]\n"
-	. "OP_DELETE  [0, 0, *undef*]\n"
+	. "OP_NOP  [0, 0, *undef*]\n"
 );
 
 ######################### basic aggregation, keeping the context  #############################
@@ -313,7 +313,7 @@ ok($reshistory,
 	. "OP_INSERT  [1, 3000000000000000, 2.71]\n" # here the definition of last() is different!
 	. "OP_DELETE  [1, 3000000000000000, 2.71]\n"
 	. "OP_INSERT  [0, 0, 3.14]\n" # 3.14 comes from the record being deleted
-	. "OP_DELETE  [0, 0, 3.14]\n"
+	. "OP_NOP  [0, 0, 3.14]\n"
 );
 
 # test that the remembered context is invalid
@@ -424,7 +424,7 @@ ok($agghistory,
 	. "call (qqqq, 12) AO_AFTER_DELETE OP_INSERT [aaa, 123, 3000000000000000, 2.71, string2]\n"
 	. "call (qqqq, 12) AO_BEFORE_MOD OP_DELETE NULL\n"
 	. "call (qqqq, 12) AO_AFTER_DELETE OP_INSERT [uint8, 123, 3000000000000000, 3.14, string]\n"
-	. "call (qqqq, 12) AO_COLLAPSE OP_DELETE NULL\n"
+	. "call (qqqq, 12) AO_COLLAPSE OP_NOP NULL\n"
 );
 
 # for the results to propagate through the history label, the unit must run...
@@ -548,6 +548,6 @@ ok($reshistory,
 	. "OP_INSERT  [1, 3000000000000000, 2.71]\n"
 	. "OP_DELETE  [1, 3000000000000000, 2.71]\n"
 	. "OP_INSERT  [0, 0, *undef*]\n"
-	. "OP_DELETE  [0, 0, *undef*]\n"
+	. "OP_NOP  [0, 0, *undef*]\n"
 );
 
