@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 10 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -845,6 +845,32 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25"
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
 OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
+');
+
+#########################
+#  demonstrate the precision loss
+
+@input = (
+	"OP_INSERT,1,AAA,1,10\n",
+	"OP_INSERT,2,AAA,1e20,20\n",
+	"OP_INSERT,3,AAA,2,10\n",
+	"OP_INSERT,4,AAA,3,10\n",
+);
+$result = undef;
+&doSimpleAdditiveState();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,1,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="1" 
+OP_INSERT,2,AAA,1e20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="1" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="2" price="5e+19" 
+OP_INSERT,3,AAA,2,10
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="2" price="5e+19" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="5e+19" 
+OP_INSERT,4,AAA,3,10
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="5e+19" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="4" price="1.5" 
 ');
 
 #########################
