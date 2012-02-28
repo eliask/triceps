@@ -752,16 +752,14 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 		return
 	}
 
-	#print STDERR "sum was ", $state->{price_sum}, "\n";
 	$state->{price_sum} += $rowchg * $rh->getRow()->get("price");
-	$state->{count} += $rowchg;
-	#print STDERR "sum now ", $state->{price_sum}, ", count ", $state->{count}, "\n";
 
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 
 	my $rLast = $context->last()->getRow() or die "$!";
-	my $avg = ($state->{count} == 0? 0 : $state->{price_sum}/$state->{count});
+	my $count = $context->groupSize();
+	my $avg = $state->{price_sum}/$count;
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
@@ -774,7 +772,7 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 
 sub initRememberLast7 #  (@args)
 {
-	return { lastrow => undef, price_sum => 0, count => 0 };
+	return { lastrow => undef, price_sum => 0 };
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
