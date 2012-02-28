@@ -897,14 +897,13 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or die "$!";
-	$state->{lastrow} = $res;
 
 	$context->send($opcode, $res) or die "$!";
 }
 
 sub initRememberLast8 #  (@args)
 {
-	return { lastrow => undef, price_sum => 0 };
+	return { price_sum => 0 };
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
