@@ -891,14 +891,12 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 
 	my $rLast = $context->last()->getRow() or die "$!";
 	my $count = $context->groupSize();
-	my $avg = $state->{price_sum}/$count;
-	my $res = $context->resultType()->makeRowHash(
+
+	$context->makeHashSend($opcode, 
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
-		price => $avg
+		price => $state->{price_sum}/$count,
 	) or die "$!";
-
-	$context->send($opcode, $res) or die "$!";
 }
 
 sub initRememberLast8 #  (@args)
