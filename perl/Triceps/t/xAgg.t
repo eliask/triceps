@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 10 };
+BEGIN { plan tests => 11 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1002,3 +1002,106 @@ OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
+#########################
+# the aggregator that just prints the call information
+
+sub doPrintCall {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+# the aggregation result
+my $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or die "$!";
+
+# aggregation handler: recalculate the average each time the easy way
+sub computeAverage9 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	
+	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", $context->groupSize(), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
+	&send(&Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", $context->groupSize(), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n");
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage9)
+			)
+		)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# label to print the result of aggregation
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or die "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
+	or die "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
+		or die "$!";
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+}; # PrintCall
+
+#########################
+#  run the same input as with manual aggregation
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,3,BBB,20,20\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&doPrintCall();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+AO_AFTER_INSERT OP_INSERT 1 id="1" symbol="AAA" price="10" size="10" 
+OP_INSERT,2,BBB,100,100
+AO_AFTER_INSERT OP_INSERT 1 id="2" symbol="BBB" price="100" size="100" 
+OP_INSERT,3,AAA,20,20
+AO_BEFORE_MOD OP_DELETE 1 NULL
+AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="AAA" price="20" size="20" 
+OP_INSERT,5,AAA,30,30
+AO_BEFORE_MOD OP_DELETE 2 NULL
+AO_AFTER_DELETE OP_NOP 2 id="1" symbol="AAA" price="10" size="10" 
+AO_AFTER_INSERT OP_INSERT 2 id="5" symbol="AAA" price="30" size="30" 
+OP_INSERT,3,BBB,20,20
+AO_BEFORE_MOD OP_DELETE 2 NULL
+AO_BEFORE_MOD OP_DELETE 1 NULL
+AO_AFTER_DELETE OP_INSERT 1 id="3" symbol="AAA" price="20" size="20" 
+AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="BBB" price="20" size="20" 
+OP_DELETE,5
+AO_BEFORE_MOD OP_DELETE 1 NULL
+AO_AFTER_DELETE OP_INSERT 0 id="5" symbol="AAA" price="30" size="30" 
+AO_COLLAPSE OP_NOP 0 NULL
+');
