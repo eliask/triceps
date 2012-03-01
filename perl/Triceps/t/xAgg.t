@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 11 };
+BEGIN { plan tests => 13 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1105,3 +1105,246 @@ AO_BEFORE_MOD OP_DELETE 1 NULL
 AO_AFTER_DELETE OP_INSERT 0 id="5" symbol="AAA" price="30" size="30" 
 AO_COLLAPSE OP_NOP 0 NULL
 ');
+
+#########################
+# the window with a non-additive aggregator and limit of 3,
+# for a contrast to the ordered sum
+
+sub doNonAdditive3 {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+# the aggregation result
+my $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or die "$!";
+
+# aggregation handler: recalculate the average each time the easy way
+sub computeAverage10 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode != &Triceps::OP_INSERT);
+
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or die "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or die "$!";
+	$context->send($opcode, $res) or die "$!";
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last4",
+			Triceps::IndexType->newFifo(limit => 4)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage10)
+			)
+		)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# label to print the result of aggregation
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
+	}) or die "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
+	or die "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
+		or die "$!";
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+}; # NonAdditive3
+
+#########################
+# the sum done in proper floating-point order
+
+sub doOrderedSum {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+# the aggregation result
+my $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or die "$!";
+
+our $idxByPrice;
+
+# aggregation handler: recalculate the average each time the easy way
+sub computeAverage11 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	our $idxByPrice;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode != &Triceps::OP_INSERT);
+
+	my $sum = 0;
+	my $count = 0;
+	my $end = $context->endIdx($idxByPrice);
+	for (my $rhi = $context->beginIdx($idxByPrice); !$rhi->same($end); 
+			$rhi = $rhi->nextIdx($idxByPrice)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or die "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or die "$!";
+	$context->send($opcode, $res) or die "$!";
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last4",
+			Triceps::IndexType->newFifo(limit => 4)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage11)
+			)
+		)
+		->addSubIndex("byPrice",
+			Triceps::SimpleOrderedIndex->new(price => "ASC",)
+			->addSubIndex("multi", Triceps::IndexType->newFifo())
+		)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+$idxByPrice = $ttWindow->findSubIndex("bySymbol")
+	->findSubIndex("byPrice") or die "$!";
+
+# label to print the result of aggregation
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
+	}) or die "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
+	or die "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
+		or die "$!";
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+}; # OrderedSum
+
+#########################
+#  demonstrate the importance of order
+
+@inputOrder = (
+	"OP_INSERT,1,AAA,1,10\n",
+	"OP_INSERT,2,AAA,1,10\n",
+	"OP_INSERT,3,AAA,1,10\n",
+	"OP_INSERT,4,AAA,1e16,10\n",
+	"OP_INSERT,5,BBB,1e16,10\n",
+	"OP_INSERT,6,BBB,1,10\n",
+	"OP_INSERT,7,BBB,1,10\n",
+	"OP_INSERT,8,BBB,1,10\n",
+);
+
+@input = @inputOrder;
+$result = undef;
+&doNonAdditive3();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,1,10
+1
+OP_INSERT,2,AAA,1,10
+1
+OP_INSERT,3,AAA,1,10
+1
+OP_INSERT,4,AAA,1e16,10
+2500000000000001
+OP_INSERT,5,BBB,1e16,10
+10000000000000000
+OP_INSERT,6,BBB,1,10
+5000000000000000
+OP_INSERT,7,BBB,1,10
+3333333333333333.5
+OP_INSERT,8,BBB,1,10
+2500000000000000
+');
+
+@input = @inputOrder;
+$result = undef;
+&doOrderedSum();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,1,10
+1
+OP_INSERT,2,AAA,1,10
+1
+OP_INSERT,3,AAA,1,10
+1
+OP_INSERT,4,AAA,1e16,10
+2500000000000001
+OP_INSERT,5,BBB,1e16,10
+10000000000000000
+OP_INSERT,6,BBB,1,10
+5000000000000000
+OP_INSERT,7,BBB,1,10
+3333333333333334
+OP_INSERT,8,BBB,1,10
+2500000000000001
+');
+
