@@ -66,7 +66,7 @@ our $FUNCTIONS = {
 	},
 	avg => {
 		vars => { sum => 0, count => 0 },
-		step => '{ $%sum += $%argiter; $count++; } if (defined $%argiter);',
+		step => '{ $%sum += $%argiter; $%count++; } if (defined $%argiter);',
 		result => '($%count == 0? undef : $%sum / $%count)',
 	},
 	avg_perl => {
@@ -119,6 +119,8 @@ sub make # (optName => optValue, ...)
 	# check the result definition and build the result row type and code snippets for the computation
 	my $rtRes;
 	my $needIter = 0; # flag: some of the functions require iteration
+	my $needfirst = 0; # the result needs the first row of the group
+	my $needlast = 0; # the result needs the last row of the group
 	my $codeInit = ''; # code for function initialization
 	my $codeStep = ''; # code for iteration
 	my $codeResult = ''; # code to compute the intermediate values for the result
@@ -148,11 +150,13 @@ sub make # (optName => optValue, ...)
 			my $funcDef = $FUNCTIONS->{$func}
 				or confess("$myname: function '" . $func . "' is unknown");
 
-			my $argCount = $funcDef->{argcount};
-			confess("$myname: in field '$fld' function '$funcDef' requires an argument computation")
-				unless (defined $argCount && $argCount == 0 || ref $funcarg eq 'CODE');
+			my $argCount = $funcDef->{argcount}; 
+			$argCount = 1 # 1 is the default value
+				unless defined($argCount);
+			confess("$myname: in field '$fld' function '$funcDef' requires an argument computation that must be a Perl sub reference")
+				unless ($argCount == 0 || ref $funcarg eq 'CODE');
 			confess("$myname: in field '$fld' function '$funcDef' requires no argument, use undef as a placeholder")
-				unless (!defined $argCount || $argCount != 0 || !defined $funcarg);
+				unless ($argCount != 0 || !defined $funcarg);
 
 			push(@rtdefRes, $fld, $type);
 
@@ -177,14 +181,31 @@ sub make # (optName => optValue, ...)
 			### iteration
 			my $step = $funcDef->{step};
 			if (defined $step) {
+				$codeStep .= "  # for $fld=$func\n";
 				if (defined $funcarg) {
 					# compute the function argument from the current row
-					$codeStep .= "    my \$a${id} = \$_[" . $#compArgs ."](\$row);\n";
-					# substitute the variables in $step
-					# XXXXX
-					# $step = &subvars($step, $vars
+					$codeStep .= "    my \$a${id} = \$args[" . $#compArgs ."](\$row);\n";
 				}
+				# substitute the variables in $step
+				$step =~ s/\$\%(\w+)/&replaceStep($1, $func, $vars, $id, $argCount)/ge;
+				$codeStep .= "  { $step; }\n";
 			}
+
+			### result building
+			my $result = $funcDef->{result};
+			confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', missing result computation"
+				unless (defined $result);
+			# substitute the variables in $result
+			if ($result =~ /\$\%argfirst/) {
+				$needfirst = 1;
+				$codeResult .= "  my \$f${id} = \$args[" . $#compArgs ."](\$rowFirst);\n";
+			}
+			if ($result =~ /\$\%arglast/) {
+				$needlast = 1;
+				$codeResult .= "  my \$l${id} = \$args[" . $#compArgs ."](\$rowLast);\n";
+			}
+			$result =~ s/\$\%(\w+)/&replaceResult($1, $func, $vars, $id, $argCount)/ge;
+			$codeBuild .= "    ($result), # $fld\n";
 
 			$id++;
 		}
@@ -192,6 +213,84 @@ sub make # (optName => optValue, ...)
 			or confess "$myname: invalid result row type definition: $!";
 	}
 
+	# build the computation function
+	my $compText = "sub {\n";
+	$compText .= "  use strict;\n";
+	$compText .= "  my (\$table, \$context, \$aggop, \$opcode, \$rh, \$state, \@args) = \@_;\n";
+	$compText .= "  return if (\$context->groupSize()==0 || \$opcode == &Triceps::OP_NOP);\n";
+	$compText .= $codeInit;
+	if ($needIter) {
+		$compText .= "  for (my \$rhi = \$context->begin(); !\$rhi->isNull(); \$rhi = \$context->next(\$rhi)) {\n";
+		$compText .= "    my \$row = \$rhi->getRow();\n";
+		$compText .= $codeStep;
+		$compText .= "  }\n";
+	}
+	if ($needfirst) {
+		$compText .= "  my \$rowFirst = \$context->begin()->getRow();\n";
+	}
+	if ($needlast) {
+		$compText .= "  my \$rowLast = \$context->last()->getRow();\n";
+	}
+	$compText .= $codeResult;
+	$compText .= "  \$context->makeArraySend(\$opcode,\n";
+	$compText .= $codeBuild;
+	$compText .= "  )\n";
+	$compText .= "}\n";
+
+}
+
+# For an aggregation function's step macro, replace a macro variable reference
+# with the actual variable.
+# @param varname - variable to replace
+# @param func - function name, for error messages
+# @param vars - definitions of the function's vars
+# @param id - the unique id of this field
+# @param argCount - the argument count declared by the function
+sub replaceStep # ($varname, $func, $vars, $id, $argCount)
+{
+	my ($varname, $func, $vars, $id, $argCount) = @_;
+
+	if ($varname eq 'argiter') {
+		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to 'argiter' but the function declares no arguments"
+			unless ($argCount > 0);
+		return "\$a${id}";
+	} elsif ($varname eq 'niter') {
+		return "\$npos";
+	} elsif ($varname eq 'groupsize') {
+		return "\$context->groupSize()";
+	} elsif (exists $vars->{$varname}) {
+		return "\$v${id}_${varname}";
+	} else {
+		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to an unknown variable '$varname'"
+	}
+}
+
+# For an aggregation function's result macro, replace a macro variable reference
+# with the actual variable.
+# @param varname - variable to replace
+# @param func - function name, for error messages
+# @param vars - definitions of the function's vars
+# @param id - the unique id of this field
+# @param argCount - the argument count declared by the function
+sub replaceResult # ($varname, $func, $vars, $id, $argCount)
+{
+	my ($varname, $func, $vars, $id, $argCount) = @_;
+
+	if ($varname eq 'argfirst') {
+		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+			unless ($argCount > 0);
+		return "\$f${id}";
+	} elsif ($varname eq 'arglast') {
+		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+			unless ($argCount > 0);
+		return "\$l${id}";
+	} elsif ($varname eq 'groupsize') {
+		return "\$context->groupSize()";
+	} elsif (exists $vars->{$varname}) {
+		return "\$v${id}_${varname}";
+	} else {
+		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to an unknown variable '$varname'"
+	}
 }
 
 package main;
