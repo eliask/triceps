@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 5 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -110,7 +110,7 @@ our $FUNCTIONS = {
 #       the one where the aggregator is to be added
 #   result (reference to an array of result field definitions) - repeating groups
 #       fieldName => type, function, function_argument
-#   saveRowTypeTo (ref to a scalar) - where to save a copy of the result row type
+#   saveRowTypeTo (optional, ref to a scalar) - where to save a copy of the result row type
 #   saveInitTo (optional, ref to a scalar) - where to save a copy of the init function
 #       source code, the saved value may be undef if the init is not used
 #   saveComputeTo (optional, ref to a scalar) - where to save a copy of the compute
@@ -126,15 +126,15 @@ sub make # (optName => optValue, ...)
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			result => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
-			saveRowTypeTo => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
-			saveInitTo => [ undef, sub { return unless defined(@_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
-			saveComputeTo => [ undef, sub { return unless defined(@_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
+			saveRowTypeTo => [ undef, sub { return unless defined($_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
+			saveInitTo => [ undef, sub { return unless defined($_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
+			saveComputeTo => [ undef, sub { return unless defined($_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
 		}, @_);
 
 	# reset the saved source code
 	${$opts->{saveInitTo}} = undef if (defined($opts->{saveInitTo}));
 	${$opts->{saveComputeTo}} = undef if (defined($opts->{saveComputeTo}));
-	${$opts->{saveRowTypeTo}} = undef;
+	${$opts->{saveRowTypeTo}} = undef if (defined($opts->{saveRowTypeTo}));
 
 	# find the index type, on which to build the aggregator
 	my $idx;
@@ -251,7 +251,7 @@ sub make # (optName => optValue, ...)
 		$rtRes = Triceps::RowType->new(@rtdefRes)
 			or confess "$myname: invalid result row type definition: $!";
 	}
-	${$opts->{saveRowTypeTo}} = $rtRes;
+	${$opts->{saveRowTypeTo}} = $rtRes if (defined($opts->{saveRowTypeTo}));
 
 	# build the computation function
 	my $compText = "sub {\n";
