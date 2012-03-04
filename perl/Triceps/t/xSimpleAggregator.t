@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 3 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -38,6 +38,25 @@ use strict;
 #    funcName => {
 #        featureName => featureValue, ...
 #    }
+# The features are:
+#  argcount (optional) - count of arguments to the function, defaults to 1,
+#      currently only supports 0 and 1
+#  vars (optional) - define the variables used to store the intermediate result
+#      as a ref to hash { varName => initializationConstantValue, ... }
+#  step (optional) - define the code snippet for one step of the iteration.
+#      It should be a complete statement or multiple statements. They will
+#      be wrapped in an individual block. They can refer to the special variables:
+#        $%argiter - function argument from the current iterated row
+#        $%niter - sequential number of the current iterated row (starting from 0)
+#        $%groupsize - size of the group being aggregated
+#        other $%... - a variable defined in vars
+#  result - define the code snippet to compute the result of the function.
+#      It must be an expression, not a statement. It can refer to the special variables:
+#        $%argfirst - function argument from the first row of the group
+#        $%arglast - function argument from the last row of the group
+#        $%groupsize - size of the group being aggregated
+#        other $%... - a variable defined in vars
+#  
 our $FUNCTIONS = {
 	first => {
 		result => '$%argfirst',
@@ -64,12 +83,17 @@ our $FUNCTIONS = {
 		step => '{ $%max = $%argiter; } if (!defined $%max || $%argiter > $%max);',
 		result => '$%max',
 	},
+	min => {
+		vars => { min => 'undef' },
+		step => '{ $%min = $%argiter; } if (!defined $%min || $%argiter < $%min);',
+		result => '$%min',
+	},
 	avg => {
 		vars => { sum => 0, count => 0 },
 		step => '{ $%sum += $%argiter; $%count++; } if (defined $%argiter);',
 		result => '($%count == 0? undef : $%sum / $%count)',
 	},
-	avg_perl => {
+	avg_perl => { # Perl-like treat the NULLs as 0s
 		vars => { sum => 0 },
 		step => '$%sum += $%argiter;',
 		result => '$%sum / $%groupsize',
@@ -86,6 +110,11 @@ our $FUNCTIONS = {
 #       the one where the aggregator is to be added
 #   result (reference to an array of result field definitions) - repeating groups
 #       fieldName => type, function, function_argument
+#   saveRowTypeTo (ref to a scalar) - where to save a copy of the result row type
+#   saveInitTo (optional, ref to a scalar) - where to save a copy of the init function
+#       source code, the saved value may be undef if the init is not used
+#   saveComputeTo (optional, ref to a scalar) - where to save a copy of the compute
+#       function source code
 # @return - the same TableType, with added aggregator, or die
 sub make # (optName => optValue, ...)
 {
@@ -97,7 +126,15 @@ sub make # (optName => optValue, ...)
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			result => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			saveRowTypeTo => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
+			saveInitTo => [ undef, sub { return unless defined(@_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
+			saveComputeTo => [ undef, sub { return unless defined(@_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
 		}, @_);
+
+	# reset the saved source code
+	${$opts->{saveInitTo}} = undef if (defined($opts->{saveInitTo}));
+	${$opts->{saveComputeTo}} = undef if (defined($opts->{saveComputeTo}));
+	${$opts->{saveRowTypeTo}} = undef;
 
 	# find the index type, on which to build the aggregator
 	my $idx;
@@ -114,6 +151,8 @@ sub make # (optName => optValue, ...)
 		}
 		$idx = $cur;
 	}
+	confess "$myname: the index type is already initialized, can not add an aggregator on it"
+		if ($idx->isInitialized());
 	
 
 	# check the result definition and build the result row type and code snippets for the computation
@@ -141,11 +180,11 @@ sub make # (optName => optValue, ...)
 			my $funcarg = shift @resopt;
 
 			confess("$myname: the result field name must be a string, got a " . ref($fld) . " ")
-				unless (ref($fld) ne '');
+				unless (ref($fld) eq '');
 			confess("$myname: the result field type must be a string, got a " . ref($type) . " for field '$fld'")
-				unless (ref($type) ne '');
+				unless (ref($type) eq '');
 			confess("$myname: the result field function must be a string, got a " . ref($func) . " for field '$fld'")
-				unless (ref($func) ne '');
+				unless (ref($func) eq '');
 
 			my $funcDef = $FUNCTIONS->{$func}
 				or confess("$myname: function '" . $func . "' is unknown");
@@ -181,14 +220,14 @@ sub make # (optName => optValue, ...)
 			### iteration
 			my $step = $funcDef->{step};
 			if (defined $step) {
-				$codeStep .= "  # for $fld=$func\n";
+				$codeStep .= "    # field $fld=$func\n";
 				if (defined $funcarg) {
 					# compute the function argument from the current row
 					$codeStep .= "    my \$a${id} = \$args[" . $#compArgs ."](\$row);\n";
 				}
 				# substitute the variables in $step
 				$step =~ s/\$\%(\w+)/&replaceStep($1, $func, $vars, $id, $argCount)/ge;
-				$codeStep .= "  { $step; }\n";
+				$codeStep .= "    { $step; }\n";
 			}
 
 			### result building
@@ -212,6 +251,7 @@ sub make # (optName => optValue, ...)
 		$rtRes = Triceps::RowType->new(@rtdefRes)
 			or confess "$myname: invalid result row type definition: $!";
 	}
+	${$opts->{saveRowTypeTo}} = $rtRes;
 
 	# build the computation function
 	my $compText = "sub {\n";
@@ -220,9 +260,11 @@ sub make # (optName => optValue, ...)
 	$compText .= "  return if (\$context->groupSize()==0 || \$opcode == &Triceps::OP_NOP);\n";
 	$compText .= $codeInit;
 	if ($needIter) {
+		$compText .= "  my \$npos = 0;\n";
 		$compText .= "  for (my \$rhi = \$context->begin(); !\$rhi->isNull(); \$rhi = \$context->next(\$rhi)) {\n";
 		$compText .= "    my \$row = \$rhi->getRow();\n";
 		$compText .= $codeStep;
+		$compText .= "    \$npos++;\n";
 		$compText .= "  }\n";
 	}
 	if ($needfirst) {
@@ -234,9 +276,23 @@ sub make # (optName => optValue, ...)
 	$compText .= $codeResult;
 	$compText .= "  \$context->makeArraySend(\$opcode,\n";
 	$compText .= $codeBuild;
-	$compText .= "  )\n";
+	$compText .= "  );\n";
 	$compText .= "}\n";
 
+	${$opts->{saveComputeTo}} = $compText if (defined($opts->{saveComputeTo}));
+
+	# compile the computation function
+	my $compFun = eval $compText
+		or confess "$myname: error in compilation of the aggregation computation:\n  $@\nfunction text:\n$compText ";
+
+	# build and add the aggregator
+	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun)
+		or confess "$myname: internal error: failed to build an aggregator type: $! ";
+
+	$idx->setAggregator($agg)
+		or confess "$myname: failed to set the aggregator in the index type: $! ";
+
+	return $opts->{tabType};
 }
 
 # For an aggregation function's step macro, replace a macro variable reference
@@ -293,4 +349,48 @@ sub replaceResult # ($varname, $func, $vars, $id, $argCount)
 	}
 }
 
+#######################################################################
 package main;
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+		)
+	)
+or die "$!";
+
+my $compText;
+my $rtAggr;
+my $res = Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "myAggr",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "first", sub {$_[0]->get("symbol");},
+		id => "int32", "last", sub {$_[0]->get("id");},
+		volume => "float64", "sum", sub {$_[0]->get("size");},
+	],
+	saveRowTypeTo => \$rtAggr,
+	saveComputeTo => \$compText,
+);
+ok(ref $res, "Triceps::TableType");
+ok($ttWindow->same($res));
+ok(ref $rtAggr, "Triceps::RowType");
+ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 volume, }");
+#print $compText;
+
