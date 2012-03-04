@@ -104,9 +104,21 @@ newFifo(char *CLASS, ...)
 # create a PerlSortedIndex
 # that uses a Perl comparison function
 # @param CLASS - name of type being constructed
-# @param sortName - name of the sorto condition (for messages about comparator fatal errors)
-# @param initialize - function reference used to perform the index type initialization
-# @param compare - function reference used to compare the keys for the sorting order
+# @param sortName - name of the sort condition (for messages about comparator fatal errors)
+# @param initialize - function reference used to perform the index type initialization,
+#        may be undef if the compare argument is defined, may be
+#        used to check that the args make sense and generate the compare callback on the fly.
+#        Args: TableType tabt, IndexType idxt, RowType rowt
+#          tabt - table type that performs the initialization
+#          idxt - link back to the index type that contains the condition (used to
+#                 set the compare callback and such)
+#          rowt - row type of the table, passed directly as a convenience
+#        Returns undef on success or an error message (may freely contain \n) on error.
+# @param compare - function reference used to compare the keys for the sorting order,
+#        may be undef if the initialize argument is defined and will use setComparator()
+#        at initialization time, having it still undefined after initialization is an error..
+#        Args: Row r1, Row r2.
+#        Returns the result of r1 <=> r2.
 # @param ... - extra args used for both initialize and compare functions
 WrapIndexType *
 newPerlSorted(char *CLASS, char *sortName, SV *initialize, SV *compare, ...)
