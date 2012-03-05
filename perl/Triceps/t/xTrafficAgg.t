@@ -538,6 +538,7 @@ while(&readLine) {
 	"new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300\n",
 	"new,OP_INSERT,1330972411000000,1.2.3.5,5.6.7.9,3000,80,200\n",
 	"new,OP_INSERT,1331058811000000\n",
+	"new,OP_INSERT,1331145211000000\n",
 	"dumpDaily\n",
 );
 $result = undef;
@@ -564,7 +565,10 @@ tDaily.out OP_INSERT day="20120304" bytes="450"
 new,OP_INSERT,1331058811000000
 tPackets.out OP_DELETE time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
 tDaily.out OP_INSERT day="20120305" bytes="200" 
+new,OP_INSERT,1331145211000000
+tDaily.out OP_INSERT day="20120306" bytes="0" 
 dumpDaily
 day="20120305" bytes="200" 
 day="20120304" bytes="450" 
+day="20120306" bytes="0" 
 ');
