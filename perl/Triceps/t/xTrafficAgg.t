@@ -160,11 +160,9 @@ our $tPackets = $uTraffic->makeTable($ttPackets,
 
 # the aggregated hourly stats, kept longer
 our $ttHourly = Triceps::TableType->new($rtHourly)
-	->addSubIndex("byHour", 
-		Triceps::SimpleOrderedIndex->new(time => "ASC",)
-		->addSubIndex("byIP", 
-			Triceps::IndexType->newHashed(key => [ "local_ip", "remote_ip" ])
-		)
+	->addSubIndex("byAggr", 
+		Triceps::SimpleOrderedIndex->new(
+			time => "ASC", local_ip => "ASC", remote_ip => "ASC")
 	)
 or die "$!";
 
