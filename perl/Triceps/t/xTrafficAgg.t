@@ -145,7 +145,7 @@ our $ttPackets = Triceps::TableType->new($rtPacket)
 		->addSubIndex("byIP", 
 			Triceps::IndexType->newHashed(key => [ "local_ip", "remote_ip" ])
 			->addSubIndex("group",
-				Triceps::IndexType->newFifo(limit => 2)
+				Triceps::IndexType->newFifo()
 				->setAggregator(Triceps::AggregatorType->new(
 					$rtHourly, "aggrHourly", \&initHourly, \&computeHourly)
 				)
