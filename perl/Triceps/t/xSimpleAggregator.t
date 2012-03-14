@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 33 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -421,11 +421,6 @@ sub runExample($$$) # ($unit, $tabType, $aggName)
 	# (since forgetLabel() is not in Perl API at the moment)
 }
 
-#########################
-# touch-test of all the main code-building paths
-
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
-
 # the input data
 my $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
@@ -434,17 +429,28 @@ my $rtTrade = Triceps::RowType->new(
 	size => "float64", # number of shares traded
 ) or die "$!";
 
-my $ttWindow = Triceps::TableType->new($rtTrade)
-	->addSubIndex("byId", 
-		Triceps::IndexType->newHashed(key => [ "id" ])
-	)
-	->addSubIndex("bySymbol", 
-		Triceps::IndexType->newHashed(key => [ "symbol" ])
-		->addSubIndex("last2",
-			Triceps::IndexType->newFifo(limit => 2)
+# create a new table type for trades, to put an aggregator on
+
+sub makeTtWindow
+{
+	return Triceps::TableType->new($rtTrade)
+		->addSubIndex("byId", 
+			Triceps::IndexType->newHashed(key => [ "id" ])
 		)
-	)
-or die "$!";
+		->addSubIndex("bySymbol", 
+			Triceps::IndexType->newHashed(key => [ "symbol" ])
+			->addSubIndex("last2",
+				Triceps::IndexType->newFifo(limit => 2)
+			)
+		);
+}
+
+#########################
+# touch-test of all the main code-building paths
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+my $ttWindow = &makeTtWindow or die "$!";
 
 my $compText;
 my $rtAggr;
@@ -466,10 +472,11 @@ ok(ref $res, "Triceps::TableType");
 ok($ttWindow->same($res));
 ok(ref $rtAggr, "Triceps::RowType");
 ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 volume, int32 count, int32 second, }");
-print $compText;
-
-ok($ttWindow->initialize());
-
+#print $compText;
+# check that the code elements are present
+ok($compText =~ /rhi = /);
+ok($compText =~ /rowFirst = /);
+ok($compText =~ /rowLast = /);
 
 @input = (
 	"OP_INSERT,1,AAA,10,10\n",
@@ -481,7 +488,7 @@ ok($ttWindow->initialize());
 );
 $result = undef;
 &runExample($uTrades, $ttWindow, "myAggr");
-print $result;
+#print $result;
 ok($result, 
 'OP_INSERT,1,AAA,10,10
 t.myAggr OP_INSERT symbol="AAA" id="1" volume="10" count="1" 
@@ -500,4 +507,178 @@ t.myAggr OP_INSERT symbol="AAA" id="5" volume="30" count="1"
 t.myAggr OP_INSERT symbol="BBB" id="3" volume="120" count="2" second="3" 
 OP_DELETE,5
 t.myAggr OP_DELETE symbol="AAA" id="5" volume="30" count="1" 
+');
+
+#########################
+# test of path for the count only
+
+$ttWindow = &makeTtWindow or die "$!";
+
+undef $compText;
+undef $rtAggr;
+$res = Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "myAggr",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		count => "int32", "count_star", undef,
+	],
+	saveRowTypeTo => \$rtAggr,
+	saveComputeTo => \$compText,
+);
+ok(ref $res, "Triceps::TableType");
+ok($ttWindow->same($res));
+ok(ref $rtAggr, "Triceps::RowType");
+ok($rtAggr->print(undef), "row { int32 count, }");
+#print $compText;
+# check that the code elements are present or absent
+ok($compText !~ /rhi = /);
+ok($compText !~ /rowFirst = /);
+ok($compText !~ /rowLast = /);
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,3,BBB,20,20\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&runExample($uTrades, $ttWindow, "myAggr");
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+t.myAggr OP_INSERT count="1" 
+OP_INSERT,2,BBB,100,100
+t.myAggr OP_INSERT count="1" 
+OP_INSERT,3,AAA,20,20
+t.myAggr OP_DELETE count="1" 
+t.myAggr OP_INSERT count="2" 
+OP_INSERT,5,AAA,30,30
+t.myAggr OP_DELETE count="2" 
+t.myAggr OP_INSERT count="2" 
+OP_INSERT,3,BBB,20,20
+t.myAggr OP_DELETE count="2" 
+t.myAggr OP_DELETE count="1" 
+t.myAggr OP_INSERT count="1" 
+t.myAggr OP_INSERT count="2" 
+OP_DELETE,5
+t.myAggr OP_DELETE count="1" 
+');
+
+#########################
+# test of path for the first only
+
+$ttWindow = &makeTtWindow or die "$!";
+
+undef $compText;
+undef $rtAggr;
+$res = Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "myAggr",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "first", sub {$_[0]->get("symbol");},
+	],
+	saveRowTypeTo => \$rtAggr,
+	saveComputeTo => \$compText,
+);
+ok(ref $res, "Triceps::TableType");
+ok($ttWindow->same($res));
+ok(ref $rtAggr, "Triceps::RowType");
+ok($rtAggr->print(undef), "row { string symbol, }");
+#print $compText;
+# check that the code elements are present or absent
+ok($compText !~ /rhi = /);
+ok($compText =~ /rowFirst = /);
+ok($compText !~ /rowLast = /);
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,3,BBB,20,20\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&runExample($uTrades, $ttWindow, "myAggr");
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+t.myAggr OP_INSERT symbol="AAA" 
+OP_INSERT,2,BBB,100,100
+t.myAggr OP_INSERT symbol="BBB" 
+OP_INSERT,3,AAA,20,20
+t.myAggr OP_DELETE symbol="AAA" 
+t.myAggr OP_INSERT symbol="AAA" 
+OP_INSERT,5,AAA,30,30
+t.myAggr OP_DELETE symbol="AAA" 
+t.myAggr OP_INSERT symbol="AAA" 
+OP_INSERT,3,BBB,20,20
+t.myAggr OP_DELETE symbol="AAA" 
+t.myAggr OP_DELETE symbol="BBB" 
+t.myAggr OP_INSERT symbol="AAA" 
+t.myAggr OP_INSERT symbol="BBB" 
+OP_DELETE,5
+t.myAggr OP_DELETE symbol="AAA" 
+');
+
+#########################
+# test of path for the last only
+
+$ttWindow = &makeTtWindow or die "$!";
+
+undef $compText;
+undef $rtAggr;
+$res = Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "myAggr",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+	],
+	saveRowTypeTo => \$rtAggr,
+	saveComputeTo => \$compText,
+);
+ok(ref $res, "Triceps::TableType");
+ok($ttWindow->same($res));
+ok(ref $rtAggr, "Triceps::RowType");
+ok($rtAggr->print(undef), "row { string symbol, }");
+#print $compText;
+# check that the code elements are present or absent
+ok($compText !~ /rhi = /);
+ok($compText !~ /rowFirst = /);
+ok($compText =~ /rowLast = /);
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,3,BBB,20,20\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&runExample($uTrades, $ttWindow, "myAggr");
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+t.myAggr OP_INSERT symbol="AAA" 
+OP_INSERT,2,BBB,100,100
+t.myAggr OP_INSERT symbol="BBB" 
+OP_INSERT,3,AAA,20,20
+t.myAggr OP_DELETE symbol="AAA" 
+t.myAggr OP_INSERT symbol="AAA" 
+OP_INSERT,5,AAA,30,30
+t.myAggr OP_DELETE symbol="AAA" 
+t.myAggr OP_INSERT symbol="AAA" 
+OP_INSERT,3,BBB,20,20
+t.myAggr OP_DELETE symbol="AAA" 
+t.myAggr OP_DELETE symbol="BBB" 
+t.myAggr OP_INSERT symbol="AAA" 
+t.myAggr OP_INSERT symbol="BBB" 
+OP_DELETE,5
+t.myAggr OP_DELETE symbol="AAA" 
 ');
