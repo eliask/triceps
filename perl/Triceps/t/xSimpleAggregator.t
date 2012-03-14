@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 61 };
+BEGIN { plan tests => 66 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -71,7 +71,7 @@ our $FUNCTIONS = {
 	},
 	count => {
 		vars => { count => 0 },
-		step => '{ $%count++; } if (defined $%argiter);',
+		step => '$%count++ if (defined $%argiter);',
 		result => '$%count',
 	},
 	sum => {
@@ -81,17 +81,17 @@ our $FUNCTIONS = {
 	},
 	max => {
 		vars => { max => 'undef' },
-		step => '{ $%max = $%argiter; } if (!defined $%max || $%argiter > $%max);',
+		step => '$%max = $%argiter if (!defined $%max || $%argiter > $%max);',
 		result => '$%max',
 	},
 	min => {
 		vars => { min => 'undef' },
-		step => '{ $%min = $%argiter; } if (!defined $%min || $%argiter < $%min);',
+		step => '$%min = $%argiter if (!defined $%min || $%argiter < $%min);',
 		result => '$%min',
 	},
 	avg => {
 		vars => { sum => 0, count => 0 },
-		step => '{ $%sum += $%argiter; $%count++; } if (defined $%argiter);',
+		step => 'if (defined $%argiter) { $%sum += $%argiter; $%count++; }',
 		result => '($%count == 0? undef : $%sum / $%count)',
 	},
 	avg_perl => { # Perl-like treat the NULLs as 0s
@@ -957,3 +957,54 @@ tryBadOptValue(
 ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_resultvar', result computation refers to an unknown variable 'x'/);
 #print "$@\n";
 
+#########################
+# test the aggregation functions that weren't exercised in the first example
+$ttWindow = &makeTtWindow or die "$!";
+
+undef $compText;
+undef $rtAggr;
+$res = Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "myAggr",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "first", sub {$_[0]->get("symbol");},
+		id => "int32", "first", sub {$_[0]->get("id");},
+		maxsize => "float64", "max", sub {$_[0]->get("size");},
+		minsize => "float64", "min", sub {$_[0]->get("size");},
+		count => "int32", "count", sub {$_[0]->get("size");},
+		avg => "float64", "avg", sub {$_[0]->get("size");},
+		avgperl => "float64", "avg_perl", sub {$_[0]->get("size");},
+	],
+	saveRowTypeTo => \$rtAggr,
+	saveComputeTo => \$compText,
+);
+ok(ref $res, "Triceps::TableType");
+ok($ttWindow->same($res));
+ok(ref $rtAggr, "Triceps::RowType");
+ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 maxsize, float64 minsize, int32 count, float64 avg, float64 avgperl, }");
+#print $compText;
+
+@input = (
+	"OP_INSERT,1,AAA,10,\n",
+	"OP_INSERT,2,AAA,10,100\n",
+	"OP_INSERT,3,AAA,10,200\n",
+	"OP_INSERT,4,AAA,10,50\n",
+);
+$result = undef;
+&runExample($uTrades, $ttWindow, "myAggr");
+#print $result;
+# the old records get pushed out of the window by the limit
+ok($result, 
+'OP_INSERT,1,AAA,10,
+t.myAggr OP_INSERT symbol="AAA" id="1" count="0" avgperl="0" 
+OP_INSERT,2,AAA,10,100
+t.myAggr OP_DELETE symbol="AAA" id="1" count="0" avgperl="0" 
+t.myAggr OP_INSERT symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" 
+OP_INSERT,3,AAA,10,200
+t.myAggr OP_DELETE symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" 
+t.myAggr OP_INSERT symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" 
+OP_INSERT,4,AAA,10,50
+t.myAggr OP_DELETE symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" 
+t.myAggr OP_INSERT symbol="AAA" id="3" maxsize="200" minsize="50" count="2" avg="125" avgperl="125" 
+');
