@@ -103,6 +103,8 @@ our $FUNCTIONS = {
 #       source code, the saved value may be undef if the init is not used
 #   saveComputeTo (optional, ref to a scalar) - where to save a copy of the compute
 #       function source code
+#   functions (optional, ref to a hash) - additional user-defined aggregation functions
+#       which may override the built-in ones. The format is the same as for $FUNCTIONS above.
 # @return - the same TableType, with added aggregator, or die
 sub make # (optName => optValue, ...)
 {
@@ -117,6 +119,7 @@ sub make # (optName => optValue, ...)
 			saveRowTypeTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
 			saveInitTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
 			saveComputeTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
+			functions => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_ref(@_, "HASH", "HASH") } ],
 		}, @_);
 
 	# reset the saved source code
@@ -175,12 +178,19 @@ sub make # (optName => optValue, ...)
 			confess("$myname: the result field function must be a string, got a " . ref($func) . " for field '$fld'")
 				unless (ref($func) eq '');
 
-			my $funcDef = $FUNCTIONS->{$func}
-				or confess("$myname: function '" . $func . "' is unknown");
+			my $funcDef;
+			if (defined $opts->{functions}) {
+				$funcDef = $opts->{functions}->{$func}
+			}
+			if (!defined $funcDef) {
+				$funcDef = $FUNCTIONS->{$func}
+					or confess("$myname: function '" . $func . "' is unknown");
+			}
 
 			my $argCount = $funcDef->{argcount}; 
 			$argCount = 1 # 1 is the default value
 				unless defined($argCount);
+			$argCount += 0; # convert to a number for sure
 			confess("$myname: in field '$fld' function '$func' requires an argument computation that must be a Perl sub reference")
 				unless ($argCount == 0 || ref $funcarg eq 'CODE');
 			confess("$myname: in field '$fld' function '$func' requires no argument, use undef as a placeholder")
@@ -197,7 +207,12 @@ sub make # (optName => optValue, ...)
 			### initialization
 			my $vars = $funcDef->{vars};
 			if (defined $vars) {
+				# XXX should also syntax-check all the code snippets by compliling them in a limited context first
+				confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', vars element must be a 'HASH' reference"
+					unless (ref($vars) eq 'HASH');
 				foreach my $v (keys %$vars) {
+					confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', vars initialization value for '$v' must be a string"
+						unless (ref($vars->{$v}) eq '');
 					# the variable names are given a unique prefix;
 					# the initialization values are constants, no substitutions
 					$codeInit .= "  my \$v${id}_${v} = " . $vars->{$v} . ";\n";
@@ -209,6 +224,8 @@ sub make # (optName => optValue, ...)
 			### iteration
 			my $step = $funcDef->{step};
 			if (defined $step) {
+				confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', step value must be a string"
+					unless (ref($step) eq '');
 				$codeStep .= "    # field $fld=$func\n";
 				if (defined $funcarg) {
 					# compute the function argument from the current row
@@ -223,6 +240,8 @@ sub make # (optName => optValue, ...)
 			my $result = $funcDef->{result};
 			confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', missing result computation"
 				unless (defined $result);
+			confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result value must be a string"
+				unless (ref($result) eq '');
 			# substitute the variables in $result
 			if ($result =~ /\$\%argfirst/) {
 				$needfirst = 1;

@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 59 };
+BEGIN { plan tests => 71 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -111,6 +111,54 @@ sub makeTtWindow
 		);
 }
 
+# extra functions for the test purposes
+our $test_functions = {
+	# test the overriding
+	sum => {
+		vars => { sum => 0 },
+		step => '$%sum += $%argiter;',
+		result => '$%sum + 1000',
+	},
+	_defective => { # purely for test purposes, a defective definition
+	},
+	_defective_syntax => { # purely for test purposes, a defective definition
+		result => 'XXXXXXX',
+	},
+	_defective_argiter => { # purely for test purposes, a defective definition
+		argcount => 0,
+		step => '$%argiter',
+		result => '0',
+	},
+	_defective_stepvar => { # purely for test purposes, a defective definition
+		argcount => 0,
+		step => '$%x',
+		result => '0',
+	},
+	_defective_argfirst => { # purely for test purposes, a defective definition
+		argcount => 0,
+		result => '$%argfirst',
+	},
+	_defective_arglast => { # purely for test purposes, a defective definition
+		argcount => 0,
+		result => '$%arglast',
+	},
+	_defective_resultvar => { # purely for test purposes, a defective definition
+		argcount => 0,
+		result => '$%x',
+	},
+	_defective_vars => {
+		vars => 0,
+	},
+	_defective_vars_init => {
+		vars => { sum => [ ] },
+	},
+	_defective_step => {
+		step => { sum => 1 },
+	},
+	_defective_result => {
+		result => { sum => 1 },
+	},
+};
 #########################
 # touch-test of all the main code-building paths
 
@@ -432,6 +480,7 @@ sub tryBadOptValue($$) # (optName, optValue)
 		saveRowTypeTo => \$rtAggr,
 		saveComputeTo => \$compText,
 		saveInitTo => \$initText,
+		functions => $test_functions,
 	);
 	$opts{$_[0]} = $_[1];
 	$res = eval {
@@ -543,7 +592,7 @@ tryBadOptValue(
 			symbol => "string", "_defective", sub {$_[0]->get("symbol");},
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective', missing result computation/);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective', missing result computation/);
 
 tryBadOptValue(
 		result => [
@@ -557,42 +606,75 @@ tryBadOptValue(
 			symbol => "string", "_defective_syntax", sub {$_[0]->get("symbol");},
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator::make: error in compilation of the aggregation computation:/);
+ok($@ =~ /^Triceps::SimpleAggregator::make: error in compilation of the aggregation computation:/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_argiter", undef
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argiter', step computation refers to 'argiter' but the function declares no arguments/);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argiter', step computation refers to 'argiter' but the function declares no arguments/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_argfirst", undef
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argfirst', result computation refers to 'argfirst' but the function declares no arguments/);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argfirst', result computation refers to 'argfirst' but the function declares no arguments/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_arglast", undef
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_arglast', result computation refers to 'arglast' but the function declares no arguments/);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_arglast', result computation refers to 'arglast' but the function declares no arguments/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_stepvar", undef
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_stepvar', step computation refers to an unknown variable 'x'/);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_stepvar', step computation refers to an unknown variable 'x'/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_resultvar", undef
 		],
 );
-# XXX ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_resultvar', result computation refers to an unknown variable 'x'/);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_resultvar', result computation refers to an unknown variable 'x'/);
+
+tryBadOptValue(
+		functions => { a => 10 }
+);
+ok($@ =~ /^Option 'functions' of class 'Triceps::SimpleAggregator' must be a reference to 'HASH' 'HASH', is 'HASH' ''/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_vars", sub { 0; }
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_vars', vars element must be a 'HASH' reference/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_vars_init", sub { 0; }
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_vars_init', vars initialization value for 'sum' must be a string/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_step", sub { 0; }
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_step', step value must be a string/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_result", sub { 0; }
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_result', result value must be a string/);
 #print "$@\n";
 
 #########################
@@ -614,14 +696,17 @@ $res = Triceps::SimpleAggregator::make(
 		avg => "float64", "avg", sub {$_[0]->get("size");},
 		# the following makes the Perl test warnings shut up on NULL fields
 		avgperl => "float64", "avg_perl", sub { my $x = $_[0]->get("size"); if (!defined $x) {$x = 0;}; return $x},
+		xsum => "float64", "sum", sub { my $x = $_[0]->get("size"); if (!defined $x) {$x = 0;}; return $x},
 	],
 	saveRowTypeTo => \$rtAggr,
 	saveComputeTo => \$compText,
+	saveInitTo => \$initText,
+	functions => $test_functions,
 );
 ok(ref $res, "Triceps::TableType");
 ok($ttWindow->same($res));
 ok(ref $rtAggr, "Triceps::RowType");
-ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 maxsize, float64 minsize, int32 count, float64 avg, float64 avgperl, }");
+ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 maxsize, float64 minsize, int32 count, float64 avg, float64 avgperl, float64 xsum, }");
 #print $compText;
 
 @input = (
@@ -636,14 +721,14 @@ $result = undef;
 # the old records get pushed out of the window by the limit
 ok($result, 
 'OP_INSERT,1,AAA,10,
-t.myAggr OP_INSERT symbol="AAA" id="1" count="0" avgperl="0" 
+t.myAggr OP_INSERT symbol="AAA" id="1" count="0" avgperl="0" xsum="1000" 
 OP_INSERT,2,AAA,10,100
-t.myAggr OP_DELETE symbol="AAA" id="1" count="0" avgperl="0" 
-t.myAggr OP_INSERT symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" 
+t.myAggr OP_DELETE symbol="AAA" id="1" count="0" avgperl="0" xsum="1000" 
+t.myAggr OP_INSERT symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" xsum="1100" 
 OP_INSERT,3,AAA,10,200
-t.myAggr OP_DELETE symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" 
-t.myAggr OP_INSERT symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" 
+t.myAggr OP_DELETE symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" xsum="1100" 
+t.myAggr OP_INSERT symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" xsum="1300" 
 OP_INSERT,4,AAA,10,50
-t.myAggr OP_DELETE symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" 
-t.myAggr OP_INSERT symbol="AAA" id="3" maxsize="200" minsize="50" count="2" avg="125" avgperl="125" 
+t.myAggr OP_DELETE symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" xsum="1300" 
+t.myAggr OP_INSERT symbol="AAA" id="3" maxsize="200" minsize="50" count="2" avg="125" avgperl="125" xsum="1250" 
 ');
