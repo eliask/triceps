@@ -25,7 +25,7 @@ use Carp;
 #
 # The option description is formatted as follows: a hash containing array
 # refs. The keys of the hash are option names. The value arrays contain:
-#    [0] default value ofr the option (may be undef)
+#    [0] default value of the option (may be undef)
 #    [1] checking function reference for the option (see below), or undef
 # For example:
 #    my $optdef =  {
@@ -90,8 +90,6 @@ sub ck_mandatory
 # @param refto - class name (or ARRAY or HASH)
 # @param reftoref (optional) - if refto is ARRAY or HASH, can be used
 #        to specify the type of values in it
-#    
-# XXX test it
 sub ck_ref
 {
 	#print STDERR "\nDEBUG ck_ref('" . join("', '", @_) . "')\n";
