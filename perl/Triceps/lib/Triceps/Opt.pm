@@ -118,4 +118,18 @@ sub ck_ref
 		}
 	}
 }
+
+# check that the option value is a reference to a scalar
+# (for the values to be returned, where the scalar value will be overwritten);
+# if it's an input value that really must be a scalar then use ck_ref(@_, 'SCALAR') instead
+sub ck_refscalar
+{
+	#print STDERR "\nDEBUG ck_refscalar('" . join("', '", @_) . "')\n";
+	my ($optval, $optname, $class, $instance, $refto, $reftoref) = @_;
+	return if !defined $optval; # undefined value is OK
+	my $rval = ref $optval;
+	# a tricky point: a scalar may contain a reference in it, which is OK since it will be overwritten
+	Carp::confess "Option '$optname' of class '$class' must be a reference to a scalar, is '$rval'"
+		unless ($rval eq 'SCALAR' || $rval eq 'REF');
+}
 1;
