@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 33 };
+BEGIN { plan tests => 41 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -452,8 +452,9 @@ my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
 
 my $ttWindow = &makeTtWindow or die "$!";
 
-my $compText;
-my $rtAggr;
+my $compText = 1;
+my $initText = 1;
+my $rtAggr = 1;
 my $res = Triceps::SimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
@@ -467,12 +468,14 @@ my $res = Triceps::SimpleAggregator::make(
 	],
 	saveRowTypeTo => \$rtAggr,
 	saveComputeTo => \$compText,
+	saveInitTo => \$initText,
 );
 ok(ref $res, "Triceps::TableType");
 ok($ttWindow->same($res));
 ok(ref $rtAggr, "Triceps::RowType");
 ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 volume, int32 count, int32 second, }");
 #print $compText;
+ok(!defined($initText));
 # check that the code elements are present
 ok($compText =~ /rhi = /);
 ok($compText =~ /rowFirst = /);
@@ -682,3 +685,107 @@ t.myAggr OP_INSERT symbol="BBB"
 OP_DELETE,5
 t.myAggr OP_DELETE symbol="AAA" 
 ');
+
+#########################
+# errors: missing mandatory options
+
+$ttWindow = &makeTtWindow or die "$!";
+$res = eval {
+	Triceps::SimpleAggregator::make(
+		name => "myAggr",
+		idxPath => [ "bySymbol", "last2" ],
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");},
+		],
+	);
+}; 
+ok($@ =~ /^Option 'tabType' must be specified for class 'Triceps::SimpleAggregator'/);
+
+$ttWindow = &makeTtWindow or die "$!";
+$res = eval {
+	Triceps::SimpleAggregator::make(
+		tabType => $ttWindow,
+		idxPath => [ "bySymbol", "last2" ],
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");},
+		],
+	);
+};
+ok($@ =~ /^Option 'name' must be specified for class 'Triceps::SimpleAggregator'/);
+
+$ttWindow = &makeTtWindow or die "$!";
+$res = eval {
+	Triceps::SimpleAggregator::make(
+		tabType => $ttWindow,
+		name => "myAggr",
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");},
+		],
+	);
+};
+ok($@ =~ /^Option 'idxPath' must be specified for class 'Triceps::SimpleAggregator'/);
+
+$ttWindow = &makeTtWindow or die "$!";
+$res = eval {
+	Triceps::SimpleAggregator::make(
+		tabType => $ttWindow,
+		name => "myAggr",
+		idxPath => [ "bySymbol", "last2" ],
+	);
+};
+ok($@ =~ /^Option 'result' must be specified for class 'Triceps::SimpleAggregator'/);
+
+#########################
+# errors: bad values in options
+
+sub tryBadOptValue($$) # (optName, optValue)
+{
+	my %opts = (
+		tabType => $ttWindow,
+		name => "myAggr",
+		idxPath => [ "bySymbol", "last2" ],
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");},
+		],
+		saveRowTypeTo => \$rtAggr,
+		saveComputeTo => \$compText,
+		saveInitTo => \$initText,
+	);
+	$opts{$_[0]} = $_[1];
+	$ttWindow = &makeTtWindow or die "$!";
+	$res = eval {
+		Triceps::SimpleAggregator::make(%opts);
+	};
+}
+
+tryBadOptValue(
+		tabType => "zzz",
+);
+ok($@ =~ /^Option 'tabType' of class 'Triceps::SimpleAggregator' must be a reference to 'Triceps::TableType', is/);
+
+tryBadOptValue(
+		idxPath => { "bySymbol", "last2" },
+);
+ok($@ =~ /^Option 'idxPath' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY', is/);
+
+undef $rtAggr;
+tryBadOptValue(
+		result => { }
+);
+ok($@ =~ /^Option 'result' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY', is/);
+#print "$@\n";
+
+# XXXXXX
+$res = eval {
+	Triceps::SimpleAggregator::make(
+		tabType => $ttWindow,
+		name => "myAggr",
+		idxPath => [ "bySymbol", "last2" ],
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");},
+		],
+		saveRowTypeTo => \$rtAggr,
+		saveComputeTo => \$compText,
+		saveInitTo => \$initText,
+	);
+};
