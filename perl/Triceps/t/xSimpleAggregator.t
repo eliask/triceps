@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 41 };
+BEGIN { plan tests => 61 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -104,6 +104,33 @@ our $FUNCTIONS = {
 		step => '($%n, $%tmp) = @$%argiter; if ($%n == $%niter) { $%val = $%tmp; }',
 		result => '$%val',
 	},
+	_defective => { # purely for test purposes, a defective definition
+	},
+	_defective_syntax => { # purely for test purposes, a defective definition
+		result => 'XXXXXXX',
+	},
+	_defective_argiter => { # purely for test purposes, a defective definition
+		argcount => 0,
+		step => '$%argiter',
+		result => '0',
+	},
+	_defective_stepvar => { # purely for test purposes, a defective definition
+		argcount => 0,
+		step => '$%x',
+		result => '0',
+	},
+	_defective_argfirst => { # purely for test purposes, a defective definition
+		argcount => 0,
+		result => '$%argfirst',
+	},
+	_defective_arglast => { # purely for test purposes, a defective definition
+		argcount => 0,
+		result => '$%arglast',
+	},
+	_defective_resultvar => { # purely for test purposes, a defective definition
+		argcount => 0,
+		result => '$%x',
+	},
 };
 
 # Make an aggregator and add it to a table type.
@@ -130,11 +157,11 @@ sub make # (optName => optValue, ...)
 	&Triceps::Opt::parse("Triceps::SimpleAggregator", $opts, {
 			tabType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TableType") } ],
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
-			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			result => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
-			saveRowTypeTo => [ undef, sub { return unless defined($_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
-			saveInitTo => [ undef, sub { return unless defined($_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
-			saveComputeTo => [ undef, sub { return unless defined($_[0]); &Triceps::Opt::ck_ref(@_, "SCALAR") } ],
+			saveRowTypeTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
+			saveInitTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
+			saveComputeTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
 		}, @_);
 
 	# reset the saved source code
@@ -151,9 +178,10 @@ sub make # (optName => optValue, ...)
 		my $cur = $opts->{tabType}; # the root of the tree
 		my $progress = '';
 		foreach my $p (@path) {
+			$progress .= $p;
 			$cur = $cur->findSubIndex($p) 
 				or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $opts->{tabType}->print() . " ");
-			$progress .= '.' . $p;
+			$progress .= '.';
 		}
 		$idx = $cur;
 	}
@@ -198,9 +226,9 @@ sub make # (optName => optValue, ...)
 			my $argCount = $funcDef->{argcount}; 
 			$argCount = 1 # 1 is the default value
 				unless defined($argCount);
-			confess("$myname: in field '$fld' function '$funcDef' requires an argument computation that must be a Perl sub reference")
+			confess("$myname: in field '$fld' function '$func' requires an argument computation that must be a Perl sub reference")
 				unless ($argCount == 0 || ref $funcarg eq 'CODE');
-			confess("$myname: in field '$fld' function '$funcDef' requires no argument, use undef as a placeholder")
+			confess("$myname: in field '$fld' function '$func' requires no argument, use undef as a placeholder")
 				unless ($argCount != 0 || !defined $funcarg);
 
 			push(@rtdefRes, $fld, $type);
@@ -687,6 +715,21 @@ t.myAggr OP_DELETE symbol="AAA"
 ');
 
 #########################
+# test without optional options
+
+$ttWindow = &makeTtWindow or die "$!";
+
+$res = Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "myAggr",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+	],
+);
+ok(ref $res, "Triceps::TableType");
+
+#########################
 # errors: missing mandatory options
 
 $ttWindow = &makeTtWindow or die "$!";
@@ -740,6 +783,7 @@ ok($@ =~ /^Option 'result' must be specified for class 'Triceps::SimpleAggregato
 
 sub tryBadOptValue($$) # (optName, optValue)
 {
+	$ttWindow = &makeTtWindow or die "$!";
 	my %opts = (
 		tabType => $ttWindow,
 		name => "myAggr",
@@ -752,7 +796,6 @@ sub tryBadOptValue($$) # (optName, optValue)
 		saveInitTo => \$initText,
 	);
 	$opts{$_[0]} = $_[1];
-	$ttWindow = &makeTtWindow or die "$!";
 	$res = eval {
 		Triceps::SimpleAggregator::make(%opts);
 	};
@@ -768,14 +811,28 @@ tryBadOptValue(
 );
 ok($@ =~ /^Option 'idxPath' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY', is/);
 
-undef $rtAggr;
+tryBadOptValue(
+		idxPath => [ $ttWindow ],
+);
+ok($@ =~ /^Option 'idxPath' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY' '', is/);
+
 tryBadOptValue(
 		result => { }
 );
 ok($@ =~ /^Option 'result' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY', is/);
-#print "$@\n";
 
-# XXXXXX
+tryBadOptValue(
+		idxPath => [ ],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: idxPath must be an array of non-zero length/);
+
+tryBadOptValue(
+		idxPath => [ "bySymbol", "zzz" ],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: unable to find the index type at path 'bySymbol.zzz'/);
+
+$ttWindow = &makeTtWindow or die "$!";
+$ttWindow->initialize();
 $res = eval {
 	Triceps::SimpleAggregator::make(
 		tabType => $ttWindow,
@@ -784,8 +841,119 @@ $res = eval {
 		result => [
 			symbol => "string", "last", sub {$_[0]->get("symbol");},
 		],
-		saveRowTypeTo => \$rtAggr,
-		saveComputeTo => \$compText,
-		saveInitTo => \$initText,
 	);
 };
+ok($@ =~ /^Triceps::SimpleAggregator::make: the index type is already initialized, can not add an aggregator on it/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");},
+			id => "int32", "last",
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: the values in the result definition must go in groups of 4/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "last", sub {$_[0]->get("symbol");}, sub {$_[0]->get("symbol");},
+			id => "int32", "last", sub {$_[0]->get("id");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: the result field name must be a string, got a CODE/);
+
+tryBadOptValue(
+		result => [
+			symbol => sub {$_[0]->get("symbol");},
+			id => "int32", "last", sub {$_[0]->get("id");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: the result field type must be a string, got a CODE for field 'symbol'/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", sub {$_[0]->get("symbol");},
+			id => "int32", "last", sub {$_[0]->get("id");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: the result field function must be a string, got a CODE for field 'symbol'/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "nosuch", sub {$_[0]->get("symbol");},
+			id => "int32", "last", sub {$_[0]->get("id");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: function 'nosuch' is unknown/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "first", 
+			id => "int32", "last", sub {$_[0]->get("id");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: in field 'symbol' function 'first' requires an argument computation that must be a Perl sub reference/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "count_star", sub {$_[0]->get("symbol");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: in field 'symbol' function 'count_star' requires no argument, use undef as a placeholder/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective", sub {$_[0]->get("symbol");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective', missing result computation/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string[]", "last", sub {$_[0]->get("symbol");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: invalid result row type definition: Triceps::RowType::new: field 'symbol' string array type is not supported/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_syntax", sub {$_[0]->get("symbol");},
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator::make: error in compilation of the aggregation computation:/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_argiter", undef
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argiter', step computation refers to 'argiter' but the function declares no arguments/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_argfirst", undef
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argfirst', result computation refers to 'argfirst' but the function declares no arguments/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_arglast", undef
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_arglast', result computation refers to 'arglast' but the function declares no arguments/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_stepvar", undef
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_stepvar', step computation refers to an unknown variable 'x'/);
+
+tryBadOptValue(
+		result => [
+			symbol => "string", "_defective_resultvar", undef
+		],
+);
+ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_resultvar', result computation refers to an unknown variable 'x'/);
+#print "$@\n";
+
