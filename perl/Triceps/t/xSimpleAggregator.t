@@ -30,7 +30,7 @@ ok(1); # If we made it this far, we're ok.
 # The aggregator generation class
 #
 
-package SimpleAggregator;
+package MySimpleAggregator;
 use Carp;
 
 use strict;
@@ -76,7 +76,7 @@ our $FUNCTIONS = {
 		result => '$%count',
 	},
 	sum => {
-		vars => { sum => 'undef' },
+		vars => { sum => 0 },
 		step => '$%sum += $%argiter;',
 		result => '$%sum',
 	},
@@ -153,9 +153,9 @@ our $FUNCTIONS = {
 sub make # (optName => optValue, ...)
 {
 	my $opts = {}; # the parsed options
-	my $myname = "Triceps::SimpleAggregator::make";
+	my $myname = "MySimpleAggregator::make";
 	
-	&Triceps::Opt::parse("Triceps::SimpleAggregator", $opts, {
+	&Triceps::Opt::parse("MySimpleAggregator", $opts, {
 			tabType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TableType") } ],
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
@@ -267,7 +267,7 @@ sub make # (optName => optValue, ...)
 
 			### result building
 			my $result = $funcDef->{result};
-			confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', missing result computation"
+			confess "MySimpleAggregator: internal error in definition of aggregation function '$func', missing result computation"
 				unless (defined $result);
 			# substitute the variables in $result
 			if ($result =~ /\$\%argfirst/) {
@@ -342,7 +342,7 @@ sub replaceStep # ($varname, $func, $vars, $id, $argCount)
 	my ($varname, $func, $vars, $id, $argCount) = @_;
 
 	if ($varname eq 'argiter') {
-		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to 'argiter' but the function declares no arguments"
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to 'argiter' but the function declares no arguments"
 			unless ($argCount > 0);
 		return "\$a${id}";
 	} elsif ($varname eq 'niter') {
@@ -352,7 +352,7 @@ sub replaceStep # ($varname, $func, $vars, $id, $argCount)
 	} elsif (exists $vars->{$varname}) {
 		return "\$v${id}_${varname}";
 	} else {
-		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to an unknown variable '$varname'"
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to an unknown variable '$varname'"
 	}
 }
 
@@ -368,11 +368,11 @@ sub replaceResult # ($varname, $func, $vars, $id, $argCount)
 	my ($varname, $func, $vars, $id, $argCount) = @_;
 
 	if ($varname eq 'argfirst') {
-		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
 			unless ($argCount > 0);
 		return "\$f${id}";
 	} elsif ($varname eq 'arglast') {
-		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
 			unless ($argCount > 0);
 		return "\$l${id}";
 	} elsif ($varname eq 'groupsize') {
@@ -380,7 +380,7 @@ sub replaceResult # ($varname, $func, $vars, $id, $argCount)
 	} elsif (exists $vars->{$varname}) {
 		return "\$v${id}_${varname}";
 	} else {
-		confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to an unknown variable '$varname'"
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to an unknown variable '$varname'"
 	}
 }
 
@@ -484,7 +484,7 @@ my $ttWindow = &makeTtWindow or die "$!";
 my $compText = 1;
 my $initText = 1;
 my $rtAggr = 1;
-my $res = SimpleAggregator::make(
+my $res = MySimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
 	idxPath => [ "bySymbol", "last2" ],
@@ -548,7 +548,7 @@ $ttWindow = &makeTtWindow or die "$!";
 
 undef $compText;
 undef $rtAggr;
-$res = SimpleAggregator::make(
+$res = MySimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
 	idxPath => [ "bySymbol", "last2" ],
@@ -606,7 +606,7 @@ $ttWindow = &makeTtWindow or die "$!";
 
 undef $compText;
 undef $rtAggr;
-$res = SimpleAggregator::make(
+$res = MySimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
 	idxPath => [ "bySymbol", "last2" ],
@@ -664,7 +664,7 @@ $ttWindow = &makeTtWindow or die "$!";
 
 undef $compText;
 undef $rtAggr;
-$res = SimpleAggregator::make(
+$res = MySimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
 	idxPath => [ "bySymbol", "last2" ],
@@ -720,7 +720,7 @@ t.myAggr OP_DELETE symbol="AAA"
 
 $ttWindow = &makeTtWindow or die "$!";
 
-$res = SimpleAggregator::make(
+$res = MySimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
 	idxPath => [ "bySymbol", "last2" ],
@@ -735,7 +735,7 @@ ok(ref $res, "Triceps::TableType");
 
 $ttWindow = &makeTtWindow or die "$!";
 $res = eval {
-	SimpleAggregator::make(
+	MySimpleAggregator::make(
 		name => "myAggr",
 		idxPath => [ "bySymbol", "last2" ],
 		result => [
@@ -743,11 +743,11 @@ $res = eval {
 		],
 	);
 }; 
-ok($@ =~ /^Option 'tabType' must be specified for class 'Triceps::SimpleAggregator'/);
+ok($@ =~ /^Option 'tabType' must be specified for class 'MySimpleAggregator'/);
 
 $ttWindow = &makeTtWindow or die "$!";
 $res = eval {
-	SimpleAggregator::make(
+	MySimpleAggregator::make(
 		tabType => $ttWindow,
 		idxPath => [ "bySymbol", "last2" ],
 		result => [
@@ -755,11 +755,11 @@ $res = eval {
 		],
 	);
 };
-ok($@ =~ /^Option 'name' must be specified for class 'Triceps::SimpleAggregator'/);
+ok($@ =~ /^Option 'name' must be specified for class 'MySimpleAggregator'/);
 
 $ttWindow = &makeTtWindow or die "$!";
 $res = eval {
-	SimpleAggregator::make(
+	MySimpleAggregator::make(
 		tabType => $ttWindow,
 		name => "myAggr",
 		result => [
@@ -767,17 +767,17 @@ $res = eval {
 		],
 	);
 };
-ok($@ =~ /^Option 'idxPath' must be specified for class 'Triceps::SimpleAggregator'/);
+ok($@ =~ /^Option 'idxPath' must be specified for class 'MySimpleAggregator'/);
 
 $ttWindow = &makeTtWindow or die "$!";
 $res = eval {
-	SimpleAggregator::make(
+	MySimpleAggregator::make(
 		tabType => $ttWindow,
 		name => "myAggr",
 		idxPath => [ "bySymbol", "last2" ],
 	);
 };
-ok($@ =~ /^Option 'result' must be specified for class 'Triceps::SimpleAggregator'/);
+ok($@ =~ /^Option 'result' must be specified for class 'MySimpleAggregator'/);
 
 #########################
 # errors: bad values in options
@@ -798,44 +798,44 @@ sub tryBadOptValue($$) # (optName, optValue)
 	);
 	$opts{$_[0]} = $_[1];
 	$res = eval {
-		SimpleAggregator::make(%opts);
+		MySimpleAggregator::make(%opts);
 	};
 }
 
 tryBadOptValue(
 		tabType => "zzz",
 );
-ok($@ =~ /^Option 'tabType' of class 'Triceps::SimpleAggregator' must be a reference to 'Triceps::TableType', is/);
+ok($@ =~ /^Option 'tabType' of class 'MySimpleAggregator' must be a reference to 'Triceps::TableType', is/);
 
 tryBadOptValue(
 		idxPath => { "bySymbol", "last2" },
 );
-ok($@ =~ /^Option 'idxPath' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY', is/);
+ok($@ =~ /^Option 'idxPath' of class 'MySimpleAggregator' must be a reference to 'ARRAY', is/);
 
 tryBadOptValue(
 		idxPath => [ $ttWindow ],
 );
-ok($@ =~ /^Option 'idxPath' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY' '', is/);
+ok($@ =~ /^Option 'idxPath' of class 'MySimpleAggregator' must be a reference to 'ARRAY' '', is/);
 
 tryBadOptValue(
 		result => { }
 );
-ok($@ =~ /^Option 'result' of class 'Triceps::SimpleAggregator' must be a reference to 'ARRAY', is/);
+ok($@ =~ /^Option 'result' of class 'MySimpleAggregator' must be a reference to 'ARRAY', is/);
 
 tryBadOptValue(
 		idxPath => [ ],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: idxPath must be an array of non-zero length/);
+ok($@ =~ /^MySimpleAggregator::make: idxPath must be an array of non-zero length/);
 
 tryBadOptValue(
 		idxPath => [ "bySymbol", "zzz" ],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: unable to find the index type at path 'bySymbol.zzz'/);
+ok($@ =~ /^MySimpleAggregator::make: unable to find the index type at path 'bySymbol.zzz'/);
 
 $ttWindow = &makeTtWindow or die "$!";
 $ttWindow->initialize();
 $res = eval {
-	SimpleAggregator::make(
+	MySimpleAggregator::make(
 		tabType => $ttWindow,
 		name => "myAggr",
 		idxPath => [ "bySymbol", "last2" ],
@@ -844,7 +844,7 @@ $res = eval {
 		],
 	);
 };
-ok($@ =~ /^Triceps::SimpleAggregator::make: the index type is already initialized, can not add an aggregator on it/);
+ok($@ =~ /^MySimpleAggregator::make: the index type is already initialized, can not add an aggregator on it/);
 
 tryBadOptValue(
 		result => [
@@ -852,7 +852,7 @@ tryBadOptValue(
 			id => "int32", "last",
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: the values in the result definition must go in groups of 4/);
+ok($@ =~ /^MySimpleAggregator::make: the values in the result definition must go in groups of 4/);
 
 tryBadOptValue(
 		result => [
@@ -860,7 +860,7 @@ tryBadOptValue(
 			id => "int32", "last", sub {$_[0]->get("id");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: the result field name must be a string, got a CODE/);
+ok($@ =~ /^MySimpleAggregator::make: the result field name must be a string, got a CODE/);
 
 tryBadOptValue(
 		result => [
@@ -868,7 +868,7 @@ tryBadOptValue(
 			id => "int32", "last", sub {$_[0]->get("id");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: the result field type must be a string, got a CODE for field 'symbol'/);
+ok($@ =~ /^MySimpleAggregator::make: the result field type must be a string, got a CODE for field 'symbol'/);
 
 tryBadOptValue(
 		result => [
@@ -876,7 +876,7 @@ tryBadOptValue(
 			id => "int32", "last", sub {$_[0]->get("id");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: the result field function must be a string, got a CODE for field 'symbol'/);
+ok($@ =~ /^MySimpleAggregator::make: the result field function must be a string, got a CODE for field 'symbol'/);
 
 tryBadOptValue(
 		result => [
@@ -884,7 +884,7 @@ tryBadOptValue(
 			id => "int32", "last", sub {$_[0]->get("id");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: function 'nosuch' is unknown/);
+ok($@ =~ /^MySimpleAggregator::make: function 'nosuch' is unknown/);
 
 tryBadOptValue(
 		result => [
@@ -892,70 +892,70 @@ tryBadOptValue(
 			id => "int32", "last", sub {$_[0]->get("id");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: in field 'symbol' function 'first' requires an argument computation that must be a Perl sub reference/);
+ok($@ =~ /^MySimpleAggregator::make: in field 'symbol' function 'first' requires an argument computation that must be a Perl sub reference/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "count_star", sub {$_[0]->get("symbol");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: in field 'symbol' function 'count_star' requires no argument, use undef as a placeholder/);
+ok($@ =~ /^MySimpleAggregator::make: in field 'symbol' function 'count_star' requires no argument, use undef as a placeholder/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective", sub {$_[0]->get("symbol");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective', missing result computation/);
+ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation function '_defective', missing result computation/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string[]", "last", sub {$_[0]->get("symbol");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: invalid result row type definition: Triceps::RowType::new: field 'symbol' string array type is not supported/);
+ok($@ =~ /^MySimpleAggregator::make: invalid result row type definition: Triceps::RowType::new: field 'symbol' string array type is not supported/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_syntax", sub {$_[0]->get("symbol");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: error in compilation of the aggregation computation:/);
+ok($@ =~ /^MySimpleAggregator::make: error in compilation of the aggregation computation:/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_argiter", undef
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argiter', step computation refers to 'argiter' but the function declares no arguments/);
+ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation function '_defective_argiter', step computation refers to 'argiter' but the function declares no arguments/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_argfirst", undef
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_argfirst', result computation refers to 'argfirst' but the function declares no arguments/);
+ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation function '_defective_argfirst', result computation refers to 'argfirst' but the function declares no arguments/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_arglast", undef
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_arglast', result computation refers to 'arglast' but the function declares no arguments/);
+ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation function '_defective_arglast', result computation refers to 'arglast' but the function declares no arguments/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_stepvar", undef
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_stepvar', step computation refers to an unknown variable 'x'/);
+ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation function '_defective_stepvar', step computation refers to an unknown variable 'x'/);
 
 tryBadOptValue(
 		result => [
 			symbol => "string", "_defective_resultvar", undef
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator: internal error in definition of aggregation function '_defective_resultvar', result computation refers to an unknown variable 'x'/);
+ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation function '_defective_resultvar', result computation refers to an unknown variable 'x'/);
 #print "$@\n";
 
 #########################
@@ -964,7 +964,7 @@ $ttWindow = &makeTtWindow or die "$!";
 
 undef $compText;
 undef $rtAggr;
-$res = SimpleAggregator::make(
+$res = MySimpleAggregator::make(
 	tabType => $ttWindow,
 	name => "myAggr",
 	idxPath => [ "bySymbol", "last2" ],
@@ -975,7 +975,8 @@ $res = SimpleAggregator::make(
 		minsize => "float64", "min", sub {$_[0]->get("size");},
 		count => "int32", "count", sub {$_[0]->get("size");},
 		avg => "float64", "avg", sub {$_[0]->get("size");},
-		avgperl => "float64", "avg_perl", sub {$_[0]->get("size");},
+		# the following makes the Perl test warnings shut up on NULL fields
+		avgperl => "float64", "avg_perl", sub { my $x = $_[0]->get("size"); if (!defined $x) {$x = 0;}; return $x},
 	],
 	saveRowTypeTo => \$rtAggr,
 	saveComputeTo => \$compText,

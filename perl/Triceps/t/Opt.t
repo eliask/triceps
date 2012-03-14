@@ -123,33 +123,33 @@ ok($@ =~ /^Incorrect arguments, may use the second type only if the first is ARR
 
 # test ck_refscalar
 
-my $optdef2 =  {
+my $optdef3 =  {
 	unit => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 };
 
 eval {
 	my $v;
-	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef3,
 		unit => \$v);
 };
 ok(!$@);
 
 eval {
 	my $v = 1;
-	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef3,
 		unit => \$v);
 };
 ok(!$@);
 
 eval {
 	my $v = [ 1 ];
-	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef3,
 		unit => \$v);
 };
 ok(!$@);
 
 eval {
-	Triceps::Opt::parse(MYCLASS, $testobj, $optdef2,
+	Triceps::Opt::parse(MYCLASS, $testobj, $optdef3,
 		unit => $u1);
 };
 ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 'Triceps::Unit'.*/);

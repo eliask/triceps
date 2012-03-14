@@ -57,7 +57,7 @@ our $FUNCTIONS = {
 		result => '$%count',
 	},
 	sum => {
-		vars => { sum => 'undef' },
+		vars => { sum => 0 },
 		step => '$%sum += $%argiter;',
 		result => '$%sum',
 	},

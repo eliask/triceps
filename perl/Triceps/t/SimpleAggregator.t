@@ -612,7 +612,8 @@ $res = Triceps::SimpleAggregator::make(
 		minsize => "float64", "min", sub {$_[0]->get("size");},
 		count => "int32", "count", sub {$_[0]->get("size");},
 		avg => "float64", "avg", sub {$_[0]->get("size");},
-		avgperl => "float64", "avg_perl", sub {$_[0]->get("size");},
+		# the following makes the Perl test warnings shut up on NULL fields
+		avgperl => "float64", "avg_perl", sub { my $x = $_[0]->get("size"); if (!defined $x) {$x = 0;}; return $x},
 	],
 	saveRowTypeTo => \$rtAggr,
 	saveComputeTo => \$compText,
