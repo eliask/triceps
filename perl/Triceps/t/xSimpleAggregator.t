@@ -13,9 +13,10 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use ExtUtils::testlib;
+use Carp;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 7 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -97,6 +98,11 @@ our $FUNCTIONS = {
 		vars => { sum => 0 },
 		step => '$%sum += $%argiter;',
 		result => '$%sum / $%groupsize',
+	},
+	nth_simple => { # inefficient, need proper multi-args for better efficiency
+		vars => { n => 'undef', tmp => 'undef', val => 'undef' },
+		step => '($%n, $%tmp) = @$%argiter; if ($%n == $%niter) { $%val = $%tmp; }',
+		result => '$%val',
 	},
 };
 
@@ -286,7 +292,7 @@ sub make # (optName => optValue, ...)
 		or confess "$myname: error in compilation of the aggregation computation:\n  $@\nfunction text:\n$compText ";
 
 	# build and add the aggregator
-	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun)
+	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun, @compArgs)
 		or confess "$myname: internal error: failed to build an aggregator type: $! ";
 
 	$idx->setAggregator($agg)
@@ -349,8 +355,74 @@ sub replaceResult # ($varname, $func, $vars, $id, $argCount)
 	}
 }
 
-#######################################################################
 package main;
+
+#######################################################################
+
+use strict;
+
+#########################
+# helper functions to support either user i/o or i/o from vars
+
+# vars to serve as input and output sources
+my @input;
+my $result;
+
+# simulates user input: returns the next line or undef
+sub readLine # ()
+{
+	$_ = shift @input;
+	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	return $_;
+}
+
+# write a message to user
+sub send # (@message)
+{
+	$result .= join('', @_);
+}
+
+# versions for the real user interaction
+sub readLineX # ()
+{
+	$_ = <STDIN>;
+	return $_;
+}
+
+sub sendX # (@message)
+{
+	print @_;
+}
+
+# instantiate the table and run it with the given input
+sub runExample($$$) # ($unit, $tabType, $aggName)
+{
+	my ($unit, $tt, $aggName) = @_;
+	$tt->initialize() or confess "$!";
+	my $t = $unit->makeTable($tt, &Triceps::EM_CALL, "t") or confess "$!";
+	my $lbAgg = $t->getAggregatorLabel($aggName) or confess "$!";
+	
+	# label to print the result of aggregation
+	my $lbPrint = $unit->makeLabel($lbAgg->getType(), "lbPrint",
+		undef, sub { # (label, rowop)
+			&send($_[1]->printP(), "\n");
+		}) or die "$!";
+
+	$lbAgg->chain($lbPrint) or confess "$!";
+
+	while(&readLine) {
+		chomp;
+		my @data = split(/,/); # starts with a string opcode
+		$unit->makeArrayCall($t->getInputLabel(), @data)
+			or confess "$!";
+		$unit->drainFrame(); # just in case, for completeness
+	}
+	# XXX this leaks labels $lbPrint until the unit gets cleared
+	# (since forgetLabel() is not in Perl API at the moment)
+}
+
+#########################
+# touch-test of all the main code-building paths
 
 my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
 
@@ -384,6 +456,8 @@ my $res = Triceps::SimpleAggregator::make(
 		symbol => "string", "first", sub {$_[0]->get("symbol");},
 		id => "int32", "last", sub {$_[0]->get("id");},
 		volume => "float64", "sum", sub {$_[0]->get("size");},
+		count => "int32", "count_star", undef,
+		second => "int32", "nth_simple", sub { [1, $_[0]->get("id")];},
 	],
 	saveRowTypeTo => \$rtAggr,
 	saveComputeTo => \$compText,
@@ -391,6 +465,39 @@ my $res = Triceps::SimpleAggregator::make(
 ok(ref $res, "Triceps::TableType");
 ok($ttWindow->same($res));
 ok(ref $rtAggr, "Triceps::RowType");
-ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 volume, }");
-#print $compText;
+ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 volume, int32 count, int32 second, }");
+print $compText;
 
+ok($ttWindow->initialize());
+
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_INSERT,3,BBB,20,20\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&runExample($uTrades, $ttWindow, "myAggr");
+print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+t.myAggr OP_INSERT symbol="AAA" id="1" volume="10" count="1" 
+OP_INSERT,2,BBB,100,100
+t.myAggr OP_INSERT symbol="BBB" id="2" volume="100" count="1" 
+OP_INSERT,3,AAA,20,20
+t.myAggr OP_DELETE symbol="AAA" id="1" volume="10" count="1" 
+t.myAggr OP_INSERT symbol="AAA" id="3" volume="30" count="2" second="3" 
+OP_INSERT,5,AAA,30,30
+t.myAggr OP_DELETE symbol="AAA" id="3" volume="30" count="2" second="3" 
+t.myAggr OP_INSERT symbol="AAA" id="5" volume="50" count="2" second="5" 
+OP_INSERT,3,BBB,20,20
+t.myAggr OP_DELETE symbol="AAA" id="5" volume="50" count="2" second="5" 
+t.myAggr OP_DELETE symbol="BBB" id="2" volume="100" count="1" 
+t.myAggr OP_INSERT symbol="AAA" id="5" volume="30" count="1" 
+t.myAggr OP_INSERT symbol="BBB" id="3" volume="120" count="2" second="3" 
+OP_DELETE,5
+t.myAggr OP_DELETE symbol="AAA" id="5" volume="30" count="1" 
+');
