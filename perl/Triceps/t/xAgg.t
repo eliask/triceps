@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 14 };
+BEGIN { plan tests => 15 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1465,5 +1465,108 @@ OP_INSERT,7,BBB,1,10
 3333333333333334
 OP_INSERT,8,BBB,1,10
 2500000000000001
+');
+
+#########################
+# the aggregator that uses SimpleAggregator
+
+sub doSimpleAgg {
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+		)
+	)
+or die "$!";
+
+# the aggregation result
+my $rtAvgPrice;
+my $compText; # for debugging
+
+Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "aggrAvgPrice",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+		id => "int32", "last", sub {$_[0]->get("id");},
+		price => "float64", "avg", sub {$_[0]->get("price");},
+	],
+	saveRowTypeTo => \$rtAvgPrice,
+	saveComputeTo => \$compText,
+) or die "$!";
+
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# label to print the result of aggregation
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or die "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
+	or die "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
+		or die "$!";
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+#print $compText, "\n";
+}; # SimpleAgg
+
+#########################
+#  run the same input as with manual aggregation
+
+@input = (
+	"OP_INSERT,1,AAA,10,10\n",
+	"OP_INSERT,2,BBB,100,100\n",
+	"OP_INSERT,3,AAA,20,20\n",
+	"OP_INSERT,4,BBB,200,200\n",
+	"OP_INSERT,5,AAA,30,30\n",
+	"OP_DELETE,3\n",
+	"OP_DELETE,5\n",
+);
+$result = undef;
+&doSimpleAgg();
+#print $result;
+ok($result, 
+'OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+OP_INSERT,2,BBB,100,100
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
+OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+OP_INSERT,4,BBB,200,200
+tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
+OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+OP_DELETE,3
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+OP_DELETE,5
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
