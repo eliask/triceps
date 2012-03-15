@@ -250,7 +250,6 @@ sub dropFields # (@$what, $fldName, $fldType...)
 # volumeFld - name of the field to read the trade volume and write the total volume
 # priceFld - name of the field to read the trade price (will be dropped from the result)
 # vwapFld - name of the field to write the VWAP (will be added to result)
-# enqMode - enqueuing mode for the output records, sent to the output label
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -265,7 +264,6 @@ sub new # (class, optionName => optionValue ...)
 			volumeFld => [ undef, \&Triceps::Opt::ck_mandatory ],
 			priceFld => [ undef, \&Triceps::Opt::ck_mandatory ],
 			vwapFld => [ undef, \&Triceps::Opt::ck_mandatory ],
-			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
 		}, @_);
 
 	# build the output row type
@@ -284,7 +282,7 @@ sub new # (class, optionName => optionValue ...)
 		);
 	$tabtype->initialize() or Carp::confess "Failed to initialize the VWAP table type: $!";
 	$self->{tabType} = $tabtype;
-	my $t = $self->{unit}->makeTable($tabtype, $self->{enqMode}, $self->{name} . ".agg");
+	my $t = $self->{unit}->makeTable($tabtype, &Triceps::EM_CALL, $self->{name} . ".agg");
 	Carp::confess "Failed to create the VWAP table: $!" unless (ref $t eq "Triceps::Table");
 	$self->{table} = $t;
 
@@ -330,7 +328,6 @@ my $vwapper2 = vwap2->new(
 			volumeFld => "volume",
 			priceFld => "price",
 			vwapFld => "vwap",
-			enqMode => &Triceps::EM_FORK,
 );
 ok(ref $vwapper2, "vwap2");
 
