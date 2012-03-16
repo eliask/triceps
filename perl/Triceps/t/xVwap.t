@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 19 };
+BEGIN { plan tests => 20 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -346,3 +346,156 @@ ok($vu2->empty());
 ok(&dataToString(@resultData), &dataToString(@expectResultData));
 
 # XXX properly should also test the error handling in vwap2, which isn't good at the moment
+
+###################### 3. VWAP function for SimpleAggregator #################################
+
+# this uses the same infrastructure as xAgg, xWindow etc.
+#########################
+# helper functions to support either user i/o or i/o from vars
+
+# vars to serve as input and output sources
+my @input;
+my $result;
+
+# simulates user input: returns the next line or undef
+sub readLine # ()
+{
+	$_ = shift @input;
+	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	return $_;
+}
+
+# write a message to user
+sub send # (@message)
+{
+	$result .= join('', @_);
+}
+
+# versions for the real user interaction
+sub readLineX # ()
+{
+	$_ = <STDIN>;
+	return $_;
+}
+
+sub sendX # (@message)
+{
+	print @_;
+}
+
+#########################
+sub doVwapFunction {
+use strict;
+
+# VWAP function definition
+my $myAggFunctions = {
+	vwap => {
+		vars => { sum => 0, count => 0, size => 0, price => 0 },
+		step => '($%size, $%price) = @$%argiter; '
+			. 'if (defined $%size && defined $%price) '
+				. '{$%count += $%size; $%sum += $%size * $%price;}',
+		result => '($%count == 0? undef : $%sum / $%count)',
+	},
+};
+
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("fifo", Triceps::IndexType->newFifo())
+	)
+or die "$!";
+
+# the aggregation result
+my $rtVwap;
+my $compText; # for debugging
+
+Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "aggrVwap",
+	idxPath => [ "bySymbol", "fifo" ],
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+		id => "int32", "last", sub {$_[0]->get("id");},
+		volume => "float64", "sum", sub {$_[0]->get("size");},
+		vwap => "float64", "vwap", sub { [$_[0]->get("size"), $_[0]->get("price")];},
+	],
+	functions => $myAggFunctions,
+	saveRowTypeTo => \$rtVwap,
+	saveComputeTo => \$compText,
+) or die "$!";
+
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# label to print the result of aggregation
+my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or die "$!";
+$tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint)
+	or die "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
+		or die "$!";
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+
+#print $compText, "\n";
+}; # VwapFunction
+
+#########################
+#  run the same input as with manual aggregation
+
+@input = (
+	"OP_INSERT,11,abc,123,100\n",
+	"OP_INSERT,12,abc,125,300\n",
+	"OP_INSERT,13,def,200,100\n",
+	"OP_INSERT,14,fgh,1000,100\n",
+	"OP_INSERT,15,abc,128,300\n",
+	"OP_INSERT,16,fgh,1100,25\n",
+	"OP_INSERT,17,def,202,100\n",
+	"OP_INSERT,18,def,192,1000\n",
+);
+$result = undef;
+&doVwapFunction();
+#print $result;
+ok($result, 
+'OP_INSERT,11,abc,123,100
+tWindow.aggrVwap OP_INSERT symbol="abc" id="11" volume="100" vwap="123" 
+OP_INSERT,12,abc,125,300
+tWindow.aggrVwap OP_DELETE symbol="abc" id="11" volume="100" vwap="123" 
+tWindow.aggrVwap OP_INSERT symbol="abc" id="12" volume="400" vwap="124.5" 
+OP_INSERT,13,def,200,100
+tWindow.aggrVwap OP_INSERT symbol="def" id="13" volume="100" vwap="200" 
+OP_INSERT,14,fgh,1000,100
+tWindow.aggrVwap OP_INSERT symbol="fgh" id="14" volume="100" vwap="1000" 
+OP_INSERT,15,abc,128,300
+tWindow.aggrVwap OP_DELETE symbol="abc" id="12" volume="400" vwap="124.5" 
+tWindow.aggrVwap OP_INSERT symbol="abc" id="15" volume="700" vwap="126" 
+OP_INSERT,16,fgh,1100,25
+tWindow.aggrVwap OP_DELETE symbol="fgh" id="14" volume="100" vwap="1000" 
+tWindow.aggrVwap OP_INSERT symbol="fgh" id="16" volume="125" vwap="1020" 
+OP_INSERT,17,def,202,100
+tWindow.aggrVwap OP_DELETE symbol="def" id="13" volume="100" vwap="200" 
+tWindow.aggrVwap OP_INSERT symbol="def" id="17" volume="200" vwap="201" 
+OP_INSERT,18,def,192,1000
+tWindow.aggrVwap OP_DELETE symbol="def" id="17" volume="200" vwap="201" 
+tWindow.aggrVwap OP_INSERT symbol="def" id="18" volume="1200" vwap="193.5" 
+');
