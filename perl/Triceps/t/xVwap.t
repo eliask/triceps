@@ -389,7 +389,7 @@ use strict;
 
 # VWAP function definition
 my $myAggFunctions = {
-	vwap => {
+	myvwap => {
 		vars => { sum => 0, count => 0, size => 0, price => 0 },
 		step => '($%size, $%price) = @$%argiter; '
 			. 'if (defined $%size && defined $%price) '
@@ -430,7 +430,7 @@ Triceps::SimpleAggregator::make(
 		symbol => "string", "last", sub {$_[0]->get("symbol");},
 		id => "int32", "last", sub {$_[0]->get("id");},
 		volume => "float64", "sum", sub {$_[0]->get("size");},
-		vwap => "float64", "vwap", sub { [$_[0]->get("size"), $_[0]->get("price")];},
+		vwap => "float64", "myvwap", sub { [$_[0]->get("size"), $_[0]->get("price")];},
 	],
 	functions => $myAggFunctions,
 	saveRowTypeTo => \$rtVwap,
