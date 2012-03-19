@@ -202,7 +202,6 @@ sub make # (optName => optValue, ...)
 				if (defined $funcarg);
 
 			# add to the code snippets
-			$needIter = 1 if (defined $funcDef->{step});
 
 			### initialization
 			my $vars = $funcDef->{vars};
@@ -224,6 +223,7 @@ sub make # (optName => optValue, ...)
 			### iteration
 			my $step = $funcDef->{step};
 			if (defined $step) {
+				$needIter = 1;
 				confess "Triceps::SimpleAggregator: internal error in definition of aggregation function '$func', step value must be a string"
 					unless (ref($step) eq '');
 				$codeStep .= "    # field $fld=$func\n";

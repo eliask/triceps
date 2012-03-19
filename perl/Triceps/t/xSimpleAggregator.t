@@ -238,7 +238,6 @@ sub make # (optName => optValue, ...)
 				if (defined $funcarg);
 
 			# add to the code snippets
-			$needIter = 1 if (defined $funcDef->{step});
 
 			### initialization
 			my $vars = $funcDef->{vars};
@@ -255,6 +254,7 @@ sub make # (optName => optValue, ...)
 			### iteration
 			my $step = $funcDef->{step};
 			if (defined $step) {
+				$needIter = 1;
 				$codeStep .= "    # field $fld=$func\n";
 				if (defined $funcarg) {
 					# compute the function argument from the current row
