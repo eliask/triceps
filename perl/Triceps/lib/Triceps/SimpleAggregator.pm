@@ -116,10 +116,10 @@ sub make # (optName => optValue, ...)
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			result => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
-			saveRowTypeTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
-			saveInitTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
-			saveComputeTo => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_refscalar(@_) } ],
-			functions => [ undef, sub { !defined($_[0]) or &Triceps::Opt::ck_ref(@_, "HASH", "HASH") } ],
+			saveRowTypeTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+			saveInitTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+			saveComputeTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+			functions => [ undef, sub { &Triceps::Opt::ck_ref(@_, "HASH", "HASH") } ],
 		}, @_);
 
 	# reset the saved source code
