@@ -48,6 +48,8 @@ bool TableType::equals(const Type *t) const
 	
 	const TableType *tt = static_cast<const TableType *>(t);
 
+	if (!rowType_->equals(tt->rowType_))
+		return false;
 	return root_->equals(tt->root_);
 }
 
@@ -61,6 +63,8 @@ bool TableType::match(const Type *t) const
 	
 	const TableType *tt = static_cast<const TableType *>(t);
 
+	if (!rowType_->match(tt->rowType_))
+		return false;
 	return root_->match(tt->root_);
 }
 

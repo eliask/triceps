@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 54 };
+BEGIN { plan tests => 64 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -92,6 +92,41 @@ $res = $tt1->same($tt2);
 ok($res);
 $res = $tt1->same($tt3);
 ok(!$res);
+
+# with varying row type
+
+$rt5 = Triceps::RowType->new( # an equal row type
+	@def1
+);
+ok(ref $rt5, "Triceps::RowType");
+ok($rt1->equals($rt5));
+@def6 = ( # different field names, a matching row type
+	A => "uint8",
+	b => "int32",
+	c => "int64",
+	D => "float64",
+	E => "string",
+);
+$rt6 = Triceps::RowType->new(
+	@def6
+);
+ok(ref $rt6, "Triceps::RowType");
+ok($rt1->match($rt6));
+
+$tt5 = Triceps::TableType->new($rt5)->addSubIndex("primary", $it1);
+ok(ref $tt5, "Triceps::TableType");
+$tt6 = Triceps::TableType->new($rt6)->addSubIndex("different", $it1);
+ok(ref $tt6, "Triceps::TableType");
+
+$res = $tt3->equals($tt5);
+ok($res);
+$res = $tt3->match($tt5);
+ok($res);
+
+$res = $tt3->equals($tt6);
+ok(!$res);
+$res = $tt3->match($tt6);
+ok($res);
 
 ###################### getSubIndexes #################################
 

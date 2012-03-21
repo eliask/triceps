@@ -235,7 +235,7 @@ bool IndexType::match(const Type *t) const
 	if (this == t)
 		return true; // self-comparison, shortcut
 
-	if (!Type::equals(t))
+	if (!Type::equals(t)) // same as match()
 		return false;
 	
 	const IndexType *it = static_cast<const IndexType *>(t);

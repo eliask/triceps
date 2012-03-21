@@ -2,3 +2,6 @@ Things that need to be done:
 * redo the errors to confess
 * go through the docs and add all the issues mentioned there to here
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
+* finish the SimpleAggregator
+* doc: explain why sending the timestamps from the master is the right synchronization
+* in joins separate the feed stream and table look-ups, for time-limited propagation
