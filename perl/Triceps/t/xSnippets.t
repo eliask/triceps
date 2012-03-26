@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 4 };
+BEGIN { plan tests => 5 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -60,3 +60,66 @@ ok($rop1);
 ok($rop2);
 ok($rop3);
 }
+
+#########################
+# diamond calls
+
+{
+use strict;
+
+my $result;
+
+my $unit = Triceps::Unit->new("unit") or die "$!";
+
+my $rtA = Triceps::RowType->new(
+	key => "string",
+	value => "int32",
+) or die "$!";
+my $rtD = Triceps::RowType->new(
+	$rtA->getdef(),
+	negative => "int32",
+) or die "$!";
+
+my ($lbA, $lbB, $lbC, $lbD);
+$lbA = $unit->makeLabel($rtA, "A", undef, sub {
+	my $rop = $_[1]; 
+	my $op = $rop->getOpcode(); my $a = $rop->getRow();
+	if ($a->get("value") < 0) {
+		$unit->call($lbB->makeRowop($op, $a));
+	} else {
+		$unit->call($lbC->makeRowop($op, $a));
+	}
+}) or die "$!";
+
+$lbB = $unit->makeLabel($rtA, "B", undef, sub {
+	my $rop = $_[1]; 
+	my $op = $rop->getOpcode(); my $a = $rop->getRow();
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 1)
+		or die "$!";
+}) or die "$!";
+
+$lbC = $unit->makeLabel($rtA, "C", undef, sub {
+	my $rop = $_[1]; 
+	my $op = $rop->getOpcode(); my $a = $rop->getRow();
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 0)
+		or die "$!";
+}) or die "$!";
+
+$lbD = $unit->makeLabel($rtD, "D", undef, sub {
+	$result .= $_[1]->printP();
+	$result .= "\n";
+}) or die "$!";
+
+# the test
+$unit->makeHashCall($lbA, "OP_INSERT", key => "key1", value => 10);
+$unit->makeHashCall($lbA, "OP_DELETE", key => "key1", value => 10);
+$unit->makeHashCall($lbA, "OP_INSERT", key => "key1", value => -1);
+#print $result;
+ok($result,
+'D OP_INSERT key="key1" value="10" negative="0" 
+D OP_DELETE key="key1" value="10" negative="0" 
+D OP_INSERT key="key1" value="-1" negative="1" 
+');
+
+}
+
