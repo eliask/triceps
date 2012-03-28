@@ -3,7 +3,7 @@
 # This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
-# Tests for the barrier.
+# Tests for the Collapse.
 
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl Triceps.t'
@@ -29,10 +29,14 @@ use strict;
 
 #########################
 
-package Triceps::Barrier;
+package Triceps::Collapse;
 use strict;
 
-# A constructor to create a Barrier template.
+# A constructor to create a Collapse template.
+# It collapses multiple changes on each key into at most one delete and one insert,
+# matching the final result after all the modifications.
+# This allows to skip the intermediate updates, if only the end result is of interest.
+#
 # The arguments are specified as option name-value pairs:
 # unit - the unit where this barrier belongs
 # name - the barrier name, used as a prefix for the label names
@@ -76,7 +80,7 @@ sub new # ($class, $optName => $optValue, ...)
 		if (!defined $dataset->{rowType} && !defined $dataset->{fromLabel});
 	my $lbFrom = $dataset->{fromLabel};
 	if (defined $lbFrom) {
-		confess ("The unit of the Barrier and the unit of its data set '" . $dataset->{name} . "' must be the same")
+		confess ("The unit of the Collapse and the unit of its data set '" . $dataset->{name} . "' must be the same")
 			unless ($self->{unit}->same($lbFrom->getUnit()));
 		$dataset->{rowType} = $lbFrom->getType();
 	}
@@ -87,24 +91,24 @@ sub new # ($class, $optName => $optValue, ...)
 			Triceps::Index->newHashed(key => $dataset->{key})
 		);
 	$dataset->{tt}->initialize() 
-		or confess ("Barrier table type creation error for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess ("Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ");
 
 	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess ("Barrier internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess ("Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ");
 	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess ("Barrier internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess ("Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ");
 
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbIn", 
 		undef, \&handleInput, $self, $dataset)
-			or confess ("Barrier internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ");
+			or confess ("Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ");
 	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbOut")
-		or confess ("Barrier internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess ("Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ");
 			
 	# chain the input label, if any
 	if (defined $lbFrom) {
 		$lbFrom->chain($dataset->{lbIn})
-			or confess ("Barrier internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ");
+			or confess ("Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ");
 	}
 
 	bless $self, $class;
@@ -125,16 +129,16 @@ sub handleInput # ($label, $rop, $self, $dataset)
 		# multiple inserts without a delete between them, even though this kind of
 		# input is not really expected.
 		$dataset->{tbInsert}->insert($rop->getRow())
-			or confess ("Barrier " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-insert:\n$! ");
+			or confess ("Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-insert:\n$! ");
 	} elsif($rop->isDelete()) {
 		# If there was a row in the insert table, delete that row (undoing the previous insert).
 		# Otherwise it means that there was no previous insert seen in this round, so this must be a
 		# deletion of a row inserted in the previous round, so insert it into the delete table.
 		if (! $dataset->{tbInsert}->deleteRow($rop->getRow())) {
-			confess ("Barrier " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-delete:\n$! ")
+			confess ("Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-delete:\n$! ")
 				if ($! ne "");
 			$dataset->{tbDelete}->insert($rop->getRow())
-				or confess ("Barrier " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed a delete-table-insert:\n$! ");
+				or confess ("Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed a delete-table-insert:\n$! ");
 		}
 	}
 }
