@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 3 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -64,15 +64,16 @@ sub new # ($class, $optName => $optValue, ...)
 	# parse the data element
 	my $dataref = $self->{data};
 	my $dataset = {};
-	&Triceps::Opt::parse("$class data set '" . $dataref->{name} . "'", $dataset, {
+	# dataref->[1] is the best guess for the dataset name, in case if the option "name" goes first
+	&Triceps::Opt::parse("$class data set '" . $dataref->[1] . "'", $dataset, {
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		key => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
-		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
-		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowLabel") } ],
+		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
+		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
 	}, @$dataref);
 
 	# save the dataset for the future
-	$self->{data}{$dataset->{name}} = $dataset;
+	$self->{datasets}{$dataset->{name}} = $dataset;
 	# check the options
 	confess ("The data set '" . $dataset->{name} . "' must have only one of rowType or fromLabel")
 		if (defined $dataset->{rowType} && defined $dataset->{fromLabel});
@@ -88,7 +89,7 @@ sub new # ($class, $optName => $optValue, ...)
 	# create the tables
 	$dataset->{tt} = Triceps::TableType->new($dataset->{rowType})
 		->addSubIndex("primary", 
-			Triceps::Index->newHashed(key => $dataset->{key})
+			Triceps::IndexType->newHashed(key => $dataset->{key})
 		);
 	$dataset->{tt}->initialize() 
 		or confess ("Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ");
@@ -100,7 +101,7 @@ sub new # ($class, $optName => $optValue, ...)
 
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbIn", 
-		undef, \&handleInput, $self, $dataset)
+		undef, \&_handleInput, $self, $dataset)
 			or confess ("Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ");
 	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbOut")
 		or confess ("Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ");
@@ -109,14 +110,16 @@ sub new # ($class, $optName => $optValue, ...)
 	if (defined $lbFrom) {
 		$lbFrom->chain($dataset->{lbIn})
 			or confess ("Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ");
+		delete $dataset->{fromLabel}; # no need to keep the reference any more
 	}
 
 	bless $self, $class;
 	return $self;
 }
 
+# (protected)
 # handle one incoming row on a dataset's input label
-sub handleInput # ($label, $rop, $self, $dataset)
+sub _handleInput # ($label, $rop, $self, $dataset)
 {
 	my $label = shift;
 	my $rop = shift;
@@ -150,7 +153,7 @@ sub flush # ($self)
 	my $unit = $self->{unit};
 	my $OP_INSERT = &Triceps::OP_INSERT;
 	my $OP_DELETE = &Triceps::OP_DELETE;
-	foreach my $dataset (values %{$self->{data}}) {
+	foreach my $dataset (values %{$self->{datasets}}) {
 		my $tbIns = $dataset->{tbInsert};
 		my $tbDel = $dataset->{tbDelete};
 		my $lbOut = $dataset->{lbOut};
@@ -169,10 +172,215 @@ sub flush # ($self)
 	}
 }
 
+# Get the input label of a dataset.
+# Confesses on error.
+sub getInputLabel($$) # ($self, $dsetname)
+{
+	my ($self, $dsetname) = @_;
+	my $lb = $self->{datasets}{$dsetname}{lbIn};
+	confess ("Unknown dataset '$dsetname'")
+		unless defined $lb;
+	return $lb;
+}
+
+# Get the output label of a dataset.
+# Confesses on error.
+sub getOutputLabel($$) # ($self, $dsetname)
+{
+	my ($self, $dsetname) = @_;
+	my $lb = $self->{datasets}{$dsetname}{lbOut};
+	confess ("Unknown dataset '$dsetname'")
+		unless defined $lb;
+	return $lb;
+}
+
+# Get the lists of datasets (currently only one).
+sub getDatasets($) # ($self)
+{
+	my $self = shift;
+	return keys %{$self->{datasets}};
+}
+
 # TODO In the future may also have separate calls for latching and unlatching.
 
 package main;
+use strict;
+
+#########################
+# Tests
+
+# helper functions to support either user i/o or i/o from vars
+
+# vars to serve as input and output sources
+my @input;
+my $result;
+
+# simulates user input: returns the next line or undef
+sub readLine # ()
+{
+	$_ = shift @input;
+	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	return $_;
+}
+
+# write a message to user
+sub send # (@message)
+{
+	$result .= join('', @_);
+}
+
+# versions for the real user interaction
+sub readLineX # ()
+{
+	$_ = <STDIN>;
+	return $_;
+}
+
+sub sendX # (@message)
+{
+	print @_;
+}
+
+# a template to make a label that prints the data passing through another label
+sub makePrintLabel($$) # ($print_label_name, $parent_label)
+{
+	my $name = shift;
+	my $lbParent = shift;
+	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
+		undef, sub { # (label, rowop)
+			&send($_[1]->printP(), "\n");
+		}) or die "$!";
+	$lbParent->chain($lb) or die "$!";
+	return $lb;
+}
+
+# the common main loop
+sub mainloop($$$) # ($unit, $datalabel, $collapse)
+{
+	my $unit = shift;
+	my $datalabel = shift;
+	my $collapse = shift;
+	while(&readLine) {
+		chomp;
+		my @data = split(/,/); # starts with a command, then string opcode
+		my $type = shift @data;
+		if ($type eq "data") {
+			my $rowop = $datalabel->makeRowopArray(@data)
+				or die "$!";
+			$unit->call($rowop) or die "$!";
+			$unit->drainFrame(); # just in case, for completeness
+		} elsif ($type eq "flush") {
+			$collapse->flush();
+		}
+	}
+}
 
 #########################
 
-# XXX test it!
+# the input row type etc that will be reused in multiple tests
+our $rtData = Triceps::RowType->new(
+	# mostly copied from the traffic aggregation example
+	local_ip => "string",
+	remote_ip => "string",
+	bytes => "int64",
+) or die "$!";
+
+#########################
+
+sub testExplicitRowType
+{
+
+my $unit = Triceps::Unit->new("unit") or die "$!";
+
+my $collapse = Triceps::Collapse->new(
+	unit => $unit,
+	name => "collapse",
+	data => [
+		name => "idata",
+		rowType => $rtData,
+		key => [ "local_ip", "remote_ip" ],
+	],
+) or die "$!";
+
+my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
+
+&mainloop($unit, $collapse->getInputLabel("idata"), $collapse);
+}
+
+sub testFromLabel
+{
+
+my $unit = Triceps::Unit->new("unit") or die "$!";
+
+my $lbInput = $unit->makeDummyLabel($rtData, "lbInput");
+
+my $collapse = Triceps::Collapse->new(
+	unit => $unit,
+	name => "collapse",
+	data => [
+		name => "idata",
+		fromLabel => $lbInput,
+		key => [ "local_ip", "remote_ip" ],
+	],
+) or die "$!";
+
+my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
+
+&mainloop($unit, $lbInput, $collapse);
+}
+
+#########################
+
+my @inputData = (
+	"data,OP_INSERT,1.2.3.4,5.6.7.8,100\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,1000\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,1000\n",
+	"flush\n",
+	"data,OP_DELETE,1.2.3.4,5.6.7.8,100\n",
+	"data,OP_INSERT,1.2.3.4,5.6.7.8,200\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,2000\n",
+	"flush\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,2000\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,3000\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,3000\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,4000\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,4000\n",
+	"flush\n",
+);
+
+my $expectResult = 'data,OP_INSERT,1.2.3.4,5.6.7.8,100
+data,OP_INSERT,1.2.3.4,6.7.8.9,1000
+data,OP_DELETE,1.2.3.4,6.7.8.9,1000
+flush
+collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+data,OP_DELETE,1.2.3.4,5.6.7.8,100
+data,OP_INSERT,1.2.3.4,5.6.7.8,200
+data,OP_INSERT,1.2.3.4,6.7.8.9,2000
+flush
+collapse.idata.lbOut OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
+collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+data,OP_DELETE,1.2.3.4,6.7.8.9,2000
+data,OP_INSERT,1.2.3.4,6.7.8.9,3000
+data,OP_DELETE,1.2.3.4,6.7.8.9,3000
+data,OP_INSERT,1.2.3.4,6.7.8.9,4000
+data,OP_DELETE,1.2.3.4,6.7.8.9,4000
+flush
+collapse.idata.lbOut OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+';
+
+@input = @inputData;
+$result = undef;
+&testExplicitRowType();
+#print $result;
+ok($result, $expectResult);
+
+@input = @inputData;
+$result = undef;
+&testFromLabel();
+#print $result;
+ok($result, $expectResult);
+
+#########################
+# test the errors
+# XXXXXX
