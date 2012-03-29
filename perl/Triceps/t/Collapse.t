@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 9 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -30,6 +30,7 @@ use strict;
 #########################
 
 package Triceps::Collapse;
+use Carp;
 use strict;
 
 # A constructor to create a Collapse template.
@@ -42,7 +43,8 @@ use strict;
 # name - the barrier name, used as a prefix for the label names
 # data - the dataset description, itself a reference to an array of option name-value pairs
 #   (currently only one "data" option may be used, but this will be extended in the future)
-#   name - name of the data set, used for its input and output labels
+#   name - name of the data set, used for its input and output labels, always make it
+#      the first option (to get the correct name used in the error messages)
 #   rowType - the row type (mutually exclusive with fromLabel)
 #   fromLabel - the label that would send the data here, allows to find
 #      out the row type and gets the dataset's input automatically chained to that label
@@ -65,7 +67,7 @@ sub new # ($class, $optName => $optValue, ...)
 	my $dataref = $self->{data};
 	my $dataset = {};
 	# dataref->[1] is the best guess for the dataset name, in case if the option "name" goes first
-	&Triceps::Opt::parse("$class data set '" . $dataref->[1] . "'", $dataset, {
+	&Triceps::Opt::parse("$class data set (" . $dataref->[1] . ")", $dataset, {
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		key => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
@@ -75,13 +77,13 @@ sub new # ($class, $optName => $optValue, ...)
 	# save the dataset for the future
 	$self->{datasets}{$dataset->{name}} = $dataset;
 	# check the options
-	confess ("The data set '" . $dataset->{name} . "' must have only one of rowType or fromLabel")
+	confess "The data set (" . $dataset->{name} . ") must have only one of options rowType or fromLabel"
 		if (defined $dataset->{rowType} && defined $dataset->{fromLabel});
-	confess ("The data set '" . $dataset->{name} . "' must have exactly one of rowType or fromLabel")
+	confess "The data set (" . $dataset->{name} . ") must have exactly one of options rowType or fromLabel"
 		if (!defined $dataset->{rowType} && !defined $dataset->{fromLabel});
 	my $lbFrom = $dataset->{fromLabel};
 	if (defined $lbFrom) {
-		confess ("The unit of the Collapse and the unit of its data set '" . $dataset->{name} . "' must be the same")
+		confess "The unit of the Collapse and the unit of its data set (" . $dataset->{name} . ") fromLabel must be the same"
 			unless ($self->{unit}->same($lbFrom->getUnit()));
 		$dataset->{rowType} = $lbFrom->getType();
 	}
@@ -92,24 +94,24 @@ sub new # ($class, $optName => $optValue, ...)
 			Triceps::IndexType->newHashed(key => $dataset->{key})
 		);
 	$dataset->{tt}->initialize() 
-		or confess ("Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
 
 	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess ("Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess "Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ";
 	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess ("Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
 
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbIn", 
 		undef, \&_handleInput, $self, $dataset)
-			or confess ("Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ");
+			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
 	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbOut")
-		or confess ("Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ");
+		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
 			
 	# chain the input label, if any
 	if (defined $lbFrom) {
 		$lbFrom->chain($dataset->{lbIn})
-			or confess ("Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ");
+			or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
 		delete $dataset->{fromLabel}; # no need to keep the reference any more
 	}
 
@@ -132,16 +134,16 @@ sub _handleInput # ($label, $rop, $self, $dataset)
 		# multiple inserts without a delete between them, even though this kind of
 		# input is not really expected.
 		$dataset->{tbInsert}->insert($rop->getRow())
-			or confess ("Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-insert:\n$! ");
+			or confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-insert:\n$! ";
 	} elsif($rop->isDelete()) {
 		# If there was a row in the insert table, delete that row (undoing the previous insert).
 		# Otherwise it means that there was no previous insert seen in this round, so this must be a
 		# deletion of a row inserted in the previous round, so insert it into the delete table.
 		if (! $dataset->{tbInsert}->deleteRow($rop->getRow())) {
-			confess ("Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-delete:\n$! ")
+			confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-delete:\n$! "
 				if ($! ne "");
 			$dataset->{tbDelete}->insert($rop->getRow())
-				or confess ("Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed a delete-table-insert:\n$! ");
+				or confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed a delete-table-insert:\n$! ";
 		}
 	}
 }
@@ -178,7 +180,7 @@ sub getInputLabel($$) # ($self, $dsetname)
 {
 	my ($self, $dsetname) = @_;
 	my $lb = $self->{datasets}{$dsetname}{lbIn};
-	confess ("Unknown dataset '$dsetname'")
+	confess "Unknown dataset '$dsetname'"
 		unless defined $lb;
 	return $lb;
 }
@@ -189,7 +191,7 @@ sub getOutputLabel($$) # ($self, $dsetname)
 {
 	my ($self, $dsetname) = @_;
 	my $lb = $self->{datasets}{$dsetname}{lbOut};
-	confess ("Unknown dataset '$dsetname'")
+	confess "Unknown dataset '$dsetname'"
 		unless defined $lb;
 	return $lb;
 }
@@ -304,7 +306,8 @@ my $collapse = Triceps::Collapse->new(
 
 my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 
-&mainloop($unit, $collapse->getInputLabel("idata"), $collapse);
+# since there is only one dataset, this works and tests it
+&mainloop($unit, $collapse->getInputLabel($collapse->getDatasets()), $collapse);
 }
 
 sub testFromLabel
@@ -382,5 +385,83 @@ $result = undef;
 ok($result, $expectResult);
 
 #########################
-# test the errors
-# XXXXXX
+# errors: bad values in options
+
+sub tryMissingOptValue # (optName)
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my %opt = (
+		unit => $unit,
+		name => "collapse",
+		data => [
+			name => "idata",
+			rowType => $rtData,
+			key => [ "local_ip", "remote_ip" ],
+		],
+	);
+	delete $opt{$_[0]};
+	my $res = eval {
+		Triceps::Collapse->new(%opt);
+	};
+}
+
+&tryMissingOptValue("unit");
+ok($@ =~ /^Option 'unit' must be specified for class 'Triceps::Collapse'/);
+&tryMissingOptValue("name");
+ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse'/);
+&tryMissingOptValue("data");
+ok($@ =~ /^Option 'data' must be specified for class 'Triceps::Collapse'/);
+
+sub tryMissingDataOptValue # (optName)
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my %data = (
+		name => "idata",
+		rowType => $rtData,
+		key => [ "local_ip", "remote_ip" ],
+	);
+	delete $data{$_[0]};
+	my @data = %data;
+	my %opt = (
+		unit => $unit,
+		name => "collapse",
+		data => \@data,
+	);
+	my $res = eval {
+		Triceps::Collapse->new(%opt);
+	};
+}
+
+&tryMissingDataOptValue("key");
+ok($@ =~ /^Option 'key' must be specified for class 'Triceps::Collapse data set \(idata\)'/);
+&tryMissingDataOptValue("name");
+ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse data set/);
+&tryMissingDataOptValue("rowType");
+ok($@ =~ /^The data set \(idata\) must have exactly one of options rowType or fromLabel/);
+#print "$@\n";
+# XXXXXXX
+
+sub tryBadOptValue # (optName, optValue, ...)
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $res = eval {
+		Triceps::Collapse->new(
+			unit => $unit,
+			@_
+		);
+	};
+}
+
+sub tryBadDataOptValue # (optName, optValue, ...)
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $res = eval {
+		Triceps::Collapse->new(
+			unit => $unit,
+			name => "collapse",
+			data => \@_,
+		);
+	};
+}
+
+# XXX test errors in other functions
