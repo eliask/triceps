@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 16 };
+BEGIN { plan tests => 18 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -156,6 +156,10 @@ eval {
 };
 ok($@ =~ /^Unknown dataset 'nosuch'/);
 
+# test the label names
+ok($collapse->getInputLabel("idata")->getName(), "collapse.idata.in");
+ok($collapse->getOutputLabel("idata")->getName(), "collapse.idata.out");
+
 my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 
 &mainloop($unit, $lbInput, $collapse);
@@ -184,21 +188,21 @@ my $expectResult = 'data,OP_INSERT,1.2.3.4,5.6.7.8,100
 data,OP_INSERT,1.2.3.4,6.7.8.9,1000
 data,OP_DELETE,1.2.3.4,6.7.8.9,1000
 flush
-collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 data,OP_DELETE,1.2.3.4,5.6.7.8,100
 data,OP_INSERT,1.2.3.4,5.6.7.8,200
 data,OP_INSERT,1.2.3.4,6.7.8.9,2000
 flush
-collapse.idata.lbOut OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
-collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
-collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 data,OP_DELETE,1.2.3.4,6.7.8.9,2000
 data,OP_INSERT,1.2.3.4,6.7.8.9,3000
 data,OP_DELETE,1.2.3.4,6.7.8.9,3000
 data,OP_INSERT,1.2.3.4,6.7.8.9,4000
 data,OP_DELETE,1.2.3.4,6.7.8.9,4000
 flush
-collapse.idata.lbOut OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 ';
 
 @input = @inputData;

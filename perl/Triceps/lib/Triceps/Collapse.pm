@@ -78,10 +78,10 @@ sub new # ($class, $optName => $optValue, ...)
 		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
 
 	# create the labels
-	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbIn", 
+	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 
 		undef, \&_handleInput, $self, $dataset)
 			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbOut")
+	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out")
 		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
 			
 	# chain the input label, if any

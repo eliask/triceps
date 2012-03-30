@@ -102,10 +102,10 @@ sub new # ($class, $optName => $optValue, ...)
 		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
 
 	# create the labels
-	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbIn", 
+	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 
 		undef, \&_handleInput, $self, $dataset)
 			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".lbOut")
+	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out")
 		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
 			
 	# chain the input label, if any
@@ -363,21 +363,21 @@ my $expectResult = 'data,OP_INSERT,1.2.3.4,5.6.7.8,100
 data,OP_INSERT,1.2.3.4,6.7.8.9,1000
 data,OP_DELETE,1.2.3.4,6.7.8.9,1000
 flush
-collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 data,OP_DELETE,1.2.3.4,5.6.7.8,100
 data,OP_INSERT,1.2.3.4,5.6.7.8,200
 data,OP_INSERT,1.2.3.4,6.7.8.9,2000
 flush
-collapse.idata.lbOut OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
-collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
-collapse.idata.lbOut OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 data,OP_DELETE,1.2.3.4,6.7.8.9,2000
 data,OP_INSERT,1.2.3.4,6.7.8.9,3000
 data,OP_DELETE,1.2.3.4,6.7.8.9,3000
 data,OP_INSERT,1.2.3.4,6.7.8.9,4000
 data,OP_DELETE,1.2.3.4,6.7.8.9,4000
 flush
-collapse.idata.lbOut OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 ';
 
 @input = @inputData;
