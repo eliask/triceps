@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 16 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -179,10 +179,9 @@ sub flush # ($self)
 sub getInputLabel($$) # ($self, $dsetname)
 {
 	my ($self, $dsetname) = @_;
-	my $lb = $self->{datasets}{$dsetname}{lbIn};
 	confess "Unknown dataset '$dsetname'"
-		unless defined $lb;
-	return $lb;
+		unless exists $self->{datasets}{$dsetname};
+	return $self->{datasets}{$dsetname}{lbIn};
 }
 
 # Get the output label of a dataset.
@@ -190,10 +189,9 @@ sub getInputLabel($$) # ($self, $dsetname)
 sub getOutputLabel($$) # ($self, $dsetname)
 {
 	my ($self, $dsetname) = @_;
-	my $lb = $self->{datasets}{$dsetname}{lbOut};
 	confess "Unknown dataset '$dsetname'"
-		unless defined $lb;
-	return $lb;
+		unless exists $self->{datasets}{$dsetname};
+	return $self->{datasets}{$dsetname}{lbOut};
 }
 
 # Get the lists of datasets (currently only one).
@@ -327,6 +325,16 @@ my $collapse = Triceps::Collapse->new(
 	],
 ) or die "$!";
 
+# test the errors in getting the labels
+eval {
+	$collapse->getInputLabel("nosuch");
+};
+ok($@ =~ /^Unknown dataset 'nosuch'/);
+eval {
+	$collapse->getOutputLabel("nosuch");
+};
+ok($@ =~ /^Unknown dataset 'nosuch'/);
+
 my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 
 &mainloop($unit, $lbInput, $collapse);
@@ -438,30 +446,73 @@ ok($@ =~ /^Option 'key' must be specified for class 'Triceps::Collapse data set 
 ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse data set/);
 &tryMissingDataOptValue("rowType");
 ok($@ =~ /^The data set \(idata\) must have exactly one of options rowType or fromLabel/);
-#print "$@\n";
-# XXXXXXX
 
 sub tryBadOptValue # (optName, optValue, ...)
 {
 	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my %opt = (
+		unit => $unit,
+		name => "collapse",
+		data => [
+			name => "idata",
+			rowType => $rtData,
+			key => [ "local_ip", "remote_ip" ],
+		],
+	);
+	$opt{$_[0]} = $_[1];
 	my $res = eval {
-		Triceps::Collapse->new(
-			unit => $unit,
-			@_
-		);
+		Triceps::Collapse->new(%opt);
 	};
 }
+
+&tryBadOptValue("unit", 9);
+ok($@ =~ /^Option 'unit' of class 'Triceps::Collapse' must be a reference to 'Triceps::Unit', is ''/);
+&tryBadOptValue("data", 9);
+ok($@ =~ /^Option 'data' of class 'Triceps::Collapse' must be a reference to 'ARRAY', is ''/);
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+	&tryBadOptValue("data",[
+		name => "idata",
+		rowType => $rtData,
+		# technically incorrect to have a label from other unit but ok here
+		fromLabel => $unit->makeDummyLabel($rtData, "lbInput"),
+		key => [ "local_ip", "remote_ip" ],
+	]);
+}
+ok($@ =~ /^The data set \(idata\) must have only one of options rowType or fromLabel /);
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+	&tryBadOptValue("data",[
+		name => "idata",
+		fromLabel => $unit->makeDummyLabel($rtData, "lbInput"),
+		key => [ "local_ip", "remote_ip" ],
+	]);
+}
+ok($@ =~ /^The unit of the Collapse and the unit of its data set \(idata\) fromLabel must be the same/);
 
 sub tryBadDataOptValue # (optName, optValue, ...)
 {
 	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my %data = (
+		name => "idata",
+		rowType => $rtData,
+		key => [ "local_ip", "remote_ip" ],
+	);
+	$data{$_[0]} = $_[1];
+	my @data = %data;
+	my %opt = (
+		unit => $unit,
+		name => "collapse",
+		data => \@data,
+	);
 	my $res = eval {
-		Triceps::Collapse->new(
-			unit => $unit,
-			name => "collapse",
-			data => \@_,
-		);
+		Triceps::Collapse->new(%opt);
 	};
 }
 
-# XXX test errors in other functions
+&tryBadDataOptValue("key", [ "xxx" ]);
+ok($@ =~ /^Collapse table type creation error for dataset 'idata':
+index error:
+  nested index 1 'primary':
+    can not find the key field 'xxx'/);
+#print "$@\n";
