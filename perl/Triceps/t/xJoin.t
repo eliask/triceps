@@ -247,7 +247,6 @@ package LookupJoin;
 #    XXX production version should allow an arbitrary expression on the left?
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
-# enqMode - enqueuing mode for the output records, sent to the output label
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -265,7 +264,6 @@ sub new # (class, optionName => optionValue ...)
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
-			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
 		}, @_);
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
@@ -490,7 +488,6 @@ sub new # (class, optionName => optionValue ...)
 #    XXX production version should allow an arbitrary expression on the left?
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
-# enqMode - enqueuing mode for the output records, sent to the output label
 # oppositeOuter (optional) - flag: this is a half of a JoinTwo, and the other
 #    half performs an outer (from its standpoint, left) join. For this side,
 #    this means that a successfull lookup must generate a DELETE-INSERT pair.
@@ -512,7 +509,6 @@ sub newAutomatic # (class, optionName => optionValue ...)
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
-			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
 			oppositeOuter => [ 0, undef ],
 		}, @_);
 
@@ -547,7 +543,6 @@ sub newAutomatic # (class, optionName => optionValue ...)
 
 			my $resRowType = $self->{resultRowType};
 			my $resLabel = $self->{outputLabel};
-			my $enqMode = $self->{enqMode};
 		';
 
 	# create the look-up row (and check that "by" contains the correct field names)
@@ -646,7 +641,7 @@ sub newAutomatic # (class, optionName => optionValue ...)
 				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
 				Carp::confess("$!") unless defined $resrowop;
 				Carp::confess("$!") 
-					unless $resLabel->getUnit()->enqueue($enqMode, $resrowop);
+					unless $resLabel->getUnit()->enqueue(&Triceps::EM_CALL, $resrowop);
 				';
 	# XXX add genoppdata
 	$genoppdata .= ');
@@ -656,7 +651,7 @@ sub newAutomatic # (class, optionName => optionValue ...)
 				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $opprowop->printP(), "\n";
 				Carp::confess("$!") unless defined $opprowop;
 				Carp::confess("$!") 
-					unless $resLabel->getUnit()->enqueue($enqMode, $opprowop);
+					unless $resLabel->getUnit()->enqueue(&Triceps::EM_CALL, $opprowop);
 				';
 
 	# end of result record
@@ -891,13 +886,12 @@ sub handleInput # ($label, $rowop, $self)
 
 	my @resRows = &{$self->{joiner}}($self, $rowop->getRow());
 	my $resultLab = $self->{outputLabel};
-	my $enqMode = $self->{enqMode};
 	my $resultRowop;
 	foreach my $resultRow( @resRows ) {
 		$resultRowop = $resultLab->makeRowop($opcode, $resultRow);
 		Carp::confess("$!") unless defined $resultRowop;
 		Carp::confess("$!") 
-			unless $resultLab->getUnit()->enqueue($enqMode, $resultRowop);
+			unless $resultLab->getUnit()->enqueue(&Triceps::EM_CALL, $resultRowop);
 	}
 }
 
@@ -949,7 +943,6 @@ $join2ab = LookupJoin->new( # will be used in both (2a) and (2b)
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2ab, "LookupJoin");
 
@@ -1038,7 +1031,6 @@ $join2c = LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 0,
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2c, "LookupJoin");
 
@@ -1129,7 +1121,6 @@ $join2d = LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 0,
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2d, "LookupJoin");
 
@@ -1192,7 +1183,6 @@ $join2e = LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2e, "LookupJoin");
 
@@ -1258,7 +1248,6 @@ $join2f = LookupJoin->new(
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
 	limitOne => 1,
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join2f, "LookupJoin");
 
@@ -1343,7 +1332,6 @@ package JoinTwo;
 #    The data produced is outright garbage, this option is here is purely for
 #    an entertainment value, to show, why it's garbage.
 #    (default: 0)
-# enqMode - enqueuing mode for the output records, sent to the output label
 #
 #    XXX add ability to map the join condition fields from both source rows into the
 #    same fields of the result, the joiner knowing how to handle this correctly.
@@ -1367,7 +1355,6 @@ sub new # (class, optionName => optionValue ...)
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			type => [ "inner", undef ],
 			simpleMinded => [ 0, undef ],
-			enqMode => [ undef, \&Triceps::Opt::ck_mandatory ],
 		}, @_);
 
 	Carp::confess("Self-joins (the same table on both sides) are not supported") 
@@ -1452,7 +1439,6 @@ sub new # (class, optionName => optionValue ...)
 		fieldsLeftFirst => 1,
 		by => \@leftby,
 		isLeft => $leftLeft,
-		enqMode => $self->{enqMode},
 		oppositeOuter => ($rightLeft && !$self->{simpleMinded}),
 	);
 	$self->{rightLookup} = LookupJoin->newAutomatic(
@@ -1466,7 +1452,6 @@ sub new # (class, optionName => optionValue ...)
 		fieldsLeftFirst => 0,
 		by => \@rightby,
 		isLeft => $rightLeft,
-		enqMode => $self->{enqMode},
 		oppositeOuter => ($leftLeft && !$self->{simpleMinded}),
 	);
 
@@ -1597,7 +1582,6 @@ my $join3a = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "inner",
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join3a, "JoinTwo");
 
@@ -1616,7 +1600,6 @@ my $join3b = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "outer",
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join3b, "JoinTwo");
 
@@ -1635,7 +1618,6 @@ my $join3c = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "left",
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join3c, "JoinTwo");
 
@@ -1654,7 +1636,6 @@ my $join3d = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "right",
-	enqMode => &Triceps::EM_CALL,
 );
 ok(ref $join3d, "JoinTwo");
 
@@ -1673,7 +1654,6 @@ my $join3e = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "inner",
-	enqMode => &Triceps::EM_CALL,
 	simpleMinded => 1,
 );
 ok(ref $join3e, "JoinTwo");
@@ -1693,7 +1673,6 @@ my $join3f = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "left",
-	enqMode => &Triceps::EM_CALL,
 	simpleMinded => 1,
 );
 ok(ref $join3f, "JoinTwo");
@@ -1713,7 +1692,6 @@ my $join3g = JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "right",
-	enqMode => &Triceps::EM_CALL,
 	simpleMinded => 1,
 );
 ok(ref $join3g, "JoinTwo");
