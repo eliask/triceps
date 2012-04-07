@@ -85,6 +85,7 @@ require Triceps::Opt;
 require Triceps::SimpleOrderedIndex;
 require Triceps::SimpleAggregator;
 require Triceps::Collapse;
+require Triceps::LookupJoin;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
