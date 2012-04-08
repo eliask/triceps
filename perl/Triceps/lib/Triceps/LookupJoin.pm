@@ -422,7 +422,7 @@ sub newAutomatic # (class, optionName => optionValue ...)
 				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
 				Carp::confess("$!") unless defined $resrowop;
 				Carp::confess("$!") 
-					unless $resLabel->getUnit()->enqueue(&Triceps::EM_CALL, $resrowop);
+					unless $resLabel->getUnit()->call($resrowop);
 				';
 	# XXX add genoppdata
 	$genoppdata .= ');
@@ -432,7 +432,7 @@ sub newAutomatic # (class, optionName => optionValue ...)
 				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $opprowop->printP(), "\n";
 				Carp::confess("$!") unless defined $opprowop;
 				Carp::confess("$!") 
-					unless $resLabel->getUnit()->enqueue(&Triceps::EM_CALL, $opprowop);
+					unless $resLabel->getUnit()->call($opprowop);
 				';
 
 	# end of result record
@@ -544,6 +544,13 @@ sub newAutomatic # (class, optionName => optionValue ...)
 	return $self;
 }
 
+# XXX Thoughts for the future result specification:
+#  result_fld_name: (may be a substitution regexp translated from the source field)
+#      optional type
+#      list of source field specs (hardcoded, range, pattern, exclusion hardcoded, exclusion pattern),
+#        including the source name;
+#        maybe picking first non-null from multiple sources (such as for the key fields)
+
 # Process the list of field names according to the filter spec.
 # @param incoming - reference to the original array of field names
 # @param patterns - reference to the array of filter patterns (undef means 
@@ -640,7 +647,7 @@ sub handleInput # ($label, $rowop, $self)
 		$resultRowop = $resultLab->makeRowop($opcode, $resultRow);
 		Carp::confess("$!") unless defined $resultRowop;
 		Carp::confess("$!") 
-			unless $resultLab->getUnit()->enqueue(&Triceps::EM_CALL, $resultRowop);
+			unless $resultLab->getUnit()->call($resultRowop);
 	}
 }
 
