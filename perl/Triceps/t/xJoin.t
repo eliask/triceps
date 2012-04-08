@@ -777,7 +777,7 @@ sub new # (class, optionName => optionValue ...)
 	}
 
 	# now create the LookupJoins
-	$self->{leftLookup} = Triceps::LookupJoin->newAutomatic(
+	$self->{leftLookup} = Triceps::LookupJoin->new(
 		unit => $self->{unit},
 		name => $self->{name} . ".leftLookup",
 		leftRowType => $self->{leftRowType},
@@ -788,9 +788,10 @@ sub new # (class, optionName => optionValue ...)
 		fieldsLeftFirst => 1,
 		by => \@leftby,
 		isLeft => $leftLeft,
+		automatic => 1,
 		oppositeOuter => ($rightLeft && !$self->{simpleMinded}),
 	);
-	$self->{rightLookup} = Triceps::LookupJoin->newAutomatic(
+	$self->{rightLookup} = Triceps::LookupJoin->new(
 		unit => $self->{unit},
 		name => $self->{name} . ".rightLookup",
 		leftRowType => $self->{rightRowType},
@@ -801,6 +802,7 @@ sub new # (class, optionName => optionValue ...)
 		fieldsLeftFirst => 0,
 		by => \@rightby,
 		isLeft => $rightLeft,
+		automatic => 1,
 		oppositeOuter => ($leftLeft && !$self->{simpleMinded}),
 	);
 
