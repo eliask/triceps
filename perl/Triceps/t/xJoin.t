@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 124 };
+BEGIN { plan tests => 114 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -225,40 +225,6 @@ ok($result1, $expect1);
 # It had come out with a kind of wide functionality, so it would
 # require multiple tests, marked by letters ("2a" etc.).
 # The class is Triceps::LookupJoin.
-
-#####################################################
-# A little test of filterFields by itself
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def' ], undef);
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def"); # all positive if no patterns
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def', 'ghi' ], [ 'abc', 'def' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def,-");
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def', 'ghi' ], [ '!abc' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # check for default being "throwaway" even with purely negative
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def', 'ghi' ], [ ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # empty pattern means throw away everything
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def', 'ghi' ], [ '!abc', '.*' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi");
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'adef', 'gahi' ], [ '!abc', 'a.*' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,adef,-"); # first match wins, and check front anchoring
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'adef', 'gahi' ], [ '...' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,-,-"); # anchoring
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def', 'ghi' ], [ '!a.*', '.*' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi"); # negative pattern
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'def', 'ghi' ], [ '.*/second_$&' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "second_abc,second_def,second_ghi"); # substitution
-
-@res = &Triceps::LookupJoin::filterFields([ 'abc', 'defg', 'ghi' ], [ '(.).(.)/$1x$2' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "axc,-,gxi"); # anchoring and numbered sub-expressions
-
-#####################################################
 
 # XXX also needs to be tested for errors
 
@@ -664,9 +630,9 @@ package JoinTwo;
 #    since indexes define the fields used for the join; the types of fields
 #    don't have to match exactly since Perl will connvert them if possible
 # leftFields (optional) - reference to array of patterns for left fields to pass through,
-#    syntax as described in filterFields(), if not defined then pass everything
+#    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 # rightFields (optional) - reference to array of patterns for right fields to pass through,
-#    syntax as described in filterFields(), if not defined then pass everything
+#    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 #    (which may results with the join-condition fields copied twice from both tables).
 # type (optional) - one of: "inner" (default), "left", "right", "outer".
 #    For correctness purposes, there are limitations on what outer joins

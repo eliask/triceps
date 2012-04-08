@@ -16,9 +16,9 @@ use Carp;
 # rightIndex (optional) - name of index type in table used for look-up (default: first Hash),
 #    index absolutely must be a Hash (leaf or not), not of any other kind
 # leftFields (optional) - reference to array of patterns for left fields to pass through,
-#    syntax as described in filterFields(), if not defined then pass everything
+#    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 # rightFields (optional) - reference to array of patterns for right fields to pass through,
-#    syntax as described in filterFields(), if not defined then pass everything
+#    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 #    (which is probably a bad idea since it would include duplicate fields from the 
 #    index, so override it)
 # fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
@@ -181,7 +181,7 @@ sub new # (class, optionName => optionValue ...)
 	#print STDERR "DEBUG order is ", $self->{fieldsLeftFirst}, ": (", join(", ", @order), ")\n";
 	for my $side (@order) {
 		my $orig = $choice{"${side}fld"};
-		my @trans = &filterFields($orig, $self->{"${side}Fields"});
+		my @trans = &Triceps::Fields::filter($orig, $self->{"${side}Fields"});
 		my $smap = $choice{"${side}map"};
 		for ($i = 0; $i <= $#trans; $i++) {
 			my $f = $trans[$i];
@@ -346,77 +346,6 @@ sub new # (class, optionName => optionValue ...)
 
 	bless $self, $class;
 	return $self;
-}
-
-# XXX Thoughts for the future result specification:
-#  result_fld_name: (may be a substitution regexp translated from the source field)
-#      optional type
-#      list of source field specs (hardcoded, range, pattern, exclusion hardcoded, exclusion pattern),
-#        including the source name;
-#        maybe picking first non-null from multiple sources (such as for the key fields)
-
-# Process the list of field names according to the filter spec.
-# @param incoming - reference to the original array of field names
-# @param patterns - reference to the array of filter patterns (undef means 
-#   "no filtering, pass as is")
-# @return - an array of filtered field names, positionally mathing the
-#    names in the original array, with undefs for the thrown-away fields
-#
-# Does NOT check for name correctness, duplicates etc.
-#
-# Pattern rules:
-# For each field, all the patterns are applied in order until one of
-# them matches. If none matches, the field gets thrown away by default.
-# The possible pattern formats are:
-#    "regexp" - pass through the field names matching the anchored regexp
-#        (i.e. implicitly wrapped as "^regexp$"). Must not
-#        contain the literal "/" anywhere. And since the field names are
-#        alphanumeric, specifying the field name will pass that field through.
-#        To pass through the rest of fields, use the pattern ".*".
-#    "!regexp" - throw away the field names matching the anchored regexp.
-#    "regexp/regsub" - pass through the field names matching the anchored regexp,
-#        performing a substitution on it. For example, '.*/second_$&/'
-#        would pass through all the fields, prefixing them with "second_".
-#
-# XXX If this works well, it should probably be moved into Triceps::
-sub filterFields() # (\@incoming, \@patterns) # no $self, it's a static method!
-{
-	my $incoming = shift;
-	my $patterns = shift;
-
-	if (!defined $patterns) {
-		return @$incoming; # just pass through everything
-	}
-
-	my (@res, $f, $ff, $t, $p, $pp, $s);
-
-	# since this is normally executed at the model compilation stage,
-	# the performance here doesn't matter a whole lot, and the logic
-	# can be done in the simple non-optimized loops
-	foreach $f (@$incoming) {
-		undef $t;
-		foreach $p (@$patterns) {
-			if ($p =~ /^!(.*)/) { # negative pattern
-				$pp = $1;
-				last if ($f =~ /^$pp$/);
-			} elsif ($p =~ /^([^\/]*)\/([^\/]*)/ ) { # substitution
-				$pp = $1;
-				$s = $2;
-				$ff = $f;
-				if (eval("\$ff =~ s/^$pp\$/$s/;")) { # eval is needed for $s to evaluate right
-					$t = $ff;
-					last;
-				}
-			} else { # simple positive pattern
-				if ($f =~ /^$p$/) {
-					$t = $f;
-					last;
-				}
-			}
-		}
-		push @res, $t;
-	}
-	return @res;
 }
 
 # Perofrm the look-up by left row in the right table and return the
