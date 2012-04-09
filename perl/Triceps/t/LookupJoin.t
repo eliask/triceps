@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 64 };
+BEGIN { plan tests => 68 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -603,6 +603,49 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 join2f.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
 ';
 ok($result2, $expect2f);
+
+#########
+# test the saveJoinerTo
+
+{
+	# not automatic
+	my $code;
+	my $join = Triceps::LookupJoin->new( 
+		unit => $vu2,
+		name => "join2ab",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIndex => "lookupSrcExt",
+		rightFields => [ "internal/acct" ],
+		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+		isLeft => 1,
+		automatic => 0,
+		saveJoinerTo => \$code,
+	);
+	ok(ref $join, "Triceps::LookupJoin");
+	#print STDERR "code = $code\n";
+	ok($code =~ /^\s+sub  # \(\$self, \$row\)/);
+}
+
+{
+	# automatic
+	my $code;
+	my $join = Triceps::LookupJoin->new( 
+		unit => $vu2,
+		name => "join2ab",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIndex => "lookupSrcExt",
+		rightFields => [ "internal/acct" ],
+		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+		isLeft => 1,
+		automatic => 1,
+		saveJoinerTo => \$code,
+	);
+	ok(ref $join, "Triceps::LookupJoin");
+	#print STDERR "code = $code\n";
+	ok($code =~ /^\s+sub # \(\$inLabel, \$rowop, \$self\)/);
+}
 
 #########
 # tests for errors

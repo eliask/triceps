@@ -35,6 +35,8 @@ use Carp;
 #    and the other half performs an outer (from its standpoint, left) join. For this side,
 #    this means that a successfull lookup must generate a DELETE-INSERT pair.
 #    (default: 0)
+#   saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
+#       source code
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -54,6 +56,7 @@ sub new # (class, optionName => optionValue ...)
 			limitOne => [ 0, undef ],
 			automatic => [ 0, undef ],
 			oppositeOuter => [ 0, undef ],
+			saveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 		}, @_);
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
@@ -322,11 +325,12 @@ sub new # (class, optionName => optionValue ...)
 
 	#print STDERR "DEBUG $genjoin\n";
 
+	${$self->{saveJoinerTo}} = $genjoin if (defined($self->{saveJoinerTo}));
 	undef $@;
 	if ($auto) {
-		eval "\$self->{joinerAutomatic} = $genjoin;"; # compile!
+		$self->{joinerAutomatic} = eval $genjoin; # compile!
 	} else {
-		eval "\$self->{joiner} = $genjoin;"; # compile!
+		$self->{joiner} = eval $genjoin; # compile!
 	}
 	Carp::confess("Internal error: LookupJoin failed to compile the joiner function:\n$@\nfunction text:\n$genjoin ")
 		if $@;
