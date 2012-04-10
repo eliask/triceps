@@ -511,12 +511,12 @@ ok($@ =~ /^Option 'result' of class 'Triceps::SimpleAggregator' must be a refere
 tryBadOptValue(
 		idxPath => [ ],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: idxPath must be an array of non-zero length/);
+ok($@ =~ /^Triceps::TableType::findIndexPath: idxPath must be an array of non-zero length/);
 
 tryBadOptValue(
 		idxPath => [ "bySymbol", "zzz" ],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: unable to find the index type at path 'bySymbol.zzz'/);
+ok($@ =~ /^Triceps::TableType::findIndexPath: unable to find the index type at path 'bySymbol.zzz'/);
 
 $ttWindow = &makeTtWindow or die "$!";
 $ttWindow->initialize();

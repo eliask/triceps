@@ -81,6 +81,7 @@ require Triceps::Row;
 require Triceps::Rowop;
 require Triceps::Label;
 require Triceps::Table;
+require Triceps::TableType;
 require Triceps::AggregatorContext;
 require Triceps::Opt;
 require Triceps::SimpleOrderedIndex;

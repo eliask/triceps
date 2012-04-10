@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 64 };
+BEGIN { plan tests => 67 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -189,6 +189,50 @@ ok($! . "", "Triceps::TableType::findSubIndexById: unknown IndexId string 'xxx',
 $tt4 = Triceps::TableType->new($rt1);
 $it2 = $tt4->getFirstLeaf();
 ok(!defined($it2));
+
+$it2 = $tt1->findIndexPath("primary", "fifo");
+$res = $it2->print();
+ok($res, "index FifoIndex()");
+
+$it2 = eval {
+	$tt1->findIndexPath("primary", "zzz");
+};
+#print STDERR "$@\n";
+ok($@ =~ /Triceps::TableType::findIndexPath: unable to find the index type at path 'primary.zzz', table type is:
+table \(
+  row \{
+    uint8 a,
+    int32 b,
+    int64 c,
+    float64 d,
+    string e,
+  \}
+\) \{
+  index HashedIndex\(b, c, \) \{
+    index FifoIndex\(\) fifo,
+  \} primary,
+  index FifoIndex\(\) second,
+\}/);
+
+$it2 = eval {
+	$tt1->findIndexPath();
+};
+#print STDERR "$@\n";
+ok($@ =~ /Triceps::TableType::findIndexPath: idxPath must be an array of non-zero length, table type is:
+table \(
+  row \{
+    uint8 a,
+    int32 b,
+    int64 c,
+    float64 d,
+    string e,
+  \}
+\) \{
+  index HashedIndex\(b, c, \) \{
+    index FifoIndex\(\) fifo,
+  \} primary,
+  index FifoIndex\(\) second,
+\}/);
 
 ###################### initialization #################################
 

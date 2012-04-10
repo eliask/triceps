@@ -128,21 +128,7 @@ sub make # (optName => optValue, ...)
 	${$opts->{saveRowTypeTo}} = undef if (defined($opts->{saveRowTypeTo}));
 
 	# find the index type, on which to build the aggregator
-	my $idx;
-	{
-		my @path = @{$opts->{idxPath}};
-		confess "$myname: idxPath must be an array of non-zero length"
-			unless ($#path >= 0);
-		my $cur = $opts->{tabType}; # the root of the tree
-		my $progress = '';
-		foreach my $p (@path) {
-			$progress .= $p;
-			$cur = $cur->findSubIndex($p) 
-				or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $opts->{tabType}->print() . " ");
-			$progress .= '.';
-		}
-		$idx = $cur;
-	}
+	my $idx = $opts->{tabType}->findIndexPath(@{$opts->{idxPath}});
 	confess "$myname: the index type is already initialized, can not add an aggregator on it"
 		if ($idx->isInitialized());
 	
