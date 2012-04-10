@@ -8,12 +8,15 @@
 package Triceps::LookupJoin;
 use Carp;
 
+use strict;
+
 # Options:
 # unit - unit object
 # name - name of this object (will be used to create the names of internal objects)
 # leftRowType - type of the rows that will be used for lookup
 # rightTable - table object where to do the look-ups
-# rightIndex (optional) - name of index type in table used for look-up (default: first Hash),
+# rightIdxPath (optional) - array reference containing the path name of index type 
+#    in table used for look-up (default: first top-level Hash),
 #    index absolutely must be a Hash (leaf or not), not of any other kind
 # leftFields (optional) - reference to array of patterns for left fields to pass through,
 #    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
@@ -47,7 +50,7 @@ sub new # (class, optionName => optionValue ...)
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
-			rightIndex => [ undef, sub { &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
+			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
@@ -134,10 +137,9 @@ sub new # (class, optionName => optionValue ...)
 	$genjoin .= ");\n\t\t\t";
 
 	# translate the index
-	if (defined $self->{rightIndex}) {
-		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndex($self->{rightIndex});
-		Carp::confess("The table does not have a top-level index '" . $self->{rightIndex} . "' for joining")
-			unless defined $self->{rightIdxType};
+	if (defined $self->{rightIdxPath}) {
+		$self->{rightIdxType} = $self->{rightTable}->getType()->findIndexPath(@{$self->{rightIdxPath}});
+		# if not found, would already confess
 		my $ixid  = $self->{rightIdxType}->getIndexId();
 		Carp::confess("The index '" . $self->{rightIndex} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
 			unless ($ixid == &Triceps::IT_HASHED);
@@ -186,7 +188,7 @@ sub new # (class, optionName => optionValue ...)
 		my $orig = $choice{"${side}fld"};
 		my @trans = &Triceps::Fields::filter($orig, $self->{"${side}Fields"});
 		my $smap = $choice{"${side}map"};
-		for ($i = 0; $i <= $#trans; $i++) {
+		for (my $i = 0; $i <= $#trans; $i++) {
 			my $f = $trans[$i];
 			#print STDERR "DEBUG ${side} [$i] is '" . (defined $f? $f : '-undef-') . "'\n";
 			next unless defined $f;

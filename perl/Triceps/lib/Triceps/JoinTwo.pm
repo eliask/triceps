@@ -8,14 +8,18 @@
 package Triceps::JoinTwo;
 use Carp;
 
+use strict;
+
 # Options:
 # unit - unit object
 # name - name of this object (will be used to create the names of internal objects)
 # leftTable - table object to join
 # rightTable - table object to join
-# leftIndex - name of index type in left table used for look-up,
+# leftIdxPath - array reference containing the path name of index type 
+#    in the left table used for look-up,
 #    index absolutely must be a Hash (leaf or not), not of any other kind
-# rightIndex - name of index type in right table used for look-up,
+# rightIdxPath - array reference containing the path name of index type 
+#    in the left table used for look-up,
 #    index absolutely must be a Hash (leaf or not), not of any other kind;
 #    the number and order of fields in left and right indexes must match
 #    since indexes define the fields used for the join; the types of fields
@@ -55,8 +59,8 @@ sub new # (class, optionName => optionValue ...)
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			leftTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
-			leftIndex => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
-			rightIndex => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "") } ], # a plain string, not a ref
+			leftIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			type => [ "inner", undef ],
@@ -96,9 +100,10 @@ sub new # (class, optionName => optionValue ...)
 
 	# compare the index definitions, check that the fields match
 	for my $side ( ("left", "right") ) {
-		$self->{"${side}IdxType"} = $self->{"${side}Table"}->getType()->findSubIndex($self->{"${side}Index"});
-		Carp::confess("The $side table does not have a top-level index '" . $self->{"${side}Index"} . "' for joining")
-			unless defined $self->{"${side}IdxType"};
+		$self->{"${side}IdxType"} = $self->{"${side}Table"}->getType()->findIndexPath(@{$self->{"${side}IdxPath"}});
+		# would already confess if the index is not found
+		#Carp::confess("The $side table does not have a top-level index '" . $self->{"${side}Index"} . "' for joining")
+		#	unless defined $self->{"${side}IdxType"};
 		my $ixid  = $self->{"${side}IdxType"}->getIndexId();
 		Carp::confess("The $side index '" . $self->{"${side}Index"} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
 			unless ($ixid == &Triceps::IT_HASHED);
@@ -111,8 +116,8 @@ sub new # (class, optionName => optionValue ...)
 			}
 		}
 	}
-	@leftkeys = $self->{leftIdxType}->getKey();
-	@rightkeys = $self->{rightIdxType}->getKey();
+	my @leftkeys = $self->{leftIdxType}->getKey();
+	my @rightkeys = $self->{rightIdxType}->getKey();
 	Carp::confess("The count of fields in left and right indexes doesnt match\n  left:  (" 
 			. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  ")
 		unless ($#leftkeys == $#rightkeys);
@@ -139,7 +144,7 @@ sub new # (class, optionName => optionValue ...)
 		name => $self->{name} . ".leftLookup",
 		leftRowType => $self->{leftRowType},
 		rightTable => $self->{rightTable},
-		rightIndex => $self->{rightIndex},
+		rightIdxPath => $self->{rightIdxPath},
 		leftFields => $self->{leftFields},
 		rightFields => $self->{rightFields},
 		fieldsLeftFirst => 1,
@@ -153,7 +158,7 @@ sub new # (class, optionName => optionValue ...)
 		name => $self->{name} . ".rightLookup",
 		leftRowType => $self->{rightRowType},
 		rightTable => $self->{leftTable},
-		rightIndex => $self->{leftIndex},
+		rightIdxPath => $self->{leftIdxPath},
 		leftFields => $self->{rightFields},
 		rightFields => $self->{leftFields},
 		fieldsLeftFirst => 0,
