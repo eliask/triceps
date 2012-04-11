@@ -20,7 +20,8 @@ use strict;
 #    names in the original array, with undefs for the thrown-away fields
 #
 # Does NOT check for name correctness, duplicates etc.
-# XXX a pattern that matches nothing gets simply ignored
+# Does check for the literal field names not matching anything,
+# confesses on them.
 #
 # Pattern rules:
 # For each field, all the patterns are applied in order until one of
