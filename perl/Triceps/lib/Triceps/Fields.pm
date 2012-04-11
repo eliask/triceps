@@ -98,12 +98,12 @@ sub filter # (\@incoming, \@patterns) # no $self, it's a static method!
 	$i = 0;
 	foreach $p (@$patterns) {
 		if (!$used[$i]) {
-			$error .= "  field '$p' is not found\n";
+			$error .= "  the field in definition '$p' is not found\n";
 		}
 		$i++;
 	}
 	if ($error ne '') {
-		confess "Result definition error:\n$error ";
+		confess "Result definition error:\n${error}The available fields are:\n  " . join(", ", @$incoming) . "\n ";
 	}
 	return @res;
 }

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 11 };
+BEGIN { plan tests => 13 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -28,31 +28,52 @@ ok(1); # If we made it this far, we're ok.
 # fields()
 
 @res = &Triceps::Fields::filter([ 'abc', 'def' ], undef);
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def"); # all positive if no patterns
+ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def"); # all positive if no patterns
 
 @res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ 'abc', 'def' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def,-");
+ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def,-");
 
 @res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '!abc' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # check for default being "throwaway" even with purely negative
+ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # check for default being "throwaway" even with purely negative
 @res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # empty pattern means throw away everything
+ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # empty pattern means throw away everything
 
 @res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '!abc', '.*' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi");
+ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi");
 
 @res = &Triceps::Fields::filter([ 'abc', 'adef', 'gahi' ], [ '!abc', 'a.*' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,adef,-"); # first match wins, and check front anchoring
+ok(join(",", map { defined $_? $_ : "-" } @res), "-,adef,-"); # first match wins, and check front anchoring
 
 @res = &Triceps::Fields::filter([ 'abc', 'adef', 'gahi' ], [ '...' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "abc,-,-"); # anchoring
+ok(join(",", map { defined $_? $_ : "-" } @res), "abc,-,-"); # anchoring
 
 @res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '!a.*', '.*' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi"); # negative pattern
+ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi"); # negative pattern
 
 @res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '.*/second_$&' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "second_abc,second_def,second_ghi"); # substitution
+ok(join(",", map { defined $_? $_ : "-" } @res), "second_abc,second_def,second_ghi"); # substitution
 
 @res = &Triceps::Fields::filter([ 'abc', 'defg', 'ghi' ], [ '(.).(.)/$1x$2' ] );
-main::ok(join(",", map { defined $_? $_ : "-" } @res), "axc,-,gxi"); # anchoring and numbered sub-expressions
+ok(join(",", map { defined $_? $_ : "-" } @res), "axc,-,gxi"); # anchoring and numbered sub-expressions
 
+# missing fields in fields()
+eval {
+	@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ 'cba', 'fed' ] );
+};
+ok($@ =~ /Result definition error:
+  the field in definition 'cba' is not found
+  the field in definition 'fed' is not found
+The available fields are:
+  abc, def, ghi
+/);
+
+eval {
+	@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ 'cba/abc', '!fed' ] );
+};
+ok($@ =~ /Result definition error:
+  the field in definition 'cba\/abc' is not found
+  the field in definition '!fed' is not found
+The available fields are:
+  abc, def, ghi
+/);
+#print STDERR "$@\n";
