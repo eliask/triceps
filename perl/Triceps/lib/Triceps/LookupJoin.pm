@@ -141,11 +141,11 @@ sub new # (class, optionName => optionValue ...)
 		$self->{rightIdxType} = $self->{rightTable}->getType()->findIndexPath(@{$self->{rightIdxPath}});
 		# if not found, would already confess
 		my $ixid  = $self->{rightIdxType}->getIndexId();
-		Carp::confess("The index '" . $self->{rightIndex} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
+		Carp::confess("The index '" . join('.', @{$self->{rightIdxPath}}) . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not the required 'IT_HASHED'")
 			unless ($ixid == &Triceps::IT_HASHED);
 	} else {
-		$self->{rightIdxType} = $self->{rightTable}->findSubIndexById(&Triceps::IT_HASHED);
-		Carp::confess("The table does not have a top-level Hash index for joining")
+		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndexById(&Triceps::IT_HASHED);
+		Carp::confess("The rightTable does not have a top-level Hash index for joining")
 			unless defined $self->{rightIdxType};
 	}
 	if (!$self->{limitOne}) { # would need a sub-index for iteration

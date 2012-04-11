@@ -64,15 +64,6 @@ $rtAccounts = Triceps::RowType->new(
 );
 ok(ref $rtAccounts, "Triceps::RowType");
 	
-@accountData = (
-	[ "source1", "999", 1 ],
-	[ "source1", "2011", 2 ],
-	[ "source1", "42", 3 ],
-	[ "source2", "ABCD", 1 ],
-	[ "source2", "QWERTY", 2 ],
-	[ "source2", "UIOP", 4 ],
-);
-
 # the accounts table
 $ttAccounts = Triceps::TableType->new($rtAccounts)
 	# muliple indexes can be defined for different purposes

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 68 };
+BEGIN { plan tests => 88 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -651,5 +651,107 @@ ok($result2, $expect2f);
 #########
 # tests for errors
 
+
+sub tryMissingOptValue # (optName)
+{
+	my %opt = (
+		unit => $vu2,
+		name => "join2ab",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIdxPath => ["lookupSrcExt"],
+		rightFields => [ "internal/acct" ],
+		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+		isLeft => 1,
+		automatic => 1,
+	);
+	delete $opt{$_[0]};
+	eval {
+		Triceps::LookupJoin->new(%opt);
+	}
+}
+
+&tryMissingOptValue("unit");
+ok($@ =~ /^Option 'unit' must be specified for class 'Triceps::LookupJoin'/);
+&tryMissingOptValue("name");
+ok($@ =~ /^Option 'name' must be specified for class 'Triceps::LookupJoin'/);
+&tryMissingOptValue("leftRowType");
+ok($@ =~ /^Option 'leftRowType' must be specified for class 'Triceps::LookupJoin'/);
+&tryMissingOptValue("rightTable");
+ok($@ =~ /^Option 'rightTable' must be specified for class 'Triceps::LookupJoin'/);
+&tryMissingOptValue("by");
+ok($@ =~ /^Option 'by' must be specified for class 'Triceps::LookupJoin'/);
+
+sub tryBadOptValue # (optName, optValue)
+{
+	my %opt = (
+		unit => $vu2,
+		name => "join2ab",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIdxPath => ["lookupSrcExt"],
+		rightFields => [ "internal/acct" ],
+		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+		isLeft => 1,
+		automatic => 1,
+	);
+	$opt{$_[0]} = $_[1];
+	eval {
+		Triceps::LookupJoin->new(%opt);
+	}
+}
+
+&tryBadOptValue("unit", 9);
+ok($@ =~ /^Option 'unit' of class 'Triceps::LookupJoin' must be a reference to 'Triceps::Unit', is ''/);
+&tryBadOptValue("leftRowType", 9);
+ok($@ =~ /^Option 'leftRowType' of class 'Triceps::LookupJoin' must be a reference to 'Triceps::RowType', is ''/);
+&tryBadOptValue("rightTable", 9);
+ok($@ =~ /^Option 'rightTable' of class 'Triceps::LookupJoin' must be a reference to 'Triceps::Table', is ''/);
+&tryBadOptValue("rightIdxPath", [$vu2]);
+ok($@ =~ /^Option 'rightIdxPath' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY' '', is 'ARRAY' 'Triceps::Unit'/);
+&tryBadOptValue("leftFields", 9);
+ok($@ =~ /^Option 'leftFields' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("rightFields", 9);
+ok($@ =~ /^Option 'rightFields' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("by", 9);
+ok($@ =~ /^Option 'by' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("saveJoinerTo", 9);
+ok($@ =~ /^Option 'saveJoinerTo' of class 'Triceps::LookupJoin' must be a reference to a scalar, is ''/);
+
+&tryBadOptValue("by", [ 'aaa' => 'bbb' ]);
+ok($@ =~ /^Option 'by' contains an unknown left-side field 'aaa'/);
+&tryBadOptValue("by", [ 'acctSrc' => 'bbb' ]);
+ok($@ =~ /^Option 'by' contains an unknown right-side field 'bbb'/);
+
+&tryBadOptValue("rightIdxPath", [ 'lookupIntGroup', 'lookupInt' ]);
+ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the required 'IT_HASHED'/);
+
+{
+	my $tt = Triceps::TableType->new($rtAccounts)
+		->addSubIndex("lookupInt", Triceps::IndexType->newFifo());
+	ok(ref $tt, "Triceps::TableType");
+	$res = $tt->initialize();
+	ok($res, 1);
+	$t= $vu2->makeTable($tt, &Triceps::EM_CALL, "TestTable");
+	ok(ref $t, "Triceps::Table");
+
+	eval {
+		Triceps::LookupJoin->new(
+			unit => $vu2,
+			name => "join2ab",
+			leftRowType => $rtInTrans,
+			rightTable => $t,
+			rightFields => [ "internal/acct" ],
+			by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+			isLeft => 1,
+			automatic => 1,
+		);
+	};
+	ok($@ =~ /^The rightTable does not have a top-level Hash index for joining/);
+}
+
+#&tryBadOptValue(rightFields => [ "internal/acct", "duck" ]),
+#ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the required 'IT_HASHED'/);
+#print STDERR "err=$@\n";
 # XXXXXXXXXXX
 
