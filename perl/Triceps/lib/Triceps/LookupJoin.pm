@@ -33,7 +33,7 @@ use strict;
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
 # automatic (optional) - 1 means that the lookup() method will never be called
 #    manually, this allows to optimize the label handler and always take the opcode 
-#    into account when processing the rows. (default: 0)
+#    into account when processing the rows, 0 that lookup() will be used. (default: 1)
 # oppositeOuter (optional) - used with automatic only, flag: this is a half of a JoinTwo, 
 #    and the other half performs an outer (from its standpoint, left) join. For this side,
 #    this means that a successfull lookup must generate a DELETE-INSERT pair.
@@ -57,7 +57,7 @@ sub new # (class, optionName => optionValue ...)
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
-			automatic => [ 0, undef ],
+			automatic => [ 1, undef ],
 			oppositeOuter => [ 0, undef ],
 			saveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 		}, @_);

@@ -253,6 +253,7 @@ $join2ab = Triceps::LookupJoin->new( # will be used in both (2a) and (2b)
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
+	automatic => 0,
 );
 ok(ref $join2ab, "Triceps::LookupJoin");
 
