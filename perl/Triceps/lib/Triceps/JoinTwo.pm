@@ -182,13 +182,13 @@ sub new # (class, optionName => optionValue ...)
 	return $self;
 }
 
-sub getResultRowType() # (self)
+sub getResultRowType # (self)
 {
 	my $self = shift;
 	return $self->{leftLookup}->getResultRowType();
 }
 
-sub getOutputLabel() # (self)
+sub getOutputLabel # (self)
 {
 	my $self = shift;
 	return $self->{outputLabel};

@@ -359,7 +359,7 @@ sub new # (class, optionName => optionValue ...)
 # @param self
 # @param leftRow - left-side row for performing the look-up
 # @return - array of result rows (if not isLeft then may be empty)
-sub lookup() # (self, leftRow)
+sub lookup # (self, leftRow)
 {
 	my ($self, $leftRow) = @_;
 	confess("Joiner '" . $self->{name} . "' was created with automatic option and does not support the manual lookup() call.")
@@ -392,19 +392,19 @@ sub handleInput # ($label, $rowop, $self)
 	}
 }
 
-sub getResultRowType() # (self)
+sub getResultRowType # (self)
 {
 	my $self = shift;
 	return $self->{resultRowType};
 }
 
-sub getInputLabel() # (self)
+sub getInputLabel # (self)
 {
 	my $self = shift;
 	return $self->{inputLabel};
 }
 
-sub getOutputLabel() # (self)
+sub getOutputLabel # (self)
 {
 	my $self = shift;
 	return $self->{outputLabel};
