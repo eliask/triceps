@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 151 };
+BEGIN { plan tests => 153 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -225,8 +225,6 @@ ok($result1, $expect1);
 # It had come out with a kind of wide functionality, so it would
 # require multiple tests, marked by letters ("2a" etc.).
 # The class is Triceps::LookupJoin.
-
-# XXX also needs to be tested for errors
 
 # the data definitions and examples are shared with example (1)
 
@@ -824,6 +822,7 @@ The available fields are:
 &tryBadOptValue(rightFields => [ "internal/acctSrc" ]),
 ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'internal'; the preceding fields are: \(acctSrc, acctXtrId, amount\)/);
 
+# test the match of array-ness in the join fields
 {
 	my $rtArr = Triceps::RowType->new(
 		notArr1 => "uint8",
@@ -885,6 +884,24 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 	ok($@ =~ /^Option 'by' fields 'acctSrc'='arr1' mismatch the array-ness, with types 'string' and 'int32\[\]'/);
 }
 
+# automatic joins don't do lookup()
+{
+	my $j = Triceps::LookupJoin->new(
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $t,
+		rightFields => [ "notArr1" ],
+		by => [ "acctSrc" => "notArr2" ],
+		isLeft => 1,
+		automatic => 1,
+	);
+	ok(ref $j, "Triceps::LookupJoin");
+	eval {
+		$j->lookup($rtInTrans->makeRowArray());
+	};
+	ok($@ =~ /^Joiner 'join' was created with automatic option and does not support the manual lookup\(\) call/);
+}
+
 #print STDERR "err=$@\n";
-# XXXXXXXXXXX
 

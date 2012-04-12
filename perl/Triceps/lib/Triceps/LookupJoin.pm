@@ -370,7 +370,7 @@ sub new # (class, optionName => optionValue ...)
 sub lookup # (self, leftRow)
 {
 	my ($self, $leftRow) = @_;
-	confess("Joiner '" . $self->{name} . "' was created with automatic option and does not support the manual lookup() call.")
+	confess("Joiner '" . $self->{name} . "' was created with automatic option and does not support the manual lookup() call")
 		if ($self->{automatic});
 	my @result = &{$self->{joiner}}($self, $leftRow);
 	#print STDERR "DEBUG lookup result=(", join(", ", @result), ")\n";
