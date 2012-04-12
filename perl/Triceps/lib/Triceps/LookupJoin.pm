@@ -38,8 +38,8 @@ use strict;
 #    and the other half performs an outer (from its standpoint, left) join. For this side,
 #    this means that a successfull lookup must generate a DELETE-INSERT pair.
 #    (default: 0)
-#   saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
-#       source code
+# saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
+#    source code
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -418,6 +418,82 @@ sub getOutputLabel # (self)
 	return $self->{outputLabel};
 }
 
-# XXX for production should add getters for other fields
+sub getUnit # (self)
+{
+	my $self = shift;
+	return $self->{unit};
+}
+
+sub getName # (self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+sub getLeftRowType # (self)
+{
+	my $self = shift;
+	return $self->{leftRowType};
+}
+
+sub getRightTable # (self)
+{
+	my $self = shift;
+	return $self->{rightTable};
+}
+
+sub getRightIdxPath # (self)
+{
+	my $self = shift;
+	return $self->{rightIdxPath};
+}
+
+sub getLeftFields # (self)
+{
+	my $self = shift;
+	return $self->{leftFields};
+}
+
+sub getRightFields # (self)
+{
+	my $self = shift;
+	return $self->{rightFields};
+}
+
+sub getFieldsLeftFirst # (self)
+{
+	my $self = shift;
+	return $self->{fieldsLeftFirst};
+}
+
+sub getBy # (self)
+{
+	my $self = shift;
+	return $self->{by};
+}
+
+sub getIsLeft # (self)
+{
+	my $self = shift;
+	return $self->{isLeft};
+}
+
+sub getLimitOne # (self)
+{
+	my $self = shift;
+	return $self->{limitOne};
+}
+
+sub getAutomatic # (self)
+{
+	my $self = shift;
+	return $self->{automatic};
+}
+
+sub getOppositeOuter # (self)
+{
+	my $self = shift;
+	return $self->{oppositeOuter};
+}
 
 1;

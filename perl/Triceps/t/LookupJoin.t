@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 98 };
+BEGIN { plan tests => 115 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -646,6 +646,46 @@ ok($result2, $expect2f);
 	ok(ref $join, "Triceps::LookupJoin");
 	#print STDERR "code = $code\n";
 	ok($code =~ /^\s+sub # \(\$inLabel, \$rowop, \$self\)/);
+}
+
+#########
+# getters
+
+{
+	my $join = Triceps::LookupJoin->new( 
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIdxPath => ["lookupSrcExt"],
+		rightFields => [ "internal/acct" ],
+		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+		isLeft => 1,
+		automatic => 1,
+	);
+	ok(ref $join, "Triceps::LookupJoin");
+
+	my $res;
+	$res = $join->getResultRowType();
+	ok(ref $res, "Triceps::RowType");
+	$res = $join->getInputLabel();
+	ok(ref $res, "Triceps::Label");
+	$res = $join->getOutputLabel();
+	ok(ref $res, "Triceps::Label");
+
+	ok($join->getUnit(), $vu2);
+	ok($join->getName(), "join");
+	ok($join->getLeftRowType(), $rtInTrans);
+	ok($join->getRightTable(), $tAccounts2);
+	ok(join(",", @{$join->getRightIdxPath()}), "lookupSrcExt");
+	ok(! defined $join->getLeftFields());
+	ok(join(",", @{$join->getRightFields()}), "internal/acct");
+	ok($join->getFieldsLeftFirst(), 1);
+	ok(join(",", @{$join->getBy()}), "acctSrc,source,acctXtrId,external");
+	ok($join->getIsLeft(), 1);
+	ok($join->getLimitOne(), 1); # got auto-detected as 1
+	ok($join->getAutomatic(), 1);
+	ok($join->getOppositeOuter(), 0);
 }
 
 #########
