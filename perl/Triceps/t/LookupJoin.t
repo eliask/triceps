@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 91 };
+BEGIN { plan tests => 98 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -613,7 +613,7 @@ ok($result2, $expect2f);
 	my $code;
 	my $join = Triceps::LookupJoin->new( 
 		unit => $vu2,
-		name => "join2ab",
+		name => "join",
 		leftRowType => $rtInTrans,
 		rightTable => $tAccounts2,
 		rightIdxPath => ["lookupSrcExt"],
@@ -633,7 +633,7 @@ ok($result2, $expect2f);
 	my $code;
 	my $join = Triceps::LookupJoin->new( 
 		unit => $vu2,
-		name => "join2ab",
+		name => "join",
 		leftRowType => $rtInTrans,
 		rightTable => $tAccounts2,
 		rightIdxPath => ["lookupSrcExt"],
@@ -656,7 +656,7 @@ sub tryMissingOptValue # (optName)
 {
 	my %opt = (
 		unit => $vu2,
-		name => "join2ab",
+		name => "join",
 		leftRowType => $rtInTrans,
 		rightTable => $tAccounts2,
 		rightIdxPath => ["lookupSrcExt"],
@@ -686,7 +686,7 @@ sub tryBadOptValue # (optName, optValue)
 {
 	my %opt = (
 		unit => $vu2,
-		name => "join2ab",
+		name => "join",
 		leftRowType => $rtInTrans,
 		rightTable => $tAccounts2,
 		rightIdxPath => ["lookupSrcExt"],
@@ -738,7 +738,7 @@ ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the re
 	eval {
 		Triceps::LookupJoin->new(
 			unit => $vu2,
-			name => "join2ab",
+			name => "join",
 			leftRowType => $rtInTrans,
 			rightTable => $t,
 			rightFields => [ "internal/acct" ],
@@ -764,6 +764,68 @@ The available fields are:
 
 &tryBadOptValue(rightFields => [ "internal/acctSrc" ]),
 ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'internal'; the preceding fields are: \(acctSrc, acctXtrId, amount\)/);
-# print STDERR "err=$@\n";
+
+{
+	my $rtArr = Triceps::RowType->new(
+		notArr1 => "uint8",
+		notArr2 => "uint8[]",
+		arr1 => "int32[]",
+	);
+	ok(ref $rtArr, "Triceps::RowType");
+
+	my $tt = Triceps::TableType->new($rtArr)
+		->addSubIndex("iterateSrc", # for iteration in order grouped by source
+			Triceps::IndexType->newHashed(key => [ "notArr1" ]));
+	ok(ref $tt, "Triceps::TableType");
+	$res = $tt->initialize();
+	ok($res, 1);
+	$t= $vu2->makeTable($tt, &Triceps::EM_CALL, "TestTable");
+	ok(ref $t, "Triceps::Table");
+
+	my $j;
+	$j = eval {
+		Triceps::LookupJoin->new(
+			unit => $vu2,
+			name => "join",
+			leftRowType => $rtInTrans,
+			rightTable => $t,
+			rightFields => [ "notArr1" ],
+			by => [ "acctSrc" => "notArr1" ],
+			isLeft => 1,
+			automatic => 1,
+		);
+	};
+	ok(ref $j, "Triceps::LookupJoin");
+
+	$j = eval {
+		Triceps::LookupJoin->new(
+			unit => $vu2,
+			name => "join",
+			leftRowType => $rtInTrans,
+			rightTable => $t,
+			rightFields => [ "notArr1" ],
+			by => [ "acctSrc" => "notArr2" ],
+			isLeft => 1,
+			automatic => 1,
+		);
+	};
+	ok(ref $j, "Triceps::LookupJoin");
+
+	$j = eval {
+		Triceps::LookupJoin->new(
+			unit => $vu2,
+			name => "join",
+			leftRowType => $rtInTrans,
+			rightTable => $t,
+			rightFields => [ "notArr1" ],
+			by => [ "acctSrc" => "arr1" ],
+			isLeft => 1,
+			automatic => 1,
+		);
+	};
+	ok($@ =~ /^Option 'by' fields 'acctSrc'='arr1' mismatch the array-ness, with types 'string' and 'int32\[\]'/);
+}
+
+#print STDERR "err=$@\n";
 # XXXXXXXXXXX
 

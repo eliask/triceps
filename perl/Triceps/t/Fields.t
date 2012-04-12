@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 13 };
+BEGIN { plan tests => 18 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -77,3 +77,12 @@ The available fields are:
   abc, def, ghi
 /);
 #print STDERR "$@\n";
+
+
+#########################
+# isArrayType()
+ok(!&Triceps::Fields::isArrayType("int32"));
+ok(&Triceps::Fields::isArrayType("int32[]"));
+ok(!&Triceps::Fields::isArrayType("string"));
+ok(!&Triceps::Fields::isArrayType("uint8"));
+ok(!&Triceps::Fields::isArrayType("uint8[]"));

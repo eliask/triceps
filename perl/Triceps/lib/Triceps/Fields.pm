@@ -165,4 +165,12 @@ sub filter # (\@incoming, \@patterns) # no $self, it's a static method!
 #   )
 #
 
+# Check whether a type is an array type.
+# It would be if the type ands in "[]", unless it's an uint8.
+sub isArrayType($) # typeDef
+{
+	my $typeDef = shift;
+	return ($typeDef =~ /\[\]$/ && $typeDef !~ /^uint8/);
+}
+
 1;

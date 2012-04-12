@@ -28,7 +28,7 @@ use strict;
 #    the left record first, then from right record, or if 0, then opposite. (default:1)
 # by - reference to array, containing pairs of field names used for look-up,
 #    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
-#    XXX production version should allow an arbitrary expression on the left?
+#    XXX should allow an arbitrary expression on the left?
 # isLeft (optional) - 1 for left join, 0 for full join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
 # automatic (optional) - 1 means that the lookup() method will never be called
@@ -77,7 +77,6 @@ sub new # (class, optionName => optionValue ...)
 	# XXX use getKey() to check that the "by" keys match the
 	# keys of the index (not so easy for the nested indexes because they
 	# would have to include the keys in the whole path)
-	# XXX also in production should check the matching []-ness of fields
 
 	my $genjoin; 
 	if ($auto) {
@@ -133,6 +132,14 @@ sub new # (class, optionName => optionValue ...)
 			unless defined $leftmap{$lf};
 		Carp::confess("Option 'by' contains an unknown right-side field '$rt'")
 			unless defined $rightmap{$rt};
+		my $lf_type = $leftdef[$leftmap{$lf}*2 + 1];
+		my $rt_type = $rightdef[$rightmap{$rt}*2 + 1];
+		my $lf_arr = &Triceps::Fields::isArrayType($lf_type);
+		my $rt_arr = &Triceps::Fields::isArrayType($rt_type);
+
+		Carp::confess("Option 'by' fields '$lf'='$rt' mismatch the array-ness, with types '$lf_type' and '$rt_type'")
+			unless ($lf_arr == $rt_arr);
+		
 		$genjoin .= $rt . ' => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
 	}
 	$genjoin .= ");\n\t\t\t";
