@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 88 };
+BEGIN { plan tests => 91 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -750,8 +750,20 @@ ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the re
 	ok($@ =~ /^The rightTable does not have a top-level Hash index for joining/);
 }
 
-#&tryBadOptValue(rightFields => [ "internal/acct", "duck" ]),
-#ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the required 'IT_HASHED'/);
-#print STDERR "err=$@\n";
+&tryBadOptValue(rightFields => [ "internal/acct", "duck" ]),
+ok($@ =~ /^Result definition error:
+  the field in definition 'duck' is not found
+The available fields are:
+  source, external, internal/);
+
+&tryBadOptValue(leftFields => [ "acctSrc", "duck" ]),
+ok($@ =~ /^Result definition error:
+  the field in definition 'duck' is not found
+The available fields are:
+  acctSrc, acctXtrId, amount/);
+
+&tryBadOptValue(rightFields => [ "internal/acctSrc" ]),
+ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'internal'; the preceding fields are: \(acctSrc, acctXtrId, amount\)/);
+# print STDERR "err=$@\n";
 # XXXXXXXXXXX
 

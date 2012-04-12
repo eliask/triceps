@@ -75,7 +75,8 @@ sub new # (class, optionName => optionValue ...)
 	my @rightfld = $self->{rightRowType}->getFieldNames();
 
 	# XXX use getKey() to check that the "by" keys match the
-	# keys of the index
+	# keys of the index (not so easy for the nested indexes because they
+	# would have to include the keys in the whole path)
 	# XXX also in production should check the matching []-ness of fields
 
 	my $genjoin; 
