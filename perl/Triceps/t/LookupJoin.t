@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 115 };
+BEGIN { plan tests => 151 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -296,7 +296,7 @@ ok($vu2->empty());
 ok($result2, $expect1);
 
 #########
-# (2b) Exact same as 2a, even reuse the same join, but work through its labels
+# define the labels for (2b), doing it only once
 
 my $outlab2b = $vu2->makeLabel($join2ab->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $outlab2b, "Triceps::Label");
@@ -311,6 +311,16 @@ ok($join2ab->getOutputLabel()->chain($outlab2b));
 my $inlab2b = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2b, "Triceps::Label");
 ok($inlab2b->chain($join2ab->getInputLabel()));
+
+
+#########
+# the other tests can be done in both automatic mode and not, so repeat both
+sub automaticAndNot # ($auto)
+{
+my $auto = shift;
+
+#########
+# (2b) Exact same as 2a, even reuse the same join, but work through its labels
 
 undef $result2;
 # feed the data
@@ -342,6 +352,7 @@ $join2c = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 0,
+	automatic => $auto,
 );
 ok(ref $join2c, "Triceps::LookupJoin");
 
@@ -432,6 +443,7 @@ $join2d = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 0,
+	automatic => $auto,
 );
 ok(ref $join2d, "Triceps::LookupJoin");
 
@@ -494,6 +506,7 @@ $join2e = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
+	automatic => $auto,
 );
 ok(ref $join2e, "Triceps::LookupJoin");
 
@@ -559,6 +572,7 @@ $join2f = Triceps::LookupJoin->new(
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
 	limitOne => 1,
+	automatic => $auto,
 );
 ok(ref $join2f, "Triceps::LookupJoin");
 
@@ -604,6 +618,13 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 join2f.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
 ';
 ok($result2, $expect2f);
+
+}
+
+&automaticAndNot(0);
+#print STDERR "automaticAndNot 2nd go\n";
+&automaticAndNot(1);
+
 
 #########
 # test the saveJoinerTo
@@ -660,8 +681,6 @@ ok($result2, $expect2f);
 		rightIdxPath => ["lookupSrcExt"],
 		rightFields => [ "internal/acct" ],
 		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
-		isLeft => 1,
-		automatic => 1,
 	);
 	ok(ref $join, "Triceps::LookupJoin");
 
@@ -682,10 +701,10 @@ ok($result2, $expect2f);
 	ok(join(",", @{$join->getRightFields()}), "internal/acct");
 	ok($join->getFieldsLeftFirst(), 1);
 	ok(join(",", @{$join->getBy()}), "acctSrc,source,acctXtrId,external");
-	ok($join->getIsLeft(), 1);
+	ok($join->getIsLeft(), 1); # the default
 	ok($join->getLimitOne(), 1); # got auto-detected as 1
-	ok($join->getAutomatic(), 1);
-	ok($join->getOppositeOuter(), 0);
+	ok($join->getAutomatic(), 1); # the default
+	ok($join->getOppositeOuter(), 0); # the default
 }
 
 #########
