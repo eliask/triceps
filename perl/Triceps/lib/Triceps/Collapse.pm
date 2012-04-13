@@ -53,16 +53,9 @@ sub new # ($class, $optName => $optValue, ...)
 	# save the dataset for the future
 	$self->{datasets}{$dataset->{name}} = $dataset;
 	# check the options
-	confess "The data set (" . $dataset->{name} . ") must have only one of options rowType or fromLabel"
-		if (defined $dataset->{rowType} && defined $dataset->{fromLabel});
-	confess "The data set (" . $dataset->{name} . ") must have exactly one of options rowType or fromLabel"
-		if (!defined $dataset->{rowType} && !defined $dataset->{fromLabel});
+	&Triceps::Opt::handleUnitTypeLabel("Triceps::Collapse data set (". $dataset->{name} . ")",
+		"unit", \$self->{unit}, "rowType", \$dataset->{rowType}, "fromLabel", \$dataset->{fromLabel});
 	my $lbFrom = $dataset->{fromLabel};
-	if (defined $lbFrom) {
-		confess "The unit of the Collapse and the unit of its data set (" . $dataset->{name} . ") fromLabel must be the same"
-			unless ($self->{unit}->same($lbFrom->getUnit()));
-		$dataset->{rowType} = $lbFrom->getType();
-	}
 
 	# create the tables
 	$dataset->{tt} = Triceps::TableType->new($dataset->{rowType})
@@ -88,7 +81,7 @@ sub new # ($class, $optName => $optValue, ...)
 	if (defined $lbFrom) {
 		$lbFrom->chain($dataset->{lbIn})
 			or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
-		delete $dataset->{fromLabel}; # no need to keep the reference any more
+		delete $dataset->{fromLabel}; # no need to keep the reference any more, avoid a reference cycle
 	}
 
 	bless $self, $class;

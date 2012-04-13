@@ -270,7 +270,7 @@ ok($@ =~ /^Option 'key' must be specified for class 'Triceps::Collapse data set 
 &tryMissingDataOptValue("name");
 ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse data set/);
 &tryMissingDataOptValue("rowType");
-ok($@ =~ /^The data set \(idata\) must have exactly one of options rowType or fromLabel/);
+ok($@ =~ /^Triceps::Collapse data set \(idata\): must have exactly one of options rowType or fromLabel/);
 
 sub tryBadOptValue # (optName, optValue, ...)
 {
@@ -304,16 +304,16 @@ ok($@ =~ /^Option 'data' of class 'Triceps::Collapse' must be a reference to 'AR
 		key => [ "local_ip", "remote_ip" ],
 	]);
 }
-ok($@ =~ /^The data set \(idata\) must have only one of options rowType or fromLabel /);
+ok($@ =~ /^Triceps::Collapse data set \(idata\): must have only one of options rowType or fromLabel/);
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit2") or die "$!";
 	&tryBadOptValue("data",[
 		name => "idata",
 		fromLabel => $unit->makeDummyLabel($rtData, "lbInput"),
 		key => [ "local_ip", "remote_ip" ],
 	]);
 }
-ok($@ =~ /^The unit of the Collapse and the unit of its data set \(idata\) fromLabel must be the same/);
+ok($@ =~ /^Triceps::Collapse data set \(idata\): the label 'lbInput' in option fromLabel has a mismatched unit \('unit2' vs 'unit'\)/);
 
 sub tryBadDataOptValue # (optName, optValue, ...)
 {

@@ -130,4 +130,44 @@ sub ck_refscalar
 	Carp::confess "Option '$optname' of class '$class' must be a reference to a scalar, is '$rval'"
 		unless ($rval eq 'SCALAR' || $rval eq 'REF');
 }
+
+###########
+# Handling ot the typical unit-inputRowType-fromLabel triangle, where
+# the fromLabel can replace the other two.
+#
+# Checks that everything is compatible. If the label is specified
+# and the unit is not, then populates the unit.
+# On error confesses. On success returns 1.
+#
+# @param caller - the name of the caller function, for error messages
+# @param nameUnit - name of the unit option, for messages
+# @param refUnit - reference to the unit value
+# @param nameRowType - name of the row type option, for messages
+# @param refRowType - reference to the row type value
+# @param nameLabel - name of the label option, for messages
+# @param refLabel - reference to the label value
+sub handleUnitTypeLabel($$$$$$$) # ($caller, $nameUnit, \$refUnit, $nameRowType, \$refRowType, $nameLabel, \$refLabel)
+{
+	my ($caller, $nameUnit, $refUnit, $nameRowType, $refRowType, $nameLabel, $refLabel) = @_;
+	
+	confess "$caller: must have only one of options $nameRowType or $nameLabel"
+		if (defined $$refRowType && defined $$refLabel);
+	confess "$caller: must have exactly one of options $nameRowType or $nameLabel"
+		if (!defined $$refRowType && !defined $$refLabel);
+	if (defined $$refLabel) {
+		if (defined $$refUnit) {
+			confess("$caller: the label '" . $$refLabel->getName() . "' in option $nameLabel has a mismatched unit ('" 
+					. $$refLabel->getUnit()->getName() . "' vs '" . $$refUnit->getName() . "')")
+				unless ($$refUnit->same($$refLabel->getUnit()));
+		} else {
+			$$refUnit = $$refLabel->getUnit();
+		}
+		$$refRowType = $$refLabel->getType();
+	}
+	confess "$caller: option $nameUnit must be specified"
+		unless (defined $$refUnit);
+
+	return 1;
+}
+
 1;

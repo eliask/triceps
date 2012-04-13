@@ -559,11 +559,15 @@ ok($result2, $expect2e);
 
 #########
 # (2f) left join with limitOne = 1, and multiple records available
+# also test the leftFromLabel here
+
+# this is purely to keep track of the input in the log
+my $inlab2f = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2f, "Triceps::Label");
 
 $join2f = Triceps::LookupJoin->new(
-	unit => $vu2,
 	name => "join2f",
-	leftRowType => $rtInTrans,
+	leftFromLabel => $inlab2f,
 	rightTable => $tAccounts2de,
 	rightIdxPath => ["lookupSrcExt"],
 	rightFields => [ "internal/acct" ],
@@ -579,11 +583,6 @@ ok(ref $outlab2f, "Triceps::Label");
 
 # the output
 ok($join2f->getOutputLabel()->chain($outlab2f));
-
-# this is purely to keep track of the input in the log
-my $inlab2f = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
-ok(ref $inlab2f, "Triceps::Label");
-ok($inlab2f->chain($join2f->getInputLabel()));
 
 undef $result2;
 # feed the data
@@ -729,11 +728,11 @@ sub tryMissingOptValue # (optName)
 }
 
 &tryMissingOptValue("unit");
-ok($@ =~ /^Option 'unit' must be specified for class 'Triceps::LookupJoin'/);
+ok($@ =~ /^Triceps::LookupJoin: option unit must be specified/);
 &tryMissingOptValue("name");
 ok($@ =~ /^Option 'name' must be specified for class 'Triceps::LookupJoin'/);
 &tryMissingOptValue("leftRowType");
-ok($@ =~ /^Option 'leftRowType' must be specified for class 'Triceps::LookupJoin'/);
+ok($@ =~ /^Triceps::LookupJoin: must have exactly one of options leftRowType or leftFromLabel/);
 &tryMissingOptValue("rightTable");
 ok($@ =~ /^Option 'rightTable' must be specified for class 'Triceps::LookupJoin'/);
 &tryMissingOptValue("by");
@@ -821,6 +820,13 @@ The available fields are:
 
 &tryBadOptValue(rightFields => [ "internal/acctSrc" ]),
 ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'internal'; the preceding fields are: \(acctSrc, acctXtrId, amount\)/);
+
+{
+	my $lb = $vu2->makeDummyLabel($rtInTrans, "in");
+	ok(ref $lb, "Triceps::Label");
+	&tryBadOptValue(leftFromLabel => $lb),
+	ok($@ =~ /^Triceps::LookupJoin: must have only one of options leftRowType or leftFromLabel/);
+}
 
 # test the match of array-ness in the join fields
 {

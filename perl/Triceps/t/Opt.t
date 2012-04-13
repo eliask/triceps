@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 24 };
+BEGIN { plan tests => 37 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -153,3 +153,54 @@ eval {
 		unit => $u1);
 };
 ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 'Triceps::Unit'.*/);
+
+#########################
+# handleUnitTypeLabel
+
+{
+	my $u1 = Triceps::Unit->new("u1");
+	ok(ref $u1, "Triceps::Unit");
+	my $u2 = Triceps::Unit->new("u2");
+	ok(ref $u2, "Triceps::Unit");
+	my $rt1 = Triceps::RowType->new(
+		a => "uint8",
+		b => "int32",
+	);
+	ok(ref $rt1, "Triceps::RowType");
+	my $lb1 = $u1->makeDummyLabel($rt1, "lb1");
+	ok(ref $lb1, "Triceps::Label");
+	my $lb2 = $u2->makeDummyLabel($rt1, "lb2");
+	ok(ref $lb2, "Triceps::Label");
+	my ($unit, $rt, $label);
+
+	($unit, $rt, $label) = (undef, undef, undef);
+	eval { &Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label); };
+	ok($@ =~ /^CallerMethod: must have exactly one of options rowTypeX or labelX/);
+
+	($unit, $rt, $label) = (undef, $rt1, undef);
+	eval { &Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label); };
+	ok($@ =~ /^CallerMethod: option unitX must be specified/);
+
+	($unit, $rt, $label) = ($u1, $rt1, $lb1);
+	eval { &Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label); };
+	ok($@ =~ /^CallerMethod: must have only one of options rowTypeX or labelX/);
+
+	($unit, $rt, $label) = ($u1, $rt1, undef);
+	&Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label);
+	
+	($unit, $rt, $label) = (undef, undef, $lb1);
+	&Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label);
+	ok($u1->same($unit));
+	ok($rt1->same($rt));
+	
+	($unit, $rt, $label) = ($u1, undef, $lb1);
+	&Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label);
+	ok($u1->same($unit));
+	ok($rt1->same($rt));
+	
+	($unit, $rt, $label) = ($u1, undef, $lb2);
+	eval { &Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label); };
+	ok($@ =~ /^CallerMethod: the label 'lb2' in option labelX has a mismatched unit \('u2' vs 'u1'\)/);
+
+}
+#print STDERR "$@\n";

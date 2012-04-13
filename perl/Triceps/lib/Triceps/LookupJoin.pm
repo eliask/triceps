@@ -11,9 +11,11 @@ use Carp;
 use strict;
 
 # Options:
-# unit - unit object
+# unit (may be skipped if leftFromLabel is used) - unit object
 # name - name of this object (will be used to create the names of internal objects)
 # leftRowType - type of the rows that will be used for lookup
+# leftFromLabel (mutually exclusive with leftRowType) - source of rows that will
+#    be used for lookup
 # rightTable - table object where to do the look-ups
 # rightIdxPath (optional) - array reference containing the path name of index type 
 #    in table used for look-up (default: first top-level Hash),
@@ -46,9 +48,10 @@ sub new # (class, optionName => optionValue ...)
 	my $self = {};
 
 	&Triceps::Opt::parse($class, $self, {
-			unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+			unit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
-			leftRowType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+			leftRowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+			leftFromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
@@ -61,6 +64,9 @@ sub new # (class, optionName => optionValue ...)
 			oppositeOuter => [ 0, undef ],
 			saveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 		}, @_);
+
+	&Triceps::Opt::handleUnitTypeLabel("Triceps::LookupJoin",
+		"unit", \$self->{unit}, "leftRowType", \$self->{leftRowType}, "leftFromLabel", \$self->{leftFromLabel});
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
@@ -357,6 +363,13 @@ sub new # (class, optionName => optionValue ...)
 	# create the output label
 	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{resultRowType}, $self->{name} . ".out");
 	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
+	
+	# chain the input label, if any
+	if (defined $self->{leftFromLabel}) {
+		$self->{leftFromLabel}->chain($self->{inputLabel})
+			or confess "Triceps::LookupJoin internal error: input label chaining to '" . $self->{leftFromLabel}->getName() . "' failed:\n$! ";
+		delete $self->{leftFromLabel}; # no need to keep the reference any more, avoid a reference cycle
+	}
 
 	bless $self, $class;
 	return $self;
