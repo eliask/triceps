@@ -77,6 +77,7 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 # numbers from various external systems into the internal number
 
 our $rtInTrans = Triceps::RowType->new( # a transaction received
+	id => "int32", # the transaction id
 	acctSrc => "string", # external system that sent us a transaction
 	acctXtrId => "string", # its name of the account of the transaction
 	amount => "int32", # the amount of transaction (int is easier to check)
@@ -109,11 +110,11 @@ my @commonInput = (
 	"acct,OP_INSERT,source1,999,1\n",
 	"acct,OP_INSERT,source1,2011,2\n",
 	"acct,OP_INSERT,source2,ABCD,1\n",
-	"trans,OP_INSERT,source1,999,100\n", 
-	"trans,OP_INSERT,source2,ABCD,200\n", 
-	"trans,OP_INSERT,source2,QWERTY,200\n", 
+	"trans,OP_INSERT,1,source1,999,100\n", 
+	"trans,OP_INSERT,2,source2,ABCD,200\n", 
+	"trans,OP_INSERT,3,source2,QWERTY,200\n", 
 	"acct,OP_INSERT,source2,QWERTY,2\n",
-	"trans,OP_DELETE,source2,QWERTY,200\n", 
+	"trans,OP_DELETE,3,source2,QWERTY,200\n", 
 	"acct,OP_DELETE,source1,999,1\n",
 );
 
@@ -165,15 +166,15 @@ ok($result,
 'acct,OP_INSERT,source1,999,1
 acct,OP_INSERT,source1,2011,2
 acct,OP_INSERT,source2,ABCD,1
-trans,OP_INSERT,source1,999,100
-join.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
-trans,OP_INSERT,source2,ABCD,200
-join.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
-trans,OP_INSERT,source2,QWERTY,200
-join.out OP_INSERT acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
 acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,source2,QWERTY,200
-join.out OP_DELETE acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
 acct,OP_DELETE,source1,999,1
 ');
 
@@ -194,8 +195,8 @@ our $join = Triceps::LookupJoin->new(
 	leftFromLabel => $lbTrans,
 	rightTable => $tAccounts,
 	rightIdxPath => ["lookupSrcExt"],
-	leftFields => [ "amount" ],
-	# leftFields => [ "!acct.*", ".*" ],
+	leftFields => [ "id", "amount" ],
+	#leftFields => [ "!acct.*", ".*" ],
 	fieldsLeftFirst => 0,
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
@@ -229,13 +230,13 @@ ok($result,
 'acct,OP_INSERT,source1,999,1
 acct,OP_INSERT,source1,2011,2
 acct,OP_INSERT,source2,ABCD,1
-trans,OP_INSERT,source1,999,100
-join.out OP_INSERT acct="1" amount="100" 
-trans,OP_INSERT,source2,ABCD,200
-join.out OP_INSERT acct="1" amount="200" 
-trans,OP_INSERT,source2,QWERTY,200
+trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT acct="1" id="1" amount="100" 
+trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT acct="1" id="2" amount="200" 
+trans,OP_INSERT,3,source2,QWERTY,200
 acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,source2,QWERTY,200
-join.out OP_DELETE acct="2" amount="200" 
+trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE acct="2" id="3" amount="200" 
 acct,OP_DELETE,source1,999,1
 ');
