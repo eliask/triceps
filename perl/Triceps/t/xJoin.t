@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 4 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -117,6 +117,67 @@ my @commonInput = (
 	"trans,OP_DELETE,3,source2,QWERTY,200\n", 
 	"acct,OP_DELETE,source1,999,1\n",
 );
+
+#########################
+# a manual filtering on lookup
+
+sub doManualLookup {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tAccounts = $uJoin->makeTable($ttAccounts, 
+	&Triceps::EM_CALL, "tAccounts") or die "$!";
+
+my $lbFilterResult = $uJoin->makeDummyLabel($rtInTrans, "lbFilterResult");
+my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
+	my ($label, $rowop) = @_;
+	my $row = $rowop->getRow();
+	my $rh = $tAccounts->findBy(
+		source => $row->get("acctSrc"),
+		external => $row->get("acctXtrId"),
+	);
+	if (!$rh->isNull()) {
+		$uJoin->call($lbFilterResult->makeRowop($rowop->getOpcode(), $row));
+	}
+}) or die "$!";
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $lbFilterResult);
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($lbFilter, @data)
+			or die "$!";
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doManualLookup 
+
+@input = @commonInput;
+$result = undef;
+&doManualLookup();
+#print $result;
+ok($result,
+'acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+trans,OP_INSERT,1,source1,999,100
+lbFilterResult OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+trans,OP_INSERT,2,source2,ABCD,200
+lbFilterResult OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
+trans,OP_INSERT,3,source2,QWERTY,200
+acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200
+lbFilterResult OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+acct,OP_DELETE,source1,999,1
+');
 
 #########################
 # perform a LookupJoin, with a left join
