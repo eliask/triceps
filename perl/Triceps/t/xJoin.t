@@ -240,7 +240,7 @@ acct,OP_DELETE,source1,999,1
 ');
 
 #########################
-# perform a LookupJoin, with a full join and leftFromLabel
+# perform a LookupJoin, with an inner join and leftFromLabel
 
 sub doLookupFull {
 
