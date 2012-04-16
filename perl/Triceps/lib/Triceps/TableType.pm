@@ -33,4 +33,32 @@ sub findIndexPath # (self, idxName, ...)
 	return $cur;
 }
 
+# Find an index type and its key fields by a path of index names leading from the root.
+# The keys include all the key fields from all the indexes in the path, without duplicates,
+# sorted.
+# @param self - the TableType object
+# @param idxName, ... - array of names
+# @return - the array of (found index type, keys...)
+# If not found, confesses.
+sub findIndexKeyPath # (self, idxName, ...)
+{
+	my $myname = "Triceps::TableType::findIndexKeyPath";
+	my $self = shift;
+
+	confess("$myname: idxPath must be an array of non-zero length, table type is:\n" . $self->print() . " ")
+		unless ($#_ >= 0);
+	my $cur = $self; # table type is the root of the tree
+	my $progress = '';
+	my %keys;
+	foreach my $p (@_) {
+		$progress .= $p;
+		$cur = $cur->findSubIndex($p) 
+			or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $self->print() . " ");
+		foreach my $k ($cur->getKey()) {
+			$keys{$k} = 1;
+		}
+		$progress .= '.';
+	}
+	return ($cur, sort keys %keys);
+}
 1;

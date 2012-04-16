@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 70 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -193,6 +193,23 @@ ok(!defined($it2));
 $it2 = $tt1->findIndexPath("primary", "fifo");
 $res = $it2->print();
 ok($res, "index FifoIndex()");
+
+{
+		# duplicating fields in the neste din dexes are not a good idea,
+		# but just for the test...
+		my $ttDeep = Triceps::TableType->new($rt1)
+			->addSubIndex("xab", # for iteration in order grouped by source
+				Triceps::IndexType->newHashed(key => [ "a", "b" ])
+				->addSubIndex("xbc", 
+					Triceps::IndexType->newHashed(key => [ "b", "c" ])
+				)
+			)
+		;
+		ok(ref $ttDeep, "Triceps::TableType");
+		my ($it, @keys) = $ttDeep->findIndexKeyPath("xab", "xbc");
+		ok(ref $it, "Triceps::IndexType");
+		ok(join(",", @keys), "a,b,c");
+}
 
 $it2 = eval {
 	$tt1->findIndexPath("primary", "zzz");

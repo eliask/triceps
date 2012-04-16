@@ -130,10 +130,12 @@ sub new # (class, optionName => optionValue ...)
 	$genjoin .= '
 			my $lookuprow = $self->{rightRowType}->makeRowHash(
 				';
+	my @bykeys;
 	my @cpby = @{$self->{by}};
 	while ($#cpby >= 0) {
 		my $lf = shift @cpby;
 		my $rt = shift @cpby;
+		push @bykeys, $rt;
 		Carp::confess("Option 'by' contains an unknown left-side field '$lf'")
 			unless defined $leftmap{$lf};
 		Carp::confess("Option 'by' contains an unknown right-side field '$rt'")
@@ -151,8 +153,9 @@ sub new # (class, optionName => optionValue ...)
 	$genjoin .= ");\n\t\t\t";
 
 	# translate the index
+	my @idxkeys;
 	if (defined $self->{rightIdxPath}) {
-		$self->{rightIdxType} = $self->{rightTable}->getType()->findIndexPath(@{$self->{rightIdxPath}});
+		($self->{rightIdxType}, @idxkeys) = $self->{rightTable}->getType()->findIndexKeyPath(@{$self->{rightIdxPath}});
 		# if not found, would already confess
 		my $ixid  = $self->{rightIdxType}->getIndexId();
 		Carp::confess("The index '" . join('.', @{$self->{rightIdxPath}}) . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not the required 'IT_HASHED'")
@@ -161,7 +164,13 @@ sub new # (class, optionName => optionValue ...)
 		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndexById(&Triceps::IT_HASHED);
 		Carp::confess("The rightTable does not have a top-level Hash index for joining")
 			unless defined $self->{rightIdxType};
+		@idxkeys = sort $self->{rightIdxType}->getKey();
 	}
+	my $idxkeys = join(", ", @idxkeys);
+	my $bykeys = join(", ", sort @bykeys);
+	Carp::confess("The right-side keys in option 'by' and keys in the index do not match:\n  by: $bykeys\n  index: $idxkeys\n  ")
+		unless ($idxkeys eq $bykeys);
+
 	if (!$self->{limitOne}) { # would need a sub-index for iteration
 		my @subs = $self->{rightIdxType}->getSubIndexes();
 		if ($#subs < 0) { # no sub-indexes, so guaranteed to match one record

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 153 };
+BEGIN { plan tests => 154 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -778,6 +778,11 @@ ok($@ =~ /^Option 'saveJoinerTo' of class 'Triceps::LookupJoin' must be a refere
 ok($@ =~ /^Option 'by' contains an unknown left-side field 'aaa'/);
 &tryBadOptValue("by", [ 'acctSrc' => 'bbb' ]);
 ok($@ =~ /^Option 'by' contains an unknown right-side field 'bbb'/);
+&tryBadOptValue("by", [ 'acctSrc' => 'internal' ]);
+ok($@ =~ /^The right-side keys in option 'by' and keys in the index do not match:
+  by: internal
+  index: external, source
+/);
 
 &tryBadOptValue("rightIdxPath", [ 'lookupIntGroup', 'lookupInt' ]);
 ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the required 'IT_HASHED'/);
@@ -839,7 +844,9 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 
 	my $tt = Triceps::TableType->new($rtArr)
 		->addSubIndex("iterateSrc", # for iteration in order grouped by source
-			Triceps::IndexType->newHashed(key => [ "notArr1" ]));
+			Triceps::IndexType->newHashed(key => [ "notArr1" ]))
+		->addSubIndex("byNotArr2", 
+			Triceps::IndexType->newHashed(key => [ "notArr2" ]));
 	ok(ref $tt, "Triceps::TableType");
 	$res = $tt->initialize();
 	ok($res, 1);
@@ -867,6 +874,7 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 			name => "join",
 			leftRowType => $rtInTrans,
 			rightTable => $t,
+			rightIdxPath => ["byNotArr2"],
 			rightFields => [ "notArr1" ],
 			by => [ "acctSrc" => "notArr2" ],
 			isLeft => 1,
@@ -897,6 +905,7 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 		name => "join",
 		leftRowType => $rtInTrans,
 		rightTable => $t,
+		rightIdxPath => ["byNotArr2"],
 		rightFields => [ "notArr1" ],
 		by => [ "acctSrc" => "notArr2" ],
 		isLeft => 1,
