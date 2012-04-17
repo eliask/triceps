@@ -785,7 +785,7 @@ ok($@ =~ /^The right-side keys in option 'by' and keys in the index do not match
 /);
 
 &tryBadOptValue("rightIdxPath", [ 'lookupIntGroup', 'lookupInt' ]);
-ok($@ =~ /^The index 'lookupIntGroup.lookupInt' is of kind 'IT_FIFO', not the required 'IT_HASHED'/);
+ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupIntGroup.lookupInt' does not have a key, table type is:/);
 
 {
 	my $tt = Triceps::TableType->new($rtAccounts)

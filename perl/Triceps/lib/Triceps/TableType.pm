@@ -54,7 +54,10 @@ sub findIndexKeyPath # (self, idxName, ...)
 		$progress .= $p;
 		$cur = $cur->findSubIndex($p) 
 			or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $self->print() . " ");
-		foreach my $k ($cur->getKey()) {
+		my @pkey = $cur->getKey();
+		confess("$myname: the index type at path '$progress' does not have a key, table type is:\n" . $self->print() . " ")
+			unless ($#pkey >= 0);
+		foreach my $k (@pkey) {
 			$keys{$k} = 1;
 		}
 		$progress .= '.';
