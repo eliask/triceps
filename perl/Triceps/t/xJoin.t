@@ -118,6 +118,8 @@ my @commonInput = (
 	"acct,OP_DELETE,source1,999,1\n",
 );
 
+my $code;
+
 #########################
 # a manual filtering on lookup
 
@@ -198,6 +200,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
+	#saveJoinerTo => \$code,
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
@@ -238,6 +241,9 @@ trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
 acct,OP_DELETE,source1,999,1
 ');
+#$code =~ s/\n\t\t/\n/g;
+#$code =~ s/\t/  /g;
+#print "$code\n";
 
 #########################
 # perform a LookupJoin, with an inner join and leftFromLabel
@@ -331,6 +337,7 @@ our $join = Triceps::LookupJoin->new(
 	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	#saveJoinerTo => \$code,
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
@@ -387,6 +394,9 @@ trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
 acct,OP_DELETE,source1,999,1
 ');
+#$code =~ s/\n\t\t/\n/g;
+#$code =~ s/\t/  /g;
+#print "$code\n";
 
 #########################
 # perform a LookupJoin, with multiple rows in the result but only one chosen
@@ -481,6 +491,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	automatic => 0,
+	#saveJoinerTo => \$code,
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
@@ -525,4 +536,7 @@ trans,OP_DELETE,3,source2,QWERTY,200
 lbPrintPackets OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
 acct,OP_DELETE,source1,999,1
 ');
+#$code =~ s/\n\t\t/\n/g;
+#$code =~ s/\t/  /g;
+#print "$code\n";
 
