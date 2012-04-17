@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 4 };
+BEGIN { plan tests => 6 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -301,3 +301,164 @@ trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE acct="2" id="3" amount="200" 
 acct,OP_DELETE,source1,999,1
 ');
+
+#########################
+# perform a LookupJoin, with multiple rows in the result
+
+our $ttAccounts2 = Triceps::TableType->new($rtAccounts)
+	->addSubIndex("iterateSrc", # for iteration in order grouped by source
+		Triceps::IndexType->newHashed(key => [ "source" ])
+		->addSubIndex("lookupSrcExt",
+			Triceps::IndexType->newHashed(key => [ "external" ])
+			->addSubIndex("grouping", Triceps::IndexType->newFifo())
+		)
+	)
+or die "$!";
+$ttAccounts2->initialize() or die "$!";
+
+sub doLookupLeftMulti {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tAccounts = $uJoin->makeTable($ttAccounts2, 
+	&Triceps::EM_CALL, "tAccounts") or die "$!";
+
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($join->getInputLabel(), @data)
+			or die "$!";
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doLookupLeftMulti
+
+@input = (
+	"acct,OP_INSERT,source1,999,1\n",
+	"acct,OP_INSERT,source1,2011,2\n",
+	"acct,OP_INSERT,source2,ABCD,1\n",
+	"acct,OP_INSERT,source2,ABCD,10\n",
+	"acct,OP_INSERT,source2,ABCD,100\n",
+	"trans,OP_INSERT,1,source1,999,100\n", 
+	"trans,OP_INSERT,2,source2,ABCD,200\n", 
+	"trans,OP_INSERT,3,source2,QWERTY,200\n", 
+	"acct,OP_INSERT,source2,QWERTY,2\n",
+	"trans,OP_DELETE,3,source2,QWERTY,200\n", 
+	"acct,OP_DELETE,source1,999,1\n",
+);
+$result = undef;
+&doLookupLeftMulti();
+#print $result;
+ok($result, 
+'acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+acct,OP_INSERT,source2,ABCD,10
+acct,OP_INSERT,source2,ABCD,100
+trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="10" 
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="100" 
+trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+acct,OP_DELETE,source1,999,1
+');
+
+#########################
+# perform a LookupJoin, with multiple rows in the result but only one chosen
+
+sub doLookupLeftMultiOne {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tAccounts = $uJoin->makeTable($ttAccounts2, 
+	&Triceps::EM_CALL, "tAccounts") or die "$!";
+
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	limitOne => 1,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($join->getInputLabel(), @data)
+			or die "$!";
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doLookupLeftMultiOne
+
+@input = (
+	"acct,OP_INSERT,source1,999,1\n",
+	"acct,OP_INSERT,source1,2011,2\n",
+	"acct,OP_INSERT,source2,ABCD,1\n",
+	"acct,OP_INSERT,source2,ABCD,10\n",
+	"acct,OP_INSERT,source2,ABCD,100\n",
+	"trans,OP_INSERT,1,source1,999,100\n", 
+	"trans,OP_INSERT,2,source2,ABCD,200\n", 
+	"trans,OP_INSERT,3,source2,QWERTY,200\n", 
+	"acct,OP_INSERT,source2,QWERTY,2\n",
+	"trans,OP_DELETE,3,source2,QWERTY,200\n", 
+	"acct,OP_DELETE,source1,999,1\n",
+);
+$result = undef;
+&doLookupLeftMultiOne();
+#print $result;
+ok($result, 
+'acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+acct,OP_INSERT,source2,ABCD,10
+acct,OP_INSERT,source2,ABCD,100
+trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+acct,OP_DELETE,source1,999,1
+');
+
