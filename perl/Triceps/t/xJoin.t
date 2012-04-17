@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 6 };
+BEGIN { plan tests => 7 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -459,6 +459,70 @@ join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200"
 acct,OP_INSERT,source2,QWERTY,2
 trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+acct,OP_DELETE,source1,999,1
+');
+
+#########################
+# LookupJoin, with a left join, and manual iteration
+
+sub doLookupLeftManual {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tAccounts = $uJoin->makeTable($ttAccounts, 
+	&Triceps::EM_CALL, "tAccounts") or die "$!";
+
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	automatic => 0,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+my $lbPrintPackets = makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "trans") {
+		my $op = shift @data; # drop the opcode field
+		my $trans = $rtInTrans->makeRowArray(@data) or die "$!";
+		my @rows = $join->lookup($trans);
+		foreach my $r (@rows) {
+			$uJoin->call($lbPrintPackets->makeRowop($op, $r)) or die "$!";
+		}
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doLookupLeftManual
+
+@input = @commonInput;
+$result = undef;
+&doLookupLeftManual();
+#print $result;
+ok($result, 
+'acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+trans,OP_INSERT,1,source1,999,100
+lbPrintPackets OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+trans,OP_INSERT,2,source2,ABCD,200
+lbPrintPackets OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+trans,OP_INSERT,3,source2,QWERTY,200
+lbPrintPackets OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200
+lbPrintPackets OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
 acct,OP_DELETE,source1,999,1
 ');
 
