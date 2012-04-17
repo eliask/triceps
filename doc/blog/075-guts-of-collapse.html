@@ -1,0 +1,188 @@
+The guts of Collapse
+
+The Collapse implementation is fairly small, and is another worthy example for the docs. It's a template, and a "normal" one too: no code generation whatsoever, just a combination of ready components. As with SimpleAggregator, the current Collapse is quite simple and will grow more features over time, so I've copied the original simple version into t/xCollapse.t to stay there unchanged.
+
+The most notable thing about Collapse is that it took just about an hour to write the first version of it and another three or so hours to test it. Which is a lot less than the similar code in the Aleri or Coral8 code base took. The reason for this is that Triceps provides the fairly flexible base data structures that can be combined easily directly in a scripting language. There is no need to redo a lot from scratch every time, just take something and add a little bit on top.
+
+So here it is, with the interspersed comments.
+
+<pre>package Triceps::Collapse;
+use Carp;
+use strict;
+
+sub new # ($class, $optName =&gt; $optValue, ...)
+{
+&nbsp; my $class = shift;
+&nbsp; my $self = {};
+
+&nbsp; &amp;Triceps::Opt::parse($class, $self, { 
+&nbsp;&nbsp;&nbsp; unit =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+&nbsp;&nbsp;&nbsp; name =&gt; [ undef, \&amp;Triceps::Opt::ck_mandatory ],
+&nbsp;&nbsp;&nbsp; data =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+&nbsp; }, @_);
+
+&nbsp; # parse the data element
+&nbsp; my $dataref = $self-&gt;{data};
+&nbsp; my $dataset = {};
+&nbsp; # dataref-&gt;[1] is the best guess for the dataset name, in case if the option "name" goes first
+&nbsp; &amp;Triceps::Opt::parse("$class data set (" . $dataref-&gt;[1] . ")", $dataset, { 
+&nbsp;&nbsp;&nbsp; name =&gt; [ undef, \&amp;Triceps::Opt::ck_mandatory ],
+&nbsp;&nbsp;&nbsp; key =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+&nbsp;&nbsp;&nbsp; rowType =&gt; [ undef, sub { &amp;Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
+&nbsp;&nbsp;&nbsp; fromLabel =&gt; [ undef, sub { &amp;Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
+&nbsp; }, @$dataref);
+</pre>
+
+The options parsing goes as usual. The option "data" is parsed again for the options inside it, and those are places into the hash %$dataset.
+
+<pre>&nbsp; # save the dataset for the future
+&nbsp; $self-&gt;{datasets}{$dataset-&gt;{name}} = $dataset;
+&nbsp; # check the options
+&nbsp; confess "The data set (" . $dataset-&gt;{name} . ") must have only one of options rowType or fromLabel"
+&nbsp;&nbsp;&nbsp; if (defined $dataset-&gt;{rowType} &amp;&amp; defined $dataset-&gt;{fromLabel});
+&nbsp; confess "The data set (" . $dataset-&gt;{name} . ") must have exactly one of options rowType or fromLabel"
+&nbsp;&nbsp;&nbsp; if (!defined $dataset-&gt;{rowType} &amp;&amp; !defined $dataset-&gt;{fromLabel});
+</pre>
+
+The dataset options "rowType" and "fromLabel" are both optional but exactly one of them must be present, to be sufficient and non-conflicting. So the code makes sure of it.
+
+<pre>&nbsp; my $lbFrom = $dataset-&gt;{fromLabel};
+&nbsp; if (defined $lbFrom) {
+&nbsp;&nbsp;&nbsp; confess "The unit of the Collapse and the unit of its data set (" . $dataset-&gt;{name} . ") fromLabel must be the same"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($self-&gt;{unit}-&gt;same($lbFrom-&gt;getUnit()));
+&nbsp;&nbsp;&nbsp; $dataset-&gt;{rowType} = $lbFrom-&gt;getType();
+&nbsp; }
+</pre>
+
+If "fromLabel" is used, the row type is found from it. This looks like a pretty good pattern that I plan to spread to the other elements in the future. The unit could also be found from it.
+
+<pre>&nbsp; # create the tables
+&nbsp; $dataset-&gt;{tt} = Triceps::TableType-&gt;new($dataset-&gt;{rowType})
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("primary",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; $dataset-&gt;{key})
+&nbsp;&nbsp;&nbsp; );
+&nbsp; $dataset-&gt;{tt}-&gt;initialize()
+&nbsp;&nbsp;&nbsp; or confess "Collapse table type creation error for dataset '" . $dataset-&gt;{name} . "':\n$! ";
+
+&nbsp; $dataset-&gt;{tbInsert} = $self-&gt;{unit}-&gt;makeTable($dataset-&gt;{tt}, "EM_CALL", $self-&gt;{name} . "." . $dataset-&gt;{name} . ".tbInsert")
+&nbsp;&nbsp;&nbsp; or confess "Collapse internal error: insert table creation for dataset '" . $dataset-&gt;{name} . "':\n$! ";
+&nbsp; $dataset-&gt;{tbDelete} = $self-&gt;{unit}-&gt;makeTable($dataset-&gt;{tt}, "EM_CALL", $self-&gt;{name} . "." . $dataset-&gt;{name} . ".tbInsert")
+&nbsp;&nbsp;&nbsp; or confess "Collapse internal error: delete table creation for dataset '" . $dataset-&gt;{name} . "':\n$! ";
+</pre>
+
+The state is kept in two tables. The reason for them is this: after collapsing, the Collapse may send for each key either a single INSERT rowop, if the row was not there before and became inserted, DELETE rowop if the row was there before and then became deleted, or a DELETE followed by an INSERT if the row was there but then changed its value. Accordingly, this state is kept in two tables: one contains the DELETE part, another the INSERT part for each key, and either part may be empty (or both, if the row at that key has not been changed). After each flush both tables become empty, and then start collecting the modifications again.
+
+<pre>&nbsp; # create the labels
+&nbsp; $dataset-&gt;{lbIn} = $self-&gt;{unit}-&gt;makeLabel($dataset-&gt;{rowType}, $self-&gt;{name} . "." . $dataset-&gt;{name} . ".in",
+&nbsp;&nbsp;&nbsp; undef, \&amp;_handleInput, $self, $dataset)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess "Collapse internal error: input label creation for dataset '" . $dataset-&gt;{name} . "':\n$! ";
+&nbsp; $dataset-&gt;{lbOut} = $self-&gt;{unit}-&gt;makeDummyLabel($dataset-&gt;{rowType}, $self-&gt;{name} . "." . $dataset-&gt;{name} . ".out")
+&nbsp;&nbsp;&nbsp; or confess "Collapse internal error: output label creation for dataset '" . $dataset-&gt;{name} . "':\n$! ";
+</pre>
+
+The input and output labels get created. The input label has the function with the processing logic set as its handler. The output label is just a dummy. Note that the tables don't get connected anywhere, they are just used as storage, without any immediate reactions to their modifications.
+
+<pre>&nbsp; # chain the input label, if any
+&nbsp; if (defined $lbFrom) {
+&nbsp;&nbsp;&nbsp; $lbFrom-&gt;chain($dataset-&gt;{lbIn})
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess "Collapse internal error: input label chaining for dataset '" . $dataset-&gt;{name} . "' to '" . $lbFrom-&gt;getName() . "' failed:\n$! ";
+&nbsp;&nbsp;&nbsp; delete $dataset-&gt;{fromLabel}; # no need to keep the reference any more
+&nbsp; }
+</pre>
+
+And if the fromLabel is used, the Collapse gets connected to it. After that there is no good reason to keep a separate reference to that label, especially considering that it creates a reference loop and would mess with the memory management. So it gets deleted.
+
+<pre>&nbsp; bless $self, $class;
+&nbsp; return $self;
+}
+</pre>
+
+The final blessing is boilerplate. The constructor creates the data structures but doesn't implement any logic. The logic goes next:
+
+<pre>sub _handleInput # ($label, $rop, $self, $dataset)
+{
+&nbsp; my $label = shift;
+&nbsp; my $rop = shift;
+&nbsp; my $self = shift;
+&nbsp; my $dataset = shift;
+
+&nbsp; if ($rop-&gt;isInsert()) {
+&nbsp;&nbsp;&nbsp; $dataset-&gt;{tbInsert}-&gt;insert($rop-&gt;getRow())
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess "Collapse " . $self-&gt;{name} . " internal error: dataset '" . $dataset-&gt;{name} . "' failed an insert-table-insert:\n$! ";
+</pre>
+
+The Collapse element knows nothing about the data that went through it before. After each flush it starts again from scratch.&nbsp; It expects that the stream of rows is self-consistent, and makes the conclusions about the previous data based on the new data it sees. An INSERT rowop may mean one of two things: either there was no previous record with this key, or there was a previous record with this key and then it got deleted. The Delete table can be use to differentiate these situations: if there was a row that was then deleted, the Delete table would contain that row. But for the INSERT it doesn't matter: in either case it just inserts the new row into the Insert table.If there was no such row before, it would be the new INSERT. If there was such a row before, it would be an INSERT following a DELETE.
+
+Incidentally, this logic happens to work for the insert-only streams of data too, when the rows get replaced by simply sending another row with the same key. Then if there was a previous row in the Insert table, it would simply get replaced by a new one, and eventually at the flush time the last row would go through.
+
+<pre>&nbsp; } elsif($rop-&gt;isDelete()) {
+&nbsp;&nbsp;&nbsp; if (! $dataset-&gt;{tbInsert}-&gt;deleteRow($rop-&gt;getRow())) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess "Collapse " . $self-&gt;{name} . " internal error: dataset '" . $dataset-&gt;{name} . "' failed an insert-table-delete:\n$! "
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ($! ne "");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $dataset-&gt;{tbDelete}-&gt;insert($rop-&gt;getRow())
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess "Collapse " . $self-&gt;{name} . " internal error: dataset '" . $dataset-&gt;{name} . "' failed a delete-table-insert:\n$! ";
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }
+}
+</pre>
+
+The DELETE case is more interesting. If we see a DELETE rowop, this means that either there was an INSERT sent before the last flush and now that INSERT becomes undone, or that there was an INSERT after the flush, which also becomes undone. The actions for these cases are different: if the INSERT was before the flush, this row should go into the Delete table, and eventually propagate as a DELETE during the next flush. If the last INSERT was after the flush, then its row would be stored in the Insert table, and now we just need to delete that row and pretend that it never was.
+
+That's what the logic does: first it tries to remove from the Insert table. If succeeded, then it was an INSERT after the flush, that became undone now, and there is nothing more to do. If there was no row to delete, this means that the INSERT must have happened before the last flush, and we need to remember this row in the Delete table and pass it on in the next flush.
+
+Note that this logic is not resistant to an incorrect data sequences. If there ever are two DELETEs for the same key in a row (which should never happen in a correct sequence), the second DELETE will end up in the Delete table.
+
+<pre>sub flush # ($self)
+{
+&nbsp; my $self = shift;
+&nbsp; my $unit = $self-&gt;{unit};
+&nbsp; my $OP_INSERT = &amp;Triceps::OP_INSERT;
+&nbsp; my $OP_DELETE = &amp;Triceps::OP_DELETE;
+&nbsp; foreach my $dataset (values %{$self-&gt;{datasets}}) {
+&nbsp;&nbsp;&nbsp; my $tbIns = $dataset-&gt;{tbInsert};
+&nbsp;&nbsp;&nbsp; my $tbDel = $dataset-&gt;{tbDelete};
+&nbsp;&nbsp;&nbsp; my $lbOut = $dataset-&gt;{lbOut};
+&nbsp;&nbsp;&nbsp; my $next;
+&nbsp;&nbsp;&nbsp; # send the deletes always before the inserts
+&nbsp;&nbsp;&nbsp; for (my $rh = $tbDel-&gt;begin(); !$rh-&gt;isNull(); $rh = $next) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $next = $rh-&gt;next(); # advance the irerator before removing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $tbDel-&gt;remove($rh);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $unit-&gt;call($lbOut-&gt;makeRowop($OP_DELETE, $rh-&gt;getRow()));
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; for (my $rh = $tbIns-&gt;begin(); !$rh-&gt;isNull(); $rh = $next) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $next = $rh-&gt;next(); # advance the irerator before removing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $tbIns-&gt;remove($rh);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $unit-&gt;call($lbOut-&gt;makeRowop($OP_INSERT, $rh-&gt;getRow()));
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }
+}
+</pre>
+
+The flushing is fairly straightforward: first it sends on all the DELETEs, then all the INSERTs, clearing the tables along the way. At first I've though of matching the DELETEs and INSERTs together, sending them next to each other in case if both are available for some key. It's not that difficult to do. But then I've realized that it doesn't matter and just did it the simple way.
+
+<pre>sub getInputLabel($$) # ($self, $dsetname)
+{
+&nbsp; my ($self, $dsetname) = @_;
+&nbsp; confess "Unknown dataset '$dsetname'"
+&nbsp;&nbsp;&nbsp; unless exists $self-&gt;{datasets}{$dsetname};
+&nbsp; return $self-&gt;{datasets}{$dsetname}{lbIn};
+}
+
+sub getOutputLabel($$) # ($self, $dsetname)
+{
+&nbsp; my ($self, $dsetname) = @_;
+&nbsp; confess "Unknown dataset '$dsetname'"
+&nbsp;&nbsp;&nbsp; unless exists $self-&gt;{datasets}{$dsetname};
+&nbsp; return $self-&gt;{datasets}{$dsetname}{lbOut};
+}
+
+sub getDatasets($) # ($self)
+{
+&nbsp; my $self = shift;
+&nbsp; return keys %{$self-&gt;{datasets}};
+}
+</pre>
+
+The getter functions are fairly simple. The only catch is that the code has to check for <b>exists</b> before it reads the value of $self-&gt;{datasets}{$dsetname}{lbOut}. Otherwise, if&nbsp; an incorrect $dsetname is used,&nbsp; the reading would return an undef but along the way would create an unpopulated $self-&gt;{datasets}{$dsetname}. Which would then cause a crash when flush() tries to iterate through it and finds the dataset options missing.
+
+That's it, Collapse in a nutshell!

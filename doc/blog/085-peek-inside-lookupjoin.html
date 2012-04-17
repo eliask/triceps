@@ -1,0 +1,164 @@
+A peek inside LookupJoin
+
+I won't be describing in the details the internals of LookupJoin. They seem a bit too big and complicated. Partially it's because the code is of an older origin, and not using the newer shortcuts. Partially it's because when I wrote it, I've tried to optimize by translating the rows to an array format instead of referring to the fields by names, and that made the code more tricky. Partially, the code has grown more complex due to all the added options. And partially the functionality just is a little tricky by itself.
+
+But, for debugging purposes, the LookupJoin constructor can return the auto-generated code of the joiner function. It's done with the option "saveJoinerTo":
+
+<pre>&nbsp; saveJoinerTo =&gt; \$code,
+</pre>
+
+This snippet will cause the auto-generated code to be placed into the variable $code. This provides a glimpse into the internal workings of the joiner.
+
+This is the joiner code from the first example:
+
+<pre>sub # ($inLabel, $rowop, $self)
+{
+&nbsp; my ($inLabel, $rowop, $self) = @_;
+&nbsp; #print STDERR "DEBUGX LookupJoin " . $self-&gt;{name} . " in: ", $rowop-&gt;printP(), "\n";
+
+&nbsp; my $opcode = $rowop-&gt;getOpcode(); # pass the opcode
+&nbsp; my $row = $rowop-&gt;getRow();
+
+&nbsp; my @leftdata = $row-&gt;toArray();
+
+&nbsp; my $resRowType = $self-&gt;{resultRowType};
+&nbsp; my $resLabel = $self-&gt;{outputLabel};
+
+&nbsp; my $lookuprow = $self-&gt;{rightRowType}-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; source =&gt; $leftdata[1],
+&nbsp;&nbsp;&nbsp; external =&gt; $leftdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp; 
+&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " lookup: ", $lookuprow-&gt;printP(), "\n";
+&nbsp; my $rh = $self-&gt;{rightTable}-&gt;findIdx($self-&gt;{rightIdxType}, $lookuprow);
+&nbsp; Carp::confess("$!") unless defined $rh;
+
+&nbsp; my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+&nbsp; my @result; # the result rows will be collected here
+
+&nbsp; if (!$rh-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " found data: " . $rh-&gt;getRow()-&gt;printP() . "\n";
+&nbsp;&nbsp;&nbsp; @rightdata = $rh-&gt;getRow()-&gt;toArray();
+&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my @resdata = ($leftdata[0],
+&nbsp;&nbsp;&nbsp; $leftdata[1],
+&nbsp;&nbsp;&nbsp; $leftdata[2],
+&nbsp;&nbsp;&nbsp; $leftdata[3],
+&nbsp;&nbsp;&nbsp; $rightdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp;&nbsp;&nbsp; my $resrowop = $resLabel-&gt;makeRowop($opcode, $resRowType-&gt;makeRowArray(@resdata));
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " +out: ", $resrowop-&gt;printP(), "\n";
+&nbsp;&nbsp;&nbsp; Carp::confess("$!") unless defined $resrowop;
+&nbsp;&nbsp;&nbsp; Carp::confess("$!") 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless $resLabel-&gt;getUnit()-&gt;call($resrowop);
+&nbsp;&nbsp;&nbsp; 
+}
+</pre>
+
+This is the joiner code from the example with the manual iteration:
+
+<pre>sub&nbsp; # ($self, $row)
+{
+&nbsp; my ($self, $row) = @_;
+
+&nbsp; #print STDERR "DEBUGX LookupJoin " . $self-&gt;{name} . " in: ", $row-&gt;printP(), "\n";
+
+&nbsp; my @leftdata = $row-&gt;toArray();
+
+&nbsp; my $lookuprow = $self-&gt;{rightRowType}-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; source =&gt; $leftdata[1],
+&nbsp;&nbsp;&nbsp; external =&gt; $leftdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp; 
+&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " lookup: ", $lookuprow-&gt;printP(), "\n";
+&nbsp; my $rh = $self-&gt;{rightTable}-&gt;findIdx($self-&gt;{rightIdxType}, $lookuprow);
+&nbsp; Carp::confess("$!") unless defined $rh;
+
+&nbsp; my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+&nbsp; my @result; # the result rows will be collected here
+
+&nbsp; if (!$rh-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " found data: " . $rh-&gt;getRow()-&gt;printP() . "\n";
+&nbsp;&nbsp;&nbsp; @rightdata = $rh-&gt;getRow()-&gt;toArray();
+&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my @resdata = ($leftdata[0],
+&nbsp;&nbsp;&nbsp; $leftdata[1],
+&nbsp;&nbsp;&nbsp; $leftdata[2],
+&nbsp;&nbsp;&nbsp; $leftdata[3],
+&nbsp;&nbsp;&nbsp; $rightdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp;&nbsp;&nbsp; push @result, $self-&gt;{resultRowType}-&gt;makeRowArray(@resdata);
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " +out: ", $result[$#result]-&gt;printP(), "\n";
+&nbsp; return @result;
+}
+</pre>
+
+It takes different arguments because now it's not an input label handler but a common function that gets called from both the label handler and the lookup() method. And it collects the rows in an array to be returned instead of immediately passing them on.
+
+This is the joiner code from the example with multiple rows matching on the right side:
+
+<pre>sub # ($inLabel, $rowop, $self)
+{
+&nbsp; my ($inLabel, $rowop, $self) = @_;
+&nbsp; #print STDERR "DEBUGX LookupJoin " . $self-&gt;{name} . " in: ", $rowop-&gt;printP(), "\n";
+
+&nbsp; my $opcode = $rowop-&gt;getOpcode(); # pass the opcode
+&nbsp; my $row = $rowop-&gt;getRow();
+
+&nbsp; my @leftdata = $row-&gt;toArray();
+
+&nbsp; my $resRowType = $self-&gt;{resultRowType};
+&nbsp; my $resLabel = $self-&gt;{outputLabel};
+
+&nbsp; my $lookuprow = $self-&gt;{rightRowType}-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; source =&gt; $leftdata[1],
+&nbsp;&nbsp;&nbsp; external =&gt; $leftdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp; 
+&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " lookup: ", $lookuprow-&gt;printP(), "\n";
+&nbsp; my $rh = $self-&gt;{rightTable}-&gt;findIdx($self-&gt;{rightIdxType}, $lookuprow);
+&nbsp; Carp::confess("$!") unless defined $rh;
+
+&nbsp; my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+&nbsp; my @result; # the result rows will be collected here
+
+&nbsp; if ($rh-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " found NULL\n";
+
+&nbsp;&nbsp;&nbsp; my @resdata = ($leftdata[0],
+&nbsp;&nbsp;&nbsp; $leftdata[1],
+&nbsp;&nbsp;&nbsp; $leftdata[2],
+&nbsp;&nbsp;&nbsp; $leftdata[3],
+&nbsp;&nbsp;&nbsp; $rightdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp;&nbsp;&nbsp; my $resrowop = $resLabel-&gt;makeRowop($opcode, $resRowType-&gt;makeRowArray(@resdata));
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " +out: ", $resrowop-&gt;printP(), "\n";
+&nbsp;&nbsp;&nbsp; Carp::confess("$!") unless defined $resrowop;
+&nbsp;&nbsp;&nbsp; Carp::confess("$!") 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless $resLabel-&gt;getUnit()-&gt;call($resrowop);
+&nbsp;&nbsp;&nbsp; 
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " found data: " . $rh-&gt;getRow()-&gt;printP() . "\n";
+&nbsp;&nbsp;&nbsp; my $endrh = $self-&gt;{rightTable}-&gt;nextGroupIdx($self-&gt;{iterIdxType}, $rh);
+&nbsp;&nbsp;&nbsp; for (; !$rh-&gt;same($endrh); $rh = $self-&gt;{rightTable}-&gt;nextIdx($self-&gt;{rightIdxType}, $rh)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; @rightdata = $rh-&gt;getRow()-&gt;toArray();
+&nbsp;&nbsp;&nbsp; my @resdata = ($leftdata[0],
+&nbsp;&nbsp;&nbsp; $leftdata[1],
+&nbsp;&nbsp;&nbsp; $leftdata[2],
+&nbsp;&nbsp;&nbsp; $leftdata[3],
+&nbsp;&nbsp;&nbsp; $rightdata[2],
+&nbsp;&nbsp;&nbsp; );
+&nbsp;&nbsp;&nbsp; my $resrowop = $resLabel-&gt;makeRowop($opcode, $resRowType-&gt;makeRowArray(@resdata));
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUGX " . $self-&gt;{name} . " +out: ", $resrowop-&gt;printP(), "\n";
+&nbsp;&nbsp;&nbsp; Carp::confess("$!") unless defined $resrowop;
+&nbsp;&nbsp;&nbsp; Carp::confess("$!") 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless $resLabel-&gt;getUnit()-&gt;call($resrowop);
+&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }
+}
+</pre>
+
+It's more complicated in two ways: If a match is found, it has to iterate through the whole matching group. And if the match is not found, it still has to produce a result row for a left join with a separate code fragment.

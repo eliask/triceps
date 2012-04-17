@@ -1,0 +1,49 @@
+RowHandle reference
+
+A RowHandle is essentially the glue that keeps a row in the table. A row's handle keeps the position of the row in the table and allows to navigate from it in the direction of every index. It also keeps the helper information for the indexes. For example, the Hashed index calculates the has value for the row's fields once and remembers it in the handle. The table operates always on the handles, never directly on the rows. The table methods that accept rows as arguments, implicitly wrap then into handles before doing any operations.
+
+A row handle always belongs to a particular table, and can not be mixed between the tables, even if the tables are of the same type. Even before a row handle has been inserted into the table and after it has been removed, it still belongs to that table and can not be inserted into any other one.
+
+Just as the tables are single-threaded, the row handles are single-threaded.
+
+A RowHandle is created by the table's factory
+
+<pre>$rh = $table-&gt;makeRowHandle($row) or die "$!";
+</pre>
+
+The newly created row handle is not inserted in the table. To find out, whether the row handle is actually inserted in the table, use
+
+<pre>$result = $rh-&gt;isInTable();
+</pre>
+
+As a special case, a row handle may be null. It pretty much means that there is only the Perl wrapper layer of RowHandle but no actual RowHandle under it. This happens to be much more convenient than dealing with undefined values at Perl level. The null row handles are returned by the certain table calls to indicate that the requested data was not found in the table. A row handle can be checked for being null:
+
+<pre>$result = $rh-&gt;isNull();
+</pre>
+
+A null row handle may also be explicitly created with
+
+<pre>$rh = $table-&gt;makeNullRowHandle();
+</pre>
+
+As usual, the row handle references can be compared for the sameness of the actual row handle they contain:
+
+<pre>$result = $rh1-&gt;same($rh2);
+</pre>
+
+The row can be extracted from the row handle:
+
+<pre>$row = $rh-&gt;getRow() or die "$!";
+</pre>
+
+If the row handle is null, getRow() will return an undef and an error message.
+
+The rest of the row handle methods are just a syntactic sugar for the table's iteration methods:
+
+<pre>$rh = $rh-&gt;next();
+$rh = $rh-&gt;nextIdx($idxType);
+$rh = $rh-&gt;firstOfGroupIdx($idxType);
+$rh = $rh-&gt;nextGroupIdx($idxType);
+</pre>
+
+They work in exactly the same way as the table methods.

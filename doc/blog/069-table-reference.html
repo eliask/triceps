@@ -1,0 +1,131 @@
+Table reference
+
+The tables are created from table types:
+
+<pre>$t = $unit-&gt;makeTable($tabType, $enqMode, "tableName") or die "$!";
+</pre>
+
+The table type must be initialized before it can be used to create tables. The tables are strictly single-threaded.
+
+The enqueueing mode can be specified as a string or Triceps constant. However in the modern reality you should use "EM_CALL" or &amp;Triceps::EM_CALL. This argument is likely to be removed altogether in the future and become fixed to EM_CALL. The table name will be used for the error messages and to create the table labels.
+
+The references to the tables can be as usual compared for sameness by
+
+<pre>$result = $t1-&gt;same($t2);
+</pre>
+
+Each table creates an input label, an output label, and a label for each aggregator defined in its type. They can be reached with:
+
+<pre>$lb = $t-&gt;getInputLabel();
+$lb = $t-&gt;getOutputLabel();
+$lb = $t-&gt;getAggregatorLabel("aggName") or die "$!";
+</pre>
+
+With an invalid name, getAggregatorLabel() returns an error. The table can also return its type, unit, row type, name :
+
+<pre>$tt = $t-&gt;getType();
+$u = $t-&gt;getUnit();
+$rt = $t-&gt; getRowType();
+$name = $t-&gt;getName();
+</pre>
+
+The number of rows in the table is read with
+
+<pre>$result = $t-&gt;size();
+</pre>
+
+The table stores rows wrapped in the row handles. The row handles are created with:
+
+<pre>$rh = $t-&gt;makeRowHandle($row) or die "$!";
+$rh = $t-&gt;makeNullRowHandle();
+</pre>
+
+The row must be of a matching type. A null row handle is a handle without a row in it. It can not be placed into a table but this kind of row handle gets returned by table operations to indicate things not found. In case if you want to full some of your code by slipping it a null handle, makeNullRowHandle() provides a way to do it. The row handles belong to a particular table and can not be mixed between them, even if the tables are of the same type.
+
+The table operations can be done by either sending the rowops to the table's input label or by calling the operations directly.
+
+<pre>$result =$t-&gt;insert($row_or_rh <i>[</i>, $copyTray<i>]</i>) or die "$!";
+</pre>
+
+Insert a row or row handle into the table.&nbsp; The row handle must not be in the table before the call, it may be either freshly created or previously removed from the table. If a row is used as an argument, it is internally wrapped in a fresh row handle, and then that row handle inserted. An insert may trigger the replacement policy in the table's indexes and have some rows removed before the insert is done. The optional copy tray can be used to collect a copy of all the row updates that happen in the table as a result of the insert, both on the table output label and on all its aggregator labels. Returns 1 on success, 0 if the insert can not be done (the row handle is already in the table or null), undef and an error message on an incorrect argument.
+
+<pre>$result = $t-&gt;remove($rh <i>[</i>, $copyTray<i>]</i>) or die "$!";
+</pre>
+
+Removes a row handle from the table. The row handle must be previously inserted in the table, and either found in it or a reference to it remembered from before. An attempt to remove a newly created row handle will have no effect. The optional copy tray works in the same way as for insert(). The result is 1 on success (even if the row handle was not in the table), or undef and error message on an incorrect argument.
+
+<pre>$result= $t-&gt;deleteRow($row <i>[</i>, $copyTray<i>]</i>) or die "$!";
+</pre>
+
+Finds the handle of the matching row by the table's first leaf index and removes it. Returns 1 on success, 0 if the row was not found, undef and error message on an incorrect argument. Unlike insert(), the deletion methods for a row handle and a row are named differently to emphasize their difference. The method remove() must get a reference to the exactly same row handle that was previously inserted. The method deleteRow() does not have to get the same row as was previously inserted, instead it will find a row handle of the row that has the same key as the argument, according to the first leaf index. deleteRow() never deletes more than one row. If the index contains multiple matching rows (for example, if the first leaf is a FIFO index), only one of them will be removed, usually the first one (the exact choice depends on what row gets found by the index).
+
+The row handles can be found in the table by indexes:
+
+<pre>$rh = $t-&gt;find($row_or_rh);
+$rh = $t-&gt;findIdx($idxType, $row_or_rh);
+</pre>
+
+The default find() works using the first leaf index type, i.e. the following two areequivalent
+
+<pre>$t-&gt;find($r)
+$t-&gt;findIdx($t-&gt;getType()-&gt;getFirstLeaf(), $r)
+</pre>
+
+but the find() version is slightly more efficient because it handles the index types inside the C++ code and does not create the Perl wrappers for them. The index type in all the table operations must be exactly one from the table's type, and not a copy. Since when a table type is constructed, the index types are copied into it, the only way to find the correct index type is to construct the whole table type and then get the index type from it using findSubIdx().
+
+The find() operation is also used internally by deleteRow() and to process the rowops received at the table's input label.
+
+If a row is used as an argument for find, a temporary row handle is internally created for it, and then the find is performed on it. Note that if you have a row handle that is already in the table, there is generally no use calling find on it, you will just get the same row handle back (well, except for the case of multi-valued indexes, then you will get back some matching row handle, usually the first one, which may be the same or not). The normal use is to create a new row handle, and then find a match for it.
+
+If the matching row is not found, find methods would return a null row handle. They return undef and an error message on an argument error.
+
+A findIdx() with a non-leaf index argument is a special case: it returns the first row handle of the group that has the key matching the argument. The order of "first" in this case is defined according to that index'es first leaf sub-index.
+
+There also are convenience methods that construct a row from the field arguments and then find it:
+
+<pre>$rh = $t-&gt;findBy("fieldName" =&gt; $fieldValue, ...);
+$rh = $t-&gt;findIdxBy($idxType, "fieldName" =&gt; $fieldValue, ...);
+</pre>
+
+If the row creation fails, these methods die. 
+
+The table can be iterated using the methods
+
+<pre>$rh = $t-&gt;begin();
+$rh = $t-&gt;next($rh); 
+$rh = $t-&gt;beginIdx($idxType);
+$rh = $t-&gt;nextIdx($idxType, $rh);
+</pre>
+
+As usual, the versions without an explicit index type use the first leaf index type. The begin methods return the first row handle according to an index'es order, the next methods advance to the next row handle. When the end of the table is reached, these methods return a null row handle. The next methods return a null row handle if their argument row handle is a null or not in the table. So, if you iterate and remove the row handles, make sure to advance the iterator first and only then remove the current row handle.
+
+If the index argument is non-leaf, it's equivalent to its first leaf. 
+
+To iterate through only a group, use findIdx() on the parent index type of the group to find the first row of the group. Then things become tricky: take the first index type one level below it to determine the iteration order (a group may have multiple indexes in it, defining different iteration orders). Use that index type with the usual nextIdx() to advance the iterator. However the end of the group will not be signaled by a null row handle. Instead first find the end marker handle of the group by using
+
+<pre>$endrh = $t-&gt;nextGroupIdx($subIdxType, $firstrh);
+</pre>
+
+Th $subIdxType here is the same index as used for nextIdx(). Then each row handle can be compared with the end marker with $rh-&gt;same($endrh).
+
+The value $endrh is actually the first row handle of the next group, so it can also be used to jump quickly to the next group, and essentially iterate by groups. After the last group, nextGroupIdx() will return a null row handle. Which is OK for iteration, because at the end of the last group nextIdx() will also return a null row handle.
+
+What if a group has a whole sub-tree of indexes in it, and you want to iterate it by the order of not the first sub-index? Still use findIdx() in the same way to find a row handle in the desired group. But then convert it to the first row handle in the desired order:
+
+<pre>$beginrh = $t-&gt;firstOfGroupIdx($subIdxType, $rh);
+</pre>
+
+After that proceed as before: get the end marker with nextGroupIdx() on the same sub-index, and iterate with nextIdx() on it.
+
+This group iteration is somewhat messy and tricky, and maybe something better can be done with it in the future. If you look closely, you can also see that it doesn't allow to iterate the groups in every possible order. For example, if you have an index type hierarchy
+
+<pre>A
++-B
+| +-D
+| | +-G
+| | +-H 
+| +-E 
++-C
+</pre>
+
+and you want to iterate on the group inside B, you can go in the order of D or G (which is the same as D, since G is the first leaf of D) or of E, but you can not go in the order of H. But for most of the practical purposes it should be good enough.

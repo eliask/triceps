@@ -1,0 +1,101 @@
+The lookup join, done manually
+
+First let's look at a lookup done manually. It would also establish the baseline for the further joins.
+
+For the background of the model, let's consider the trade information coming in from multiple sources. Each source system has its own designation of the accounts on which the trades happen but ultimately they are the same accounts. So there is a table that contains the translation from the account designations of various external systems to our system's own internal account identifier. This gets described with the row types:
+
+<pre>our $rtInTrans = Triceps::RowType-&gt;new( # a transaction received
+&nbsp; id =&gt; "int32", # the transaction id
+&nbsp; acctSrc =&gt; "string", # external system that sent us a transaction
+&nbsp; acctXtrId =&gt; "string", # its name of the account of the transaction
+&nbsp; amount =&gt; "int32", # the amount of transaction (int is easier to check)
+) or die "$!";
+
+our $rtAccounts = Triceps::RowType-&gt;new( # account translation map
+&nbsp; source =&gt; "string", # external system that sent us a transaction
+&nbsp; external =&gt; "string", # its name of the account of the transaction
+&nbsp; internal =&gt; "int32", # our internal account id
+) or die "$!";
+</pre>
+
+Other than those basics, the rest of information is only minimal, to keep the examples smaller. Even the trade ids are expected to be global and not per the source systems (which is not realistic but saves another little bit of work).
+
+The accounts table can be indexed in multiple ways for multiple purposes, say:
+
+<pre>our $ttAccounts = Triceps::TableType-&gt;new($rtAccounts)
+&nbsp; -&gt;addSubIndex("lookupSrcExt", # quick look-up by source and external id
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "source", "external" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("iterateSrc", # for iteration in order grouped by source
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "source" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("iterateSrcExt",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "external" ])
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+&nbsp; -&gt;addSubIndex("lookupIntGroup", # quick look-up by internal id (to multiple externals)
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "internal" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("lookupInt", Triceps::IndexType-&gt;newFifo())
+&nbsp; )
+or die "$!";
+$ttAccounts-&gt;initialize() or die "$!";
+</pre>
+
+For our purpose of joining, the first, primary key is the way to go. Using the primary key also has the advantage of making sure that there is no more than one row for each key value.
+
+The manual lookup will do the filtering: find, whether there is a match in the translation table, and if so then passing the row through. The example goes as follows:
+
+<pre>our $uJoin = Triceps::Unit-&gt;new("uJoin") or die "$!";
+
+our $tAccounts = $uJoin-&gt;makeTable($ttAccounts,
+&nbsp; &amp;Triceps::EM_CALL, "tAccounts") or die "$!";
+
+my $lbFilterResult = $uJoin-&gt;makeDummyLabel($rtInTrans, "lbFilterResult");
+my $lbFilter = $uJoin-&gt;makeLabel($rtInTrans, "lbFilter", undef, sub {
+&nbsp; my ($label, $rowop) = @_;
+&nbsp; my $row = $rowop-&gt;getRow();
+&nbsp; my $rh = $tAccounts-&gt;findBy(
+&nbsp;&nbsp;&nbsp; source =&gt; $row-&gt;get("acctSrc"),
+&nbsp;&nbsp;&nbsp; external =&gt; $row-&gt;get("acctXtrId"),
+&nbsp; );
+&nbsp; if (!$rh-&gt;isNull()) {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;call($lbFilterResult-&gt;makeRowop($rowop-&gt;getOpcode(), $row));
+&nbsp; }
+}) or die "$!";
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $lbFilterResult);
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp; my $type = shift @data;
+&nbsp; if ($type eq "acct") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($tAccounts-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; } elsif ($type eq "trans") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($lbFilter, @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; }
+&nbsp; $uJoin-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+
+The findBy() is where the join actually happens: the lookup of the data in a table by values from a different row. Very similar to what the basic window example was doing before. After that the fact of successful or unsuccessful lookup is used to pass the original row through or throw it away. If the found row were used to pick some fields from it and stick them into the result, that would be a more complete join, more like what you often expect to see.
+
+And here is an example of the input processing:
+
+<pre><i>acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+trans,OP_INSERT,1,source1,999,100</i>
+lbFilterResult OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+<i>trans,OP_INSERT,2,source2,ABCD,200</i>
+lbFilterResult OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
+<i>trans,OP_INSERT,3,source2,QWERTY,200
+acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200</i>
+lbFilterResult OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+<i>acct,OP_DELETE,source1,999,1</i>
+</pre>
+
+It starts with populating the account table. Then the transactions that find the match pass, and those who don't find don't pass. If more of the account translations get added later, the transactions for them start passing but as you can see, the result might be slightly unexpected: you may get a DELETE that had no matching previous import. This happens because the lookup join keeps no history on its left side and can't react properly to the changes to the table on the right. Because of this, the lookup joins work best when the reference table gets pre-populated in advance and then stays stable.

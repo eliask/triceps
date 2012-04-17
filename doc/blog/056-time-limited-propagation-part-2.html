@@ -1,0 +1,111 @@
+Time-limited propagation, part 2
+
+Now a run of the model. Its printout is also broken up into the separately commented pieces. Of course, it's not like a real run, it just contains one or two packets per hour to show how things work.
+
+<pre><i>new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100</i>
+tPackets.out OP_INSERT time="1330886011000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+tHourly.out OP_INSERT time="1330884000000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" bytes="100" 
+<i>new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50</i>
+tPackets.out OP_INSERT time="1330886012000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+tHourly.out OP_DELETE time="1330884000000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" bytes="100" 
+tHourly.out OP_INSERT time="1330884000000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" bytes="150" 
+</pre>
+
+The two input rows in the first hour refer to the same connection, so they go into the same group and get aggregated together in the hourly table. The rows for the current hour in the hourly table get updated immediately as more data comes in.
+
+<pre><i>new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300</i>
+tPackets.out OP_INSERT time="1330889811000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+tHourly.out OP_INSERT time="1330887600000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" bytes="300" 
+</pre>
+
+Only one packet arrives in the next hour. 
+
+<pre><i>new,OP_INSERT,1330894211000000,1.2.3.5,5.6.7.9,3000,80,200</i>
+tPackets.out OP_INSERT time="1330894211000000" local_ip="1.2.3.5"
+ remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
+tHourly.out OP_INSERT time="1330891200000000" local_ip="1.2.3.5"
+ remote_ip="5.6.7.9" bytes="200" 
+<i>new,OP_INSERT,1330894211000000,1.2.3.4,5.6.7.8,2000,80,500</i>
+tPackets.out OP_INSERT time="1330894211000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="500" 
+tHourly.out OP_INSERT time="1330891200000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" bytes="500" 
+</pre>
+
+And two more packets in the next hour.&nbsp; They are for the different connections, so they do not get summed together in the aggregation. When the hour changes again, the old data will start being deleted, so let's take a snapshot of the tables' contents.
+
+<pre><i>dumpPackets</i>
+time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8"
+ local_port="2000" remote_port="80" bytes="100" 
+time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8"
+ local_port="2000" remote_port="80" bytes="50" 
+time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8"
+ local_port="2000" remote_port="80" bytes="300" 
+time="1330894211000000" local_ip="1.2.3.4" remote_ip="5.6.7.8"
+ local_port="2000" remote_port="80" bytes="500" 
+time="1330894211000000" local_ip="1.2.3.5" remote_ip="5.6.7.9"
+ local_port="3000" remote_port="80" bytes="200" 
+<i>dumpHourly</i>
+time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
+time="1330891200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="500" 
+time="1330891200000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+</pre>
+
+The packets table shows all the 5 packets received so far, and the hourly aggregation results for all 3 hours (with two separate aggregation groups in the same last hour, for different ip pairs).
+
+<pre><i>new,OP_INSERT,1330896811000000,1.2.3.5,5.6.7.9,3000,80,10</i>
+tPackets.out OP_INSERT time="1330896811000000" local_ip="1.2.3.5"
+ remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="10" 
+tHourly.out OP_INSERT time="1330894800000000" local_ip="1.2.3.5"
+ remote_ip="5.6.7.9" bytes="10" 
+tPackets.out OP_DELETE time="1330886011000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+tPackets.out OP_DELETE time="1330886012000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+</pre>
+
+When the next hour's packet arrives, it gets processed as usual, but then the removal logic finds the packet rows that have become too old to keep. It kicks in and deletes them. But notice that the deletions affect only the packets table, the aggregator ignores this activity as too old and does not propagate it to the hourly table. 
+
+<pre><i>new,OP_INSERT,1330900411000000,1.2.3.4,5.6.7.8,2000,80,40</i>
+tPackets.out OP_INSERT time="1330900411000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="40" 
+tHourly.out OP_INSERT time="1330898400000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" bytes="40" 
+tPackets.out OP_DELETE time="1330889811000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+</pre>
+
+One more hour's packet. 
+
+<pre><i>new,OP_INSERT,1330904011000000</i>
+tPackets.out OP_DELETE time="1330894211000000" local_ip="1.2.3.4"
+ remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="500" 
+tPackets.out OP_DELETE time="1330894211000000" local_ip="1.2.3.5"
+ remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
+</pre>
+
+And just a time update for another hour, when no packets have been received. The removal logic still kicks in and works the same way.&nbsp; After all this activity let's dump the tables again:
+
+<pre><i>dumpPackets</i>
+time="1330896811000000" local_ip="1.2.3.5" remote_ip="5.6.7.9"
+ local_port="3000" remote_port="80" bytes="10" 
+time="1330900411000000" local_ip="1.2.3.4" remote_ip="5.6.7.8"
+ local_port="2000" remote_port="80" bytes="40" 
+<i>dumpHourly</i>
+time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
+time="1330891200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="500" 
+time="1330891200000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+time="1330894800000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="10" 
+time="1330898400000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="40" 
+</pre>
+
+The packets table only has the data for the last 3 hours (there are no rows for the last hour because none have arrived). But the hourly table contains all the history. The rows weren't getting deleted here.

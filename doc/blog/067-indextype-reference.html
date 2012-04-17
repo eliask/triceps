@@ -1,0 +1,128 @@
+IndexType reference
+
+The index types in Triceps are available in the following kinds:
+<ul>
+<li>Hashed: Provides quick random access based on the key formed from the fields of the row in the table. May be leaf or non-leaf. The order of of rows in the index will be repeatable between the runs of the same program on the same machine architecture, but not easily predictable. Internally the rows are stored in a tree but the comparisons of the rows are accelerated by pre-calculating a hash value from the key fields and keeping it in the row handle.</li>
+</ul>
+<ul>
+<li>FIFO: Keeps the rows in the order they were received. There is no efficient way to find a particular row in this index, the search in it works by going through all the rows sequentially and comparing the rows for exact equality. It provides the expiration policies based on the row count. It may only be a leaf.</li>
+</ul>
+<ul>
+<li>PerlSorted: Provides random access based on the key field comparison, expressed as a Perl function. This results in a predictable order of rows but the execution of the Perl code makes it slower than the Hashed index.&nbsp; May be leaf or non-leaf. There is also a SimpleOrdered index implementation done in Perl on top of the PerlSorted index, that allows to specify the keys in a more convenient way.</li>
+</ul>
+
+The hashed index is created with:
+
+<pre>$it = Triceps::IndexType-&gt;newHashed($optionName =&gt; $optionValue, ...)
+&nbsp; or die "$!";
+</pre>
+
+The only available option is "key", and it's mandatory. It's argument is the reference to an array of strings that specify the names of the key fields.
+
+The FIFO index is created with:
+
+<pre>$it = Triceps::IndexType-&gt;newFifo($optionName =&gt; $optionValue, ...)
+&nbsp; or die "$!";
+</pre>
+
+The options are:
+<ul>
+<li>limit: sets the limit value for the replacement policy. Once the number of rows attempts to grow beyond this value, the older records get removed. Setting it to 0 disables the replacement policy, which is the default. Don't try to set it to negative values, they will be treated as unsigned, and thus become some very large positive ones.&nbsp;</li>
+</ul>
+<ul>
+<li>jumping: determines the variation of the replacement policy in effect. If set to 0 (default), implements the sliding window policy, removing the older rows one by one. If non-0, implements the jumping window policy, removing all the older rows when a new row causes the limit overflow.</li>
+</ul>
+<ul>
+<li>reverse: if non-0, the iteration on this index goes in the reverse order. However the expiration policy still works in the direct order! The default is 0.</li>
+</ul>
+
+The PerlSorted index is created as: 
+
+<pre>$it = Triceps::IndexType-&gt;newPerlSorted($sortName, $initFunc,
+&nbsp; $compareFunc, @args...) or die "$!";
+</pre>
+
+The $sortName is a string describing the sorting order, used in print() and error messages. $initFunc is a function reference that can be used to generate the comparison function dynamically at the table type initialization time (or use undef if using a fixed comparison function). $compareFunc is the fixed comparison function, if preferred (or use undef if it will be generated dynamically by the init function). The args are the optional extra arguments for the initialization and/or comparison function. See the details in the <a href="http://babkin-cep.blogspot.com/2012/02/sorted-index.html">dedicated post</a>.
+
+The index types are connected in a table type to form a tree. To nest the indexType1 under indexType2, use:
+
+<pre>$indexType2-&gt; addSubIndex("indexName", $indexType1) or die "$!";
+</pre>
+
+It returns the reference to the same $indexType2, so these calls can be conveniently chained, to add multiple sub-indexes under it. If $indexType2 can not be non-leaf, the call will fail. The added sub-index is actually a copy of $indexType1, the same as when adding an index type under a table type.
+
+The same introspection methods of the nested index types are available as in the table type:
+
+<pre>$itSub = $it-&gt; findSubIndex("indexName") or die "$!";
+$itSub = $it-&gt; findSubIndexById($indexTypeId) or die "$!";
+
+@itSubs = $it-&gt;getSubIndexes();
+$itSub = $it-&gt;getFirstLeaf();
+</pre>
+
+If the index type is already a leaf, getFirstLeaf() will return itself.
+
+An aggregator type can be set on an index type. It will create aggregators that run on the rows stored withing the indexes of this type.
+
+<pre>$it-&gt;setAggregator($aggType) or die "$!";
+</pre>
+
+The value returned is the same index type reference $it, allowing the chaining calls, along with the addSubIndex(). Only one aggregator type is allowed on an index type. Calling setAggregator() repeatedly will replace the aggregator type. The aggregator type can be read back with
+
+<pre>$aggType = $it-&gt;getAggregator();
+</pre>
+
+The returned value may be <b>undef</b> (but "$!" not set) if no aggregator type has been set.
+
+The index type gets initialized when the table type where it belongs gets initialized. After an index type has been initialized, it can not be changed any more, and any methods that change it will return an error. Whether an index type has been initialized, can be found with
+
+<pre>$result = $it-&gt;isInitialized();
+</pre>
+
+An index type can be copied with
+
+<pre>$itCopy = $it-&gt;copy();
+</pre>
+
+The copy reverts to the un-initialized state. It's always a deep copy, with all the nested index and aggregator types copied. All of these copies are un-initialized.
+
+When an index type becomes initialized, it becomes tied to a particular table type. This table type can be read with
+
+<pre>$tabType = $it-&gt;getTabtype() or die "$!";
+</pre>
+
+If the index type is not initialized yet, this will return an error.
+
+The usual sameness comparisons and print methods are available (and the print method has the usual optional arguments):
+
+<pre>$result = $it1-&gt;same($it2);
+$result = $it1-&gt;equals($it2); 
+$result = $it1-&gt;match($it2);
+$result = $it-&gt;print();
+</pre>
+
+The matching index types may differ in the names of nested indexes. In the matching PerlSorted index types, the descriptive names of the types may also differ.
+
+An index type can be checked for being a leaf:
+
+<pre>$result = $it-&gt;isLeaf();
+</pre>
+
+The index type id (see the explanation of that in the TableType reference) can be read with
+
+<pre>$id = $it-&gt;getIndexId();
+</pre>
+
+A special method that works only on the Hashed index types
+
+<pre>@keys = $it-&gt;getKey();
+</pre>
+
+returns the array of field names forming the key. On the other index types it returns an empty array, though probably a better support would be available for the PerlSorted indexes in the future.
+
+A special method that works only on the PerlSorted index types
+
+<pre>$it-&gt;setComparator($compareFunc, @args...) or die "$!";
+</pre>
+
+allows to set an auto-generater comparator function and its optional arguments from an initializer function at the table initialization time. On success it returns 1. For all other index types this method returns an error.

@@ -1,0 +1,16 @@
+The copy tray for table operations 
+
+The aggregators are now wrapped up, moving on to the last feature of the tables. Its methods insert(), remove() and deleteRow() have an extra optional argument: the copy tray.
+
+If used, it will put a copy of all the rowops produced during the operation (including the output of the aggregators) into that tray. The idea here is to use it in cases if you don't want to connect the output labels of the table directly, but instead collect and process them afterwards manually. Like this:
+
+<pre>$ctr = $u-&gt;makeTray();
+$t-&gt;insert($row, $ctr);
+foreach my $rop ($ctr-&gt;toArray()) {
+&nbsp; ...
+}
+</pre>
+
+However in reality it didn't work out so well. The processing loop would have to have all the lengthy if-else sequences to branch first by the label (if there are any aggregators) and then by opcode. It looks too difficult. Well, it could work in the simple situations but not more than that.
+
+In the future this feature will likely be deprecated, and I already have a better idea. Because of this, I see no point in going into the more extended examples.

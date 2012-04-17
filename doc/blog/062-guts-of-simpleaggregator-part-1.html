@@ -1,0 +1,213 @@
+The guts of SimpleAggregator, part 1
+
+The implementation of the SimpleAggregator has turned out to be surprisingly small. Maybe a little biggish for a single post but still small. I've liked it so much that I've even saved the original small version in the file xSimpleAggregator.t. As more features will be added, the "official" version of the SimpleAggregator will grow (and already did) but that example file will stay small and simple.
+
+I'll put the commentary interlaced with te code. So, here we go.
+
+<pre>package MySimpleAggregator;
+use Carp;
+
+use strict;
+
+sub make # (optName =&gt; optValue, ...)
+{
+&nbsp; my $opts = {}; # the parsed options
+&nbsp; my $myname = "MySimpleAggregator::make";
+
+&nbsp; &amp;Triceps::Opt::parse("MySimpleAggregator", $opts, { 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tabType =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "Triceps::TableType") } ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; name =&gt; [ undef, \&amp;Triceps::Opt::ck_mandatory ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; idxPath =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; result =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; saveRowTypeTo =&gt; [ undef, sub { &amp;Triceps::Opt::ck_refscalar(@_) } ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; saveInitTo =&gt; [ undef, sub { &amp;Triceps::Opt::ck_refscalar(@_) } ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; saveComputeTo =&gt; [ undef, sub { &amp;Triceps::Opt::ck_refscalar(@_) } ],
+&nbsp;&nbsp;&nbsp; }, @_);
+
+&nbsp; # reset the saved source code
+&nbsp; ${$opts-&gt;{saveInitTo}} = undef if (defined($opts-&gt;{saveInitTo}));
+&nbsp; ${$opts-&gt;{saveComputeTo}} = undef if (defined($opts-&gt;{saveComputeTo}));
+&nbsp; ${$opts-&gt;{saveRowTypeTo}} = undef if (defined($opts-&gt;{saveRowTypeTo}));
+</pre>
+
+Triceps::Opt is a class that deals with parsing and doing the basic checks on the options. I'll decribe it in detail in a separate post. For now, the important part is that the checked options are copied into the hash pointed to by $opts. If this were a proper object constructors, it would have been $self instead of $opts. 
+
+<pre>&nbsp; # find the index type, on which to build the aggregator
+&nbsp; my $idx;
+&nbsp; { 
+&nbsp;&nbsp;&nbsp; my @path = @{$opts-&gt;{idxPath}};
+&nbsp;&nbsp;&nbsp; confess "$myname: idxPath must be an array of non-zero length"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($#path &gt;= 0);
+&nbsp;&nbsp;&nbsp; my $cur = $opts-&gt;{tabType}; # the root of the tree
+&nbsp;&nbsp;&nbsp; my $progress = ''; 
+&nbsp;&nbsp;&nbsp; foreach my $p (@path) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $progress .= $p;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $cur = $cur-&gt;findSubIndex($p) 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $opts-&gt;{tabType}-&gt;print() . " "); 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $progress .= '.';
+&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp; $idx = $cur;
+&nbsp; } 
+&nbsp; confess "$myname: the index type is already initialized, can not add an aggregator on it"
+&nbsp;&nbsp;&nbsp; if ($idx-&gt;isInitialized());
+</pre>
+
+Since the SimpleAggregator uses an existing table with existing index, it doesn't require the aggregation key: it just takes an index that forms the group, and whatever key that leads to this index becomes the aggregation key. The lookup of index by path should probably become a standard method on a table type, but here it's implemented directly. Obviously, an aggregator can not be added on an already initialized index.
+
+<pre>&nbsp; # check the result definition and build the result row type and code snippets for the computation
+&nbsp; my $rtRes;
+&nbsp; my $needIter = 0; # flag: some of the functions require iteration
+&nbsp; my $needfirst = 0; # the result needs the first row of the group
+&nbsp; my $needlast = 0; # the result needs the last row of the group
+&nbsp; my $codeInit = ''; # code for function initialization
+&nbsp; my $codeStep = ''; # code for iteration
+&nbsp; my $codeResult = ''; # code to compute the intermediate values for the result
+&nbsp; my $codeBuild = ''; # code to build the result row
+&nbsp; my @compArgs; # the field functions are passed as args to the computation
+&nbsp; {
+&nbsp;&nbsp;&nbsp; my $grpstep = 4; # definition grouped by 4 items per result field
+&nbsp;&nbsp;&nbsp; my @resopt = @{$opts-&gt;{result}};
+&nbsp;&nbsp;&nbsp; my @rtdefRes; # field definition for the result
+&nbsp;&nbsp;&nbsp; my $id = 0; # numeric id of the field
+
+&nbsp;&nbsp;&nbsp; while ($#resopt &gt;= 0) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess "$myname: the values in the result definition must go in groups of 4"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($#resopt &gt;= 3);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $fld = shift @resopt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $type = shift @resopt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $func = shift @resopt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $funcarg = shift @resopt;
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess("$myname: the result field name must be a string, got a " . ref($fld) . " ")
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless (ref($fld) eq '');
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess("$myname: the result field type must be a string, got a " . ref($type) . " for field '$fld'")
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless (ref($type) eq '');
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess("$myname: the result field function must be a string, got a " . ref($func) . " for field '$fld'")
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless (ref($func) eq '');
+</pre>
+
+This starts the loop that goes over the result fields and builds the code to create them. The code will be built in multiple snippets that will eventually be combined to produce the compute function. Since the arguments go in groups of 4, it becomes fairly easy to miss one element somewhere, and then everything gets real confusing. So the code attempts to check the types of the arguments, in hopes of catching these off-by-ones as early as possible. The variable $id will be used to produce the unique prefixes for the function's variables.
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $funcDef = $FUNCTIONS-&gt;{$func}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess("$myname: function '" . $func . "' is unknown");
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $argCount = $funcDef-&gt;{argcount};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $argCount = 1 # 1 is the default value
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless defined($argCount);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess("$myname: in field '$fld' function '$func' requires an argument computation that must be a Perl sub reference")
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($argCount == 0 || ref $funcarg eq 'CODE');
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess("$myname: in field '$fld' function '$func' requires no argument, use undef as a placeholder")
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($argCount != 0 || !defined $funcarg);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push(@rtdefRes, $fld, $type);
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; push(@compArgs, $funcarg)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined $funcarg);
+</pre>
+
+The definitions of "standard" aggregation functions are kept in $FUNCTIONS (it will be shown later). They are defined in exactly the same way as the vwap function has been shown before. The types of the fields get collected for the row definition, and the aggregation argument computation closures (or, technically, functions) get also collected, to pass later as the arguments of the compute function.
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # add to the code snippets
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ### initialization
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $vars = $funcDef-&gt;{vars};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined $vars) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; foreach my $v (keys %$vars) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # the variable names are given a unique prefix;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # the initialization values are constants, no substitutions
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeInit .= "&nbsp; my \$v${id}_${v} = " . $vars-&gt;{$v} . ";\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $vars = { }; # a dummy
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp; 
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ### iteration
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $step = $funcDef-&gt;{step};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined $step) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $needIter = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeStep .= "&nbsp;&nbsp;&nbsp; # field $fld=$func\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined $funcarg) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # compute the function argument from the current row
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeStep .= "&nbsp;&nbsp;&nbsp; my \$a${id} = \$args[" . $#compArgs ."](\$row);\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # substitute the variables in $step
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $step =~ s/\$\%(\w+)/&amp;replaceStep($1, $func, $vars, $id, $argCount)/ge;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeStep .= "&nbsp;&nbsp;&nbsp; { $step; }\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp; 
+</pre>
+
+The initialization and iteration are produced if defined. It remembers in $needIter if any of the functions involved needs iteration.&nbsp; And the iteration step is placed into a block. An extra ";" is added just in case, it doesn't hurt and helps if it was forgotten in the function definition.
+
+<pre>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ### result building
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $result = $funcDef-&gt;{result};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; confess "MySimpleAggregator: internal error in definition of aggregation function '$func', missing result computation"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless (defined $result);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # substitute the variables in $result
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ($result =~ /\$\%argfirst/) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $needfirst = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeResult .= "&nbsp; my \$f${id} = \$args[" . $#compArgs ."](\$rowFirst);\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ($result =~ /\$\%arglast/) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $needlast = 1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeResult .= "&nbsp; my \$l${id} = \$args[" . $#compArgs ."](\$rowLast);\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $result =~ s/\$\%(\w+)/&amp;replaceResult($1, $func, $vars, $id, $argCount)/ge;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $codeBuild .= "&nbsp;&nbsp;&nbsp; ($result), # $fld\n";
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $id++;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; $rtRes = Triceps::RowType-&gt;new(@rtdefRes)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or confess "$myname: invalid result row type definition: $!";
+&nbsp; }
+&nbsp; ${$opts-&gt;{saveRowTypeTo}} = $rtRes if (defined($opts-&gt;{saveRowTypeTo}));
+</pre>
+
+In the same way the result computation is created, and remembers if any function wanted the fields from the first or last row. And eventually the result row type is created. Next the compute function gets assembled:
+
+<pre>&nbsp; # build the computation function
+&nbsp; my $compText = "sub {\n";
+&nbsp; $compText .= "&nbsp; use strict;\n";
+&nbsp; $compText .= "&nbsp; my (\$table, \$context, \$aggop, \$opcode, \$rh, \$state, \@args) = \@_;\n";
+&nbsp; $compText .= "&nbsp; return if (\$context-&gt;groupSize()==0 || \$opcode == &amp;Triceps::OP_NOP);\n";
+&nbsp; $compText .= $codeInit;
+&nbsp; if ($needIter) {
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp; my \$npos = 0;\n";
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp; for (my \$rhi = \$context-&gt;begin(); !\$rhi-&gt;isNull(); \$rhi = \$context-&gt;next(\$rhi)) {\n";
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp;&nbsp;&nbsp; my \$row = \$rhi-&gt;getRow();\n";
+&nbsp;&nbsp;&nbsp; $compText .= $codeStep;
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp;&nbsp;&nbsp; \$npos++;\n";
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp; }\n";
+&nbsp; }
+&nbsp; if ($needfirst) {
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp; my \$rowFirst = \$context-&gt;begin()-&gt;getRow();\n";
+&nbsp; }
+&nbsp; if ($needlast) {
+&nbsp;&nbsp;&nbsp; $compText .= "&nbsp; my \$rowLast = \$context-&gt;last()-&gt;getRow();\n";
+&nbsp; }
+&nbsp; $compText .= $codeResult;
+&nbsp; $compText .= "&nbsp; \$context-&gt;makeArraySend(\$opcode,\n";
+&nbsp; $compText .= $codeBuild;
+&nbsp; $compText .= "&nbsp; );\n";
+&nbsp; $compText .= "}\n";
+
+&nbsp; ${$opts-&gt;{saveComputeTo}} = $compText if (defined($opts-&gt;{saveComputeTo}));
+</pre>
+
+The optional parts get included only if some of the functions needed them.
+
+<pre>&nbsp; # compile the computation function
+&nbsp; my $compFun = eval $compText
+&nbsp;&nbsp;&nbsp; or confess "$myname: error in compilation of the aggregation computation:\n&nbsp; $@\nfunction text:\n$compText ";
+
+&nbsp; # build and add the aggregator
+&nbsp; my $agg = Triceps::AggregatorType-&gt;new($rtRes, $opts-&gt;{name}, undef, $compFun, @compArgs)
+&nbsp;&nbsp;&nbsp; or confess "$myname: internal error: failed to build an aggregator type: $! ";
+
+&nbsp; $idx-&gt;setAggregator($agg)
+&nbsp;&nbsp;&nbsp; or confess "$myname: failed to set the aggregator in the index type: $! ";
+
+&nbsp; return $opts-&gt;{tabType};
+}
+</pre>
+
+Then the compute function is compiled. In case if the compilation fails, the error message will include both the compilation error and the text of the auto-generated function. Otherwise there would be no way to know, what exactly went wrong. Well, since no used code is included into the auto-generated function, it should never fail. Except if there is some bad code in the aggregation function definitions. The compiled function and collected closures are then used to create the aggregator.

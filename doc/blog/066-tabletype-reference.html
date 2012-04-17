@@ -1,0 +1,98 @@
+TableType reference
+
+I've shown quite a few of examples that use the tables. And there will be more, since the tables are such a centerpiece of processing. But some more obscure details have been skipped over. So, this starts a series of posts that list out the table-related features.
+
+The TableType gets created from a row type as
+
+<pre>$tt = Triceps::TableType-&gt;new($rowType) or die "$!";
+</pre>
+
+After that it can be configured by adding the index types. Eventually it has to be initialized and that freezes the table type and makes it immutable. All the steps up to and including the initialization must be done from a single thread, after initialization a table type may be shared between multiple threads.
+
+The index types are added with
+
+<pre>$tt-&gt;addSubIndex("indexName", $indexType) or die "$!";
+</pre>
+
+The result is the same table type (unless it's an <b>undef</b> signifying an error), so the index type additions can be chained with each other and with the construction:
+
+<pre>$tt = Triceps::TableType-&gt;new($rowType) 
+&nbsp; -&gt;addSubIndex("indexName1", $indexType1) 
+&nbsp; -&gt;addSubIndex("indexName2", $indexType2)
+&nbsp; or die "$!";
+</pre>
+
+Since the table type initialization freezes not only the table type itself but also all the index types in it, that would make things difficult if the same index type is added to two table types. To avoid these issues, addSubIndex() adds not the actual argument index type but first creates a fresh uninitialized copy of it, and then adds it. The initialization is done with:
+
+<pre>$tt-&gt;initialize() or die "$!";
+</pre>
+
+The index types check most of their arguments at the initialization time, so that's where most of the errors will be reported. Calling initialize() repeatedly will have no effect and just return the same result again and again. It's possible to check whether the table type has been initialized:
+
+<pre>$result = $tt-&gt;isInitialized();
+</pre>
+
+The other introspection is the row type:
+
+<pre>$rowType = $tt-&gt;rowType();
+</pre>
+
+There are multiple ways to get back the index types. To find a index type by name, use:
+
+<pre>$indexType = $tt-&gt;findSubIndex("indexName") or die "$!";
+</pre>
+
+This is symmetric with addSubIndex(), so it works only for the top-level index types, to get the nested ones, repeat the same call on the found index types.
+
+There is also a way to find the first index type of a particular kind. It's called somewhat confusingly
+
+<pre>$indexType = $tt-&gt;findSubIndexById($indexTypeId) or die "$!";
+</pre>
+
+where $indexTypeId is one of either strings of Triceps constants
+<ul>
+<li>"IT_HASHED" or &amp;Triceps::IT_HASHED</li>
+<li>"IT_FIFO" or &amp;Triceps::IT_FIFO</li>
+<li>"IT_SORTED" or &amp;Triceps::IT_SORTED</li>
+</ul>
+Technically, there is also IT_ROOT but it's of little use for this situation since it's the root of the index type tree hidden inside the table type, and would never be a sub-index type. It's possible to iterate through all the possible index type ids as
+
+<pre>for ($i = 0; $i &lt; &amp;Triceps::IT_LAST; $i++) { ... }
+</pre>
+
+The conversion between the strings and constants for index type ids is done with
+
+<pre>$intId = &amp;Triceps::stringIndexId($stringId);
+$stringId = &amp;Triceps::indexIdString($intId);
+</pre>
+
+If an invalid value is supplied, the conversion functions will return <b>undef</b>.
+
+The first leaf index type (the one used for the default look-ups and iteration) can be found with
+
+<pre>$indexType = $tt-&gt;getFirstLeaf();
+</pre>
+
+And all the top-level indexes can be found with
+
+<pre>@indexTypes = $tt-&gt;getSubIndexes();
+</pre>
+
+The resulting array contains the pairs of names and index types. If the order is not important but you want to perform the look-ups by name, the result can be stored directly into a hash:
+
+<pre>%indexTypes = $tt-&gt;getSubIndexes();
+</pre>
+
+The usual reference comparison methods are:
+
+<pre>$result = $tt1-&gt;same($tt2);
+$result = $tt1-&gt;equals($tt2);
+$result = $tt1-&gt;match($tt2); 
+</pre>
+
+And finally the content of a table type can be converted to a human-readable description with
+
+<pre>$res = $tt-&gt;print();
+</pre>
+
+with the usual optional arguments.

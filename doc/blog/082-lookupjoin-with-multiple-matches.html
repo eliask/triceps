@@ -1,0 +1,102 @@
+LookupJoin with multiple matches
+
+The next example loses all connection with reality, it just serves to demonstrate another ability of LookupJoin: matching multiple rows on the right side for an incoming row. The situation itself is obviously useful and normal, just I was too lazy to invent another realistically-looking example.
+
+So, here we go:
+
+<pre>our $ttAccounts2 = Triceps::TableType-&gt;new($rtAccounts)
+&nbsp; -&gt;addSubIndex("iterateSrc", # for iteration in order grouped by source
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "source" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("lookupSrcExt",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "external" ])
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("grouping", Triceps::IndexType-&gt;newFifo())
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+or die "$!";
+$ttAccounts2-&gt;initialize() or die "$!";
+
+our $tAccounts = $uJoin-&gt;makeTable($ttAccounts2,
+&nbsp; &amp;Triceps::EM_CALL, "tAccounts") or die "$!";
+
+our $join = Triceps::LookupJoin-&gt;new(
+&nbsp; unit =&gt; $uJoin,
+&nbsp; name =&gt; "join",
+&nbsp; leftRowType =&gt; $rtInTrans,
+&nbsp; rightTable =&gt; $tAccounts,
+&nbsp; rightIdxPath =&gt; [ "iterateSrc", "lookupSrcExt" ],
+&nbsp; rightFields =&gt; [ "internal/acct" ],
+&nbsp; by =&gt; [ "acctSrc" =&gt; "source", "acctXtrId" =&gt; "external" ],
+); # would die by itself on an error
+</pre>
+
+And the main loop is unchanged from the first LookupJoin example, so I wont' copy it here. Just for something different, the join index here is nested, and its path consists of two elements. It's not a leaf index either, with one FIFO level under it. And when the isLeft is not specified explicitly, it defaults to 1, maeking it a left join.
+
+The run example uses a bit different input, highlighting the ability to match multiple rows:
+
+<pre><i>acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+acct,OP_INSERT,source2,ABCD,10
+acct,OP_INSERT,source2,ABCD,100
+trans,OP_INSERT,1,source1,999,100</i>
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999"
+&nbsp;amount="100" acct="1" 
+<i>trans,OP_INSERT,2,source2,ABCD,200</i>
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD"
+&nbsp;amount="200" acct="1" 
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD"
+&nbsp;amount="200" acct="10" 
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD"
+&nbsp;amount="200" acct="100" 
+<i>trans,OP_INSERT,3,source2,QWERTY,200</i>
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY"
+&nbsp;amount="200" 
+<i>acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200</i>
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY"
+&nbsp;amount="200" acct="2" 
+<i>acct,OP_DELETE,source1,999,1</i>
+</pre>
+
+When a row matches multiple rows in the table, it gets multiplied. The join function iterates through the whole matching row group, and for each found row creates a result row and calls the output label with it.
+
+Now, what if you don't want to get multiple rows back even if they are found? Of course, the best way is to just use a leaf index. But once in a while you get into situations with the denormalized data in the lookup table. You might know in advance that for each row in an index group a certain field would be the same. Or you might not care, what exact value you get as long as it's from the right group. But you might really not want the input rows to multiply when they go through the join. LookupJoin has a solution:
+
+<pre>our $join = Triceps::LookupJoin-&gt;new(
+&nbsp; unit =&gt; $uJoin,
+&nbsp; name =&gt; "join",
+&nbsp; leftRowType =&gt; $rtInTrans,
+&nbsp; rightTable =&gt; $tAccounts,
+&nbsp; rightIdxPath =&gt; [ "iterateSrc", "lookupSrcExt" ],
+&nbsp; rightFields =&gt; [ "internal/acct" ],
+&nbsp; by =&gt; [ "acctSrc" =&gt; "source", "acctXtrId" =&gt; "external" ],
+&nbsp; limitOne =&gt; 1,
+); # would die by itself on an error
+</pre>
+
+The option "limitOne" changes the processing logic to pick only the first matching row. It also optimizes the join function. If limitOne is not specified explicitly, the join constructor deduces it magically by looking at whether the join index is a leaf or not. Actually, for a leaf index it would always override limitOne to 1, even if you explicitly set it to 0.
+
+With the limit, the same input produces a different output:
+
+<pre><i>acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+acct,OP_INSERT,source2,ABCD,10
+acct,OP_INSERT,source2,ABCD,100
+trans,OP_INSERT,1,source1,999,100</i>
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999"
+&nbsp;amount="100" acct="1" 
+<i>trans,OP_INSERT,2,source2,ABCD,200</i>
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD"
+&nbsp;amount="200" acct="1" 
+<i>trans,OP_INSERT,3,source2,QWERTY,200</i>
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY"
+&nbsp;amount="200" 
+<i>acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200</i>
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY"
+&nbsp;amount="200" acct="2" 
+<i>acct,OP_DELETE,source1,999,1</i>
+</pre>
+
+Now it just picks the first matching row instead of multiplying the rows.

@@ -1,0 +1,175 @@
+Sorted index initialization, a simple ordered index template
+
+To specify the sorting order in a more SQL-like fashion, Triceps now has the class SimpleOrderedIndex. It's implemented entirely in Perl, on top of the sorted index. Besides being useful by itself, it shows off two concepts: the initialization function of the sorted index, and the template with code generation on the fly.
+
+First, how to create the ordered indexes:
+
+<pre>my $tabType = Triceps::TableType-&gt;new($rowType)
+&nbsp; -&gt;addSubIndex("sorted", 
+&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; a =&gt; "ASC",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; b =&gt; "DESC",
+&nbsp;&nbsp;&nbsp; )
+&nbsp; ) or die "$!";
+</pre>
+
+The constructor takes a list of pairs fieldName =&gt; order, where the order is either "ASC" for ascending or "DESC" for descending.
+
+The comparison function gets generated automatically. It's smart enough to generate the string comparisons for the string and uint8 fields, and the numeric comparisons for the numeric fields. It's not smart enough to do the locale-specific comparisons for the strings and locale-agnostic for the unit8, it just uses whatever you have set up in <b>cmp</b> for both. It treats the NULL field values as numeric 0 or empty strings. It doesn't handle the array fields at all but can at least detect such attempts and flag them as errors.
+
+An interesting artifact of the boundary between C++ and Perl is that when you get the index type back from the table type like
+
+<pre>$sortIdx = $tabType-&gt;findSubIndex("sorted") or die "$!";
+</pre>
+
+the reference stored in $sortIdx will be of&nbsp; the base type Triceps::IndexType. That's because the C++ internals of the TableType object know nothing about any derived Perl types. But it's no big deal, since there are no other useful methods for SimpleOrderedIndex anyway.
+
+If you call $sortIdx-&gt;print(), it will give you an idea of how it was constructed:
+
+<pre>PerlSortedIndex(SimpleOrder a ASC, b DESC, )
+</pre>
+
+I'm not sure if I mentioned it yet, but all the index types have the method getKey() that for the hashed index types returns an array of key field names, and for the all other index types returns nothing. This includes the sorted index, and the simple ordered index that is derived from it. In the future I plan to allow returning the key list from the sorted indexes too, but haven't got around to do it yet.
+
+The usage of the tables with these indexes is as with any other indexes. Since the PerlSortedIndex can be used in both leaf and non-leaf position, so can the SimpleOrderedIndex. Nothing special there.
+
+Now the interesting part, the implementation of the sorted index. It's a little biggish for a blog post but not too huge:
+
+<pre>package Triceps::SimpleOrderedIndex;
+use Carp;
+
+our @ISA = qw(Triceps::IndexType);
+
+sub new # ($class, $fieldName =&gt; $direction...)
+{
+&nbsp; my $class = shift;
+&nbsp; my @args = @_; # save a copy
+
+&nbsp; # build a descriptive sortName
+&nbsp; my $sortName = 'SimpleOrder ';
+&nbsp; while ($#_ &gt;= 0) { 
+&nbsp;&nbsp;&nbsp; my $fld = shift;
+&nbsp;&nbsp;&nbsp; my $dir = shift;
+&nbsp;&nbsp;&nbsp; $sortName .= quotemeta($fld) . ' ' . quotemeta($dir) . ', ';
+&nbsp; } 
+
+&nbsp; $self = Triceps::IndexType-&gt;newPerlSorted(
+&nbsp;&nbsp;&nbsp; $sortName, \&amp;init, undef, @args
+&nbsp; ) or confess "$!";
+&nbsp; bless $self, $class;
+&nbsp; return $self;
+}
+
+sub init # ($tabt, $idxt, $rowt, @args)
+{
+&nbsp; my ($tabt, $idxt, $rowt, @args) = @_;
+&nbsp; my %def = $rowt-&gt;getdef(); # the field definition
+&nbsp; my $errors; # collect as many errors as possible
+&nbsp; my $compare = "sub {\n"; # the generated comparison function
+&nbsp; my $connector = "return"; # what goes between the comparison operators
+
+&nbsp; while ($#args &gt;= 0) {
+&nbsp;&nbsp;&nbsp; my $f = shift @args;
+&nbsp;&nbsp;&nbsp; my $dir = uc(shift @args);
+
+&nbsp;&nbsp;&nbsp; my ($left, $right); # order the operands depending on sorting direction
+&nbsp;&nbsp;&nbsp; if ($dir eq "ASC") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $left = 0; $right = 1;
+&nbsp;&nbsp;&nbsp; } elsif ($dir eq "DESC") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $left = 1; $right = 0;
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $errors .= "unknown direction '$dir' for field '$f', use 'ASC' or 'DESC'\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # keep going, may find more errors
+&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my $type = $def{$f};
+&nbsp;&nbsp;&nbsp; if (!defined $type) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $errors .= "no field '$f' in the row type\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; next;
+&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my $cmp = "&lt;=&gt;"; # the comparison operator
+&nbsp;&nbsp;&nbsp; if ($type eq "string"
+&nbsp;&nbsp;&nbsp; || $type =~ /^uint8.*/) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $cmp = "cmp"; # string version
+&nbsp;&nbsp;&nbsp; } elsif($type =~ /\]$/) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $errors .= "can not order by the field '$f', it has an array type '$type', not supported yet\n";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; next;
+&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my $getter = "-&gt;get(\"" . quotemeta($f) . "\")";
+
+&nbsp;&nbsp;&nbsp; $compare .= "&nbsp; $connector \$_[$left]$getter $cmp \$_[$right]$getter\n";
+
+&nbsp;&nbsp;&nbsp; $connector = "||";
+&nbsp; }
+
+&nbsp; $compare .= "&nbsp; ;\n";
+&nbsp; $compare .= "}";
+
+&nbsp; if (defined $errors) {
+&nbsp;&nbsp;&nbsp; # help with diagnostics, append the row type to the error listing
+&nbsp;&nbsp;&nbsp; $errors .= "the row type is:\n";
+&nbsp;&nbsp;&nbsp; $errors .= $rowt-&gt;print();
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; # compile the comparison
+&nbsp;&nbsp;&nbsp; #print STDERR "DEBUG Triceps::SimpleOrderedIndex::init: comparison function:\n$compare\n";
+&nbsp;&nbsp;&nbsp; my $cmpfunc = eval $compare
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or return "Triceps::SimpleOrderedIndex::init: internal error when compiling the compare function:\n"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . "$@\n"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . "The generated comparator was:\n"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . $compare;
+&nbsp;&nbsp;&nbsp; $idxt-&gt;setComparator($cmpfunc)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or return "Triceps::SimpleOrderedIndex::init: internal error: can not set the compare function:\n"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . "$!\n";
+&nbsp; }
+&nbsp; return $errors;
+}&nbsp;</pre>
+<pre></pre>
+<pre>&nbsp;</pre>
+
+Sorry, but I'm too lazy to wrap the long lines manually, and the @#%^ blog engine doesn't wrap them automatically either. They should really use some less brain-damaged formatting.
+
+The class constructor simply builds the sort name from the arguments and offloads the rest of logic to the init function. It can't really do much more: when the index type object is constructed, it doesn't know yet, where it will be used and what row type it will get. It tries to enquote nicely the weird characters in the arguments when they go into the sort name. Not that much use is coming from it at the moment: the C++ code that prints the table type information doesn't do the same, so there still is a chance of misbalanced quotes in the result. But perhaps the C++ code will be fixed at some point too.
+
+The init function is called at the table type initialization time. By this time all this extra information is known, and it gets the references to the table type, index type (itself, but with the class stripped back to Triceps::IndexType), row type, and whatever extra arguments that were passed through the newPerlSorted(). Now the actual work can begin.
+
+By the way, the sorted index type init function is <b>NOT</b> of the same kind as the aggregator type init function. The aggregator type could use an init function of this kind too, but at the time it looked like too much extra complexity. It probably will be added in the future. But more about aggregators later.
+
+The init function's return value is kind of backwards to everything else: on success it returns <b>undef</b>, on error it returns the error message. It could die too, but simply returning an error message is somewhat nicer.
+
+It goes through all the arguments, looks up the fields in the row type, and checks them for correctness. It tries to collect as much of the error information as possible. The returned error messages may contain multiple lines separated by "\n", and the ordered index makes use of it. The error messages get propagated back to the table type level, nicely indented and returned from the table initialization. If the init function finds any errors, it appends the printout of the row type too, to make finding what went wrong easier. A result of a particularly bad call to a table type initialization may look like this:
+
+<pre>index error:
+&nbsp; nested index 1 'sorted':
+&nbsp;&nbsp;&nbsp; unknown direction 'XASC' for field 'z', use 'ASC' or 'DESC'
+&nbsp;&nbsp;&nbsp; no field 'z' in the row type
+&nbsp;&nbsp;&nbsp; can not order by the field 'd', it has an array type 'float64[]', not supported yet
+&nbsp;&nbsp;&nbsp; the row type is:
+&nbsp;&nbsp;&nbsp; row {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; uint8 a,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; uint8[] b,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; int64 c,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; float64[] d,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; string e,
+&nbsp;&nbsp;&nbsp; }
+</pre>
+
+Also as the init goes through the arguments, it constructs the text of the compare function in the variable $compare. Here the use of quotemeta() for the user-supplied strings is important to avoid the syntax errors in the generated code. If no errors are found in the arguments, the compare function gets compiled with <b>eval</b>. There should not be any errors, but it's always better to check. Finally the compiled compare function is set in the sorted index with
+
+<pre>$idxt-&gt;setComparator($cmpfunc)
+</pre>
+
+This method works only on the PerlSorted index types (it knows how to check internally) and would fail on all others. It replaces any previous compare function set in newPerlSorted(), as well as the extra arguments for it. So really if you use an init function, you would always set the compare function in newPerlSorted() to <b>undef</b> because it will be replaced anyway. If you want to pass extra arguments, you do that as setComparator($cmpfunc, @args). But in this class all the information from the arguments is already compiled into the body of the comparator, and there is no more use for them. The init function absolutely must set the compare function. If the comparator is still <b>undef</b> after the init returns, the initialization will see it as an error.
+
+If you uncomment the debugging printout line (and run "make", and maybe "make install" afterwards), you can see the auto-generated code printed on stderr when you use the simple ordered index. It will look somewhat like this:
+
+<pre>sub {
+&nbsp; return $_[0]-&gt;get("a") cmp $_[1]-&gt;get("a")
+&nbsp; || $_[1]-&gt;get("c") &lt;=&gt; $_[0]-&gt;get("c")
+&nbsp; || $_[0]-&gt;get("b") cmp $_[1]-&gt;get("b")
+&nbsp; ;
+}
+</pre>
+
+That's it! An entirely new piece functionality added in a smallish Perl snippet. This is your typical Triceps template: collect the arguments, use them to build Perl code, and compile it. Of course, if you don't want to deal with the code generation and compilation, you can just call your class methods and whatnot to interpret the arguments. But if the code will be reused, the compilation is more efficient.

@@ -1,0 +1,64 @@
+AggregatorContext reference
+
+AggregatorContext is one of the arguments passed to the aggregator computation function. It encapsulates the iteration through the aggregation group, in the order of the index on which the aggregator is defined. After the computation function returns, the context becomes invalidated and stops working, so there is no&nbsp; point in saving it between the calls. There is no way to construct the aggregator context directly.
+
+It provides the following methods:
+
+<pre>$result = $ctx-&gt;groupSize();
+</pre>
+
+Returns the number of rows in the group. This is currently a unique feature available only in an aggregator, not in the normal iteration through the table.
+
+<pre>$rowType = $ctx-&gt;resultType();
+</pre>
+
+Returns the row type of the aggregation result.
+
+<pre>$rh = $ctx-&gt;begin();
+</pre>
+
+The first row handle of the iteration. In case of an empty group would return a null handle.
+
+<pre>$rh = $ctx-&gt;next($rh);
+</pre>
+
+The next row handle in order. If the argument handle was the last row in the group, returns a null handle. So the iteration through the group with a context is similar to iteration through the whole table: it ends when begin() or next() returns a null handle. 
+
+<pre>$rh = $ctx-&gt;last();
+</pre>
+
+The last row handle in the group. If the group is empty, returns a null handle.
+
+<pre>$rh = $ctx-&gt;beginIdx($idxType);
+</pre>
+
+The first row in the group, according to a specific index type's order. The index type must belong to the group, otherwise the result is undefined. If the group is empty, will return the same value as endIdx(). If $idxType is non-leaf, the effect is the same as if its first leaf were used.
+
+<pre>$rh = $ctx-&gt;endIdx($idxType);
+</pre>
+
+The handle past the last row in the group, according to a specific index type's order. The index type must belong to the group, otherwise the result is undefined and might even result in an endless iteration loop.  If $idxType is non-leaf, the effect is the same as if its first leaf were used. This kind of iteration uses the table's $t-&gt;nextIdx($idxType, $rh) or $rh-&gt;next($idxType) to advance the position. The Table reference post said that that not every possible order is iterable. Well, with the aggregation context, every order is iterable. You can pick any index in the group and iterate in its order. And aggregation is where this ability counts the most.
+
+If the group happens to be the last group of this index type (not of $idxType but of the index on which the aggregator is defined) in the table, endIdx()&nbsp; would return a null row handle. If it's also empty, beginIdx() would also return a null handle, and in general, for an empty group beginIdx() would return the same value as endIdx(). If the group is not the last one, endIdx() returns the handle of the first row in the next group.
+
+<pre>$rh = $ctx-&gt;lastIdx($idxType);
+</pre>
+
+The last row in the group according to a particular index type's order. The index type must belong to the group, otherwise the result is undefined. If the group is empty, returns a null handle.
+
+<pre>$ctx-&gt;send($opcode, $row) or die "$!";
+</pre>
+
+Constructs a result rowop for the aggregator and arranges for it to be sent to the aggregator's output&nbsp; label. The actual sending is delayed: it will be done only after all the aggregators run, then the table's changes are sent to the table's normal output label, then each aggregator's changes are sent to its label. Note that the aggregator's output label is not visible in the computation function, so the rowop can not be constructed directly. Instead send() takes care of it. The row must be of a type at least matching the aggregator's result type (and of course the normal practice is to use the aggregator's result type to construct the row). On success returns 1, on error returns undef and the error message.
+
+<pre>$ctx-&gt;makeHashSend($opcode, $fieldName =&gt; $fieldValue, ...) or die "$!";
+</pre>
+
+A convenience function that produces the row from pairs of field names and values and sends it. A combination of makeRowHash() and send().
+
+<pre>$ctx-&gt;makeArraySend($opcode, @fields) or die "$!";
+</pre>
+
+A convenience function that produces the row from the array of field values and sends it. A combination of makeRowArray() and send().
+
+Note that an aggregator must never change the table. Any attempt to change the table is a fatal error.

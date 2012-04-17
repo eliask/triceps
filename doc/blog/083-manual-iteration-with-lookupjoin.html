@@ -1,0 +1,61 @@
+Manual iteration with LookupJoin
+
+Sometimes you might want to just get the list of the resulting rows from LookupJoin and iterate over them by yourself, rather than have it call the labels. To be honest, this looked kind of important when I wrote LookupJoin first, but by now I don't see a whole lot of use in it. By now, if you want to do a manual iteration, calling findBy() and then iterating looks like a more useful option. But at the time there was no findBy(), and this feature came to exist. Here is an example:
+
+<pre>our $join = Triceps::LookupJoin-&gt;new(
+&nbsp; unit =&gt; $uJoin,
+&nbsp; name =&gt; "join",
+&nbsp; leftRowType =&gt; $rtInTrans,
+&nbsp; rightTable =&gt; $tAccounts,&nbsp; rightIdxPath =&gt; ["lookupSrcExt"],
+&nbsp; rightFields =&gt; [ "internal/acct" ],
+&nbsp; by =&gt; [ "acctSrc" =&gt; "source", "acctXtrId" =&gt; "external" ],
+&nbsp; automatic =&gt; 0,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+my $lbPrintPackets = makePrintLabel("lbPrintPackets", $join-&gt;getOutputLabel());
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp; my $type = shift @data;
+&nbsp; if ($type eq "acct") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($tAccounts-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; } elsif ($type eq "trans") {
+&nbsp;&nbsp;&nbsp; my $op = shift @data; # drop the opcode field
+&nbsp;&nbsp;&nbsp; my $trans = $rtInTrans-&gt;makeRowArray(@data) or die "$!";
+&nbsp;&nbsp;&nbsp; my @rows = $join-&gt;lookup($trans);
+&nbsp;&nbsp;&nbsp; foreach my $r (@rows) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uJoin-&gt;call($lbPrintPackets-&gt;makeRowop($op, $r)) or die "$!";
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }
+&nbsp; $uJoin-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+
+It copies the first LookupJoin example, only now manually. Once the option "automatic" is set to 0 for the join, the method $join-&gt;lookup() becomes available to perform the lookup and return the result rows in an array (the data sent to the input label keeps working as usual, sending the resutl rows to the output label). This involves the extra overhead of keeping all the result rows (and there might be lots of them) in an array, so by default the join is compiled in an automatic-only mode.
+
+Since lookup() knows nothing about the opcodes, those had to be sent separately around the lookup.&nbsp; 
+
+The result is the same as for the first example, only the name of the result label differs:
+
+<pre><i>acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+trans,OP_INSERT,1,source1,999,100</i>
+lbPrintPackets OP_INSERT id="1" acctSrc="source1" acctXtrId="999"
+&nbsp;amount="100" acct="1" 
+<i>trans,OP_INSERT,2,source2,ABCD,200</i>
+lbPrintPackets OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD"
+&nbsp;amount="200" acct="1" 
+<i>trans,OP_INSERT,3,source2,QWERTY,200</i>
+lbPrintPackets OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY"
+&nbsp;amount="200" 
+<i>acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200</i>
+lbPrintPackets OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY"
+&nbsp;amount="200" acct="2" 
+<i>acct,OP_DELETE,source1,999,1</i>
+</pre>
+

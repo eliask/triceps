@@ -1,0 +1,54 @@
+Options 
+
+The SimpleAggregator was one of the examples that uses the class Triceps::Opt to parse its arguments formatted as options. There is actually a similar option parser in CPAN but it didn't do everything I wanted, and considering how tiny it is, it's easier to write a new one from scratch than to extend that one. I also like to avoid the extra dependencies.
+
+The heart of it is the method Triceps::Opt::parse(). Normally it would be called from a constructor of another class to parse the constructor's option, the SimpleAggregator was somewhat abusing it. It does the following: 
+
+<ul>
+<li>Checks that all the options are known.</li>
+<li>Checks that the values are acceptable. </li>
+<li>Copies the values into the instance hash of the&nbsp; target class.</li>
+<li>Provides the default values for the unspecified options.</li>
+</ul>
+
+If anything goes wrong, it dies with a reasonable message. The arguments tell the class name for the messages (since, remember, it normally is expected to be called from the class constructor), the reference to object instance hash where to copy the options, the descriptions of the supported options, and the actual key-value pairs. A normal call looks like this:
+
+<pre>package MyClass;
+
+sub new() # (class, option =&gt; value, ...)
+{
+&nbsp; my $class = shift;
+&nbsp; my $self = {};
+
+&nbsp; &amp;Triceps::Opt::parse($class, $self, { 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; opt1 =&gt; [ 0 ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; opt2 =&gt; [ undef, \&amp;Triceps::Opt::ck_mandatory ],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; opt3 =&gt; [ undef, sub { &amp;Triceps::Opt::ck_mandatory(@_); &amp;Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+&nbsp;&nbsp;&nbsp; }, @_);
+
+...
+&nbsp; bless $self, $class;
+&nbsp; return $self;
+}
+</pre>
+
+At the end of it, if all went well, the hash in $self would have the values at keys "opt1" and so on.
+
+The options descriptions go in pairs of option name and an array reference with description. The array contains the default value and the checking function, either of which may be undefined. The checking function returns if everything went fine or dies on any errors. To die happily with a proper message,&nbsp; it gets not only the value to check but more, altogether:
+<ul>
+<li>The value to check.</li>
+<li>The name of the option.</li>
+<li>The name of the class.</li>
+<li>The object instance ($self), just in case.</li>
+</ul>
+
+If you want to do multiple checks, you just make a closure and call all the checks in sequence, passing @_ to them all, like shown here for opt3. If more arguments need to be passed to the checking function, just add them after @_ (or, if you prefer, before it). 
+
+You can create any checking functions, but a few ready ones are provided:
+
+<ul>
+<li>Triceps::Opt::ck_mandatory checks that the value is defined.</li>
+<li>Triceps::Opt::ck_ref checks that the value is a reference to a particular class. Just give the class name as the extra argument. Or, to check that the reference is to array or hash, make the argument "ARRAY" or "HASH". Or an empty string "" to check that it's not a reference at all. For the arrays and hashes it can also check the values in there for being references to the correct types: give that type as the second extra argument. But it doesn't go deeper than that, just one nesting level.</li>
+<li>Triceps::Opt::ck_refscalar checks that the value is a reference to a scalar. This is designed to check the arguments which are used to return data back to the caller, and if would accept any previous value in that scalar: an actual scalar value, an undef or a reference.</li>
+</ul>
+The ck_ref and ck_refscalar allow the value to be undefined, so they can safely be used on the optional options.When I come up with more of the usable check functions, I'll add them.

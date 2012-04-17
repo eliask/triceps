@@ -1,0 +1,67 @@
+The proper aggregation, part 4 (another cute trick)
+
+Now, with a sorted index available, we can put it to the uses of the aggregation. Just change the table type definition in the last example to aggregate on the sorted index and it becomes able to handle the updates:
+
+<pre>my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("bySymbol",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("orderById",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(id =&gt; "ASC",)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;setAggregator(Triceps::AggregatorType-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice, "aggrAvgPrice", undef, \&amp;computeAverage)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("last3",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 3))
+&nbsp; )
+or die "$!";
+</pre>
+
+Here is a sample of its work:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,5,AAA,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="20" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_INSERT,7,AAA,40,40</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="35" 
+</pre>
+
+When the row with id=3 gets deleted, the average reverts to the rows 1 and 5.&nbsp; When the row 3 gets inserted back, the average works on rows 3 and 5 again. Then when the row 7 is inserted, the aggregation moves up to the rows 5 and 7.
+
+Note that the row expiration is controlled by the FIFO index. So after the row 3 is inserted back, the order of rows in the FIFO becomes
+
+1, 5, 3
+
+Then when the row 7 is inserted, it advances to
+
+5, 3, 7
+
+At this point, until the row 3 gets naturally popped out of the FIFO, it's best not to have other deletions nor updates, or the group contents may become incorrect.
+
+The FIFO and sorted index types work in parallel on the same group, and the sorted index always keeps the right order:
+
+1, 3, 5
+3, 5, 7
+
+At long as the records with the two highest ids are in the group at all, the sorted index will keep them in the right position at the end.
+
+In this case we could even make a bit of optimization: turn the sorting order around, and have the sorted index arrange the rows in the descending order. Then instead of skipping the rows until the last two, just take the first two rows of the reverse order. They'll be iterated in the opposite direction but for the averaging it doesn't matter. And instead of the last row take the first row of the opposite order. This is a simple modification and is left as an exercise for the reader.
+
+Thinking further, the sensitivity to the ordering comes largely from the FIFO index. If the replacement policy could be done directly on the sorted index, it would become easier. Would be a good thing to add in the future. Also, if you keep all the day's trades anyway, you might not need to have a replacement policy at all: just pick the last 2 records for the aggregation. There is currently no way to iterate back from the end (another thing to add in the future) but the same trick with the opposite order would work. 
+
+For the next item, this table type indexes by id twice: once as a primary index, another time as a nested one. Are both of them really necessary or would just the nested one be good enough? That depends on your input data. If you get the deletes like "OP_DELETE,3" with all the other fields as NULL, then a separate primary index is definitely needed. But if the deletes come exactly as the same records that were inserted, only with a different opcode, like "OP_DELETE,3,AAA,20,20" then the primary index can be skipped because the nested sorted index will be able to find the rows correctly and handle them. The bottom line, the fully correct DELETE records are good.

@@ -1,0 +1,84 @@
+The LookupJoin template 
+
+When a join has to produce the new rows, with the data from both the incoming row and the ones looked up in the reference table, this can also be done manually but may be more convenient to do with the LookupJoin template. The translation of account to the internal ids can be done like this:
+
+<pre>our $join = Triceps::LookupJoin-&gt;new(
+&nbsp; unit =&gt; $uJoin,
+&nbsp; name =&gt; "join",
+&nbsp; leftRowType =&gt; $rtInTrans,
+&nbsp; rightTable =&gt; $tAccounts,
+&nbsp; rightIdxPath =&gt; ["lookupSrcExt"],
+&nbsp; rightFields =&gt; [ "internal/acct" ],
+&nbsp; by =&gt; [ "acctSrc" =&gt; "source", "acctXtrId" =&gt; "external" ],
+&nbsp; isLeft =&gt; 1,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $join-&gt;getOutputLabel());
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp; my $type = shift @data;
+&nbsp; if ($type eq "acct") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($tAccounts-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; } elsif ($type eq "trans") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($join-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; }
+&nbsp; $uJoin-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+
+The join gets defined in the option name-value format. The unit and name are as usual.
+
+The incoming rows are always on the left side, the table on the right. LookupJoin can do either the inner join or the left outer join (since it does not react to thr changes of the right table and has no access to the start of the left side, the full and right outer joins are out). In this case the option "isLeft =&gt; 1" selects the left outer join.
+
+The left side is described by leftRowType, and causes the join's input label of this row type to be created. The input label can be found with $join-&gt;getInputLabel().
+
+The right side is a table, specified in rightTable. The lookups in the table are done using a combination of an index and the field pairing. The option "by" provides the field pairing. It contains the pairs of field names, one from the left, and one from the right, for the equal fields. They can be separated by "," to, but "=&gt;" feels more idiomatic to me. These fields from the left are translated to the right and are used for look-up through the index. The index here is specified through the path in the option "rightIdxPath". If this option is missing, LookupJoin will just try to find the first top-level Hash index. Either way, the index must be a Hash index.
+
+There is no particular reason for it not being a Sorted index, other that the getKey() call does not work for the Sorted indexes yet, and that's what the LookupJoin uses to check that the right-side index key matches the join key in "by".
+
+The index may be either a leaf (as in this example) or non-leaf. If it's a leaf, it could look up no more than one row per key, and LookupJoin uses this internally for a little optimization.
+
+Finally, there is the result row. It is built out of the two original rows by picking the fields according to the options leftFields and rightFields. If either option is missing, that means "take all the fields". Otherwise it gives the patterns of the fields to let through. The patterns may be either the explicit field names or regular expressions implicitly anchored at both front and end. There is also a bit extra modification possible:
+
+<ul>
+<li>!pattern - skip the fields matching the pattern</li>
+<li>pattern/substitution - pass the matching fields and rename them according to the substitution</li>
+</ul>
+
+So in this example [ "internal/acct" ] means: pass the field "internal" but rename it to "acct". If a specification element refers to a literal field, like here, LookupJoin chacks that the field is actually present in the original row type, catching the typos. For the general regular expressions it doesn't check whether the pattern matched anything. It's not difficult to check but that would preclude the reuse of the same patterns on the varying row types, and I'm not sure yet, what is more important.
+
+The way this whole thing works is that each field gets tested against each pattern in order. The first pattern that match determines what happens to this field. If none of the patterns matches, the field gets ignored. An important consequence about the skipping patterns is that they don't automatically pass through the non-matching fields. You need to add an explicit positive pattern at the end of the list to pass the fields through. For example, to pass everything except the field "source", the specification would be [ "!source", ".*" ]. The "!source" will catch and throw away the field "source", and ".*" will pass through the rest of the fields.
+
+Another important point is that the field names in the result must not duplicate. It's an error. So if the duplications happen, use the substitution syntax to rename some of the fields. I'll show more patterns later.
+
+There is the option fieldsLeftFirst that determines, which side will go first in the result. By default it's set to 1 (as in this example), and the left side goes first. If set to 0, the right side would go first.
+
+This setup for the result row types is somewhat clumsy but it's a reasonable first attempt. 
+
+Now, having gone through the description, an example of how it works:
+
+<pre><i>acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+trans,OP_INSERT,1,source1,999,100</i>
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999"
+ amount="100" acct="1" 
+<i>trans,OP_INSERT,2,source2,ABCD,200</i>
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD"
+ amount="200" acct="1" 
+<i>trans,OP_INSERT,3,source2,QWERTY,200</i>
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY"
+ amount="200" 
+<i>acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200</i>
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY"
+ amount="200" acct="2" 
+<i>acct,OP_DELETE,source1,999,1</i>
+</pre>
+
+Same as before, first the accounts table gets populated, then the transactions are sent. If an account is not found, this left outer join still passes through the original fields from the left side. Adding an account later doesn't help the rowops that already went through but the new rowops will see it. The same goes for deleting an account, it doesn't affect the past rowops either.

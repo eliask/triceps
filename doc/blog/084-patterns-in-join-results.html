@@ -1,0 +1,16 @@
+Patterns in the join results
+
+So far I've given only the examples where the fields were renamed only with literals. But the patterns allow more, they allow substituting the parts of the matched value.
+
+Suppose, we want to just copy all the fields from both the left and right sides, but many of them happen to have the same names. If there are many fields, renaming each of them looks like a tiresome proposition. But we can just give the unique prefixes to the fields from the left and right side (or maybe to just one of the sides):
+
+<pre>&nbsp; leftFields =&gt; [ '.*/left_$&amp;' ],
+&nbsp; rightFields =&gt; [ '.*/right_$&amp;' ],
+</pre>
+
+The "$&amp;" in the substitution gets replaced with the whole matched field name. Or the parts of the field names can be selected by the parenthesis. For example, let's add an underscore after "acct_", passing the rest of the fields unchanged: 
+
+<pre>&nbsp; rightFields =&gt; [ 'acct(.*)/acct_$1', '.*' ],
+</pre>
+
+As usual in the Perl regexps, the parenthesized patterns are numbered left to right, starting with $1.

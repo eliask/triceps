@@ -1,0 +1,86 @@
+Sorted index 
+
+Let's take a short break from the aggregation. For a while I wanted to have an index type that would keep the records in a sorted order. It's convenient for both tests and examples.&nbsp; But I really didn't want to create yet another version of the indexing code until the table navigation methods are worked out better.
+
+Well, I've been thinking about it and figured out a way to not only reuse but even totally share that code between the hashed index and the new sorted index, pretty much unchanged. And added the sorted indexes for version 1.0.&nbsp; A sorted index type is created with:
+
+<pre>$it = Triceps::IndexType-&gt;newPerlSorted($sortName,
+&nbsp; \&amp;initFunc, \&amp;compareFunc, @args);
+</pre>
+
+The "Perl" in "newPerlSorted" refers to the fact that the sorting order is specified as a Perl comparison function.
+
+$sortName is just a symbolic name for printouts. It's used when you call $it-&gt;print() (directly or as a recursive call from the table type print) to let you know what kind of index type it is, since it can't print the compiled comparison function. It is also used in the error messages if something dies inside the comparison function: the comparison is executed from deep inside the C++ code, and by that time the sortName is the only way to identify the source of the problems. It's not the same name as used to connect the index type into the table type hierarchy with addSubIndex(). As usual, an index type may be reused in multiple hierarchies, with different names, but in all cases it will also keep the same sortName. This may be easier to show with an example:
+
+<pre>$rt1 = Triceps::RowType-&gt;new(
+&nbsp; a =&gt; "int32",
+&nbsp; b =&gt; "string",
+) or die "$!";
+
+$it1 = Triceps::IndexType-&gt;newPerlSorted("basic", undef, \&amp;compBasic
+) or die "$!"; 
+
+$tt1 = Triceps::TableType-&gt;new($rt1)
+&nbsp; -&gt;addSubIndex("primary", $it1)
+or die "$!"; 
+
+$tt2 = Triceps::TableType-&gt;new($rt1)
+&nbsp; -&gt;addSubIndex("first", $it1)
+or die "$!";
+
+print $tt1-&gt;print(), "\n";
+print $tt2-&gt;print(), "\n";
+</pre>
+
+will print:
+
+<pre>table (
+&nbsp; row {
+&nbsp;&nbsp;&nbsp; int32 a,
+&nbsp;&nbsp;&nbsp; string b,
+&nbsp; }
+) {
+&nbsp; index PerlSortedIndex(basic) primary,
+}
+table (
+&nbsp; row {
+&nbsp;&nbsp;&nbsp; int32 a,
+&nbsp;&nbsp;&nbsp; string b,
+&nbsp; }
+) {
+&nbsp; index PerlSortedIndex(basic) first,
+}
+</pre>
+
+The initFunc and/or compareFunc references specify the sorting order. One of them may be left <b>undef</b> but not both. @args are the optional arguments that will be passed to both functions.
+
+The easiest but least flexible way&nbsp; is to just use the compareFunc. It gets two Rows (not RowHandles!) as arguments, plus whatever is specified in @args. It returns the usual Perl-style "&lt;=&gt;" result. For example:
+
+<pre>sub compBasic # ($row1, $row2)
+{
+&nbsp; return $_[0]-&gt;get("a") &lt;=&gt;&nbsp; $_[1]-&gt;get("a");
+}
+</pre>
+
+Don't forget to use "&lt;=&gt;" for the numbers and "cmp" for the strings. The typical Perl idiom for sorting by more than one field is to connect them by "||".
+
+Or, if we want to specify the field names as arguments, we could define a sort function that sorts first by a numeric field in ascending order, then by a string field in descending order:
+
+<pre>sub compAscDesc # ($row1, $row2, $numFldAsc, $strFldDesc)
+{
+&nbsp; my ($row1, $row2, $numf, $strf) = @_;
+&nbsp; return $row1-&gt;get($numf) &lt;=&gt; $row2-&gt;get($numf)
+&nbsp; &nbsp; || $row2-&gt;get($strf) cmp $row1-&gt;get($strf); # backwards for descending
+}
+
+my $sit = Triceps::IndexType-&gt;newPerlSorted("by_a_b", undef,
+&nbsp; \&amp;compAscDesc, "a", "b") or die "$!";
+</pre>
+
+This assumes that the row type will have a numeric field "a" and a string field "b". The problem is that if it doesn't then this will not be discovered until you create a table and try to insert some rows into it, which will finally call the comparison function. Even then it won't be exactly obvious because the comparison function never checks "$!" after get(), and you'll see no failures but all the rows will be considered equal and will replace each other.
+
+You could check that the arguments match the row type ($row1-&gt;getType()) in the comparison function but that would add extra overhead, and the Perl comparisons are slow enough as they are.
+
+The initFunc provides a way to do that check and more.
+
+You might also wonder, why isn't there a way to just say as in SQL, "sort by this ascending and that descending"? In short, there eventually will be, and it will be also done in C++ for the better efficiency, but for now a comparison function both provides more flexibility and requires less effort to implement it. The initFunc allows to at least sort of handle this issue for now too. The next post will show, how.

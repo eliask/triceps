@@ -1,0 +1,98 @@
+The ubiquitous VWAP
+
+Every CEP supplier loves an example of VWAP calculation: it's small, it's about that quintessential CEP activity: aggregation, and it sounds like something from the real world.
+
+A quick sidebar: what is the VWAP? It's the Value-Weighted Average Price: the average price for the shares traded during some period of time, usually a day. If you take the price of every share traded during the day and calculate the average, you get the VWAP. What is the value-weighted part? The shares don't usually get sold one by one. They're sold in the variable-sized lots. If you think in the terms of lots and not individual shares, you have to weigh the trade prices (not to be confused with costs) for the lots proportional to the number of shares in them.
+
+I've been using VWAP for trying out the approaches to the aggregation templates. The cutest so far is actually not a template at all: it's simply a user-defined aggregation function for the SimpleAggregator. Here is how it goes:
+
+<pre># VWAP function definition
+my $myAggFunctions = {
+&nbsp; myvwap =&gt; {
+&nbsp;&nbsp;&nbsp; vars =&gt; { sum =&gt; 0, count =&gt; 0, size =&gt; 0, price =&gt; 0 },
+&nbsp;&nbsp;&nbsp; step =&gt; '($%size, $%price) = @$%argiter; '
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . 'if (defined $%size &amp;&amp; defined $%price) '
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . '{$%count += $%size; $%sum += $%size * $%price;}',
+&nbsp;&nbsp;&nbsp; result =&gt; '($%count == 0? undef : $%sum / $%count)',
+&nbsp; },
+};
+
+my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("bySymbol",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("fifo", Triceps::IndexType-&gt;newFifo())
+&nbsp; )
+or die "$!";
+
+# the aggregation result
+my $rtVwap;
+my $compText; # for debugging
+
+Triceps::SimpleAggregator::make(
+&nbsp; tabType =&gt; $ttWindow,
+&nbsp; name =&gt; "aggrVwap",
+&nbsp; idxPath =&gt; [ "bySymbol", "fifo" ],
+&nbsp; result =&gt; [
+&nbsp;&nbsp;&nbsp; symbol =&gt; "string", "last", sub {$_[0]-&gt;get("symbol");},
+&nbsp;&nbsp;&nbsp; id =&gt; "int32", "last", sub {$_[0]-&gt;get("id");},
+&nbsp;&nbsp;&nbsp; volume =&gt; "float64", "sum", sub {$_[0]-&gt;get("size");},
+&nbsp;&nbsp;&nbsp; vwap =&gt; "float64", "myvwap", sub { [$_[0]-&gt;get("size"), $_[0]-&gt;get("price")];},
+&nbsp; ],
+&nbsp; functions =&gt; $myAggFunctions,
+&nbsp; saveRowTypeTo =&gt; \$rtVwap,
+&nbsp; saveComputeTo =&gt; \$compText,
+) or die "$!";
+</pre>
+
+The rest of the example is the same as for the previous examples of the trades aggregation.
+
+The option "functions" of&nbsp; Triceps::SimpleAggregator::make() lets you add the custom aggregation functions. They're actually defined in the same way as the "standard" functions that come with the SimpleAggregator. The argument of that option is a reference to a hash, with the names of functions as the key and references to the function definitions as values. Each definition is again a hash, containing up to 4 keys:
+
+<ul>
+<li>argcount - Defines the number of arguments of the function, which maybe currently 0 or 1, with 1 being the default.</li>
+<li>vars - Defines the variables used to keep the context of this function.</li>
+<li>step - The computation of a single step of iteration. </li>
+<li>result - The computation of the result of the function. This key is mandatory. The rest can be skipped if not needed.</li>
+</ul>
+The vwap function actually has two arguments per row: the trade size and the price. But no more than one argument is supported. So it works in the same way as "nth_simple": it leaves the argcount as the default 1 and packs its two argument into one, combining them into a single array returned by reference. That's why the closure for this field is
+
+<pre>sub { [$_[0]-&gt;get("size"), $_[0]-&gt;get("price")];}
+</pre>
+
+The single array reference becomes the closure's result and the vwap function's single argument, later unpacked by its code. By the way, the order of the elements in this array is important, first size and then price, not the other way around, or your results will be wrong.
+
+The value of "vars" is a reference to yet another hash that maps the variable names to their initial values. The variables are always scalars. I just didn't find anything yet that would require a non-scalar. If the need for arrays or hashes arises, you can just create a reference and put it into a scalar. The initial values are strings that are substituted into the generated code as is. For the numbers, you can usually just put them in as numbers and they will work fine: that's&nbsp; what vwap does with its 0s. If you don't particularly want to initialize with anything, put "undef" there - in quotes. If you want to use a string constant, quote it twice, like "'initial'" or '"initial"'. If you ever need an array or hash reference, that would be a "[]" or "{}". The namespace of the&nbsp; variables is local to the functions, and when SimpleAggregator generates the code with them, it will add a unique mangled prefix to make sure that the variables from different fields don't conflict with each other.
+
+The vwap computation defines four variables:&nbsp; two to build the aggregation result and two to keep temporarily the trade size and price extracted from the current row.
+
+The presence of "step" is what tells the SimpleAggregator that this function needs&nbsp; to iterate through the rows. Its value is a string defining the code snippet that would be placed into the iteration loop. The step computation can refer to the function's variables through the syntax of "$%varname". All such occurrences just get globally replaced, like in a K&amp;R C macro. This is a fairly rarely occurring combination in the normal Perl code, so there should be little confusion. If you ever need to pass this sequence through as a literal, just break it up: depending on the circumstances, use'$\%' or '${%...}'.
+
+There also are a few pre-defined variables that can be used in "step" (make sure not to name your variables conflicting with those):
+<ul>
+<li>$%argiter - The function's argument extracted from the current row.</li>
+<li>$%niter - The number of the current row in the group, starting from 0.</li>
+<li>$%groupsize - The size of the group ($context-&gt;groupSize()).</li>
+</ul>
+
+The step of vwap first extracts the size and price from the current row. It uses @$%argiter, which naturally means "array to which $%argiter refers". If you like to put everything into the explicit parenthesis, you could also use&nbsp; @{$%argiter} instead. Then it updates the current count of shares and the sum of all trades' prices. The check for undef helps keeping things more consistent, taking into the consideration only the rows where both size and price are defined. Without this check, if some row has only the price undefined, its size will still affect and throw off the result.
+
+The step's code gets enclosed in a block when the code is generated, so it can safely define some scope-local variables in it. Those get used as the normal $var or @var or %var. Here size and price could have been done as scope-local variables instead of being function-wide:
+
+<pre>my ($size, $price) = @$%argiter; ...
+</pre>
+
+The value of $%argiter gets actually computed in the generated code in advance, once per row, so it's safe to use it in the "step" code multiple times.
+
+The "result" is very much like "step", only it's mandatory, its string value defines an expression and not a set of statements, and it has the different pre-defined variables:
+
+<ul>
+<li>$%argfist - The function argument from the first row of the group.</li>
+<li>$%arglast - The function argument from the last row of the group.</li>
+<li>$%groupsize - Still the size of the group.</li>
+</ul>
+For vwap the result is a straightforward division, with a little precaution against division by 0.
+
+And that's it, a home-grown aggregation function for vwap. When debugging your aggregation functions, the ability to look at the generated code, as saved with the option saveComputeTo, comes pretty handy. If the error happens right during the compilation of the generated code, its source text gets printed automatically in the error message. In the future I plan to add the syntax checks for the code snippets of the functions even before embedding them into a full compute function, but things haven't gotten that far yet.

@@ -1,0 +1,224 @@
+The proper aggregation, part 9: multiple indexes
+
+I've mentioned before that the floating numbers are tricky to handle. Even without additive aggregation the result depends on the rounding. Which in turn depends on the order in which the operations are done. Let's look at a version of the aggregation code that highlights this issue.
+
+<pre>sub computeAverage # (table, context, aggop, opcode, rh, state, args...)
+{
+&nbsp; my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+&nbsp; # don't send the NULL record after the group becomes empty
+&nbsp; return if ($context-&gt;groupSize()==0
+&nbsp;&nbsp;&nbsp; || $opcode != &amp;Triceps::OP_INSERT);
+
+&nbsp; my $sum = 0;
+&nbsp; my $count = 0;
+&nbsp; for (my $rhi = $context-&gt;begin(); !$rhi-&gt;isNull(); 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $context-&gt;next($rhi)) {
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; } 
+&nbsp; my $rLast = $context-&gt;last()-&gt;getRow() or die "$!";
+&nbsp; my $avg = $sum/$count;
+
+&nbsp; my $res = $context-&gt;resultType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; symbol =&gt; $rLast-&gt;get("symbol"), 
+&nbsp;&nbsp;&nbsp; id =&gt; $rLast-&gt;get("id"), 
+&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp; ) or die "$!";
+&nbsp; $context-&gt;send($opcode, $res) or die "$!";
+}
+
+my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId", 
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; ) 
+&nbsp; -&gt;addSubIndex("bySymbol", 
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("last4",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 4)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;setAggregator(Triceps::AggregatorType-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice, "aggrAvgPrice", undef, \&amp;computeAverage10)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp; )&nbsp;&nbsp; 
+&nbsp; ) 
+or die "$!";
+...
+my $lbAverage = $uTrades-&gt;makeLabel($rtAvgPrice, "lbAverage",
+&nbsp; undef, sub { # (label, rowop)
+&nbsp;&nbsp;&nbsp; printf("%.17g\n", $_[1]-&gt;getRow()-&gt;get("price")));
+&nbsp; }) or die "$!";
+$tWindow-&gt;getAggregatorLabel("aggrAvgPrice")-&gt;chain($lbAverage)
+&nbsp; or die "$!";
+</pre>
+
+The differences from the previously shown basic aggregation are:
+<ul>
+<li>the FIFO limit has been increased to 4</li>
+</ul>
+<ul>
+<li>the only result value printed by the lbAverage handler is the price, and it's printed with a higher precision to make the difference visible</li>
+</ul>
+<ul>
+<li>the aggregator computation only does the inserts, to reduce the clutter in the results.</li>
+</ul>
+
+And here is an example of how the order matters:
+
+<pre><i>OP_INSERT,1,AAA,1,10</i>
+1
+<i>OP_INSERT,2,AAA,1,10</i>
+1
+<i>OP_INSERT,3,AAA,1,10</i>
+1
+<i>OP_INSERT,4,AAA,1e16,10</i>
+2500000000000001
+<i>OP_INSERT,5,BBB,1e16,10</i>
+10000000000000000
+<i>OP_INSERT,6,BBB,1,10</i>
+5000000000000000
+<i>OP_INSERT,7,BBB,1,10</i>
+3333333333333333.5
+<i>OP_INSERT,8,BBB,1,10</i>
+2500000000000000
+</pre>
+
+Of course, the real prices won't vary so wildly. But the other values could. This example is specially stacked to demonstrate the point. The final results for AAA and BBB should be the same but aren't. Why? The precision of the 64-bit floating-point numbers is such that as adding 1 to 1e16 makes this 1 fall beyond the precision, and the result is still 1e16. On the other hand, adding 3 to 1e16 makes at least a part of it stick. 1 still falls of but the other 2 of 3 sticks. Next look at the data sets: if you add 1e16+1+1+1, that's adding 1e16+1 repeated three times, and the result is still the same unchanged 1e16. But if you add 1+1+1+1e16, that's adding 3+1e16, and now the result is different and more correct. When the averages get computed by dividing the sums by 4, the results are still different.
+
+Overall the rule of thumb for adding the floating point numbers is this: add them up in the order from the smallest to the largest. (What if the numbers can be negative too? I don't know, that goes beyond my knowledge of floating point calculations. My guess is that you still arrange them in the ascending order, only by the absolute value.) So let's do it in the aggregator.
+
+<pre>our $idxByPrice;
+
+sub computeAverage # (table, context, aggop, opcode, rh, state, args...)
+{
+&nbsp; my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+&nbsp; our $idxByPrice;
+
+&nbsp; # don't send the NULL record after the group becomes empty
+&nbsp; return if ($context-&gt;groupSize()==0
+&nbsp;&nbsp;&nbsp; || $opcode != &amp;Triceps::OP_INSERT);
+
+&nbsp; my $sum = 0;
+&nbsp; my $count = 0;
+&nbsp; my $end = $context-&gt;endIdx($idxByPrice);
+&nbsp; for (my $rhi = $context-&gt;beginIdx($idxByPrice); !$rhi-&gt;same($end);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $rhi-&gt;nextIdx($idxByPrice)) {
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; }
+&nbsp; my $rLast = $context-&gt;last()-&gt;getRow() or die "$!";
+&nbsp; my $avg = $sum/$count;
+
+&nbsp; my $res = $context-&gt;resultType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; symbol =&gt; $rLast-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp; id =&gt; $rLast-&gt;get("id"),
+&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp; ) or die "$!";
+&nbsp; $context-&gt;send($opcode, $res) or die "$!";
+}
+
+my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("bySymbol",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("last4",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 4)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;setAggregator(Triceps::AggregatorType-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice, "aggrAvgPrice", undef, \&amp;computeAverage11)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byPrice",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(price =&gt; "ASC",)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("multi", Triceps::IndexType-&gt;newFifo())
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+or die "$!";
+
+$idxByPrice = $ttWindow-&gt;findSubIndex("bySymbol")
+&nbsp; -&gt;findSubIndex("byPrice") or die "$!";
+</pre>
+
+Here another index type is added, ordered by price. It has to be non-leaf, with a FIFO index type nested in it, to allow for multiple rows having the same price in them. That would work out more efficiently if the ordered index could have a multimap mode, but that is not supported yet.
+
+When the compute function does its iteration, it now goes by that index. The aggregator can't be simply moved to that new index type, because it still needs to get the last trade id in the order the rows are inserted into the group. Instead it has to work with two index types: the one on which the aggregator is defined, and the additional one. The calls for iteration on an additional index are different. $context-&gt;beginIdx() is similar to $context-&gt;begin() but the end condition and the next step are done differently. Perhaps the consistency in this department can be improved in the future.
+
+And finally, the reference to that additional index type has to make it somehow into the compute function. It can't be given as an argument because it's not known yet at the time when the aggregator is constructed (and no, reordering the index types won't help because the index types are copied when connected to their parents, and we need the exact index type that ends up in the assembled table type). So a global variable $idxByPrice is used. The index type reference is found and placed there, and later the compute function takes the reference from the global variable.
+
+The printout from this version on the same input is:
+
+<pre><i>OP_INSERT,1,AAA,1,10</i>
+1
+<i>OP_INSERT,2,AAA,1,10</i>
+1
+<i>OP_INSERT,3,AAA,1,10</i>
+1
+<i>OP_INSERT,4,AAA,1e16,10</i>
+2500000000000001
+<i>OP_INSERT,5,BBB,1e16,10</i>
+10000000000000000
+<i>OP_INSERT,6,BBB,1,10</i>
+5000000000000000
+<i>OP_INSERT,7,BBB,1,10</i>
+3333333333333334
+<i>OP_INSERT,8,BBB,1,10</i>
+2500000000000001
+</pre>
+
+Now no matter what the order of the row arrival, the prices get added up in the same order from the smallest to the largest and produce the same correct (inasmuch the floating point precision allows) result.
+
+Which index type is used to put the aggregator on, doesn't matter a whole lot. The computation can be turned around, with the ordered index used as the main one, and the last value from the FIFO index obtained with $context-&gt;lastIdx():
+
+<pre>our $idxByOrder;
+
+sub computeAverage12 # (table, context, aggop, opcode, rh, state, args...)
+{
+&nbsp; my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+&nbsp; our $idxByOrder;
+
+&nbsp; # don't send the NULL record after the group becomes empty
+&nbsp; return if ($context-&gt;groupSize()==0
+&nbsp;&nbsp;&nbsp; || $opcode != &amp;Triceps::OP_INSERT);
+
+&nbsp; my $sum = 0;
+&nbsp; my $count = 0;
+&nbsp; for (my $rhi = $context-&gt;begin(); !$rhi-&gt;isNull();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $context-&gt;next($rhi)) {
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; }
+&nbsp; my $rLast = $context-&gt;lastIdx($idxByOrder)-&gt;getRow() or die "$!";
+&nbsp; my $avg = $sum/$count;
+
+&nbsp; my $res = $context-&gt;resultType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; symbol =&gt; $rLast-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp; id =&gt; $rLast-&gt;get("id"),
+&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp; ) or die "$!";
+&nbsp; $context-&gt;send($opcode, $res) or die "$!";
+}
+
+my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("bySymbol",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("last4",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 4)
+&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byPrice",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(price =&gt; "ASC",)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("multi", Triceps::IndexType-&gt;newFifo())
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;setAggregator(Triceps::AggregatorType-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice, "aggrAvgPrice", undef, \&amp;computeAverage12)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+or die "$!";
+
+$idxByOrder = $ttWindow-&gt;findSubIndex("bySymbol")
+&nbsp; -&gt;findSubIndex("last4") or die "$!";
+</pre>
+
+The last important note: when aggregating with multiple indexes, always use the sibling index types forming the same group or their nested sub-indexes (since the actual order is defined by the first leaf sub-index anyway). But don't use the random unrelated index types. If you do, the context would return some unexpected values for those, and you may end up with endless loops.

@@ -1,0 +1,112 @@
+The proper aggregation, part 5: optimized DELETEs
+
+Previously I've mentioned that the deletes in an aggregator do not have to be recalculated every time. Instead the rows can be remembered from the insert time, and simply re-sent with the new opcode. That allows to trade the CPU time for the extra memory. Of course, this works best when there are many rows per aggregation group. How many is "many"? It depends on the particular cases. You'd have to measure. Anyway, here is how it's done:
+
+<pre>sub computeAverage # (table, context, aggop, opcode, rh, state, args...)
+{
+&nbsp; my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+&nbsp; # don't send the NULL record after the group becomes empty
+&nbsp; return if ($context-&gt;groupSize()==0
+&nbsp;&nbsp;&nbsp; || $opcode == &amp;Triceps::OP_NOP);
+&nbsp; if ($opcode == &amp;Triceps::OP_DELETE) {
+&nbsp;&nbsp;&nbsp; $context-&gt;send($opcode, $$state) or die "$!";
+&nbsp;&nbsp;&nbsp; return;
+&nbsp; } 
+
+&nbsp; my $sum = 0;
+&nbsp; my $count = 0;
+&nbsp; for (my $rhi = $context-&gt;begin(); !$rhi-&gt;isNull(); 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $context-&gt;next($rhi)) {
+&nbsp;&nbsp;&nbsp; $count++;
+&nbsp;&nbsp;&nbsp; $sum += $rhi-&gt;getRow()-&gt;get("price");
+&nbsp; } 
+&nbsp; my $rLast = $context-&gt;last()-&gt;getRow() or die "$!";
+&nbsp; my $avg = $sum/$count;
+
+&nbsp; my $res = $context-&gt;resultType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp; symbol =&gt; $rLast-&gt;get("symbol"), 
+&nbsp;&nbsp;&nbsp; id =&gt; $rLast-&gt;get("id"), 
+&nbsp;&nbsp;&nbsp; price =&gt; $avg
+&nbsp; ) or die "$!";
+&nbsp; ${$state} = $res;
+&nbsp; $context-&gt;send($opcode, $res) or die "$!";
+}
+
+sub initRememberLast #&nbsp; (@args)
+{
+&nbsp; my $refvar;
+&nbsp; return \$refvar;
+}
+
+my $ttWindow = Triceps::TableType-&gt;new($rtTrade)
+&nbsp; -&gt;addSubIndex("byId", 
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "id" ])
+&nbsp; ) 
+&nbsp; -&gt;addSubIndex("bySymbol", 
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "symbol" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("last2",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo(limit =&gt; 2)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;setAggregator(Triceps::AggregatorType-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtAvgPrice, "aggrAvgPrice", \&amp;initRememberLast, \&amp;computeAverage)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+or die "$!";
+</pre>
+
+The rest of the example stays the same, so it's not shown. Even in the part that is shown, very little has changed. 
+
+The aggregator type now has an initialization function. (This function is NOT of the same kind as for the sorted index!) This function gets called every time a new aggregation group gets created, before the first row is inserted into it. It initializes the aggregator group's Perl state (the state is per aggregator type, so if there are two parallel index types, each with an aggregator, each aggregator will have its own group state). 
+
+The state is stored in the group as a single Perl variable. So it usually is a reference. In this case the value returned is a reference to a variable that would contain a Row reference. (Ironically, the simplest case looks a bit more confusing than if it were a reference to an array or hash). Returning a reference to a "my" variable is a way to create a reference to an anonymous value: each time "my" executes, it creates a new value. Which is then kept in a reference after the initialization function returns. The next time the function executes, "my" would create another new value.
+
+The computation function is passed that state as an argument and now makes use of it. It has two small additions. Before sending a new result row, that row gets remembered in the state reference. And then before doing any computation the function checks, if the required opcode is DELETE, and if so then simply resends the last result with the new opcode. Remember, the rows are not copied but reference-counted, so this is fairly cheap.
+
+The extra level of referencing is used because simply assigning to $state would only change the local variable and not the value kept in the group.
+
+However if you change the argument of the function directly, that would change the value kept in the group (similar to changing the loop variable in a <i>foreach</i> loop). So you can save a bit of overhead by eliminating the extra indirection. The changes will be:
+
+<pre>sub computeAverage # (table, context, aggop, opcode, rh, state, args...)
+{
+...
+&nbsp; if ($opcode == &amp;Triceps::OP_DELETE) {
+&nbsp;&nbsp;&nbsp; $context-&gt;send($opcode, $state) or die "$!";
+&nbsp;&nbsp;&nbsp; return;
+&nbsp; }
+...
+&nbsp; $_[5] = $res;
+&nbsp; $context-&gt;send($opcode, $res) or die "$!";
+}
+
+sub initRememberLast #&nbsp; (@args)
+{
+&nbsp; return undef;
+}
+</pre>
+
+Even though the initialization function returns <b>undef</b>, it still must be present. If it's not present, the state argument of the comparison function will contain a special hardcoded and unmodifiable <b>undef</b> constant, and nothing could be remembered.
+
+And here is an example of its work:
+
+<pre><i>OP_INSERT,1,AAA,10,10</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+<i>OP_INSERT,2,BBB,100,100</i>
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
+<i>OP_INSERT,3,AAA,20,20</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+<i>OP_INSERT,4,BBB,200,200</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
+<i>OP_INSERT,5,AAA,30,30</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+<i>OP_DELETE,3</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+<i>OP_DELETE,5</i>
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
+</pre>
+
+Since the rows are grouped by the symbol, the symbols "AAA" and "BBB" will have separate aggregation states.

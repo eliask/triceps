@@ -1,0 +1,14 @@
+By the way, where are the examples
+
+I've been talking about all these examples but I can't remember if I ever told, where to find them in the code.
+
+Overall, the examples live together with unit tests, under <tt>perl/Triceps/t</tt>. The files with names starting with x contain the examples, like xWindow.t. Usually there are multiple related examples in the same file. And they are not quite exactly the same as the ones in the posts, because they are plugged into the unit test infrastructure: rather than reading and writing to the stdin and stdout, they take the inputs from variables, put the results into variables, and have the results checked for correctness. This way the examples stay working and do not experience the bit rot when something changes.
+
+The other unit tests in the .t files are interesting too, since they contain absolutely all the possible usages of everything, and can be used as a reference. However they tend to be much more messy and hard to read, exactly because they contain in them lots of tiny snippets that do everything.
+
+I've been coming up with the new examples and features for 1.0 as I'm writing the docs. How to get those? By checking out the trunk of the development tree directly from svn:
+
+<pre>svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
+</pre>
+
+You don't need any login for check-out. You can keep it current with latest changes by periodically running "<tt>svn update</tt>". After you've checked out the trunk, you can build it as usual, and find the examples in the usual location under <tt>perl/Triceps/t</tt>.

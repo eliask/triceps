@@ -1,0 +1,104 @@
+The guts of SimpleAggregator, part 2
+
+The functions that translate the $%variable names are built after the same pattern but have the different built-in variables:
+
+<pre># @param varname - variable to replace
+# @param func - function name, for error messages
+# @param vars - definitions of the function's vars
+# @param id - the unique id of this field
+# @param argCount - the argument count declared by the function
+sub replaceStep # ($varname, $func, $vars, $id, $argCount)
+{
+&nbsp; my ($varname, $func, $vars, $id, $argCount) = @_;
+
+&nbsp; if ($varname eq 'argiter') {
+&nbsp;&nbsp;&nbsp; confess "MySimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to 'argiter' but the function declares no arguments"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($argCount &gt; 0);
+&nbsp;&nbsp;&nbsp; return "\$a${id}";
+&nbsp; } elsif ($varname eq 'niter') {
+&nbsp;&nbsp;&nbsp; return "\$npos";
+&nbsp; } elsif ($varname eq 'groupsize') {
+&nbsp;&nbsp;&nbsp; return "\$context-&gt;groupSize()";
+&nbsp; } elsif (exists $vars-&gt;{$varname}) {
+&nbsp;&nbsp;&nbsp; return "\$v${id}_${varname}";
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; confess "MySimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to an unknown variable '$varname'"
+&nbsp; }
+}
+
+sub replaceResult # ($varname, $func, $vars, $id, $argCount)
+{
+&nbsp; my ($varname, $func, $vars, $id, $argCount) = @_;
+
+&nbsp; if ($varname eq 'argfirst') {
+&nbsp;&nbsp;&nbsp; confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($argCount &gt; 0);
+&nbsp;&nbsp;&nbsp; return "\$f${id}";
+&nbsp; } elsif ($varname eq 'arglast') {
+&nbsp;&nbsp;&nbsp; confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; unless ($argCount &gt; 0);
+&nbsp;&nbsp;&nbsp; return "\$l${id}";
+&nbsp; } elsif ($varname eq 'groupsize') {
+&nbsp;&nbsp;&nbsp; return "\$context-&gt;groupSize()";
+&nbsp; } elsif (exists $vars-&gt;{$varname}) {
+&nbsp;&nbsp;&nbsp; return "\$v${id}_${varname}";
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to an unknown variable '$varname'"
+&nbsp; }
+}
+</pre>
+
+And finally the definition of the aggregation functions:
+
+<pre>our $FUNCTIONS = {
+&nbsp; first =&gt; {
+&nbsp;&nbsp;&nbsp; result =&gt; '$%argfirst',
+&nbsp; },
+&nbsp; last =&gt; {
+&nbsp;&nbsp;&nbsp; result =&gt; '$%arglast',
+&nbsp; },
+&nbsp; count_star =&gt; {
+&nbsp;&nbsp;&nbsp; argcount =&gt; 0,
+&nbsp;&nbsp;&nbsp; result =&gt; '$%groupsize',
+&nbsp; },
+&nbsp; count =&gt; {
+&nbsp;&nbsp;&nbsp; vars =&gt; { count =&gt; 0 },
+&nbsp;&nbsp;&nbsp; step =&gt; '$%count++ if (defined $%argiter);',
+&nbsp;&nbsp;&nbsp; result =&gt; '$%count',
+&nbsp; },
+&nbsp; sum =&gt; {
+&nbsp;&nbsp;&nbsp; vars =&gt; { sum =&gt; 0 },
+&nbsp;&nbsp;&nbsp; step =&gt; '$%sum += $%argiter;',
+&nbsp;&nbsp;&nbsp; result =&gt; '$%sum',
+&nbsp; },
+&nbsp; max =&gt; {
+&nbsp;&nbsp;&nbsp; vars =&gt; { max =&gt; 'undef' },
+&nbsp;&nbsp;&nbsp; step =&gt; '$%max = $%argiter if (!defined $%max || $%argiter &gt; $%max);',
+&nbsp;&nbsp;&nbsp; result =&gt; '$%max',
+&nbsp; },
+&nbsp; min =&gt; {
+&nbsp;&nbsp;&nbsp; vars =&gt; { min =&gt; 'undef' },
+&nbsp;&nbsp;&nbsp; step =&gt; '$%min = $%argiter if (!defined $%min || $%argiter &lt; $%min);',
+&nbsp;&nbsp;&nbsp; result =&gt; '$%min',
+&nbsp; },
+&nbsp; avg =&gt; {
+&nbsp;&nbsp;&nbsp; vars =&gt; { sum =&gt; 0, count =&gt; 0 },
+&nbsp;&nbsp;&nbsp; step =&gt; 'if (defined $%argiter) { $%sum += $%argiter; $%count++; }',
+&nbsp;&nbsp;&nbsp; result =&gt; '($%count == 0? undef : $%sum / $%count)',
+&nbsp; },
+&nbsp; avg_perl =&gt; { # Perl-like treat the NULLs as 0s
+&nbsp;&nbsp;&nbsp; vars =&gt; { sum =&gt; 0 },
+&nbsp;&nbsp;&nbsp; step =&gt; '$%sum += $%argiter;',
+&nbsp;&nbsp;&nbsp; result =&gt; '$%sum / $%groupsize',
+&nbsp; },
+&nbsp; nth_simple =&gt; { # inefficient, need proper multi-args for better efficiency
+&nbsp;&nbsp;&nbsp; vars =&gt; { n =&gt; 'undef', tmp =&gt; 'undef', val =&gt; 'undef' },
+&nbsp;&nbsp;&nbsp; step =&gt; '($%n, $%tmp) = @$%argiter; if ($%n == $%niter) { $%val = $%tmp; }',
+&nbsp;&nbsp;&nbsp; result =&gt; '$%val',
+&nbsp; },
+};
+</pre>
+
+You can use as the starting point for building your own. As you can see, this very first simple version of SimpleAggregator didn't include the user-provided functions but the real one already does.
+
+That's it, the whole aggregator generation.

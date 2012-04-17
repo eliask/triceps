@@ -1,0 +1,22 @@
+AggregatorType reference
+
+The aggregator type gets created by the constructor
+
+<pre>$at = Triceps::AggregatorType-&gt;new($resultRowType, "aggName", $initFunc,
+&nbsp; $handlerFunc, @args...) or die "$!";
+</pre>
+
+The rows created by the aggregator are of $resultRowType . The aggregator name is used to name the aggregator result label in the table, "tableName.aggName". It is also used to get the reference of that label from the table.
+
+The optional args are passed to both the init and handler functions (to which $initFunc and $handlerFunc are references). The init function is called when the row group (contained in an index of the type, on which this aggregator type is set) is created. It initializes the group's aggregation state.&nbsp; The handler function gets called on the changes to the group, as had been described at length previously. 
+
+The methods for comparison, printing and copying work similarly to the index types:
+
+<pre>$result = $at1-&gt;same($at2);
+$result = $at1-&gt;equals($at2);
+$result = $at1-&gt;match($at2);
+$result = $at-&gt;print(); 
+$atCopy =&nbsp; $at-&gt;copy();
+</pre>
+
+The matching aggregator types may differ in the aggregator name and in the field names of the result row type. However the function references and their arguments must be the same.

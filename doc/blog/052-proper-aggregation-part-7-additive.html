@@ -1,0 +1,38 @@
+The proper aggregation, part 7: additive
+
+From the last example you can see that the additive aggregation contains enough information in its state to generate the result rows quickly without an iteration. This means that keeping the saved result row for DELETEs doesn't give a whole lot of advantage and adds at least a little memory overhead.&nbsp; We can change the code and avoid keeping it:
+
+<pre>sub computeAverage # (table, context, aggop, opcode, rh, state, args...)
+{
+&nbsp;&nbsp;&nbsp; my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+&nbsp;&nbsp;&nbsp; my $rowchg;
+
+&nbsp;&nbsp;&nbsp; if ($aggop == &amp;Triceps::AO_COLLAPSE) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return
+&nbsp;&nbsp;&nbsp; } elsif ($aggop == &amp;Triceps::AO_AFTER_DELETE) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $state-&gt;{price_sum} -= $rh-&gt;getRow()-&gt;get("price");
+&nbsp;&nbsp;&nbsp; } elsif ($aggop == &amp;Triceps::AO_AFTER_INSERT) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $state-&gt;{price_sum} += $rh-&gt;getRow()-&gt;get("price");
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; # on AO_BEFORE_MOD do nothing
+
+&nbsp;&nbsp;&nbsp; return if ($context-&gt;groupSize()==0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; || $opcode == &amp;Triceps::OP_NOP);
+
+&nbsp;&nbsp;&nbsp; my $rLast = $context-&gt;last()-&gt;getRow() or die "$!";
+&nbsp;&nbsp;&nbsp; my $count = $context-&gt;groupSize();
+
+&nbsp;&nbsp;&nbsp; $context-&gt;makeHashSend($opcode,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; symbol =&gt; $rLast-&gt;get("symbol"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; id =&gt; $rLast-&gt;get("id"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; price =&gt; $state-&gt;{price_sum}/$count,
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+}
+
+sub initAverage #&nbsp; (@args)
+{
+&nbsp;&nbsp;&nbsp; return { price_sum =&gt; 0 };
+}
+</pre>
+
+The other change in this example is that the sum gets directly added or subtracted in AO_AFTER_* instead of computing the sign first. It's all pretty much self-explanatory.

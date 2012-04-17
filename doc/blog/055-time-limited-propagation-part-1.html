@@ -1,0 +1,227 @@
+Time-limited propagation, part 1
+
+When aggregating data, often the results of the aggregation stay relevant longer than the original data.
+
+For example, in the financials the data gets collected and aggregated for the current business day. After the day is closed, the day's detailed data are not interesting any more, and can be deleted in preparation for the next day. However the daily results stay interesting for a long time, and may even be archived for years.
+
+This is not limited to the financials. A long time ago, in the times of slow and expensive Internet connections, I've done a traffic accounting system. It did the same: as the time went by, less and less detail was kept about the traffic usage. The modern accounting of the click-through advertisement also works in a similar way.
+
+An easy way to achieve this result is to put a filter on the way of the aggregation results. It would compare the current idea of time and the time in the rows going by, and throw away the rows that are too old. This can be done as a label that gets the data from the aggregator and then forwards or not the data to the real destination. This solves the propagation problem but as the obsolete original data gets deleted, the aggregator will still be churning and producing the updates, only to have them thrown away at the filter. A more efficient way is to stop the churn by placing the filter right into the aggregator.
+
+The next example demonstrates such an aggregator, in a simplified version of that traffic accounting system that I've once done. The example is actually about more than just stopping the data propagation. That stopping accounts for about 3 lines in it. But I also want to show a simple example of traffic accounting as such. And to show that the lack of the direct time support in Triceps does not stop you from doing any time-based processing. Because of this I'll show the whole example and not just snippets from it. But since the example is biggish, I'll paste it into the text in pieces with commentaries for each piece.
+
+<pre>our $uTraffic = Triceps::Unit-&gt;new("uTraffic") or die "$!";
+
+# one packet's header
+our $rtPacket = Triceps::RowType-&gt;new(
+&nbsp;&nbsp;&nbsp; time =&gt; "int64", # packet's timestamp, microseconds
+&nbsp;&nbsp;&nbsp; local_ip =&gt; "string", # string to make easier to read
+&nbsp;&nbsp;&nbsp; remote_ip =&gt; "string", # string to make easier to read
+&nbsp;&nbsp;&nbsp; local_port =&gt; "int32",
+&nbsp;&nbsp;&nbsp; remote_port =&gt; "int32",
+&nbsp;&nbsp;&nbsp; bytes =&gt; "int32", # size of the packet
+) or die "$!";
+
+# an hourly summary
+our $rtHourly = Triceps::RowType-&gt;new(
+&nbsp;&nbsp;&nbsp; time =&gt; "int64", # hour's timestamp, microseconds
+&nbsp;&nbsp;&nbsp; local_ip =&gt; "string", # string to make easier to read
+&nbsp;&nbsp;&nbsp; remote_ip =&gt; "string", # string to make easier to read
+&nbsp;&nbsp;&nbsp; bytes =&gt; "int64", # bytes sent in an hour
+) or die "$!";
+</pre>
+
+The router to the Internet provider forwards us the packet header information from all the packets that go though the outside link. The local_ip is always the address of a machine on our network, remote_ip outside our network, no matter in which direction the packet went. With a slow and expensive connection, we want to know two things: First, that the provider's billing at the end of the month is correct. Second, to be able to find out the high traffic users, and then maybe look whether that traffic was used for the business purposes or not.&nbsp; This example goes up to aggregation of the hourly summaries and then stops, since the further aggregation by days and months is straightforward to do.
+
+If there is no traffic for a while, the router is expected to periodically communicate its changing idea of time as the same kind of records but with the non-timestamp fields as NULLs. That by the way is the right way to communicate the time-based information between two machines: do not rely on any local synchronization and timeouts but have the master send the periodic time updates to the slave even if it has no data to send. The logic is then driven by the time reported by the master. A nice side effect is that the logic can also easily be replayed later, using these timestamps and without any concern of the real time. If there are multiple masters, the slave would have to order the data coming from them according to the timestamps, thus synchronizing them together.
+
+The hourly data drops the port information, and sums up the traffic between two addresses in the hour. It still has the timestamp but now this timestamp is rounded to the start of the hour:
+
+<pre># compute an hour-rounded timestamp
+sub hourStamp # (time)
+{
+&nbsp;&nbsp;&nbsp; return $_[0]&nbsp; - ($_[0] % (1000*1000*3600));
+}
+
+Next, to the aggregation:
+
+# the current hour stamp that keeps being updated
+our $currentHour;
+
+# aggregation handler: recalculate the summary for the last hour
+sub computeHourly # (table, context, aggop, opcode, rh, state, args...)
+{
+&nbsp;&nbsp;&nbsp; my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+&nbsp;&nbsp;&nbsp; our $currentHour;
+
+&nbsp;&nbsp;&nbsp; # don't send the NULL record after the group becomes empty
+&nbsp;&nbsp;&nbsp; return if ($context-&gt;groupSize()==0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; || $opcode == &amp;Triceps::OP_NOP);
+
+&nbsp;&nbsp;&nbsp; my $rhFirst = $context-&gt;begin();
+&nbsp;&nbsp;&nbsp; my $rFirst = $rhFirst-&gt;getRow();
+&nbsp;&nbsp;&nbsp; my $hourstamp = &amp;hourStamp($rFirst-&gt;get("time"));
+
+&nbsp;&nbsp;&nbsp; <b>return if ($hourstamp &lt; $currentHour);</b>
+
+&nbsp;&nbsp;&nbsp; if ($opcode == &amp;Triceps::OP_DELETE) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $context-&gt;send($opcode, $$state) or die "$!";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return;
+&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my $bytes = 0;
+&nbsp;&nbsp;&nbsp; for (my $rhi = $rhFirst; !$rhi-&gt;isNull();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rhi = $context-&gt;next($rhi)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $bytes += $rhi-&gt;getRow()-&gt;get("bytes");
+&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my $res = $context-&gt;resultType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; time =&gt; $hourstamp,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; local_ip =&gt; $rFirst-&gt;get("local_ip"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; remote_ip =&gt; $rFirst-&gt;get("remote_ip"),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bytes =&gt; $bytes,
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp;&nbsp;&nbsp; ${$state} = $res;
+&nbsp;&nbsp;&nbsp; $context-&gt;send($opcode, $res) or die "$!";
+}
+
+sub initHourly #&nbsp; (@args)
+{
+&nbsp;&nbsp;&nbsp; my $refvar;
+&nbsp;&nbsp;&nbsp; return \$refvar;
+}
+</pre>
+
+The aggregation doesn't try to optimize by being additive, to keep the example simpler. The model keeps the notion of the current hour. As soon as the hour stops being current, the aggregation for it stops. The result of that aggregation will then be kept unchanged in the hourly result table, no matter what happens to the original data.
+
+The tables are defined and connected thusly:
+
+<pre># the full stats for the recent time
+our $ttPackets = Triceps::TableType-&gt;new($rtPacket)
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byHour",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newPerlSorted("byHour", undef, sub {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; return &amp;hourStamp($_[0]-&gt;get("time")) &lt;=&gt; &amp;hourStamp($_[1]-&gt;get("time"));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; })
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byIP",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "local_ip", "remote_ip" ])
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("group",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;setAggregator(Triceps::AggregatorType-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $rtHourly, "aggrHourly", \&amp;initHourly, \&amp;computeHourly)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; )
+or die "$!";
+
+$ttPackets-&gt;initialize() or die "$!";
+our $tPackets = $uTraffic-&gt;makeTable($ttPackets,
+&nbsp;&nbsp;&nbsp; &amp;Triceps::EM_CALL, "tPackets") or die "$!";
+
+# the aggregated hourly stats, kept longer
+our $ttHourly = Triceps::TableType-&gt;new($rtHourly)
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byAggr",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; time =&gt; "ASC", local_ip =&gt; "ASC", remote_ip =&gt; "ASC")
+&nbsp;&nbsp;&nbsp; )
+or die "$!";
+
+$ttHourly-&gt;initialize() or die "$!";
+our $tHourly = $uTraffic-&gt;makeTable($ttHourly,
+&nbsp;&nbsp;&nbsp; &amp;Triceps::EM_CALL, "tHourly") or die "$!";
+
+# connect the tables
+$tPackets-&gt;getAggregatorLabel("aggrHourly")-&gt;chain($tHourly-&gt;getInputLabel())
+&nbsp;&nbsp;&nbsp; or die "$!";
+</pre>
+
+The table of incoming packets has a 3-level index: it starts with being sorted by the hour part of the timestamp, then goes by the ip addresses to complete the aggregation key, and then a FIFO for each aggregation group. Arguably, maybe it would have been better to include the ip addresses straight into the top-level sorting index, I don't know, and it doesn't seem worth measuring. The top-level ordering by the hour is important, it will be used to delete the rows that have become old.
+
+The table of hourly aggregated stats uses the same kind of index, only now there is no need for a FIFO because there is only one row per this key. And the timestamp is already rounded to the hour right in the rows, so a SimpleOrderedIndex can be used without writing a manual comparison function, and the ip fields have been merged into it too.
+
+The output of the aggregator on the packets table is connected to the input of the hourly table.
+
+The next part has to do with displaying the result of the work:
+
+<pre># a template to make a label that prints the data passing through another label
+sub makePrintLabel # ($print_label_name, $parent_label)
+{
+&nbsp;&nbsp;&nbsp; my $name = shift;
+&nbsp;&nbsp;&nbsp; my $lbParent = shift;
+&nbsp;&nbsp;&nbsp; my $lb = $lbParent-&gt;getUnit()-&gt;makeLabel($lbParent-&gt;getType(), $name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; undef, sub { # (label, rowop)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print($_[1]-&gt;printP(), "\n");
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }) or die "$!";
+&nbsp;&nbsp;&nbsp; $lbParent-&gt;chain($lb) or die "$!";
+&nbsp;&nbsp;&nbsp; return $lb;
+}
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $tPackets-&gt;getOutputLabel());
+# label to print the changes to the hourly stats
+makePrintLabel("lbPrintHourly", $tHourly-&gt;getOutputLabel());
+</pre>
+
+The printing of the result row gets reused pretty often, so I've made a simple template function for it, which would generate the label and the printing on it, and connect it where it belongs. It will probably eventually become a part of the Triceps library. That template is then used to generate the debugging printouts from both tables.
+
+Next go a couple of helper functions:
+
+<pre># dump a table's contents
+sub dumpTable # ($table)
+{
+&nbsp;&nbsp;&nbsp; my $table = shift;
+&nbsp;&nbsp;&nbsp; for (my $rhit = $table-&gt;begin(); !$rhit-&gt;isNull(); $rhit = $rhit-&gt;next()) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print($rhit-&gt;getRow()-&gt;printP(), "\n");
+&nbsp;&nbsp;&nbsp; }
+}
+
+# how long to keep the detailed data, hours
+our $keepHours = 2;
+
+# flush the data older than $keepHours from $tPackets
+sub flushOldPackets
+{
+&nbsp;&nbsp;&nbsp; my $earliest = $currentHour - $keepHours * (1000*1000*3600);
+&nbsp;&nbsp;&nbsp; my $next;
+&nbsp;&nbsp;&nbsp; # the default iteration of $tPackets goes in the hour stamp order
+&nbsp;&nbsp;&nbsp; for (my $rhit = $tPackets-&gt;begin(); !$rhit-&gt;isNull(); $rhit = $next) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; last if (&amp;hourStamp($rhit-&gt;getRow()-&gt;get("time")) &gt;= $earliest);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $next = $rhit-&gt;next(); # advance before removal
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $tPackets-&gt;remove($rhit);
+&nbsp;&nbsp;&nbsp; }
+}
+</pre>
+
+The dumpTable() is a straightforward iteration through a table and print. It can be used on any table, printP() takes care of any differences.
+
+The flushing goes through the packets table and deletes the rows that belong to an older hour than the current one or $keepHours before it. For this to work right, the rows must go in the order of the hour stamps, which the outer index "byHour" takes care of.
+
+All the time-related logic expects that the time never goes backwards. This is a simplification to make the example shorter, a production code can not assume this.
+
+And the final part is the main loop:
+
+<pre>while(&lt;STDIN&gt;) {
+&nbsp;&nbsp;&nbsp; chomp;
+&nbsp;&nbsp;&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp;&nbsp;&nbsp; my $type = shift @data;
+&nbsp;&nbsp;&nbsp; if ($type eq "new") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $rowop = $tPackets-&gt;getInputLabel()-&gt;makeRowopArray(@data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # update the current notion of time (simplistic)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $currentHour = &amp;hourStamp($rowop-&gt;getRow()-&gt;get("time"));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined($rowop-&gt;getRow()-&gt;get("local_ip"))) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uTraffic-&gt;call($rowop) or die "$!";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;flushOldPackets(); # flush the packets
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uTraffic-&gt;drainFrame(); # just in case, for completeness
+&nbsp;&nbsp;&nbsp; } elsif ($type eq "dumpPackets") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;dumpTable($tPackets);
+&nbsp;&nbsp;&nbsp; } elsif ($type eq "dumpHourly") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;dumpTable($tHourly);
+&nbsp;&nbsp;&nbsp; }
+}
+</pre>
+
+The input comes in the CSV form as a command followed by more data. If the command is "new" then the data is the opcode and data fields, as it would be sent by the router. The commands "dumpPackets" and "dumpHourly" are used to print the contents of the tables, to see, what is going on in them.
+
+In an honest implementation there would be a separate label that would differentiate between a reported packet and just a time update from the router. Here for simplicity this logic is placed right into the main loop. On each input record it updates the model's idea of the current timestamp, then if there is a packet data, it gets processed, and finally the rows that have become too old for the new timestamp get flushed.

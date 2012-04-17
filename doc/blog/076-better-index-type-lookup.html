@@ -1,0 +1,10 @@
+A better index type lookup
+
+I've been recently distracted with other things, and also I've been working on the joins, before writing about them. The joins were actually some of the first templates I wrote, but that's also why they look a bit dated compared to the newer stuff. I probably won't do all I wanted to do with them, but I'm at least cleaning them up a bit and adding some of the more recent features. This rework takes time.
+
+Along that way, I've extracted the logic that looks up the index types by path from SimpleAggregator and put it for reuse into TableType.&nbsp; Now it can get used like this:
+
+<pre>$indexType = $tableType-&gt;findIndexPath("primary", "fifo");
+</pre>
+
+The arguments form a path of names in the index type tree. If the path is not found, the function would confess (that is die, with a stack trace). An empty path is also illegal and would cause the same result.

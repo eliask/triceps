@@ -1,0 +1,211 @@
+Time-limited propagation, part 3
+
+In the last example if we keep aggregating the data from hours to days and the days to months, then the arrival of each new packet will update the whole chain. Sometimes that's what we want, sometimes it isn't. The daily stats might be fed into some complicated computation, with nobody looking at the results until the next day. In this situation each packet will trigger these complicated computations, for no good reason, since nobody cares of them until the day is closed.
+
+These unnecessary computations can be prevented by disconnecting the daily data from the hourly data, and performing the manual aggregation only when the day changes. Then these complicated computations would happen only once a day, not many times per second.
+
+Here is how the last example gets amended to produce the once-a-day daily summaries of all the traffic (as before, in multiple snippets, this time showing only the added or changed code):
+
+<pre># an hourly summary, now with the day extracted
+our $rtHourly = Triceps::RowType-&gt;new(
+&nbsp;&nbsp;&nbsp; time =&gt; "int64", # hour's timestamp, microseconds
+&nbsp;&nbsp;&nbsp; day =&gt; "string", # in YYYYMMDD
+&nbsp;&nbsp;&nbsp; local_ip =&gt; "string", # string to make easier to read
+&nbsp;&nbsp;&nbsp; remote_ip =&gt; "string", # string to make easier to read
+&nbsp;&nbsp;&nbsp; bytes =&gt; "int64", # bytes sent in an hour
+) or die "$!";
+
+# a daily summary: just all traffic for that day
+our $rtDaily = Triceps::RowType-&gt;new(
+&nbsp;&nbsp;&nbsp; day =&gt; "string", # in YYYYMMDD
+&nbsp;&nbsp;&nbsp; bytes =&gt; "int64", # bytes sent in an hour
+) or die "$!";
+</pre>
+
+The hourly rows get an extra field, for convenient aggregation by day. This notion of the day is calculated as:
+
+<pre># compute the date of a timestamp, a string YYYYMMDD
+sub dateStamp # (time)
+{
+&nbsp;&nbsp;&nbsp; my @ts = gmtime($_[0]/1000000); # microseconds to seconds
+&nbsp;&nbsp;&nbsp; return sprintf("%04d%02d%02d", $ts[5]+1900, $ts[4]+1, $ts[3]);
+}
+</pre>
+
+The calculation is done in GMT, so that the code produces the same result all around the world. If you're doing this kind of project for real, you may want to use the local time zone instead.
+
+The packets-to-hour aggregation function now populates this extra field:
+
+<pre>sub computeHourly # (table, context, aggop, opcode, rh, state, args...)
+{
+...
+&nbsp;&nbsp;&nbsp; my $res = $context-&gt;resultType()-&gt;makeRowHash(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; time =&gt; $hourstamp,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; day =&gt; &amp;dateStamp($hourstamp),
+&nbsp;...
+}
+</pre>
+
+And the model keeps a global notion of the current day in addition to the current hour:
+
+<pre># the current day stamp that keeps being updated
+our $currentDay;
+</pre>
+
+The hourly table type grows an extra secondary index for the manuall aggregation into the daily data:
+
+<pre># the aggregated hourly stats, kept longer
+our $ttHourly = Triceps::TableType-&gt;new($rtHourly)
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byAggr",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; time =&gt; "ASC", local_ip =&gt; "ASC", remote_ip =&gt; "ASC")
+&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byDay",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "day" ])
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("group",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newFifo()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )
+&nbsp;&nbsp;&nbsp; )
+or die "$!";
+
+# remember the daily secondary index type
+our $idxHourlyByDay = $ttHourly-&gt;findSubIndex("byDay")
+&nbsp;&nbsp;&nbsp; or die "$!";
+our $idxHourlyByDayGroup = $idxHourlyByDay-&gt;findSubIndex("group")
+&nbsp;&nbsp;&nbsp; or die "$!";
+</pre>
+
+And a table for the daily data is created but not connected to any other tables:
+
+<pre># the aggregated daily stats, kept even longer
+our $ttDaily = Triceps::TableType-&gt;new($rtDaily)
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byDay",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "day" ])
+&nbsp;&nbsp;&nbsp; )
+or die "$!";
+
+$ttDaily-&gt;initialize() or die "$!";
+our $tDaily = $uTraffic-&gt;makeTable($ttDaily,
+&nbsp;&nbsp;&nbsp; &amp;Triceps::EM_CALL, "tDaily") or die "$!";
+
+# label to print the changes to the daily stats
+makePrintLabel("lbPrintDaily", $tDaily-&gt;getOutputLabel());
+</pre>
+
+Instead it gets updated manually with the function that performs the manual aggregation of the hourly data:
+
+<pre>sub computeDay # ($dateStamp)
+{
+&nbsp;&nbsp;&nbsp; our $uTraffic;
+&nbsp;&nbsp;&nbsp; my $bytes = 0;
+
+&nbsp;&nbsp;&nbsp; my $rhFirst = $tHourly-&gt;findIdxBy($idxHourlyByDay, day =&gt; $_[0])
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp;&nbsp;&nbsp; my $rhEnd = $rhFirst-&gt;nextGroupIdx($idxHourlyByDayGroup)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp;&nbsp;&nbsp; for (my $rhi = $rhFirst;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; !$rhi-&gt;same($rhEnd); $rhi = $rhi-&gt;nextIdx($idxHourlyByDay)) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $bytes += $rhi-&gt;getRow()-&gt;get("bytes");
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; $uTraffic-&gt;makeHashCall($tDaily-&gt;getInputLabel(), "OP_INSERT",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; day =&gt; $_[0],
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bytes =&gt; $bytes,
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+}
+</pre>
+
+This logic doesn't check whether any data for that day existed. If none did, it would just produce a row with traffic of 0 bytes anyway. This is different from the normal aggregation but here may actually be desirable: it shows for sure that yes, the aggregation for that day really did happen.
+
+The main loop then gets extended with the day-keeping logic and with the extra command to dump the daily data:
+
+<pre>while(&lt;STDIN&gt;) {
+&nbsp;&nbsp;&nbsp; chomp;
+&nbsp;&nbsp;&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp;&nbsp;&nbsp; my $type = shift @data;
+&nbsp;&nbsp;&nbsp; if ($type eq "new") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $rowop = $tPackets-&gt;getInputLabel()-&gt;makeRowopArray(@data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # update the current notion of time (simplistic)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $currentHour = &amp;hourStamp($rowop-&gt;getRow()-&gt;get("time"));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $lastDay = $currentDay;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $currentDay = &amp;dateStamp($currentHour);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined($rowop-&gt;getRow()-&gt;get("local_ip"))) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uTraffic-&gt;call($rowop) or die "$!";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;flushOldPackets(); # flush the packets
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (defined $lastDay &amp;&amp; $lastDay ne $currentDay) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;computeDay($lastDay); # manual aggregation
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uTraffic-&gt;drainFrame(); # just in case, for completeness
+&nbsp;&nbsp;&nbsp; } elsif ($type eq "dumpPackets") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;dumpTable($tPackets);
+&nbsp;&nbsp;&nbsp; } elsif ($type eq "dumpHourly") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;dumpTable($tHourly);
+&nbsp;&nbsp;&nbsp; } elsif ($type eq "dumpDaily") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;dumpTable($tDaily);
+&nbsp;&nbsp;&nbsp; }
+}
+</pre>
+
+It now maintains the current day, and after the packet computation is done, looks, whether the day has changed. If it did, it calls the manual aggregation of the last day.
+
+And here is an example of its work:
+
+<pre><i>new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100</i>
+tPackets.out OP_INSERT time="1330886011000000" local_ip="1.2.3.4"
+&nbsp;remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+tHourly.out OP_INSERT time="1330884000000000" day="20120304"
+&nbsp;local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+<i>new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50</i>
+tPackets.out OP_INSERT time="1330886012000000" local_ip="1.2.3.4"
+&nbsp;remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+tHourly.out OP_DELETE time="1330884000000000" day="20120304"
+&nbsp;local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+tHourly.out OP_INSERT time="1330884000000000" day="20120304"
+&nbsp;local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+<i>new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300</i>
+tPackets.out OP_INSERT time="1330889811000000" local_ip="1.2.3.4"
+&nbsp;remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+tHourly.out OP_INSERT time="1330887600000000" day="20120304"
+&nbsp;local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
+</pre>
+
+So far all the 3 packets are for the same day, and nothing new has happened. 
+
+<pre><i>new,OP_INSERT,1330972411000000,1.2.3.5,5.6.7.9,3000,80,200</i>
+tPackets.out OP_INSERT time="1330972411000000" local_ip="1.2.3.5"
+&nbsp;remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
+tHourly.out OP_INSERT time="1330970400000000" day="20120305"
+&nbsp;local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+tPackets.out OP_DELETE time="1330886011000000" local_ip="1.2.3.4"
+&nbsp;remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+tPackets.out OP_DELETE time="1330886012000000" local_ip="1.2.3.4"
+&nbsp;remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+tPackets.out OP_DELETE time="1330889811000000" local_ip="1.2.3.4"
+&nbsp;remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+tDaily.out OP_INSERT day="20120304" bytes="450"
+</pre>
+
+When a packet for the next day arrives, it has three effects: (1) inserts the packet data as usual, (2) finds that the previous packet data is obsolete and flushes it (without upsetting the hourly summaries) and (3) finds that the day has changed and performs the manual aggregation of last day's hourly data into daily.
+
+<pre><i>new,OP_INSERT,1331058811000000</i>
+tPackets.out OP_DELETE time="1330972411000000" local_ip="1.2.3.5"
+&nbsp;remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
+tDaily.out OP_INSERT day="20120305" bytes="200" 
+</pre>
+
+A time update for the yet next day flushes out the previous day's detailed packets and again builds the daily summary of that day.
+
+<pre><i></i>new,OP_INSERT,1331145211000000
+tDaily.out OP_INSERT day="20120306" bytes="0" 
+</pre>
+
+Yet another day's time roll now has no old data to delete (since none arrived in the previous day) but still produces the daily summary of 0 bytes.
+
+<pre><i>dumpDaily</i>
+day="20120305" bytes="200" 
+day="20120304" bytes="450" 
+day="20120306" bytes="0" 
+</pre>
+
+This shows the eventual contents of the daily summaries. The order of the rows is fairly random, because of the hashed index. Note that the hourly summaries weren't flushed either, they are all still there too. If you want them eventually deleted after some time, you would need to provide more of the manual logic for that.

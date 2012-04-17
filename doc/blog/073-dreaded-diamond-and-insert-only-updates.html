@@ -1,0 +1,81 @@
+The dreaded diamond and insert-only updates
+
+The second problem with the diamond topology (see the diagram in the previous post) happens when the blocks B and C keep the state, and the input data gets updated by simply re-sending a record with the same key. This kind of updates is typical for the systems that do not have the concept of opcodes.
+
+Consider a CCL example (approximate, since I can't test it) that gets the securities borrow and loan event reports, differentiated by the sign of the quantity, and sums up the borrows and loans separately:
+
+<pre>create schema s_A (
+&nbsp; id integer, 
+&nbsp; symbol string,
+&nbsp; quantity long
+);
+create input stream i_A schema s_A;
+
+create schema s_D (
+&nbsp; symbol string,
+&nbsp; borrowed boolean, // flag: loaned or borrowed
+&nbsp; quantity long
+);
+create public window w_D schema s_D
+keep last per symbol, borrowed;
+
+create public window w_B schema s_A keep last per id;
+create public window w_C schema s_A keep last per id;
+
+insert when quantity &lt; 0
+  then w_B
+  else w_C
+select * from i_A; 
+
+insert into w_D
+select
+&nbsp; symbol,
+&nbsp; true,
+&nbsp; sum(quantity)
+group by symbol
+from w_B;
+
+insert into w_D
+select
+&nbsp; symbol,
+&nbsp; false,
+&nbsp; sum(quantity)
+group by symbol 
+from w_C;
+</pre>
+
+It works OK until a row with the same id gets updated to a different sign of quantity:
+
+<pre>1,AAA,100
+....
+1,AAA,-100
+</pre>
+
+If the quantity kept the same sign, the new row would simply replace the old one in w_B or w_C, and the aggregation result would be right again. But when the sign changes, the new row goes into a different direction than the previous one. Now it ends up with both w_B and w_C having rows with the same id: one old and one new!
+
+In this case really the problem is at the "fork" part of the "diamond", the merging part of it is just along for the ride, carrying the incorrect results.
+
+This problem does not happen in the systems that have both inserts and deletes. Then the data sequence becomes
+
+<pre>INSERT,1,AAA,100
+....
+DELETE,1,AAA,100
+INSERT,1,AAA,-100
+</pre>
+
+The DELETE goes along the same branch as the first insert and undoes its effect, then the second INSERT goes into the other branch.
+
+Since Triceps has both INSERT and DELETE opcodes, it's immune to this problem, as long as the input data has the correct DELETEs in it.
+
+If you wonder, the CCL example can be fixed too but in a more round-about way, by adding a couple of statements before the "insert-when" statement:
+
+<pre>on w_A
+delete from w_B
+  where w_A.id = w_B.id;
+
+on w_A
+delete from w_C
+  where w_A.id = w_C.id;
+</pre>
+
+This generates the matching deletes. Of course, if you want, you can use this way with Triceps too.

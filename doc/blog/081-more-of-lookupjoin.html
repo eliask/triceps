@@ -1,0 +1,62 @@
+More of LookupJoin
+
+Let's look at more ways the LookupJoin can be used. Here is another example:
+
+<pre>our $lbTrans = $uJoin-&gt;makeDummyLabel($rtInTrans, "lbTrans");
+
+our $join = Triceps::LookupJoin-&gt;new(
+&nbsp; name =&gt; "join",
+&nbsp; leftFromLabel =&gt; $lbTrans,
+&nbsp; rightTable =&gt; $tAccounts,
+&nbsp; rightIdxPath =&gt; ["lookupSrcExt"],
+&nbsp; leftFields =&gt; [ "id", "amount" ],
+&nbsp; fieldsLeftFirst =&gt; 0,
+&nbsp; rightFields =&gt; [ "internal/acct" ],
+&nbsp; by =&gt; [ "acctSrc" =&gt; "source", "acctXtrId" =&gt; "external" ],
+&nbsp; isLeft =&gt; 0,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrintPackets", $join-&gt;getOutputLabel());
+
+while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp; my $type = shift @data;
+&nbsp; if ($type eq "acct") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($tAccounts-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; } elsif ($type eq "trans") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($lbTrans, @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; }
+&nbsp; $uJoin-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+
+This specifies the left-side data in another way: the option "leftFromLabel" provides a label which in turn provides both the input row type and the unit. You can still specify the unit option as well but it must match the one in the label. The join still has its own input label but it gets automatically chained to the one in the option.
+
+The other options demonstrate the possibilities described in the last post. This time it's an inner join, the result has the right-side fields going first, and the left-side fields are filtered in the result.
+
+Another way to achieve the same filtering of the left-side fields would be by throwing away everything starting with "acct" and passing through the rest:
+
+<pre>&nbsp; leftFields =&gt; [ "!acct.*", ".*" ],
+</pre>
+
+And here is an example of a run:
+
+<pre><i>acct,OP_INSERT,source1,999,1
+acct,OP_INSERT,source1,2011,2
+acct,OP_INSERT,source2,ABCD,1
+trans,OP_INSERT,1,source1,999,100</i>
+join.out OP_INSERT acct="1" id="1" amount="100" 
+<i>trans,OP_INSERT,2,source2,ABCD,200</i>
+join.out OP_INSERT acct="1" id="2" amount="200" 
+<i>trans,OP_INSERT,3,source2,QWERTY,200
+acct,OP_INSERT,source2,QWERTY,2
+trans,OP_DELETE,3,source2,QWERTY,200</i>
+join.out OP_DELETE acct="2" id="3" amount="200" 
+<i>acct,OP_DELETE,source1,999,1</i>
+</pre>
+
+The input data is the same as the last time, but the result is different. Since it's an inner join, the rows that don't find a match don't pass through. And of course the fields are ordered and subsetted differently in the result.
