@@ -11,9 +11,8 @@ use Carp;
 use strict;
 
 # Options:
-# unit - unit object
 # name - name of this object (will be used to create the names of internal objects)
-# leftTable - table object to join
+# leftTable - table object to join (both tables must be of the same unit)
 # rightTable - table object to join
 # leftIdxPath - array reference containing the path name of index type 
 #    in the left table used for look-up,
@@ -51,7 +50,6 @@ use strict;
 #
 #    XXX add ability to map the join condition fields from both source rows into the
 #    same fields of the result, the joiner knowing how to handle this correctly.
-#    XXX check that the unit matches? make unit unneeded
 #    XXX add separate labels for left and right, to allow filtering
 sub new # (class, optionName => optionValue ...)
 {
@@ -63,7 +61,6 @@ sub new # (class, optionName => optionValue ...)
 	# LookupJoin of the other table
 
 	&Triceps::Opt::parse($class, $self, {
-			unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			leftTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
@@ -80,6 +77,11 @@ sub new # (class, optionName => optionValue ...)
 
 	Carp::confess("Self-joins (the same table on both sides) are not supported") 
 		if $self->{leftTable}->same($self->{rightTable});
+
+	$self->{unit} = $self->{leftTable}->getUnit();
+	my $rightUnit = $self->{rightTable}->getUnit();
+	Carp::confess("Both tables must have the same unit, got '" . $self->{unit}->getName() . "' and '" . $rightUnit->getName() . "'") 
+		unless($self->{unit}->same($rightUnit));
 
 	my ($leftLeft, $rightLeft);
 	if ($self->{type} eq "inner") {

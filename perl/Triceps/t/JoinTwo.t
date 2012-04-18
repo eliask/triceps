@@ -187,7 +187,6 @@ ok($tTrans3p->getOutputLabel()->chain($labTrans3p));
 # (also save the joiners)
 my($codeLeft, $codeRight);
 my $join3a = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3a",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -209,7 +208,6 @@ ok($join3a->getOutputLabel()->chain($outlab3a));
 
 # outer - with leaf index on left, and fields backwards
 my $join3b = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3b",
 	leftTable => $tTrans3p,
 	rightTable => $tAccounts3,
@@ -228,7 +226,6 @@ ok($join3b->getOutputLabel()->chain($outlab3b));
 
 # left
 my $join3c = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3c",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -246,7 +243,6 @@ ok($join3c->getOutputLabel()->chain($outlab3c));
 
 # right - with leaf index on left
 my $join3d = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3d",
 	leftTable => $tTrans3p,
 	rightTable => $tAccounts3,
@@ -264,7 +260,6 @@ ok($join3d->getOutputLabel()->chain($outlab3d));
 
 # inner - simpleMinded
 my $join3e = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3e",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -283,7 +278,6 @@ ok($join3e->getOutputLabel()->chain($outlab3e));
 
 # left - simpleMinded
 my $join3f = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3f",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -302,7 +296,6 @@ ok($join3f->getOutputLabel()->chain($outlab3f));
 
 # right - simpleMinded
 my $join3g = Triceps::JoinTwo->new(
-	unit => $vu3,
 	name => "join3g",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
