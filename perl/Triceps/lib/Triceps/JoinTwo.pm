@@ -39,6 +39,10 @@ use strict;
 #        right - left index must be leaf (i.e. a primary index, with 1 record per key)
 #        outer - both indexes must be leaf (i.e. a primary index, with 1 record per key)
 #    This can be overriden by setting simpleMinded => 1.
+# leftSaveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
+#    source code for the left side
+# rightSaveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
+#    source code for the right side
 # simpleMinded (optional) - do not try to create the correct DELETE-INSERT sequence
 #    for updates, just produce records with the same opcode as the incoming ones.
 #    The data produced is outright garbage, this option is here is purely for
@@ -49,7 +53,6 @@ use strict;
 #    same fields of the result, the joiner knowing how to handle this correctly.
 #    XXX check that the unit matches? make unit unneeded
 #    XXX add separate labels for left and right, to allow filtering
-#    XXX add saveJoinerTo
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -70,6 +73,8 @@ sub new # (class, optionName => optionValue ...)
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
 			type => [ "inner", undef ],
+			leftSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+			rightSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			simpleMinded => [ 0, undef ],
 		}, @_);
 
@@ -158,6 +163,7 @@ sub new # (class, optionName => optionValue ...)
 		isLeft => $leftLeft,
 		automatic => 1,
 		oppositeOuter => ($rightLeft && !$self->{simpleMinded}),
+		saveJoinerTo => $self->{leftSaveJoinerTo},
 	);
 	$self->{rightLookup} = Triceps::LookupJoin->new(
 		unit => $self->{unit},
@@ -172,6 +178,7 @@ sub new # (class, optionName => optionValue ...)
 		isLeft => $rightLeft,
 		automatic => 1,
 		oppositeOuter => ($leftLeft && !$self->{simpleMinded}),
+		saveJoinerTo => $self->{rightSaveJoinerTo},
 	);
 
 	# create the output label

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 55 };
+BEGIN { plan tests => 57 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -184,6 +184,8 @@ ok($tTrans3p->getOutputLabel()->chain($labTrans3p));
 
 # create the joins
 # inner
+# (also save the joiners)
+my($codeLeft, $codeRight);
 my $join3a = Triceps::JoinTwo->new(
 	unit => $vu3,
 	name => "join3a",
@@ -194,8 +196,12 @@ my $join3a = Triceps::JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	type => "inner",
+	leftSaveJoinerTo => \$codeLeft,
+	rightSaveJoinerTo => \$codeRight,
 );
 ok(ref $join3a, "Triceps::JoinTwo");
+ok($codeLeft =~ /^\s+sub # \(\$inLabel, \$rowop, \$self\)/);
+ok($codeRight =~ /^\s+sub # \(\$inLabel, \$rowop, \$self\)/);
 
 my $outlab3a = $vu3->makeLabel($join3a->getResultRowType(), "out3a", undef, sub { $result3a .= $_[1]->printP() . "\n" } );
 ok(ref $outlab3a, "Triceps::Label");
