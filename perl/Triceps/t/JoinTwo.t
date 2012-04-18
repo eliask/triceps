@@ -201,7 +201,7 @@ my $outlab3a = $vu3->makeLabel($join3a->getResultRowType(), "out3a", undef, sub 
 ok(ref $outlab3a, "Triceps::Label");
 ok($join3a->getOutputLabel()->chain($outlab3a));
 
-# outer - with leaf index on left
+# outer - with leaf index on left, and fields backwards
 my $join3b = Triceps::JoinTwo->new(
 	unit => $vu3,
 	name => "join3b",
@@ -211,6 +211,7 @@ my $join3b = Triceps::JoinTwo->new(
 	rightIdxPath => ["lookupSrcExt"],
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	fieldsLeftFirst => 0,
 	type => "outer",
 );
 ok(ref $join3b, "Triceps::JoinTwo");
@@ -361,23 +362,23 @@ join3a.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount
 ok ($result3b, 
 'join3b.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
-join3b.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
 join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
 join3b.rightLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
 join3b.leftLookup.out OP_DELETE ac_source="source2" ac_external="ABCD" ac_internal="1" 
-join3b.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3b.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
 join3b.leftLookup.out OP_INSERT id="3" acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
-join3b.leftLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" 
 join3b.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" 
-join3b.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
-join3b.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
+join3b.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3b.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
 join3b.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" 
 join3b.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" 
-join3b.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
+join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="4" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
 join3b.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
-join3b.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
+join3b.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" acctSrc="source1" acctXtrId="2011" amount="500" 
 ');
 ok ($result3c, 
 'join3c.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 

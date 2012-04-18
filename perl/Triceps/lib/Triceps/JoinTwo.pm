@@ -29,6 +29,8 @@ use strict;
 # rightFields (optional) - reference to array of patterns for right fields to pass through,
 #    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 #    (which may results with the join-condition fields copied twice from both tables).
+# fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
+#    the left record first, then from right record, or if 0, then opposite. (default:1)
 # type (optional) - one of: "inner" (default), "left", "right", "outer".
 #    For correctness purposes, there are limitations on what outer joins
 #    can be used with which indexes:
@@ -45,6 +47,9 @@ use strict;
 #
 #    XXX add ability to map the join condition fields from both source rows into the
 #    same fields of the result, the joiner knowing how to handle this correctly.
+#    XXX check that the unit matches? make unit unneeded
+#    XXX add separate labels for left and right, to allow filtering
+#    XXX add saveJoinerTo
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -63,6 +68,7 @@ sub new # (class, optionName => optionValue ...)
 			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			fieldsLeftFirst => [ 1, undef ],
 			type => [ "inner", undef ],
 			simpleMinded => [ 0, undef ],
 		}, @_);
@@ -147,7 +153,7 @@ sub new # (class, optionName => optionValue ...)
 		rightIdxPath => $self->{rightIdxPath},
 		leftFields => $self->{leftFields},
 		rightFields => $self->{rightFields},
-		fieldsLeftFirst => 1,
+		fieldsLeftFirst => $self->{fieldsLeftFirst},
 		by => \@leftby,
 		isLeft => $leftLeft,
 		automatic => 1,
@@ -161,7 +167,7 @@ sub new # (class, optionName => optionValue ...)
 		rightIdxPath => $self->{leftIdxPath},
 		leftFields => $self->{rightFields},
 		rightFields => $self->{leftFields},
-		fieldsLeftFirst => 0,
+		fieldsLeftFirst => !$self->{fieldsLeftFirst},
 		by => \@rightby,
 		isLeft => $rightLeft,
 		automatic => 1,
