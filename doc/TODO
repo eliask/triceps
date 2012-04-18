@@ -1,7 +1,17 @@
 Things that need to be done:
 * redo the errors to confess
 * go through the docs and add all the issues mentioned there to here
+* doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
-* finish the SimpleAggregator
-* doc: explain why sending the timestamps from the master is the right synchronization
-* in joins separate the feed stream and table look-ups, for time-limited propagation
+* more features for the SimpleAggregator
+* in RowHandle add getTable()
+* add the row contents access methods directly on a row handle?
+* in Row add the array index argument in get()
+* identify a group for iteration by the pair (parent index type, leaf index type)
+* groupSize() outside of the aggregator context
+* iteration backwards
+* an encapsulation of iteration range: begin, end, direction, maybe level of the step
+* add $unit->makeLabelFrom() - a computational block with input and output labels,
+  input chained from another label
+* add $label->relabelRowop()
+* add option fromLabel throughout templates
