@@ -14,6 +14,14 @@ use strict;
 # name - name of this object (will be used to create the names of internal objects)
 # leftTable - table object to join (both tables must be of the same unit)
 # rightTable - table object to join
+# leftFromLabel (optional) - the label from which to react to the rows on the
+#    left side (default: leftTable's output label), can be used to filter
+#    out some of the input. THIS IS DANGEROUS! To preserve consistency, always
+#    filter by key field(s) only, and the same condition on the left and right.
+# rightFromLabel (optional) - the label from which to react to the rows on the
+#    right side (default: rightTable's output label), can be used to filter
+#    out some of the input. THIS IS DANGEROUS! To preserve consistency, always
+#    filter by key field(s) only, and the same condition on the left and right.
 # leftIdxPath - array reference containing the path name of index type 
 #    in the left table used for look-up,
 #    index absolutely must be a Hash (leaf or not), not of any other kind
@@ -50,7 +58,6 @@ use strict;
 #
 #    XXX add ability to map the join condition fields from both source rows into the
 #    same fields of the result, the joiner knowing how to handle this correctly.
-#    XXX add separate labels for left and right, to allow filtering
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -64,6 +71,8 @@ sub new # (class, optionName => optionValue ...)
 			name => [ undef, \&Triceps::Opt::ck_mandatory ],
 			leftTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+			leftFromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
+			rightFromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
 			leftIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
@@ -111,8 +120,20 @@ sub new # (class, optionName => optionValue ...)
 	my %rightmap = $self->{rightRowType}->getFieldMapping();
 	my @rightfld = $self->{rightRowType}->getFieldNames();
 
-	# compare the index definitions, check that the fields match
+	# find the feed labels, compare the index definitions, check that the fields match
 	for my $side ( ("left", "right") ) {
+		if (defined $self->{"${side}FromLabel"}) {
+			Carp::confess("The ${side}FromLabel unit does not match ${side}Table, '" 
+					. $self->{"${side}FromLabel"}->getUnit()->getName() . "' vs '" . $self->{unit}->getName() . "'")
+				unless $self->{unit}->same($self->{"${side}FromLabel"}->getUnit());
+			Carp::confess("The ${side}FromLabel row type does not match ${side}Table,\nin label:\n  " 
+					. $self->{"${side}FromLabel"}->getType()->print("  ") . "\nin table:\n  " 
+					. $self->{"${side}Table"}->getRowType()->print("  "))
+				unless $self->{"${side}Table"}->getRowType()->match($self->{"${side}FromLabel"}->getType());
+		} else {
+			$self->{"${side}FromLabel"} = $self->{"${side}Table"}->getOutputLabel();
+		}
+
 		$self->{"${side}IdxType"} = $self->{"${side}Table"}->getType()->findIndexPath(@{$self->{"${side}IdxPath"}});
 		# would already confess if the index is not found
 		#Carp::confess("The $side table does not have a top-level index '" . $self->{"${side}Index"} . "' for joining")
@@ -188,8 +209,8 @@ sub new # (class, optionName => optionValue ...)
 	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
 
 	# and connect them together
-	$self->{leftTable}->getOutputLabel()->chain($self->{leftLookup}->getInputLabel());
-	$self->{rightTable}->getOutputLabel()->chain($self->{rightLookup}->getInputLabel());
+	$self->{leftFromLabel}->chain($self->{leftLookup}->getInputLabel());
+	$self->{rightFromLabel}->chain($self->{rightLookup}->getInputLabel());
 	$self->{leftLookup}->getOutputLabel()->chain($self->{outputLabel});
 	$self->{rightLookup}->getOutputLabel()->chain($self->{outputLabel});
 

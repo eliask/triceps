@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 57 };
+BEGIN { plan tests => 61 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -107,7 +107,7 @@ $vu3 = Triceps::Unit->new("vu3");
 ok(ref $vu3, "Triceps::Unit");
 
 # this will record the results
-my ($result3a, $result3b, $result3c, $result3d, $result3e, $result3f, $result3g);
+my ($result3a, $result3b, $result3c, $result3d, $result3e, $result3f, $result3g, $result3h);
 
 # the accounts table type is also reused from example (1)
 $tAccounts3 = $vu3->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
@@ -312,6 +312,47 @@ my $outlab3g = $vu3->makeLabel($join3g->getResultRowType(), "out3g", undef, sub 
 ok(ref $outlab3g, "Triceps::Label");
 ok($join3g->getOutputLabel()->chain($outlab3g));
 
+# full outer (same as 3b) but with filtering on the input labels
+# (this is a bad example with inconsistent filtering, a good one would filter
+# by a key field, same on both sides, by the same condition)
+
+my $lbLeft3h = $vu3->makeDummyLabel($tTrans3p->getRowType(), "lbLeft3h");
+my $lbFilterLeft3h = $vu3->makeLabel($tTrans3p->getRowType(), "lbFilterLeft3h", undef, sub {
+	my $rowop = $_[1];
+	my $row = $rowop->getRow();
+	if ($row->get("id") != 1) {
+		$vu3->call($lbLeft3h->makeRowop($rowop->getOpcode(), $row));
+	}
+});
+$tTrans3p->getOutputLabel()->chain($lbFilterLeft3h);
+my $lbRight3h = $vu3->makeDummyLabel($tAccounts3->getRowType(), "lbRight3h");
+my $lbFilterRight3h = $vu3->makeLabel($tAccounts3->getRowType(), "lbFilterRight3h", undef, sub {
+	my $rowop = $_[1];
+	my $row = $rowop->getRow();
+	if ($row->get("external") ne "42") {
+		$vu3->call($lbRight3h->makeRowop($rowop->getOpcode(), $row));
+	}
+});
+$tAccounts3->getOutputLabel()->chain($lbFilterRight3h);
+my $join3h = Triceps::JoinTwo->new(
+	name => "join3h",
+	leftTable => $tTrans3p,
+	leftFromLabel => $lbLeft3h,
+	rightTable => $tAccounts3,
+	rightFromLabel => $lbRight3h,
+	leftIdxPath => ["byAccount"],
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	fieldsLeftFirst => 0,
+	type => "outer",
+);
+ok(ref $join3h, "Triceps::JoinTwo");
+
+my $outlab3h = $vu3->makeLabel($join3h->getResultRowType(), "out3h", undef, sub { $result3h .= $_[1]->printP() . "\n" } );
+ok(ref $outlab3h, "Triceps::Label");
+ok($join3h->getOutputLabel()->chain($outlab3h));
+
 # now send the data
 # helper function to feed the input data to a mix of labels
 # @param dataArray - ref to an array of row descriptions, each of which is a ref to array of:
@@ -450,6 +491,24 @@ join3g.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount
 join3g.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3g.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3g.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
+');
+# the result is inconsistent because of the filtering not being consistent
+ok ($result3h, 
+'join3h.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3h.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3h.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
+join3h.rightLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3h.leftLookup.out OP_DELETE ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3h.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join3h.leftLookup.out OP_INSERT id="3" acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join3h.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" 
+join3h.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3h.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3h.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3h.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3h.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="4" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3h.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
+join3h.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" acctSrc="source1" acctXtrId="2011" amount="500" 
 ');
 
 # for debugging
