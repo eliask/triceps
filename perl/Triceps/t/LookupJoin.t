@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 154 };
+BEGIN { plan tests => 236 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -309,6 +309,101 @@ ok($join2ab->getOutputLabel()->chain($outlab2b));
 my $inlab2b = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2b, "Triceps::Label");
 ok($inlab2b->chain($join2ab->getInputLabel()));
+
+
+###############################################################
+# Now repeat the test 2a and preparation for 2b but with fieldsMirrorKey==1, and 
+# to see its result with a copy of all the fields on the right.
+
+#########
+# (2xa) left join with an exactly-matching key that automatically triggers
+# the limitOne flag to be true, using the direct lookup() call
+
+$join2xab = Triceps::LookupJoin->new( # will be used in both (2xa) and (2xb)
+	unit => $vu2,
+	name => "join2xab",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2,
+	rightIdxPath => ["lookupSrcExt"],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+	automatic => 0,
+	fieldsMirrorKey => 1,
+);
+ok(ref $join2xab, "Triceps::LookupJoin");
+
+sub calljoin2x # ($label, $rowop, $join, $resultLab)
+{
+	my ($label, $rowop, $join, $resultLab) = @_;
+
+	$result2 .= $rowop->printP() . "\n";
+
+	my $opcode = $rowop->getOpcode(); # pass the opcode
+
+	my @resRows = $join->lookup($rowop->getRow());
+	foreach my $resultRow( @resRows ) {
+		my $resultRowop = $resultLab->makeRowop($opcode, $resultRow);
+		Carp::confess("$!") unless defined $resultRowop;
+		Carp::confess("$!") 
+			unless $resultLab->getUnit()->call($resultRowop);
+	}
+}
+
+my $outlab2xa = $vu2->makeLabel($join2xab->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xa, "Triceps::Label");
+
+my $inlab2xa = $vu2->makeLabel($rtInTrans, "in", undef, \&calljoin2x, $join2xab, $outlab2xa);
+ok(ref $inlab2xa, "Triceps::Label");
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xa, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2xa, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2xa = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" source="source3" external="ZZZZ" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+out OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+out OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" source="source3" external="ZZZZ" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
+';
+ok($result2, $expect2xa);
+
+#########
+# define the labels for (2xb), doing it only once
+
+my $outlab2xb = $vu2->makeLabel($join2xab->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xb, "Triceps::Label");
+
+ok(ref $join2xab->getInputLabel(), "Triceps::Label");
+ok(ref $join2xab->getOutputLabel(), "Triceps::Label");
+
+# the output
+ok($join2xab->getOutputLabel()->chain($outlab2xb));
+
+# this is purely to keep track of the input in the log
+my $inlab2xb = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2xb, "Triceps::Label");
+ok($inlab2xb->chain($join2xab->getInputLabel()));
+
 
 
 #########
@@ -616,6 +711,309 @@ join2f.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 ';
 ok($result2, $expect2f);
 
+###############################################################
+# Now repeat all the same but with fieldsMirrorKey==1, and 
+# to see its result with a copy of all the fields on the right.
+
+#########
+# (2xb) Exact same as 2xa, even reuse the same join, but work through its labels
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xb, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2xb, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# expect same result as in test 1, except for different label names
+# (since when a rowop is printed, it prints the name of the label for which it was created)
+$expect2xb = $expect2xa;
+$expect2xb =~ s/out OP/join2xab.out OP/g;
+ok($result2, $expect2xb);
+
+
+#########
+# (2xc) inner join with an exactly-matching key that automatically triggers
+# the limitOne flag to be true, using the labels
+
+# reuses the same table, whih is already populated
+
+$join2xc = Triceps::LookupJoin->new(
+	unit => $vu2,
+	name => "join2xc",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2,
+	rightIdxPath => ["lookupSrcExt"],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 0,
+	automatic => $auto,
+	fieldsMirrorKey => 1,
+);
+ok(ref $join2xc, "Triceps::LookupJoin");
+
+my $outlab2xc = $vu2->makeLabel($join2xc->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xc, "Triceps::Label");
+
+ok(ref $join2xc->getInputLabel(), "Triceps::Label");
+ok(ref $join2xc->getOutputLabel(), "Triceps::Label");
+
+# the output
+ok($join2xc->getOutputLabel()->chain($outlab2xc));
+
+# this is purely to keep track of the input in the log
+my $inlab2xc = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2xc, "Triceps::Label");
+ok($inlab2xc->chain($join2xc->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xc, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2xc, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# now the rows with empty right side must be missing
+$expect2xc = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2xc.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xc.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xc.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2xc.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xc.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xc.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2xc);
+
+#########
+# (2xd) inner join with limitOne = 0
+
+# the accounts table will have 2 copies of each record, for tests (d) and (e)
+$ttAccounts2xde = Triceps::TableType->new($rtAccounts)
+	# muliple indexes can be defined for different purposes
+	# (though of course each extra index adds overhead)
+	->addSubIndex("lookupSrcExt", # quick look-up by source and external id
+		Triceps::IndexType->newHashed(key => [ "source", "external" ])
+		->addSubIndex("fifo", Triceps::IndexType->newFifo())
+	)
+; 
+ok(ref $ttAccounts2xde, "Triceps::TableType");
+
+$res = $ttAccounts2xde->initialize();
+ok($res, 1);
+
+$tAccounts2xde = $vu2->makeTable($ttAccounts2xde, &Triceps::EM_CALL, "Accounts2xde");
+ok(ref $tAccounts2xde, "Triceps::Table");
+
+# fill the accounts table
+&feedInput($tAccounts2xde->getInputLabel(), &Triceps::OP_INSERT, \@accountData);
+@accountData2xde = ( # the second records, with different internal accounts
+	[ "source1", "999", 11 ],
+	[ "source1", "2011", 12 ],
+	[ "source1", "42", 13 ],
+	[ "source2", "ABCD", 11 ],
+	[ "source2", "QWERTY", 12 ],
+	[ "source2", "UIOP", 14 ],
+);
+&feedInput($tAccounts2xde->getInputLabel(), &Triceps::OP_INSERT, \@accountData2xde);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+# inner join with no limit to 1 record
+$join2xd = Triceps::LookupJoin->new(
+	unit => $vu2,
+	name => "join2xd",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2xde,
+	rightIdxPath => ["lookupSrcExt"],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 0,
+	automatic => $auto,
+	fieldsMirrorKey => 1,
+);
+ok(ref $join2xd, "Triceps::LookupJoin");
+
+my $outlab2xd = $vu2->makeLabel($join2xd->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xd, "Triceps::Label");
+
+# the output
+ok($join2xd->getOutputLabel()->chain($outlab2xd));
+
+# this is purely to keep track of the input in the log
+my $inlab2xd = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2xd, "Triceps::Label");
+ok($inlab2xd->chain($join2xd->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xd, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2xd, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+# now the rows with empty right side must be missing
+$expect2xd = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2xd.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+join2xd.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="11" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xd.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+join2xd.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="11" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xd.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+join2xd.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="12" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2xd.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+join2xd.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="11" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xd.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+join2xd.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="11" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xd.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+join2xd.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="12" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2xd);
+
+#########
+# (2xe) left join with limitOne = 0
+
+# left join with no limit to 1 record
+$join2xe = Triceps::LookupJoin->new(
+	unit => $vu2,
+	name => "join2xe",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts2xde,
+	rightIdxPath => ["lookupSrcExt"],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+	automatic => $auto,
+	fieldsMirrorKey => 1,
+);
+ok(ref $join2xe, "Triceps::LookupJoin");
+
+my $outlab2xe = $vu2->makeLabel($join2xe->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xe, "Triceps::Label");
+
+# the output
+ok($join2xe->getOutputLabel()->chain($outlab2xe));
+
+# this is purely to keep track of the input in the log
+my $inlab2xe = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2xe, "Triceps::Label");
+ok($inlab2xe->chain($join2xe->getInputLabel()));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xe, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2xe, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2xe = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2xe.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+join2xe.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="11" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xe.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+join2xe.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="11" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2xe.out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" source="source3" external="ZZZZ" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xe.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+join2xe.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="12" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2xe.out OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2xe.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+join2xe.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="11" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xe.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+join2xe.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="11" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2xe.out OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" source="source3" external="ZZZZ" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xe.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+join2xe.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="12" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2xe.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
+';
+ok($result2, $expect2xe);
+
+#########
+# (2xf) left join with limitOne = 1, and multiple records available
+# also test the leftFromLabel here
+
+# this is purely to keep track of the input in the log
+my $inlab2xf = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2xf, "Triceps::Label");
+
+$join2xf = Triceps::LookupJoin->new(
+	name => "join2xf",
+	leftFromLabel => $inlab2xf,
+	rightTable => $tAccounts2xde,
+	rightIdxPath => ["lookupSrcExt"],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+	limitOne => 1,
+	automatic => $auto,
+	fieldsMirrorKey => 1,
+);
+ok(ref $join2xf, "Triceps::LookupJoin");
+
+my $outlab2xf = $vu2->makeLabel($join2xf->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xf, "Triceps::Label");
+
+# the output
+ok($join2xf->getOutputLabel()->chain($outlab2xf));
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xf, &Triceps::OP_INSERT, \@incomingData);
+&feedInput($inlab2xf, &Triceps::OP_DELETE, \@incomingData);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2xf = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2xf.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xf.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2xf.out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" source="source3" external="ZZZZ" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xf.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2xf.out OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
+in OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" 
+join2xf.out OP_DELETE acctSrc="source1" acctXtrId="999" amount="100" source="source1" external="999" internal="1" 
+in OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xf.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" amount="200" source="source2" external="ABCD" internal="1" 
+in OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2xf.out OP_DELETE acctSrc="source3" acctXtrId="ZZZZ" amount="300" source="source3" external="ZZZZ" 
+in OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xf.out OP_DELETE acctSrc="source1" acctXtrId="2011" amount="400" source="source1" external="2011" internal="2" 
+in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2xf.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
+';
+ok($result2, $expect2xf);
+
 }
 
 &automaticAndNot(0);
@@ -697,6 +1095,7 @@ ok($result2, $expect2f);
 	ok(! defined $join->getLeftFields());
 	ok(join(",", @{$join->getRightFields()}), "internal/acct");
 	ok($join->getFieldsLeftFirst(), 1);
+	ok($join->getFieldsMirrorKey(), 0);
 	ok(join(",", @{$join->getBy()}), "acctSrc,source,acctXtrId,external");
 	ok($join->getIsLeft(), 1); # the default
 	ok($join->getLimitOne(), 1); # got auto-detected as 1

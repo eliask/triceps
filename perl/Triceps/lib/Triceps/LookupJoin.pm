@@ -28,18 +28,22 @@ use strict;
 #    index, so override it)
 # fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
 #    the left record first, then from right record, or if 0, then opposite. (default:1)
+# fieldsMirrorKey (optional) - flag: even if the row on the right is not found,
+#    the key fields from it would still be present in the result by mirroring
+#    them from the left side.
+#    (default: 0) Used by JoinTwo.
 # by - reference to array, containing pairs of field names used for look-up,
 #    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
 #    XXX should allow an arbitrary expression on the left?
-# isLeft (optional) - 1 for left join, 0 for full join (default: 1)
+# isLeft (optional) - 1 for left outer join, 0 for inner join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
 # automatic (optional) - 1 means that the lookup() method will never be called
 #    manually, this allows to optimize the label handler and always take the opcode 
 #    into account when processing the rows, 0 that lookup() will be used. (default: 1)
 # oppositeOuter (optional) - used with automatic only, flag: this is a half of a JoinTwo, 
 #    and the other half performs an outer (from its standpoint, left) join. For this side,
-#    this means that a successfull lookup must generate a DELETE-INSERT pair.
-#    (default: 0)
+#    this means that it's a right outer join and a successful lookup must generate a DELETE-INSERT pair.
+#    (default: 0) Used by JoinTwo.
 # saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code
 sub new # (class, optionName => optionValue ...)
@@ -57,6 +61,7 @@ sub new # (class, optionName => optionValue ...)
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
+			fieldsMirrorKey => [ 0, undef ],
 			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
@@ -274,7 +279,7 @@ sub new # (class, optionName => optionValue ...)
 		';
 	if ($self->{limitOne}) { # an optimized version that returns no more than one row
 		if (! $self->{isLeft}) {
-			# a shortcut for full join if nothing is found
+			# a shortcut for inner join if nothing is found
 			$genjoin .= '
 			return () if $rh->isNull();
 			#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
@@ -287,6 +292,13 @@ sub new # (class, optionName => optionValue ...)
 				@rightdata = $rh->getRow()->toArray();
 			}
 ';
+			if ($self->{fieldsMirrorKey}) {
+				$genjoin .= '
+			else {
+				@rightdata = $lookuprow->toArray();
+			}
+';
+			}
 		}
 		if ($auto && $self->{oppositeOuter}) {
 			$genjoin .= '
@@ -299,7 +311,15 @@ sub new # (class, optionName => optionValue ...)
 ' . $genoppdata . '
 				}
 			} else {
-' . $genresdata . '
+';
+
+			if ($self->{fieldsMirrorKey}) {
+				$genjoin .= '
+				@rightdata = $lookuprow->toArray();
+';
+			}
+
+			$genjoin .= $genresdata . '
 			}
 ';
 		} else {
@@ -310,7 +330,14 @@ sub new # (class, optionName => optionValue ...)
 			if ($rh->isNull()) {
 				#print STDERR "DEBUGX " . $self->{name} . " found NULL\n";
 '; 
+
 		if ($self->{isLeft}) {
+			if ($self->{fieldsMirrorKey}) {
+				$genjoin .= '
+				@rightdata = $lookuprow->toArray();
+';
+			}
+
 			$genjoin .= $genresdata;
 		} else {
 			$genjoin .= '
@@ -486,6 +513,12 @@ sub getFieldsLeftFirst # (self)
 {
 	my $self = shift;
 	return $self->{fieldsLeftFirst};
+}
+
+sub getFieldsMirrorKey # (self)
+{
+	my $self = shift;
+	return $self->{fieldsMirrorKey};
 }
 
 sub getBy # (self)
