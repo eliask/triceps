@@ -378,8 +378,8 @@ my $join3i = Triceps::JoinTwo->new(
 	rightSaveJoinerTo => \$codeRight,
 );
 ok(ref $join3i, "Triceps::JoinTwo");
-#print "left:\n$codeLeft\n";
-#print "right:\n$codeRight\n";
+print "left:\n$codeLeft\n";
+print "right:\n$codeRight\n";
 
 my $outlab3i = $vu3->makeLabel($join3i->getResultRowType(), "out3i", undef, sub { $result3i .= $_[1]->printP() . "\n" } );
 ok(ref $outlab3i, "Triceps::Label");

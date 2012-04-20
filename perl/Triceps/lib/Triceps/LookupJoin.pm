@@ -323,12 +323,6 @@ sub new # (class, optionName => optionValue ...)
 			} else {
 ';
 
-			if ($self->{fieldsMirrorKey}) {
-				$genjoin .= '
-				@rightdata = $lookuprow->toArray();
-';
-			}
-
 			$genjoin .= $genresdata . '
 			}
 ';
