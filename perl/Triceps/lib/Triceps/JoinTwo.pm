@@ -72,8 +72,6 @@ use strict;
 #    an entertainment value, to show, why it's garbage.
 #    (default: 0)
 #
-#    XXX add ability to map the join condition fields from both source rows into the
-#    same fields of the result, the joiner knowing how to handle this correctly.
 #    XXX add byPattern
 sub new # (class, optionName => optionValue ...)
 {

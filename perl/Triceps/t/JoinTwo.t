@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 65 };
+BEGIN { plan tests => 81 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -338,6 +338,9 @@ wirejoin("3h", Triceps::JoinTwo->new(
 	type => "outer",
 ));
 
+#########################################################################
+# tests of fieldsUniqKey
+
 # full outer (same as 3b) but with fieldsUniqKey==manual
 wirejoin("3i", Triceps::JoinTwo->new(
 	name => "join3i",
@@ -350,13 +353,79 @@ wirejoin("3i", Triceps::JoinTwo->new(
 	fieldsLeftFirst => 0,
 	fieldsUniqKey => "manual",
 	type => "outer",
-	leftSaveJoinerTo => \$codeLeft,
-	rightSaveJoinerTo => \$codeRight,
+	#leftSaveJoinerTo => \$codeLeft,
+	#rightSaveJoinerTo => \$codeRight,
 ));
 #print "left:\n$codeLeft\n";
 #print "right:\n$codeRight\n";
 
+# full outer (same as 3b) but with fieldsUniqKey==right
+wirejoin("3j", Triceps::JoinTwo->new(
+	name => "join3j",
+	leftTable => $tTrans3p,
+	rightTable => $tAccounts3,
+	leftIdxPath => ["byAccount"],
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	fieldsLeftFirst => 0,
+	fieldsUniqKey => "right",
+	type => "outer",
+	leftSaveJoinerTo => \$codeLeft,
+	rightSaveJoinerTo => \$codeRight,
+));
+
+# full outer (same as 3b) but with fieldsUniqKey==left
+wirejoin("3k", Triceps::JoinTwo->new(
+	name => "join3k",
+	leftTable => $tTrans3p,
+	rightTable => $tAccounts3,
+	leftIdxPath => ["byAccount"],
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	fieldsLeftFirst => 0,
+	fieldsUniqKey => "left",
+	type => "outer",
+	leftSaveJoinerTo => \$codeLeft,
+	rightSaveJoinerTo => \$codeRight,
+));
+
+# full outer (same as 3b) but with fieldsUniqKey==first and fieldsLeftFirst==0
+wirejoin("3l", Triceps::JoinTwo->new(
+	name => "join3l",
+	leftTable => $tTrans3p,
+	rightTable => $tAccounts3,
+	leftIdxPath => ["byAccount"],
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	fieldsLeftFirst => 0,
+	fieldsUniqKey => "right",
+	type => "outer",
+	leftSaveJoinerTo => \$codeLeft,
+	rightSaveJoinerTo => \$codeRight,
+));
+
+# full outer (same as 3b) but with fieldsUniqKey==first and fieldsLeftFirst==1
+wirejoin("3m", Triceps::JoinTwo->new(
+	name => "join3m",
+	leftTable => $tTrans3p,
+	rightTable => $tAccounts3,
+	leftIdxPath => ["byAccount"],
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => undef, # copy all
+	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
+	fieldsLeftFirst => 1,
+	fieldsUniqKey => "left",
+	type => "outer",
+	leftSaveJoinerTo => \$codeLeft,
+	rightSaveJoinerTo => \$codeRight,
+));
+
+##########################################################################
 # now send the data
+
 # helper function to feed the input data to a mix of labels
 # @param dataArray - ref to an array of row descriptions, each of which is a ref to array of:
 #    label, opcode, ref to array of fields
@@ -533,6 +602,90 @@ join3i.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" id="4" ac
 join3i.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="4" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
 join3i.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" acctSrc="source1" acctXtrId="2011" 
 join3i.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" acctSrc="source1" acctXtrId="2011" amount="500" 
+');
+ok ($result{"3j"}, 
+'join3j.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" id="1" amount="100" 
+join3j.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" id="1" amount="100" 
+join3j.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" amount="100" 
+join3j.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
+join3j.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
+join3j.rightLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3j.leftLookup.out OP_DELETE ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3j.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" id="2" amount="200" 
+join3j.leftLookup.out OP_INSERT ac_source="source3" ac_external="ZZZZ" id="3" amount="300" 
+join3j.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="1" amount="100" 
+join3j.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" 
+join3j.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" 
+join3j.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="4" amount="400" 
+join3j.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="4" amount="400" 
+join3j.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" id="4" amount="400" 
+join3j.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" id="4" amount="400" 
+join3j.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="4" id="4" amount="400" 
+join3j.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
+join3j.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" amount="500" 
+');
+ok ($result{"3k"}, 
+'join3k.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3k.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3k.rightLookup.out OP_INSERT ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3k.rightLookup.out OP_INSERT ac_internal="2" acctSrc="source1" acctXtrId="2011" 
+join3k.rightLookup.out OP_INSERT ac_internal="3" acctSrc="source1" acctXtrId="42" 
+join3k.rightLookup.out OP_INSERT ac_internal="1" acctSrc="source2" acctXtrId="ABCD" 
+join3k.leftLookup.out OP_DELETE ac_internal="1" acctSrc="source2" acctXtrId="ABCD" 
+join3k.leftLookup.out OP_INSERT ac_internal="1" id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join3k.leftLookup.out OP_INSERT id="3" acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join3k.leftLookup.out OP_DELETE ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3k.leftLookup.out OP_INSERT ac_internal="1" acctSrc="source1" acctXtrId="999" 
+join3k.leftLookup.out OP_DELETE ac_internal="1" acctSrc="source1" acctXtrId="999" 
+join3k.leftLookup.out OP_INSERT ac_internal="1" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3k.rightLookup.out OP_DELETE ac_internal="1" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3k.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3k.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3k.rightLookup.out OP_INSERT ac_internal="4" id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3k.leftLookup.out OP_DELETE ac_internal="2" acctSrc="source1" acctXtrId="2011" 
+join3k.leftLookup.out OP_INSERT ac_internal="2" id="4" acctSrc="source1" acctXtrId="2011" amount="500" 
+');
+ok ($result{"3l"}, 
+'join3l.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" id="1" amount="100" 
+join3l.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" id="1" amount="100" 
+join3l.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" amount="100" 
+join3l.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
+join3l.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
+join3l.rightLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3l.leftLookup.out OP_DELETE ac_source="source2" ac_external="ABCD" ac_internal="1" 
+join3l.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" id="2" amount="200" 
+join3l.leftLookup.out OP_INSERT ac_source="source3" ac_external="ZZZZ" id="3" amount="300" 
+join3l.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="1" amount="100" 
+join3l.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" 
+join3l.leftLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" 
+join3l.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="4" amount="400" 
+join3l.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" ac_internal="1" id="4" amount="400" 
+join3l.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" id="4" amount="400" 
+join3l.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" id="4" amount="400" 
+join3l.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="4" id="4" amount="400" 
+join3l.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
+join3l.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" amount="500" 
+');
+ok ($result{"3m"}, 
+'join3m.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3m.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+join3m.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_internal="1" 
+join3m.rightLookup.out OP_INSERT acctSrc="source1" acctXtrId="2011" ac_internal="2" 
+join3m.rightLookup.out OP_INSERT acctSrc="source1" acctXtrId="42" ac_internal="3" 
+join3m.rightLookup.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" ac_internal="1" 
+join3m.leftLookup.out OP_DELETE acctSrc="source2" acctXtrId="ABCD" ac_internal="1" 
+join3m.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_internal="1" 
+join3m.leftLookup.out OP_INSERT id="3" acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join3m.leftLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_internal="1" 
+join3m.leftLookup.out OP_INSERT acctSrc="source1" acctXtrId="999" ac_internal="1" 
+join3m.leftLookup.out OP_DELETE acctSrc="source1" acctXtrId="999" ac_internal="1" 
+join3m.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_internal="1" 
+join3m.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_internal="1" 
+join3m.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3m.rightLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" 
+join3m.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_internal="4" 
+join3m.leftLookup.out OP_DELETE acctSrc="source1" acctXtrId="2011" ac_internal="2" 
+join3m.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_internal="2" 
 ');
 #print STDERR $result3i;
 
