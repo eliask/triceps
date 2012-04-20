@@ -108,7 +108,6 @@ sub filter # (\@incoming, \@patterns) # no $self, it's a static method!
 	}
 	return @res;
 }
-# XXX test the detection of unused fields
 
 
 # XXX Thoughts for the future result specification:
