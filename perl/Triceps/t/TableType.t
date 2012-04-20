@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 72 };
+BEGIN { plan tests => 74 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -201,7 +201,7 @@ ok($res, "index FifoIndex()");
 		->addSubIndex("xab", # for iteration in order grouped by source
 			Triceps::IndexType->newHashed(key => [ "a", "b" ])
 			->addSubIndex("xbc", 
-				Triceps::IndexType->newHashed(key => [ "b", "c" ])
+				Triceps::IndexType->newHashed(key => [ "c" ])
 			)
 		)
 	;
@@ -253,7 +253,34 @@ table \(
 
 {
 	# duplicating fields in the nested indexes are not a good idea,
-	# but just for the test...
+	my $ttDeep = Triceps::TableType->new($rt1)
+		->addSubIndex("xab", # for iteration in order grouped by source
+			Triceps::IndexType->newHashed(key => [ "a", "b" ])
+			->addSubIndex("xbc", 
+				Triceps::IndexType->newHashed(key => [ "b", "c" ])
+			)
+		)
+	;
+	ok(ref $ttDeep, "Triceps::TableType");
+	my ($it, @keys) = eval { $ttDeep->findIndexKeyPath("xab", "xbc"); };
+	#print STDERR "$@\n";
+	ok($@ =~ /Triceps::TableType::findIndexKeyPath: the path 'xab.xbc' involves the key field 'b' twice, table type is:
+table \(
+  row {
+    uint8 a,
+    int32 b,
+    int64 c,
+    float64 d,
+    string e,
+  }
+\) {
+  index HashedIndex\(a, b, \) {
+    index HashedIndex\(b, c, \) xbc,
+  } xab,
+}/);
+}
+
+{
 	my $ttDeep = Triceps::TableType->new($rt1)
 		->addSubIndex("xab", # for iteration in order grouped by source
 			Triceps::IndexType->newHashed(key => [ "a", "b" ])

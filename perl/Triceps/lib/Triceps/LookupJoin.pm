@@ -46,6 +46,8 @@ use strict;
 #    (default: 0) Used by JoinTwo.
 # saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code
+#
+# XXX add byPattern: [ "left/right", ... ], with an implicit "!.*" at the end
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -136,10 +138,12 @@ sub new # (class, optionName => optionValue ...)
 			my $lookuprow = $self->{rightRowType}->makeRowHash(
 				';
 	my @bykeys;
+	my %leftkeys;
 	my @cpby = @{$self->{by}};
 	while ($#cpby >= 0) {
 		my $lf = shift @cpby;
 		my $rt = shift @cpby;
+		$leftkeys{$lf} = 1;
 		push @bykeys, $rt;
 		Carp::confess("Option 'by' contains an unknown left-side field '$lf'")
 			unless defined $leftmap{$lf};
@@ -165,6 +169,7 @@ sub new # (class, optionName => optionValue ...)
 		my $ixid  = $self->{rightIdxType}->getIndexId();
 		Carp::confess("The index '" . join('.', @{$self->{rightIdxPath}}) . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not the required 'IT_HASHED'")
 			unless ($ixid == &Triceps::IT_HASHED);
+		@idxkeys = sort @idxkeys;
 	} else {
 		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndexById(&Triceps::IT_HASHED);
 		Carp::confess("The rightTable does not have a top-level Hash index for joining")
@@ -233,7 +238,12 @@ sub new # (class, optionName => optionValue ...)
 			if ($side eq "right") {
 				$genoppdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
 			} else {
-				$genoppdata .= "undef,\n\t\t\t\t"; # empty filler for left (our) side
+				if ($self->{fieldsMirrorKey} && exists $leftkeys{$orig->[$i]}) {
+					# pass through the key fields from the left
+					$genoppdata .= '$' . $side . 'data[' . $index . "],\n\t\t\t\t";
+				} else {
+					$genoppdata .= "undef,\n\t\t\t\t"; # empty filler for left (our) side
+				}
 			}
 		}
 	}
@@ -552,3 +562,5 @@ sub getOppositeOuter # (self)
 }
 
 1;
+
+# XXX in generated makeRowHash() enquote and escape the field names

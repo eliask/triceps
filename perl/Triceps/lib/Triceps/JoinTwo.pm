@@ -38,6 +38,22 @@ use strict;
 #    (which may results with the join-condition fields copied twice from both tables).
 # fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
 #    the left record first, then from right record, or if 0, then opposite. (default:1)
+# fieldsUniqKey (optional) - one of "none", "manual", "left", "right", "first" (default)
+#    Controls the automatic prevention of dupplication of the key fields, which
+#    by definition have the same values in both the left and right rows.
+#    This is done by manipulating the left/rightFields option: one side is left
+#    unchanged, and thus lets the user pass the key fields as usual, while
+#    the other side gets "!key" specs prepended to the front of it for each key
+#    fields, thus removing the duplication.
+#    The flag fieldsMirrorKey of the underlying LookupJoins is always set to 1,
+#    except in the "none" mode.
+#        none - do not change either of the left/rightFields, and do not enable
+#            the key mirroring at all
+#        manual - do not change either of the left/rightFields, leave the full control to the user.
+#        left - do not change leftFields (and thus pass the key in there), remove the keys from rightFields
+#        right - do not change rightFields (and thus pass the key in there), remove the keys from leftFields
+#        first - do not change whatever side goes first (and thus pass the key in there), 
+#            remove the keys from the other side
 # type (optional) - one of: "inner" (default), "left", "right", "outer".
 #    For correctness purposes, there are limitations on what outer joins
 #    can be used with which indexes:
@@ -58,6 +74,7 @@ use strict;
 #
 #    XXX add ability to map the join condition fields from both source rows into the
 #    same fields of the result, the joiner knowing how to handle this correctly.
+#    XXX add byPattern
 sub new # (class, optionName => optionValue ...)
 {
 	my $class = shift;
@@ -78,6 +95,7 @@ sub new # (class, optionName => optionValue ...)
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
+			fieldsUniqKey => [ "first", undef ],
 			type => [ "inner", undef ],
 			leftSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			rightSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
@@ -150,9 +168,10 @@ sub new # (class, optionName => optionValue ...)
 			}
 		}
 	}
-	my @leftkeys = $self->{leftIdxType}->getKey();
-	my @rightkeys = $self->{rightIdxType}->getKey();
-	Carp::confess("The count of fields in left and right indexes doesnt match\n  left:  (" 
+	my(@leftkeys, @rightkeys);
+	($self->{leftIdxType}, @leftkeys) = $self->{leftTable}->getType()->findIndexKeyPath(@{$self->{leftIdxPath}});
+	($self->{rightIdxType}, @rightkeys) = $self->{rightTable}->getType()->findIndexKeyPath(@{$self->{rightIdxPath}});
+	Carp::confess("The count of key fields in left and right indexes doesnt match\n  left:  (" 
 			. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  ")
 		unless ($#leftkeys == $#rightkeys);
 
@@ -163,13 +182,39 @@ sub new # (class, optionName => optionValue ...)
 
 		my $leftType = $leftdef[ $leftmap{$leftkeys[$i]}*2 + 1];
 		my $rightType = $rightdef[ $rightmap{$rightkeys[$i]}*2 + 1];
-		# for Perl representation, uint8[] is the same as string, so treat it as such
-		$leftType =~ s/uint8\[\]/string/;
-		$rightType =~ s/uint8\[\]/string/;
+		my $leftArr = &Triceps::Fields::isArrayType($leftType);
+		my $rightArr = &Triceps::Fields::isArrayType($rightType);
+
 		Carp::confess("Mismatched array and scalar fields in key: left " 
-				. $leftkeys[$i] . " " . $leftdef[ $leftmap{$leftkeys[$i]}*2 + 1] . ", right "
-				. $rightkeys[$i] . " " . $rightdef[ $rightmap{$rightkeys[$i]}*2 + 1])
-			if (($leftType =~ /\[\]$/) ^ ($rightType =~ /\[\]$/));
+				. $leftkeys[$i] . " " . $leftType . ", right "
+				. $rightkeys[$i] . " " . $rightType)
+			unless ($leftArr == $rightArr);
+	}
+
+	my $fieldsMirrorKey = 1;
+	my $uniq = $self->{fieldsUniqKey};
+	if ($uniq eq "first") {
+		$uniq = $self->{fieldsLeftFirst} ? "left" : "right";
+	}
+	if ($uniq eq "none") {
+		$fieldsMirrorKey = 0;
+	} elsif ($uniq eq "manual") {
+		# nothing to do
+	} elsif ($uniq =~ /^(left|right)$/) {
+		my($side, @keys);
+		if ($uniq eq "left") {
+			$side = "right";
+			@keys = @rightkeys;
+		} else {
+			$side = "left";
+			@keys = @leftkeys;
+		}
+		if (!defined $self->{"${side}Fields"}) {
+			$self->{"${side}Fields"} = [ ".*" ]; # the implicit pass-all
+		}
+		unshift(@{$self->{"${side}Fields"}}, map("!$_", @keys) );
+	} else {
+		Carp::confess("Unknown value '" . $self->{fieldsUniqKey} . "' of option 'fieldsUniqKey', must be one of none|manual|left|right|first");
 	}
 
 	# now create the LookupJoins
@@ -182,6 +227,7 @@ sub new # (class, optionName => optionValue ...)
 		leftFields => $self->{leftFields},
 		rightFields => $self->{rightFields},
 		fieldsLeftFirst => $self->{fieldsLeftFirst},
+		fieldsMirrorKey => $fieldsMirrorKey,
 		by => \@leftby,
 		isLeft => $leftLeft,
 		automatic => 1,
@@ -197,6 +243,7 @@ sub new # (class, optionName => optionValue ...)
 		leftFields => $self->{rightFields},
 		rightFields => $self->{leftFields},
 		fieldsLeftFirst => !$self->{fieldsLeftFirst},
+		fieldsMirrorKey => $fieldsMirrorKey,
 		by => \@rightby,
 		isLeft => $rightLeft,
 		automatic => 1,
