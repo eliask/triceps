@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 65 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -106,9 +107,8 @@ ok($res, 1);
 $vu3 = Triceps::Unit->new("vu3");
 ok(ref $vu3, "Triceps::Unit");
 
-# this will record the results
-my ($result3a, $result3b, $result3c, $result3d, $result3e, $result3f, $result3g, $result3h);
-my ($result3i);
+# this will record the results, per case
+my %result;
 
 # the accounts table type is also reused from example (1)
 $tAccounts3 = $vu3->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
@@ -183,11 +183,27 @@ my $labTrans3p = $vu3->makeLabel($tTrans3p->getRowType(), "labTrans3p", undef, s
 ok(ref $labTrans3p, "Triceps::Label");
 ok($tTrans3p->getOutputLabel()->chain($labTrans3p));
 
+################################################################
+# functions that wrap the join creation and wiring
+
+sub wirejoin($$) # (name, join)
+{
+	my ($name, $join) = @_;
+
+	ok(ref $join, "Triceps::JoinTwo") || confess "join creation failed";
+
+	my $outlab = $vu3->makeLabel($join->getResultRowType(), "out$name", undef, sub { $result{$name} .= $_[1]->printP() . "\n" } );
+	ok(ref $outlab, "Triceps::Label") || confess "label creation failed";
+	ok($join->getOutputLabel()->chain($outlab));
+}
+
+################################################################
+
 # create the joins
 # inner
 # (also save the joiners)
 my($codeLeft, $codeRight);
-my $join3a = Triceps::JoinTwo->new(
+wirejoin("3a", Triceps::JoinTwo->new(
 	name => "join3a",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -199,17 +215,12 @@ my $join3a = Triceps::JoinTwo->new(
 	type => "inner",
 	leftSaveJoinerTo => \$codeLeft,
 	rightSaveJoinerTo => \$codeRight,
-);
-ok(ref $join3a, "Triceps::JoinTwo");
+));
 ok($codeLeft =~ /^\s+sub # \(\$inLabel, \$rowop, \$self\)/);
 ok($codeRight =~ /^\s+sub # \(\$inLabel, \$rowop, \$self\)/);
 
-my $outlab3a = $vu3->makeLabel($join3a->getResultRowType(), "out3a", undef, sub { $result3a .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3a, "Triceps::Label");
-ok($join3a->getOutputLabel()->chain($outlab3a));
-
 # outer - with leaf index on left, and fields backwards
-my $join3b = Triceps::JoinTwo->new(
+wirejoin("3b", Triceps::JoinTwo->new(
 	name => "join3b",
 	leftTable => $tTrans3p,
 	rightTable => $tAccounts3,
@@ -220,15 +231,10 @@ my $join3b = Triceps::JoinTwo->new(
 	fieldsLeftFirst => 0,
 	fieldsUniqKey => "none",
 	type => "outer",
-);
-ok(ref $join3b, "Triceps::JoinTwo");
-
-my $outlab3b = $vu3->makeLabel($join3b->getResultRowType(), "out3b", undef, sub { $result3b .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3b, "Triceps::Label");
-ok($join3b->getOutputLabel()->chain($outlab3b));
+));
 
 # left
-my $join3c = Triceps::JoinTwo->new(
+wirejoin("3c", Triceps::JoinTwo->new(
 	name => "join3c",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -238,15 +244,10 @@ my $join3c = Triceps::JoinTwo->new(
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
 	type => "left",
-);
-ok(ref $join3c, "Triceps::JoinTwo");
-
-my $outlab3c = $vu3->makeLabel($join3c->getResultRowType(), "out3c", undef, sub { $result3c .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3c, "Triceps::Label");
-ok($join3c->getOutputLabel()->chain($outlab3c));
+));
 
 # right - with leaf index on left
-my $join3d = Triceps::JoinTwo->new(
+wirejoin("3d", Triceps::JoinTwo->new(
 	name => "join3d",
 	leftTable => $tTrans3p,
 	rightTable => $tAccounts3,
@@ -256,15 +257,10 @@ my $join3d = Triceps::JoinTwo->new(
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
 	type => "right",
-);
-ok(ref $join3d, "Triceps::JoinTwo");
-
-my $outlab3d = $vu3->makeLabel($join3d->getResultRowType(), "out3d", undef, sub { $result3d .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3d, "Triceps::Label");
-ok($join3d->getOutputLabel()->chain($outlab3d));
+));
 
 # inner - simpleMinded
-my $join3e = Triceps::JoinTwo->new(
+wirejoin("3e", Triceps::JoinTwo->new(
 	name => "join3e",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -275,15 +271,10 @@ my $join3e = Triceps::JoinTwo->new(
 	fieldsUniqKey => "none",
 	type => "inner",
 	simpleMinded => 1,
-);
-ok(ref $join3e, "Triceps::JoinTwo");
-
-my $outlab3e = $vu3->makeLabel($join3e->getResultRowType(), "out3e", undef, sub { $result3e .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3e, "Triceps::Label");
-ok($join3e->getOutputLabel()->chain($outlab3e));
+));
 
 # left - simpleMinded
-my $join3f = Triceps::JoinTwo->new(
+wirejoin("3f", Triceps::JoinTwo->new(
 	name => "join3f",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -294,15 +285,10 @@ my $join3f = Triceps::JoinTwo->new(
 	fieldsUniqKey => "none",
 	type => "left",
 	simpleMinded => 1,
-);
-ok(ref $join3f, "Triceps::JoinTwo");
-
-my $outlab3f = $vu3->makeLabel($join3f->getResultRowType(), "out3f", undef, sub { $result3f .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3f, "Triceps::Label");
-ok($join3f->getOutputLabel()->chain($outlab3f));
+));
 
 # right - simpleMinded
-my $join3g = Triceps::JoinTwo->new(
+wirejoin("3g", Triceps::JoinTwo->new(
 	name => "join3g",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
@@ -313,12 +299,7 @@ my $join3g = Triceps::JoinTwo->new(
 	fieldsUniqKey => "none",
 	type => "right",
 	simpleMinded => 1,
-);
-ok(ref $join3g, "Triceps::JoinTwo");
-
-my $outlab3g = $vu3->makeLabel($join3g->getResultRowType(), "out3g", undef, sub { $result3g .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3g, "Triceps::Label");
-ok($join3g->getOutputLabel()->chain($outlab3g));
+));
 
 # full outer (same as 3b) but with filtering on the input labels
 # (this is a bad example with inconsistent filtering, a good one would filter
@@ -342,7 +323,7 @@ my $lbFilterRight3h = $vu3->makeLabel($tAccounts3->getRowType(), "lbFilterRight3
 	}
 });
 $tAccounts3->getOutputLabel()->chain($lbFilterRight3h);
-my $join3h = Triceps::JoinTwo->new(
+wirejoin("3h", Triceps::JoinTwo->new(
 	name => "join3h",
 	leftTable => $tTrans3p,
 	leftFromLabel => $lbLeft3h,
@@ -355,15 +336,10 @@ my $join3h = Triceps::JoinTwo->new(
 	fieldsUniqKey => "none",
 	fieldsLeftFirst => 0,
 	type => "outer",
-);
-ok(ref $join3h, "Triceps::JoinTwo");
-
-my $outlab3h = $vu3->makeLabel($join3h->getResultRowType(), "out3h", undef, sub { $result3h .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3h, "Triceps::Label");
-ok($join3h->getOutputLabel()->chain($outlab3h));
+));
 
 # full outer (same as 3b) but with fieldsUniqKey==manual
-my $join3i = Triceps::JoinTwo->new(
+wirejoin("3i", Triceps::JoinTwo->new(
 	name => "join3i",
 	leftTable => $tTrans3p,
 	rightTable => $tAccounts3,
@@ -376,14 +352,9 @@ my $join3i = Triceps::JoinTwo->new(
 	type => "outer",
 	leftSaveJoinerTo => \$codeLeft,
 	rightSaveJoinerTo => \$codeRight,
-);
-ok(ref $join3i, "Triceps::JoinTwo");
-print "left:\n$codeLeft\n";
-print "right:\n$codeRight\n";
-
-my $outlab3i = $vu3->makeLabel($join3i->getResultRowType(), "out3i", undef, sub { $result3i .= $_[1]->printP() . "\n" } );
-ok(ref $outlab3i, "Triceps::Label");
-ok($join3i->getOutputLabel()->chain($outlab3i));
+));
+#print "left:\n$codeLeft\n";
+#print "right:\n$codeRight\n";
 
 # now send the data
 # helper function to feed the input data to a mix of labels
@@ -420,7 +391,7 @@ $vu3->drainFrame();
 ok($vu3->empty());
 
 # XXX these results depend on the ordering of records in the hash index, so will fail on MSB-first machines
-ok ($result3a, 
+ok ($result{"3a"}, 
 'join3a.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3a.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
 join3a.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
@@ -431,7 +402,7 @@ join3a.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3a.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3a.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
-ok ($result3b, 
+ok ($result{"3b"}, 
 'join3b.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
@@ -452,7 +423,7 @@ join3b.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_intern
 join3b.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
 join3b.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" acctSrc="source1" acctXtrId="2011" amount="500" 
 ');
-ok ($result3c, 
+ok ($result{"3c"}, 
 'join3c.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3c.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3c.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
@@ -470,7 +441,7 @@ join3c.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3c.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3c.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
-ok ($result3d, 
+ok ($result{"3d"}, 
 'join3d.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3d.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
 join3d.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
@@ -486,7 +457,7 @@ join3d.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3d.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
 join3d.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
-ok ($result3e, 
+ok ($result{"3e"}, 
 'join3e.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3e.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
 join3e.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="1" 
@@ -497,7 +468,7 @@ join3e.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3e.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3e.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
-ok ($result3f, 
+ok ($result{"3f"}, 
 'join3f.leftLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3f.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3f.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
@@ -510,7 +481,7 @@ join3f.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3f.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount="400" ac_source="source1" ac_external="999" ac_internal="4" 
 join3f.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
-ok ($result3g, 
+ok ($result{"3g"}, 
 'join3g.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3g.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
 join3g.rightLookup.out OP_INSERT ac_source="source1" ac_external="42" ac_internal="3" 
@@ -525,7 +496,7 @@ join3g.leftLookup.out OP_DELETE id="4" acctSrc="source1" acctXtrId="999" amount=
 join3g.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_source="source1" ac_external="2011" ac_internal="2" 
 ');
 # the result is inconsistent because of the filtering not being consistent
-ok ($result3h, 
+ok ($result{"3h"}, 
 'join3h.rightLookup.out OP_DELETE id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3h.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3h.rightLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" 
@@ -542,7 +513,7 @@ join3h.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_intern
 join3h.leftLookup.out OP_DELETE ac_source="source1" ac_external="2011" ac_internal="2" 
 join3h.leftLookup.out OP_INSERT ac_source="source1" ac_external="2011" ac_internal="2" id="4" acctSrc="source1" acctXtrId="2011" amount="500" 
 ');
-ok ($result3i, 
+ok ($result{"3i"}, 
 'join3i.leftLookup.out OP_INSERT ac_source="source1" ac_external="999" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3i.rightLookup.out OP_DELETE ac_source="source1" ac_external="999" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
 join3i.rightLookup.out OP_INSERT ac_source="source1" ac_external="999" ac_internal="1" id="1" acctSrc="source1" acctXtrId="999" amount="100" 
