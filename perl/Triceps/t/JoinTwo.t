@@ -139,6 +139,10 @@ $ttTrans3 = Triceps::TableType->new($rtTrans3)
 		Triceps::IndexType->newHashed(key => [ "acctSrc", "acctXtrId" ])
 		->addSubIndex("data", Triceps::IndexType->newFifo())
 	)
+	->addSubIndex("byAccountBackwards", # for joining by account info
+		Triceps::IndexType->newHashed(key => [ "acctXtrId", "acctSrc", ])
+		->addSubIndex("data", Triceps::IndexType->newFifo())
+	)
 ; 
 ok(ref $ttTrans3, "Triceps::TableType");
 ok($ttTrans3->initialize());
@@ -234,15 +238,20 @@ wirejoin("3b", Triceps::JoinTwo->new(
 ));
 
 # left
+# and along the way test an explicit "by"
 wirejoin("3c", Triceps::JoinTwo->new(
 	name => "join3c",
 	leftTable => $tTrans3,
 	rightTable => $tAccounts3,
-	leftIdxPath => ["byAccount"],
+	leftIdxPath => ["byAccountBackwards"],
 	rightIdxPath => ["lookupSrcExt"],
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
+	by => [ 
+		"acctXtrId" => "external", 
+		"acctSrc" => "source"
+	],
 	type => "left",
 ));
 

@@ -54,6 +54,11 @@ use strict;
 #        right - do not change rightFields (and thus pass the key in there), remove the keys from leftFields
 #        first - do not change whatever side goes first (and thus pass the key in there), 
 #            remove the keys from the other side
+# by (optional) - reference to array, containing pairs of field names used for look-up,
+#    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]. By default the field lists
+#    are taken from the table keys, matched up in the order they are in the
+#    keys. But if a different order is desired, this option can be used to
+#    override it (the fields must still be the same, just the order may change).
 # type (optional) - one of: "inner" (default), "left", "right", "outer".
 #    For correctness purposes, there are limitations on what outer joins
 #    can be used with which indexes:
@@ -94,6 +99,7 @@ sub new # (class, optionName => optionValue ...)
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
 			fieldsUniqKey => [ "first", undef ],
+			by => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			type => [ "inner", undef ],
 			leftSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			rightSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
@@ -172,6 +178,37 @@ sub new # (class, optionName => optionValue ...)
 	Carp::confess("The count of key fields in left and right indexes doesnt match\n  left:  (" 
 			. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  ")
 		unless ($#leftkeys == $#rightkeys);
+
+	if (defined $self->{by}) { # override the order
+		Carp::confess("The count of key fields in the indexes and option 'by' does not match\n  left:  (" 
+				. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  by: ("
+				. join(", ", @{$self->{by}}) . ")\n ")
+			unless (($#leftkeys + 1)*2 == ($#{$self->{by}} + 1));
+		# rebuild the keys in the new order, and check that the key set matches
+		my(%leftmap, %rightmap, @newleft, @newright);
+		foreach $i (@leftkeys) {
+			$leftmap{$i} = 1;
+		}
+		undef @leftkeys;
+		foreach $i (@rightkeys) {
+			$rightmap{$i} = 1;
+		}
+		my @cpby = @{$self->{by}};
+		while ($#cpby >= 0) {
+			my $lf = shift @cpby;
+			my $rt = shift @cpby;
+			Carp::confess("Option 'by' contains a left-side field '$lf' that is not in the index key,\n  left key: ("
+					. join(", ", @leftkeys) . ")\n  ")
+				unless defined $leftmap{$lf};
+			Carp::confess("Option 'by' contains a right-side field '$rt' that is not in the index key,\n  right key: ("
+					. join(", ", @rightkeys) . ")\n  ")
+				unless defined $rightmap{$rt};
+			push @newleft, $lf;
+			push @newright, $rt;
+		}
+		@leftkeys = @newleft;
+		@rightkeys = @newright;
+	}
 
 	my (@leftby, @rightby); # build the "by" specifications for LookupJoin
 	for ($i = 0; $i <= $#leftkeys; $i++) { # check that the array-ness matches
