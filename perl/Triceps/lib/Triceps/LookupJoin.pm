@@ -157,7 +157,7 @@ sub new # (class, optionName => optionValue ...)
 		Carp::confess("Option 'by' fields '$lf'='$rt' mismatch the array-ness, with types '$lf_type' and '$rt_type'")
 			unless ($lf_arr == $rt_arr);
 		
-		$genjoin .= $rt . ' => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
+		$genjoin .= '"' . quotemeta($rt) . '" => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
 	}
 	$genjoin .= ");\n\t\t\t";
 
