@@ -32,9 +32,17 @@ use strict;
 #    the key fields from it would still be present in the result by mirroring
 #    them from the left side.
 #    (default: 0) Used by JoinTwo.
-# by - reference to array, containing pairs of field names used for look-up,
+# by (semi-optional) - reference to array, containing pairs of field names used for look-up,
 #    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
 #    XXX should allow an arbitrary expression on the left?
+#    The options by and byLeft are mutually exclusive, one of them must be used.
+# byLeft (semi-optional) - reference to array, containing the patterns in the syntax as described 
+#    in Triceps::Fields::filter(), same as left/rightFields from the left side to be
+#    used as keys and their translations for the matching right-side fields.
+#    The pattern has an implicit "!.*" added at the end, so any fields that are not
+#    explicitly added get dropped.
+#    The set of fields must still match the indexes, just the order can be modified.
+#    The options by and byLeft are mutually exclusive, one of them must be used.
 # isLeft (optional) - 1 for left outer join, 0 for inner join (default: 1)
 # limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
 # automatic (optional) - 1 means that the lookup() method will never be called
@@ -47,9 +55,9 @@ use strict;
 # saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code
 #
-# XXX add byPattern: [ "left/right", ... ], with an implicit "!.*" at the end
 sub new # (class, optionName => optionValue ...)
 {
+	my $myname = "Triceps::LookupJoin::new";
 	my $class = shift;
 	my $self = {};
 
@@ -64,7 +72,8 @@ sub new # (class, optionName => optionValue ...)
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
 			fieldsMirrorKey => [ 0, undef ],
-			by => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			by => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			byLeft => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
 			limitOne => [ 0, undef ],
 			automatic => [ 1, undef ],
@@ -72,7 +81,9 @@ sub new # (class, optionName => optionValue ...)
 			saveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 		}, @_);
 
-	&Triceps::Opt::handleUnitTypeLabel("Triceps::LookupJoin",
+	&Triceps::Opt::checkMutuallyExclusive($myname, 1, "by", $self->{by}, "byLeft", $self->{byLeft});
+
+	&Triceps::Opt::handleUnitTypeLabel($myname,
 		"unit", \$self->{unit}, "leftRowType", \$self->{leftRowType}, "leftFromLabel", \$self->{leftFromLabel});
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
@@ -86,6 +97,12 @@ sub new # (class, optionName => optionValue ...)
 	my @rightdef = $self->{rightRowType}->getdef();
 	my %rightmap = $self->{rightRowType}->getFieldMapping();
 	my @rightfld = $self->{rightRowType}->getFieldNames();
+
+	if (defined $self->{byLeft}) { # override the order
+		push @{$self->{byLeft}}, "!.*"; # add the implicit no-pass-through
+		my @by = &Triceps::Fields::filterToPairs("$myname: option 'byLeft'", \@leftfld, $self->{byLeft});
+		$self->{by} = \@by;
+	}
 
 	# XXX use getKey() to check that the "by" keys match the
 	# keys of the index (not so easy for the nested indexes because they
@@ -133,34 +150,6 @@ sub new # (class, optionName => optionValue ...)
 		';
 	}
 
-	# create the look-up row (and check that "by" contains the correct field names)
-	$genjoin .= '
-			my $lookuprow = $self->{rightRowType}->makeRowHash(
-				';
-	my @bykeys;
-	my %leftkeys;
-	my @cpby = @{$self->{by}};
-	while ($#cpby >= 0) {
-		my $lf = shift @cpby;
-		my $rt = shift @cpby;
-		$leftkeys{$lf} = 1;
-		push @bykeys, $rt;
-		Carp::confess("Option 'by' contains an unknown left-side field '$lf'")
-			unless defined $leftmap{$lf};
-		Carp::confess("Option 'by' contains an unknown right-side field '$rt'")
-			unless defined $rightmap{$rt};
-		my $lf_type = $leftdef[$leftmap{$lf}*2 + 1];
-		my $rt_type = $rightdef[$rightmap{$rt}*2 + 1];
-		my $lf_arr = &Triceps::Fields::isArrayType($lf_type);
-		my $rt_arr = &Triceps::Fields::isArrayType($rt_type);
-
-		Carp::confess("Option 'by' fields '$lf'='$rt' mismatch the array-ness, with types '$lf_type' and '$rt_type'")
-			unless ($lf_arr == $rt_arr);
-		
-		$genjoin .= '"' . quotemeta($rt) . '" => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
-	}
-	$genjoin .= ");\n\t\t\t";
-
 	# translate the index
 	my @idxkeys;
 	if (defined $self->{rightIdxPath}) {
@@ -176,10 +165,46 @@ sub new # (class, optionName => optionValue ...)
 			unless defined $self->{rightIdxType};
 		@idxkeys = sort $self->{rightIdxType}->getKey();
 	}
-	my $idxkeys = join(", ", @idxkeys);
+	my %idxkeymap;
+	foreach my $i (@idxkeys) {
+		$idxkeymap{$i} = 1;
+	}
+
+	# create the look-up row (and check that "by" contains the correct field names)
+	$genjoin .= '
+			my $lookuprow = $self->{rightRowType}->makeRowHash(
+				';
+	my @bykeys;
+	my %leftkeys;
+	my @cpby = @{$self->{by}};
+	while ($#cpby >= 0) {
+		my $lf = shift @cpby;
+		my $rt = shift @cpby;
+		$leftkeys{$lf} = 1;
+		push @bykeys, $rt;
+		Carp::confess("Option '" . (defined $self->{byLeft}? "byLeft" : "by") . "' contains an unknown left-side field '$lf'")
+			unless defined $leftmap{$lf};
+		Carp::confess("Option '" . (defined $self->{byLeft}? "byLeft" : "by") 
+				. "' contains a right-side field '$rt' that is not in the index key,\n  right key: ("
+				. join(", ", @idxkeys) . ")\n  by: ("
+				. join(", ", @{$self->{by}}) . ")\n  ")
+			unless defined $idxkeymap{$rt};
+		my $lf_type = $leftdef[$leftmap{$lf}*2 + 1];
+		my $rt_type = $rightdef[$rightmap{$rt}*2 + 1];
+		my $lf_arr = &Triceps::Fields::isArrayType($lf_type);
+		my $rt_arr = &Triceps::Fields::isArrayType($rt_type);
+
+		Carp::confess("Option 'by' fields '$lf'='$rt' mismatch the array-ness, with types '$lf_type' and '$rt_type'")
+			unless ($lf_arr == $rt_arr);
+		
+		$genjoin .= '"' . quotemeta($rt) . '" => $leftdata[' . $leftmap{$lf} . "],\n\t\t\t\t";
+	}
+	my $idxkeys = join(", ", sort @idxkeys);
 	my $bykeys = join(", ", sort @bykeys);
 	Carp::confess("The right-side keys in option 'by' and keys in the index do not match:\n  by: $bykeys\n  index: $idxkeys\n  ")
 		unless ($idxkeys eq $bykeys);
+
+	$genjoin .= ");\n\t\t\t";
 
 	if (!$self->{limitOne}) { # would need a sub-index for iteration
 		my @subs = $self->{rightIdxType}->getSubIndexes();
@@ -219,7 +244,7 @@ sub new # (class, optionName => optionValue ...)
 	#print STDERR "DEBUG order is ", $self->{fieldsLeftFirst}, ": (", join(", ", @order), ")\n";
 	for my $side (@order) {
 		my $orig = $choice{"${side}fld"};
-		my @trans = &Triceps::Fields::filter("Triceps::LookupJoin::new: option '${side}Fields'", $orig, $self->{"${side}Fields"});
+		my @trans = &Triceps::Fields::filter("$myname: option '${side}Fields'", $orig, $self->{"${side}Fields"});
 		my $smap = $choice{"${side}map"};
 		for (my $i = 0; $i <= $#trans; $i++) {
 			my $f = $trans[$i];
@@ -407,7 +432,7 @@ sub new # (class, optionName => optionValue ...)
 	# chain the input label, if any
 	if (defined $self->{leftFromLabel}) {
 		$self->{leftFromLabel}->chain($self->{inputLabel})
-			or confess "Triceps::LookupJoin internal error: input label chaining to '" . $self->{leftFromLabel}->getName() . "' failed:\n$! ";
+			or confess "$myname internal error: input label chaining to '" . $self->{leftFromLabel}->getName() . "' failed:\n$! ";
 		delete $self->{leftFromLabel}; # no need to keep the reference any more, avoid a reference cycle
 	}
 

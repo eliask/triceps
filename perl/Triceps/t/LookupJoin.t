@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 236 };
+BEGIN { plan tests => 238 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -432,7 +432,8 @@ ok($result2, $expect2b);
 
 #########
 # (2c) inner join with an exactly-matching key that automatically triggers
-# the limitOne flag to be true, using the labels
+# the limitOne flag to be true, using the labels;
+# along the way test byLeft
 
 # reuses the same table, whih is already populated
 
@@ -443,7 +444,7 @@ $join2c = Triceps::LookupJoin->new(
 	rightTable => $tAccounts2,
 	rightIdxPath => ["lookupSrcExt"],
 	rightFields => [ "internal/acct" ],
-	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	byLeft => [ "acctSrc/source", "acctXtrId/external" ],
 	isLeft => 0,
 	automatic => $auto,
 );
@@ -1127,15 +1128,15 @@ sub tryMissingOptValue # (optName)
 }
 
 &tryMissingOptValue("unit");
-ok($@ =~ /^Triceps::LookupJoin: option unit must be specified/);
+ok($@ =~ /^Triceps::LookupJoin::new: option unit must be specified/);
 &tryMissingOptValue("name");
 ok($@ =~ /^Option 'name' must be specified for class 'Triceps::LookupJoin'/);
 &tryMissingOptValue("leftRowType");
-ok($@ =~ /^Triceps::LookupJoin: must have exactly one of options leftRowType or leftFromLabel/);
+ok($@ =~ /^Triceps::LookupJoin::new: must have exactly one of options leftRowType or leftFromLabel/);
 &tryMissingOptValue("rightTable");
 ok($@ =~ /^Option 'rightTable' must be specified for class 'Triceps::LookupJoin'/);
 &tryMissingOptValue("by");
-ok($@ =~ /^Option 'by' must be specified for class 'Triceps::LookupJoin'/);
+ok($@ =~ /^Triceps::LookupJoin::new: must have exactly one of options by or byLeft, got none of them/);
 
 sub tryBadOptValue # (optName, optValue)
 {
@@ -1176,12 +1177,37 @@ ok($@ =~ /^Option 'saveJoinerTo' of class 'Triceps::LookupJoin' must be a refere
 &tryBadOptValue("by", [ 'aaa' => 'bbb' ]);
 ok($@ =~ /^Option 'by' contains an unknown left-side field 'aaa'/);
 &tryBadOptValue("by", [ 'acctSrc' => 'bbb' ]);
-ok($@ =~ /^Option 'by' contains an unknown right-side field 'bbb'/);
+ok($@ =~ /^Option 'by' contains a right-side field 'bbb' that is not in the index key,
+  right key: \(external, source\)
+  by: \(acctSrc, bbb\)/);
 &tryBadOptValue("by", [ 'acctSrc' => 'internal' ]);
-ok($@ =~ /^The right-side keys in option 'by' and keys in the index do not match:
-  by: internal
-  index: external, source
+ok($@ =~ /^Option 'by' contains a right-side field 'internal' that is not in the index key,
+  right key: \(external, source\)
+  by: \(acctSrc, internal\)
 /);
+
+&tryBadOptValue("byLeft", [ "acctSrc/source", "acctXtrId/external" ]);
+ok($@ =~ /^Triceps::LookupJoin::new: must have only one of options by or byLeft, got both by and byLeft/);
+
+{
+	eval {
+		Triceps::LookupJoin->new(
+			unit => $vu2,
+			name => "join",
+			leftRowType => $rtInTrans,
+			rightTable => $tAccounts2,
+			rightIdxPath => ["lookupSrcExt"],
+			rightFields => [ "internal/acct" ],
+			byLeft => [ "acctSrc/source", "acct/external" ],
+			isLeft => 1,
+			automatic => 1,
+		);
+	};
+	ok($@ =~ /^Triceps::LookupJoin::new: option 'byLeft': result definition error:
+  the field in definition 'acct\/external' is not found
+The available fields are:
+  acctSrc, acctXtrId, amount/);
+}
 
 &tryBadOptValue("rightIdxPath", [ 'lookupIntGroup', 'lookupInt' ]);
 ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupIntGroup.lookupInt' does not have a key, table type is:/);
@@ -1229,7 +1255,7 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 	my $lb = $vu2->makeDummyLabel($rtInTrans, "in");
 	ok(ref $lb, "Triceps::Label");
 	&tryBadOptValue(leftFromLabel => $lb),
-	ok($@ =~ /^Triceps::LookupJoin: must have only one of options leftRowType or leftFromLabel/);
+	ok($@ =~ /^Triceps::LookupJoin::new: must have only one of options leftRowType or leftFromLabel/);
 }
 
 # test the match of array-ness in the join fields
@@ -1245,7 +1271,9 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 		->addSubIndex("iterateSrc", # for iteration in order grouped by source
 			Triceps::IndexType->newHashed(key => [ "notArr1" ]))
 		->addSubIndex("byNotArr2", 
-			Triceps::IndexType->newHashed(key => [ "notArr2" ]));
+			Triceps::IndexType->newHashed(key => [ "notArr2" ]))
+		->addSubIndex("byArr1", 
+			Triceps::IndexType->newHashed(key => [ "arr1" ]));
 	ok(ref $tt, "Triceps::TableType");
 	$res = $tt->initialize();
 	ok($res, 1);
@@ -1289,6 +1317,7 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 			leftRowType => $rtInTrans,
 			rightTable => $t,
 			rightFields => [ "notArr1" ],
+			rightIdxPath => [ "byArr1" ],
 			by => [ "acctSrc" => "arr1" ],
 			isLeft => 1,
 			automatic => 1,
