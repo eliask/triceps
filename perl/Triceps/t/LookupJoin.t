@@ -1211,13 +1211,13 @@ ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupI
 }
 
 &tryBadOptValue(rightFields => [ "internal/acct", "duck" ]),
-ok($@ =~ /^Result definition error:
+ok($@ =~ /^Triceps::LookupJoin::new: option 'rightFields': result definition error:
   the field in definition 'duck' is not found
 The available fields are:
   source, external, internal/);
 
 &tryBadOptValue(leftFields => [ "acctSrc", "duck" ]),
-ok($@ =~ /^Result definition error:
+ok($@ =~ /^Triceps::LookupJoin::new: option 'leftFields': result definition error:
   the field in definition 'duck' is not found
 The available fields are:
   acctSrc, acctXtrId, amount/);

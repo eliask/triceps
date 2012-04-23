@@ -194,7 +194,7 @@ sub checkMutuallyExclusive # ($caller, $mandatory, $optName1, optValue1, ...)
 		push @used, $n
 			if (defined $v);
 	}
-	confess("$caller: must have only one of options " . join(" or ", @names) . ", got " . join(" and ", @used))
+	confess("$caller: must have only one of options " . join(" or ", @names) . ", got both " . join(" and ", @used))
 		unless ($#used <= 0);
 	confess("$caller: must have exactly one of options " . join(" or ", @names) . ", got none of them")
 		if ($mandatory && $#used != 0);

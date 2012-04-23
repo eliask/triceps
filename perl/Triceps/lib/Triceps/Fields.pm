@@ -13,6 +13,7 @@ use strict;
 # Process the list of field names according to the filter spec.
 # Generally used by all kinds of templates to create their result schemas.
 #
+# @param caller - name of the caller, for the error messages
 # @param incoming - reference to the original array of field names
 # @param patterns - reference to the array of filter patterns (undef means 
 #   "no filtering, pass as is")
@@ -37,8 +38,9 @@ use strict;
 #        performing a substitution on it. For example, '.*/second_$&/'
 #        would pass through all the fields, prefixing them with "second_".
 #
-sub filter # (\@incoming, \@patterns) # no $self, it's a static method!
+sub filter($$$) # (\@incoming, \@patterns) # no $self, it's a static method!
 {
+	my $caller = shift;
 	my $incoming = shift;
 	my $patterns = shift;
 
@@ -104,11 +106,35 @@ sub filter # (\@incoming, \@patterns) # no $self, it's a static method!
 		$i++;
 	}
 	if ($error ne '') {
-		confess "Result definition error:\n${error}The available fields are:\n  " . join(", ", @$incoming) . "\n ";
+		confess "$caller: result definition error:\n${error}The available fields are:\n  " . join(", ", @$incoming) . "\n ";
 	}
 	return @res;
 }
 
+# Same as filter() but a different return value.
+#
+# @param caller - name of the caller, for the error messages
+# @param incoming - reference to the original array of field names
+# @param patterns - reference to the array of filter patterns (undef means 
+#   "no filtering, pass as is")
+# @return - an array of an even number of elements, for each passing-through
+#   field containing its original name and translated name (the fields that
+#   do not pass through are not returned).
+sub filterToPairs($$$) # (\@incoming, \@patterns) # no $self, it's a static method!
+{
+	my $caller = shift;
+	my $incoming = shift;
+	my $patterns = shift;
+
+	my @mapping = &filter($caller, $incoming, $patterns);
+	my @res;
+	for(my $i = 0; $i <= $#mapping; $i++) {
+		if (defined $mapping[$i]) {
+			push @res, ${$incoming}[$i], $mapping[$i];
+		}
+	}
+	return @res;
+}
 
 # XXX Thoughts for the future result specification:
 #  result_fld_name: (may be a substitution regexp translated from the source field)

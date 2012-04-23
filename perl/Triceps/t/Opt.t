@@ -221,9 +221,9 @@ ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 
 	ok($res, "opt3");
 
 	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 0, "opt1", 9, "opt2", 0, "opt3", undef); };
-	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got opt1 and opt2/);
+	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got both opt1 and opt2/);
 	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", 9, "opt2", 0, "opt3", 0); };
-	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got opt1 and opt2 and opt3/);
+	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got both opt1 and opt2 and opt3/);
 	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", undef, "opt2", undef, "opt3", undef); };
 	ok($@ =~ /CallerMethod: must have exactly one of options opt1 or opt2 or opt3, got none of them/);
 }

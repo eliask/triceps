@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 18 };
+BEGIN { plan tests => 20 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -27,40 +27,40 @@ ok(1); # If we made it this far, we're ok.
 #########################
 # fields()
 
-@res = &Triceps::Fields::filter([ 'abc', 'def' ], undef);
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def' ], undef);
 ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def"); # all positive if no patterns
 
-@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ 'abc', 'def' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ 'abc', 'def' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "abc,def,-");
 
-@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '!abc' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ '!abc' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # check for default being "throwaway" even with purely negative
-@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "-,-,-"); # empty pattern means throw away everything
 
-@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '!abc', '.*' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ '!abc', '.*' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi");
 
-@res = &Triceps::Fields::filter([ 'abc', 'adef', 'gahi' ], [ '!abc', 'a.*' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'adef', 'gahi' ], [ '!abc', 'a.*' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "-,adef,-"); # first match wins, and check front anchoring
 
-@res = &Triceps::Fields::filter([ 'abc', 'adef', 'gahi' ], [ '...' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'adef', 'gahi' ], [ '...' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "abc,-,-"); # anchoring
 
-@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '!a.*', '.*' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ '!a.*', '.*' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "-,def,ghi"); # negative pattern
 
-@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ '.*/second_$&' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ '.*/second_$&' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "second_abc,second_def,second_ghi"); # substitution
 
-@res = &Triceps::Fields::filter([ 'abc', 'defg', 'ghi' ], [ '(.).(.)/$1x$2' ] );
+@res = &Triceps::Fields::filter("Caller", [ 'abc', 'defg', 'ghi' ], [ '(.).(.)/$1x$2' ] );
 ok(join(",", map { defined $_? $_ : "-" } @res), "axc,-,gxi"); # anchoring and numbered sub-expressions
 
 # missing fields in fields()
 eval {
-	@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ 'cba', 'fed' ] );
+	@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ 'cba', 'fed' ] );
 };
-ok($@ =~ /Result definition error:
+ok($@ =~ /Caller: result definition error:
   the field in definition 'cba' is not found
   the field in definition 'fed' is not found
 The available fields are:
@@ -68,9 +68,9 @@ The available fields are:
 /);
 
 eval {
-	@res = &Triceps::Fields::filter([ 'abc', 'def', 'ghi' ], [ 'cba/abc', '!fed' ] );
+	@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ 'cba/abc', '!fed' ] );
 };
-ok($@ =~ /Result definition error:
+ok($@ =~ /Caller: result definition error:
   the field in definition 'cba\/abc' is not found
   the field in definition '!fed' is not found
 The available fields are:
@@ -78,6 +78,21 @@ The available fields are:
 /);
 #print STDERR "$@\n";
 
+#########################
+# filterToPairs() - touch-test, since it works through filter()
+
+@res = &Triceps::Fields::filterToPairs("Caller", [ 'abc', 'defg', 'ghi' ], [ '(.).(.)/$1x$2' ] );
+ok(join(",", map { defined $_? $_ : "-" } @res), "abc,axc,ghi,gxi"); # anchoring and numbered sub-expressions
+
+eval {
+	@res = &Triceps::Fields::filterToPairs("Caller", [ 'abc', 'def', 'ghi' ], [ 'cba/abc', '!fed' ] );
+};
+ok($@ =~ /Caller: result definition error:
+  the field in definition 'cba\/abc' is not found
+  the field in definition '!fed' is not found
+The available fields are:
+  abc, def, ghi
+/);
 
 #########################
 # isArrayType()

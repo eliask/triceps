@@ -219,7 +219,7 @@ sub new # (class, optionName => optionValue ...)
 	#print STDERR "DEBUG order is ", $self->{fieldsLeftFirst}, ": (", join(", ", @order), ")\n";
 	for my $side (@order) {
 		my $orig = $choice{"${side}fld"};
-		my @trans = &Triceps::Fields::filter($orig, $self->{"${side}Fields"});
+		my @trans = &Triceps::Fields::filter("Triceps::LookupJoin::new: option '${side}Fields'", $orig, $self->{"${side}Fields"});
 		my $smap = $choice{"${side}map"};
 		for (my $i = 0; $i <= $#trans; $i++) {
 			my $f = $trans[$i];

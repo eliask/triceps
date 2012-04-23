@@ -59,6 +59,14 @@ use strict;
 #    are taken from the table keys, matched up in the order they are in the
 #    keys. But if a different order is desired, this option can be used to
 #    override it (the fields must still be the same, just the order may change).
+#    The options by and byLeft are mutually exclusive.
+# byLeft (optional) - reference to array, containing the patterns in the syntax as described 
+#    in Triceps::Fields::filter(), same as left/rightFields from the left side to be
+#    used as keys and their translations for the matching right-side fields.
+#    The pattern has an implicit "!.*" added at the end, so any fields that are not
+#    explicitly added get dropped.
+#    The set of fields must still match the indexes, just the order can be modified.
+#    The options by and byLeft are mutually exclusive.
 # type (optional) - one of: "inner" (default), "left", "right", "outer".
 #    For correctness purposes, there are limitations on what outer joins
 #    can be used with which indexes:
@@ -77,9 +85,11 @@ use strict;
 #    an entertainment value, to show, why it's garbage.
 #    (default: 0)
 #
-#    XXX add byPattern
+#    XXX require the key field types to be exactly the same, unless overridden
+#    XXX allow self-join with *FromLabel (or with override?)
 sub new # (class, optionName => optionValue ...)
 {
+	my $myname = "Triceps::JoinTwo::new";
 	my $class = shift;
 	my $self = {};
 	my $i;
@@ -100,11 +110,14 @@ sub new # (class, optionName => optionValue ...)
 			fieldsLeftFirst => [ 1, undef ],
 			fieldsUniqKey => [ "first", undef ],
 			by => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			byLeft => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			type => [ "inner", undef ],
 			leftSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			rightSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			simpleMinded => [ 0, undef ],
 		}, @_);
+
+	&Triceps::Opt::checkMutuallyExclusive($myname, 0, "by", $self->{by}, "byLeft", $self->{byLeft});
 
 	Carp::confess("Self-joins (the same table on both sides) are not supported") 
 		if $self->{leftTable}->same($self->{rightTable});
@@ -179,8 +192,15 @@ sub new # (class, optionName => optionValue ...)
 			. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  ")
 		unless ($#leftkeys == $#rightkeys);
 
+	if (defined $self->{byLeft}) { # override the order
+		push @{$self->{byLeft}}, "!.*"; # add the implicit no-pass-through
+		my @by = &Triceps::Fields::filterToPairs("Triceps::JoinTwo::new: option 'byLeft'", \@leftfld, $self->{byLeft});
+		$self->{by} = \@by;
+	}
+
 	if (defined $self->{by}) { # override the order
-		Carp::confess("The count of key fields in the indexes and option 'by' does not match\n  left:  (" 
+		Carp::confess("The count of key fields in the indexes and option '" . (defined $self->{byLeft}? "byLeft" : "by")
+				. "' does not match\n  left:  (" 
 				. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  by: ("
 				. join(", ", @{$self->{by}}) . ")\n ")
 			unless (($#leftkeys + 1)*2 == ($#{$self->{by}} + 1));
@@ -197,11 +217,15 @@ sub new # (class, optionName => optionValue ...)
 		while ($#cpby >= 0) {
 			my $lf = shift @cpby;
 			my $rt = shift @cpby;
-			Carp::confess("Option 'by' contains a left-side field '$lf' that is not in the index key,\n  left key: ("
-					. join(", ", @leftkeys) . ")\n  ")
+			Carp::confess("Option '" . (defined $self->{byLeft}? "byLeft" : "by") 
+					. "' contains a left-side field '$lf' that is not in the index key,\n  left key: ("
+					. join(", ", @leftkeys) . ")\n  by: ("
+					. join(", ", @{$self->{by}}) . ")\n  ")
 				unless defined $leftmap{$lf};
-			Carp::confess("Option 'by' contains a right-side field '$rt' that is not in the index key,\n  right key: ("
-					. join(", ", @rightkeys) . ")\n  ")
+			Carp::confess("Option '" . (defined $self->{byLeft}? "byLeft" : "by") 
+					. "' contains a right-side field '$rt' that is not in the index key,\n  right key: ("
+					. join(", ", @rightkeys) . ")\n  by: ("
+					. join(", ", @{$self->{by}}) . ")\n  ")
 				unless defined $rightmap{$rt};
 			push @newleft, $lf;
 			push @newright, $rt;

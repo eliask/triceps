@@ -256,6 +256,7 @@ wirejoin("3c", Triceps::JoinTwo->new(
 ));
 
 # right - with leaf index on left
+# and along the way test an explicit "byLeft"
 wirejoin("3d", Triceps::JoinTwo->new(
 	name => "join3d",
 	leftTable => $tTrans3p,
@@ -265,6 +266,7 @@ wirejoin("3d", Triceps::JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
+	byLeft => [ "acctXtrId/external", "acctSrc/source" ],
 	type => "right",
 ));
 
