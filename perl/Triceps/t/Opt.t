@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 37 };
+BEGIN { plan tests => 45 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -203,4 +203,29 @@ ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 
 	ok($@ =~ /^CallerMethod: the label 'lb2' in option labelX has a mismatched unit \('u2' vs 'u1'\)/);
 
 }
+
+#########################
+# checkMutuallyExclusive
+{
+	my $res;
+
+	$res = &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 0, "opt1", undef, "opt2", undef, "opt3", undef);
+	ok(!defined $res);
+	$res = &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 0, "opt1", 9, "opt2", undef, "opt3", undef);
+	ok($res, "opt1");
+	$res = &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 0, "opt1", undef, "opt2", undef, "opt3", 0);
+	ok($res, "opt3");
+	$res = &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", 9, "opt2", undef, "opt3", undef);
+	ok($res, "opt1");
+	$res = &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", undef, "opt2", undef, "opt3", 0);
+	ok($res, "opt3");
+
+	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 0, "opt1", 9, "opt2", 0, "opt3", undef); };
+	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got opt1 and opt2/);
+	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", 9, "opt2", 0, "opt3", 0); };
+	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got opt1 and opt2 and opt3/);
+	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", undef, "opt2", undef, "opt3", undef); };
+	ok($@ =~ /CallerMethod: must have exactly one of options opt1 or opt2 or opt3, got none of them/);
+}
+
 #print STDERR "$@\n";

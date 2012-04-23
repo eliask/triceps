@@ -170,4 +170,36 @@ sub handleUnitTypeLabel($$$$$$$) # ($caller, $nameUnit, \$refUnit, $nameRowType,
 	return 1;
 }
 
+###########
+# Handling of the mutually exclusive options.
+# Checks that no more than one (or exactly one if mandatory != 0) option
+# has a value. Confesses on error.
+#
+# @param caller - the name of the caller function, for error messages
+# @param mandatory - flag: if not 0, exactly one of the options must be specified, 
+#    otherwise all are optional
+# @param optNameN, optValueN - name and actual value of each of the options
+# @return - name of the only defined option, or undef if none defined
+sub checkMutuallyExclusive # ($caller, $mandatory, $optName1, optValue1, ...)
+{
+	my $caller = shift;
+	my $mandatory = shift;
+	my(@names, @values, @used);
+	my($n, $v);
+	while ($#_ >= 0) {
+		$n = shift @_;
+		$v = shift @_;
+		push @names, $n;
+		push @values, $v;
+		push @used, $n
+			if (defined $v);
+	}
+	confess("$caller: must have only one of options " . join(" or ", @names) . ", got " . join(" and ", @used))
+		unless ($#used <= 0);
+	confess("$caller: must have exactly one of options " . join(" or ", @names) . ", got none of them")
+		if ($mandatory && $#used != 0);
+
+	return $used[0];
+}
+
 1;
