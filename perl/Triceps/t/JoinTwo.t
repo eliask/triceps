@@ -270,7 +270,7 @@ wirejoin("3d", Triceps::JoinTwo->new(
 	type => "right",
 ));
 
-# inner - simpleMinded
+# inner - overrideSimpleMinded
 wirejoin("3e", Triceps::JoinTwo->new(
 	name => "join3e",
 	leftTable => $tTrans3,
@@ -281,10 +281,10 @@ wirejoin("3e", Triceps::JoinTwo->new(
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
 	type => "inner",
-	simpleMinded => 1,
+	overrideSimpleMinded => 1,
 ));
 
-# left - simpleMinded
+# left - overrideSimpleMinded
 wirejoin("3f", Triceps::JoinTwo->new(
 	name => "join3f",
 	leftTable => $tTrans3,
@@ -295,10 +295,10 @@ wirejoin("3f", Triceps::JoinTwo->new(
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
 	type => "left",
-	simpleMinded => 1,
+	overrideSimpleMinded => 1,
 ));
 
-# right - simpleMinded
+# right - overrideSimpleMinded
 wirejoin("3g", Triceps::JoinTwo->new(
 	name => "join3g",
 	leftTable => $tTrans3,
@@ -309,7 +309,7 @@ wirejoin("3g", Triceps::JoinTwo->new(
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
 	type => "right",
-	simpleMinded => 1,
+	overrideSimpleMinded => 1,
 ));
 
 # full outer (same as 3b) but with filtering on the input labels

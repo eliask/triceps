@@ -74,19 +74,21 @@ use strict;
 #        left - right index must be leaf (i.e. a primary index, with 1 record per key)
 #        right - left index must be leaf (i.e. a primary index, with 1 record per key)
 #        outer - both indexes must be leaf (i.e. a primary index, with 1 record per key)
-#    This can be overriden by setting simpleMinded => 1.
+#    This can be overriden by setting overrideSimpleMinded => 1.
 # leftSaveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code for the left side
 # rightSaveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code for the right side
-# simpleMinded (optional) - do not try to create the correct DELETE-INSERT sequence
+# overrideSimpleMinded (optional) - do not try to create the correct DELETE-INSERT sequence
 #    for updates, just produce records with the same opcode as the incoming ones.
 #    The data produced is outright garbage, this option is here is purely for
 #    an entertainment value, to show, why it's garbage.
 #    (default: 0)
+# overrideKeyTypes (optional) - flag: allow the key types to be not exactly the same
+#    (default: 0)
+# overrideSelfJoin (optional) - flag: allow the join of a table to itself
+#    (default: 0)
 #
-#    XXX require the key field types to be exactly the same, unless overridden
-#    XXX allow self-join with *FromLabel (or with override?)
 sub new # (class, optionName => optionValue ...)
 {
 	my $myname = "Triceps::JoinTwo::new";
@@ -114,13 +116,15 @@ sub new # (class, optionName => optionValue ...)
 			type => [ "inner", undef ],
 			leftSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			rightSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
-			simpleMinded => [ 0, undef ],
+			overrideSimpleMinded => [ 0, undef ],
+			overrideKeyTypes => [ 0, undef ],
+			overrideSelfJoin => [ 0, undef ],
 		}, @_);
 
 	&Triceps::Opt::checkMutuallyExclusive($myname, 0, "by", $self->{by}, "byLeft", $self->{byLeft});
 
-	Carp::confess("Self-joins (the same table on both sides) are not supported") 
-		if $self->{leftTable}->same($self->{rightTable});
+	Carp::confess("Self-joins (the same table on both sides) are not fully supported, use the option overrideSelfJoin=>1 and special *FromLabel arrangement to enable them") 
+		if (!$self->{overrideSelfJoin} && $self->{leftTable}->same($self->{rightTable}));
 
 	$self->{unit} = $self->{leftTable}->getUnit();
 	my $rightUnit = $self->{rightTable}->getUnit();
@@ -177,11 +181,11 @@ sub new # (class, optionName => optionValue ...)
 		Carp::confess("The $side index '" . $self->{"${side}Index"} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
 			unless ($ixid == &Triceps::IT_HASHED);
 
-		if (!$self->{simpleMinded}) {
+		if (!$self->{overrideSimpleMinded}) {
 			my @subs = $self->{"${side}IdxType"}->getSubIndexes();
 			if ($#subs >= 0 # has sub-indexes, a non-leaf index
 			&& ($self->{type} ne "inner" && $self->{type} ne $side) ) {
-				Carp::confess("The $side index is non-leaf, not supported with type '" . $self->{type} . "', use option simpleMinded=>1 to override")
+				Carp::confess("The $side index is non-leaf, not supported with type '" . $self->{type} . "', use option overrideSimpleMinded=>1 to override")
 			}
 		}
 	}
@@ -241,13 +245,21 @@ sub new # (class, optionName => optionValue ...)
 
 		my $leftType = $leftdef[ $leftmap{$leftkeys[$i]}*2 + 1];
 		my $rightType = $rightdef[ $rightmap{$rightkeys[$i]}*2 + 1];
-		my $leftArr = &Triceps::Fields::isArrayType($leftType);
-		my $rightArr = &Triceps::Fields::isArrayType($rightType);
 
-		Carp::confess("Mismatched array and scalar fields in key: left " 
-				. $leftkeys[$i] . " " . $leftType . ", right "
-				. $rightkeys[$i] . " " . $rightType)
-			unless ($leftArr == $rightArr);
+		if ($self->{overrideKeyTypes}) {
+			my $leftArr = &Triceps::Fields::isArrayType($leftType);
+			my $rightArr = &Triceps::Fields::isArrayType($rightType);
+
+			Carp::confess("Mismatched array and scalar fields in key: left " 
+					. $leftkeys[$i] . " " . $leftType . ", right "
+					. $rightkeys[$i] . " " . $rightType)
+				unless ($leftArr == $rightArr);
+		} else {
+			Carp::confess("Mismatched field types in key: left " 
+					. $leftkeys[$i] . " " . $leftType . ", right "
+					. $rightkeys[$i] . " " . $rightType)
+				unless ($leftType eq $rightType);
+		}
 	}
 
 	my $fieldsMirrorKey = 1;
@@ -290,7 +302,7 @@ sub new # (class, optionName => optionValue ...)
 		by => \@leftby,
 		isLeft => $leftLeft,
 		automatic => 1,
-		oppositeOuter => ($rightLeft && !$self->{simpleMinded}),
+		oppositeOuter => ($rightLeft && !$self->{overrideSimpleMinded}),
 		saveJoinerTo => $self->{leftSaveJoinerTo},
 	);
 	$self->{rightLookup} = Triceps::LookupJoin->new(
@@ -306,7 +318,7 @@ sub new # (class, optionName => optionValue ...)
 		by => \@rightby,
 		isLeft => $rightLeft,
 		automatic => 1,
-		oppositeOuter => ($leftLeft && !$self->{simpleMinded}),
+		oppositeOuter => ($leftLeft && !$self->{overrideSimpleMinded}),
 		saveJoinerTo => $self->{rightSaveJoinerTo},
 	);
 
