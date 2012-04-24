@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 244 };
+BEGIN { plan tests => 245 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1193,6 +1193,8 @@ ok($@ =~ /^Option 'leftFields' of class 'Triceps::LookupJoin' must be a referenc
 ok($@ =~ /^Option 'rightFields' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
 &tryBadOptValue("by", 9);
 ok($@ =~ /^Option 'by' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("byLeft", 9);
+ok($@ =~ /^Option 'byLeft' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
 &tryBadOptValue("saveJoinerTo", 9);
 ok($@ =~ /^Option 'saveJoinerTo' of class 'Triceps::LookupJoin' must be a reference to a scalar, is ''/);
 

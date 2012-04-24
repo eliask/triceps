@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 111 };
+BEGIN { plan tests => 129 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -786,3 +786,82 @@ join3m.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount
 	ok($join->getOverrideKeyTypes(), 12); # the default
 	ok($join->getOverrideSelfJoin(), 13); # the default
 }
+
+#########
+# tests for errors
+
+
+sub tryMissingOptValue # (optName)
+{
+	my %opt = (
+		name => "join3a",
+		leftTable => $tTrans3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["byAccount"],
+		rightIdxPath => ["lookupSrcExt"],
+	);
+	delete $opt{$_[0]};
+	eval {
+		Triceps::JoinTwo->new(%opt);
+	}
+}
+
+&tryMissingOptValue("name");
+ok($@ =~ /^Option 'name' must be specified for class 'Triceps::JoinTwo'/);
+&tryMissingOptValue("leftTable");
+ok($@ =~ /^Option 'leftTable' must be specified for class 'Triceps::JoinTwo'/);
+&tryMissingOptValue("rightTable");
+ok($@ =~ /^Option 'rightTable' must be specified for class 'Triceps::JoinTwo'/);
+&tryMissingOptValue("leftIdxPath");
+ok($@ =~ /^Option 'leftIdxPath' must be specified for class 'Triceps::JoinTwo'/);
+&tryMissingOptValue("rightIdxPath");
+ok($@ =~ /^Option 'rightIdxPath' must be specified for class 'Triceps::JoinTwo'/);
+
+sub tryBadOptValue # (optName, optValue, ...)
+{
+	my %opt = (
+		name => "join3a",
+		leftTable => $tTrans3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["byAccount"],
+		rightIdxPath => ["lookupSrcExt"],
+	);
+	while ($#_ >= 1) {
+		$opt{$_[0]} = $_[1];
+		shift; shift;
+	}
+	eval {
+		Triceps::JoinTwo->new(%opt);
+	}
+}
+
+&tryBadOptValue("leftTable", 9);
+ok($@ =~ /^Option 'leftTable' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Table', is ''/);
+&tryBadOptValue("rightTable", 9);
+ok($@ =~ /^Option 'rightTable' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Table', is ''/);
+&tryBadOptValue("leftFromLabel", 9);
+ok($@ =~ /^Option 'leftFromLabel' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Label', is ''/);
+&tryBadOptValue("rightFromLabel", 9);
+ok($@ =~ /^Option 'rightFromLabel' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Label', is ''/);
+&tryBadOptValue("leftIdxPath", [$vu3]);
+ok($@ =~ /^Option 'leftIdxPath' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY' '', is 'ARRAY' 'Triceps::Unit'/);
+&tryBadOptValue("rightIdxPath", [$vu3]);
+ok($@ =~ /^Option 'rightIdxPath' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY' '', is 'ARRAY' 'Triceps::Unit'/);
+&tryBadOptValue("leftFields", 9);
+ok($@ =~ /^Option 'leftFields' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("rightFields", 9);
+ok($@ =~ /^Option 'rightFields' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("by", 9);
+ok($@ =~ /^Option 'by' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("byLeft", 9);
+ok($@ =~ /^Option 'byLeft' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
+&tryBadOptValue("leftSaveJoinerTo", 9);
+ok($@ =~ /^Option 'leftSaveJoinerTo' of class 'Triceps::JoinTwo' must be a reference to a scalar, is ''/);
+&tryBadOptValue("rightSaveJoinerTo", 9);
+ok($@ =~ /^Option 'rightSaveJoinerTo' of class 'Triceps::JoinTwo' must be a reference to a scalar, is ''/);
+
+&tryBadOptValue(
+	"by", [ "acctSrc", "source", "acctXtrId", "external" ],
+	"byLeft", [ "acctSrc/source", "acctXtrId/external" ]);
+ok($@ =~ /^Triceps::JoinTwo::new: must have only one of options by or byLeft, got both by and byLeft/);
+
