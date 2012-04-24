@@ -556,6 +556,12 @@ sub getBy # (self)
 	return $self->{by};
 }
 
+sub getByLeft # (self)
+{
+	my $self = shift;
+	return $self->{byLeft};
+}
+
 sub getIsLeft # (self)
 {
 	my $self = shift;

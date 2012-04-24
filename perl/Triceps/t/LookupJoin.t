@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 238 };
+BEGIN { plan tests => 239 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1076,7 +1076,7 @@ ok($result2, $expect2xf);
 		rightTable => $tAccounts2,
 		rightIdxPath => ["lookupSrcExt"],
 		rightFields => [ "internal/acct" ],
-		by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+		byLeft => [ "acctSrc/source", "acctXtrId/external" ],
 	);
 	ok(ref $join, "Triceps::LookupJoin");
 
@@ -1098,6 +1098,7 @@ ok($result2, $expect2xf);
 	ok($join->getFieldsLeftFirst(), 1);
 	ok($join->getFieldsMirrorKey(), 0);
 	ok(join(",", @{$join->getBy()}), "acctSrc,source,acctXtrId,external");
+	ok(join(",", @{$join->getByLeft()}), "acctSrc/source,acctXtrId/external,!.*");
 	ok($join->getIsLeft(), 1); # the default
 	ok($join->getLimitOne(), 1); # got auto-detected as 1
 	ok($join->getAutomatic(), 1); # the default
