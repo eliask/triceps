@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 81 };
+BEGIN { plan tests => 111 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -712,3 +712,77 @@ join3m.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount
 #for (my $rh = $tAccounts3->beginIdx($idxAccountsLookup); !$rh->isNull(); $rh = $tAccounts3->nextIdx($idxAccountsLookup, $rh)) {
 #	print STDERR $rh->getRow()->printP(), "\n";
 #}
+
+
+#########
+# getters
+
+{
+	my $join = Triceps::JoinTwo->new( 
+		name => "join",
+		leftTable => $tTrans3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["byAccount"],
+		rightIdxPath => ["lookupSrcExt"],
+		leftFields => [ ".*" ],
+		byLeft => [ "acctSrc/source", "acctXtrId/external" ],
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+
+	my $res;
+	$res = $join->getResultRowType();
+	ok(ref $res, "Triceps::RowType");
+	$res = $join->getOutputLabel();
+	ok(ref $res, "Triceps::Label");
+
+	ok($join->getUnit()->same($tTrans3->getUnit()));
+	ok($join->getName(), "join");
+	ok($join->getLeftTable()->same($tTrans3));
+	ok($join->getRightTable()->same($tAccounts3));
+	ok(join(",", @{$join->getLeftIdxPath()}), "byAccount");
+	ok(join(",", @{$join->getRightIdxPath()}), "lookupSrcExt");
+
+	ok(join(",", @{$join->getLeftFields()}), ".*");
+	ok(join(",", @{$join->getRightFields()}), '!source,!external,.*'); # amended by fieldsUniqKey
+
+	ok($join->getFieldsLeftFirst(), 1); # the default
+	ok($join->getFieldsUniqKey(), "first"); # the default
+
+	ok(join(",", @{$join->getBy()}), "acctSrc,source,acctXtrId,external");
+	ok(join(",", @{$join->getByLeft()}), "acctSrc/source,acctXtrId/external,!.*");
+
+	ok($join->getType(), "inner"); # the default
+	ok($join->getOverrideSimpleMinded(), 0); # the default
+	ok($join->getOverrideKeyTypes(), 0); # the default
+	ok($join->getOverrideSelfJoin(), 0); # the default
+}
+{
+	my $join = Triceps::JoinTwo->new( 
+		name => "join",
+		leftTable => $tTrans3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["byAccount"],
+		rightIdxPath => ["lookupSrcExt"],
+		type => "outer",
+		fieldsUniqKey => "none",
+		fieldsLeftFirst => 10,
+		overrideSimpleMinded => 11,
+		overrideKeyTypes => 12,
+		overrideSelfJoin => 13,
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+
+	ok(! defined $join->getLeftFields());
+	ok(! defined $join->getRightFields());
+
+	ok($join->getFieldsLeftFirst(), 10);
+	ok($join->getFieldsUniqKey(), "none");
+
+	ok(! defined $join->getBy());
+	ok(! defined $join->getByLeft());
+
+	ok($join->getType(), "outer"); # the default
+	ok($join->getOverrideSimpleMinded(), 11); # the default
+	ok($join->getOverrideKeyTypes(), 12); # the default
+	ok($join->getOverrideSelfJoin(), 13); # the default
+}

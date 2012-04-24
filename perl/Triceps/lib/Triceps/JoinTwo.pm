@@ -332,6 +332,10 @@ sub new # (class, optionName => optionValue ...)
 	$self->{leftLookup}->getOutputLabel()->chain($self->{outputLabel});
 	$self->{rightLookup}->getOutputLabel()->chain($self->{outputLabel});
 
+	# no need to keep the label references any more, avoid a reference cycle
+	delete $self->{leftFromLabel}; 
+	delete $self->{rightFromLabel};
+
 	bless $self, $class;
 	return $self;
 }
@@ -348,6 +352,100 @@ sub getOutputLabel # (self)
 	return $self->{outputLabel};
 }
 
-# XXX for production add more getter methods
+sub getUnit # (self)
+{
+	my $self = shift;
+	return $self->{unit};
+}
+
+sub getName # (self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+sub getLeftTable # (self)
+{
+	my $self = shift;
+	return $self->{leftTable};
+}
+
+sub getRightTable # (self)
+{
+	my $self = shift;
+	return $self->{rightTable};
+}
+
+sub getLeftIdxPath # (self)
+{
+	my $self = shift;
+	return $self->{leftIdxPath};
+}
+
+sub getRightIdxPath # (self)
+{
+	my $self = shift;
+	return $self->{rightIdxPath};
+}
+
+sub getLeftFields # (self)
+{
+	my $self = shift;
+	return $self->{leftFields};
+}
+
+sub getRightFields # (self)
+{
+	my $self = shift;
+	return $self->{rightFields};
+}
+
+sub getFieldsLeftFirst # (self)
+{
+	my $self = shift;
+	return $self->{fieldsLeftFirst};
+}
+
+sub getFieldsUniqKey # (self)
+{
+	my $self = shift;
+	return $self->{fieldsUniqKey};
+}
+
+sub getBy # (self)
+{
+	my $self = shift;
+	return $self->{by};
+}
+
+sub getByLeft # (self)
+{
+	my $self = shift;
+	return $self->{byLeft};
+}
+
+sub getType # (self)
+{
+	my $self = shift;
+	return $self->{type};
+}
+
+sub getOverrideSimpleMinded # (self)
+{
+	my $self = shift;
+	return $self->{overrideSimpleMinded};
+}
+
+sub getOverrideKeyTypes # (self)
+{
+	my $self = shift;
+	return $self->{overrideKeyTypes};
+}
+
+sub getOverrideSelfJoin # (self)
+{
+	my $self = shift;
+	return $self->{overrideSelfJoin};
+}
 
 1;

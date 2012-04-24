@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 239 };
+BEGIN { plan tests => 244 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1104,6 +1104,27 @@ ok($result2, $expect2xf);
 	ok($join->getAutomatic(), 1); # the default
 	ok($join->getOppositeOuter(), 0); # the default
 }
+{
+	my $join = Triceps::LookupJoin->new( 
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIdxPath => ["lookupSrcExt"],
+		rightFields => [ "internal/acct" ],
+		byLeft => [ "acctSrc/source", "acctXtrId/external" ],
+		isLeft => 10,
+		limitOne => 11,
+		automatic => 12,
+		oppositeOuter => 13,
+	);
+	ok(ref $join, "Triceps::LookupJoin");
+
+	ok($join->getIsLeft(), 10);
+	ok($join->getLimitOne(), 11);
+	ok($join->getAutomatic(), 12);
+	ok($join->getOppositeOuter(), 13);
+}
 
 #########
 # tests for errors
@@ -1346,6 +1367,7 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 	};
 	ok($@ =~ /^Joiner 'join' was created with automatic option and does not support the manual lookup\(\) call/);
 }
+
 
 #print STDERR "err=$@\n";
 
