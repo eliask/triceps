@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 129 };
+BEGIN { plan tests => 136 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -113,8 +113,16 @@ my %result;
 # the accounts table type is also reused from example (1)
 $tAccounts3 = $vu3->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
 ok(ref $tAccounts3, "Triceps::Table");
-$inacct3 = $tAccounts3->getInputLabel();
+
+# add a chance to act betfore the account table gets modified, for self-join
+$beforeAcct3 = $vu3->makeDummyLabel($ttAccounts->rowType(), "beforeAcct3");
+ok(ref $beforeAcct3, "Triceps::Label");
+
+$inacct3 = $vu3->makeDummyLabel($ttAccounts->rowType(), "inacct3");
 ok(ref $inacct3, "Triceps::Label");
+
+ok($inacct3->chain($beforeAcct3));
+ok($inacct3->chain($tAccounts3->getInputLabel()));
 
 # the incoming transactions table here adds an extra id field
 @defTrans3 = ( # a transaction received
@@ -434,6 +442,27 @@ wirejoin("3m", Triceps::JoinTwo->new(
 	rightSaveJoinerTo => \$codeRight,
 ));
 
+# a self-join of accounts table
+{
+	my $name = "3n";
+	my $join = Triceps::JoinTwo->new(
+		name => "join$name",
+		leftTable => $tAccounts3,
+		leftFromLabel => $beforeAcct3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["lookupIntGroup"],
+		rightIdxPath => ["lookupIntGroup"],
+		rightFields => [ '.*/rt_$&' ], # copy all with prefix rt_
+		type => "inner",
+		overrideSelfJoin => 1,
+	);
+	ok(ref $join, "Triceps::JoinTwo") || confess "join creation failed";
+
+	my $outlab = $vu3->makeLabel($join->getResultRowType(), "out$name", undef, sub { $result{$name} .= $_[1]->printP() . "\n" } );
+	ok(ref $outlab, "Triceps::Label") || confess "label creation failed";
+	ok($join->getOutputLabel()->chain($outlab));
+}
+
 ##########################################################################
 # now send the data
 
@@ -698,7 +727,19 @@ join3m.rightLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="999" amount
 join3m.leftLookup.out OP_DELETE acctSrc="source1" acctXtrId="2011" ac_internal="2" 
 join3m.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount="500" ac_internal="2" 
 ');
-#print STDERR $result3i;
+ok ($result{"3n"}, 
+'join3n.rightLookup.out OP_INSERT source="source1" external="999" internal="1" rt_source="source1" rt_external="999" 
+join3n.rightLookup.out OP_INSERT source="source1" external="2011" internal="2" rt_source="source1" rt_external="2011" 
+join3n.rightLookup.out OP_INSERT source="source1" external="42" internal="3" rt_source="source1" rt_external="42" 
+join3n.leftLookup.out OP_INSERT source="source2" external="ABCD" internal="1" rt_source="source1" rt_external="999" 
+join3n.rightLookup.out OP_INSERT source="source1" external="999" internal="1" rt_source="source2" rt_external="ABCD" 
+join3n.rightLookup.out OP_INSERT source="source2" external="ABCD" internal="1" rt_source="source2" rt_external="ABCD" 
+join3n.leftLookup.out OP_DELETE source="source1" external="999" internal="1" rt_source="source1" rt_external="999" 
+join3n.leftLookup.out OP_DELETE source="source1" external="999" internal="1" rt_source="source2" rt_external="ABCD" 
+join3n.rightLookup.out OP_DELETE source="source2" external="ABCD" internal="1" rt_source="source1" rt_external="999" 
+join3n.rightLookup.out OP_INSERT source="source1" external="999" internal="4" rt_source="source1" rt_external="999" 
+');
+#print STDERR $result{"3n"};
 
 # for debugging
 #print STDERR $result3f;
@@ -865,3 +906,4 @@ ok($@ =~ /^Option 'rightSaveJoinerTo' of class 'Triceps::JoinTwo' must be a refe
 	"byLeft", [ "acctSrc/source", "acctXtrId/external" ]);
 ok($@ =~ /^Triceps::JoinTwo::new: must have only one of options by or byLeft, got both by and byLeft/);
 
+# XXX test a self-join
