@@ -13,5 +13,13 @@ Things that need to be done:
 * an encapsulation of iteration range: begin, end, direction, maybe level of the step
 * add $unit->makeLabelFrom() - a computational block with input and output labels,
   input chained from another label
-* add $label->relabelRowop()
+* add $label->relabelRowop() (adopt()?)
 * add option fromLabel throughout templates
+* change options to capitalized
+* doc: Fields::, TableType::findIndexPath,findIndexKeyPath, Opt::checkMutuallyExclusive
+* doc: JoinTwo key fields do have to have the same type, floating keys are bad
+* in Table add a label for getting the modifications before they are applied
+* in Table apply the modifications one by one and send through, add a catch for
+  any attempted modifications in the middle of ongoing modifications
+* in Labels mark busy when called, and confess on any attempts of recursive calls
+* add a Sequence template, that calls its multiple output labels in order
