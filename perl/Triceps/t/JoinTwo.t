@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 136 };
+BEGIN { plan tests => 151 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -96,8 +96,6 @@ ok($res, 1);
 # It's the next step of complexity that still has serious limitations:
 # joining only two tables, and no self-joins.
 # It's implemented in a simple way by tying together 2 LookupJoins.
-
-# XXX test Triceps::JoinTwo for errors
 
 # This will work by producing multiple join results in parallel.
 # There are 2 pairs of tables (an account table and 2 separate transaction tables),
@@ -499,7 +497,6 @@ sub feedMixedInput # (@$dataArray)
 $vu3->drainFrame();
 ok($vu3->empty());
 
-# XXX these results depend on the ordering of records in the hash index, so will fail on MSB-first machines
 ok ($result{"3a"}, 
 'join3a.rightLookup.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" ac_source="source1" ac_external="999" ac_internal="1" 
 join3a.leftLookup.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
@@ -876,34 +873,136 @@ sub tryBadOptValue # (optName, optValue, ...)
 	}
 }
 
-&tryBadOptValue("leftTable", 9);
+&tryBadOptValue(leftTable => 9);
 ok($@ =~ /^Option 'leftTable' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Table', is ''/);
-&tryBadOptValue("rightTable", 9);
+&tryBadOptValue(rightTable => 9);
 ok($@ =~ /^Option 'rightTable' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Table', is ''/);
-&tryBadOptValue("leftFromLabel", 9);
+&tryBadOptValue(leftFromLabel => 9);
 ok($@ =~ /^Option 'leftFromLabel' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Label', is ''/);
-&tryBadOptValue("rightFromLabel", 9);
+&tryBadOptValue(rightFromLabel => 9);
 ok($@ =~ /^Option 'rightFromLabel' of class 'Triceps::JoinTwo' must be a reference to 'Triceps::Label', is ''/);
-&tryBadOptValue("leftIdxPath", [$vu3]);
+&tryBadOptValue(leftIdxPath => [$vu3]);
 ok($@ =~ /^Option 'leftIdxPath' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY' '', is 'ARRAY' 'Triceps::Unit'/);
-&tryBadOptValue("rightIdxPath", [$vu3]);
+&tryBadOptValue(rightIdxPath => [$vu3]);
 ok($@ =~ /^Option 'rightIdxPath' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY' '', is 'ARRAY' 'Triceps::Unit'/);
-&tryBadOptValue("leftFields", 9);
+&tryBadOptValue(leftFields => 9);
 ok($@ =~ /^Option 'leftFields' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
-&tryBadOptValue("rightFields", 9);
+&tryBadOptValue(rightFields => 9);
 ok($@ =~ /^Option 'rightFields' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
-&tryBadOptValue("by", 9);
+&tryBadOptValue(by => 9);
 ok($@ =~ /^Option 'by' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
-&tryBadOptValue("byLeft", 9);
+&tryBadOptValue(byLeft => 9);
 ok($@ =~ /^Option 'byLeft' of class 'Triceps::JoinTwo' must be a reference to 'ARRAY', is ''/);
-&tryBadOptValue("leftSaveJoinerTo", 9);
+&tryBadOptValue(leftSaveJoinerTo => 9);
 ok($@ =~ /^Option 'leftSaveJoinerTo' of class 'Triceps::JoinTwo' must be a reference to a scalar, is ''/);
-&tryBadOptValue("rightSaveJoinerTo", 9);
+&tryBadOptValue(rightSaveJoinerTo => 9);
 ok($@ =~ /^Option 'rightSaveJoinerTo' of class 'Triceps::JoinTwo' must be a reference to a scalar, is ''/);
 
 &tryBadOptValue(
-	"by", [ "acctSrc", "source", "acctXtrId", "external" ],
-	"byLeft", [ "acctSrc/source", "acctXtrId/external" ]);
+	by => [ "acctSrc", "source", "acctXtrId", "external" ],
+	byLeft => [ "acctSrc/source", "acctXtrId/external" ]);
 ok($@ =~ /^Triceps::JoinTwo::new: must have only one of options by or byLeft, got both by and byLeft/);
 
-# XXX test a self-join
+&tryBadOptValue(leftTable => $tAccounts3);
+ok($@ =~ /^Self-joins \(the same table on both sides\) are not fully supported, use the option overrideSelfJoin=>1 and special \*FromLabel arrangement to enable them/);
+
+{
+	$vu4 = Triceps::Unit->new("vu4");
+	ok(ref $vu4, "Triceps::Unit");
+	$tAccounts4 = $vu4->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+	ok(ref $tAccounts4, "Triceps::Table");
+	$tTrans4 = $vu4->makeTable($ttTrans3, &Triceps::EM_CALL, "Trans");
+	ok(ref $tTrans4, "Triceps::Table");
+
+	&tryBadOptValue(rightTable => $tAccounts4);
+	ok($@ =~ /^Both tables must have the same unit, got 'vu3' and 'vu4'/);
+
+	&tryBadOptValue(rightFromLabel => $tAccounts4->getOutputLabel());
+	ok($@ =~ /^The rightFromLabel unit does not match rightTable, 'vu4' vs 'vu3'/);
+	&tryBadOptValue(leftFromLabel => $tTrans4->getOutputLabel());
+	ok($@ =~ /^The leftFromLabel unit does not match leftTable, 'vu4' vs 'vu3'/);
+}
+
+&tryBadOptValue(type => "xxx");
+ok($@ =~ /^Unknown value 'xxx' of option 'type', must be one of inner|left|right|outer/);
+
+&tryBadOptValue(rightFromLabel => $tTrans3->getOutputLabel());
+ok($@ =~ /^The rightFromLabel row type does not match rightTable,
+in label:
+  row {
+    int32 id,
+    string acctSrc,
+    string acctXtrId,
+    int32 amount,
+  }
+in table:
+  row {
+    string source,
+    string external,
+    int32 internal,
+  }
+/);
+&tryBadOptValue(leftFromLabel => $tAccounts3->getOutputLabel());
+ok($@ =~ /^The leftFromLabel row type does not match leftTable,
+in label:
+  row {
+    string source,
+    string external,
+    int32 internal,
+  }
+in table:
+  row {
+    int32 id,
+    string acctSrc,
+    string acctXtrId,
+    int32 amount,
+  }
+/);
+
+&tryBadOptValue(leftIdxPath => [ "lookupIntGroup", "lookupInt" ]);
+ok($@ =~ /^Triceps::TableType::findIndexKeyPath: unable to find the index type at path 'lookupIntGroup', table type is:
+table \(
+  row {
+    int32 id,
+    string acctSrc,
+    string acctXtrId,
+    int32 amount,
+  }
+\) {
+  index HashedIndex\(id, \) primary,
+  index HashedIndex\(acctSrc, acctXtrId, \) {
+    index FifoIndex\(\) data,
+  } byAccount,
+  index HashedIndex\(acctXtrId, acctSrc, \) {
+    index FifoIndex\(\) data,
+  } byAccountBackwards,
+}/);
+
+&tryBadOptValue(rightIdxPath => [ "lookupIntGroup", "lookupInt" ]);
+ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupIntGroup.lookupInt' does not have a key, table type is:
+table \(
+  row {
+    string source,
+    string external,
+    int32 internal,
+  }
+\) {
+  index HashedIndex\(source, external, \) lookupSrcExt,
+  index HashedIndex\(source, \) {
+    index HashedIndex\(external, \) iterateSrcExt,
+  } iterateSrc,
+  index HashedIndex\(internal, \) {
+    index FifoIndex\(\) lookupInt,
+  } lookupIntGroup,
+}/);
+
+&tryBadOptValue(type => "outer");
+ok($@ =~ /^The left index is non-leaf, not supported with type 'outer', use option overrideSimpleMinded=>1 to override/);
+&tryBadOptValue(type => "right");
+ok($@ =~ /^The left index is non-leaf, not supported with type 'right', use option overrideSimpleMinded=>1 to override/);
+&tryBadOptValue(rightIdxPath => [ "lookupIntGroup" ], type => "left");
+ok($@ =~ /^The right index is non-leaf, not supported with type 'left', use option overrideSimpleMinded=>1 to override/);
+#print STDERR "$@\n";
+
+# XXX test Triceps::JoinTwo for errors
+

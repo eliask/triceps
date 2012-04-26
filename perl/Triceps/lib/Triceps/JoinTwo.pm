@@ -167,19 +167,20 @@ sub new # (class, optionName => optionValue ...)
 				unless $self->{unit}->same($self->{"${side}FromLabel"}->getUnit());
 			Carp::confess("The ${side}FromLabel row type does not match ${side}Table,\nin label:\n  " 
 					. $self->{"${side}FromLabel"}->getType()->print("  ") . "\nin table:\n  " 
-					. $self->{"${side}Table"}->getRowType()->print("  "))
+					. $self->{"${side}Table"}->getRowType()->print("  ") . "\n ")
 				unless $self->{"${side}Table"}->getRowType()->match($self->{"${side}FromLabel"}->getType());
 		} else {
 			$self->{"${side}FromLabel"} = $self->{"${side}Table"}->getOutputLabel();
 		}
 
-		$self->{"${side}IdxType"} = $self->{"${side}Table"}->getType()->findIndexPath(@{$self->{"${side}IdxPath"}});
+		my @keys;
+		($self->{"${side}IdxType"}, @keys) = $self->{"${side}Table"}->getType()->findIndexKeyPath(@{$self->{"${side}IdxPath"}});
 		# would already confess if the index is not found
 		#Carp::confess("The $side table does not have a top-level index '" . $self->{"${side}Index"} . "' for joining")
 		#	unless defined $self->{"${side}IdxType"};
-		my $ixid  = $self->{"${side}IdxType"}->getIndexId();
-		Carp::confess("The $side index '" . $self->{"${side}Index"} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
-			unless ($ixid == &Triceps::IT_HASHED);
+		#my $ixid  = $self->{"${side}IdxType"}->getIndexId();
+		#Carp::confess("The $side index '" . $self->{"${side}Index"} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
+		#   unless ($ixid == &Triceps::IT_HASHED);
 
 		if (!$self->{overrideSimpleMinded}) {
 			my @subs = $self->{"${side}IdxType"}->getSubIndexes();
