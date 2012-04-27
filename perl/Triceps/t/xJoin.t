@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 9 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -144,7 +144,7 @@ my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
 }) or die "$!";
 
 # label to print the changes to the detailed stats
-makePrintLabel("lbPrintPackets", $lbFilterResult);
+makePrintLabel("lbPrint", $lbFilterResult);
 
 while(&readLine) {
 	chomp;
@@ -204,7 +204,7 @@ our $join = Triceps::LookupJoin->new(
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
-makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+makePrintLabel("lbPrint", $join->getOutputLabel());
 
 while(&readLine) {
 	chomp;
@@ -271,7 +271,7 @@ our $join = Triceps::LookupJoin->new(
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
-makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+makePrintLabel("lbPrint", $join->getOutputLabel());
 
 while(&readLine) {
 	chomp;
@@ -341,7 +341,7 @@ our $join = Triceps::LookupJoin->new(
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
-makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+makePrintLabel("lbPrint", $join->getOutputLabel());
 
 while(&readLine) {
 	chomp;
@@ -420,7 +420,7 @@ our $join = Triceps::LookupJoin->new(
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
-makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+makePrintLabel("lbPrint", $join->getOutputLabel());
 
 while(&readLine) {
 	chomp;
@@ -495,7 +495,7 @@ our $join = Triceps::LookupJoin->new(
 ); # would die by itself on an error
 
 # label to print the changes to the detailed stats
-my $lbPrintPackets = makePrintLabel("lbPrintPackets", $join->getOutputLabel());
+my $lbPrint = makePrintLabel("lbPrint", $join->getOutputLabel());
 
 while(&readLine) {
 	chomp;
@@ -509,7 +509,7 @@ while(&readLine) {
 		my $trans = $rtInTrans->makeRowArray(@data) or die "$!";
 		my @rows = $join->lookup($trans);
 		foreach my $r (@rows) {
-			$uJoin->call($lbPrintPackets->makeRowop($op, $r)) or die "$!";
+			$uJoin->call($lbPrint->makeRowop($op, $r)) or die "$!";
 		}
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
@@ -526,17 +526,223 @@ ok($result,
 acct,OP_INSERT,source1,2011,2
 acct,OP_INSERT,source2,ABCD,1
 trans,OP_INSERT,1,source1,999,100
-lbPrintPackets OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+lbPrint OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
 trans,OP_INSERT,2,source2,ABCD,200
-lbPrintPackets OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+lbPrint OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
 trans,OP_INSERT,3,source2,QWERTY,200
-lbPrintPackets OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+lbPrint OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
 acct,OP_INSERT,source2,QWERTY,2
 trans,OP_DELETE,3,source2,QWERTY,200
-lbPrintPackets OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+lbPrint OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
 acct,OP_DELETE,source1,999,1
 ');
 #$code =~ s/\n\t\t/\n/g;
 #$code =~ s/\t/  /g;
 #print "$code\n";
+
+#####################################################################################
+# The JoinTwo examples
+
+#########################
+# common row types and such, for the currency conversion
+
+our $rtToUsd = Triceps::RowType->new( # a currency conversion to USD
+	date => "int32", # as of which date, in format YYYYMMDD
+	currency => "string", # currency code
+	toUsd => "float64", # multiplier to convert this currency to USD
+) or die "$!";
+
+our $rtPosition = Triceps::RowType->new( # a customer account position
+	date => "int32", # as of which date, in format YYYYMMDD
+	customer => "string", # customer account id
+	symbol => "string", # stock symbol
+	quantity => "float64", # number of shares
+	price => "float64", # share price in local currency
+	currency => "string", # currencty code of the price
+) or die "$!";
+
+# exchange rates, to convert all currencies to USD
+our $ttToUsd = Triceps::TableType->new($rtToUsd)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+	)
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or die "$!";
+$ttToUsd->initialize() or die "$!";
+
+# the positions in the original currency
+our $ttPosition = Triceps::TableType->new($rtPosition)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "customer", "symbol" ])
+	)
+	->addSubIndex("currencyLookup", # for joining with currency conversion
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or die "$!";
+$ttPosition->initialize() or die "$!";
+
+our @inputBasicJoin = (
+	"cur,OP_INSERT,20120310,USD,1\n",
+	"cur,OP_INSERT,20120310,GBP,2\n",
+	"cur,OP_INSERT,20120310,EUR,1.5\n",
+	"pos,OP_INSERT,20120310,one,AAA,100,15,USD\n",
+	"pos,OP_INSERT,20120310,two,AAA,100,8,GBP\n",
+	"pos,OP_INSERT,20120310,three,AAA,100,300,RUR\n",
+	"pos,OP_INSERT,20120310,three,BBB,200,80,GBP\n",
+	"cur,OP_INSERT,20120310,RUR,0.04\n",
+	"cur,OP_DELETE,20120310,GBP,2\n",
+	"cur,OP_INSERT,20120310,GBP,2.2\n",
+	"pos,OP_DELETE,20120310,one,AAA,100,15,USD\n",
+	"pos,OP_INSERT,20120310,one,AAA,200,16,USD\n",
+);
+
+#########################
+
+sub doJoinInner {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tToUsd = $uJoin->makeTable($ttToUsd, 
+	&Triceps::EM_CALL, "tToUsd") or die "$!";
+our $tPosition = $uJoin->makeTable($ttPosition, 
+	&Triceps::EM_CALL, "tPosition") or die "$!";
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "inner",
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "cur") {
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "pos") {
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
+			or die "$!";
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doJoinInner
+
+@input = @inputBasicJoin;
+$result = undef;
+&doJoinInner();
+#print $result;
+ok($result, 
+'cur,OP_INSERT,20120310,USD,1
+cur,OP_INSERT,20120310,GBP,2
+cur,OP_INSERT,20120310,EUR,1.5
+pos,OP_INSERT,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+pos,OP_DELETE,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+pos,OP_INSERT,20120310,one,AAA,200,16,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+');
+
+#########################
+
+sub doJoinLeft {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tToUsd = $uJoin->makeTable($ttToUsd, 
+	&Triceps::EM_CALL, "tToUsd") or die "$!";
+our $tPosition = $uJoin->makeTable($ttPosition, 
+	&Triceps::EM_CALL, "tPosition") or die "$!";
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "left",
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "cur") {
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "pos") {
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
+			or die "$!";
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doJoinLeft
+
+@input = @inputBasicJoin;
+$result = undef;
+&doJoinLeft();
+#print $result;
+ok($result, 
+'cur,OP_INSERT,20120310,USD,1
+cur,OP_INSERT,20120310,GBP,2
+cur,OP_INSERT,20120310,EUR,1.5
+pos,OP_INSERT,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+pos,OP_DELETE,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+pos,OP_INSERT,20120310,one,AAA,200,16,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+');
 
