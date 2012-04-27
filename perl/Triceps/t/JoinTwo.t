@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 151 };
+BEGIN { plan tests => 173 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1002,7 +1002,173 @@ ok($@ =~ /^The left index is non-leaf, not supported with type 'outer', use opti
 ok($@ =~ /^The left index is non-leaf, not supported with type 'right', use option overrideSimpleMinded=>1 to override/);
 &tryBadOptValue(rightIdxPath => [ "lookupIntGroup" ], type => "left");
 ok($@ =~ /^The right index is non-leaf, not supported with type 'left', use option overrideSimpleMinded=>1 to override/);
-#print STDERR "$@\n";
 
-# XXX test Triceps::JoinTwo for errors
+&tryBadOptValue(rightIdxPath => ["iterateSrc"]);
+ok($@ =~ /^The count of key fields in left and right indexes doesnt match
+  left:  \(acctSrc, acctXtrId\)
+  right: \(source\)/);
+&tryBadOptValue(by => [ "acctSrc", "source" ]);
+ok($@ =~ /^The count of key fields in the indexes and option 'by' does not match
+  left:  \(acctSrc, acctXtrId\)
+  right: \(source, external\)
+  by: \(acctSrc, source\)/);
+&tryBadOptValue(byLeft => [ "acctSrc/source" ]);
+ok($@ =~ /^The count of key fields in the indexes and option 'byLeft' does not match
+  left:  \(acctSrc, acctXtrId\)
+  right: \(source, external\)
+  by: \(acctSrc, source\)/);
+
+&tryBadOptValue(by => [ "id", "source", "acctXtrId", "external" ]);
+ok($@ =~ /^Option 'by' contains a left-side field 'id' that is not in the index key,
+  left key: \(acctSrc, acctXtrId\)
+  by: \(id, source, acctXtrId, external\)/);
+&tryBadOptValue(by => [ "acctSrc", "source", "acctXtrId", "internal" ]);
+ok($@ =~ /^Option 'by' contains a right-side field 'internal' that is not in the index key,
+  right key: \(source, external\)
+  by: \(acctSrc, source, acctXtrId, internal\)/);
+&tryBadOptValue(byLeft => [ "id/source", "acctXtrId/external" ]);
+ok($@ =~ /^Option 'byLeft' contains a left-side field 'id' that is not in the index key,
+  left key: \(acctSrc, acctXtrId\)
+  by: \(id, source, acctXtrId, external\)/);
+&tryBadOptValue(byLeft => [ "acctSrc/source", "acctXtrId/internal" ]);
+ok($@ =~ /^Option 'byLeft' contains a right-side field 'internal' that is not in the index key,
+  right key: \(source, external\)
+  by: \(acctSrc, source, acctXtrId, internal\)/);
+
+{
+	my $rtVaried = Triceps::RowType->new(
+		a => "uint8",
+		aa => "uint8[]",
+		b => "int32",
+		bb => "int32[]",
+		c => "int64",
+		cc => "int64[]",
+		d => "float64",
+		dd => "float64[]",
+		e => "string",
+	);
+	ok(ref $rtVaried, "Triceps::RowType");
+		
+	my $ttVaried = Triceps::TableType->new($rtVaried)
+		->addSubIndex("a",
+			Triceps::IndexType->newHashed(key => [ "a" ])
+		)
+		->addSubIndex("aa",
+			Triceps::IndexType->newHashed(key => [ "aa" ])
+		)
+		->addSubIndex("b",
+			Triceps::IndexType->newHashed(key => [ "b" ])
+		)
+		->addSubIndex("bb",
+			Triceps::IndexType->newHashed(key => [ "bb" ])
+		)
+		->addSubIndex("c",
+			Triceps::IndexType->newHashed(key => [ "c" ])
+		)
+		->addSubIndex("cc",
+			Triceps::IndexType->newHashed(key => [ "cc" ])
+		)
+		->addSubIndex("e",
+			Triceps::IndexType->newHashed(key => [ "e" ])
+		)
+	; 
+	ok(ref $ttVaried, "Triceps::TableType");
+
+	$res = $ttVaried->initialize();
+	ok($res, 1);
+
+	my $t1 = $vu3->makeTable($ttVaried, &Triceps::EM_CALL, "t1");
+	ok(ref $t1, "Triceps::Table");
+	my $t2 = $vu3->makeTable($ttVaried, &Triceps::EM_CALL, "t2");
+	ok(ref $t2, "Triceps::Table");
+
+	&tryBadOptValue(
+		leftTable => $t1,
+		leftIdxPath => [ "a" ],
+		rightTable => $t2,
+		rightIdxPath => [ "b" ],
+	);
+	ok($@ =~ /^Mismatched field types in the join condition: left a uint8, right b int32/);
+
+	&tryBadOptValue(
+		leftTable => $t1,
+		leftIdxPath => [ "c" ],
+		rightTable => $t2,
+		rightIdxPath => [ "b" ],
+	);
+	ok($@ =~ /^Mismatched field types in the join condition: left c int64, right b int32/);
+
+	&tryBadOptValue(
+		leftTable => $t1,
+		leftIdxPath => [ "bb" ],
+		rightTable => $t2,
+		rightIdxPath => [ "b" ],
+	);
+	ok($@ =~ /^Mismatched field types in the join condition: left bb int32\[\], right b int32/);
+
+	&tryBadOptValue(
+		leftTable => $t1,
+		leftIdxPath => [ "bb" ],
+		rightTable => $t2,
+		rightIdxPath => [ "b" ],
+		overrideKeyTypes => 1,
+	);
+	ok($@ =~ /^Mismatched array and scalar fields in the join condition: left bb int32\[\], right b int32/);
+
+	&tryBadOptValue(
+		leftTable => $t1,
+		leftIdxPath => [ "a" ],
+		rightTable => $t2,
+		rightIdxPath => [ "aa" ],
+	);
+	ok($@ =~ /^Mismatched field types in the join condition: left a uint8, right aa uint8\[\]/);
+
+	&tryBadOptValue(
+		leftTable => $t1,
+		leftIdxPath => [ "e" ],
+		rightTable => $t2,
+		rightIdxPath => [ "aa" ],
+	);
+	ok($@ =~ /^Mismatched field types in the join condition: left e string, right aa uint8\[\]/);
+
+	# now test the good ones
+	my $join;
+
+	$join = Triceps::JoinTwo->new(
+		name => "join",
+		leftTable => $t1,
+		leftIdxPath => [ "c" ],
+		rightTable => $t2,
+		rightIdxPath => [ "b" ],
+		rightFields => [ "!.*" ],
+		overrideKeyTypes => 1,
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+
+	$join = Triceps::JoinTwo->new(
+		name => "join",
+		leftTable => $t1,
+		leftIdxPath => [ "a" ],
+		rightTable => $t2,
+		rightIdxPath => [ "aa" ],
+		rightFields => [ "!.*" ],
+		overrideKeyTypes => 1,
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+
+	$join = Triceps::JoinTwo->new(
+		name => "join",
+		leftTable => $t1,
+		leftIdxPath => [ "e" ],
+		rightTable => $t2,
+		rightIdxPath => [ "aa" ],
+		rightFields => [ "!.*" ],
+		overrideKeyTypes => 1,
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+}
+
+&tryBadOptValue(fieldsUniqKey => "xxx");
+ok($@ =~ /^Unknown value 'xxx' of option 'fieldsUniqKey', must be one of none|manual|left|right|first/);
+#print STDERR "$@\n";
 
