@@ -558,7 +558,7 @@ our $rtPosition = Triceps::RowType->new( # a customer account position
 	symbol => "string", # stock symbol
 	quantity => "float64", # number of shares
 	price => "float64", # share price in local currency
-	currency => "string", # currencty code of the price
+	currency => "string", # currency code of the price
 ) or die "$!";
 
 # exchange rates, to convert all currencies to USD
