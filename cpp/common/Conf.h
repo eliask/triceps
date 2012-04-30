@@ -9,6 +9,7 @@
 #ifndef __Triceps_Conf_h__
 #define __Triceps_Conf_h__
 
+// Namespace to use for the Triceps library
 #ifndef TRICEPS_NS
 #define TRICEPS_NS Triceps
 #endif

@@ -4,14 +4,11 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of strprintf().
+// Test of the structured errors.
 
 #include <utest/Utest.h>
 
 #include <common/Errors.h>
-
-// Now, this is a bit funny, since strprintf() is used inside the etst infrastructure
-// too. But if it all works, it should be all good.
 
 UTESTCASE simple(Utest *utest)
 {

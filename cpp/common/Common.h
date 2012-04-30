@@ -18,6 +18,7 @@
 
 #include <common/Conf.h>
 #include <common/Errors.h>
+#include <common/Exception.h>
 #include <common/Strprintf.h>
 
 namespace TRICEPS_NS {
