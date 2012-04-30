@@ -23,3 +23,7 @@ Things that need to be done:
   any attempted modifications in the middle of ongoing modifications
 * in Labels mark busy when called, and confess on any attempts of recursive calls
 * add a Sequence template, that calls its multiple output labels in order
+* doc: an example of deletions in small portions (for selects, would need the
+  mods in the tables to go one by one)
+* a pseudo-table that keeps only the state of the additive aggregations, without actual data
+  (the data just passes through and gets immediately aggregated)
