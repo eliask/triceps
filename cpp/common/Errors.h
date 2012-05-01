@@ -40,6 +40,12 @@ public:
 	// the erro flag can be set directly in this object too.
 	Errors(bool e = false);
 
+	// A quick way to create an object with a ready error message.
+	// This always sets the error flag.
+	// @param msg - the error message
+	Errors(const char *msg);
+	Errors(const string &msg);
+
 	// XXX there should be a way to give headers to the child errors
 
 	// Append a direct error message.

@@ -21,7 +21,19 @@ Errors::Epair::Epair(const string &msg, Autoref<Errors> child) :
 
 Errors::Errors(bool e) :
 	error_(e)
-{ };
+{ }
+
+Errors::Errors(const string &msg) :
+	error_(true)
+{
+	appendMultiline(true, msg);
+}
+
+Errors::Errors(const char *msg) :
+	error_(true)
+{
+	appendMultiline(true, msg);
+}
 
 bool Errors::append(const string &msg, Autoref<Errors> clde)
 {

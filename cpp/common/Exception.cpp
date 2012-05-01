@@ -21,9 +21,8 @@ Exception::Exception(Onceref<Errors> err) :
 }
 
 Exception::Exception(const string &err) :
-	error_(new Errors)
+	error_(new Errors(err))
 {
-	error_->appendMultiline(true, err);
 	checkAbort();
 }
 

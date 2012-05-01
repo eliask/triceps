@@ -34,6 +34,16 @@ UTESTCASE simple(Utest *utest)
 	e1->clear();
 	UT_ASSERT(!e1->hasError());
 	UT_IS(e1->print(), "");
+
+	Erref e3 = new Errors("msg3\nmsg4");
+	UT_ASSERT(!e3->isEmpty());
+	UT_ASSERT(e3->hasError());
+	UT_IS(e3->print(), "msg3\nmsg4\n");
+
+	Erref e4 = new Errors(string("msg5\nmsg6"));
+	UT_ASSERT(!e4->isEmpty());
+	UT_ASSERT(e4->hasError());
+	UT_IS(e4->print(), "msg5\nmsg6\n");
 }
 
 UTESTCASE nested(Utest *utest)
