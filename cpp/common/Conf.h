@@ -14,4 +14,9 @@
 #define TRICEPS_NS Triceps
 #endif
 
+// Flag: use the glibc backtrace() functionality.
+#ifndef TRICEPS_BACKTRACE
+#define TRICEPS_BACKTRACE true
+#endif
+
 #endif // __Triceps_Conf_h__

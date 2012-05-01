@@ -20,7 +20,7 @@ UTESTCASE throw_catch(Utest *utest)
 	UT_IS(Exception::abort_, false);
 
 	try {
-		throw Exception("message");
+		throw Exception("message", false);
 	} catch (Exception e) {
 		string what = e.what();
 		UT_IS(what, "message\n");
@@ -29,12 +29,31 @@ UTESTCASE throw_catch(Utest *utest)
 	try {
 		Erref err = new Errors;
 		err->appendMsg(true, "message");
-		throw Exception(err);
+		throw Exception(err, false);
 	} catch (Exception e) {
 		Erref err = e.getErrors();
 		string what;
 		err->printTo(what);
 		UT_IS(what, "message\n");
+	}
+
+	// same with a stack trace
+	try {
+		throw Exception("message", true);
+	} catch (Exception e) {
+		string what = e.what();
+		UT_IS(what.find("message\nStack trace:\n  "), 0);
+	}
+
+	try {
+		Erref err = new Errors;
+		err->appendMsg(true, "message");
+		throw Exception(err, true);
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what.find("message\nStack trace:\n  "), 0);
 	}
 
 	Exception::abort_ = true; // restore back
@@ -50,7 +69,7 @@ UTESTCASE abort(Utest *utest)
 
 	aborted = false;
 	try {
-		throw Exception("test of an abort message");
+		throw Exception("test of an abort message", false);
 	} catch (Exception e) {
 	}
 	UT_ASSERT(aborted);
@@ -59,7 +78,7 @@ UTESTCASE abort(Utest *utest)
 	try {
 		Erref err = new Errors;
 		err->appendMsg(true, "test of an abort message");
-		throw Exception(err);
+		throw Exception(err, false);
 	} catch (Exception e) {
 	}
 	UT_ASSERT(aborted);

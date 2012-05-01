@@ -36,10 +36,23 @@ public:
 	// The exception constructor may instead print and abort, if
 	// the abort_ flag is set (which is the default).
 
+	// The rule of thumb for trace flag is: if the throwing function
+	// is called directly from the Triceps code, then probably
+	// there is not much use in the C-level stack backtrace because
+	// the more interesting info is the Triceps call sequence and
+	// it will be produced by Triceps. If the throwing function is
+	// nested somewhere in the user C++ code, the backtrace is more useful
+	// because it allows to pinpoint that code. But as always there
+	// probably will be exceptions from the rule.
+
 	// The exception will keep the err reference.
-	explicit Exception(Onceref<Errors> err);
+	// @param err - the ready Errors reference
+	// @param trace - flag: if true, add a stack backtrace as nested Errors
+	explicit Exception(Onceref<Errors> err, bool trace);
 	// A new Errors object will be constructed from the message.
-	explicit Exception(const string &err);
+	// @param err - the error message, may be multiline
+	// @param trace - flag: if true, add a stack backtrace as nested Errors
+	explicit Exception(const string &err, bool trace);
 
 	// Would not compile without an explicit destructor with throw().
 	virtual ~Exception()
@@ -65,7 +78,11 @@ public:
 	static bool *__testAbort_;
 
 protected:
-	// check the abort_ flag and abort if it says so
+	// Check the trace flag, and append the trace to the error
+	// message if it says so.
+	// @param trace - the trace flag
+	void checkTrace(bool trace);
+	// Check the abort_ flag and abort if it says so.
 	void checkAbort();
 
 	Erref error_; // the error message

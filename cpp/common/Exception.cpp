@@ -6,23 +6,30 @@
 //
 // Exception to propagate the fatal errors through multiple levels of calling.
 
+#include <stdlib.h>
 #include <common/Exception.h>
 #include <common/Common.h>
+
+#if TRICEPS_BACKTRACE // {
+#include <execinfo.h>
+#endif // } TRICEPS_BACKTRACE
 
 namespace TRICEPS_NS {
 
 bool Exception::abort_ = true;
 bool *Exception::__testAbort_ = NULL;
 
-Exception::Exception(Onceref<Errors> err) :
+Exception::Exception(Onceref<Errors> err, bool trace) :
 	error_(err)
 {
+	checkTrace(trace);
 	checkAbort();
 }
 
-Exception::Exception(const string &err) :
+Exception::Exception(const string &err, bool trace) :
 	error_(new Errors(err))
 {
+	checkTrace(trace);
 	checkAbort();
 }
 
@@ -39,6 +46,26 @@ const char *Exception::what()
 Errors *Exception::getErrors()
 {
 	return error_.get();
+}
+
+void Exception::checkTrace(bool trace)
+{
+#if TRICEPS_BACKTRACE // {
+	if (trace) {
+		void *buffer[100];
+		int sz = backtrace(buffer, sizeof(buffer)/sizeof(buffer[0]));
+		char **symbols = backtrace_symbols(buffer, sz);
+		Erref log(new Errors);
+		for (int i = 0; i < sz; i++) {
+			log->appendMsg(false, symbols[i]);
+		}
+		if (sz == sizeof(buffer)/sizeof(buffer[0])) {
+			log->appendMsg(false, "..."); // show that the trace is likely incomplete
+		}
+		free(symbols);
+		error_->append("Stack trace:", log);
+	}
+#endif // } TRICEPS_BACKTRACE
 }
 
 void Exception::checkAbort()
