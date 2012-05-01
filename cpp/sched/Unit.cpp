@@ -9,6 +9,7 @@
 #include <sched/Unit.h>
 #include <sched/Gadget.h>
 #include <common/StringUtil.h>
+#include <common/Exception.h>
 
 namespace TRICEPS_NS {
 
@@ -131,24 +132,28 @@ Unit::~Unit()
 
 void Unit::schedule(Onceref<Rowop> rop)
 {
+	// XXX check the Unit match in the label
 	outerFrame_->push_back(rop);
 }
 
 void Unit::scheduleTray(const_Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
+		// XXX check the Unit match in the label
 		outerFrame_->push_back(*it);
 }
 
 
 void Unit::fork(Onceref<Rowop> rop)
 {
+	// XXX check the Unit match in the label
 	innerFrame_->push_back(rop);
 }
 
 void Unit::forkTray(const_Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
+		// XXX check the Unit match in the label
 		innerFrame_->push_back(*it);
 }
 
@@ -158,7 +163,12 @@ void Unit::call(Onceref<Rowop> rop)
 	// here a little optimization allows to avoid pushing extra frames
 	pushFrame();
 
-	rop->getLabel()->call(this, rop); // also drains the frame
+	try {
+		rop->getLabel()->call(this, rop); // also drains the frame
+	} catch (Exception e) {
+		popFrame();
+		throw;
+	}
 
 	popFrame();
 }
@@ -167,8 +177,13 @@ void Unit::callTray(const_Onceref<Tray> tray)
 {
 	pushFrame();
 
-	forkTray(tray);
-	drainFrame();
+	try {
+		forkTray(tray);
+		drainFrame();
+	} catch (Exception e) {
+		popFrame();
+		throw;
+	}
 
 	popFrame();
 }
@@ -183,13 +198,12 @@ void Unit::enqueue(int em, Onceref<Rowop> rop)
 		fork(rop);
 		break;
 	case Gadget::EM_CALL:
-		call(rop);
+		call(rop); // may throw
 		break;
 	case Gadget::EM_IGNORE:
 		break;
 	default:
-		fprintf(stderr, "Triceps API violation: Invalid enqueueing mode %d\n", em);
-		abort();
+		throw Exception(strprintf("Triceps API violation: Invalid enqueueing mode %d\n", em), true); // XXX test
 		break;
 	}
 }
@@ -204,13 +218,12 @@ void Unit::enqueueTray(int em, const_Onceref<Tray> tray)
 		forkTray(tray);
 		break;
 	case Gadget::EM_CALL:
-		callTray(tray);
+		callTray(tray); // may throw
 		break;
 	case Gadget::EM_IGNORE:
 		break;
 	default:
-		fprintf(stderr, "Triceps API violation: Invalid enqueueing mode %d\n", em);
-		abort();
+		throw Exception(strprintf("Triceps API violation: Invalid enqueueing mode %d\n", em), true); // XXX test
 		break;
 	}
 }
@@ -218,8 +231,9 @@ void Unit::enqueueTray(int em, const_Onceref<Tray> tray)
 void Unit::enqueueDelayedTray(const_Onceref<Tray> tray)
 {
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it) {
+		// XXX check the Unit match in the label
 		Rowop *rop = *it;
-		enqueue(rop->getEnqMode(), rop);
+		enqueue(rop->getEnqMode(), rop); // may throw
 	}
 }
 
@@ -240,10 +254,14 @@ void Unit::setMark(Onceref<FrameMark> mark)
 void Unit::loopAt(FrameMark *mark, Onceref<Rowop> rop)
 {
 	UnitFrame *f = mark->getFrame();
+	// XXX check the Unit match in the label
 	if (f == NULL) {
 		outerFrame_->push_back(rop);
 	} else {
-		assert(mark->getUnit() == this);
+		if (mark->getUnit() != this) {
+			throw Exception(strprintf("Triceps API violation: loopAt() attempt on unit '%s' with mark '%s' from unit '%s'\n", 
+				getName().c_str(), mark->getName().c_str(), mark->getUnit()->getName().c_str()), true); // XXX test
+		}
 		f->push_back(rop);
 	}
 }
@@ -251,10 +269,14 @@ void Unit::loopAt(FrameMark *mark, Onceref<Rowop> rop)
 void Unit::loopTrayAt(FrameMark *mark, const_Onceref<Tray> tray)
 {
 	UnitFrame *f = mark->getFrame();
+	// XXX check the Unit match in the label
 	if (f == NULL) {
 		f = outerFrame_;
 	} else {
-		assert(mark->getUnit() == this);
+		if (mark->getUnit() != this) {
+			throw Exception(strprintf("Triceps API violation: loopTrayAt() attempt on unit '%s' with mark '%s' from unit '%s'\n", 
+				getName().c_str(), mark->getName().c_str(), mark->getUnit()->getName().c_str()), true); // XXX test
+		}
 	}
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)
 		f->push_back(*it);
@@ -268,7 +290,12 @@ void Unit::callNext()
 
 		pushFrame();
 
-		rop->getLabel()->call(this, rop); // also drains the frame
+		try {
+			rop->getLabel()->call(this, rop); // also drains the frame; may throw
+		} catch (Exception e) {
+			popFrame();
+			throw;
+		}
 
 		popFrame();
 	}
@@ -277,7 +304,7 @@ void Unit::callNext()
 void Unit::drainFrame()
 {
 	while (!innerFrame_->empty())
-		callNext();
+		callNext(); // may throw
 }
 
 bool Unit::empty() const
@@ -361,7 +388,12 @@ void Unit::trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerW
 void Unit::clearLabels()
 {
 	for(LabelMap::iterator it = labelMap_.begin(); it != labelMap_.end(); ++it) {
-		it->first->clear();
+		try {
+			it->first->clear();
+		} catch (Exception e) {
+			Erref err = e.getErrors();
+			fprintf(stderr, "%s", err->print().c_str()); // XXX test
+		}
 	}
 	labelMap_.clear();
 }

@@ -138,10 +138,12 @@ UTESTCASE mklabel(Utest *utest)
 		);
 	}
 
+	UT_ASSERT(lab1->hasChained());
 	UT_IS(lab1->getChain().size(), 1);
 	UT_ASSERT(lab1->getChain()[0] == lab2);
 	
 	lab1->clearChained(); // undoes the endless loop
+	UT_ASSERT(!lab1->hasChained());
 	UT_IS(lab1->getChain().size(), 0);
 	UT_ASSERT(!lab1->chain(lab11)->hasError());
 	UT_ASSERT(!lab1->chain(lab12)->hasError());

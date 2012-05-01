@@ -71,6 +71,13 @@ protected:
 //    rowop are finished before the current processing resumes.
 //
 // Since the Units in different threads need to communicate, it's an Mtarget.
+//
+// When an Exception is thrown, the state of the unit will be left in some
+// consistent shape, so that the execution could potentially be continued.
+// But if the operation consists of multiple parts, such as a tray, there
+// might be no way to tell, what where went broken, and which parts were
+// executed and which weren't. So the Exceptions should really be treated
+// as fatal errors.
 class Unit : public Mtarget
 {
 public:
@@ -90,20 +97,24 @@ public:
 
 	// Push a new frame and execute the rowop on it, until the frame empties.
 	// Then pop that frame, restoring the stack of queues.
+	// May throw an Exception on fatal error.
 	void call(Onceref<Rowop> rop);
 	// Push a new frame with the copy of this tray and execute the ops until the frame empties.
 	// Then pop that frame, restoring the stack of queues.
+	// May throw an Exception on fatal error.
 	void callTray(const_Onceref<Tray> tray);
 
 	// Enqueue the rowop with the chosen mode. This is mostly for convenience
 	// of Perl code but can be used in other places too, performs a switch
 	// and calls one of the actula methods.
+	// May throw an Exception on fatal error.
 	// @param em - enqueuing mode, Gadget::EnqMode
 	// @param rop - Rowop
 	void enqueue(int em, Onceref<Rowop> rop);
 	// Enqueue the tray with the chosen mode. This is mostly for convenience
 	// of Perl code but can be used in other places too, performs a switch
 	// and calls one of the actula methods.
+	// May throw an Exception on fatal error.
 	// @param em - enqueuing mode, Gadget::EnqMode
 	// @param tray - tray of rowops
 	void enqueueTray(int em, const_Onceref<Tray> tray);
@@ -115,6 +126,7 @@ public:
 	// enqueues them.
 	// No similar call for Rowop, because it can be easily replaced 
 	// with enqueue(rop->getEnqMode(), rop).
+	// May throw an Exception on fatal error.
 	void enqueueDelayedTray(const_Onceref<Tray> tray);
 
 	// Set the start-of-loop mark to the parent frame.
@@ -135,14 +147,18 @@ public:
 	// If the mark points to no frame, append to the outermost queue frame:
 	// the logic here is that if a record in the loop gets delayed by
 	// time wait, when it continues, it should be scheduled there.
+	// May throw an Exception on fatal error.
 	void loopAt(FrameMark *mark, Onceref<Rowop> rop);
 	// Append the contents of a tray to the end of the queue frame pointed by mark.
 	// If the mark points to no frame, append to the outermost queue frame.
+	// May throw an Exception on fatal error.
 	void loopTrayAt(FrameMark *mark, const_Onceref<Tray> tray);
 
 	// Extract and execute the next record from the innermost frame.
+	// May throw an Exception on fatal error.
 	void callNext();
 	// Execute until the current stack frame drains.
+	// May throw an Exception on fatal error.
 	void drainFrame();
 
 	// Check whether the queue is empty.
@@ -172,6 +188,8 @@ public:
 	
 	// Clear all the labels, then drop the references from Unit to them.
 	// Normally should be called only when the thread is about to exit!
+	// Does NOT throw an Exception. If it catches any exceptions, they are
+	// all collected and printed to stderr.
 	void clearLabels();
 
 	// Remember the label. Called from the label constructor.

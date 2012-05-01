@@ -76,9 +76,15 @@ public:
 	void clearChained();
 
 	// Get the chain leading from this label.
-	const ChainedVec &getChain()
+	const ChainedVec &getChain() const
 	{
 		return chained_;
+	}
+
+	// Check if there are any labels chained here.
+	bool hasChained() const
+	{
+		return !chained_.empty();
 	}
 
 	// Get the human-readable name
@@ -104,12 +110,15 @@ public:
 	// thus breaking the circular dependency.
 	// The implementation is to call clearSubclass(), then
 	// clearChained() and set the cleared flag.
+	// May rethrow an Exception from clearSubclass(). Even if an exception
+	// is thrown, the basic cleaning is guaranteed to be done.
 	void clear();
 	// The subclasses may add their own clearing code here, to be called
 	// from clear(), by default does nothing.
 	// It's done this way instead of making clear() virtual because in the
 	// subclass it's too easy to forget to call the parent clear(), leading
 	// to some pretty complicated debugging.
+	// May throw an Exception.
 	virtual void clearSubclass();
 
 	// Check the cleared flag. This flag means that the program is in the
@@ -122,6 +131,7 @@ public:
 
 protected:
 	// The subclasses re-define this method to do something useful.
+	// May throw an Exception.
 	//
 	// arg - operation to perform; the caller holds a reference on it.
 	virtual void execute(Rowop *arg) const = 0;
@@ -135,6 +145,8 @@ protected:
 	//
 	// The Unit is expected to have pushed a new frame into the stack
 	// before calling here. This method drains the frame.
+	//
+	// May throw an Exception.
 	//
 	// unit - unit from where called (should be the same as in constructor)
 	// arg - operation to perform; the caller holds a reference on it.

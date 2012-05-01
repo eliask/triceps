@@ -9,6 +9,7 @@
 #include <sched/Rowop.h>
 #include <sched/Label.h>
 #include <sched/Unit.h>
+#include <common/Exception.h>
 
 namespace TRICEPS_NS {
 
@@ -73,9 +74,16 @@ void Label::clearChained()
 
 void Label::clear()
 {
-	clearSubclass();
+	Erref err;
+	try {
+		clearSubclass();
+	} catch (Exception e) {
+		err = e.getErrors();
+	}
 	clearChained();
 	cleared_ = true;
+	if (!err.isNull())
+		throw Exception(err, false);
 }
 
 void Label::clearSubclass()
@@ -85,17 +93,70 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 {
 	if (cleared_) // don't try to execute a cleared label
 		return;
-	assert(unit == unit_); // XXX add some better way to report errors than crash? also check when scheduling a tray
-	unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE);
-	execute(arg);
-	unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_DRAIN);
-	unit->drainFrame(); // avoid overlapping the row scheduling
-	if (!chained_.empty()) {
-		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_CHAINED);
-		for (ChainedVec::const_iterator it = chained_.begin(); it != chained_.end(); ++it)
-			(*it)->call(unit, arg, this); // each of them can do their own chaining....
+
+	Erref err; // XXX test all the messages
+	if (unit != unit_) {
+		throw Exception(strprintf("Triceps API violation: call() attempt with unit '%s' of label '%s' belonging to unit '%s'\n", 
+			unit->getName().c_str(), getName().c_str(), unit_->getName().c_str()), true); // XXX test
 	}
-	unit->trace(this, chainedFrom, arg, Unit::TW_AFTER);
+	try {
+		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE);
+	} catch (Exception e) {
+		if (err.isNull())
+			err = new Errors;
+		err->append(strprintf("Error when tracing before the label '%s':", getName().c_str()), e.getErrors());
+	}
+	try {
+		execute(arg);
+	} catch (Exception e) {
+		if (err.isNull())
+			err = new Errors;
+		err->append(strprintf("Error when executing the label '%s':", getName().c_str()), e.getErrors());
+	}
+	try {
+		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_DRAIN);
+	} catch (Exception e) {
+		if (err.isNull())
+			err = new Errors;
+		err->append(strprintf("Error when tracing before draining the label '%s':", getName().c_str()), e.getErrors());
+	}
+	try {
+		unit->drainFrame(); // avoid overlapping the row scheduling
+	} catch (Exception e) {
+		if (err.isNull())
+			err = new Errors;
+		err->absorb(e.getErrors());
+		err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", getName().c_str()));
+	}
+	if (!chained_.empty()) {
+		try {
+			unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_CHAINED);
+		} catch (Exception e) {
+			if (err.isNull())
+				err = new Errors;
+			err->append(strprintf("Error when tracing before the chain of the label '%s':", getName().c_str()), e.getErrors());
+		}
+		for (ChainedVec::const_iterator it = chained_.begin(); it != chained_.end(); ++it) {
+			try {
+				(*it)->call(unit, arg, this); // each of them can do their own chaining....
+			} catch (Exception e) {
+				if (err.isNull())
+					err = new Errors;
+				err->absorb(e.getErrors());
+				err->appendMsg(true, strprintf("Called chained from the label '%s'.", getName().c_str()));
+			}
+		}
+	}
+	try {
+		unit->trace(this, chainedFrom, arg, Unit::TW_AFTER);
+	} catch (Exception e) {
+		if (err.isNull())
+			err = new Errors;
+		err->append(strprintf("Error when tracing after execution of the label '%s':", getName().c_str()), e.getErrors());
+	}
+	if (!err.isNull()) {
+		throw Exception(err, false);
+	}
 }
 
 bool Label::findChained(const Label *target, ChainedVec &path) const
