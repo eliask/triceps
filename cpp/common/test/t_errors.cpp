@@ -102,5 +102,34 @@ UTESTCASE nested(Utest *utest)
 	UT_IS(e5->print(), "line1\nline2\nline3\nline4\n");
 	e5->appendMultiline(true, "\nline5\n");
 	UT_IS(e5->print(), "line1\nline2\nline3\nline4\nline5\n");
+}
 
+UTESTCASE absorb(Utest *utest)
+{
+	Erref e1 = new Errors;
+
+	e1->appendMsg(false, "msg1");
+	e1->appendMsg(false, "msg2");
+	UT_ASSERT(!e1->hasError());
+	UT_ASSERT(!e1->isEmpty());
+
+	Erref e2 = new Errors;
+	UT_ASSERT(e2->isEmpty());
+	UT_ASSERT(!e2->hasError());
+
+	UT_ASSERT(e2->absorb(e1) == true);
+	UT_ASSERT(!e2->isEmpty());
+	UT_ASSERT(!e2->hasError());
+
+	UT_IS(e2->print(), "msg1\nmsg2\n");
+
+	UT_ASSERT(e2->absorb(new Errors) == false);
+	// empty child should get thrown away
+	UT_ASSERT(!e2->hasError());
+	UT_IS(e2->elist_.size(), 2);
+
+	UT_ASSERT(e2->absorb(new Errors(true)) == true);
+	// empty child should get thrown away, except for error indication
+	UT_ASSERT(e2->hasError());
+	UT_IS(e2->elist_.size(), 2);
 }

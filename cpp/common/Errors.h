@@ -63,11 +63,19 @@ public:
 	// If the child had the error flag set, sets the error flag here too.
 	// @msg - message describing the child, will be added only if the
 	//        child errors are not empty
-	// @param child - errors returned by child (or NULL)
+	// @param clde - errors returned by child (or NULL)
 	// @return - true if the child's errors were added
 	//       (if at least one of two was true: clde contained any messages
 	//       and/or an error indication flag)
 	bool append(const string &msg, Autoref<Errors> clde);
+
+	// Similar to append() but copies the errors from the child
+	// to the parent's level instead of nesting them.
+	// @param clde - errors returned by child (or NULL)
+	// @return - true if the child's errors were added
+	//       (if at least one of two was true: clde contained any messages
+	//       and/or an error indication flag)
+	bool absorb(Autoref<Errors> clde);
 
 	// Replace the last message. The typical usage pattern is:
 	//

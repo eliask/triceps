@@ -55,6 +55,24 @@ bool Errors::append(const string &msg, Autoref<Errors> clde)
 	return true;
 }
 
+bool Errors::absorb(Autoref<Errors> clde)
+{
+	if (clde.isNull())
+		return false;
+
+	bool ce = clde->error_;
+	error_ = (error_ || ce);
+
+	if (clde->isEmpty()) { // nothing in there
+		return ce;
+	}
+
+	for (vector<Epair>::iterator it = clde->elist_.begin(); it != clde->elist_.end(); ++it)
+		elist_.push_back(Epair(*it));
+
+	return true;
+}
+
 void Errors::appendMsg(bool e, const string &msg)
 {
 	error_ = (error_ || e);
