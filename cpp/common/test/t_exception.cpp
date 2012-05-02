@@ -16,6 +16,7 @@
 UTESTCASE throw_catch(Utest *utest)
 {
 	UT_IS(Exception::abort_, true); // the default
+	UT_IS(Exception::enableBacktrace_, true); // the default
 	Exception::abort_ = false;
 	UT_IS(Exception::abort_, false);
 
@@ -56,7 +57,18 @@ UTESTCASE throw_catch(Utest *utest)
 		UT_IS(what.find("message\nStack trace:\n  "), 0);
 	}
 
+	// see that the stack trace ges disabled
+	Exception::enableBacktrace_ = false;
+	try {
+		throw Exception("message", true);
+	} catch (Exception e) {
+		string what = e.what();
+		UT_IS(what, "message\n");
+	}
+
+
 	Exception::abort_ = true; // restore back
+	Exception::enableBacktrace_ = true; // restore back
 }
 
 bool aborted;

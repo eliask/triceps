@@ -17,6 +17,7 @@
 namespace TRICEPS_NS {
 
 bool Exception::abort_ = true;
+bool Exception::enableBacktrace_ = true;
 bool *Exception::__testAbort_ = NULL;
 
 Exception::Exception(Onceref<Errors> err, bool trace) :
@@ -51,7 +52,7 @@ Errors *Exception::getErrors()
 void Exception::checkTrace(bool trace)
 {
 #if TRICEPS_BACKTRACE // {
-	if (trace) {
+	if (enableBacktrace_ && (trace || abort_) ) { // if aborting, the stack trace never hurts because the calling labels won't be printed
 		void *buffer[100];
 		int sz = backtrace(buffer, sizeof(buffer)/sizeof(buffer[0]));
 		char **symbols = backtrace_symbols(buffer, sz);

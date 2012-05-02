@@ -67,10 +67,17 @@ public:
 	// Flag: when attempting to create an exception, instead print
 	// the message and abort. This behavior is more convenient for
 	// debugging of the C++ programs, and is the default one.
+	// Also forces the stack trace in the error reports.
 	// The interpreted language wrappers should reset it to get the
 	// proper exceptions. 
 	// Default: true.
 	static bool abort_;
+
+	// Flag: enable the backtrace if the constructor requests it.
+	// The interpreted language wrappers should reset it to remove
+	// the confusion of the C stack traces in the error reports.
+	// Default: true.
+	static bool enableBacktrace_;
 
 	// Used internally in the unit test: if this is not NULL,
 	// instead of calling abort(), the code will set the value
