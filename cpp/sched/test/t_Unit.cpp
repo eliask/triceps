@@ -11,6 +11,7 @@
 
 #include <type/CompactRowType.h>
 #include <common/StringUtil.h>
+#include <common/Exception.h>
 #include <sched/Unit.h>
 #include <sched/Gadget.h>
 
@@ -971,4 +972,311 @@ UTESTCASE markLoop(Utest *utest)
 	tlog = trace->getBuffer()->print();
 
 	UT_IS(tlog, expect_sched);
+}
+
+class LabelLoopWrongUnit : public Label
+{
+public:
+	LabelLoopWrongUnit(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Unit *unit2, Onceref<Rowop> op2) :
+		Label(unit, rtype, name),
+		unit2_(unit2),
+		op2_(op2)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		Autoref<TestFrameMark> mark1 = new TestFrameMark("m1");
+		unit_->setMark(mark1);
+		if (arg->isDelete()) {
+			Autoref<Tray> tray = new Tray;
+			tray->push_back(op2_);
+			unit2_->loopTrayAt(mark1, tray);
+		} else {
+			unit2_->loopAt(mark1, op2_);
+		}
+	}
+
+	Unit *unit2_;
+	Autoref<Rowop> op2_;
+};
+
+class LabelThrowOnClear : public Label
+{
+public:
+	LabelThrowOnClear(Unit *unit, Onceref<RowType> rtype, const string &name) :
+		Label(unit, rtype, name)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{ }
+
+	virtual void clearSubclass()
+	{ 
+		throw Exception("Test report of the exception on clear", true);
+	}
+};
+
+class LabelThrowOnCall : public Label
+{
+public:
+	LabelThrowOnCall(Unit *unit, Onceref<RowType> rtype, const string &name) :
+		Label(unit, rtype, name)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		throw Exception("Test throw on call", true);
+	}
+};
+
+UTESTCASE exceptions(Utest *utest)
+{
+	Erref err;
+	string msg;
+
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	// make row for setting
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	Autoref<Unit> unit1 = new Unit("u1");
+	Autoref<Unit> unit2 = new Unit("u2");
+
+	Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv)); // the initial row to start the loop
+	Autoref<Rowop> op1 = new Rowop(lab1, Rowop::OP_INSERT, r1);
+
+	msg.clear();
+	try {
+		unit1->enqueue(999, op1);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Triceps API violation: Invalid enqueueing mode 999\n");
+
+	msg.clear();
+	try {
+		Autoref<Tray> tray = new Tray;
+		tray->push_back(op1);
+		unit1->enqueueTray(999, tray);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Triceps API violation: Invalid enqueueing mode 999\n");
+
+	// this tests loopAt() and the tracing of the label stack
+	msg.clear();
+	try {
+		Autoref<Label> labwu = new LabelLoopWrongUnit(unit2, rt1, "labwu", unit1.get(), op1);
+		Autoref<Rowop> opwu = new Rowop(labwu, Rowop::OP_INSERT, r1);
+		unit2->schedule(opwu);
+		unit2->drainFrame();
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Triceps API violation: loopAt() attempt on unit 'u1' with mark 'm1' from unit 'u2'\nCalled through the label 'labwu'.\n");
+	UT_ASSERT(unit2->empty()); // the frame must get popped
+
+	// this tests loopAt() and the tracing of the label stack
+	msg.clear();
+	try {
+		Autoref<Label> labwu = new LabelLoopWrongUnit(unit2, rt1, "labwu", unit1.get(), op1);
+		Autoref<Rowop> opwu = new Rowop(labwu, Rowop::OP_DELETE, r1);
+		unit2->call(opwu);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Triceps API violation: loopTrayAt() attempt on unit 'u1' with mark 'm1' from unit 'u2'\nCalled through the label 'labwu'.\n");
+	UT_ASSERT(unit2->empty()); // the frame must get popped, there was only one rowop
+
+	// test that the label clearing catches and consumes the exception
+	try {
+		Autoref<Label> labclr = new LabelThrowOnClear(unit2, rt1, "labclr");
+		unit2->clearLabels();
+	} catch (Exception e) {
+		UT_ASSERT(false);
+	}
+
+	// test of callTray and also of drainFrame() being interrupted
+	msg.clear();
+	try {
+		Autoref<Label> labt = new LabelThrowOnCall(unit1, rt1, "labt");
+		Autoref<Tray> tray = new Tray;
+		Autoref<Rowop> opt = new Rowop(labt, Rowop::OP_INSERT, r1);
+		tray->push_back(opt);
+		tray->push_back(opt);
+
+		unit1->callTray(tray);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Test throw on call\nCalled through the label 'labt'.\n");
+	UT_ASSERT(unit1->empty()); // the frame must get popped
+
+	Exception::abort_ = true; // restore back
+	Exception::enableBacktrace_ = true; // restore back
+}
+
+class LabelRecursive : public Label
+{
+public:
+	LabelRecursive(Unit *unit, Onceref<RowType> rtype, const string &name) :
+		Label(unit, rtype, name)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		unit_->call(arg); // a recursive call attempt
+	}
+};
+
+class ThrowingTracer : public Unit::Tracer
+{
+public:
+	ThrowingTracer(Unit::TracerWhen when) :
+		when_(when)
+	{ }
+
+	virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when)
+	{
+		if (when == when_)
+			throw Exception("exception in tracer", true);
+	}
+
+	Unit::TracerWhen when_;
+};
+
+// test the exception propagation through the labels
+UTESTCASE label_exceptions(Utest *utest)
+{
+	Erref err;
+	string msg;
+
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	// make row for setting
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	if (UT_ASSERT(rt1->getErrors().isNull())) return;
+
+	Autoref<Unit> unit1 = new Unit("u1");
+	Autoref<Unit> unit2 = new Unit("u2");
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv)); // the initial row to start the loop
+
+	// recursive call and chaining
+	msg.clear();
+	try {
+		Autoref<Label> labrec = new LabelRecursive(unit1, rt1, "labrec");
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+		lab2->chain(labrec);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Detected a recursive call of the label 'lab1'.\n\
+Called through the label 'labrec'.\n\
+Called chained from the label 'lab2'.\n\
+Called chained from the label 'lab1'.\n");
+
+	// wrong unit
+	msg.clear();
+	try {
+		Autoref<Label> labwu = new DummyLabel(unit2, rt1, "labwu");
+		Autoref<Rowop> opwu = new Rowop(labwu, Rowop::OP_DELETE, r1);
+		unit1->call(opwu);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Triceps API violation: call() attempt with unit 'u1' of label 'labwu' belonging to unit 'u2'.\n");
+
+	// all kinds of tracing errors
+	
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing before the label 'lab1':\n  exception in tracer\n");
+
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_DRAIN);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing before draining the label 'lab1':\n  exception in tracer\n");
+
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_CHAINED);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing before the chain of the label 'lab1':\n  exception in tracer\n");
+
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing after execution of the label 'lab2':\n  exception in tracer\nCalled chained from the label 'lab1'.\n");
+
+	Exception::abort_ = true; // restore back
+	Exception::enableBacktrace_ = true; // restore back
 }

@@ -173,6 +173,7 @@ protected:
 	Unit *unit_; // not a reference, but more of a token
 	string name_; // human-readable name for tracing
 	bool cleared_; // flag: clear() was called, and the label should stop working
+	mutable bool busy_; // flag: label is executing, used to detect the recursive calls
 };
 
 // A label that does nothing: typically used as an endpoint for chaining in the 

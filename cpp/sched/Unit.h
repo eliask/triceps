@@ -74,10 +74,11 @@ protected:
 //
 // When an Exception is thrown, the state of the unit will be left in some
 // consistent shape, so that the execution could potentially be continued.
+// The queue will be cleared to the same condition as if the call had returned normally.
 // But if the operation consists of multiple parts, such as a tray, there
 // might be no way to tell, what where went broken, and which parts were
-// executed and which weren't. So the Exceptions should really be treated
-// as fatal errors.
+// executed and which weren't, and this may mess up the application logic. 
+// So the Exceptions should really be treated as fatal errors.
 class Unit : public Mtarget
 {
 public:
@@ -231,6 +232,8 @@ public:
 		virtual ~Tracer();
 
 		// The callback on some event related to rowop execution happens
+		// May throw an Exception on fatal error.
+		//
 		// @param unit - unit from where the tracer is called
 		// @param label - label that is being called
 		// @param fromLabel - during the chained calls, the parent label, otherwise NULL
@@ -289,6 +292,7 @@ public:
 	}
 
 	// A callback for the Label, to trace its execution
+	// May throw an Exception on fatal error.
 	void trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
 
 	// }
@@ -323,7 +327,7 @@ private:
 // goes out of scope, it can trigger the clearLabels()
 // call in the Unit. Of course, if you use it, it's your responsibility to not
 // involve it in the circular references!
-// The UnitClearingTrigger object must be owned by the same thread as owns Unit.
+// The UnitClearingTrigger object must be owned by the same thread as its Unit.
 class UnitClearingTrigger : public Mtarget
 {
 public:
