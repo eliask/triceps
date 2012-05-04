@@ -71,7 +71,8 @@ sub startLoop # ($label, $rowop)
 		eval {
 			$u2->loopAt($m1, $labu2->makeRowop(&Triceps::OP_INSERT, $rowop->getRow()));
 		};
-		$@ =~ s/ at \S*FrameMark.*//; # remove the varying line number
+		$@ =~ s/ at \S*FrameMark[^\n]*//g; # remove the varying line number
+		$@ =~ s/SCALAR\(\w+\)/SCALAR/g; # remove the varying scalar pointers
 		$result .= "bad loopAt: $@\n"
 	} else {
 		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow())) or die "$!";
@@ -124,6 +125,9 @@ ok($u1->schedule($firstRowop));
 
 $expect = "labStart OP_INSERT count=\"0\" id=\"99\" 
 bad loopAt: Triceps::Unit::loopAt: mark belongs to a different unit 'u1'
+\teval {...} called
+\tmain::startLoop('Triceps::Label=SCALAR', 'Triceps::Rowop=SCALAR') called
+\teval {...} called
 
 labNext OP_NOP count=\"0\" id=\"1\" 
 labNext OP_NOP count=\"0\" id=\"2\" 

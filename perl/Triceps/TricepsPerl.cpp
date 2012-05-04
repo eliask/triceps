@@ -48,8 +48,38 @@ const char *getCroakMsg()
 void croakIfSet()
 {
 	const char *msg = getCroakMsg();
-	if (msg[0] != 0)
-		Perl_croak(aTHX_ "%s", msg);
+	if (msg[0] != 0) {
+		// see if we can pull out the stack trace by using Carp::longmess
+		CV *longmess = get_cv("Carp::longmess", 0);
+		SV *trace = NULL;
+		if (longmess != NULL) {
+			dSP;
+			SV *refmess = sv_2mortal(newRV_inc((SV *)longmess));
+			SV *msgsv = get_sv("Triceps::_CROAK_MSG", 0); // already know that it exists
+
+			ENTER; SAVETMPS;
+			PUSHMARK(SP);
+			XPUSHs(msgsv);
+			PUTBACK;
+			int nv = call_sv(refmess, G_SCALAR|G_EVAL);
+			SPAGAIN;
+			if (nv >= 1) {
+				for (; nv > 1; nv--)
+					POPs;
+				trace = POPs;
+				if (trace != NULL)
+					SvREFCNT_inc(trace);
+			}
+			PUTBACK; 
+			FREETMPS; LEAVE;
+		}
+		if (trace != NULL) {
+			sv_2mortal(trace);
+			Perl_croak(aTHX_ "%s", SvPV_nolen(trace));
+		} else {
+			Perl_croak(aTHX_ "%s", msg);
+		}
+	}
 }
 
 void clearErrMsg()

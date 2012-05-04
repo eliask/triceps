@@ -379,8 +379,13 @@ eval {
 	$u1->call($recrop);
 };
 ok($@ =~ /Detected a recursive call of the label 'reclab'. at [^\n]*
+\tmain::__ANON__[^\n]*
+\teval[^\n]*
+\teval[^\n]*
 Detected in the unit 'u1' label 'reclab' execution handler.
-Called through the label 'reclab'. at /);
+Called through the label 'reclab'. at [^\n]*
+\teval[^\n]*
+/);
 
 #############################################################
 # tracer ops
