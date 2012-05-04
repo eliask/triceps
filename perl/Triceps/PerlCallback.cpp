@@ -176,11 +176,11 @@ void PerlLabel::execute(Rowop *arg) const
 	SvREFCNT_dec(svlab);
 
 	if (SvTRUE(ERRSV)) {
-		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
-		// Would exit(1) be better?
-		warn("Error in unit %s label %s handler: %s", 
-			getUnitName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
-
+		clearErrMsg(); // in case if it was thrown by Triceps, clean up
+		// propagate to the caller
+		Erref err = new Errors(SvPV_nolen(ERRSV));
+		err->appendMsg(true, strprintf("Detected in the unit '%s' label '%s' execution handler.", getUnitName().c_str(), getName().c_str()));
+		throw Triceps::Exception(err, false);
 	}
 }
 
@@ -188,32 +188,33 @@ void PerlLabel::clearSubclass()
 {
 	dSP;
 
-	if (!clear_.isNull()) { // there is a Perl callback for clearing
-		WrapLabel *wlab = new WrapLabel(const_cast<PerlLabel *>(this));
-		SV *svlab = newSV(0);
-		sv_setref_pv(svlab, "Triceps::Label", (void *)wlab);
+	cb_ = NULL; // drop the execution callback
 
-		PerlCallbackStartCall(clear_);
+	if (clear_.isNull()) 
+		return; // nothing to do
+	
+	WrapLabel *wlab = new WrapLabel(const_cast<PerlLabel *>(this));
+	SV *svlab = newSV(0);
+	sv_setref_pv(svlab, "Triceps::Label", (void *)wlab);
 
-		XPUSHs(svlab);
+	PerlCallbackStartCall(clear_);
 
-		PerlCallbackDoCall(clear_);
+	XPUSHs(svlab);
 
-		// this calls the DELETE methods on wrappers
-		SvREFCNT_dec(svlab);
+	PerlCallbackDoCall(clear_);
 
-		if (SvTRUE(ERRSV)) {
-			// If in eval, croak may cause issues by doing longjmp(), so better just warn.
-			// Would exit(1) be better?
-			warn("Error in unit %s label %s clearing handler: %s", 
-				getUnitName().c_str(), getName().c_str(), SvPV_nolen(ERRSV));
+	// this calls the DELETE methods on wrappers
+	SvREFCNT_dec(svlab);
 
-		}
+	clear_ = NULL; // eventually drop the callback, before any chance of throwing!
+
+	if (SvTRUE(ERRSV)) {
+		clearErrMsg(); // in case if it was thrown by Triceps, clean up
+		// propagate to the caller
+		Erref err = new Errors(SvPV_nolen(ERRSV));
+		err->appendMsg(true, strprintf("Detected in the unit '%s' label '%s' clearing handler.", getUnitName().c_str(), getName().c_str()));
+		throw Triceps::Exception(err, false);
 	}
-
-	// eventually drop the callbacks
-	clear_ = NULL;
-	cb_ = NULL;
 }
 
 ///////////////////////// UnitTracerPerl ///////////////////////////////////////////////

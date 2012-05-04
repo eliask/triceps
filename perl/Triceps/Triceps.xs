@@ -39,7 +39,12 @@ XS(boot_Triceps__FrameMark);
 MODULE = Triceps		PACKAGE = Triceps
 
 BOOT:
-	# boot sub-packages that are compiled separately
+	// the exceptions will be caught and backtraced in Perl
+	Triceps::Exception::abort_ = false;
+	Triceps::Exception::enableBacktrace_ = false;
+	//
+	// boot sub-packages that are compiled separately
+	//
 	// fprintf(stderr, "DEBUG Triceps items=%d sp=%p mark=%p\n", items, sp, mark);
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__Label(aTHX_ cv); 

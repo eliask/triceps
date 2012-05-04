@@ -24,11 +24,47 @@ namespace Triceps
 namespace TricepsPerl 
 {
 
+void setCroakMsg(const std::string &msg)
+{
+	STRLEN len = msg.size();
+	if (len > 0 && msg[len-1] == '\n')
+		len--; // drop the last '\n', to let die() print its thing
+	SV *msgsv = get_sv("Triceps::_CROAK_MSG", GV_ADD|GV_ADDMULTI);
+	if (msgsv) {
+		sv_setpvn(msgsv, msg.c_str(), len);
+	}
+}
+
+const char *getCroakMsg()
+{
+	SV *msgsv = get_sv("Triceps::_CROAK_MSG", 0);
+	if (msgsv && SvOK(msgsv)) {
+		return SvPV_nolen(msgsv);
+	} else {
+		return "";
+	}
+}
+
+void croakIfSet()
+{
+	const char *msg = getCroakMsg();
+	if (msg[0] != 0)
+		Perl_croak(aTHX_ "%s", msg);
+}
+
 void clearErrMsg()
 {
-	SV *errsv = get_sv("!", 0);
-	if (errsv) {
-		sv_setpvn(errsv, "", 0);
+	{
+		SV *errsv = get_sv("!", 0);
+		if (errsv) {
+			sv_setpvn(errsv, "", 0);
+		}
+	}
+	{
+		SV *msgsv = get_sv("Triceps::_CROAK_MSG", 0);
+		if (msgsv && SvOK(msgsv)) {
+			sv_setsv(msgsv, &PL_sv_undef);
+		}
 	}
 }
 
@@ -50,6 +86,10 @@ void setErrMsg(const std::string &msg)
 	} else {
 		warn("Triceps: can not set $! with error: %s", msg.c_str());
 	}
+
+	// in case if the function checks for exceptions, check the corak message too
+	// XXX in the future there will probably be just exceptions, no setErrMsg()
+	setCroakMsg(msg);
 }
 
 bool svToBytes(Type::TypeId ti, SV *val, char *bytes)

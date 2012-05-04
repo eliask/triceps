@@ -101,6 +101,16 @@ getChain(WrapLabel *self)
 			XPUSHs(sv_2mortal(sv));
 		}
 
+int
+hasChained(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+
+		RETVAL = lab->hasChained()? 1 : 0;
+	OUTPUT:
+		RETVAL
+
 char *
 getName(WrapLabel *self)
 	CODE:

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 140 };
+BEGIN { plan tests => 142 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -351,17 +351,36 @@ ok(ref $elab1, "Triceps::Label");
 $erop = $elab1->makeRowop("OP_INSERT", $row1);
 ok(ref $erop, "Triceps::Rowop");
 
-print STDERR "\nExpect error message from unit u1 label elab1 handler\n";
 $v = $u1->schedule($erop);
-$u1->drainFrame();
-ok($v);
+eval {
+	$u1->drainFrame();
+};
+ok($@ =~ /^an error in label handler at [^\n]*
+Detected in the unit 'u1' label 'elab1' execution handler.
+Called through the label 'elab1'. at/);
 
 $v = $u1->call($rop11);
 $xlab1->clear(); # now the label could not call anything any more
-$v = $u1->call($rop11);
-ok(!defined $v);
-ok("$!", "Triceps::Unit::call: argument 1 is a Rowop for label xlab1 from a wrong unit [label cleared]");
+eval {
+	$u1->call($rop11);
+};
+ok($@ =~ /Triceps::Unit::call: argument 1 is a Rowop for label xlab1 from a wrong unit \[label cleared\] at/);
 ok($clearlog, "clear xlab1 args=[]\n");
+
+# errors from exception catching
+
+# recursive label
+$reclab = $u1->makeLabel($rt1, "reclab", undef, sub { $u1->call($_[1]); } );
+ok(ref $reclab, "Triceps::Label");
+$recrop = $reclab->makeRowop("OP_INSERT", $row1);
+ok(ref $recrop, "Triceps::Rowop");
+$v = 99;
+eval {
+	$u1->call($recrop);
+};
+ok($@ =~ /Detected a recursive call of the label 'reclab'. at [^\n]*
+Detected in the unit 'u1' label 'reclab' execution handler.
+Called through the label 'reclab'. at /);
 
 #############################################################
 # tracer ops

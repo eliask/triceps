@@ -92,6 +92,9 @@ require Triceps::JoinTwo;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
+# The special variables.
+our $_CROAK_MSG; # used to temporarily store the croak message in the XS code
+
 1;
 __END__
 # Below is stub documentation for your module. You'd better edit it!

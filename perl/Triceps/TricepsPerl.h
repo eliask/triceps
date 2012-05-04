@@ -8,6 +8,7 @@
 #include <string.h>
 #include <wrap/Wrap.h>
 #include <common/Strprintf.h>
+#include <common/Exception.h>
 #include <mem/EasyBuffer.h>
 
 // ###################################################################################
@@ -21,11 +22,22 @@ namespace Triceps
 {
 namespace TricepsPerl 
 {
+// To call Perl_croak() with arbitrary messages, the message must be in the
+// memory that will be cleaned by Perl, since croak() does a longjmp and bypasses
+// the destructors. It must also be per-thread. Since the Perl variables 
+// are per-thread, the value get stored in a Perl variable, and then
+// a pointer to that value gets passed to croak().
+void setCroakMsg(const std::string &msg);
+// Get back the croak message string. It it located in the variable Triceps::_CROAK_MSG.
+const char *getCroakMsg();
 
-// Clear the perl $! variable
+// Check the contents of the croak message, and if it's set then croak.
+void croakIfSet();
+
+// Clear the perl $! variable and the Triceps::_CROAK_MSG.
 void clearErrMsg();
 
-// Set a message in Perl $! variable
+// Set a message in Perl $! variable, and also set the croak message.
 // @param msg - error message
 void setErrMsg(const std::string &msg);
 
@@ -150,6 +162,20 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 		string res; \
 		rt->printTo(res, *indarg, subindent); \
 		XPUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size())));
+
+// A common macro to catch the Triceps::Exception and convert it to a croak.
+// Use:
+//
+// try {
+//     ... some code ...
+// } TRICEPS_CATCH_CROAK;
+//
+// Make sure to define all your C++ variables with destructors inside the try block!!!
+#define TRICEPS_CATCH_CROAK \
+	catch (Exception e) { \
+		setCroakMsg(e.getErrors()->print()); \
+	} \
+	croakIfSet()
 
 }; // Triceps::TricepsPerl
 }; // Triceps

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 34 };
+BEGIN { plan tests => 36 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -85,6 +85,8 @@ ok($u1->same($v));
 
 ########################## chaining #################################################
 
+$res = $lb->hasChained();
+ok($res, 0);
 @chain = $lb->getChain();
 ok($#chain, -1);
 
@@ -94,6 +96,8 @@ $res = $lb->chain($t1->getInputLabel());
 ok($res);
 ok($! . "", "");
 
+$res = $lb->hasChained();
+ok($res, 1);
 @chain = $lb->getChain();
 ok(join(", ", map {$_->getName()} @chain), "tab1.in");
 $v = $t1->getInputLabel()->same($chain[0]);

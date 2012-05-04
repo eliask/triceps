@@ -68,8 +68,11 @@ sub startLoop # ($label, $rowop)
 		$data{id} = 3;
 		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) )) or die "$!";
 		# also test that the mark from unit 1 gets caught
-		$res = $u2->loopAt($m1, $labu2->makeRowop(&Triceps::OP_INSERT, $rowop->getRow()));
-		$result .= "bad loopAt: " . (defined($res)+0) . ", $!\n"
+		eval {
+			$u2->loopAt($m1, $labu2->makeRowop(&Triceps::OP_INSERT, $rowop->getRow()));
+		};
+		$@ =~ s/ at \S*FrameMark.*//; # remove the varying line number
+		$result .= "bad loopAt: $@\n"
 	} else {
 		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow())) or die "$!";
 	}
@@ -120,7 +123,8 @@ $callType = "single";
 ok($u1->schedule($firstRowop));
 
 $expect = "labStart OP_INSERT count=\"0\" id=\"99\" 
-bad loopAt: 0, Triceps::Unit::loopAt: mark belongs to a different unit 'u1'
+bad loopAt: Triceps::Unit::loopAt: mark belongs to a different unit 'u1'
+
 labNext OP_NOP count=\"0\" id=\"1\" 
 labNext OP_NOP count=\"0\" id=\"2\" 
 labNext OP_NOP count=\"0\" id=\"3\" 
