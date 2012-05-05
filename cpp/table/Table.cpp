@@ -151,7 +151,7 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 		return false;  // nothing to do
 
 	if (busy_)
-		throw Exception(strprintf("Detected a recursive modification of the label '%s'.", getName().c_str()), false);
+		throw Exception(strprintf("Detected a recursive modification of the table '%s'.", getName().c_str()), false);
 
 	BusyMark bm(busy_); // will auto-clean on exit
 
@@ -178,7 +178,7 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 			changed.insert(newrh); // OK to add, since the iterators in newrh got populated by replacementPolicy()
 			root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
 			root_->aggregateBefore(aggTray, changed, replace, copyTray);
-			// Aggregator "before" changes go before table changes. If there are multiople aggregators,
+			// Aggregator "before" changes go before table changes. If there are multiple aggregators,
 			// between themselves they go sort of in parallel.
 			unit_->enqueueDelayedTray(aggTray); // may throw
 			aggTray->clear();
@@ -253,7 +253,7 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 		return;
 
 	if (busy_)
-		throw Exception(strprintf("Detected a recursive modification of the label '%s'.", getName().c_str()), false);
+		throw Exception(strprintf("Detected a recursive modification of the table '%s'.", getName().c_str()), false);
 
 	BusyMark bm(busy_); // will auto-clean on exit
 
@@ -289,7 +289,7 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 
 		if (!noAggs) {
 			root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, emptyRhSet, copyTray);
-			// Aggregator "after" changes go after table changes. If there are multiople aggregators,
+			// Aggregator "after" changes go after table changes. If there are multiple aggregators,
 			// between themselves they go sort of in parallel.
 			unit_->enqueueDelayedTray(aggTray); // may throw
 			aggTray->clear();
