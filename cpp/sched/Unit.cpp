@@ -26,6 +26,8 @@ void UnitFrame::clear()
 		markList_->clear();
 		markList_ = NULL;
 	}
+	if (!empty())
+		Tray::clear();
 }
 
 void UnitFrame::mark(Unit *unit, Onceref<FrameMark> mk)
@@ -303,8 +305,13 @@ void Unit::callNext()
 
 void Unit::drainFrame()
 {
-	while (!innerFrame_->empty())
-		callNext(); // may throw
+	try {
+		while (!innerFrame_->empty())
+			callNext(); // may throw
+	} catch (Exception e) {
+		innerFrame_->clear(); // the frame gets cleared anyway, by throwing things out
+		throw;
+	}
 }
 
 bool Unit::empty() const
@@ -328,8 +335,11 @@ void Unit::pushFrame()
 void Unit::popFrame()
 {
 	// fprintf(stderr, "DEBUG Unit::popFrame (%d) was %p\n", (int)queue_.size(), innerFrame_);
+	
+	// make sure that there are no stray rowops left (such as after an exception)
+	innerFrame_->clear(); 
+
 	if (innerFrame_ != outerFrame_) { // never pop the outermost frame
-		innerFrame_->clear();
 		freePool_.push_front(innerFrame_); // save for later
 		queue_.pop_front();
 		innerFrame_ = queue_.front();

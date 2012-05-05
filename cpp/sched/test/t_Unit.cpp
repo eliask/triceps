@@ -1030,6 +1030,19 @@ public:
 	}
 };
 
+class LabelRecursive : public Label
+{
+public:
+	LabelRecursive(Unit *unit, Onceref<RowType> rtype, const string &name) :
+		Label(unit, rtype, name)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		unit_->call(arg); // a recursive call attempt
+	}
+};
+
 UTESTCASE exceptions(Utest *utest)
 {
 	Erref err;
@@ -1121,22 +1134,27 @@ UTESTCASE exceptions(Utest *utest)
 	UT_IS(msg, "Test throw on call\nCalled through the label 'labt'.\n");
 	UT_ASSERT(unit1->empty()); // the frame must get popped
 
+	// draining of the frame, even if the exception is thrown in a recursive call
+	msg.clear();
+	try {
+		Autoref<Label> labrec = new LabelRecursive(unit1, rt1, "labrec");
+		Autoref<Rowop> oprec = new Rowop(labrec, Rowop::OP_DELETE, r1);
+		unit1->schedule(oprec);
+		unit1->schedule(oprec);
+		unit1->schedule(oprec);
+
+		unit1->drainFrame();
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, 
+		"Detected a recursive call of the label 'labrec'.\n"
+		"Called through the label 'labrec'.\n");
+	UT_ASSERT(unit1->empty());
+
 	Exception::abort_ = true; // restore back
 	Exception::enableBacktrace_ = true; // restore back
 }
-
-class LabelRecursive : public Label
-{
-public:
-	LabelRecursive(Unit *unit, Onceref<RowType> rtype, const string &name) :
-		Label(unit, rtype, name)
-	{ }
-
-	virtual void execute(Rowop *arg) const
-	{
-		unit_->call(arg); // a recursive call attempt
-	}
-};
 
 class ThrowingTracer : public Unit::Tracer
 {
@@ -1176,7 +1194,7 @@ UTESTCASE label_exceptions(Utest *utest)
 	mkfdata(dv);
 	Rowref r1(rt1,  rt1->makeRow(dv)); // the initial row to start the loop
 
-	// recursive call and chaining
+	// recursive call and chaining and propagation through call
 	msg.clear();
 	try {
 		Autoref<Label> labrec = new LabelRecursive(unit1, rt1, "labrec");
@@ -1209,6 +1227,7 @@ Called chained from the label 'lab1'.\n");
 
 	// all kinds of tracing errors
 	
+	// tracer throws on BEFORE
 	msg.clear();
 	try {
 		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE);
@@ -1226,6 +1245,7 @@ Called chained from the label 'lab1'.\n");
 	}
 	UT_IS(msg, "Error when tracing before the label 'lab1':\n  exception in tracer\n");
 
+	// tracer throws on BEFORE_DRAIN
 	msg.clear();
 	try {
 		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_DRAIN);
@@ -1243,6 +1263,7 @@ Called chained from the label 'lab1'.\n");
 	}
 	UT_IS(msg, "Error when tracing before draining the label 'lab1':\n  exception in tracer\n");
 
+	// tracer throws on BEFORE_CHAINED
 	msg.clear();
 	try {
 		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_CHAINED);
@@ -1260,6 +1281,8 @@ Called chained from the label 'lab1'.\n");
 	}
 	UT_IS(msg, "Error when tracing before the chain of the label 'lab1':\n  exception in tracer\n");
 
+	// tracer throws on AFTER;
+	// also propagation of the exception through chaining
 	msg.clear();
 	try {
 		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER);

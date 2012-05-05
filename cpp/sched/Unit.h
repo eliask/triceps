@@ -40,7 +40,7 @@ public:
 		return !markList_.isNull();
 	}
 
-	// Clear the marks from frame when it's moved from queue
+	// Clear the marks and any leftover rowops from frame when it's moved from queue
 	// into the free pool
 	void clear();
 
