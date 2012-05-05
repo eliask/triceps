@@ -12,6 +12,8 @@
 #include <type/RootIndexType.h>
 #include <sched/AggregatorGadget.h>
 #include <mem/Rhref.h>
+#include <common/Exception.h>
+#include <common/BusyMark.h>
 
 namespace TRICEPS_NS {
 
@@ -41,7 +43,9 @@ Table::Table(Unit *unit, EnqMode emode, const string &name,
 	rhType_(handt),
 	inputLabel_(new InputLabel(unit, rowt, name + ".in", this)),
 	firstLeaf_(tt->getFirstLeaf()),
-	name_(name)
+	preLabel_(new DummyLabel(unit, rowt, name + ".pre")),
+	name_(name),
+	busy_(false)
 { 
 	root_ = static_cast<RootIndex *>(tt->root_->makeIndex(tt, this));
 	// fprintf(stderr, "DEBUG Table::Table root=%p\n", root_.get());
@@ -121,10 +125,19 @@ bool Table::insertRow(const Row *row, Tray *copyTray)
 	RowHandle *rh = makeRowHandle(row);
 	rh->incref();
 
-	bool res = insert(rh, copyTray);
+	bool res;
+	Erref err;
+	try {
+		res = insert(rh, copyTray);
+	} catch (Exception e) {
+		err = e.getErrors();
+	}
 
 	if (rh->decref() <= 0)
 		destroyRowHandle(rh);
+
+	if (!err.isNull())
+		throw Exception(err, false);
 
 	return res;
 }
@@ -137,6 +150,11 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	if (newrh->isInTable())
 		return false;  // nothing to do
 
+	if (busy_)
+		throw Exception(strprintf("Detected a recursive modification of the label '%s'.", getName().c_str()), false);
+
+	BusyMark bm(busy_); // will auto-clean on exit
+
 	bool noAggs = aggs_.empty();
 	Autoref<Tray> aggTray; // delayed records from aggregation
 	if (!noAggs)
@@ -145,59 +163,86 @@ bool Table::insert(RowHandle *newrh, Tray *copyTray)
 	Index::RhSet emptyRhSet; // always empty here
 	Index::RhSet replace;
 	Index::RhSet changed;
+	vector<RowHandle *> deref; // row handles that need to be dereferenced
 
-	if (!root_->replacementPolicy(newrh, replace)) {
-		// this may have created the groups for the new record that didn't get inserted, so collapse them back
-		changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
-		root_->collapse(aggTray, changed, copyTray); // aggTray may be NULL, it's OK with no aggregators
-		// aggTray should be empty, so don't send it anywhere
-		return false;
+	try {
+		if (!root_->replacementPolicy(newrh, replace)) {
+			// this may have created the groups for the new record that didn't get inserted, so collapse them back
+			changed.insert(newrh); // OK to add, since the iterators in newrh get populated by replacementPolicy()
+			root_->collapse(aggTray, changed, copyTray); // aggTray may be NULL, it's OK with no aggregators
+			// aggTray should be empty, so don't send it anywhere
+			return false;
+		}
+
+		if (!noAggs) {
+			changed.insert(newrh); // OK to add, since the iterators in newrh got populated by replacementPolicy()
+			root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
+			root_->aggregateBefore(aggTray, changed, replace, copyTray);
+			// Aggregator "before" changes go before table changes. If there are multiople aggregators,
+			// between themselves they go sort of in parallel.
+			unit_->enqueueDelayedTray(aggTray); // may throw
+			aggTray->clear();
+		}
+
+		// delete the rows that are pushed out but don't collapse the groups yet
+		for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
+			RowHandle *rh = *rsit;
+			if (preLabel_->hasChained()) {
+				Autoref<Rowop> rop = new Rowop(preLabel_, Rowop::OP_DELETE, rh->getRow());
+				unit_->call(rop); // may throw
+			}
+			root_->remove(rh);
+			rh->flags_ &= ~RowHandle::F_INTABLE;
+			deref.push_back(rh);
+			send(rh->getRow(), Rowop::OP_DELETE, copyTray); // may throw
+		}
+
+		if (preLabel_->hasChained()) {
+			Autoref<Rowop> rop = new Rowop(preLabel_, Rowop::OP_INSERT, newrh->getRow());
+			unit_->call(rop); // may throw
+		}
+		
+		// now keep the table-wide reference to that new handle
+		newrh->incref();
+		newrh->flags_ |= RowHandle::F_INTABLE;
+
+		root_->insert(newrh);
+		send(newrh->getRow(), Rowop::OP_INSERT, copyTray); // may throw
+
+		if (!noAggs) {
+			root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, changed, copyTray);
+			root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_INSERT, changed, emptyRhSet, copyTray);
+			// Aggregator "after" changes go after table changes. If there are multiople aggregators,
+			// between themselves they go sort of in parallel.
+			unit_->enqueueDelayedTray(aggTray); // may throw
+			aggTray->clear();
+		}
+
+		// finally, collapse the groups of the replaced records
+		root_->collapse(aggTray, replace, copyTray);
+
+		if (!noAggs && !aggTray->empty()) {
+			// The aggregators may have produced more output on collapse.
+			unit_->enqueueDelayedTray(aggTray); // may throw
+			aggTray->clear();
+		}
+
+		// and then the removed rows get unreferenced by the table
+		for (vector<RowHandle *>::iterator rsit = deref.begin(); rsit != deref.end(); ++rsit) {
+			RowHandle *rh = *rsit;
+			if (rh->decref() <= 0)
+				destroyRowHandle(rh);
+		}
+	} catch (Exception e) {
+		// the removed rows must get unreferenced by the table
+		for (vector<RowHandle *>::iterator rsit = deref.begin(); rsit != deref.end(); ++rsit) {
+			RowHandle *rh = *rsit;
+			if (rh->decref() <= 0)
+				destroyRowHandle(rh);
+		}
+		// XXX this leaves the empty groups uncollapsed
+		throw;
 	}
-
-	if (!noAggs) {
-		changed.insert(newrh); // OK to add, since the iterators in newrh got populated by replacementPolicy()
-		root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
-		root_->aggregateBefore(aggTray, changed, replace, copyTray);
-	}
-
-	// delete the rows that are pushed out but don't collapse the groups yet
-	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
-		RowHandle *rh = *rsit;
-		root_->remove(rh);
-		rh->flags_ &= ~RowHandle::F_INTABLE;
-	}
-
-	// now keep the table-wide reference to that new handle
-	newrh->incref();
-	newrh->flags_ |= RowHandle::F_INTABLE;
-
-	root_->insert(newrh);
-
-	if (!noAggs) {
-		root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, changed, copyTray);
-		root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_INSERT, changed, emptyRhSet, copyTray);
-	}
-
-	// finally, collapse the groups of the replaced records
-	root_->collapse(aggTray, replace, copyTray);
-
-	// and then the removed rows get unreferenced by the table and enqueued
-	// XXX these rows should also be returned in a tray
-	for (Index::RhSet::iterator rsit = replace.begin(); rsit != replace.end(); ++rsit) {
-		RowHandle *rh = *rsit;
-		send(rh->getRow(), Rowop::OP_DELETE, copyTray);
-		if (rh->decref() <= 0)
-			destroyRowHandle(rh);
-	}
-	send(newrh->getRow(), Rowop::OP_INSERT, copyTray);
-
-	// Aggregator changes go after table changes. If there are multiople aggregators,
-	// between themselves they go sort of in parallel.
-	// Besides being better logically, the major reason for delaying the sending of
-	// aggregator updates is to prevent an EM_CALL from happening
-	// while the table is in the middle of a change.
-	if (!noAggs) 
-		unit_->enqueueDelayedTray(aggTray); 
 	
 	return true;
 }
@@ -207,6 +252,11 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	if (rh == NULL || !rh->isInTable())
 		return;
 
+	if (busy_)
+		throw Exception(strprintf("Detected a recursive modification of the label '%s'.", getName().c_str()), false);
+
+	BusyMark bm(busy_); // will auto-clean on exit
+
 	bool noAggs = aggs_.empty();
 	Autoref<Tray> aggTray; // delayed records from aggregation
 	if (!noAggs)
@@ -215,26 +265,55 @@ void Table::remove(RowHandle *rh, Tray *copyTray)
 	Index::RhSet emptyRhSet; // always empty here
 	Index::RhSet replace;
 	replace.insert(rh);
+	RowHandle *rhdec = NULL; // remember to decrease the reference after removing from the table
 
-	if (!noAggs)
-		root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
+	try {
+		if (!noAggs) {
+			root_->aggregateBefore(aggTray, replace, emptyRhSet, copyTray);
+			// Aggregator "before" changes go before table changes. If there are multiople aggregators,
+			// between themselves they go sort of in parallel.
+			unit_->enqueueDelayedTray(aggTray); // may throw
+			aggTray->clear();
+		}
 
-	root_->remove(rh);
-	rh->flags_ &= ~RowHandle::F_INTABLE;
+		if (preLabel_->hasChained()) {
+			Autoref<Rowop> rop = new Rowop(preLabel_, Rowop::OP_DELETE, rh->getRow());
+			unit_->call(rop); // may throw
+		}
 
-	if (!noAggs)
-		root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, emptyRhSet, copyTray);
+		root_->remove(rh);
+		rh->flags_ &= ~RowHandle::F_INTABLE;
+		rhdec = rh;
 
-	root_->collapse(aggTray, replace, copyTray);
-	
-	send(rh->getRow(), Rowop::OP_DELETE, copyTray);
-	if (rh->decref() <= 0)
-		destroyRowHandle(rh);
-	
-	// Aggregator changes go after table changes. If there are multiople aggregators,
-	// between themselves they go sort of in parallel.
-	if (!noAggs) 
-		unit_->enqueueDelayedTray(aggTray); 
+		send(rh->getRow(), Rowop::OP_DELETE, copyTray); // may throw
+
+		if (!noAggs) {
+			root_->aggregateAfter(aggTray, Aggregator::AO_AFTER_DELETE, replace, emptyRhSet, copyTray);
+			// Aggregator "after" changes go after table changes. If there are multiople aggregators,
+			// between themselves they go sort of in parallel.
+			unit_->enqueueDelayedTray(aggTray); // may throw
+			aggTray->clear();
+		}
+
+		root_->collapse(aggTray, replace, copyTray);
+		
+		if (!noAggs && !aggTray->empty()) {
+			// The aggregators may have produced more output on collapse.
+			unit_->enqueueDelayedTray(aggTray); // may throw
+			aggTray->clear();
+		}
+
+		if (rhdec->decref() <= 0)
+			destroyRowHandle(rhdec);
+	} catch (Exception e) {
+		// the removed rows must get unreferenced by the table
+		if (rhdec) {
+			if (rhdec->decref() <= 0)
+				destroyRowHandle(rhdec);
+		}
+		// XXX this leaves the empty groups uncollapsed
+		throw;
+	}
 }
 
 bool Table::deleteRow(const Row *row, Tray *copyTray)
@@ -242,7 +321,7 @@ bool Table::deleteRow(const Row *row, Tray *copyTray)
 	Rhref what(this, makeRowHandle(row));
 	RowHandle *rh = find(what);
 	if (rh != NULL) {
-		remove(rh, copyTray);
+		remove(rh, copyTray); // may throw
 		return true;
 	}
 	return false;

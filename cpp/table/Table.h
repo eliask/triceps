@@ -50,6 +50,14 @@ public:
 		return inputLabel_.get();
 	}
 
+	// Return the label that gets called (always called, no other modes)
+	// if it has anything else chained on it before modifying each row.
+	// May return NULL if the input label was not created.
+	Label *getPreLabel() const
+	{
+		return preLabel_.get();
+	}
+
 	// Return the label of a named aggregator
 	// (a label seems more convenient than a gadget).
 	// @param agname - aggregator name (names should be unique, if duplicated
@@ -57,7 +65,7 @@ public:
 	// @return - label of the aggregator, or NULL if not found
 	Label *getAggregatorLabel(const string &agname) const;
 
-	// Get back the table name (overrides the garget method, because that
+	// Get back the table name (overrides the gadget method, because that
 	// name has ".out" added to it).
 	const string &getName() const
 	{
@@ -78,11 +86,13 @@ public:
 	RowHandle *makeRowHandle(const Row *row) const;
 
 	// Insert a row.
+	// May throw an Exception.
 	// @param row - the row to insert
 	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true on success, false on failure (if the index policies don't allow it)
 	bool insertRow(const Row *row, Tray *copyTray = NULL);
 	// Insert a pre-initialized row handle.
+	// May throw an Exception.
 	// If the handle is already in table, does nothing and returns false.
 	// @param rh - the row handle to insert (must be held in a Rowref or such at the moment)
 	// @param copyTray - a tray to put a copy of changes in the table, or NULL
@@ -91,12 +101,14 @@ public:
 
 	// XXX also add a version working on RhSet, for better efficiency?
 	// Remove a row handle from the table. If the row is already not in table, do nothing.
+	// May throw an Exception.
 	// @param rh - row handle to remove
 	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	void remove(RowHandle *rh, Tray *copyTray = NULL);
 
 	// Find the matching row in the table (by the default index),
 	// and if found, remove it.
+	// May throw an Exception.
 	// @param row - the row to find matching and remove
 	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true if found and removed, false if not found
@@ -241,8 +253,10 @@ protected:
 	Autoref<RootIndex> root_; // root of the index tree
 	Autoref<InputLabel> inputLabel_;
 	Autoref<IndexType> firstLeaf_; // the first leaf index type, used for default find
+	Autoref<DummyLabel> preLabel_; // called before modifying a row, if has anything chained
 	AggGadgetVec aggs_; // gadgets for all aggregators, matching the order in TableType
 	string name_; // base name of the table
+	bool busy_; // flag: an operation is in progress on the table
 
 private:
 	Table(const Table &t);

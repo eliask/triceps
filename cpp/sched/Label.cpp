@@ -10,6 +10,7 @@
 #include <sched/Label.h>
 #include <sched/Unit.h>
 #include <common/Exception.h>
+#include <common/BusyMark.h>
 
 namespace TRICEPS_NS {
 
@@ -105,13 +106,12 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 			unit->getName().c_str(), getName().c_str(), unit_->getName().c_str()), true);
 	}
 
-	busy_ = true;
+	BusyMark bm(busy_);
 
 	// XXX this code would be cleaner without exceptions...
 	try {
 		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE);
 	} catch (Exception e) {
-		busy_ = false;
 		err = new Errors;
 		err->append(strprintf("Error when tracing before the label '%s':", getName().c_str()), e.getErrors());
 		throw Exception(err, false);
@@ -119,7 +119,6 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 	try {
 		execute(arg);
 	} catch (Exception e) {
-		busy_ = false;
 		err = e.getErrors();
 		err->appendMsg(true, strprintf("Called through the label '%s'.", getName().c_str()));
 		throw Exception(err, false);
@@ -127,7 +126,6 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 	try {
 		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_DRAIN);
 	} catch (Exception e) {
-		busy_ = false;
 		err = new Errors;
 		err->append(strprintf("Error when tracing before draining the label '%s':", getName().c_str()), e.getErrors());
 		throw Exception(err, false);
@@ -135,7 +133,6 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 	try {
 		unit->drainFrame(); // avoid overlapping the row scheduling
 	} catch (Exception e) {
-		busy_ = false;
 		err = e.getErrors();
 		err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", getName().c_str()));
 		throw Exception(err, false);
@@ -144,7 +141,6 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 		try {
 			unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_CHAINED);
 		} catch (Exception e) {
-			busy_ = false;
 			err = new Errors;
 			err->append(strprintf("Error when tracing before the chain of the label '%s':", getName().c_str()), e.getErrors());
 			throw Exception(err, false);
@@ -153,7 +149,6 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 			try {
 				(*it)->call(unit, arg, this); // each of them can do their own chaining....
 			} catch (Exception e) {
-				busy_ = false;
 				err = e.getErrors();
 				err->appendMsg(true, strprintf("Called chained from the label '%s'.", getName().c_str()));
 				throw Exception(err, false);
@@ -163,13 +158,10 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 	try {
 		unit->trace(this, chainedFrom, arg, Unit::TW_AFTER);
 	} catch (Exception e) {
-		busy_ = false;
 		err = new Errors;
 		err->append(strprintf("Error when tracing after execution of the label '%s':", getName().c_str()), e.getErrors());
 		throw Exception(err, false);
 	}
-
-	busy_ = false;
 }
 
 bool Label::findChained(const Label *target, ChainedVec &path) const
