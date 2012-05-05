@@ -267,8 +267,8 @@ ok($result,
 tPackets.out OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
 tHourly.out OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50
-tPackets.out OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
 tHourly.out OP_DELETE time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+tPackets.out OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
 tHourly.out OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300
 tPackets.out OP_INSERT time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
@@ -549,8 +549,8 @@ ok($result,
 tPackets.out OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
 tHourly.out OP_INSERT time="1330884000000000" day="20120304" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50
-tPackets.out OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
 tHourly.out OP_DELETE time="1330884000000000" day="20120304" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+tPackets.out OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
 tHourly.out OP_INSERT time="1330884000000000" day="20120304" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300
 tPackets.out OP_INSERT time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 

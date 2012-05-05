@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 192 };
+BEGIN { plan tests => 195 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -340,10 +340,10 @@ $rhit = $t2->findBy( # just the key fields - an absent row
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 
-eval { $rhit = $t2->findBy( # invalid fields, making it to fail
+ok(!eval { $rhit = $t2->findBy( # invalid fields, making it to fail
 	zz => [ 456 ],
 	c => [ 3e15+0 ],
-); };
+); });
 ok($@ =~ /^Triceps::RowType::makeRowHash: attempting to set an unknown field 'zz' at .*\n\tTriceps::Table::findBy.*/) or print STDERR "got: $@\n";
 
 # findIdxBy
@@ -365,41 +365,48 @@ $rhit = $t2->findIdxBy($it2m, # just the key fields - an absent row
 ok(ref $rhit, "Triceps::RowHandle");
 ok($rhit->isNull());
 
-eval { $rhit = $t2->findIdxBy($it2m, # invalid fields, making it to fail
+ok(!eval { $rhit = $t2->findIdxBy($it2m, # invalid fields, making it to fail
 	zz => [ 456 ],
 	c => [ 3e15+0 ],
-); };
+); });
 ok($@ =~ /^Triceps::RowType::makeRowHash: attempting to set an unknown field 'zz' at .*\n\tTriceps::Table::findIdxBy.*/) or print STDERR "got: $@\n";
 
 # bad args insert
-$res = $t1->insert(0);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: row argument is not a blessed SV reference to Row or RowHandle");
+ok(!eval {
+	$res = $t1->insert(0);
+});
+ok($@ =~ /^Triceps::Table::insert: row argument is not a blessed SV reference to Row or RowHandle at/);
 
-$res = $t1->insert($t2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: row argument has an incorrect magic for Row or RowHandle");
+ok(!eval {
+	$res = $t1->insert($t2);
+});
+ok($@ =~ /Triceps::Table::insert: row argument has an incorrect magic for Row or RowHandle/);
 
-$res = $t1->insert($r2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: table and row types are not equal, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+ok(!eval {
+	$res = $t1->insert($r2);
+});
+ok($@ =~ /Triceps::Table::insert: table and row types are not equal, in table: row \{ uint8 a, int32 b, int64 c, float64 d, string e, \}, in row: row \{ uint8\[\] a, int32\[\] b, int64\[\] c, float64\[\] d, string e, \}/);
 
-$res = $t1->insert($rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: row argument is a RowHandle in a wrong table tab2");
+ok(!eval {
+	$res = $t1->insert($rh2);
+});
+ok($@ =~ /Triceps::Table::insert: row argument is a RowHandle in a wrong table tab2/);
 
-$res = $t1->insert($rh1, 0);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: copyTray is not a blessed SV reference to WrapTray");
+ok(!eval {
+	$res = $t1->insert($rh1, 0);
+});
+ok($@ =~ /Triceps::Table::insert: copyTray is not a blessed SV reference to WrapTray/);
 
-$res = $t1->insert($rh1, $t2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: copyTray has an incorrect magic for WrapTray");
+ok(!eval {
+	$res = $t1->insert($rh1, $t2);
+});
+ok($@ =~ /Triceps::Table::insert: copyTray has an incorrect magic for WrapTray/);
 
 $ctr2 = $u2->makeTray();
-$res = $t1->insert($rh1, $ctr2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::insert: copyTray is from a wrong unit u2, table in unit u1");
+ok(!eval {
+	$res = $t1->insert($rh1, $ctr2);
+});
+ok($@ =~ /Triceps::Table::insert: copyTray is from a wrong unit u2, table in unit u1/);
 
 # bad args iteration
 $res = $t2->beginIdx($itrev);
@@ -477,14 +484,16 @@ $res = $ctr->size();
 ok($res, 0);
 
 # bad args remove
-$res = $t1->remove($rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::remove: row argument is a RowHandle in a wrong table tab2");
+ok(!eval {
+	$res = $t1->remove($rh2);
+});
+ok($@ =~ /Triceps::Table::remove: row argument is a RowHandle in a wrong table tab2/);
 
 $ctr2 = $u2->makeTray();
-$res = $t1->remove($rh1, $ctr2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::remove: copyTray is from a wrong unit u2, table in unit u1");
+ok(!eval {
+	$res = $t1->remove($rh1, $ctr2);
+});
+ok($@ =~ /Triceps::Table::remove: copyTray is from a wrong unit u2, table in unit u1/);
 
 # clear out the table
 while ( ! ($rhit = $t1->begin())->isNull() ) {
@@ -523,13 +532,15 @@ $res = $t1->deleteRow($r1);
 ok(defined $res && $res == 0);
 
 # bad args deleteRow
-eval { $res = $t1->deleteRow($r1, 1, 2) };
+ok(!eval { $res = $t1->deleteRow($r1, 1, 2) });
 ok($@ =~ /^Usage: Triceps::Table::deleteRow\(self, row \[, copyTray\]\) at .*/) or print STDERR "got: $@\n";
 
-$res = $t1->deleteRow($r2);
-ok(!defined $res);
-ok("$!", "Triceps::Table::deleteRow: table and row types are not equal, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+ok(!eval {
+	$res = $t1->deleteRow($r2);
+});
+ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table: row \{ uint8 a, int32 b, int64 c, float64 d, string e, \}, in row: row \{ uint8\[\] a, int32\[\] b, int64\[\] c, float64\[\] d, string e, \}/);
 
-$res = $t1->deleteRow($r1, 1);
-ok(!defined $res);
-ok("$!", "Triceps::Table::deleteRow: copyTray is not a blessed SV reference to WrapTray");
+ok(!eval {
+	$res = $t1->deleteRow($r1, 1);
+});
+ok($@ =~ /Triceps::Table::deleteRow: copyTray is not a blessed SV reference to WrapTray/);

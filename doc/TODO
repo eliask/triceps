@@ -1,8 +1,6 @@
 Things that need to be done:
 * redo the errors to confess
 * go through the docs and add all the issues mentioned there to here
-* doc: describe the option to make die() work as confess()
-* doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
 * more features for the SimpleAggregator
 * in RowHandle add getTable()
 * add the row contents access methods directly on a row handle?
@@ -16,14 +14,30 @@ Things that need to be done:
 * add $label->relabelRowop() (adopt()?)
 * add option fromLabel throughout templates
 * change options to capitalized
-* doc: Fields::, TableType::findIndexPath,findIndexKeyPath, Opt::checkMutuallyExclusive
-* doc: JoinTwo key fields do have to have the same type, floating keys are bad
 * in Table add a label for getting the modifications before they are applied
 * in Table apply the modifications one by one and send through, add a catch for
   any attempted modifications in the middle of ongoing modifications
-* in Labels mark busy when called, and confess on any attempts of recursive calls
 * add a Sequence template, that calls its multiple output labels in order
-* doc: an example of deletions in small portions (for selects, would need the
-  mods in the tables to go one by one)
 * a pseudo-table that keeps only the state of the additive aggregations, without actual data
   (the data just passes through and gets immediately aggregated)
+* when printing backtrace on errors, stop before on 2nd eval {...} (1st is the caller itself)
+* convert everything to croak on errors (at least, the non-ignorable ones)
+* option in labels, tracers etc. to not rethrow the Perl errors but just print them
+* replace the exceptions with returning error bufs?
+* replace all direct Perl_croak() with a smart stack unroll
+* in Table, do something about collapsing empty groups on exception?
+* test Table with exceptions
+* test Table .pre
+
+* doc: describe the option to make die() work as confess()
+* doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
+* doc: Fields::, TableType::findIndexPath,findIndexKeyPath, Opt::checkMutuallyExclusive
+* doc: JoinTwo key fields do have to have the same type, floating keys are bad
+* doc: an example of deletions in small portions (for selects, would need the
+  mods in the tables to go one by one)
+* doc: Label->hasChained()
+* doc: croaking in Unit, propagation of errors from label execution
+* doc: propagation of errors leaves a fairly inconsistent state
+* doc: aggregator "before" is now called before the mods;
+  update the examples from xTrafficAgg
+* doc: table ".pre"

@@ -47,7 +47,10 @@ the macros defined in Conf.h.
 
 The Conf.h macros are:
 
-	TRICEPS_NS - C++ namespace used by Triceps
+	TRICEPS_NS - C++ namespace used by Triceps.
+
+	TRICEPS_BACKTRACE - flag: use the glibc backtrace() functionality
+	to make the messages in the Triceps exceptions more useful.
 
 Makefile.inc and Makefile.PL settings:
 

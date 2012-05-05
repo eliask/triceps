@@ -262,25 +262,28 @@ makeNullRowHandle(WrapTable *self)
 int
 insert(WrapTable *self, SV *rowarg, ...)
 	CODE:
-		static char funcName[] =  "Triceps::Table::insert";
-		if (items != 2 && items != 3)
-		   Perl_croak(aTHX_ "Usage: %s(self, rowarg [, copyTray])", funcName);
+		RETVAL = 0; // shut up the warning
+		try { do {
+			static char funcName[] =  "Triceps::Table::insert";
+			if (items != 2 && items != 3)
+			   Perl_croak(aTHX_ "Usage: %s(self, rowarg [, copyTray])", funcName);
 
-		clearErrMsg();
-		Table *t = self->get();
+			clearErrMsg();
+			Table *t = self->get();
 
-		Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
-		if (rhr.isNull())
-			XSRETURN_UNDEF;
+			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
+			if (rhr.isNull()) // XXX otherwise will croak based on setErrMsg()
+				break;
 
-		Tray *ctr = NULL;
-		if (items == 3) {
-			ctr = parseCopyTray(t, funcName, ST(2));
-			if (ctr ==  NULL)
-				XSRETURN_UNDEF;
-		}
+			Tray *ctr = NULL;
+			if (items == 3) {
+				ctr = parseCopyTray(t, funcName, ST(2));
+				if (ctr ==  NULL) // XXX will croak based on setErrMsg()
+					break;
+			}
 
-		RETVAL = t->insert(rhr.get(), ctr);
+			RETVAL = t->insert(rhr.get(), ctr);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -288,33 +291,33 @@ insert(WrapTable *self, SV *rowarg, ...)
 int
 remove(WrapTable *self, WrapRowHandle *wrh, ...)
 	CODE:
-		static char funcName[] =  "Triceps::Table::remove";
-		if (items != 2 && items != 3)
-		   Perl_croak(aTHX_ "Usage: %s(self, rowHandle [, copyTray])", funcName);
+		try { do {
+			static char funcName[] =  "Triceps::Table::remove";
+			if (items != 2 && items != 3)
+			   Perl_croak(aTHX_ "Usage: %s(self, rowHandle [, copyTray])", funcName);
 
-		clearErrMsg();
-		Table *t = self->get();
-		RowHandle *rh = wrh->get();
+			clearErrMsg();
+			Table *t = self->get();
+			RowHandle *rh = wrh->get();
 
-		if (rh == NULL) {
-			setErrMsg( strprintf("%s: RowHandle is NULL", funcName) );
-			XSRETURN_UNDEF;
-		}
+			if (rh == NULL) {
+				throw Triceps::Exception(strprintf("%s: RowHandle is NULL", funcName), false);
+			}
 
-		if (wrh->ref_.getTable() != t) {
-			setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
-				funcName, wrh->ref_.getTable()->getName().c_str()) );
-			XSRETURN_UNDEF;
-		}
+			if (wrh->ref_.getTable() != t) {
+				throw Triceps::Exception( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+					funcName, wrh->ref_.getTable()->getName().c_str()), false );
+			}
 
-		Tray *ctr = NULL;
-		if (items == 3) {
-			ctr = parseCopyTray(t, funcName, ST(2));
-			if (ctr ==  NULL)
-				XSRETURN_UNDEF;
-		}
+			Tray *ctr = NULL;
+			if (items == 3) {
+				ctr = parseCopyTray(t, funcName, ST(2));
+				if (ctr ==  NULL) // XXX will croak based on setErrMsg()
+					break;
+			}
 
-		t->remove(rh, ctr);
+			t->remove(rh, ctr);
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
 		RETVAL
@@ -324,34 +327,36 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 int
 deleteRow(WrapTable *self, WrapRow *wr, ...)
 	CODE:
-		static char funcName[] =  "Triceps::Table::deleteRow";
-		if (items != 2 && items != 3)
-		   Perl_croak(aTHX_ "Usage: %s(self, row [, copyTray])", funcName);
+		RETVAL = 0; // shut up the warning
+		try { do {
+			static char funcName[] =  "Triceps::Table::deleteRow";
+			if (items != 2 && items != 3)
+			   Perl_croak(aTHX_ "Usage: %s(self, row [, copyTray])", funcName);
 
-		clearErrMsg();
-		Table *t = self->get();
-		Row *r = wr->get();
-		const RowType *rt = wr->ref_.getType();
+			clearErrMsg();
+			Table *t = self->get();
+			Row *r = wr->get();
+			const RowType *rt = wr->ref_.getType();
 
-		if (!rt->equals(t->getRowType())) {
-			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
-			t->getRowType()->printTo(msg, NOINDENT);
-			msg.append(", in row: ");
-			rt->printTo(msg, NOINDENT);
+			if (!rt->equals(t->getRowType())) {
+				string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
+				t->getRowType()->printTo(msg, NOINDENT);
+				msg.append(", in row: ");
+				rt->printTo(msg, NOINDENT);
 
-			setErrMsg(msg);
-			XSRETURN_UNDEF;
-		}
+				throw Triceps::Exception(msg, false);
+			}
 
-		Tray *ctr = NULL;
-		if (items == 3) {
-			ctr = parseCopyTray(t, funcName, ST(2));
-			if (ctr ==  NULL)
-				XSRETURN_UNDEF;
-		}
+			Tray *ctr = NULL;
+			if (items == 3) {
+				ctr = parseCopyTray(t, funcName, ST(2));
+				if (ctr ==  NULL) // XXX will croak based on setErrMsg()
+					break;
+			}
 
-		// pretty much a copy of C++ Table::InputLabel::execute()
-		RETVAL = t->deleteRow(r, ctr)? 1 : 0;
+			// pretty much a copy of C++ Table::InputLabel::execute()
+			RETVAL = t->deleteRow(r, ctr)? 1 : 0;
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
