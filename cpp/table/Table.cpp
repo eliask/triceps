@@ -122,22 +122,9 @@ bool Table::insertRow(const Row *row, Tray *copyTray)
 	if (row == NULL)
 		return false;
 
-	RowHandle *rh = makeRowHandle(row);
-	rh->incref();
+	Rhref what(this, makeRowHandle(row));
 
-	bool res;
-	Erref err;
-	try {
-		res = insert(rh, copyTray);
-	} catch (Exception e) {
-		err = e.getErrors();
-	}
-
-	if (rh->decref() <= 0)
-		destroyRowHandle(rh);
-
-	if (!err.isNull())
-		throw Exception(err, false);
+	bool res = insert(what, copyTray); // may throw
 
 	return res;
 }
