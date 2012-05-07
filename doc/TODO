@@ -26,8 +26,6 @@ Things that need to be done:
 * replace the exceptions with returning error bufs?
 * replace all direct Perl_croak() with a smart stack unroll
 * in Table, do something about collapsing empty groups on exception?
-* test Table with exceptions
-* test Table .pre
 
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
@@ -36,6 +34,7 @@ Things that need to be done:
 * doc: an example of deletions in small portions (for selects, would need the
   mods in the tables to go one by one)
 * doc: Label->hasChained()
+* doc: Label->adopt()
 * doc: croaking in Unit, propagation of errors from label execution
 * doc: propagation of errors leaves a fairly inconsistent state
 * doc: aggregator "before" is now called before the mods;

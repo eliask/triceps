@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 195 };
+BEGIN { plan tests => 199 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -121,9 +121,15 @@ ok("$!", "Triceps::Table::getAggregatorLabel: aggregator 'zzz' is not defined on
 
 $lb = $t1->getInputLabel();
 ok(ref $lb, "Triceps::Label");
+ok($lb->getName(), "tab1.in");
+
+$lb = $t1->getPreLabel();
+ok(ref $lb, "Triceps::Label");
+ok($lb->getName(), "tab1.pre");
 
 $lb = $t1->getOutputLabel();
 ok(ref $lb, "Triceps::Label");
+ok($lb->getName(), "tab1.out");
 
 $res = $t1->getUnit();
 ok(ref $res, "Triceps::Unit");

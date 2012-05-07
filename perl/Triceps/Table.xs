@@ -134,6 +134,18 @@ getOutputLabel(WrapTable *self)
 		RETVAL
 
 WrapLabel *
+getPreLabel(WrapTable *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = new WrapLabel(t->getPreLabel());
+	OUTPUT:
+		RETVAL
+
+WrapLabel *
 getAggregatorLabel(WrapTable *self, char *aggname)
 	CODE:
 		static char funcName[] =  "Triceps::Table::getAggregatorLabel";
