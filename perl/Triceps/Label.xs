@@ -183,6 +183,41 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 	OUTPUT:
 		RETVAL
 
+# adopt a rowop from another label (of a matching type) by making
+# a copy of it for this label
+WrapRowop *
+adopt(WrapLabel *self, WrapRowop *wrop)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Rowop";
+
+		static char funcName[] =  "Triceps::Label::adopt";
+
+		clearErrMsg();
+		Label *lab = self->get();
+		Rowop *orop = wrop->get();
+		const Label *olab = orop->getLabel();
+
+		if (lab->getUnitPtr() != olab->getUnitPtr()) {
+			setErrMsg(strprintf("%s: label units do not match, '%s' vs '%s'", funcName,
+				lab->getUnitName().c_str(), olab->getUnitName().c_str()));
+			XSRETURN_UNDEF;
+		}
+
+		if (!lab->getType()->match(olab->getType())) {
+			setErrMsg(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
+				+ lab->getType()->print("    ") + "\n  Row:\n    " + olab->getType()->print("    ")
+			);
+			XSRETURN_UNDEF;
+		}
+
+		Autoref<Rowop> rop = new Rowop(lab, orop->getOpcode(), orop->getRow());
+
+		RETVAL = new WrapRowop(rop);
+	OUTPUT:
+		RETVAL
+
+
 # for PerlLabel, returns the reference to code
 # XXX should return code and all paremeters
 SV *

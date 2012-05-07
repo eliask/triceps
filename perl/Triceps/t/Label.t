@@ -126,7 +126,7 @@ $lb->clearChained();
 ok($#chain, -1);
 
 ######################### makeRowop ###################################
-# tested in Rowop.t
+# tested in Rowop.t, together with adopt()
 
 ######################## PerlLabel ####################################
 

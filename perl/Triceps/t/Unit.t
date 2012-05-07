@@ -378,6 +378,7 @@ $v = 99;
 eval {
 	$u1->call($recrop);
 };
+print "$@\n";
 ok($@ =~ /Detected a recursive call of the label 'reclab'. at [^\n]*
 \tmain::__ANON__[^\n]*
 \teval[^\n]*

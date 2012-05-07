@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 66 };
+BEGIN { plan tests => 80 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -29,6 +29,9 @@ ok(1); # If we made it this far, we're ok.
 
 $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
+
+$u2 = Triceps::Unit->new("u2");
+ok(ref $u2, "Triceps::Unit");
 
 @def1 = (
 	a => "uint8",
@@ -258,3 +261,51 @@ ok($row1->same($row));
 
 $v = $rop1->getEnqMode();
 ok($v, &Triceps::EM_FORK);
+
+######################### adopt #############################
+
+$labx1 = $u1->makeDummyLabel($rt1, "labx1");
+ok(ref $labx1, "Triceps::Label");
+$labx2 = $u1->makeDummyLabel($rt2, "labx2");
+ok(ref $labx2, "Triceps::Label");
+$labx3 = $u1->makeDummyLabel($rt3, "labx3");
+ok(ref $labx3, "Triceps::Label");
+$laby1 = $u2->makeDummyLabel($rt1, "laby1");
+ok(ref $laby1, "Triceps::Label");
+
+$ropx1 = $labx1->adopt($rop1);
+ok(ref $ropx1, "Triceps::Rowop");
+ok($rop1->getRow()->same($ropx1->getRow()));
+ok($rop1->getOpcode(), $ropx1->getOpcode());
+ok($ropx1->getLabel()->same($labx1));
+
+# a matching type is OK
+$ropx1 = $labx2->adopt($rop1);
+ok(ref $ropx1, "Triceps::Rowop");
+
+# an unmatching type is not OK
+$ropx1 = $labx3->adopt($rop1);
+ok(!defined $ropx1);
+ok("$!", 
+"Triceps::Label::adopt: row types do not match
+  Label:
+    row {
+      string e,
+      uint8 a,
+      int32 b,
+      int64 c,
+      float64 d,
+    }
+  Row:
+    row {
+      uint8 a,
+      int32 b,
+      int64 c,
+      float64 d,
+      string e,
+    }");
+
+# an unmatching unit is not OK
+$ropx1 = $laby1->adopt($rop1);
+ok(!defined $ropx1);
+ok("$!", "Triceps::Label::adopt: label units do not match, 'u2' vs 'u1'");
