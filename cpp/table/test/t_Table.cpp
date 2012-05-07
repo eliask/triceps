@@ -167,3 +167,187 @@ UTESTCASE preLabel(Utest *utest)
 		"table size 2\n"
 	);
 }
+
+class LabelThrowOnCall : public Label
+{
+public:
+	LabelThrowOnCall(Unit *unit, Onceref<RowType> rtype, const string &name,
+			bool *control) :
+		Label(unit, rtype, name),
+		control_(control)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		if (*control_)
+			throw Exception("Test throw on call", true);
+	}
+
+	bool *control_;
+};
+
+UTESTCASE exceptions(Utest *utest)
+{
+	string msg;
+
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", new HashedIndexType(
+			(new NameSet())->add("b")->add("c"))
+		)->addSubIndex("limit", (new FifoIndexType())
+			->setLimit(2) // will policy-delete 2 rows
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	bool throwPre = false, throwOut = false;
+	Autoref<Label> labPre = new LabelThrowOnCall(unit, rt1, "labPre", &throwPre);
+	Autoref<Label> labOut = new LabelThrowOnCall(unit, rt1, "labOut", &throwOut);
+
+	t->getPreLabel()->chain(labPre);
+	t->getLabel()->chain(labOut);
+
+	FdataVec dv;
+	mkfdata(dv);
+	
+	int32_t one32 = 1, two32 = 2;
+	int64_t one64 = 1, two64 = 2;
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&one64;
+	Rowref r11(rt1,  rt1->makeRow(dv));
+	Rhref rh11(t, t->makeRowHandle(r11));
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&two64;
+	Rowref r12(rt1,  rt1->makeRow(dv));
+	Rhref rh12(t, t->makeRowHandle(r12));
+
+	dv[1].data_ = (char *)&two32; dv[2].data_ = (char *)&one64;
+	Rowref r21(rt1,  rt1->makeRow(dv));
+	Rhref rh21(t, t->makeRowHandle(r21));
+
+	// start by adding some rows
+	UT_ASSERT(t->insert(rh11));
+	UT_ASSERT(t->insert(rh12));
+
+	// throw in the insert .pre when flushing 2 rows
+	throwPre = true;
+	msg.clear();
+	try {
+		t->insert(rh21);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	throwPre = false;
+	UT_IS(msg, 
+		"Test throw on call\n"
+		"Called through the label 'labPre'.\n"
+		"Called chained from the label 't.pre'.\n");
+	UT_ASSERT(rh11->isInTable());
+	UT_ASSERT(rh12->isInTable());
+	UT_ASSERT(!rh21->isInTable());
+
+	// throw in the insert .out when flushing 2 rows
+	throwOut = true;
+	msg.clear();
+	try {
+		t->insert(rh21);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	throwOut = false;
+	UT_IS(msg, 
+		"Test throw on call\n"
+		"Called through the label 'labOut'.\n"
+		"Called chained from the label 't.out'.\n");
+	UT_ASSERT(!rh11->isInTable());
+	UT_ASSERT(rh12->isInTable());
+	UT_ASSERT(!rh21->isInTable());
+
+	// get back to 2 rows
+	UT_ASSERT(t->insert(rh11));
+
+	// throw in insertRow()
+	throwPre = true;
+	msg.clear();
+	try {
+		t->insertRow(r21);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	throwPre = false;
+	UT_IS(msg, 
+		"Test throw on call\n"
+		"Called through the label 'labPre'.\n"
+		"Called chained from the label 't.pre'.\n");
+	UT_ASSERT(rh11->isInTable());
+	UT_ASSERT(rh12->isInTable());
+	UT_IS(t->size(), 2);
+
+	// throw in the remove .pre
+	throwPre = true;
+	msg.clear();
+	try {
+		t->remove(rh11);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	throwPre = false;
+	UT_IS(msg, 
+		"Test throw on call\n"
+		"Called through the label 'labPre'.\n"
+		"Called chained from the label 't.pre'.\n");
+	UT_ASSERT(rh11->isInTable());
+	UT_ASSERT(rh12->isInTable());
+
+	// throw in the remove .out
+	throwOut = true;
+	msg.clear();
+	try {
+		t->remove(rh11);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	throwOut = false;
+	UT_IS(msg, 
+		"Test throw on call\n"
+		"Called through the label 'labOut'.\n"
+		"Called chained from the label 't.out'.\n");
+	UT_ASSERT(!rh11->isInTable());
+	UT_ASSERT(rh12->isInTable());
+
+	// throw in the deleteRow
+	throwPre = true;
+	msg.clear();
+	try {
+		t->deleteRow(r12);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	throwPre = false;
+	UT_IS(msg, 
+		"Test throw on call\n"
+		"Called through the label 'labPre'.\n"
+		"Called chained from the label 't.pre'.\n");
+	UT_ASSERT(rh12->isInTable());
+
+	Exception::abort_ = true; // restore back
+	Exception::enableBacktrace_ = true; // restore back
+}
