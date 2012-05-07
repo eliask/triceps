@@ -186,6 +186,32 @@ public:
 	bool *control_;
 };
 
+class LabelModOnCall : public Label
+{
+public:
+	LabelModOnCall(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Table *table, Rowref row) :
+		Label(unit, rtype, name),
+		table_(table),
+		row_(row),
+		insert_(false),
+		delete_(false)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		if (insert_)
+			table_->insertRow(row_);
+		if (delete_)
+			table_->deleteRow(row_);
+	}
+
+	Table *table_;
+	Rowref row_;
+	bool insert_;
+	bool delete_;
+};
+
 UTESTCASE exceptions(Utest *utest)
 {
 	string msg;
@@ -347,6 +373,42 @@ UTESTCASE exceptions(Utest *utest)
 		"Called through the label 'labPre'.\n"
 		"Called chained from the label 't.pre'.\n");
 	UT_ASSERT(rh12->isInTable());
+
+	// label for recursive mods
+	Autoref<LabelModOnCall> labRec = new LabelModOnCall(unit, rt1, "labRec", t, r21);
+	t->getLabel()->chain(labRec);
+
+	// detect a recursive mod on insert (pair with recursive delete)
+	labRec->delete_ = true;
+	msg.clear();
+	try {
+		t->insert(rh21);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	labRec->delete_ = false;
+	UT_IS(msg, 
+		"Detected a recursive modification of the table 't'.\n"
+		"Called through the label 'labRec'.\n"
+		"Called chained from the label 't.out'.\n");
+	UT_ASSERT(rh12->isInTable());
+	UT_ASSERT(rh21->isInTable());
+
+	// detect a recursive mod on delete (pair with recursive insert)
+	labRec->insert_ = true;
+	msg.clear();
+	try {
+		t->remove(rh21);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	labRec->insert_ = false;
+	UT_IS(msg, 
+		"Detected a recursive modification of the table 't'.\n"
+		"Called through the label 'labRec'.\n"
+		"Called chained from the label 't.out'.\n");
+	UT_ASSERT(rh12->isInTable());
+	UT_ASSERT(!rh21->isInTable());
 
 	Exception::abort_ = true; // restore back
 	Exception::enableBacktrace_ = true; // restore back
