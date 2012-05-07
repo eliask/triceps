@@ -396,5 +396,21 @@ size_t Table::groupSizeIdx(IndexType *ixt, const RowHandle *what) const
 	return ixt->groupSizeOfRecord(this, what);
 }
 
+size_t Table::groupSizeRowIdx(IndexType *ixt, const Row *row) const
+{
+	if (row == NULL)
+		return NULL;
+
+	RowHandle *rh = makeRowHandle(row);
+	rh->incref();
+
+	size_t res = groupSizeIdx(ixt, rh);
+
+	if (rh->decref() <= 0)
+		destroyRowHandle(rh);
+
+	return res;
+}
+
 }; // TRICEPS_NS
 

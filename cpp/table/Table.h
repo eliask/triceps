@@ -216,6 +216,10 @@ public:
 	//     index type, or if the group was not found
 	size_t groupSizeIdx(IndexType *ixt, const RowHandle *what) const;
 
+	// The same but creates RowHandle from a Row internally before
+	// finding the group.
+	size_t groupSizeRowIdx(IndexType *ixt, const Row *what) const;
+
 protected:
 	friend class TableType;
 	// A Table is normally created by a TableType as a factory.
