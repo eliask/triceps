@@ -1045,7 +1045,6 @@ public:
 
 UTESTCASE exceptions(Utest *utest)
 {
-	Erref err;
 	string msg;
 
 	Exception::abort_ = false; // make them catchable
@@ -1175,7 +1174,6 @@ public:
 // test the exception propagation through the labels
 UTESTCASE label_exceptions(Utest *utest)
 {
-	Erref err;
 	string msg;
 
 	Exception::abort_ = false; // make them catchable
