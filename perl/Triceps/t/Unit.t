@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 142 };
+BEGIN { plan tests => 149 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -374,18 +374,54 @@ $reclab = $u1->makeLabel($rt1, "reclab", undef, sub { $u1->call($_[1]); } );
 ok(ref $reclab, "Triceps::Label");
 $recrop = $reclab->makeRowop("OP_INSERT", $row1);
 ok(ref $recrop, "Triceps::Rowop");
-$v = 99;
 eval {
 	$u1->call($recrop);
 };
-print "$@\n";
-ok($@ =~ /Detected a recursive call of the label 'reclab'. at [^\n]*
+ok($@ =~ /^Detected a recursive call of the label 'reclab'. at [^\n]*
 \tmain::__ANON__[^\n]*
-\teval[^\n]*
 \teval[^\n]*
 Detected in the unit 'u1' label 'reclab' execution handler.
 Called through the label 'reclab'. at [^\n]*
 \teval[^\n]*
+/);
+
+# a crash in a deeply nexted label
+$nlab1 = $u1->makeLabel($rt1, "nlab1", undef, sub { die "Test of a crash"; } );
+ok(ref $nlab1, "Triceps::Label");
+$nlab2 = $u1->makeLabel($rt1, "nlab2", undef, sub { $u1->call($nlab1->adopt($_[1])); } );
+ok(ref $nlab2, "Triceps::Label");
+$nlab3 = $u1->makeLabel($rt1, "nlab3", undef, sub { $u1->call($nlab2->adopt($_[1])); } );
+ok(ref $nlab3, "Triceps::Label");
+$nlab4 = $u1->makeLabel($rt1, "nlab4", undef, sub { $u1->call($nlab3->adopt($_[1])); } );
+ok(ref $nlab4, "Triceps::Label");
+$nlab5 = $u1->makeLabel($rt1, "nlab5", undef, sub { $u1->call($nlab4->adopt($_[1])); } );
+ok(ref $nlab5, "Triceps::Label");
+$nrop5 = $nlab5->makeRowop("OP_INSERT", $row1);
+ok(ref $nrop5, "Triceps::Rowop");
+eval {
+	$u1->call($nrop5);
+};
+#print "$@\n";
+ok($@ =~ /^Test of a crash at [^\n]*
+Detected in the unit 'u1' label 'nlab1' execution handler.
+Called through the label 'nlab1'. at [^\n]*
+	main::__ANON__[^\n]*
+	eval [^\n]*
+Detected in the unit 'u1' label 'nlab2' execution handler.
+Called through the label 'nlab2'. at [^\n]*
+	main::__ANON__[^\n]*
+	eval [^\n]*
+Detected in the unit 'u1' label 'nlab3' execution handler.
+Called through the label 'nlab3'. at [^\n]*
+	main::__ANON__[^\n]*
+	eval [^\n]*
+Detected in the unit 'u1' label 'nlab4' execution handler.
+Called through the label 'nlab4'. at [^\n]*
+	main::__ANON__[^\n]*
+	eval [^\n]*
+Detected in the unit 'u1' label 'nlab5' execution handler.
+Called through the label 'nlab5'. at [^\n]*
+	eval [^\n]*
 /);
 
 #############################################################

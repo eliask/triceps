@@ -126,8 +126,6 @@ ok($u1->schedule($firstRowop));
 $expect = "labStart OP_INSERT count=\"0\" id=\"99\" 
 bad loopAt: Triceps::Unit::loopAt: mark belongs to a different unit 'u1'
 \teval {...} called
-\tmain::startLoop('Triceps::Label=SCALAR', 'Triceps::Rowop=SCALAR') called
-\teval {...} called
 
 labNext OP_NOP count=\"0\" id=\"1\" 
 labNext OP_NOP count=\"0\" id=\"2\" 
