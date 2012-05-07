@@ -442,6 +442,16 @@ protected:
 	//       (or NULL if that was the last group)
 	RowHandle *nextGroupIdx(const Table *table, const RowHandle *cur) const;
 
+	// Find the group size for this row, according to this index type.
+	// The row may not be in the table, then the group would be found by
+	// findRecord() first. If not found returns 0.
+	// If the index is a leaf, returns 0.
+	// If the index is non-leaf, it returns the size of the matching group.
+	// @param table - table where to search
+	// @param what - handle to search for
+	// @return - size of the group, or 0
+	size_t groupSizeOfRecord(const Table *table, const RowHandle *what) const;
+
 	// }
 	
 public:
@@ -570,7 +580,7 @@ public:
 
 	// Get the number of rows in the group.
 	// @param gh - the group instance, may be NULL
-	size_t groupSize(GroupHandle *gh) const;
+	size_t groupSize(const GroupHandle *gh) const;
 
 	// Clear the data rows in the leaf indexes under this group.
 	// @param gh - the group instance, may be NULL

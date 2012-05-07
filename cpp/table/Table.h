@@ -197,6 +197,25 @@ public:
 		return findRowIdx(firstLeaf_, what);
 	}
 
+	// Get the size of the group where the row belongs
+	// (similarly to what can be done in an aggregator).
+	// The group measured is a group under the specified index type
+	// (the same approach as in findIdx()).
+	//
+	// This means that the index type must be non-leaf for a meaningful result.
+	// For a leaf index, always returns 0.
+	//
+	// The row may be or not be in the table. If it's not in the table, a
+	// findIdx() would first be performed internally to find the group.
+	// If it's in the table, the group will be found directly from it.
+	// If the group is not found, returns 0.
+	//
+	// @param ixt - index type from this table's type
+	// @param what - the pattern row handle
+	// @return - the size of the group; would be 0 if ixt is a leaf
+	//     index type, or if the group was not found
+	size_t groupSizeIdx(IndexType *ixt, const RowHandle *what) const;
+
 protected:
 	friend class TableType;
 	// A Table is normally created by a TableType as a factory.

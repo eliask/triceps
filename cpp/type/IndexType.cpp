@@ -741,7 +741,7 @@ bool IndexType::groupCollapse(Tray *dest, GroupHandle *gh, const RhSet &replaced
 	return res;
 }
 
-size_t IndexType::groupSize(GroupHandle *gh) const
+size_t IndexType::groupSize(const GroupHandle *gh) const
 {
 	if (gh == NULL)
 		return 0;
@@ -822,6 +822,21 @@ Index *IndexType::findNestedIndex(int nestPos, const Table *table, const RowHand
 	if (myinst == NULL)
 		return NULL;
 	return myinst->findNested(what, nestPos);
+}
+
+size_t IndexType::groupSizeOfRecord(const Table *table, const RowHandle *what) const
+{
+	if (isLeaf())
+		return 0;
+
+	if (!what->isInTable()) {
+		what = findRecord(table, what);
+		if (what == NULL)
+			return 0;
+	}
+	// now "what" is known to be in the table
+	
+	return groupSize(findGroupHandle(table, what));
 }
 
 Valname indexids[] = {

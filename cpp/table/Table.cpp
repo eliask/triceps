@@ -388,5 +388,13 @@ RowHandle *Table::findRowIdx(IndexType *ixt, const Row *row) const
 	return res;
 }
 
+size_t Table::groupSizeIdx(IndexType *ixt, const RowHandle *what) const
+{
+	if (ixt == NULL || ixt->getTabtype() != type_)
+		return 0;
+
+	return ixt->groupSizeOfRecord(this, what);
+}
+
 }; // TRICEPS_NS
 
