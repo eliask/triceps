@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 199 };
+BEGIN { plan tests => 201 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -221,9 +221,15 @@ ok(defined $res);
 
 # insert a Row directly
 $res = $t1->insert($r1);
-ok($res == 1);
+ok($res, 1);
 $res = $t1->size();
 ok($res, 2); # they get collected in a FIFO
+
+# groupSize
+$res  = $t1->groupSizeIdx($it1cp, $rh1);
+ok($res, 2);
+$res  = $t1->groupSizeIdx($it1cp, $r1);
+ok($res, 2);
 
 # basic iteration
 $rhit = $t1->begin();

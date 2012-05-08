@@ -543,3 +543,28 @@ findIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 	OUTPUT:
 		RETVAL
 
+int
+groupSizeIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
+	CODE:
+		static char CLASS[] = "Triceps::RowHandle";
+		static char funcName[] =  "Triceps::Table::groupSizeIdx";
+		if (items != 2 && items != 3)
+		   Perl_croak(aTHX_ "Usage: %s(self, rowarg)", funcName);
+
+		clearErrMsg();
+		Table *t = self->get();
+		IndexType *idx = widx->get();
+
+		if (idx->getTabtype() != t->getType()) {
+			setErrMsg( strprintf("%s: indexType argument does not belong to table's type", funcName) );
+			XSRETURN_UNDEF;
+		}
+
+		Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
+		if (rhr.isNull())
+			XSRETURN_UNDEF;
+
+		RETVAL = t->groupSizeIdx(idx, rhr.get());
+	OUTPUT:
+		RETVAL
+
