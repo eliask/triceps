@@ -72,7 +72,6 @@ Label.xs
 Rowop.xs
 WrapAggregatorContext.h
 PerlSortCondition.h
-Makefile
 TricepsPerl.h
 ppport.h
 BUILD
