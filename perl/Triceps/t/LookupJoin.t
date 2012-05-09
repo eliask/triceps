@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 245 };
+BEGIN { plan tests => 246 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1173,7 +1173,10 @@ sub tryBadOptValue # (optName, optValue)
 		isLeft => 1,
 		automatic => 1,
 	);
-	$opt{$_[0]} = $_[1];
+	while ($#_ >= 1) {
+		$opt{$_[0]} = $_[1];
+		shift; shift;
+	}
 	eval {
 		Triceps::LookupJoin->new(%opt);
 	}
@@ -1197,6 +1200,8 @@ ok($@ =~ /^Option 'by' of class 'Triceps::LookupJoin' must be a reference to 'AR
 ok($@ =~ /^Option 'byLeft' of class 'Triceps::LookupJoin' must be a reference to 'ARRAY', is ''/);
 &tryBadOptValue("saveJoinerTo", 9);
 ok($@ =~ /^Option 'saveJoinerTo' of class 'Triceps::LookupJoin' must be a reference to a scalar, is ''/);
+&tryBadOptValue("oppositeOuter", 1, "automatic", 0);
+ok($@ =~ /^The option 'oppositeOuter' may be enabled only in the automatic mode/);
 
 &tryBadOptValue("by", [ 'aaa' => 'bbb' ]);
 ok($@ =~ /^Option 'by' contains an unknown left-side field 'aaa'/);

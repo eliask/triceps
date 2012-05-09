@@ -86,6 +86,9 @@ sub new # (class, optionName => optionValue ...)
 	&Triceps::Opt::handleUnitTypeLabel($myname,
 		"unit", \$self->{unit}, "leftRowType", \$self->{leftRowType}, "leftFromLabel", \$self->{leftFromLabel});
 
+	Carp::confess("The option 'oppositeOuter' may be enabled only in the automatic mode")
+		if ($self->{oppositeOuter} && !$self->{automatic});
+
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
 	my $auto = $self->{automatic};
@@ -103,10 +106,6 @@ sub new # (class, optionName => optionValue ...)
 		my @by = &Triceps::Fields::filterToPairs("$myname: option 'byLeft'", \@leftfld, $self->{byLeft});
 		$self->{by} = \@by;
 	}
-
-	# XXX use getKey() to check that the "by" keys match the
-	# keys of the index (not so easy for the nested indexes because they
-	# would have to include the keys in the whole path)
 
 	my $genjoin; 
 	if ($auto) {
@@ -588,4 +587,3 @@ sub getOppositeOuter # (self)
 
 1;
 
-# XXX in generated makeRowHash() enquote and escape the field names
