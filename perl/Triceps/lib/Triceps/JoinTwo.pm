@@ -181,7 +181,11 @@ sub new # (class, optionName => optionValue ...)
 			my @subs = $self->{"${side}IdxType"}->getSubIndexes();
 			if ($#subs >= 0 # has sub-indexes, a non-leaf index
 			&& ($self->{type} ne "inner" && $self->{type} ne $side) ) {
-				Carp::confess("The $side index is non-leaf, not supported with type '" . $self->{type} . "', use option overrideSimpleMinded=>1 to override")
+				my $table = $self->{"${side}Table"};
+				my $ixt = $self->{"${side}IdxType"};
+				$self->{"${side}GroupSizeCode"} = sub { # (opcode, row)
+					$table->groupSizeIdx($ixt, $_[1]);
+				};
 			}
 		}
 	}
@@ -301,6 +305,7 @@ sub new # (class, optionName => optionValue ...)
 		isLeft => $leftLeft,
 		automatic => 1,
 		oppositeOuter => ($rightLeft && !$self->{overrideSimpleMinded}),
+		groupSizeCode => $self->{leftGroupSizeCode},
 		saveJoinerTo => $self->{leftSaveJoinerTo},
 	);
 	$self->{rightLookup} = Triceps::LookupJoin->new(
@@ -317,6 +322,7 @@ sub new # (class, optionName => optionValue ...)
 		isLeft => $rightLeft,
 		automatic => 1,
 		oppositeOuter => ($leftLeft && !$self->{overrideSimpleMinded}),
+		groupSizeCode => $self->{rightGroupSizeCode},
 		saveJoinerTo => $self->{rightSaveJoinerTo},
 	);
 

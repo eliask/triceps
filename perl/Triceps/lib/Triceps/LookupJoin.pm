@@ -115,10 +115,6 @@ sub new # (class, optionName => optionValue ...)
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
 
-	if ($self->{oppositeOuter}) {
-		$self->{groupSizeCode} = sub { &Triceps::isInsert($_[0]); };
-	}
-
 	my $auto = $self->{automatic};
 
 	my @leftdef = $self->{leftRowType}->getdef();
@@ -329,6 +325,7 @@ sub new # (class, optionName => optionValue ...)
 	if (defined $self->{groupSizeCode}) {
 		$genjoin .= '
 			my $gsz = &{$self->{groupSizeCode}}($opcode, $row);
+			#print STDERR "DEBUGX " . $self->{name} . " gsz: ", $gsz, "\n";
 		';
 
 		$genoppdataIns = '
