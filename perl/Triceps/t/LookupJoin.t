@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 246 };
+BEGIN { plan tests => 250 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1103,6 +1103,7 @@ ok($result2, $expect2xf);
 	ok($join->getLimitOne(), 1); # got auto-detected as 1
 	ok($join->getAutomatic(), 1); # the default
 	ok($join->getOppositeOuter(), 0); # the default
+	ok(! defined $join->getGroupSizeCode()); # the default
 }
 {
 	my $join = Triceps::LookupJoin->new( 
@@ -1117,6 +1118,7 @@ ok($result2, $expect2xf);
 		limitOne => 11,
 		automatic => 12,
 		oppositeOuter => 13,
+		groupSizeCode => sub { 1; },
 	);
 	ok(ref $join, "Triceps::LookupJoin");
 
@@ -1124,6 +1126,7 @@ ok($result2, $expect2xf);
 	ok($join->getLimitOne(), 11);
 	ok($join->getAutomatic(), 12);
 	ok($join->getOppositeOuter(), 13);
+	ok(ref $join->getGroupSizeCode(), "CODE");
 }
 
 #########
@@ -1202,6 +1205,10 @@ ok($@ =~ /^Option 'byLeft' of class 'Triceps::LookupJoin' must be a reference to
 ok($@ =~ /^Option 'saveJoinerTo' of class 'Triceps::LookupJoin' must be a reference to a scalar, is ''/);
 &tryBadOptValue("oppositeOuter", 1, "automatic", 0);
 ok($@ =~ /^The option 'oppositeOuter' may be enabled only in the automatic mode/);
+&tryBadOptValue("groupSizeCode", 1, "oppositeOuter", 1);
+ok($@ =~ /^Option 'groupSizeCode' of class 'Triceps::LookupJoin' must be a reference to 'CODE', is ''/);
+&tryBadOptValue("groupSizeCode", sub { 1; }, "automatic", 1);
+ok($@ =~ /^The option 'groupSizeCode' may be used only when the option 'oppositeOuter' is enabled/);
 
 &tryBadOptValue("by", [ 'aaa' => 'bbb' ]);
 ok($@ =~ /^Option 'by' contains an unknown left-side field 'aaa'/);

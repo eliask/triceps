@@ -110,7 +110,7 @@ sub new # (class, optionName => optionValue ...)
 	Carp::confess("The option 'oppositeOuter' may be enabled only in the automatic mode")
 		if ($self->{oppositeOuter} && !$self->{automatic});
 
-	Carp::confess("The option 'groupSizeCode' may be used only when the option 'oppositeOuter' is true")
+	Carp::confess("The option 'groupSizeCode' may be used only when the option 'oppositeOuter' is enabled")
 		if (defined $self->{groupSizeCode} && !$self->{oppositeOuter});
 
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
@@ -626,6 +626,12 @@ sub getOppositeOuter # (self)
 {
 	my $self = shift;
 	return $self->{oppositeOuter};
+}
+
+sub getGroupSizeCode # (self)
+{
+	my $self = shift;
+	return $self->{groupSizeCode};
 }
 
 1;
