@@ -26,8 +26,8 @@ use strict;
 #    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 #    (which is probably a bad idea since it would include duplicate fields from the 
 #    index, so override it)
-# fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
-#    the left record first, then from right record, or if 0, then opposite. (default:1)
+# fieldsLeftFirst (optional) - flag: in the resulting rows put the fields from
+#    the left row first, then from right row, or if 0, then opposite. (default:1)
 # fieldsMirrorKey (optional) - flag: even if the row on the right is not found,
 #    the key fields from it would still be present in the result by mirroring
 #    them from the left side.
@@ -44,14 +44,34 @@ use strict;
 #    The set of fields must still match the indexes, just the order can be modified.
 #    The options by and byLeft are mutually exclusive, one of them must be used.
 # isLeft (optional) - 1 for left outer join, 0 for inner join (default: 1)
-# limitOne (optional) - 1 to return no more than one record, 0 otherwise (default: 0)
+# limitOne (optional) - 1 to return no more than one row, 0 otherwise (default: 0 for
+#    the non-leaf right index, 1 for leaf right index). If the right index is leaf, this 
+#    option will be automatically set to 1, since there is no way to look up more than
+#    one matching row in it.
 # automatic (optional) - 1 means that the lookup() method will never be called
 #    manually, this allows to optimize the label handler and always take the opcode 
 #    into account when processing the rows, 0 that lookup() will be used. (default: 1)
-# oppositeOuter (optional) - used with automatic only, flag: this is a half of a JoinTwo, 
+# oppositeOuter (optional) - used only with automatic==1, flag: this is a half of a JoinTwo, 
 #    and the other half performs an outer (from its standpoint, left) join. For this side,
 #    this means that it's a right outer join and a successful lookup must generate a DELETE-INSERT pair.
 #    (default: 0) Used by JoinTwo.
+# groupSizeCode (optional) - used only with oppositeOuter==1 as a part of JoinTwo
+#    logic, reference to a function that would compute the group size for this side's table.
+#    It is needed when this side's index (not visible here in LookupJoin but visible in
+#    the JoinTwo that envelopes it) is non-leaf, so multiple rows on this side may
+#    match each row on the other side. The DELETE-INSERT pair needs to be generated
+#    only if the current rowop was a deletion of the last matching row or insertion
+#    of the first matching row on this side. If groupSizeCode is not defined,
+#    the DELETE-INSERT part is always generated (which is appropriate is this side's
+#    index is leaf, and every row is the last or first one). If groupSizeCode is
+#    defined, it should return the group size in the left table by the left index for
+#    the input row. If the operation is INSERT, the size of 1 would mean that the
+#    DELETE-INSERT pair needs to be generated. If the operation is DELETE, the size of 0
+#    would mean that the DELETE-INSERT pair needs to be generated. Called as:
+#        &$groupSizeCode($opcode, $leftrow)
+#    The default undefined groupSizeCode is equivalent to
+#	     sub { &Triceps::isInsert($_[0]); }
+#    but more efficient since it's hardcoded at compile time.
 # saveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code
 #
@@ -78,6 +98,7 @@ sub new # (class, optionName => optionValue ...)
 			limitOne => [ 0, undef ],
 			automatic => [ 1, undef ],
 			oppositeOuter => [ 0, undef ],
+			groupSizeCode => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
 			saveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 		}, @_);
 
@@ -89,7 +110,14 @@ sub new # (class, optionName => optionValue ...)
 	Carp::confess("The option 'oppositeOuter' may be enabled only in the automatic mode")
 		if ($self->{oppositeOuter} && !$self->{automatic});
 
+	Carp::confess("The option 'groupSizeCode' may be used only when the option 'oppositeOuter' is true")
+		if (defined $self->{groupSizeCode} && !$self->{oppositeOuter});
+
 	$self->{rightRowType} = $self->{rightTable}->getRowType();
+
+	if ($self->{oppositeOuter}) {
+		$self->{groupSizeCode} = sub { &Triceps::isInsert($_[0]); };
+	}
 
 	my $auto = $self->{automatic};
 
@@ -297,6 +325,24 @@ sub new # (class, optionName => optionValue ...)
 				Carp::confess("$!") 
 					unless $resLabel->getUnit()->call($opprowop);
 				';
+	my ($genoppdataIns, $genoppdataDel); # versions for insert and delete
+	if (defined $self->{groupSizeCode}) {
+		$genjoin .= '
+			my $gsz = &{$self->{groupSizeCode}}($opcode, $row);
+		';
+
+		$genoppdataIns = '
+			if ($gsz == 1) {
+' . $genoppdata . '
+			}';
+		$genoppdataDel = '
+			if ($gsz == 0) {
+' . $genoppdata . '
+			}';
+	} else {
+		$genoppdataIns = $genoppdata;
+		$genoppdataDel = $genoppdata;
+	}
 
 	# end of result record
 	##########################################################################
@@ -338,11 +384,11 @@ sub new # (class, optionName => optionValue ...)
 			$genjoin .= '
 			if (!$rh->isNull()) {
 				if (&Triceps::isInsert($opcode)) {
-' . $genoppdata . '
+' . $genoppdataIns . '
 ' . $genresdata . '
 				} elsif (&Triceps::isDelete($opcode)) {
 ' . $genresdata . '
-' . $genoppdata . '
+' . $genoppdataDel . '
 				}
 			} else {
 ';
@@ -381,11 +427,11 @@ sub new # (class, optionName => optionValue ...)
 		if ($auto && $self->{oppositeOuter}) {
 			$genjoin .= '
 					if (&Triceps::isInsert($opcode)) {
-' . $genoppdata . '
+' . $genoppdataIns . '
 ' . $genresdata . '
 					} elsif (&Triceps::isDelete($opcode)) {
 ' . $genresdata . '
-' . $genoppdata . '
+' . $genoppdataDel . '
 					}
 ';
 		} else {
