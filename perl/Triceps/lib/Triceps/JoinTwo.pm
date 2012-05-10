@@ -30,7 +30,7 @@ use strict;
 #    index absolutely must be a Hash (leaf or not), not of any other kind;
 #    the number and order of fields in left and right indexes must match
 #    since indexes define the fields used for the join; the types of fields
-#    don't have to match exactly since Perl will connvert them if possible
+#    have to match exactly unless allowed by option overrideKeyTypes==1
 # leftFields (optional) - reference to array of patterns for left fields to pass through,
 #    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 # rightFields (optional) - reference to array of patterns for right fields to pass through,
@@ -39,7 +39,7 @@ use strict;
 # fieldsLeftFirst (optional) - flag: in the resulting records put the fields from
 #    the left record first, then from right record, or if 0, then opposite. (default:1)
 # fieldsUniqKey (optional) - one of "none", "manual", "left", "right", "first" (default)
-#    Controls the automatic prevention of dupplication of the key fields, which
+#    Controls the automatic prevention of duplication of the key fields, which
 #    by definition have the same values in both the left and right rows.
 #    This is done by manipulating the left/rightFields option: one side is left
 #    unchanged, and thus lets the user pass the key fields as usual, while
@@ -68,13 +68,6 @@ use strict;
 #    The set of fields must still match the indexes, just the order can be modified.
 #    The options by and byLeft are mutually exclusive.
 # type (optional) - one of: "inner" (default), "left", "right", "outer".
-#    For correctness purposes, there are limitations on what outer joins
-#    can be used with which indexes:
-#        inner - either index may be leaf or non-leaf
-#        left - right index must be leaf (i.e. a primary index, with 1 record per key)
-#        right - left index must be leaf (i.e. a primary index, with 1 record per key)
-#        outer - both indexes must be leaf (i.e. a primary index, with 1 record per key)
-#    This can be overriden by setting overrideSimpleMinded => 1.
 # leftSaveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
 #    source code for the left side
 # rightSaveJoinerTo (optional, ref to a scalar) - where to save a copy of the joiner function
@@ -82,7 +75,7 @@ use strict;
 # overrideSimpleMinded (optional) - do not try to create the correct DELETE-INSERT sequence
 #    for updates, just produce records with the same opcode as the incoming ones.
 #    The data produced is outright garbage, this option is here is purely for
-#    an entertainment value, to show, why it's garbage.
+#    its entertainment value, to show, why it's garbage.
 #    (default: 0)
 # overrideKeyTypes (optional) - flag: allow the key types to be not exactly the same
 #    (default: 0)
