@@ -79,8 +79,6 @@ use strict;
 #    (default: 0)
 # overrideKeyTypes (optional) - flag: allow the key types to be not exactly the same
 #    (default: 0)
-# overrideSelfJoin (optional) - flag: allow the join of a table to itself
-#    (default: 0)
 #
 sub new # (class, optionName => optionValue ...)
 {
@@ -111,13 +109,15 @@ sub new # (class, optionName => optionValue ...)
 			rightSaveJoinerTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
 			overrideSimpleMinded => [ 0, undef ],
 			overrideKeyTypes => [ 0, undef ],
-			overrideSelfJoin => [ 0, undef ],
 		}, @_);
 
 	&Triceps::Opt::checkMutuallyExclusive($myname, 0, "by", $self->{by}, "byLeft", $self->{byLeft});
 
-	Carp::confess("Self-joins (the same table on both sides) are not fully supported, use the option overrideSelfJoin=>1 and special *FromLabel arrangement to enable them") 
-		if (!$self->{overrideSelfJoin} && $self->{leftTable}->same($self->{rightTable}));
+	my $selfJoin = $self->{leftTable}->same($self->{rightTable});
+	if ($selfJoin && !defined $self->{leftFromLabel}) {
+		# one side must be fed from Pre label (but still let the user override)
+		$self->{leftFromLabel} = $self->{leftTable}->getPreLabel();
+	}
 
 	$self->{unit} = $self->{leftTable}->getUnit();
 	my $rightUnit = $self->{rightTable}->getUnit();
@@ -176,9 +176,21 @@ sub new # (class, optionName => optionValue ...)
 			&& ($self->{type} ne "inner" && $self->{type} ne $side) ) {
 				my $table = $self->{"${side}Table"};
 				my $ixt = $self->{"${side}IdxType"};
-				$self->{"${side}GroupSizeCode"} = sub { # (opcode, row)
-					$table->groupSizeIdx($ixt, $_[1]);
-				};
+				if ($selfJoin && $side eq "left") {
+					# the special case, reading from the table's Pre label;
+					# must adjust the count for what will happen after the row gets processed
+					$self->{"${side}GroupSizeCode"} = sub { # (opcode, row)
+						if (&Triceps::isInsert($_[0])) {
+							$table->groupSizeIdx($ixt, $_[1])+1;
+						} else {
+							$table->groupSizeIdx($ixt, $_[1])-1;
+						}
+					};
+				} else {
+					$self->{"${side}GroupSizeCode"} = sub { # (opcode, row)
+						$table->groupSizeIdx($ixt, $_[1]);
+					};
+				}
 			}
 		}
 	}
@@ -437,12 +449,6 @@ sub getOverrideKeyTypes # (self)
 {
 	my $self = shift;
 	return $self->{overrideKeyTypes};
-}
-
-sub getOverrideSelfJoin # (self)
-{
-	my $self = shift;
-	return $self->{overrideSelfJoin};
 }
 
 1;

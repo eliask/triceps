@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 189 };
+BEGIN { plan tests => 190 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -472,25 +472,16 @@ wirejoin("3m", Triceps::JoinTwo->new(
 
 ##########################################################################
 # a self-join of accounts table
-{
-	my $name = "3n";
-	my $join = Triceps::JoinTwo->new(
-		name => "join$name",
-		leftTable => $tAccounts3,
-		leftFromLabel => $beforeAcct3,
-		rightTable => $tAccounts3,
-		leftIdxPath => ["lookupIntGroup"],
-		rightIdxPath => ["lookupIntGroup"],
-		rightFields => [ '.*/rt_$&' ], # copy all with prefix rt_
-		type => "inner",
-		overrideSelfJoin => 1,
-	);
-	ok(ref $join, "Triceps::JoinTwo") || confess "join creation failed";
 
-	my $outlab = $vu3->makeLabel($join->getResultRowType(), "out$name", undef, sub { $result{$name} .= $_[1]->printP() . "\n" } );
-	ok(ref $outlab, "Triceps::Label") || confess "label creation failed";
-	ok($join->getOutputLabel()->chain($outlab));
-}
+wirejoin("3n", Triceps::JoinTwo->new(
+	name => "join3n",
+	leftTable => $tAccounts3,
+	rightTable => $tAccounts3,
+	leftIdxPath => ["lookupIntGroup"],
+	rightIdxPath => ["lookupIntGroup"],
+	rightFields => [ '.*/rt_$&' ], # copy all with prefix rt_
+	type => "inner",
+));
 
 ##########################################################################
 # tests of non-leaf index in oppositeOuter
@@ -533,6 +524,17 @@ wirejoin("3q", Triceps::JoinTwo->new(
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
+	type => "outer",
+));
+
+# self-join, like 3n but an outer join
+wirejoin("3r", Triceps::JoinTwo->new(
+	name => "join3r",
+	leftTable => $tAccounts3,
+	rightTable => $tAccounts3,
+	leftIdxPath => ["lookupIntGroup"],
+	rightIdxPath => ["lookupIntGroup"],
+	rightFields => [ '.*/rt_$&' ], # copy all with prefix rt_
 	type => "outer",
 ));
 
@@ -935,6 +937,26 @@ join3q.leftLookup.out OP_INSERT id="4" acctSrc="source1" acctXtrId="2011" amount
 join3q.leftLookup.out OP_DELETE id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" ac_source="source2" ac_external="ABCD" ac_internal="1" 
 join3q.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_internal="1" 
 ';
+ok ($result{"3r"}, 
+'join3r.leftLookup.out OP_INSERT source="source1" external="999" internal="1" 
+join3r.rightLookup.out OP_DELETE source="source1" external="999" internal="1" 
+join3r.rightLookup.out OP_INSERT source="source1" external="999" internal="1" rt_source="source1" rt_external="999" 
+join3r.leftLookup.out OP_INSERT source="source1" external="2011" internal="2" 
+join3r.rightLookup.out OP_DELETE source="source1" external="2011" internal="2" 
+join3r.rightLookup.out OP_INSERT source="source1" external="2011" internal="2" rt_source="source1" rt_external="2011" 
+join3r.leftLookup.out OP_INSERT source="source1" external="42" internal="3" 
+join3r.rightLookup.out OP_DELETE source="source1" external="42" internal="3" 
+join3r.rightLookup.out OP_INSERT source="source1" external="42" internal="3" rt_source="source1" rt_external="42" 
+join3r.leftLookup.out OP_INSERT source="source2" external="ABCD" internal="1" rt_source="source1" rt_external="999" 
+join3r.rightLookup.out OP_INSERT source="source1" external="999" internal="1" rt_source="source2" rt_external="ABCD" 
+join3r.rightLookup.out OP_INSERT source="source2" external="ABCD" internal="1" rt_source="source2" rt_external="ABCD" 
+join3r.leftLookup.out OP_DELETE source="source1" external="999" internal="1" rt_source="source1" rt_external="999" 
+join3r.leftLookup.out OP_DELETE source="source1" external="999" internal="1" rt_source="source2" rt_external="ABCD" 
+join3r.rightLookup.out OP_DELETE source="source2" external="ABCD" internal="1" rt_source="source1" rt_external="999" 
+join3r.leftLookup.out OP_INSERT source="source1" external="999" internal="4" 
+join3r.rightLookup.out OP_DELETE source="source1" external="999" internal="4" 
+join3r.rightLookup.out OP_INSERT source="source1" external="999" internal="4" rt_source="source1" rt_external="999" 
+');
 #print STDERR $result{"3n"};
 
 # for debugging
@@ -993,7 +1015,6 @@ join3q.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_intern
 	ok($join->getType(), "inner"); # the default
 	ok($join->getOverrideSimpleMinded(), 0); # the default
 	ok($join->getOverrideKeyTypes(), 0); # the default
-	ok($join->getOverrideSelfJoin(), 0); # the default
 }
 {
 	my $join = Triceps::JoinTwo->new( 
@@ -1007,7 +1028,6 @@ join3q.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_intern
 		fieldsLeftFirst => 10,
 		overrideSimpleMinded => 11,
 		overrideKeyTypes => 12,
-		overrideSelfJoin => 13,
 	);
 	ok(ref $join, "Triceps::JoinTwo");
 
@@ -1023,7 +1043,6 @@ join3q.leftLookup.out OP_INSERT ac_source="source2" ac_external="ABCD" ac_intern
 	ok($join->getType(), "outer"); # the default
 	ok($join->getOverrideSimpleMinded(), 11); # the default
 	ok($join->getOverrideKeyTypes(), 12); # the default
-	ok($join->getOverrideSelfJoin(), 13); # the default
 }
 
 #########
@@ -1103,9 +1122,6 @@ ok($@ =~ /^Option 'rightSaveJoinerTo' of class 'Triceps::JoinTwo' must be a refe
 	by => [ "acctSrc", "source", "acctXtrId", "external" ],
 	byLeft => [ "acctSrc/source", "acctXtrId/external" ]);
 ok($@ =~ /^Triceps::JoinTwo::new: must have only one of options by or byLeft, got both by and byLeft/);
-
-&tryBadOptValue(leftTable => $tAccounts3);
-ok($@ =~ /^Self-joins \(the same table on both sides\) are not fully supported, use the option overrideSelfJoin=>1 and special \*FromLabel arrangement to enable them/);
 
 {
 	$vu4 = Triceps::Unit->new("vu4");
