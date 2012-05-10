@@ -18,8 +18,8 @@ compiler, valgrind.
 Versioning
 ----------
 
-At the moment this is an experimental project, and there is no
-versioning. The API may change in any way at any moment.
+At the moment this projects structure is tilted towards the ease of innovation,
+and there is no versioning. The API may change in any way at any moment.
 
 If you build some production code with Triceps, simply include the
 Triceps shared library that was used to build it into your

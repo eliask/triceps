@@ -1,5 +1,5 @@
-Triceps is an experimental CEP (Complex Event Processing) engine. It implements
-the event stream processing as a library embeddable in C++ and Perl. 
+Triceps is an innovative CEP (Complex Event Processing) engine. It implements
+the event stream processing as a library embeddable in C++ and Perl.
 
 For the build instructions, see BUILD.
 
