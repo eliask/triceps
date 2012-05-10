@@ -11,16 +11,11 @@ Things that need to be done:
 * an encapsulation of iteration range: begin, end, direction, maybe level of the step
 * add $unit->makeLabelFrom() - a computational block with input and output labels,
   input chained from another label
-* add $label->relabelRowop() (adopt()?)
 * add option fromLabel throughout templates
 * change options to capitalized
-* in Table add a label for getting the modifications before they are applied
-* in Table apply the modifications one by one and send through, add a catch for
-  any attempted modifications in the middle of ongoing modifications
 * add a Sequence template, that calls its multiple output labels in order
 * a pseudo-table that keeps only the state of the additive aggregations, without actual data
   (the data just passes through and gets immediately aggregated)
-* when printing backtrace on errors, stop before on 2nd eval {...} (1st is the caller itself)
 * convert everything to croak on errors (at least, the non-ignorable ones)
 * option in labels, tracers etc. to not rethrow the Perl errors but just print them
 * replace the exceptions with returning error bufs?
@@ -30,13 +25,14 @@ Things that need to be done:
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
 * doc: Fields::, TableType::findIndexPath,findIndexKeyPath, Opt::checkMutuallyExclusive
-* doc: JoinTwo key fields do have to have the same type, floating keys are bad
+* doc: JoinTwo floating keys are bad
 * doc: an example of deletions in small portions (for selects, would need the
   mods in the tables to go one by one)
 * doc: Label->hasChained()
 * doc: Label->adopt()
 * doc: croaking in Unit, propagation of errors from label execution
-* doc: propagation of errors leaves a fairly inconsistent state
+* doc: propagation of errors clears the scheduler stack, leaves a fairly inconsistent state
 * doc: aggregator "before" is now called before the mods;
-  update the examples from xTrafficAgg
-* doc: table ".pre"
+  update the examples from xTrafficAgg in the final docs
+* doc: table ".pre", groupSizeIdx()
+* doc: hidden options of LookupJoin
