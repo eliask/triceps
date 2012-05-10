@@ -176,11 +176,6 @@ sub new # (class, optionName => optionValue ...)
 		my @keys;
 		($self->{"${side}IdxType"}, @keys) = $self->{"${side}Table"}->getType()->findIndexKeyPath(@{$self->{"${side}IdxPath"}});
 		# would already confess if the index is not found
-		#Carp::confess("The $side table does not have a top-level index '" . $self->{"${side}Index"} . "' for joining")
-		#	unless defined $self->{"${side}IdxType"};
-		#my $ixid  = $self->{"${side}IdxType"}->getIndexId();
-		#Carp::confess("The $side index '" . $self->{"${side}Index"} . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not IT_HASHED as required")
-		#   unless ($ixid == &Triceps::IT_HASHED);
 
 		if (!$self->{overrideSimpleMinded}) {
 			my @subs = $self->{"${side}IdxType"}->getSubIndexes();
@@ -210,12 +205,12 @@ sub new # (class, optionName => optionValue ...)
 				. join(", ", @{$self->{by}}) . ")\n ")
 			unless (($#leftkeys + 1)*2 == ($#{$self->{by}} + 1));
 		# rebuild the keys in the new order, and check that the key set matches
-		my(%leftmap, %rightmap, @newleft, @newright);
+		my(%leftpresent, %rightpresent, @newleft, @newright);
 		foreach $i (@leftkeys) {
-			$leftmap{$i} = 1;
+			$leftpresent{$i} = 1;
 		}
 		foreach $i (@rightkeys) {
-			$rightmap{$i} = 1;
+			$rightpresent{$i} = 1;
 		}
 		my @cpby = @{$self->{by}};
 		while ($#cpby >= 0) {
@@ -225,12 +220,12 @@ sub new # (class, optionName => optionValue ...)
 					. "' contains a left-side field '$lf' that is not in the index key,\n  left key: ("
 					. join(", ", @leftkeys) . ")\n  by: ("
 					. join(", ", @{$self->{by}}) . ")\n  ")
-				unless defined $leftmap{$lf};
+				unless defined $leftpresent{$lf};
 			Carp::confess("Option '" . (defined $self->{byLeft}? "byLeft" : "by") 
 					. "' contains a right-side field '$rt' that is not in the index key,\n  right key: ("
 					. join(", ", @rightkeys) . ")\n  by: ("
 					. join(", ", @{$self->{by}}) . ")\n  ")
-				unless defined $rightmap{$rt};
+				unless defined $rightpresent{$rt};
 			push @newleft, $lf;
 			push @newright, $rt;
 		}
