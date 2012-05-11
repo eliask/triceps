@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 10 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -744,5 +744,88 @@ pos,OP_DELETE,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
 pos,OP_INSERT,20120310,one,AAA,200,16,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+');
+
+#########################
+
+sub doJoinOuter {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tToUsd = $uJoin->makeTable($ttToUsd, 
+	&Triceps::EM_CALL, "tToUsd") or die "$!";
+our $tPosition = $uJoin->makeTable($ttPosition, 
+	&Triceps::EM_CALL, "tPosition") or die "$!";
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "outer",
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "cur") {
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "pos") {
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
+			or die "$!";
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doJoinOuter
+
+@input = (
+	"cur,OP_INSERT,20120310,GBP,2\n",
+	"pos,OP_INSERT,20120310,two,AAA,100,8,GBP\n",
+	"pos,OP_INSERT,20120310,three,AAA,100,300,RUR\n",
+	"pos,OP_INSERT,20120310,three,BBB,200,80,GBP\n",
+	"cur,OP_INSERT,20120310,RUR,0.04\n",
+	"cur,OP_DELETE,20120310,GBP,2\n",
+	"cur,OP_INSERT,20120310,GBP,2.2\n",
+	"pos,OP_DELETE,20120310,three,BBB,200,80,GBP\n",
+	"pos,OP_DELETE,20120310,three,AAA,100,300,RUR\n",
+);
+$result = undef;
+&doJoinOuter();
+print $result;
+ok($result, 
+'cur,OP_INSERT,20120310,GBP,2
+join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2" 
+pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_DELETE date="20120310" currency="GBP" toUsd="2" 
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+pos,OP_DELETE,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+pos,OP_DELETE,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04" 
 ');
 
