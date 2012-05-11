@@ -798,7 +798,7 @@ while(&readLine) {
 );
 $result = undef;
 &doJoinOuter();
-print $result;
+#print $result;
 ok($result, 
 'cur,OP_INSERT,20120310,GBP,2
 join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2" 
