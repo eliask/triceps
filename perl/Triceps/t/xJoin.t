@@ -788,8 +788,8 @@ while(&readLine) {
 @input = (
 	"cur,OP_INSERT,20120310,GBP,2\n",
 	"pos,OP_INSERT,20120310,two,AAA,100,8,GBP\n",
-	"pos,OP_INSERT,20120310,three,AAA,100,300,RUR\n",
 	"pos,OP_INSERT,20120310,three,BBB,200,80,GBP\n",
+	"pos,OP_INSERT,20120310,three,AAA,100,300,RUR\n",
 	"cur,OP_INSERT,20120310,RUR,0.04\n",
 	"cur,OP_DELETE,20120310,GBP,2\n",
 	"cur,OP_INSERT,20120310,GBP,2.2\n",
@@ -805,10 +805,10 @@ join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2"
 pos,OP_INSERT,20120310,two,AAA,100,8,GBP
 join.leftLookup.out OP_DELETE date="20120310" currency="GBP" toUsd="2" 
 join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,three,AAA,100,300,RUR
-join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
 pos,OP_INSERT,20120310,three,BBB,200,80,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
 cur,OP_INSERT,20120310,RUR,0.04
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
