@@ -21,18 +21,19 @@ Things that need to be done:
 * replace the exceptions with returning error bufs?
 * replace all direct Perl_croak() with a smart stack unroll
 * in Table, do something about collapsing empty groups on exception?
+* in FIFO index, add options to match on exact or on first, or never match,
+  and by default throw an exception
+* snapshots in small portions (would need a comparison per key)
+* should it throw from Unit::clearLabels(), and if called from a destructor, 
+  catch it there?
 
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
+* doc: update the examples from xTrafficAgg in the final docs
+  (aggregator "before" is now called before the mods)
 * doc: Fields::, TableType::findIndexPath,findIndexKeyPath, Opt::checkMutuallyExclusive
 * doc: JoinTwo floating keys are bad
-* doc: an example of deletions in small portions (for selects, would need the
-  mods in the tables to go one by one)
+* doc: an example of deletions in small portions, 
 * doc: Label->hasChained()
 * doc: Label->adopt()
-* doc: croaking in Unit, propagation of errors from label execution
-* doc: propagation of errors clears the scheduler stack, leaves a fairly inconsistent state
-* doc: aggregator "before" is now called before the mods;
-  update the examples from xTrafficAgg in the final docs
-* doc: table ".pre", groupSizeIdx()
 * doc: hidden options of LookupJoin
