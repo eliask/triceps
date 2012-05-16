@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 10 };
+BEGIN { plan tests => 11 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -589,6 +589,10 @@ our $ttPosition = Triceps::TableType->new($rtPosition)
 or die "$!";
 $ttPosition->initialize() or die "$!";
 
+# remember the indexes for the ufture use
+our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or die "$!";
+our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or die "$!";
+
 our @inputBasicJoin = (
 	"cur,OP_INSERT,20120310,USD,1\n",
 	"cur,OP_INSERT,20120310,GBP,2\n",
@@ -674,6 +678,20 @@ join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quanti
 
 #########################
 
+# Go through the table and clear all the rows where the field "date"
+# is less than the date argument. The index type orders the table by date.
+sub clearByDate($$$) # ($table, $ixt, $date)
+{
+	my ($table, $ixt, $date) = @_;
+
+	my $next;
+	for (my $rhit = $table->beginIdx($ixt); !$rhit->isNull(); $rhit = $next) {
+		last if (($rhit->getRow()->get("date")) >= $date);
+		$next = $rhit->nextIdx($ixt); # advance before removal
+		$table->remove($rhit);
+	}
+}
+
 sub doJoinLeft {
 
 our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
@@ -682,6 +700,8 @@ our $tToUsd = $uJoin->makeTable($ttToUsd,
 	&Triceps::EM_CALL, "tToUsd") or die "$!";
 our $tPosition = $uJoin->makeTable($ttPosition, 
 	&Triceps::EM_CALL, "tPosition") or die "$!";
+
+our $businessDay = undef;
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -705,18 +725,31 @@ while(&readLine) {
 	} elsif ($type eq "pos") {
 		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
 			or die "$!";
+	} elsif ($type eq "day") { # set the business day
+		$businessDay = $data[0] + 0; # convert to an int
+	} elsif ($type eq "clear") { # clear the previous day
+		# flush in the "bad" order, that would have caused double updates
+		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
+		&clearByDate($tPosition, $ixtPositionByDate, $businessDay);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
 
 } # doJoinLeft
 
-@input = @inputBasicJoin;
+@input = (
+	# add the clearing for the contrast with the later filtered demo
+	"day,20120310\n",
+	@inputBasicJoin,
+	"day,20120311\n",
+	"clear\n",
+);
 $result = undef;
 &doJoinLeft();
 #print $result;
 ok($result, 
-'cur,OP_INSERT,20120310,USD,1
+'day,20120310
+cur,OP_INSERT,20120310,USD,1
 cur,OP_INSERT,20120310,GBP,2
 cur,OP_INSERT,20120310,EUR,1.5
 pos,OP_INSERT,20120310,one,AAA,100,15,USD
@@ -744,6 +777,20 @@ pos,OP_DELETE,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
 pos,OP_INSERT,20120310,one,AAA,200,16,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+day,20120311
+clear
+join.rightLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+join.rightLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.leftLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" 
 ');
 
 #########################
@@ -827,5 +874,118 @@ join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quan
 pos,OP_DELETE,20120310,three,AAA,100,300,RUR
 join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
 join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04" 
+');
+
+#########################
+
+sub doJoinFiltered {
+
+our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+
+our $tToUsd = $uJoin->makeTable($ttToUsd, 
+	&Triceps::EM_CALL, "tToUsd") or die "$!";
+our $tPosition = $uJoin->makeTable($ttPosition, 
+	&Triceps::EM_CALL, "tPosition") or die "$!";
+
+our $businessDay = undef;
+
+our $lbPositionCurrent = $uJoin->makeDummyLabel(
+	$tPosition->getRowType, "lbPositionCurrent") or die "$!";
+our $lbPositionFilter = $uJoin->makeLabel($tPosition->getRowType,
+	"lbPositionFilter", undef, sub {
+		if ($_[1]->getRow()->get("date") >= $businessDay) {
+			$uJoin->call($lbPositionCurrent->adopt($_[1]));
+		}
+	}) or die "$!";
+$tPosition->getOutputLabel()->chain($lbPositionFilter) or die "$!";
+
+our $lbToUsdCurrent = $uJoin->makeDummyLabel(
+	$tToUsd->getRowType, "lbToUsdCurrent") or die "$!";
+our $lbToUsdFilter = $uJoin->makeLabel($tToUsd->getRowType,
+	"lbToUsdFilter", undef, sub {
+		if ($_[1]->getRow()->get("date") >= $businessDay) {
+			$uJoin->call($lbToUsdCurrent->adopt($_[1]));
+		}
+	}) or die "$!";
+$tToUsd->getOutputLabel()->chain($lbToUsdFilter) or die "$!";
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftFromLabel => $lbPositionCurrent,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightFromLabel => $lbToUsdCurrent,
+	rightIdxPath => [ "primary" ],
+	type => "left",
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "cur") {
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "pos") {
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
+			or die "$!";
+	} elsif ($type eq "day") { # set the business day
+		$businessDay = $data[0] + 0; # convert to an int
+	} elsif ($type eq "clear") { # clear the previous day
+		# flush in the "bad" order, that would have caused double updates
+		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
+		&clearByDate($tPosition, $ixtPositionByDate, $businessDay);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doJoinFiltered
+
+@input = (
+	# add the clearing for the contrast with the later filtered demo
+	"day,20120310\n",
+	@inputBasicJoin,
+	"day,20120311\n",
+	"clear\n",
+);
+$result = undef;
+&doJoinFiltered();
+#print $result;
+ok($result, 
+'day,20120310
+cur,OP_INSERT,20120310,USD,1
+cur,OP_INSERT,20120310,GBP,2
+cur,OP_INSERT,20120310,EUR,1.5
+pos,OP_INSERT,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+pos,OP_DELETE,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+pos,OP_INSERT,20120310,one,AAA,200,16,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+day,20120311
+clear
 ');
 
