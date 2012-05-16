@@ -1,0 +1,105 @@
+JoinTwo: full outer join
+
+First, let me mention that JoinTwo can do a right outer join too, just use the type "right". It works in exactly the same way as the left outer join, just with a different table. So much the same that it's not even worth a separate example.<br />
+<br />
+Now, the full outer join. The positions-and-currencies is not a good real-world example for a full outer join. The full outer joins usually get used with a variation of the "fork-join" topology described in the posts with this tag. When the processing of a row can be forked into multiple parallel paths, each either providing a result row or not, eventually merged back together. The full outer join is a convenient way to do this merge: the paths that didn't produce the result get quietly ignored, and the results that were produced get merged back into a single row. The row in such situations is usually identified by a primary key, so the partial results can find each other. This scheme makes the most sense when the paths are executed in the parallel threads, or when the processing on some paths may get delayed and then continued later. If the processing is single-threaded and fast, Triceps provides a more convenient procedural way of getting the same result: just call every path in order and merge the results from them procedurally, and you won't have to keep the intermediate results in their tables forever, nor delete them manually.<br />
+<br />
+Even though that use is typical, it has only the 1:1 record matching and does not highlight all the abilities of the JoinTwo. So, let's come up with another example that does.<br />
+<br />
+Suppose that you want to get the total count of positions (per symbol, or altogether), or maybe the total value, for every currency. Including those for which we have the exchange rates but no positions, for them the count should simply be 0 (or maybe NULL). And those for which there are positions but no translations. This is a job for a full outer join, followed by an aggregation. The join has the type "outer" and looks like this:<br />
+<br />
+<pre>our $join = Triceps::JoinTwo-&gt;new(
+&nbsp;&nbsp;&nbsp; name =&gt; "join",
+&nbsp;&nbsp;&nbsp; leftTable =&gt; $tPosition,
+&nbsp;&nbsp;&nbsp; leftIdxPath =&gt; [ "currencyLookup" ],
+&nbsp;&nbsp;&nbsp; rightTable =&gt; $tToUsd,
+&nbsp;&nbsp;&nbsp; rightIdxPath =&gt; [ "primary" ],
+&nbsp;&nbsp;&nbsp; type =&gt; "outer",
+); # would die by itself on an error
+
+</pre>
+<br />
+This join has the many-to-one (M:1) row matching, since there might be multiple positions on the left matching one currency rate translation on the right. I'm not going to go into the aggregation part, here is an example run of just the join, with explanations:<br />
+<br />
+<pre><i>cur,OP_INSERT,20120310,GBP,2</i>
+join.rightLookup.out OP_INSERT date="20120310" currency="GBP"
+&nbsp;toUsd="2" 
+</pre>
+<br />
+The first translation gets through, even though there is no position for it yet.<br />
+<br />
+<pre><i>pos,OP_INSERT,20120310,two,AAA,100,8,GBP</i>
+join.leftLookup.out OP_DELETE date="20120310" currency="GBP"
+&nbsp;toUsd="2" 
+join.leftLookup.out OP_INSERT date="20120310" customer="two"
+&nbsp;symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+</pre>
+<br />
+The first position for an existing translation comes in. Now the GBP row has a match, so the unmatched row gets deleted and a matching one gets inserted instead.<br />
+<br />
+<pre><i>pos,OP_INSERT,20120310,three,BBB,200,80,GBP</i>
+join.leftLookup.out OP_INSERT date="20120310" customer="three"
+&nbsp;symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+</pre>
+<br />
+The second position for GBP works differently: since there is no unmatched row any more (it was taken care of by the first position), there is nothing to delete. Just the second matched record gets inserted.<br />
+<br />
+<pre><i>pos,OP_INSERT,20120310,three,AAA,100,300,RUR</i>
+join.leftLookup.out OP_INSERT date="20120310" customer="three"
+&nbsp;symbol="AAA" quantity="100" price="300" currency="RUR"
+</pre>
+<br />
+The position without a matching currency get through as well.<br />
+<br />
+<pre><i>cur,OP_INSERT,20120310,RUR,0.04</i>
+join.rightLookup.out OP_DELETE date="20120310" customer="three"
+&nbsp;symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three"
+&nbsp;symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+</pre>
+<br />
+Now the RUR translation becomes available and it has to do the same things as we've seen before, only on the other side: delete the unmatched record and replace it with the matched one.<br />
+<br />
+<pre><i>cur,OP_DELETE,20120310,GBP,2</i>
+join.rightLookup.out OP_DELETE date="20120310" customer="two"
+&nbsp;symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two"
+&nbsp;symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three"
+&nbsp;symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three"
+&nbsp;symbol="BBB" quantity="200" price="80" currency="GBP" 
+<i>cur,OP_INSERT,20120310,GBP,2.2</i>
+join.rightLookup.out OP_DELETE date="20120310" customer="two"
+&nbsp;symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two"
+&nbsp;symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three"
+&nbsp;symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three"
+&nbsp;symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+</pre>
+<br />
+Then the GBP translation gets updated. First the old translation gets deleted and then the new one inserted. When the translation gets deleted, all the positions in GBP lose their match. So the matched rows gets deleted and replaced with the unmatched ones. When the new GBP translation is inserted, the replacement goes in the other direction.<br />
+<br />
+<pre><i>pos,OP_DELETE,20120310,three,BBB,200,80,GBP</i>
+join.leftLookup.out OP_DELETE date="20120310" customer="three"
+&nbsp;symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+</pre>
+<br />
+When this position goes away, the row gets deleted from the result as well. However it was not the only position in GBP, so there is no need to insert an unmatched record for GBP.<br />
+<br />
+<pre><i>pos,OP_DELETE,20120310,three,AAA,100,300,RUR</i>
+join.leftLookup.out OP_DELETE date="20120310" customer="three"
+&nbsp;symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.leftLookup.out OP_INSERT date="20120310" currency="RUR"
+&nbsp;toUsd="0.04"
+</pre>
+<br />
+This position was the last one in RUR. So when it gets deleted, the RUR translation has no match any more. That means, after deleting the matched row from the results, the unmatched&nbsp; row has to be inserted to keep the balance right.<br />
+<br />
+By the way, this business with keeping track of the unmatched rows is not unique to the full outer joins. Remember, it was showing in the left outer joins too, and the right outer joins are no exception either. When the first matching row gets inserted or the last matching row gets deleted on the side that is opposite to the "outer side", the unmatched rows have to be handled in the result. (That would be the right side for the left outer joins, the left side for the right outer joins, and either side for the full outer joins).<br />
+<br />
+If you're like me, by now you'd be wondering, how does it work? If the "opposite side" is of "one" variety (:1 or 1:), which can be known from it using a leaf index for the join, then every insert is the first insert of a matching row for this key, and every delete is the delete of the last row for this key. Which means, do the empty-match business every time.<br />
+<br />
+If the "opposite side" is of the "many" variety (:M or M:), with a non-leaf index, then things get more complicated. The join works by processing the rowops coming out of the argument tables. When it gets the rowop in such a situation, it goes to the table and checks, was it the first (or last) row for this key? And then uses this knowledge to act.

@@ -1,0 +1,9 @@
+The key fields of LookupJoin
+
+I think I haven't mentioned it explicitly before, but LookupJoin has an interesting property: its key fields don't have to be of the same type on the left and on the right side. Since the key building for lookup is done through Perl, the key values get automatically converted as needed.<br />
+<br />
+A caveat is that the conversion might be not exactly direct. If a string gets converted to a number, then any string values that do not look like numbers will be converted to 0. A conversion between a string and a floating-point number, in either direction, is likely to lose precision. A conversion between int64 and int32 may cause the upper bits to be truncated. So what gets looked up may be not what you expect.<br />
+<br />
+I'm not sure yet if I should add the requirement for the types being exactly the same. The automatic conversions seem to be convenient, just use them with care. I suppose, when the joins will get eventually implemented in the C++ code, this freedom would go away because it's much easier and more efficient in C++ to copy the field values as-is than to convert them.<br />
+<br />
+The only thing currently checked is whether a field is represented in Perl as a scalar or an array, and that must match on the left and on the right. Note that the array uint8[] gets represented in Perl as a scalar string, so an uint8[] field can be matched with other scalars but not with the other arrays.

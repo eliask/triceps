@@ -1,0 +1,40 @@
+JoinTwo and the key fields
+
+The JoinTwo examples shown so far didn't have any of the result field specifications. The defaults were good enough: the non-key fields on the left and right sides have no name collisions, the key fields have the same names, and JoinTwo is smart enough to remove the duplicates in the key fields. It's time to take a closer look at this smartness.<br />
+<br />
+So, what is the key duplication problem? An equi-join is done on the condition of equality of the fields on the left and on the right side. JoinTwo performs the join by requiring the indexes on these fields to be defined on both sides, so I call these fields the join key. This means that if we simply include all the fields from both sides into the result, the join results will include these key fields twice: once sourced from the left side and once sourced from the right side.<br />
+<br />
+Okay, so let's avoid this duplication by removing these fields from one side's copy. Suppose we want to let them through on the left side and remove from the right side. This can be done with the option "rightFields". Assuming that the key fields on the right side are named "date" and "currency", this can be done with:<br />
+<br />
+<pre>rightFields =&gt; [ "!date", "!currency", ".*" ],
+</pre>
+<br />
+This works, but it happens to work correctly only for the inner joins.&nbsp; Or more exactly, inner to the side where the key fields are getting dropped, so this particular example would work for the left outer joins too. But try it with a right outer or full outer join, and you'll find that the rows that don't have the match from the left side produce the result with NULLs in the key fields. If we took this approach, the following output snippet from the recent outer join example would have been not<br />
+<br />
+<pre><i>cur,OP_INSERT,20120310,GBP,2</i>
+join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2"
+</pre>
+<br />
+but will be<br />
+<br />
+<pre><i>cur,OP_INSERT,20120310,GBP,2</i>
+join.rightLookup.out OP_INSERT toUsd="2"
+</pre>
+<br />
+Why does this happen? Well, the output spec said to not pass these fields through from the right side. Only their left-side values get through. And if it's a right or full outer join, and there is no left-side match for this row,&nbsp; the values passed into the result from the left side will naturally be NULL.<br />
+<br />
+So JoinTwo has a special bit of magic built into it: it knows how to recognize this situation and have the key fields copied into the result from whatever side happens to be present for a particular row. It makes these fields always available on both sides. And along the way it also takes care of modifying the option "rightFields" or "leftFields" to actually pass through only one of the copies.<br />
+<br />
+It is all controlled by the option "fieldsUniqKey". The default value of this option is "first". It means: Enable the magic for copying the fields from the non-NULL side to the NULL side. Look at the option "fieldsLeftFirst" and figure out, which side goes first in the result. Let the key fields pass on that side unchanged (though the user can block them on that side manually too, or possibly rename them, it's his choice). On the other side, automatically generate the blocking specs for the key fields and prepend them to that side's result specification. It's smart enough to know that an undefined leftFields or rightFields means the same as ".*", so an undefined result spec is replaced by the blocking specs followed by ".*". If you later call the methods<br />
+<br />
+<pre>$fspec = $join-&gt;getLeftFields();
+$fspec = $join-&gt;getRightFields();
+</pre>
+<br />
+then you will actually get back the modified field specs. <br />
+<br />
+If you want the key fields to be present in a different location in the result, you can set "fieldsUniqKey" to "left" or "right". That will make them pass through on the selected side, and the blocking would be automatically added on the other side.<br />
+<br />
+For more control yet, set this option to "manual". The magic for making the key fields available on both sides will still be enabled, but no automatic blocking. You can pick and choose the result fields manually, exactly as you want. Remember though that there can't be multiple fields with the same name in the result, so if both sides have these fields named the same, you've got to block or rename one of the two copies.<br />
+<br />
+The final choice is "none": it simply disables the key field magic.

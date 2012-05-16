@@ -1,0 +1,38 @@
+The new error handling
+
+I've been considering the change to the error handling for a while. The repeating checks of the calls for "or confess" are pretty annoying, just dying/confessing by default would be better. And then if anyone wants to catch that death, they can use <b>eval {}</b> around the call.<br />
+<br />
+The need to check for the recursive modification attempts in the tables struck me as something that could particularly benefit from just dying rather than returning an error code that would likely be missed. This pushed me towards starting the shift towards this new error handling scheme.<br />
+<br />
+With the interaction through the Perl and the native C++ code, unrolling the call stack is a pretty tricky proposition but I've got it worked out. If the error is not caught with eval, it keeps unrolling the call sequence through both the Perl call stack and the Triceps unit call stack. If the error is caught with eval, the message and the whole stack trace will be as usual in $@.<br />
+<br />
+The bad news is that so far only a limited subset of the calls use the new scheme. The rest are still setting $! and returning an <b>undef</b>. So overall it's a mix and you need to remember, which calls work which way. In the future versions eventually everything will be converted to the new scheme. For a bit of backwards-compatibility, the error messages from the new-style dying calls are saved in both $@ and $!. This will eventually go away, and only $@ will be used.<br />
+<br />
+The converted calls are:<br />
+<ul>
+<li>The Table modification methods:</li>
+<ul>
+<li>insert()</li>
+<li>remove()</li>
+<li>deleteRow()</li>
+</ul>
+<li>The Unit methods that deal with the scheduling:</li>
+<ul>
+<li>schedule()</li>
+<li>fork()</li>
+<li>call()</li>
+<li>enqueue()</li>
+<li>setMark()</li>
+<li>loopAt()</li>
+<li>callNext()</li>
+<li>drainFrame()</li>
+<li>clearLabels()</li>
+</ul>
+</ul>
+If the code dies in the middle of executing a Perl label's handler, the scheduler will catch it as before, but instead of just printing an error message on stderr and continuing, it will start unrolling the Unit call stack, collecting the label call trace until it eventually gets back to the Perl level, which in order will die. If not caught by eval, that would continue the unrolling, until the outermost Perl code dies and prints the whole stack trace.<br />
+<br />
+Note though that right now this works only with the label handlers. The handlers for the tracers, aggregators, sorted indexes etc. still work in the old way, with an error message printed to stderr.<br />
+<br />
+These errors from the label handlers are not to be treated lightly. Usually you can't just catch them be an eval and continue on your way. The reason is that as the Unit scheduling stack gets unrolled, any unprocessed rowops in it get thrown away. By the time you catch the error, the data is probably in an inconsistent state, and you can't just dust off and continue. You would have to reset your model to a good state first. Treat such errors as near-fatal. It could have been possible to keep going through the scheduled rowops, collecting the errors along the way and then returning the whole pile. But it seems more important to report the error as soon as possible. And anyway, if something has died somewhere, it has probably already left some state inconsistent, and continuing to run forward as normal would just pile up crap upon crap. If you want the errors to be handled early and lightly, make sure that your Perl code doesn't die in the first place.<br />
+<br />
+Another added item is an explicit check that the labels are not called recursively. That is, if a label is called, it can not call itself again, directly or through the other labels, until it returns. Such recursive calls don't hurt anything by themselves but they are a bad design practice, and it seems more important to catch the accidental errors of this kind early than to leave the door open for the intentional use of them by design. If you want a label's processing to loop back to itself, the proper way it to arrange it with schedule() or loopAt().

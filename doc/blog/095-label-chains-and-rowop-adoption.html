@@ -1,0 +1,30 @@
+Label chains and Rowop adoption
+
+Those are actually two separate operations I've added for the benefits of the joins.<br />
+<br />
+To check if there are any labels chained from this one, use:<br />
+<br />
+<pre>$result = $label-&gt;hasChained();
+</pre>
+<br />
+The same check can be done with<br />
+<br />
+<pre>@chain = $label-&gt;getChain();
+
+if ($#chain &gt;= 0) { ... }
+</pre>
+<br />
+but the hasChained() is more efficient since it doesn't have to construct that intermediate array.<br />
+<br />
+The adoption is a way to pass the row and opcode from one rowop to another new one, with a different label:<br />
+<br />
+<pre>$rowop2 = $label-&gt;adopt($rowop1);
+</pre>
+<br />
+Very convenient for building the label handlers that pass the rowops to the other labels unchanged. It also can be done with<br />
+<br />
+<pre>$rowop2 = $label-&gt;makeRowop($rowop1-&gt;getOpcode(), $rowop1-&gt;getRow());
+</pre>
+<br />
+But adopt() is easier to call and also more efficient, because less of the intermediate data surfaces from the C++ level to the Perl level. A more extended usage example will be shown momentarily.<br />
+<br />

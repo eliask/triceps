@@ -1,0 +1,113 @@
+JoinTwo: input event filtering
+
+Let's look at how the business day logic interacts with the joins. It's typical for the business applications to keep the full data for the current day, or a few recent days, then clear the data that became old and maybe keep it only in an aggregated form.<br />
+<br />
+So, let's add the business day logic to the left join example. It uses the indexes by date to find the rows that have become old:<br />
+<br />
+<pre>our $ixtToUsdByDate = $ttToUsd-&gt;findSubIndex("byDate") or die "$!";
+our $ixtPositionByDate = $ttPosition-&gt;findSubIndex("byDate") or die "$!";
+
+sub clearByDate($$$) # ($table, $ixt, $date)
+{
+&nbsp; my ($table, $ixt, $date) = @_;
+
+&nbsp; my $next;
+&nbsp; for (my $rhit = $table-&gt;beginIdx($ixt); !$rhit-&gt;isNull(); $rhit = $next) { 
+&nbsp;&nbsp;&nbsp; last if (($rhit-&gt;getRow()-&gt;get("date")) &gt;= $date);
+&nbsp;&nbsp;&nbsp; $next = $rhit-&gt;nextIdx($ixt); # advance before removal
+&nbsp;&nbsp;&nbsp; $table-&gt;remove($rhit);
+&nbsp; } 
+}
+</pre>
+<br />
+The main loop gets extended with some more commands:<br />
+<br />
+<pre>our $businessDay = undef;
+
+while(&amp;readLine) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp; my $type = shift @data;
+&nbsp; if ($type eq "cur") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($tToUsd-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; } elsif ($type eq "pos") {
+&nbsp;&nbsp;&nbsp; $uJoin-&gt;makeArrayCall($tPosition-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; } elsif ($type eq "day") { # set the business day
+&nbsp;&nbsp;&nbsp; $businessDay = $data[0] + 0; # convert to an int
+&nbsp; } elsif ($type eq "clear") { # clear the previous day
+&nbsp;&nbsp;&nbsp; # flush the left side first, because it's an outer join
+&nbsp;&nbsp;&nbsp; &amp;clearByDate($tPosition, $ixtPositionByDate, $businessDay);
+&nbsp;&nbsp;&nbsp; &amp;clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
+&nbsp; }
+&nbsp; $uJoin-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+<br />
+The roll-over to the next business day (after the input data previously shown) then looks like this:<br />
+<br />
+<pre><i>day,20120311
+clear</i>
+join.leftLookup.out OP_DELETE date="20120310" customer="two"
+ symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three"
+ symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three"
+ symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+join.leftLookup.out OP_DELETE date="20120310" customer="one"
+ symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+</pre>
+<br />
+Clearing the left-side table before the right-side one is more efficient than the other way around, since this is a left join. If the right-side table were cleared first, it would first update all the result records to change all the right-side fields in them to NULL, and then the clearing of the left-side table would finally delete these rows. Clearing the left side first removes this churn: it deletes all the rows from the result right away, and then when the right side is cleared, it still tries to look up the matching rows but finds nothing and produces no result. For an inner or full outer join the order would not matter: either one would produce the same amount of churn.<br />
+<br />
+If you don't want these deletions to propagate though the rest of your model, you can just put a filtering logic after the join, to throw away all the modifications for the previous days. Through don't forget that you would have then to delete the previous-day data from the rest of the model's tables manually.<br />
+<br />
+If you want to keep only the aggregated data, you may want to pass the join output to the aggregator without filtering and then filter the aggregator's output, thus stopping the updates to the aggregation results. You may even have a special logic in the aggregator, that would ignore the groups of the previous days. Both such approaches to the aggregation filtering have been shown before. And they aren't any less efficient than filtering on the output of the join, because if you filter after the join, you'd still have to remove the rows from the aggregation table, and would still have to filter after the aggregation too.<br />
+<br />
+Now, suppose that you want to be extra optimal and don't want any join look-ups to happen at all when you delete the old data. JoinTwo has a feature that lets you do that. You can make it receive the events not directly from the tables but after filtering, using the options "leftFromLabel" and "rightFromLabel":<br />
+<br />
+<pre>our $lbPositionCurrent = $uJoin-&gt;makeDummyLabel(
+&nbsp; $tPosition-&gt;getRowType, "lbPositionCurrent") or die "$!";
+our $lbPositionFilter = $uJoin-&gt;makeLabel($tPosition-&gt;getRowType,
+&nbsp; "lbPositionFilter", undef, sub {
+&nbsp;&nbsp;&nbsp; if ($_[1]-&gt;getRow()-&gt;get("date") &gt;= $businessDay) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uJoin-&gt;call($lbPositionCurrent-&gt;adopt($_[1]));
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }) or die "$!";
+$tPosition-&gt;getOutputLabel()-&gt;chain($lbPositionFilter) or die "$!";
+
+our $lbToUsdCurrent = $uJoin-&gt;makeDummyLabel(
+&nbsp; $tToUsd-&gt;getRowType, "lbToUsdCurrent") or die "$!";
+our $lbToUsdFilter = $uJoin-&gt;makeLabel($tToUsd-&gt;getRowType,
+&nbsp; "lbToUsdFilter", undef, sub {
+&nbsp;&nbsp;&nbsp; if ($_[1]-&gt;getRow()-&gt;get("date") &gt;= $businessDay) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $uJoin-&gt;call($lbToUsdCurrent-&gt;adopt($_[1]));
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }) or die "$!";
+$tToUsd-&gt;getOutputLabel()-&gt;chain($lbToUsdFilter) or die "$!";
+
+our $join = Triceps::JoinTwo-&gt;new(
+&nbsp; name =&gt; "join",
+&nbsp; leftTable =&gt; $tPosition,
+&nbsp; leftFromLabel =&gt; $lbPositionCurrent,
+&nbsp; leftIdxPath =&gt; [ "currencyLookup" ],
+&nbsp; rightTable =&gt; $tToUsd,
+&nbsp; rightFromLabel =&gt; $lbToUsdCurrent,
+&nbsp; rightIdxPath =&gt; [ "primary" ],
+&nbsp; type =&gt; "left",
+); # would die by itself on an error
+</pre>
+<br />
+The same clearing now looks like this:
+<br />
+<br />
+<pre><i>day,20120311
+clear</i>
+</pre>
+<br />
+No output is coming from the join whatsoever. It all gets cut off before it reaches the join. It's not such a great gain though. Remember that if you want to keep the aggregated data, you would still have to delete the rows manually from the aggregation table afterwards. And the filtering logic will add overhead, not only during the clearing but all the time.<br />
+<br />
+If you're not careful with the filtering conditions, it's also easy to make the results of the join inconsistent. This example filters both input tables on the same key field, with the same condition, so the output will stay always consistent. But if any of these elements were missing, it becomes possible to produce inconsistent output that has the DELETEs of different rows than INSERTs, and deletions of the rows that haven't been inserted in the first place. The reason is that even though the input events are filtered, the look-ups aren't. If some rows comes from the right side and get thrown away by the filter, and then another row comes on the left side, passes the filter, and then finds a match in that thrown-away right-side row, it will use that row in the result. And the join would think that the right-side row has already been in, and would produce an incorrect update.<br />
+<br />
+So these options don't make a whole lot of a win but make a major opportunity for a mess, and probably should never be used. And will probably be deleted in the future, unless someone finds a good use for them. They have been added because they provide a roundabout way to do a self-join. But the recent additions to the Table make the self-joins possible without this kind of perversions.

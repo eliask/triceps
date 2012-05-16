@@ -1,0 +1,9 @@
+JoinTwo options shared with LookupJoin
+
+Some of the JoinTwo options closely parallel those in LookupJoin. Obviously, "name", "rightTable" and "rightIdxPath" are the same, with the added symmetrical "leftTable" and "leftIdxPath". There is no "unit" option though, the unit is always taken from the tables (which must belong to the same unit).<br />
+<br />
+The options controlling the result are also the same: "leftFields", "rightFields", "fieldsLeftFirst".<br />
+<br />
+The options "by" and "byLeft" also look the same, expect the same values, but their meaning has changed. First, they are now optional. By default the join condition is formed from the key fields of the indexes. The only reason to use the "by" options is if you want to change the order of the fields in the condition, if it doesn't match properly in the indexes. Second, changing the field order is all you can do with these options. You can't specify any other fields.<br />
+<br />
+The option to save the source code of the generated joiner code has been split in two: "leftSaveJoinerTo" and "rightSaveJoinerTo". Since JoinTwo has to react to the updates from both sides, is has to have two handlers. And since internally it uses two LookupJoin for this purpose, these happen to be the joiner functions of the left and right LookupJoin.

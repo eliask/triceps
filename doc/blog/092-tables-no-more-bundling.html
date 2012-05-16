@@ -1,0 +1,58 @@
+Tables: no more bundling
+
+I believe I've told before that the table first processes all the rows from an operation on it (only one row is the argument of the operation but it may trigger the deletion of multiple rows with the replacement policies) and only then sends all the results. This is essentially an implicit bundling of the rowops, and has all the issues of the bundling that have been described before. Since a join sees the rowops only after they come out of the table, the processing of the missing matches for the outer joins (described in the last post) could not work reliably. If there are multiple rows at the same join key affected by an operation, when the join looks in the table, it would see the state after <i>all</i> of them have been already applied, and would make the wrong decisions. So, how does it work?<br />
+<br />
+The answer is that now I've changed the way the tables work. No more implicit bundling. Each row gets changed in the table, and a rowop is immediately called on the table's output label. The handler of that rowop can read the table and see it exactly in the state right after that rowop was applied, and none more. Nice, consistent, convenient.<br />
+<br />
+Note though that any labels called from this point may only read the table, not modify it. The table is still in the middle of the previous modification, and starting a new modification at this point would corrupt it. So if you want to modify the table, you have to schedule it for later, after the current, modification is completed, using the Unit methods schedule() or loopAt(). But keep in mind that by the time that rowop gets called, many other changes may have already happened to the table. So it's best to schedule not the direct table changes but the more high-level operations which would look at the state of the table at their run time and decide the proper action.<br />
+<br />
+The order of sending the aggregation results has also changed. It used to be the table changes, then all the aggregation results. Now first the aggregation handlers get called with AO_BEFORE_MOD and their results get sent through, then the table modifications work through as described, and then the aggregation handlers get called with AO_AFTER_* and their results go through. The aggregation modifications are still bundled: all the aggregators get called with their results remembered, and then all the result are sent through. This is not very pretty but not such a big deal either. The reason is that the aggregation code has to detect whether each modification is the last one for each aggregation group or not. And it's hard enough to do in the bundled way, and would be quite difficult to unbundle. Besides, the aggregators are specially designed to improve their efficiency by throwing away the intermediate updates on the same group, so there is not much use in unbundling that.<br />
+<br />
+Another new feature of the table is the "pre" label. It can be found with:<br />
+<br />
+<pre>$lb = $table-&gt;getPreLabel();
+</pre>
+<br />
+It has the name of "TableName.pre". A rowop on this label gets called right before applying the row to the table. Just as with the table's output label, the code that handles that rowop can't do any other direct modification to the table and can't prevent the ongoing modifications from happening. However if it reads the table, it will find it in exactly the state before that modification gets applied. Which comes useful sometimes, in particular for the self-joins that will be shown later. There is also a bit of optimization going on: since the "pre" label gets used fairly rarely, the table code first checks if there are any labels chained from it. If none, the "pre" label doesn't get called at all. If you do the unit tracing, you won't see the call of the "pre" label in the trace unless there are other labels chained from it.<br />
+<br />
+To recap, the new high-level order of the table operation processing is:<br />
+<br />
+<ul>
+<li>Execute the replacement policies on all the indexes, find all the rows that need to be deleted first.</li>
+<li>If any of the index policies forbid the modification, return 0.</li>
+<li>Call all the aggregators with AO_BEFORE_MOD on all the affected rows.</li>
+<li>Send these aggregator results.</li>
+<li>For each affected row:</li>
+<ul>
+<li>Call the "pre" label (if it has any labels chained to it).</li>
+<li>Modify the row in the table.</li>
+<li>Call the "out" label.</li>
+</ul>
+<li>Call all the aggregators with AO_AFTER_*, on all the affected rows.</li>
+<li>Send these aggregator results.</li>
+</ul>
+&nbsp;And to let the join find whether some row is the only one in the group or not, I've added another call:<br />
+<br />
+<pre>$size = $table-&gt;groupSizeIdx($idxType, $row_or_rh);
+</pre>
+<br />
+It works very similar to the AggregatorContext::groupSize(), only it has no context and has to get the index type and row or row handle as its arguments. It returns the count of rows in the group. If there is no such group in the table, the result will be 0. If the argument is a row handle, that handle may be in the table or not in the table, either will be handled transparently (though calling it for a row handle in the table is more efficient because the group would not need to be looked up first). If the argument is a row, it gets handled similarly to findIdx(): a temporary row handle gets created, used to find the result, and then destroyed.<br />
+<br />
+The $idxType is the one that owns the split. Naturally, it must be a non-leaf index. (Using a non-leaf index type is not an error but it always returns 0, because there are no groups under it). It's basically the same index type as you would use in findIdx() to find the first row of the group. For example, if you have a table type defined as<br />
+<br />
+<pre>our $ttPosition = Triceps::TableType-&gt;new($rtPosition)
+&nbsp; -&gt;addSubIndex("primary",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "date", "customer", "symbol" ])
+&nbsp; ) 
+&nbsp; -&gt;addSubIndex("currencyLookup", # for joining with currency conversion
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "date", "currency" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("grouping", Triceps::IndexType-&gt;newFifo())
+&nbsp; ) 
+&nbsp; -&gt;addSubIndex("byDate", # for cleaning by date
+&nbsp;&nbsp;&nbsp; Triceps::SimpleOrderedIndex-&gt;new(date =&gt; "ASC")
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("grouping", Triceps::IndexType-&gt;newFifo())
+&nbsp; ) 
+or die "$!";
+</pre>
+<br />
+Then it would make sense to call groupSizeIdx on the indexes "currencyLookup" or "byDate" but not on "primary", "currencyLookup/grouping" nor "byDate/grouping". Remember, a non-leaf index type defines the groups, and the nested index types under it define the order in those groups (and possibly further break them down into sub-groups).

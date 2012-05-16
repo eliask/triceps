@@ -1,0 +1,64 @@
+LookupJoin key by pattern 
+
+While working on the table-to-table joins, I've been also retrofitting some of the features to the LookupJoin. So, here are two changes, both in the department of the join condition:<br />
+<br />
+First, now it checks that the fields in the right side of the option "by" are actually all matching the keys fields in right-side index.<br />
+<br />
+Second, now the join condition may also be specified in a pattern form, the same as the result. For example the condition from the previous examples<br />
+<br />
+<pre>by =&gt; [ "acctSrc" =&gt; "source", "acctXtrId" =&gt; "external" ],</pre>
+<br />
+can be also specified as:<br />
+<br />
+<pre>byLeft =&gt; [ "acctSrc/source", "acctXtrId/external" ],
+</pre>
+<br />
+The option name "byLeft" says that the pattern specification is for the fields on the left side (there is no symmetric "byRight"). The substitutions produce the matching field names for the right side. Unlike the result pattern, here the fields that do not find a match do not get included in the key. It's as if an implicit "!.*" gets added at the end. In fact, "!.*" really does get added implicitly at the end.<br />
+<br />
+Of course, for this example either option doesn't make much difference. It starts making the difference when the key fields follow a pattern. For example, if the key fields on both sides have the names "acctSrc" and "acctXtrId", the specification with the new option becomes a little simpler: <br />
+<br />
+<pre>byLeft =&gt; [ "acctSrc", "acctXtrId" ],
+</pre>
+<br />
+Even more so if the key is long, common on both sides, and all the fields have a common prefix. For example:<br />
+<br />
+<pre>k_AccountSystem
+k_AccountId
+k_InstrumentSystem
+k_InstrumentId
+k_TransactionDate
+k_SettlementDate
+</pre>
+<br />
+Then the key can be specified simply as<br />
+<br />
+<pre>byLeft =&gt; [ "k_.*" ],
+</pre>
+<br />
+If the settlement date doesn't matter, it can be excluded:<br />
+<br />
+<pre>byLeft =&gt; [ "!k_SettlementDate", "k_.*" ],
+</pre>
+<br />
+If the right side represents a swap of securities, it might have two parts to it, each describing its half with its key: <br />
+<br />
+<pre>BorrowAccountSystem
+BorrowAccountId
+BorrowInstrumentSystem
+BorrowInstrumentId
+BorrowTransactionDate
+BorrowSettlementDate
+LoanAccountSystem
+LoanAccountId
+LoanInstrumentSystem
+LoanInstrumentId
+LoanTransactionDate
+LoanSettlementDate
+</pre>
+<br />
+Then the join with its borrow part can be done with<br />
+<br />
+<pre>byLeft =&gt; [ 'k_(.*)/Borrow$1' ],
+</pre>
+<br />
+Makes the long keys easier to drag around.
