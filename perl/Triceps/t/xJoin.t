@@ -589,7 +589,7 @@ our $ttPosition = Triceps::TableType->new($rtPosition)
 or die "$!";
 $ttPosition->initialize() or die "$!";
 
-# remember the indexes for the ufture use
+# remember the indexes for the future use
 our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or die "$!";
 our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or die "$!";
 
