@@ -728,9 +728,9 @@ while(&readLine) {
 	} elsif ($type eq "day") { # set the business day
 		$businessDay = $data[0] + 0; # convert to an int
 	} elsif ($type eq "clear") { # clear the previous day
-		# flush in the "bad" order, that would have caused double updates
-		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
+		# flush the left side first, because it's an outer join
 		&clearByDate($tPosition, $ixtPositionByDate, $businessDay);
+		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -779,18 +779,10 @@ pos,OP_INSERT,20120310,one,AAA,200,16,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
 day,20120311
 clear
-join.rightLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
-join.rightLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" 
-join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
-join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
-join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
-join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
-join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
-join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
-join.leftLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
-join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
-join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
-join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" 
+join.leftLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
 ');
 
 #########################
@@ -936,9 +928,9 @@ while(&readLine) {
 	} elsif ($type eq "day") { # set the business day
 		$businessDay = $data[0] + 0; # convert to an int
 	} elsif ($type eq "clear") { # clear the previous day
-		# flush in the "bad" order, that would have caused double updates
-		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
+		# flush the left side first, because it's an outer join
 		&clearByDate($tPosition, $ixtPositionByDate, $businessDay);
+		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
