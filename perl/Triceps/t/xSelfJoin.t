@@ -168,13 +168,13 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 	my $row = $rowop->getRow();
 	my $looprate = $row->get("rate1") * $row->get("rate2") * $row->get("rate3");
 
-	&send("__", $rowop->printP(), "looprate=$looprate \n"); # for debugging
-
 	if ($looprate > 1) {
 		$uArb->makeHashCall($lbResult, $rowop->getOpcode(),
 			$row->toHash(),
 			looprate => $looprate,
 		);
+	} else {
+			&send("__", $rowop->printP(), "looprate=$looprate \n"); # for debugging
 	}
 }) or die "$!";
 $join2->getOutputLabel()->chain($lbCompute) or die "$!";
@@ -227,18 +227,12 @@ __join2.leftLookup.out OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.65" ccy3="GBP" r
 __join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
 __join2.rightLookup.out OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
 rate,OP_INSERT,USD,EUR,0.78
-__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate=1.142856 
 lbResult OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
-__join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate=1.142856 
 lbResult OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
-__join2.rightLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate=1.142856 
 lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
 rate,OP_DELETE,EUR,GBP,0.74
-__join2.leftLookup.out OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate=1.142856 
 lbResult OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
-__join2.leftLookup.out OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate=1.142856 
 lbResult OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
-__join2.rightLookup.out OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate=1.142856 
 lbResult OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
 rate,OP_INSERT,EUR,GBP,0.64
 __join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.64" ccy3="USD" rate2="1.98" rate3="0.78" looprate=0.988416 
