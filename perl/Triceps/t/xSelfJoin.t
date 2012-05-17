@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 3 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -238,4 +238,150 @@ rate,OP_INSERT,EUR,GBP,0.64
 __join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.64" ccy3="USD" rate2="1.98" rate3="0.78" looprate=0.988416 
 __join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.64" rate3="1.98" looprate=0.988416 
 __join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.64" looprate=0.988416 
+');
+
+#########################
+# Arbitrate with the manual traversal
+
+sub doArbManual {
+
+our $uArb = Triceps::Unit->new("uArb") or die "$!";
+
+our $tRate = $uArb->makeTable($ttRate, 
+	&Triceps::EM_CALL, "tRate") or die "$!";
+
+# now compute the resulting circular rate and filter the profitable loops
+our $rtResult = Triceps::RowType->new(
+	ccy1 => "string", # currency code
+	ccy2 => "string", # currency code
+	ccy3 => "string", # currency code
+	rate1 => "float64",
+	rate2 => "float64",
+	rate3 => "float64",
+	looprate => "float64",
+) or die "$!";
+my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or die "$!";
+my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12") or die "$!";
+
+my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
+my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
+	my ($label, $rowop) = @_;
+	my $row = $rowop->getRow();
+	my $ccy1 = $row->get("ccy1");
+	my $ccy2 = $row->get("ccy2");
+	my $rate1 = $row->get("rate");
+
+	my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2)
+		or die "$!";
+	my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12)
+		or die "$!";
+	for (; !$rhi->same($rhiEnd); $rhi = $rhi->nextIdx($ixtCcy12)) {
+		my $row2 = $rhi->getRow();
+		my $ccy3 = $row2->get("ccy2");
+		my $rate2 = $row2->get("rate");
+
+		my $rhj = $tRate->findIdxBy($ixtCcy12, ccy1 => $ccy3, ccy2 => $ccy1)
+			or die "$!";
+		# it's a leaf primary index, so there may be no more than one match
+		next
+			if ($rhj->isNull());
+		my $row3 = $rhj->getRow();
+		my $rate3 = $row3->get("rate");
+		my $looprate = $rate1 * $rate2 * $rate3;
+
+		# now build the row in normalized order of currencies
+		&send("____Order before: $ccy1, $ccy2, $ccy3\n");
+		my $result;
+		if ($ccy2 lt $ccy3) {
+			if ($ccy2 lt $ccy1) { # rotate left
+				$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+					ccy1 => $ccy2,
+					ccy2 => $ccy3,
+					ccy3 => $ccy1,
+					rate1 => $rate2,
+					rate2 => $rate3,
+					rate3 => $rate1,
+					looprate => $looprate,
+				) or die "$!";
+			}
+		} else {
+			if ($ccy3 lt $ccy1) { # rotate right
+				$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+					ccy1 => $ccy3,
+					ccy2 => $ccy1,
+					ccy3 => $ccy2,
+					rate1 => $rate3,
+					rate2 => $rate1,
+					rate3 => $rate2,
+					looprate => $looprate,
+				) or die "$!";
+			}
+		}
+		if (!defined $result) { # use the straight order
+			$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+				ccy1 => $ccy1,
+				ccy2 => $ccy2,
+				ccy3 => $ccy3,
+				rate1 => $rate1,
+				rate2 => $rate2,
+				rate3 => $rate3,
+				looprate => $looprate,
+			) or die "$!";
+		}
+		if ($looprate > 1) {
+			$uArb->call($result);
+		} else {
+			&send("__", $result->printP(), "\n"); # for debugging
+		}
+	}
+}) or die "$!";
+$tRate->getOutputLabel()->chain($lbCompute) or die "$!";
+makePrintLabel("lbPrint", $lbResult);
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "rate") {
+		$uArb->makeArrayCall($tRate->getInputLabel(), @data)
+			or die "$!";
+	}
+	$uArb->drainFrame(); # just in case, for completeness
+}
+
+} # doArbManual
+
+@input = @inputArb;
+$result = undef;
+&doArbManual();
+#print $result;
+ok($result, 
+'rate,OP_INSERT,EUR,USD,1.48
+rate,OP_INSERT,USD,EUR,0.65
+rate,OP_INSERT,GBP,USD,1.98
+rate,OP_INSERT,USD,GBP,0.49
+rate,OP_INSERT,EUR,GBP,0.74
+____Order before: EUR, GBP, USD
+__lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.65" looprate="0.95238" 
+rate,OP_INSERT,GBP,EUR,1.30
+____Order before: GBP, EUR, USD
+__lbResult OP_INSERT ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.48" rate2="0.49" rate3="1.3" looprate="0.94276" 
+rate,OP_DELETE,EUR,USD,1.48
+____Order before: EUR, USD, GBP
+__lbResult OP_DELETE ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.48" rate2="0.49" rate3="1.3" looprate="0.94276" 
+rate,OP_INSERT,EUR,USD,1.28
+____Order before: EUR, USD, GBP
+__lbResult OP_INSERT ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.28" rate2="0.49" rate3="1.3" looprate="0.81536" 
+rate,OP_DELETE,USD,EUR,0.65
+____Order before: USD, EUR, GBP
+__lbResult OP_DELETE ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.65" looprate="0.95238" 
+rate,OP_INSERT,USD,EUR,0.78
+____Order before: USD, EUR, GBP
+lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
+rate,OP_DELETE,EUR,GBP,0.74
+____Order before: EUR, GBP, USD
+lbResult OP_DELETE ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
+rate,OP_INSERT,EUR,GBP,0.64
+____Order before: EUR, GBP, USD
+__lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.64" rate2="1.98" rate3="0.78" looprate="0.988416" 
 ');
