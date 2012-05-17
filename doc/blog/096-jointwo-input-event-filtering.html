@@ -24,7 +24,7 @@ The main loop gets extended with some more commands:<br />
 <br />
 <pre>our $businessDay = undef;
 
-while(&amp;readLine) {
+while(&lt;STDIN&gt;) {
 &nbsp; chomp;
 &nbsp; my @data = split(/,/); # starts with a command, then string opcode
 &nbsp; my $type = shift @data;

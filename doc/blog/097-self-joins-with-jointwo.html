@@ -1,0 +1,233 @@
+Self-joins with JoinTwo
+
+The self-joins happen when a table is joined to itself. Previously I've said that the self-join's aren't supported in Triceps, but that's not true any more. They are now.<br />
+<br />
+For an example of a model with self-joins, let's look at the Forex trading. There people exchange the currencies in every possible direction in multiple markets. There are the quoted rates for exchange of every pair of currencies, in every direction.<br />
+<br />
+Naturally, if you exchange one currency into another and then back into the first one, you normally end up with less money than you've started with. The rest becomes the transaction cost and lines the pockets of the brokers, market makers and exchanges.<br />
+<br />
+However once in a while&nbsp; interesting things happen. If the exchange rates between the different currencies become disbalanced, you may be able to exchange the currency A for currency B for currency C and back for currency A, and end up with more money than you've started with. (You don't have to do it in sequence, you would normally do all three transactions in parallel). However it's a short-lived opportunity: as you perform the transactions, you'll be changing the involved exchange rates towards the balance, and you won't be the only one exploiting this opportunity, so you better act fast. This activity of bringing the market into balance while simultaneously extracting profit is called "arbitration".<br />
+<br />
+So let's make a model that will detect such arbitration opportunities, for the following automated execution. Mind you, it's all grossly simplified, but it shows the gist of it. And most importantly, it uses the self-joins. Here we go:<br />
+<br />
+<pre>our $uArb = Triceps::Unit-&gt;new("uArb") or die "$!";
+
+our $rtRate = Triceps::RowType-&gt;new( # an exchange rate between two currencies
+&nbsp; ccy1 =&gt; "string", # currency code
+&nbsp; ccy2 =&gt; "string", # currency code
+&nbsp; rate =&gt; "float64", # multiplier when exchanging ccy1 to ccy2
+) or die "$!";
+
+# all exchange rates
+our $ttRate = Triceps::TableType-&gt;new($rtRate)
+&nbsp; -&gt;addSubIndex("byCcy1",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy1" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byCcy12",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy2" ])
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+&nbsp; -&gt;addSubIndex("byCcy2",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy2" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("grouping", Triceps::IndexType-&gt;newFifo())
+&nbsp; )
+or die "$!";
+$ttRate-&gt;initialize() or die "$!";
+
+our $tRate = $uArb-&gt;makeTable($ttRate,
+&nbsp; &amp;Triceps::EM_CALL, "tRate") or die "$!";
+</pre>
+<br />
+The rate quotes will be coming&nbsp; into this table. The indexes are provided to both work with the self-joins and to have a primary index as the first leaf.
+<br />
+<br />
+<pre>our $join1 = Triceps::JoinTwo-&gt;new(
+&nbsp; name =&gt; "join1",
+&nbsp; leftTable =&gt; $tRate,
+&nbsp; leftIdxPath =&gt; [ "byCcy2" ],
+&nbsp; leftFields =&gt; [ "ccy1", "ccy2", "rate/rate1" ],
+&nbsp; rightTable =&gt; $tRate,
+&nbsp; rightIdxPath =&gt; [ "byCcy1" ],
+&nbsp; rightFields =&gt; [ "ccy2/ccy3", "rate/rate2" ],
+); # would die by itself on an error
+</pre>
+<br />
+There are no special options for the self-join: just use 
+the same table for both the left and right side. This join represents 
+two exchange transactions, so it's done by matching the second currency 
+of the first quote to the first currency of the second quote. The result contains three currency names and two rate multiplier.<br />
+<br />
+<pre>our $ttJoin1 = Triceps::TableType-&gt;new($join1-&gt;getResultRowType())
+&nbsp; -&gt;addSubIndex("byCcy123",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy1", "ccy2", "ccy3" ])
+&nbsp; )
+&nbsp; -&gt;addSubIndex("byCcy31",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy3", "ccy1" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("grouping", Triceps::IndexType-&gt;newFifo())
+&nbsp; )
+or die "$!";
+$ttJoin1-&gt;initialize() or die "$!";
+our $tJoin1 = $uArb-&gt;makeTable($ttJoin1,
+&nbsp; &amp;Triceps::EM_CALL, "tJoin1") or die "$!";
+$join1-&gt;getOutputLabel()-&gt;chain($tJoin1-&gt;getInputLabel()) or die "$!";
+</pre>
+<br />
+To find the exchange rate back to the first cuurency, we need to do one more join. But a join needs two tables, so we have to put the result of the first join into a table first. The first index is the primary index, the second one is used for the next join. Note that the order of key fields in the second index is suited for the join.<br />
+<br />
+<pre>our $join2 = Triceps::JoinTwo-&gt;new(
+&nbsp; name =&gt; "join2",
+&nbsp; leftTable =&gt; $tJoin1,
+&nbsp; leftIdxPath =&gt; [ "byCcy31" ],
+&nbsp; rightTable =&gt; $tRate,
+&nbsp; rightIdxPath =&gt; [ "byCcy1", "byCcy12" ],
+&nbsp; rightFields =&gt; [ "rate/rate3" ],
+&nbsp; # the field ordering in the indexes is already right, but
+&nbsp; # for clarity add an explicit join condition too
+&nbsp; byLeft =&gt; [ "ccy3/ccy1", "ccy1/ccy2" ],
+); # would die by itself on an error
+</pre>
+<br />
+The result adds one more rate multiplier. Now to learn the effect of the circular conversion we only need to multiply all the multipliers. If it comes out below 1, the cycling transaction would return a loss, if above 1, a profit.
+<br />
+<br />
+<pre># now compute the resulting circular rate and filter the profitable loops
+our $rtResult = Triceps::RowType-&gt;new(
+&nbsp; $join2-&gt;getResultRowType()-&gt;getdef(),
+&nbsp; looprate =&gt; "float64",
+) or die "$!";
+my $lbResult = $uArb-&gt;makeDummyLabel($rtResult, "lbResult");
+my $lbCompute = $uArb-&gt;makeLabel($join2-&gt;getResultRowType(), "lbCompute", undef, sub {
+&nbsp; my ($label, $rowop) = @_;
+&nbsp; my $row = $rowop-&gt;getRow();
+&nbsp; my $looprate = $row-&gt;get("rate1") * $row-&gt;get("rate2") * $row-&gt;get("rate3");
+
+&nbsp; print("__", $rowop-&gt;printP(), "looprate=$looprate \n"); # for debugging
+
+&nbsp; if ($looprate &gt; 1) {
+&nbsp;&nbsp;&nbsp; $uArb-&gt;makeHashCall($lbResult, $rowop-&gt;getOpcode(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $row-&gt;toHash(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; looprate =&gt; $looprate,
+&nbsp;&nbsp;&nbsp; );
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; print("__", $rowop-&gt;printP(), "looprate=$looprate \n"); # for debugging
+
+&nbsp; }
+}) or die "$!";
+$join2-&gt;getOutputLabel()-&gt;chain($lbCompute) or die "$!";
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $lbResult);
+</pre>
+<br />
+A label with Perl handler performs the multiplication, and if the result is over 1, passes the result to the next label, from which then the data gets printed. I've also added a debugging printout in case if the row doesn't get through. That one starts with "__" and helps seeing what goes on inside when no result is coming out.<br />
+<br />
+<pre>while(&lt;STDIN&gt;) {
+&nbsp; chomp;
+&nbsp; my @data = split(/,/); # starts with a command, then string opcode
+&nbsp; my $type = shift @data;
+&nbsp; if ($type eq "rate") {
+&nbsp;&nbsp;&nbsp; $uArb-&gt;makeArrayCall($tRate-&gt;getInputLabel(), @data)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; or die "$!";
+&nbsp; }
+&nbsp; $uArb-&gt;drainFrame(); # just in case, for completeness
+}
+</pre>
+<br />
+Finally, the main loop reads the data and puts it into the rates table.<br />
+<br />
+Now let's take a look at an example of a run.<br />
+<br />
+<pre><i>rate,OP_INSERT,EUR,USD,1.48
+rate,OP_INSERT,USD,EUR,0.65
+rate,OP_INSERT,GBP,USD,1.98
+rate,OP_INSERT,USD,GBP,0.49</i>
+</pre>
+<br />
+The rate quotes start coming in. Note that the rates are separate for each direction of exchange. So far nothing happens because there aren't enough quotes to complete a loop of three steps.<br />
+<br />
+<pre><i>rate,OP_INSERT,EUR,GBP,0.74</i>
+__join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74"
+ ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
+__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.65"
+ ccy3="GBP" rate2="0.74" rate3="1.98" looprate=0.95238 
+__join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98"
+ ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
+<i>rate,OP_INSERT,GBP,EUR,1.30</i>
+__join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="EUR" rate1="1.3"
+ ccy3="USD" rate2="1.48" rate3="0.49" looprate=0.94276 
+__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="GBP" rate1="0.49"
+ ccy3="EUR" rate2="1.3" rate3="1.48" looprate=0.94276 
+__join2.rightLookup.out OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.48"
+ ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.94276 </pre>
+<br />
+Now there are enough currencies in play to complete the loop. None of them get the loop rate over 1 though, so the only printouts are from the debugging logic. There are only two loops, but each of them is printed three times. Why? It's a loop, so you can start from each of its elements and come back to the same element. One row for each starting point. And the joins find all of them.<br />
+<br />
+To find and eliminate the duplicates, the order of currencies in the rows can be rotated to put the alphabetically lowest currency code first. Note that they can't be just sorted because the relative order matters. Trading in the order GBP-USD-EUR will give a different result than GBP-EUR-USD. The relative order has to be preserved. I didn't put any such elimination into the example to keep it smaller.<br />
+<br />
+<pre><i>rate,OP_DELETE,EUR,USD,1.48</i>
+__join2.leftLookup.out OP_DELETE ccy1="EUR" ccy2="USD" rate1="1.48"
+ ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.94276 
+__join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="EUR" rate1="1.3"
+ ccy3="USD" rate2="1.48" rate3="0.49" looprate=0.94276 
+__join2.rightLookup.out OP_DELETE ccy1="USD" ccy2="GBP" rate1="0.49"
+ ccy3="EUR" rate2="1.3" rate3="1.48" looprate=0.94276 
+<i>rate,OP_INSERT,EUR,USD,1.28</i>
+__join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.28"
+ ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.81536 
+__join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="EUR" rate1="1.3"
+ ccy3="USD" rate2="1.28" rate3="0.49" looprate=0.81536 
+__join2.rightLookup.out OP_INSERT ccy1="USD" ccy2="GBP" rate1="0.49"
+ ccy3="EUR" rate2="1.3" rate3="1.28" looprate=0.81536 </pre>
+<br />
+Someone starts changing lots of euros for dollars, and the rate moves. No good news for us yet though. <br />
+<br />
+<pre><i>rate,OP_DELETE,USD,EUR,0.65</i>
+__join2.leftLookup.out OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.65"
+ ccy3="GBP" rate2="0.74" rate3="1.98" looprate=0.95238 
+__join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98"
+ ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
+__join2.rightLookup.out OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74"
+ ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
+<i>rate,OP_INSERT,USD,EUR,0.78</i>
+lbResult OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78"
+ ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
+lbResult OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98"
+ ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
+lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74"
+ ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" </pre>
+<br />
+The rate for dollars-to-euros follows its opposite. This creates an arbitration opportunity! Step two: trade in the direction USD-EUR-GBP-USD, step three: PROFIT!!!<br />
+<br />
+<pre><i>rate,OP_DELETE,EUR,GBP,0.74</i>
+lbResult OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74"
+ ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
+lbResult OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.78"
+ ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
+lbResult OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98"
+ ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
+<i>rate,OP_INSERT,EUR,GBP,0.64</i>
+__join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.64"
+ ccy3="USD" rate2="1.98" rate3="0.78" looprate=0.988416 
+__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78"
+ ccy3="GBP" rate2="0.64" rate3="1.98" looprate=0.988416 
+__join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98"
+ ccy3="EUR" rate2="0.78" rate3="0.64" looprate=0.988416 
+</pre>
+<br />
+Our trading (and perhaps other people's trading too) moves the exchange rate of euros to pounds. And with that the balance of currencies is restored, and the arbitration opportunity disappears.<br />
+<br />
+Now let's have a look inside JoinTwo. What is so special about the self-join? Normally the join works on two separate tables. They get updated one at a time. Even if some common reason causes both tables to be updated, the update arrives from one table first. The join sees this incoming update, looks in the unchanged second table, produces an updated result. Then the update from the second table comes to the join, which takes it, looks in the already modified first table, and produces another updated result.<br />
+<br />
+If both inputs are from the same table, this logic breaks. Two copies of the updates will arrive, but by the time the first one arrives, the contents of the table has been already changed. When the join looks in the table, it gets the unexpected results and creates a mess.<br />
+<br />
+But JoinTwo has a fix for this. It makes use of the "pre" label of the table for its left-side update (the right side would have worked just as good, it's just a random choice):<br />
+<br />
+<pre>&nbsp; my $selfJoin = $self-&gt;{leftTable}-&gt;same($self-&gt;{rightTable});
+&nbsp; if ($selfJoin &amp;&amp; !defined $self-&gt;{leftFromLabel}) { 
+&nbsp;&nbsp;&nbsp; # one side must be fed from Pre label (but still let the user override)
+&nbsp;&nbsp;&nbsp; $self-&gt;{leftFromLabel} = $self-&gt;{leftTable}-&gt;getPreLabel();
+&nbsp; } 
+</pre>
+<br />
+This way when the join sees the first update, the table hasn't changed yet. And then the second copy of that update comes though the normal output label, after the table has been modified. Everything just works out as normal and the self-joins produce the correct result.<br />
+<br />
+Normally you don't need to concern yourself with this, except if you're trying to filter the data coming to the join. Then remember that for leftFromLabel you have to receive the data from the table's getPreLabel(), not getOutputLabel().
