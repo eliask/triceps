@@ -1,0 +1,96 @@
+Self-join using LookupJoin
+
+The experience with the manual join has made me think about using a similar approach to avoid triplication of the data in the version with join templates. And after some false-starts, I've realized that what that version needs is the LookupJoins. They replace the loops. So, one more version is:<br />
+<br />
+<pre>our $join1 = Triceps::LookupJoin-&gt;new(
+&nbsp; name =&gt; "join1",
+&nbsp; leftFromLabel =&gt; $tRate-&gt;getOutputLabel(),
+&nbsp; leftFields =&gt; [ "ccy1", "ccy2", "rate/rate1" ],
+&nbsp; rightTable =&gt; $tRate,
+&nbsp; rightIdxPath =&gt; [ "byCcy1" ],
+&nbsp; rightFields =&gt; [ "ccy2/ccy3", "rate/rate2" ],
+&nbsp; byLeft =&gt; [ "ccy2/ccy1" ], 
+&nbsp; isLeft =&gt; 0,
+); # would die by itself on an error
+
+our $join2 = Triceps::LookupJoin-&gt;new(
+&nbsp; name =&gt; "join2",
+&nbsp; leftFromLabel =&gt; $join1-&gt;getOutputLabel(),
+&nbsp; rightTable =&gt; $tRate,
+&nbsp; rightIdxPath =&gt; [ "byCcy1", "byCcy12" ],
+&nbsp; rightFields =&gt; [ "rate/rate3" ],
+&nbsp; byLeft =&gt; [ "ccy3/ccy1", "ccy1/ccy2" ], 
+&nbsp; isLeft =&gt; 0,
+); # would die by itself on an error
+
+# now compute the resulting circular rate and filter the profitable loops
+our $rtResult = Triceps::RowType-&gt;new(
+&nbsp; $join2-&gt;getResultRowType()-&gt;getdef(),
+&nbsp; looprate =&gt; "float64",
+) or die "$!";
+my $lbResult = $uArb-&gt;makeDummyLabel($rtResult, "lbResult");
+my $lbCompute = $uArb-&gt;makeLabel($join2-&gt;getResultRowType(), "lbCompute", undef, sub {
+&nbsp; my ($label, $rowop) = @_;
+&nbsp; my $row = $rowop-&gt;getRow();
+
+&nbsp; my $ccy1 = $row-&gt;get("ccy1");
+&nbsp; my $ccy2 = $row-&gt;get("ccy2");
+&nbsp; my $ccy3 = $row-&gt;get("ccy3");
+&nbsp; my $rate1 = $row-&gt;get("rate1");
+&nbsp; my $rate2 = $row-&gt;get("rate2");
+&nbsp; my $rate3 = $row-&gt;get("rate3");
+&nbsp; my $looprate = $rate1 * $rate2 * $rate3;
+
+&nbsp; # now build the row in normalized order of currencies
+&nbsp; print("____Order before: $ccy1, $ccy2, $ccy3\n");
+&nbsp; my $result;
+&nbsp; if ($ccy2 lt $ccy3) { 
+&nbsp;&nbsp;&nbsp; if ($ccy2 lt $ccy1) { # rotate left
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $result = $lbResult-&gt;makeRowopHash($rowop-&gt;getOpcode(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy1 =&gt; $ccy2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy2 =&gt; $ccy3,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy3 =&gt; $ccy1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate1 =&gt; $rate2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate2 =&gt; $rate3,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate3 =&gt; $rate1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; looprate =&gt; $looprate,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp;&nbsp;&nbsp; }
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; if ($ccy3 lt $ccy1) { # rotate right
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $result = $lbResult-&gt;makeRowopHash($rowop-&gt;getOpcode(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy1 =&gt; $ccy3,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy2 =&gt; $ccy1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy3 =&gt; $ccy2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate1 =&gt; $rate3,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate2 =&gt; $rate1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate3 =&gt; $rate2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; looprate =&gt; $looprate,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp;&nbsp;&nbsp; }
+&nbsp; }
+&nbsp; if (!defined $result) { # use the straight order
+&nbsp;&nbsp;&nbsp; $result = $lbResult-&gt;makeRowopHash($rowop-&gt;getOpcode(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy1 =&gt; $ccy1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy2 =&gt; $ccy2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ccy3 =&gt; $ccy3,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate1 =&gt; $rate1,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate2 =&gt; $rate2,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rate3 =&gt; $rate3,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; looprate =&gt; $looprate,
+&nbsp;&nbsp;&nbsp; ) or die "$!";
+&nbsp; }
+&nbsp; if ($looprate &gt; 1) {
+&nbsp;&nbsp;&nbsp; $uArb-&gt;call($result);
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; print("__", $result-&gt;printP(), "\n"); # for debugging
+&nbsp; }
+}) or die "$!";
+$join2-&gt;getOutputLabel()-&gt;chain($lbCompute) or die "$!";
+</pre>
+<br />
+It produces the exact same result as the version with the manual loops, with the only minor difference of the field order in the result rows.<br />
+<br />
+And, in retrospect, I should have probably made a function for the row rotation, so that I would not have to copy that code here.<br />
+<br />
+Well, it works the same as the version with the loops and maybe even looks a little bit neater, but in practice it's much harder to write, debug and understand.
