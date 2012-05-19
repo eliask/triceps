@@ -13,13 +13,6 @@ use strict;
 # Process the list of field names according to the filter spec.
 # Generally used by all kinds of templates to create their result schemas.
 #
-# @param caller - name of the caller, for the error messages
-# @param incoming - reference to the original array of field names
-# @param patterns - reference to the array of filter patterns (undef means 
-#   "no filtering, pass as is")
-# @return - an array of filtered field names, positionally mathing the
-#    names in the original array, with undefs for the thrown-away fields
-#
 # Does NOT check for name correctness, duplicates etc.
 # Does check for the literal field names not matching anything,
 # confesses on them.
@@ -38,7 +31,14 @@ use strict;
 #        performing a substitution on it. For example, '.*/second_$&/'
 #        would pass through all the fields, prefixing them with "second_".
 #
-sub filter($$$) # (\@incoming, \@patterns) # no $self, it's a static method!
+# @param caller - name of the caller, for the error messages
+# @param incoming - reference to the original array of field names
+# @param patterns - reference to the array of filter patterns (undef means 
+#   "no filtering, pass as is")
+# @return - an array of filtered field names, positionally mathing the
+#    names in the original array, with undefs for the thrown-away fields
+#
+sub filter($$$) # ($caller, \@incoming, \@patterns) # no $self, it's a static method!
 {
 	my $caller = shift;
 	my $incoming = shift;
@@ -120,7 +120,7 @@ sub filter($$$) # (\@incoming, \@patterns) # no $self, it's a static method!
 # @return - an array of an even number of elements, for each passing-through
 #   field containing its original name and translated name (the fields that
 #   do not pass through are not returned).
-sub filterToPairs($$$) # (\@incoming, \@patterns) # no $self, it's a static method!
+sub filterToPairs($$$) # ($caller, \@incoming, \@patterns) # no $self, it's a static method!
 {
 	my $caller = shift;
 	my $incoming = shift;
