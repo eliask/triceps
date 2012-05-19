@@ -1,0 +1,86 @@
+LookupJoin reference
+
+The features of LookupJoin have been already described and illustrated in great many examples. Here is the short summary of them.
+
+<pre>$joiner = Triceps::LookupJoin-&gt;new(optionName =&gt; optionValue, ...);</pre>
+
+Construct the LookupJoin template. Confesses on any errors. Many of the options are in fact mandatory, the optional ones are marked as such. They are:
+
+unit - Scheduling unit object (may be skipped if leftFromLabel is used) .
+
+name - Name of this LookupJoin object (will be used to create the names of internal objects).
+
+leftRowType (mutually exclusive with leftFromLabel, one must be present) - Type of the rows that will be coming in at the left side of the join, and will be used for lookup.
+
+leftFromLabel (mutually exclusive with leftRowType, one must be present) - Source of rows for the left side of the join; implies their type and the scheduling unit where this object belongs.
+
+rightTable - Table object where to do the look-ups.
+
+rightIdxPath (optional) - Array reference containing the path name of index type in table used for the look-up (default: first top-level Hash index type). The index absolutely must be a Hash (leaf or non-leaf), not of any other kind.
+
+leftFields (optional) - Reference to an array of patterns for the left-side fields to pass through. Syntax as described in Triceps::Fields::filter(). If not defined then pass everything.
+
+rightFields (optional) - Reference to an array of patterns for the right-side fields to pass through. Syntax as described in Triceps::Fields::filter(). If not defined then pass everything (which is probably a bad idea since it would include the&nbsp; second copy of the key fields, so better override it).
+
+fieldsLeftFirst (optional) - Flag: in the resulting rows put the fields from the left side first, then from right side. If 0, then opposite. (default:1)
+
+fieldsMirrorKey (optional) - Flag: even if the join is an outer join and the row on one side is absent when generating the result row, the key fields in it will still be present by mirroring them from the other side. Used by JoinTwo. (default: 0)
+
+by (mutually exclusive with byLeft, one must be present) - Reference to an array containing pairs of field names used for look-up,&nbsp;[ leftFld1, rightFld1, leftFld2, rightFld2, ... ]. The set of right-side fields must match the keys of the index path from the option rightIdxPath, though possibly in a different order.
+
+byLeft (mutually exclusive with byLeft, one must be present) - Reference to an array containing the patterns in the syntax of Triceps::Fields::filter(). It gets applied to the left-side fields, the fields that pass through become the key fields, and their translations are the names of the matching fields on the right side. The set of right-side fields must match the keys of the index path from  the option rightIdxPath, though possibly in a different order.
+
+isLeft (optional) - Flag: 1 for left outer join, 0 for inner join. (default: 1)
+
+limitOne (optional) - Flag: 1 to return no more than one row even if multiple rows have been found by the look-up, 0 to return all the found matches. (default: 0 for the non-leaf right index, 1 for leaf right index). If the right index is leaf, this option will be always automatically set to 1, even if the user specified otherwise, since there is no way to look up more than one matching row in it.
+
+automatic (optional) - Flag: 1 means that the lookup() method will never be called manually. This allows to optimize the label handler code and always take the opcode into account when processing the rows. 0 means that lookup() will be used. (default: 1)
+
+oppositeOuter (optional, used only with automatic =&gt; 1) - Flag: 1 for the right outer join, 0 for inner join. If both options isLeft and oppositeOuter are set to 1, then this is a full outer join. If set to 1, each update that finds a match in the right table, may produce a DELETE-INSERT sequence that keeps the state of the right or full outer join consistent. The full outer or right outer join logic makes sense only if this LookupJoin is one of a pair in a bigger JoinTwo object. Each of these LookupJoins thinks of itself as "left" and of the other one as "right", while JoinTwo presents a consistent whole picture to the user.&nbsp; (default: 0) Used by JoinTwo.
+
+groupSizeCode (optional, used only with oppositeOuter =&gt; 1) - Reference to a function that would compute the group size for this side's table. The group size together with the opcode is then used to decide if a DELETE-INSERT sequence needs to be produced instead of a plain INSERT or DELETE. It is needed when this side's index (not visible here in LookupJoin but visible in the JoinTwo that envelopes it) is non-leaf, so multiple rows on this side may&nbsp;match each row on the other side. The DELETE-INSERT pair needs to be generated only if the current rowop was a deletion of the last matching row or insertion&nbsp;of the first matching row on this side. If groupSizeCode is not defined,&nbsp;the DELETE-INSERT part is always generated (which is appropriate is this side's&nbsp;index is leaf, and every row is the last or first one). If groupSizeCode is&nbsp;defined, it should return the group size in the left table by the left index for&nbsp;the input row. If the operation is INSERT, the size of 1 would mean that the&nbsp;DELETE-INSERT pair needs to be generated. If the operation is DELETE, the size of 0&nbsp; would mean that the DELETE-INSERT pair needs to be generated. Called as:
+
+<pre>&nbsp;&nbsp;&amp;$groupSizeCode($opcode, $leftrow)</pre>
+
+The default undefined groupSizeCode is equivalent to
+
+<pre>&nbsp; sub { &amp;Triceps::isInsert($_[0]); }</pre>
+
+but leaving it undefined is more efficient since allows to hardcode this logic at compile time instead of calling the function for every rowop.
+
+saveJoinerTo (optional) - Reference to a scalar where to save a copy of the joiner function source code.
+
+<pre>@rows = $joiner-&gt;lookup($leftRow);</pre>
+
+Look up the matches for the $leftRow and return the array of the result rows. If the option "isLeft" is 0, the array may be empty. If the option "limitOne" is 1, the array will contain no more than one row, and may be assigned directly to a scalar.
+
+<pre>$rt = $joiner-&gt;getResultRowType();</pre>
+
+Get the row type of the join result.
+
+<pre>$lb = $joiner-&gt;getInputLabel();</pre>
+
+Get the input label of the joiner. The rowops sent there will be processed as coming on the left side of the join. The result will be produced on the output label.
+
+<pre>$lb = $joiner-&gt;getOutputLabel();</pre>
+
+Get the output label of the joiner. The results from processing of the input rowops come out here. Note that the results of the lookup() calls do not come out at the output label, they are only returned to the caller.
+
+<pre>$res = $joiner-&gt;getUnit();
+$res = $joiner-&gt;getName(); 
+$res = $joiner-&gt;getLeftRowType(); 
+$res = $joiner-&gt;getRightTable(); 
+$res = $joiner-&gt;getRightIdxPath(); 
+$res = $joiner-&gt;getLeftFields(); 
+$res = $joiner-&gt;getRightFields(); 
+$res = $joiner-&gt;getFieldsLeftFirst(); 
+$res = $joiner-&gt;getFieldsMirrorKey(); 
+$res = $joiner-&gt;getBy(); 
+$res = $joiner-&gt;getByLeft(); 
+$res = $joiner-&gt;getIsLeft(); 
+$res = $joiner-&gt;getLimitOne(); 
+$res = $joiner-&gt;getAutomatic(); 
+$res = $joiner-&gt;getOppositeOuter(); 
+$res = $joiner-&gt;getGroupSizeCode(); </pre>
+
+Get back the values of the options. If such an option was not set, returns the default value, or the automatically calculated value. Sometimes an automatically calculated value may even override the user-specified value. There is no way to get back "leftFromLabel", it is discarded after the LookupJoin is constructed.

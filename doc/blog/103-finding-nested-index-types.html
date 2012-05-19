@@ -1,0 +1,50 @@
+Finding the nested index types
+
+The joins have introduced a syntax for choosing a nested index type in the table (or, more exactly, in the table type). You can say
+
+<pre>rightIdxPath =&gt; [ "byCcy1", "byCcy12" ],</pre>
+
+to specify the index type "byCcy12" nested in index type "byCcy1". Internally the joins delegate this index finding to the TableType calls, and you can also use these calls directly:
+
+<pre>$idxType = $tableType-&gt;findIndexPath(\@path);
+($idxType, @keys) = $tableType-&gt;findIndexKeyPath(\@path);</pre>
+
+For example:
+
+<pre>$ixt = $tt-&gt;findIndexPath([ "byCcy1", "byCcy12" ]);
+($ixt, @keys) = $tt-&gt;findIndexKeyPath([ "byCcy1", "byCcy12" ]); </pre>
+
+The findIndexPath() simply finds the index type at the path. If there is no such index, it confesses.
+
+The findIndexKeyPath() finds by path an index type that allows the direct look-up by key fields. It requires that every index type in the path returns a non-empty array of fields in getKey(). In practice it means that every index in the path must be a Hashed index. Otherwise the method confesses. When the Sorted and maybe other index types will support getKey(), they will be usable with this method too.
+
+Besides checking that each index type in the path works by keys, this method builds and returns the list of all the key fields required for a look-up in this index. Note that @keys is an actual array and not a reference to array. The return protocol of this method is a little weird: it returns an array of values, with the first value being the reference to the index type, and the rest of them the names of the key fields. If the table type was defined as
+
+<pre>$tt = Triceps::TableType-&gt;new($rt)
+&nbsp; -&gt;addSubIndex("byCcy1",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy1" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byCcy12",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy2" ])
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+&nbsp; -&gt;addSubIndex("byCcy2",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy2" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("grouping", Triceps::IndexType-&gt;newFifo())
+&nbsp; )
+or die "$!";</pre>
+
+then the look-up of [ "byCcy1", "byCcy12" ] would return ($ixtref, "ccy1", "ccy2"), where $ixtref is the reference to the index type. When assigned to ($ixt, @keys), $ixtref would go into $ixt, and ("ccy1", "ccy2") would go into @keys.
+
+The key field names in the result go in the order they occurred in the definition, from the outermost to the innermost index. The key fields must not duplicate. It's possible to define the index types where the key fields duplicate in the path, say:
+
+
+<pre>$tt = Triceps::TableType-&gt;new($rt)
+&nbsp; -&gt;addSubIndex("byCcy1",
+&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy1" ])
+&nbsp;&nbsp;&nbsp; -&gt;addSubIndex("byCcy12",
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Triceps::IndexType-&gt;newHashed(key =&gt; [ "ccy2", "ccy1" ])
+&nbsp;&nbsp;&nbsp; )
+&nbsp; )
+or die "$!";</pre>
+
+And they would even work fine, with just a little extra overhead from duplication. But findIndexKeyPath() will refuse such indexes and confess.

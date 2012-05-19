@@ -1,0 +1,49 @@
+More option checking 
+
+Some motifs in checking the options for the method calls have been coming up repeatedly, to I've added more Triceps::Opt methods that encapsulate them.
+
+The first one deals with the mutually exclusive options. Triceps::Opt::parse() doesn't know how to check the mutual exclusivity correctly. For it the option is either mandatory or optional. And rather than complicate it with some convoluted specification of the option exclusivity groups, I've just added a separate method to check that:
+
+<pre>$optName = &amp;Triceps::Opt::checkMutuallyExclusive(
+  $callerDescr, $mandatoryFlag,
+&nbsp; $optName1 =&gt; optValue1, ...);</pre>
+
+You call parse() and then you call checkMutuallyExclusive(). If it finds an error, it confesses. It returns the name of the only option that has been defined (or undef if none of them were defined). For example, this is what the JoinTwo constructor does:
+
+<pre>&amp;Triceps::Opt::checkMutuallyExclusive("Triceps::JoinTwo::new", 0,
+&nbsp; by =&gt; $self-&gt;{by},
+&nbsp; byLeft =&gt; $self-&gt;{byLeft});</pre>
+
+$callerDescr is some string that describes the caller for the error message. The names of&nbsp; the options are also used in the error messages. $mandatoryFlag is 1 if exactly one option must be defined, or 0 if having none of them defined is also OK. The "defined" here means that the value passed in the arguments is not undef.
+
+The second method is more specialized. It deals with the triangle of (Unit, RowType, Label). It turns out quite convenient to either let a template define its own input label and then manually connect it or just give it another label and let it automatically chain the input to that label. In the first case the template has to be told, what Unit it belongs to, and what is the RowType of the input data. In the second case they can be found from the Label. The method
+
+<pre>&amp;Triceps::Opt::handleUnitTypeLabel($callerDescr, $nameUnit, \$refUnit,
+&nbsp; $nameRowType, \$refRowType, $nameLabel, \$refLabel);</pre>
+
+encapsulates this finding-out and other checks. Its rules are:
+<ul>
+<li>The label option and the row type option are mutually exclusive.</li>
+<li>The unit option may be specified together with the label option, but it must be the same unit as in the label.</li>
+<li>If the label option is used, the unit and row type option values will be populated from the label.</li>
+<li>On any error it confesses, using $callerDescr for the caller description in the error message. The option name arguments are slao used for the error messages.</li>
+<li>It always returns 1.</li>
+</ul>
+
+The values are passed by reference because they may be computed by this method from the other values.
+
+Here is a usage example:
+
+<pre>&amp;Triceps::Opt::handleUnitTypeLabel("Triceps::LookupJoin::new",
+&nbsp; unit =&gt; \$self-&gt;{unit},
+&nbsp; leftRowType =&gt; \$self-&gt;{leftRowType},
+&nbsp; leftFromLabel =&gt; \$self-&gt;{leftFromLabel});</pre>
+
+The label object doesn't strictly have to be a label object. It may be any object that supports the methods getUnit() and getRowType().
+
+Here you might remember that a Label doesn't have the method getRowType(), its method for getting the row type is called getType(). Well, I've added it now.&nbsp; You can use now either of
+
+<pre>$lb-&gt;getType()
+$lb-&gt;getRowType()</pre>
+
+with the same effect.

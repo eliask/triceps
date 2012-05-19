@@ -1,0 +1,51 @@
+The hidden options of LookupJoin
+
+These options aren't really hidden, just they aren't particularly useful unless you want to use a LookupJoin as a part of a multi-sided join, like JoinTwo does. It's even hard to explain what do they do without explaining the JoinTwo first. If you're not interested in such details, you can as well skip them.
+
+So, setting
+
+<pre>oppositeOuter =&gt; 1
+</pre>
+
+tells that this LookupJoin is a part of an outer join, with the opposite side (right side, for this LookupJoin) being an outer one (well, this side might be outer too if "isLeft =&gt; 1", but that's a whole separate question). This enables the logic that checks whether the row inserted here is the first one that matches a row in the right-side table, and whether the row deleted here was the last one that matches. If the condition is satisfied, not a simple INSERT or DELETE rowop is produced but a correct DELETE-INSERT pair that replaces the old state with the new one. Well, it's been described in detail for the JoinTwo.
+
+But how does it know if the current row if the first one or last one or neither? After all, LookupJoin doesn't have any access to the left-side table. It has two ways to know.
+
+First, by default it simply assumes that it's an one-to-something (1:1 or 1:M) join. Then there may be no more than one matching row on this side, and every row inserted is the first one, and every row deleted is the last one. Then it does the DELETE-INSERT trick every time.
+
+Second, the option
+
+<pre>groupSizeCode =&gt; \&amp;groupSizeComputation
+</pre>
+
+can be used to compute the current group size for the current row. It provides a function that does the computation and gets called as
+
+<pre>$gsz = &amp;{$self-&gt;{groupSizeCode}}($opcode, $row);
+</pre>
+
+Note that it doesn't get the table reference nor the index type reference either, so it has to be a closure with the references compiled into it. JoinTwo does it with the definition
+
+<pre>sub { # (opcode, row)
+&nbsp; $table-&gt;groupSizeIdx($ixt, $_[1]);
+}
+</pre>
+
+Why not just pass the table and index type references to JoinTwo and let it do the same computation without any mess with the closure references? Because the group size computation may need to be different. When the JoinTwo does a self-join, it feeds the left side from the table's Pre label, and the normal group size computation would be incorrect because the rowop didn't get applied to the table yet. Instead it has to predict what will happen when the rowop will get applied:
+
+<pre>sub { # (opcode, row)
+&nbsp; if (&amp;Triceps::isInsert($_[0])) {
+&nbsp;&nbsp;&nbsp; $table-&gt;groupSizeIdx($ixt, $_[1])+1;
+&nbsp; } else {&nbsp;&nbsp;&nbsp; 
+&nbsp;&nbsp;&nbsp; $table-&gt;groupSizeIdx($ixt, $_[1])-1;
+&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+}
+</pre>
+
+If you set the option "groupSizeCode" to undef, that's the default value that triggers the one-to-something behavior.
+
+Setting another option
+
+<pre>fieldsMirrorKey =&gt; 1
+</pre>
+
+enables another magic behavior: mirroring the values of key fields to both sides before they are used to produce the result row. This way even if the join is an outer join and one side is not present, the key fields will be available on both sides nevertheless. This is the heavy machinery that underlies the JoinTwo's high-level option "fieldsUniqKey". The mirroring goes both ways: If this is a left join and no matching row is found on the right, the values of the key fields will be copied from the left to the right. If the option "oppositeOuter" is set and causes a row with the empty left side to be produced as a part of DELETE-INSERT pair, the key fields will be copied from the right to the left.

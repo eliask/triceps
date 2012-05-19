@@ -1,0 +1,17 @@
+JoinTwo override options
+
+Normally JoinTwo tries to work in a consistent manner, refusing to do the unsafe things that might corrupt the data. But if you really, really want, and are really sure of what you're doing, there are options to override these restrictions.
+
+If you set
+
+overrideSimpleMinded =&gt; 1
+
+then the logic that produces the DELETE-INSERT sequences for the outer joins gets disabled. The only reason I can think of to use this option is if you want to simulate a CEP system that has no concept of opcodes. So if your data is INSERT-only and you want to produce the INSERT-only data too, and want the dumbed-down logic, this option is your solution.
+
+The option
+
+overrideKeyTypes =&gt; 1
+
+disables the check for the exact match of the key field types. This might come helpful for example if you have an int32 field on one side and an int64 field on the other side, and you know that in reality they would always stay within the int32 range. Or if you have an integer on one side and a string that always contains an integer on the other side. Since you know that the type conversions can always be done with no loss, you can safely override the type check and still get the correct result.
+
+By the way, even though JoinTwo doesn't refuse to have the float64 key fields, using them is a bad idea. The floating-point values are subject to non-obvious rounding. And if you have two floating-point values that print the same, this doesn't mean that they are internally the same down to the last bit (because the printing involves the conversion to decimal that involves rounding). The joining requires that the values are exactly equal. Because of this the joining on the floating-point field is rife with unpleasant surprises. Better don't do it. A possible solution is to round values by converting them to integers (scaled by multiplying by a fixed factor to get essentially a fixed-point value). You can even convert them back from fixed-point to floating-point and still join on these floating-point values, because the same values would always be produced from integers in exactly the same way, and will be exactly the same.

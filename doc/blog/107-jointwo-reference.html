@@ -1,0 +1,80 @@
+JoinTwo reference
+
+This is a short reference to JoinTwo, a template that joins two tables.
+
+<pre>$joiner = Triceps::JoinTwo-&gt;new(optionName =&gt; optionValue, ...);
+</pre>
+
+Create the JoinTwo object. Confesses on any errors. Many of the options are mandatory, unless explicitly said otherwise. The options are:
+
+name - Name of this object (will be used to create the names of internal objects).
+
+leftTable - Table object to join, for the left side (both tables must be of the same unit).
+
+rightTable - Table object to join, for the right side (both tables must be of the same unit).
+
+leftFromLabel (optional) - The label from which to receive to the rows on the&nbsp;left side. (default: leftTable's Output label unless it's a self-join, for a self-join leftTable's Pre label). Can be used to put in a label that would filter out some of the input (THIS IS DANGEROUS! To preserve consistency, always&nbsp; filter by key field(s) only, and the same condition on the left and right).
+
+rightFromLabel (optional) - The label from which to receive to the rows on the right side. (default: rightTable's Output label). Can be used to put in a label that would filter  out some of the input (THIS IS DANGEROUS! To preserve consistency,  always&nbsp; filter by key field(s) only, and the same condition on the left  and right).
+
+leftIdxPath - Array reference containing the path name of index type in the left table used for look-up. The index absolutely must be a Hash (leaf or not), not of any other kind. The number and order of key fields in left and right indexes must match, since indexes define the fields used for the join. The types of fields&nbsp;have to match exactly unless allowed by the option overrideKeyTypes =&gt; 1.
+
+rightIdxPath - Array reference containing the path name of index type in the right table used for look-up. The index absolutely must be a Hash (leaf or not), not of any other  kind. The number and order of key fields in left and right indexes must  match, since indexes define the fields used for the join. The types of  fields&nbsp;have to match exactly unless allowed by the option  overrideKeyTypes =&gt; 1.
+
+leftFields (optional) - Reference to an array of patterns for the left-side fields to pass through to the result rows, with the syntax of Triceps::Fields::filter(). If not defined then pass everything.
+
+rightFields (optional) - Reference to an array of patterns for the right-side fields to pass through to the result rows, with the syntax of  Triceps::Fields::filter(). If not defined then pass everything.
+
+fieldsLeftFirst (optional) - Flag: if 1, in the result rows put the fields from the left side first, then from the right side; if 0, then in the opposite order. (default:1)
+
+fieldsUniqKey (optional) - Controls the logic that prevents the duplication of the key fields in the result rows (since by definition their originals are present in both the left and right tables). This is done by setting the option "fieldsMirrorKey" of the underlying LookupJoins to 1 and by manipulating the left/rightFields options: one side is left&nbsp;unchanged, and thus lets the user pass the key fields as usual, while&nbsp;the other side gets "!key" specs prepended to the front of it for each key&nbsp;field, thus removing the duplication.
+
+The values are one of: 
+<ul>
+<li>"none" - Do not change either of the left/rightFields, and do not enable&nbsp;the key mirroring at all.</li>
+<li>&nbsp;"manual" - Enable the key mirroring; do not change either of the left/rightFields, leaving the full control to the user.</li>
+<li>"left" - Enable the key mirroring; do not change leftFields (and thus pass the key fields in there), remove the keys from rightFields.</li>
+<li>"right" - Enable the key mirroring; do not change rightFields (and thus pass the key fields in there), remove the keys from leftFields.</li>
+<li>"first" (default) - Enable the key mirroring; do not change whatever side goes first according to the option "fieldsLeftFirst" (and thus pass the key in there), remove the keys from the other side.</li>
+</ul>
+
+by (optional) - Reference to an array containing pairs of field names used for look-up, [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]. The options "by" and "byLeft" are mutually exclusive. If none of them is used, by default the field lists&nbsp;are taken from the index type keys, matched  up in the order they appear in the indexes. But if a different order is  desired, this option can be used to&nbsp;override it (the fields must still be the same, just the order may change). 
+
+byLeft (optional) - Reference to an array containing the patterns in the syntax of Triceps::Fields::filter(). It gets applied to the left-side fields, the fields that pass through  become the key fields, and their translations are the names of the  matching fields on the right side. The options "by" and "byLeft" are mutually exclusive. If none of them  is used, by default the field lists&nbsp;are taken from the index type keys,  matched  up in the order they appear in the indexes. But if a different order is  desired, this option can be used to&nbsp;override it (the fields must still  be the same, just the order may change). 
+
+type (optional) - The type of join from the inner/outer classification, one of: "inner", "left" for left outer, "right" for right outer, "outer" for full outer. (default: "inner")
+
+leftSaveJoinerTo (optional) - Reference to a scalar where to save a copy of the joiner function&nbsp;source code for the left side.
+
+rightSaveJoinerTo (optional) - Reference to a scalar where to save a copy of the joiner function&nbsp;source code for the right side.
+
+overrideSimpleMinded (optional) - Flag: if 1, do not try to create the correct DELETE-INSERT sequence for the updates, just produce records with the same opcode as the incoming ones. The only possible usage of this option might be to simulate the CEP systems that do not support the opcodes and treat averything as an INSERT. The data produced is outright garbage. It can also be used for the entertainment value, to show, why it's garbage. (default: 0)
+
+overrideKeyTypes (optional) - Flag: if 1, allow the key types to be not exactly the same. (default: 0)
+
+<pre>$rt = $joiner-&gt;getResultRowType();</pre>
+
+Get the row type of the join result.
+
+<pre>$lb = $joiner-&gt;getOutputLabel();</pre>
+
+Get  the output label of the joiner. The results from processing of the  input rowops come out here. Note that there is no input label, the join is fed by connecting to the tables (with the possible override with the options "left/rightFromLabel").
+
+<pre>$res = $joiner-&gt;getUnit();
+$res = $joiner-&gt;getName();
+$res = $joiner-&gt;getLeftTable();
+$res = $joiner-&gt;getRightTable();
+$res = $joiner-&gt;getLeftIdxPath();
+$res = $joiner-&gt;getRightIdxPath();
+$res = $joiner-&gt;getLeftFields();
+$res = $joiner-&gt;getRightFields();
+$res = $joiner-&gt;getFieldsLeftFirst();
+$res = $joiner-&gt;getFieldsUniqKey();
+$res = $joiner-&gt;getBy();
+$res = $joiner-&gt;getByLeft();
+$res = $joiner-&gt;getType();
+$res = $joiner-&gt;getOverrideSimpleMinded();
+$res = $joiner-&gt;getOverrideKeyTypes();
+</pre>
+
+Get back the values of the options. If such an option was not set,  returns the default value, or the automatically calculated value.  Sometimes an automatically calculated value may even override the  user-specified value. There is no way to get back "left/rightFromLabel", it is  discarded after the JoinTwo is constructed.

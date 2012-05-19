@@ -1,0 +1,144 @@
+A glimpse inside JoinTwo
+
+For a while JoinTwo was compact and straightforward, and easy to demonstrate. Then it has grown all these extra features, options and error checks, and became quite complicated. So I'll show only the selected portions of the JoinTwo constructor, with the gist of its functionality:
+
+<pre>...
+&nbsp; my $selfJoin = $self-&gt;{leftTable}-&gt;same($self-&gt;{rightTable});
+&nbsp; if ($selfJoin &amp;&amp; !defined $self-&gt;{leftFromLabel}) {
+&nbsp;&nbsp;&nbsp; # one side must be fed from Pre label (but still let the user override)
+&nbsp;&nbsp;&nbsp; $self-&gt;{leftFromLabel} = $self-&gt;{leftTable}-&gt;getPreLabel();
+&nbsp; }
+...
+
+&nbsp; my ($leftLeft, $rightLeft);
+&nbsp; if ($self-&gt;{type} eq "inner") {
+&nbsp;&nbsp;&nbsp; $leftLeft = 0;
+&nbsp;&nbsp;&nbsp; $rightLeft = 0;
+&nbsp; } elsif ($self-&gt;{type} eq "left") {
+&nbsp;&nbsp;&nbsp; $leftLeft = 1;
+&nbsp;&nbsp;&nbsp; $rightLeft = 0;
+&nbsp; } elsif ($self-&gt;{type} eq "right") {
+&nbsp;&nbsp;&nbsp; $leftLeft = 0;
+&nbsp;&nbsp;&nbsp; $rightLeft = 1;
+&nbsp; } elsif ($self-&gt;{type} eq "outer") {
+&nbsp;&nbsp;&nbsp; $leftLeft = 1;
+&nbsp;&nbsp;&nbsp; $rightLeft = 1;
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; Carp::confess("Unknown value '" . $self-&gt;{type} . "' of option 'type', must be one of inner|left|right|outer");
+&nbsp; }
+
+&nbsp; $self-&gt;{leftRowType} = $self-&gt;{leftTable}-&gt;getRowType();
+&nbsp; $self-&gt;{rightRowType} = $self-&gt;{rightTable}-&gt;getRowType();
+...
+
+&nbsp; for my $side ( ("left", "right") ) {
+&nbsp;&nbsp;&nbsp; if (defined $self-&gt;{"${side}FromLabel"}) {
+... 
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $self-&gt;{"${side}FromLabel"} = $self-&gt;{"${side}Table"}-&gt;getOutputLabel();
+&nbsp;&nbsp;&nbsp; }
+
+&nbsp;&nbsp;&nbsp; my @keys;
+&nbsp;&nbsp;&nbsp; ($self-&gt;{"${side}IdxType"}, @keys) = $self-&gt;{"${side}Table"}-&gt;getType()-&gt;findIndexKeyPath(@{$self-&gt;{"${side}IdxPath"}});
+&nbsp;&nbsp;&nbsp; # would already confess if the index is not found
+
+&nbsp;&nbsp;&nbsp; if (!$self-&gt;{overrideSimpleMinded}) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (!$self-&gt;{"${side}IdxType"}-&gt;isLeaf()
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &amp;&amp; ($self-&gt;{type} ne "inner" &amp;&amp; $self-&gt;{type} ne $side) ) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $table = $self-&gt;{"${side}Table"};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; my $ixt = $self-&gt;{"${side}IdxType"};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if ($selfJoin &amp;&amp; $side eq "left") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # the special case, reading from the table's Pre label;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; # must adjust the count for what will happen after the row gets processed
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $self-&gt;{"${side}GroupSizeCode"} = sub { # (opcode, row)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if (&amp;Triceps::isInsert($_[0])) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $table-&gt;groupSizeIdx($ixt, $_[1])+1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $table-&gt;groupSizeIdx($ixt, $_[1])-1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; };
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $self-&gt;{"${side}GroupSizeCode"} = sub { # (opcode, row)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $table-&gt;groupSizeIdx($ixt, $_[1]);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; };
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+
+...
+
+&nbsp; my $fieldsMirrorKey = 1;
+&nbsp; my $uniq = $self-&gt;{fieldsUniqKey};
+&nbsp; if ($uniq eq "first") {
+&nbsp;&nbsp;&nbsp; $uniq = $self-&gt;{fieldsLeftFirst} ? "left" : "right";
+&nbsp; }
+&nbsp; if ($uniq eq "none") {
+&nbsp;&nbsp;&nbsp; $fieldsMirrorKey = 0;
+&nbsp; } elsif ($uniq eq "manual") {
+&nbsp;&nbsp;&nbsp; # nothing to do
+&nbsp; } elsif ($uniq =~ /^(left|right)$/) {
+&nbsp;&nbsp;&nbsp; my($side, @keys);
+&nbsp;&nbsp;&nbsp; if ($uniq eq "left") {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $side = "right";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; @keys = @rightkeys;
+&nbsp;&nbsp;&nbsp; } else {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $side = "left";
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; @keys = @leftkeys;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; if (!defined $self-&gt;{"${side}Fields"}) {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; $self-&gt;{"${side}Fields"} = [ ".*" ]; # the implicit pass-all
+&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; unshift(@{$self-&gt;{"${side}Fields"}}, map("!$_", @keys) );
+&nbsp; } else {
+&nbsp;&nbsp;&nbsp; Carp::confess("Unknown value '" . $self-&gt;{fieldsUniqKey} . "' of option 'fieldsUniqKey', must be one of none|manual|left|right|first");
+&nbsp; }
+
+&nbsp; # now create the LookupJoins
+&nbsp; $self-&gt;{leftLookup} = Triceps::LookupJoin-&gt;new(
+&nbsp;&nbsp;&nbsp; unit =&gt; $self-&gt;{unit},
+&nbsp;&nbsp;&nbsp; name =&gt; $self-&gt;{name} . ".leftLookup",
+&nbsp;&nbsp;&nbsp; leftRowType =&gt; $self-&gt;{leftRowType},
+&nbsp;&nbsp;&nbsp; rightTable =&gt; $self-&gt;{rightTable},
+&nbsp;&nbsp;&nbsp; rightIdxPath =&gt; $self-&gt;{rightIdxPath},
+&nbsp;&nbsp;&nbsp; leftFields =&gt; $self-&gt;{leftFields},
+&nbsp;&nbsp;&nbsp; rightFields =&gt; $self-&gt;{rightFields},
+&nbsp;&nbsp;&nbsp; fieldsLeftFirst =&gt; $self-&gt;{fieldsLeftFirst},
+&nbsp;&nbsp;&nbsp; fieldsMirrorKey =&gt; $fieldsMirrorKey,
+&nbsp;&nbsp;&nbsp; by =&gt; \@leftby,
+&nbsp;&nbsp;&nbsp; isLeft =&gt; $leftLeft,
+&nbsp;&nbsp;&nbsp; automatic =&gt; 1,
+&nbsp;&nbsp;&nbsp; oppositeOuter =&gt; ($rightLeft &amp;&amp; !$self-&gt;{overrideSimpleMinded}),
+&nbsp;&nbsp;&nbsp; groupSizeCode =&gt; $self-&gt;{leftGroupSizeCode},
+&nbsp;&nbsp;&nbsp; saveJoinerTo =&gt; $self-&gt;{leftSaveJoinerTo},
+&nbsp; );
+&nbsp; $self-&gt;{rightLookup} = Triceps::LookupJoin-&gt;new(
+&nbsp;&nbsp;&nbsp; unit =&gt; $self-&gt;{unit},
+&nbsp;&nbsp;&nbsp; name =&gt; $self-&gt;{name} . ".rightLookup",
+&nbsp;&nbsp;&nbsp; leftRowType =&gt; $self-&gt;{rightRowType},
+&nbsp;&nbsp;&nbsp; rightTable =&gt; $self-&gt;{leftTable},
+&nbsp;&nbsp;&nbsp; rightIdxPath =&gt; $self-&gt;{leftIdxPath},
+&nbsp;&nbsp;&nbsp; leftFields =&gt; $self-&gt;{rightFields},
+&nbsp;&nbsp;&nbsp; rightFields =&gt; $self-&gt;{leftFields},
+&nbsp;&nbsp;&nbsp; fieldsLeftFirst =&gt; !$self-&gt;{fieldsLeftFirst},
+&nbsp;&nbsp;&nbsp; fieldsMirrorKey =&gt; $fieldsMirrorKey,
+&nbsp;&nbsp;&nbsp; by =&gt; \@rightby,
+&nbsp;&nbsp;&nbsp; isLeft =&gt; $rightLeft,
+&nbsp;&nbsp;&nbsp; automatic =&gt; 1,
+&nbsp;&nbsp;&nbsp; oppositeOuter =&gt; ($leftLeft &amp;&amp; !$self-&gt;{overrideSimpleMinded}),
+&nbsp;&nbsp;&nbsp; groupSizeCode =&gt; $self-&gt;{rightGroupSizeCode},
+&nbsp;&nbsp;&nbsp; saveJoinerTo =&gt; $self-&gt;{rightSaveJoinerTo},
+&nbsp; );
+
+&nbsp; # create the output label
+&nbsp; $self-&gt;{outputLabel} = $self-&gt;{unit}-&gt;makeDummyLabel($self-&gt;{leftLookup}-&gt;getResultRowType(), $self-&gt;{name} . ".out");
+&nbsp; Carp::confess("$!") unless (ref $self-&gt;{outputLabel} eq "Triceps::Label");
+
+&nbsp; # and connect them together
+&nbsp; $self-&gt;{leftFromLabel}-&gt;chain($self-&gt;{leftLookup}-&gt;getInputLabel());
+&nbsp; $self-&gt;{rightFromLabel}-&gt;chain($self-&gt;{rightLookup}-&gt;getInputLabel());
+&nbsp; $self-&gt;{leftLookup}-&gt;getOutputLabel()-&gt;chain($self-&gt;{outputLabel});
+&nbsp; $self-&gt;{rightLookup}-&gt;getOutputLabel()-&gt;chain($self-&gt;{outputLabel});
+</pre>
+
+So in the end it boils down to two LookupJoins, with the options computed from the JoinTwo's options. But you might notice that there are a few LookupJoin options that haven't been described before. And a few otehr methods not described before. They'll be described shortly.

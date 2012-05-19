@@ -1,0 +1,64 @@
+The field processing helpers
+
+The manipulation on the field lists from the joins is also available for reuse. It's grouped in the package Triceps::Fields.
+
+The function
+
+<pre>$result = &amp;Triceps::Fields::isArrayType($simpleType);</pre>
+
+checks whether the simple type is an array type, from the standpoint of representation it in Perl. The array types are those that end with "[]", except "uint8[]" (because it's represented as a Perl scalar string).
+
+The function 
+
+<pre>@fields = &amp;Triceps::Fields:: filter($callerDescr, \@incomingFields, \@patterns);</pre>
+
+filters a list of fields by a pattern list of the same form as used in the join results.&nbsp; For example:
+
+<pre>my @leftfld = $self-&gt;{leftRowType}-&gt;getFieldNames();
+my @res =&amp;Triceps::Fields::filter(
+&nbsp; "Triceps::LookupJoin::new: option '$leftFields'",
+&nbsp; \@leftfld, $self-&gt;{"$leftFields"});</pre>
+
+$callerDescr is the description of the caller used in the error messages, \@incomingFields is the reference to an array with the field names to be filtered, \@patterns is the reference to array of field name patterns. Each pattern is a string in one of the forms:
+
+<ul>
+<li>'regexp' - pass through the field names matching the anchored regexp (i.e. implicitly wrapped as '^regexp$').</li>
+<li>'!regexp' - throw away the field names matching the anchored regexp.</li>
+<li>'regexp/regsub' - pass through the field names matching the anchored regexp, performing a substitution on it.</li>
+</ul>
+
+If a field name doesn't match any of the patterns, it doesn't pass through the filter. 
+
+Each field is checked against each pattern in order, and the first successful match determines what happens with the field. For example, when the pattern ['!key', '.*'] is used on the field name "key", the first '!key' matches it and blocks the field from passing through the filter.
+
+In general, quoting the patterns with single quotes is better than with double quotes, because this way the special regexp characters don't need so much escaping with backslashes. Naturally, it's better to keep the field names alphanumeric too, to avoid getting funny effects when they are used in the patterns. Some particularly useful pattern examples:
+
+<ul>
+<li>'.*' - pass through everything</li>
+<li>'.*/second_$&amp;/' - pass everything and prepend 'second_' to it</li>
+<li>'right_(.*)/$1/' - pass the field names starting from 'right_' and remove this prefix from them</li>
+</ul>
+
+More examples of the patterns have been shown with the joins.
+
+The result is an array of field names after translation. That array has the same size as @incomingFields, and keeps the passed-through fields in the same order. The fields that don't pass through get replaced with undef.
+
+If a pattern specifies a literal alphanumeric field name without any regexp wildcard (such as 'key' or '!key' or 'key/right_$&amp;/'), this function makes sure that the field is present in the original field list. If it isn't, the function confesses. The reason is for the accidental typos in the field names not to go unnoticed. No such check is done on the general patterns, to allow the reuse of patterns on many different field lists, including those where the pattern doesn't match anything.
+
+The function doesn't check for any duplicates in the resulting field names, nor for any funny characters in them. The reason for not checking the duplicates is that often the result is combined from multiple sets of filtered fields, and the check for duplicates makes sense only after these sets are combined.
+
+The function 
+
+<pre>@pairs = &amp;Triceps::Fields::filterToPairs($callerDescr,
+&nbsp; \@incomingFields, \@patterns);</pre>
+
+is a version of filter() that does the same but returns the result in a different form. This time the result contains a pair of values "oldName", "newName" for each field that passes through (of course, if the field is not renamed, "oldName" and "newName" will be the same). For example, if called
+
+<pre>@pairs = &amp;Triceps::Fields::filterToPairs("MyTemplate result",
+&nbsp; ["abc", "abcd", "fgh", "jkl"], ["!abc", "a.*", "jkl/qwe"]);</pre>
+
+the result in @pairs will be: ("abcd", "abcd", "jkl", "qwe"). The field "abcd" made through as is, the field "jkl" got renamed to "qwe". You can also put the result of filterToPairs directly into a map:
+
+<pre>%resultFields = &amp;Triceps::Fields::filterToPairs(...);</pre>
+
+Other than the result format, filterToPairs() works exactly the same as filter(). It's just that sometimes one format of the result is more convenient, sometimes the other.
