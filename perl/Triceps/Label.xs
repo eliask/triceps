@@ -39,6 +39,20 @@ getType(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
+# a complete synonym of getType(), with the name more consistent
+# with the other objects' similar methods
+WrapRowType*
+getRowType(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+		RETVAL = new WrapRowType(const_cast<RowType *>(lab->getType()));
+	OUTPUT:
+		RETVAL
+
 WrapUnit*
 getUnit(WrapLabel *self)
 	CODE:

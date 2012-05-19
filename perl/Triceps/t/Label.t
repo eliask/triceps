@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 36 };
+BEGIN { plan tests => 38 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -64,6 +64,10 @@ ok(ref $lb, "Triceps::Label");
 ########################## label g/setters #################################################
 
 $rt2 = $lb->getType();
+ok(ref $rt2, "Triceps::RowType");
+ok($rt1->same($rt2));
+
+$rt2 = $lb->getRowType();
 ok(ref $rt2, "Triceps::RowType");
 ok($rt1->same($rt2));
 

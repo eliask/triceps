@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 45 };
+BEGIN { plan tests => 50 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -171,7 +171,15 @@ ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 
 	ok(ref $lb1, "Triceps::Label");
 	my $lb2 = $u2->makeDummyLabel($rt1, "lb2");
 	ok(ref $lb2, "Triceps::Label");
-	my ($unit, $rt, $label);
+	my $tt1 = Triceps::TableType->new($rt1)
+		->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		);
+	ok(ref $tt1, "Triceps::TableType");
+	ok($tt1->initialize());
+	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	ok(ref $t1, "Triceps::Table");
+
+	my ($unit, $rt, $label, $table);
 
 	($unit, $rt, $label) = (undef, undef, undef);
 	eval { &Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label); };
@@ -190,6 +198,11 @@ ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 
 	
 	($unit, $rt, $label) = (undef, undef, $lb1);
 	&Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "labelX", \$label);
+	ok($u1->same($unit));
+	ok($rt1->same($rt));
+	
+	($unit, $rt, $table) = (undef, undef, $t1);
+	&Triceps::Opt::handleUnitTypeLabel("CallerMethod", "unitX", \$unit, "rowTypeX", \$rt, "tableX", \$table);
 	ok($u1->same($unit));
 	ok($rt1->same($rt));
 	

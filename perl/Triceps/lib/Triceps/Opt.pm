@@ -139,6 +139,9 @@ sub ck_refscalar
 # and the unit is not, then populates the unit.
 # On error confesses. On success returns 1.
 #
+# Strictly speaking, the label doesn't have to be a Label. It can be
+# anything with methods getUnit() and getRowType(), for example a Table.
+#
 # @param caller - the name of the caller function, for error messages
 # @param nameUnit - name of the unit option, for messages
 # @param refUnit - reference to the unit value
@@ -162,7 +165,7 @@ sub handleUnitTypeLabel($$$$$$$) # ($caller, $nameUnit, \$refUnit, $nameRowType,
 		} else {
 			$$refUnit = $$refLabel->getUnit();
 		}
-		$$refRowType = $$refLabel->getType();
+		$$refRowType = $$refLabel->getRowType();
 	}
 	confess "$caller: option $nameUnit must be specified"
 		unless (defined $$refUnit);
