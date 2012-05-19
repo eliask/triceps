@@ -171,8 +171,7 @@ sub new # (class, optionName => optionValue ...)
 		# would already confess if the index is not found
 
 		if (!$self->{overrideSimpleMinded}) {
-			my @subs = $self->{"${side}IdxType"}->getSubIndexes();
-			if ($#subs >= 0 # has sub-indexes, a non-leaf index
+			if (!$self->{"${side}IdxType"}->isLeaf()
 			&& ($self->{type} ne "inner" && $self->{type} ne $side) ) {
 				my $table = $self->{"${side}Table"};
 				my $ixt = $self->{"${side}IdxType"};
