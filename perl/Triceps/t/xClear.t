@@ -113,7 +113,7 @@ our $lbClear = $uChunks->makeLabel($rtNote, "lbClear", undef, sub {
 	my $next;
 	for (my $rhit = $tData->begin(); !$rhit->isNull(); $rhit = $next) {
 		if ($limit-- <= 0) {
-			# request to be called again when teh model becomes idle
+			# request to be called again when the model becomes idle
 			$trayIdle->push($_[0]->adopt($_[1])); 
 			return;
 		}
