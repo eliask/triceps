@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<!-- non-breakable 0-width spacece used in PDF to avoid word hyphenation in wrong places -->
+<!ENTITY sbnbrk "">

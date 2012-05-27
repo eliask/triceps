@@ -1,0 +1,7 @@
+# lines in format:
+# file-base-name width-in-pdf suffix-in-pdf
+# (the suffix in html is always "lowres.png")
+#
+# For example:
+#pic02spinlock 4.2in png
+#pic02pipeline 4in svg

@@ -21,8 +21,8 @@ DTD = $(TOOLS_DTD)/docbookx.dtd
 #STYLESHEET_FO = $(TOOLS_XSL)/fo/docbook.xsl
 STYLESHEET_FO = myfo.xsl
 STYLESHEET_HTML = myhtml.xsl
-ENTS_FO = entpdf/tpopp.ent
-ENTS_HTML = enthtml/tpopp.ent
+ENTS_FO = entpdf/user.ent
+ENTS_HTML = enthtml/user.ent
 FOP = $(TOOLS_FOP)/fop
 
 CONFIGS = Makefile $(TOOLS_SETTINGS) $(TOOLS_CATALOG) $(TOOLS_MANAGER) $(STYLESHEET_FO)
@@ -35,14 +35,10 @@ cfg: $(TOOLS_SETTINGS) $(TOOLS_CATALOG) $(TOOLS_MANAGER)
 
 pdf: subdirs autodepend $(PDFTARGETS)
 
-html: subdirs autodepend tpopp.zip
-
-tpopp.zip: $(HTMLTARGETS)
-	rm -f tpopp.zip
-	zip -u tpopp.zip tpopp.html *.lowres.png
+html: subdirs autodepend $(HTMLTARGETS)
 
 subdirs:
-	$(MAKE) -C seq
+	#$(MAKE) -C seq
 	$(MAKE) -C figrefs
 
 ex:
@@ -56,7 +52,7 @@ autodepend: .depends
 
 .depends:: Makefile xmldep.pl $(SOURCES)
 ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber%, $(MAKECMDGOALS))))
-	$(MAKE) -C seq
+	#$(MAKE) -C seq
 	./xmldep.pl $(SOURCES) >.depends.tmp
 	mv .depends.tmp .depends
 endif
@@ -65,7 +61,7 @@ clean:
 	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.pdf *.fo *.png *.gif *.tiff *.svg allpics.xml tpopp.zip
 	rm -rf cfg
 	#$(MAKE) -C seq clean
-	#$(MAKE) -C figrefs clean
+	$(MAKE) -C figrefs clean
 
 allpics.xml: mkallpics 0*.xml
 	./mkallpics >$@
