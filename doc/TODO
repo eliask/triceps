@@ -23,17 +23,15 @@ Things that need to be done:
 * in Table, do something about collapsing empty groups on exception?
 * in FIFO index, add options to match on exact or on first, or never match,
   and by default throw an exception
-* snapshots in small portions (would need a comparison per key)
+* snapshot queries in small portions (would need a comparison per key)
 * should it throw from Unit::clearLabels(), and if called from a destructor, 
   catch it there?
+* for basic persistence, add dump of tables, quick disconnect of results on reload
+* register error messages from the outside scopes, to be printed on failure in the called functions
+* in Tray handle the undefs and NULLs better (see XXX)
 
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
 * doc: update the examples from xTrafficAgg in the final docs
   (aggregator "before" is now called before the mods)
-* doc: Fields::, TableType::findIndexPath,findIndexKeyPath, Opt::checkMutuallyExclusive
-* doc: JoinTwo floating keys are bad
-* doc: an example of deletions in small portions, 
-* doc: Label->hasChained()
-* doc: Label->adopt()
-* doc: hidden options of LookupJoin
+* doc: building apps with a private copy of Triceps
