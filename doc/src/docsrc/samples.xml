@@ -203,8 +203,10 @@ This_is_a_very1very2very3very4very5very6very7very8very9very10very11very12very13v
 
 				<para>
 <pre>
-if (a > 0 && a < 3)
-	print a;
+while(&readLine) {
+	if (a > 0 && a < 3)
+		&send a;
+}
 </pre>
 				</para>
 

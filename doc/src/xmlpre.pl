@@ -17,6 +17,10 @@ sub xmlify # (text_line)
 	# in XML form set tabs to 2 chars to reduce width
 	$tl =~ s/\t/  /g;
 	$tl =~ s/ +$//;
+
+	# this is specific to the Triceps examples
+	$tl =~ s/\&send\b/print/g;
+	$tl =~ s/\&readLine\b/<STDIN>/g;
 	
 	$tl =~ s/\&/\&amp;/g;
 	$tl =~ s/</\&lt;/g;
