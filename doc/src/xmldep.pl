@@ -12,6 +12,7 @@ use strict;
 my %rewrites = (
 	"file:///EXAMPLES/" => "../ex/exxml/",
 	"file:///SEQS/" => "seq/",
+	"file:///DOCS/" => "docsrc/",
 );
 
 # for the images that differ between PDF and HTML, refer through the refs list
@@ -95,17 +96,28 @@ foreach $topf (@topfiles) {
 		close FILE;
 	}
 	my $f;
+	my $ff;
 	my $fofile = $topf;
 	my $htmlfile = $topf;
 	my $pdffile = $topf;
+
+	# the file swill actually be pre-processed from doc/ to docsrc/ first,
+	# so adjust for it
+	$topf =~ s/^docsrc\//doc\//;
+
 	$fofile =~ s/\.xml$/\.fo/;
+	$fofile =~ s/^docsrc\///;
 	$htmlfile =~ s/\.xml$/\.html/;
+	$htmlfile =~ s/^docsrc\///;
 	$pdffile =~ s/\.xml$/\.pdf/;
+	$pdffile =~ s/^docsrc\///;
 
 	print "$fofile : $topf \\\n";
 	print "  figrefs/refs \\\n";
 	foreach $f (@deps) {
-		print "  $f \\\n";
+		$ff = $f;
+		$ff =~ s/^docsrc\//doc\//;
+		print "  $ff \\\n";
 	}
 	print "\n";
 
@@ -123,7 +135,7 @@ foreach $topf (@topfiles) {
 	foreach $f (@deps) {
 		print "  $f \\\n";
 	}
-	# images themselves aren't required for the HTML file bu they need to be built
+	# images themselves aren't required for the HTML file but they need to be built
 	foreach $f (@imgs) {
 		print "  $f \\\n";
 	}

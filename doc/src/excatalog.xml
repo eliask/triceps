@@ -9,4 +9,6 @@
   <rewriteSystem systemIdStartString="file:///FIGS/" rewritePrefix="figrefs/pdf/"/>
   <rewriteURI uriStartString="file:///ENTS/" rewritePrefix="entpdf/"/>
   <rewriteSystem systemIdStartString="file:///ENTS/" rewritePrefix="entpdf/"/>
+  <rewriteURI uriStartString="file:///DOCS/" rewritePrefix="doc/"/>
+  <rewriteSystem systemIdStartString="file:///DOCS/" rewritePrefix="doc/"/>
 </catalog>

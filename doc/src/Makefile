@@ -2,7 +2,8 @@
 TARGETS = samples # allpics # samples
 HTMLTARGETS = $(TARGETS:=.html)
 PDFTARGETS = $(TARGETS:=.pdf)
-SOURCES = $(TARGETS:=.xml)
+SOURCES =  $(foreach t, $(TARGETS), doc/$(t).xml)
+DEPENDSOURCES =  $(foreach t, $(TARGETS), docsrc/$(t).xml)
 
 # The config files require the absolute paths.
 DOC_SRC := $(shell pwd)
@@ -40,6 +41,7 @@ html: subdirs autodepend $(HTMLTARGETS)
 subdirs:
 	#$(MAKE) -C seq
 	$(MAKE) -C figrefs
+	[ -d doc ] || mkdir doc
 
 ex:
 	$(MAKE) -C ../ex extxml
@@ -50,16 +52,16 @@ depend:
 
 autodepend: .depends
 
-.depends:: Makefile xmldep.pl $(SOURCES)
-ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber%, $(MAKECMDGOALS))))
+.depends:: Makefile xmldep.pl $(DEPENDSOURCES)
+ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber% cfg%, $(MAKECMDGOALS))))
 	#$(MAKE) -C seq
-	./xmldep.pl $(SOURCES) >.depends.tmp
+	./xmldep.pl $(DEPENDSOURCES) >.depends.tmp
 	mv .depends.tmp .depends
 endif
 
 clean:
 	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.pdf *.fo *.png *.gif *.tiff *.svg allpics.xml tpopp.zip
-	rm -rf cfg
+	rm -rf cfg doc
 	#$(MAKE) -C seq clean
 	$(MAKE) -C figrefs clean
 
@@ -69,6 +71,9 @@ allpics.xml: mkallpics 0*.xml
 $(DOC_CFG)/%: cfgsrc/% Makefile
 	[ -d cfg ] || mkdir cfg
 	sed 's|\$${DOC_SRC}|$(DOC_SRC)|g;s|\$${TOOLS_BASE}|${TOOLS_BASE}|g' <$< >$@
+
+doc/%.xml: docsrc/%.xml
+	cp $< $@
 
 CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1 
 #FONT_SIZE_PARAM = --stringparam body.font.master 10
@@ -88,14 +93,14 @@ CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1
 #			--stringparam  ulink.hyphenate ' ' \
 #			$(FONT_SIZE_PARAM) \
 #			
-%.fo: %.xml $(CONFIGS) $(STYLESHEET_FO) $(ENTS_FO)
+%.fo: doc/%.xml $(CONFIGS) $(STYLESHEET_FO) $(ENTS_FO)
 	. $(TOOLS_SETTINGS); \
 		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml ./excatalog.xml" \
 		$(CATALOG_DEBUG_SETTING) \
 		xsltproc --output $@ --xinclude \
 			$(STYLESHEET_FO) $<
 
-%.html: %.xml $(CONFIGS) $(STYLESHEET_HTML) $(ENTS_HTML)
+%.html: doc/%.xml $(CONFIGS) $(STYLESHEET_HTML) $(ENTS_HTML)
 	. $(TOOLS_SETTINGS); \
 		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml ./excataloghtml.xml" \
 		$(CATALOG_DEBUG_SETTING) \
