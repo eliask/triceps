@@ -1,7 +1,7 @@
 
 TARGETS = samples # allpics # samples
-HTMLTARGETS = $(TARGETS:=.html)
-PDFTARGETS = $(TARGETS:=.pdf)
+HTMLTARGETS = $(foreach t, $(TARGETS), ../html/$(t).html)
+PDFTARGETS = $(foreach t, $(TARGETS), ../pdf/$(t).pdf)
 SOURCES =  $(foreach t, $(TARGETS), doc/$(t).xml)
 DEPENDSOURCES =  $(foreach t, $(TARGETS), docsrc/$(t).xml)
 
@@ -59,13 +59,18 @@ ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber% cfg%, $(MAKECMDGOA
 	mv .depends.tmp .depends
 endif
 
-clean:
-	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.pdf *.fo *.png *.gif *.tiff *.svg allpics.xml tpopp.zip
+# only remove the work files, not the final results
+cleanwork:
+	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.pdf *.fo *.png *.gif *.tiff *.svg docsrc/allpics.xml
 	rm -rf cfg doc
 	#$(MAKE) -C seq clean
 	$(MAKE) -C figrefs clean
+	$(MAKE) -C ../fig clean
 
-allpics.xml: mkallpics 0*.xml
+clean: cleanwork
+	rm -f ../pdf/* ../html/*
+
+docsrc/allpics.xml: mkallpics docsrc/0*.xml
 	./mkallpics >$@
 
 $(DOC_CFG)/%: cfgsrc/% Makefile
@@ -100,14 +105,14 @@ CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1
 		xsltproc --output $@ --xinclude \
 			$(STYLESHEET_FO) $<
 
-%.html: doc/%.xml $(CONFIGS) $(STYLESHEET_HTML) $(ENTS_HTML)
+../html/%.html: doc/%.xml $(CONFIGS) $(STYLESHEET_HTML) $(ENTS_HTML)
 	. $(TOOLS_SETTINGS); \
 		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml ./excataloghtml.xml" \
 		$(CATALOG_DEBUG_SETTING) \
 		xsltproc --output $@ --xinclude \
 			$(STYLESHEET_HTML) $<
 
-%.pdf: %.fo $(CONFIGS)
+../pdf/%.pdf: %.fo $(CONFIGS)
 	. $(TOOLS_SETTINGS); FOP_OPTS="-Xmx900M" $(FOP) $< $@
 
 %.ps: %.fo $(CONFIGS)
@@ -126,6 +131,10 @@ CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1
 # For the already-png files, just copy them
 %.lowres.png: ../fig/%.png_orig
 	 convert -geometry 450x550 $< $@
+
+# Place the file for the
+../html/%.lowres.png: %.lowres.png
+	ln $< $@
 
 # .tiff gives the real depth 1 images, much smaller than png
 %.tiff: ../fig/%.eps

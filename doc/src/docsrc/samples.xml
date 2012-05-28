@@ -156,7 +156,8 @@ if (a &lt; b) {
 					<para>
 					The diagram will be here.
 					</para>
-					<graphic scale="100%" contentwidth="4in" fileref="samplesdraw.svg"/>
+					<xi:include href="file:///FIGS/samplesdraw.xml"/>
+					<!-- <graphic scale="100%" contentwidth="4in" fileref="samplesdraw.svg"/> -->
 					<!-- <graphic fileref="samplesdraw.svg"/> -->
 				</figure>
 				<para>
@@ -255,6 +256,7 @@ This_is_a_very1very2very3very4very5very6very7very8very9very10very11very12very13v
 
 		<xi:include href="file:///EXAMPLES/.xml"/>
 		<xi:include href="file:///SEQS/.xml"/>
+		<xi:include href="file:///FIGS/.xml"/>
 
 		<xref linkend="" xrefstyle="select: label pageabbrev"/>&#xA0;
 		<xref linkend="" xrefstyle="select: label"/>&#xA0;

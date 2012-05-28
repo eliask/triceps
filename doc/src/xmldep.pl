@@ -108,9 +108,9 @@ foreach $topf (@topfiles) {
 	$fofile =~ s/\.xml$/\.fo/;
 	$fofile =~ s/^docsrc\///;
 	$htmlfile =~ s/\.xml$/\.html/;
-	$htmlfile =~ s/^docsrc\///;
+	$htmlfile =~ s/^docsrc\//..\/html\//;
 	$pdffile =~ s/\.xml$/\.pdf/;
-	$pdffile =~ s/^docsrc\///;
+	$pdffile =~ s/^docsrc\//..\/pdf\//;
 
 	print "$fofile : $topf \\\n";
 	print "  figrefs/refs \\\n";
@@ -140,7 +140,7 @@ foreach $topf (@topfiles) {
 		print "  $f \\\n";
 	}
 	foreach $f (@htmlimgs) {
-		print "  $f \\\n";
+		print "  ../html/$f \\\n";
 	}
 	print "\n";
 }
