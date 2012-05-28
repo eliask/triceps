@@ -54,13 +54,13 @@ foreach $topf (@topfiles) {
 		my $comment = 0;
 		while(<FILE>) {
 			if ($comment) {
-				if (s/^.*-->//) {
+				if (s/^.*?-->//) {
 					$comment = 0;
 				}
 			} 
 			if (!$comment) {
-				s/<!--.*-->//g;
-				if (s/<!--.*$//) {
+				s/<!--.*?-->//g;
+				if (s/<!--.*?$//) {
 					$comment = 1;
 				}
 				if (/<xi:include.*href="([^"]*)"/) {
