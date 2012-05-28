@@ -65,7 +65,6 @@ cleanwork:
 	rm -rf cfg doc
 	#$(MAKE) -C seq clean
 	$(MAKE) -C figrefs clean
-	$(MAKE) -C ../fig clean
 
 clean: cleanwork
 	rm -f ../pdf/* ../html/*
@@ -77,8 +76,8 @@ $(DOC_CFG)/%: cfgsrc/% Makefile
 	[ -d cfg ] || mkdir cfg
 	sed 's|\$${DOC_SRC}|$(DOC_SRC)|g;s|\$${TOOLS_BASE}|${TOOLS_BASE}|g' <$< >$@
 
-doc/%.xml: docsrc/%.xml
-	cp $< $@
+doc/%.xml: docsrc/%.xml xmlpre.pl
+	./xmlpre.pl <$< >$@
 
 CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1 
 #FONT_SIZE_PARAM = --stringparam body.font.master 10

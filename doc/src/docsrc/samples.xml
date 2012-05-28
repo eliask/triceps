@@ -202,7 +202,14 @@ This_is_a_very1very2very3very4very5very6very7very8very9very10very11very12very13v
 				</para>
 
 				<para>
-				tralala tralala tralala tralala tralala tralala tralala tralala
+<pre>
+if (a > 0 && a < 3)
+	print a;
+</pre>
+				</para>
+
+				<para>
+				tralala tralala <pre>a->b()</pre> tralala tralala <pre>&f(x)</pre> tralala tralala tralala tralala
 				tralala tralala tralala tralala tralala tralala tralala tralala
 				tralala tralala tralala tralala tralala tralala tralala tralala
 				tralala tralala tralala tralala tralala tralala tralala tralala

@@ -27,45 +27,28 @@ sub xmlify # (text_line)
 }
 
 
-# the flags $comment and $pre are mutually exclusive, <pre> inside
-# the comments get ignored
-my $comment = 0;
 my $pre = 0;
 my $lf = ''; # used to drop the extra LFs from inside <pre>
 while(<STDIN>) {
-	while (1) {
-		if ($comment) {
-			if (s/^(.*?-->)//) {
-				print $1;
-				$comment = 0;
-			} else {
-				print;
-				last;
-			}
-		} 
-		if ($pre) {
-			if (s/^(.*?)<\/pre>//) {
-				if ($1 ne '') {
-					print $lf, &xmlify($1);
-				} # otherwise skip the line feed
-				print "</programlisting>";
-				$pre = 0;
-			} else {
-				my $n = chomp;
-				print $lf, &xmlify($_);
-				if ($n) {
-					$lf = "\n";
-				} else {
-					$lf = '';
-				}
-				last;
-			}
-		}
-		if (/^(.*?)<(pre>|--)/) {
-			print $1;
+	if ($pre) {
+		if (/^<\/pre>\s*$/) {
+			$pre = 0;
+			print "</programlisting>\n";
 		} else {
+			chomp;
+			print $lf, &xmlify($_);
+			$lf = "\n";
+		}
+	} else {
+		if (/^<pre>\s*$/) {
+			# start of the multi-line block
+			$pre = 1;
+			$lf = '';
+			print "<programlisting>";
+		} else {
+			# handle the inline blocks
+			s/<pre>(.*?)<\/pre>/'<computeroutput>' . &xmlify($1) . '<\/computeroutput>'/ge;
 			print;
-			last;
 		}
 	}
 }
