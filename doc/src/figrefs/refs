@@ -3,5 +3,4 @@
 # (the suffix in html is always "lowres.png")
 #
 # For example:
-#pic02spinlock 4.2in png
-#pic02pipeline 4in svg
+#samplesdraw 4in svg
