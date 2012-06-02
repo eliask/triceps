@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_field" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>The field of CEP</title>
+
+	<sect1 id="sc_what_is_cep">
+		<title>What is the CEP?</title>
+
+		<para>
+		CEP stands for the Complex Event Processing.  If you look at Wikipedia,
+		it has separate articles for the Event Stream Processing and the
+		Complex Event Processing. In reality it's all the same thing, with the
+		naming driven by the marketing. I would not be surprised if someone
+		invents yet another name, and everyone will start jumping on that
+		bandwagon too.
+		</para>
+
+		<indexterm>
+			<primary>CEP</primary>
+		</indexterm>
+		<indexterm>
+			<primary>ESP</primary>
+		</indexterm>
+
+		<para>
+		In general a CEP system can be thought of as a black box, where the
+		input events come in, propagate in some way through that black box, and
+		come out as the processed output events. There is also an idea that the
+		processing should happen fast, though the definitions of <quote>fast</quote> vary
+		widely.
+		</para>
+
+		<para>
+		If we open the lid on the box, there are at least three ways to think
+		of its contents:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		a spreadsheet on steroids
+		</listitem>
+		<listitem>
+		a data flow machine
+		</listitem>
+		<listitem>
+		a database driven by triggers
+		</listitem>
+		</itemizedlist>
+
+		<indexterm>
+			<primary>spreadsheet</primary>
+		</indexterm>
+		<indexterm>
+			<primary>data flow</primary>
+		</indexterm>
+		<indexterm>
+			<primary>trigger</primary>
+		</indexterm>
+		<para>
+		Hopefully you've seen a spreadsheet before. The cells in it are tied
+		together by formulas. You change one cell, and the machine goes and
+		recalculates everything that depends on it. So does a CEP system. If we
+		look closer, we can discern the CEP engine (which is like the
+		spreadsheet software), the CEP model (like the formulas in the
+		spreadheet) and the state (like the current values in the
+		spreadsheet). An incoming event is like a change in an input
+		cell, and the outgoing events are the updates of the values in the
+		spreadsheet. 
+		</para>
+
+		<para>
+		Only a typical CEP system is bigger: it can handle some very complicated
+		formulas and many millions of records. There actually are products that
+		connect the Excel spreadsheets with the behind-the-curtain computations
+		in a CEP system, with the results coming back to the spreadsheet
+		cells. Pretty much every commercial CEP provider has a product
+		that does that through the Excel RT interface. The way these models are
+		written are not exactly pretty, but the results are, combining the nice
+		presentation of spreadsheets and the speed and power of CEP.
+		</para>
+
+		<para>
+		A data flow machine, where the processing elements are exchanging
+		messages, is your typical academical look at CEP. The events
+		represented as data rows are the messages, and the CEP model describes
+		the connections between the processing elements and their internal
+		logic. This approach naturally maps to the multiprocessing, with each
+		processing element becoming a separate thread. The hiccup is that the
+		research in the dataflow machines tends to prefer the non-looped
+		topologies. The loops in the connections complicate the things.
+		</para>
+
+		<para>
+		And many real-world relational databases already work very similarly to
+		the CEP systems. They have the constraints and triggers propagating these
+		constraints. A trigger propagates an update on one table to an update
+		on another table. It's like a formula in a spreasheet or a logical
+		connection in a dataflow graph.  Yet the databases usually miss two
+		things: the propagation of the output events and the notion of being
+		<quote>fast</quote>.
+		</para>
+
+		<para>
+		The lack of propagation of the output events is totally baffling to me:
+		the RDBMS engines already write the output event stream as the redo
+		log. Why not send them also in some generalized format, XML or
+		something? Then people realize that yes, they do want to get the output
+		events and start writing some strange add-ons and aftermarket solutions
+		like the log scrubbers. This has been a mystery to me for some 15
+		years. I mean, how more obvious can it be? But nobody budges. Well,
+		with the CEP systems gaining popularity and the need to connect them to
+		the databases, I think it will eventually grow on the database vendors
+		that a decent event feed is a competitive advantage, and I think it
+		will happen somewhere soon. 
+		</para>
+
+		<para>
+		The feeling of <quote>fast</quote> or lack thereof has
+		to do with the databases being stored on disks. The growth of CEP has
+		coincided with the growth in RAM sizes, and the data is usually kept
+		completely in memory. People who deploy CEP tend to want the
+		performance not of hundreds or thousands but hundreds of thousands
+		events per second. The second part of <quote>fast</quote> is connected with the
+		transactions. In a traditional RDBMS a single event with all its
+		downstream effects is one transaction. Which is safe but may cause lots
+		of conflicts. The CEP systems usually allow to break up the logic into
+		multiple loosely-dependent layers, thus cutting on the overhead.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_uses_of_cep">
+		<title>The uses of CEP</title>
+
+		<para>
+		Despite what Wikipedia says (and honestly, the Wikipedia articles on
+		CEP and ESP are not exactly connected with reality), the pattern detection is <b>not</b> your
+		typical usage, by a wide, wide margin. The typical usage is for the
+		data aggregation: lots and lots of individual events come in, and you
+		want to aggregate them to keep a concise and consistent picture for the
+		decision-making. The actual decision making can be done by humans
+		or again by the CEP systems. It may involve some pattern recognition
+		but usually even when it does, it doesn't look like patterns, it looks
+		like conditions and joins on the historical chains of events.
+		</para>
+
+		<para>
+		The usage in the cases I know of includes the
+		ad-click aggregation, the decisions to make a market trade, the
+		watching whether the bank's end-of-day balance falls within the
+		regulations, the choosing the APR for lending.
+		</para>
+
+		<para>
+		A related use would be for the general alert consoles. The data
+		aggregation is what they do too. The last time I worked with it up close
+		(around 2006), the processing in the BMC Patrol and Nagios was just
+		plain inadequate for anything useful, and I had to hand-code the data
+		collection and console logic. I've been touching this issue recently
+		again at Google, and apparently nothing has changed much since then.
+		All the real monitoring is done with the systems developed in-house.
+		</para>
+
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<para>
+		But the CEP would have been just the
+		ticket. I think, the only reaosn why it has not been widespread yet is
+		that the commercial CEP licenses had cost a lot. But with the
+		all-you-can-eat pricing of Sybase, and with the Open Source systems,
+		this is gradually changing.
+		</para>
+
+		<para>
+		Well, and there is also the pattern matching. It has been lagging
+		behind the aggregation but growing too.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+	</sect1>
+
+</chapter>
+

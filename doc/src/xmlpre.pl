@@ -52,6 +52,11 @@ while(<STDIN>) {
 		} else {
 			# handle the inline blocks
 			s/<pre>(.*?)<\/pre>/'<computeroutput>' . &xmlify($1) . '<\/computeroutput>'/ge;
+			# process the common emphasis, to make it shorter in the source
+			s/<i>/<emphasis>/g;
+			s/<\/i>/<\/emphasis>/g;
+			s/<b>/<emphasis role="bold">/g;
+			s/<\/b>/<\/emphasis>/g;
 			print;
 		}
 	}

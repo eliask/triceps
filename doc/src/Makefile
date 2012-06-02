@@ -1,5 +1,5 @@
 
-TARGETS = samples # allpics # samples
+TARGETS = guide # allpics # samples
 HTMLTARGETS = $(foreach t, $(TARGETS), ../html/$(t).html)
 PDFTARGETS = $(foreach t, $(TARGETS), ../pdf/$(t).pdf)
 SOURCES =  $(foreach t, $(TARGETS), doc/$(t).xml)
