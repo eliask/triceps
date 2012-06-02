@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 2 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -25,26 +26,41 @@ ok(1); # If we made it this far, we're ok.
 # its man page ( perldoc Test::More ) for help writing this test script.
 
 #########################
+# helper functions to support either user i/o or i/o from vars
 
 my $result;
+
+# write a message to user
+sub send # (@message)
+{
+	$result .= join('', @_);
+}
+
+# write a message to user, like printf
+sub sendf # ($msg, $vars...)
+{
+	$fmt = shift;
+	$result .= sprintf($fmt, @_);
+}
+
+#########################
 
 $hwunit = Triceps::Unit->new("hwunit") or die "$!";
 $hw_rt = Triceps::RowType->new(
 	greeting => "string",
 	address => "string",
-) or die "$!";
+) or confess "$!";
 
 my $print_greeting = $hwunit->makeLabel($hw_rt, "print_greeting", undef, sub { 
 	my ($label, $rowop) = @_;
-	#printf "%s!\n", join(', ', $rowop->getRow()->toArray());
-	$result .= sprintf "%s!\n", join(', ', $rowop->getRow()->toArray());
-} ) or die "$!";
+	&sendf("%s!\n", join(', ', $rowop->getRow()->toArray()));
+} ) or confess "$!";
 
 $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT, 
 	$hw_rt->makeRowHash(
 		greeting => "Hello",
 		address => "world",
 	)
-))  or die "$!";
+)) or confess "$!";
 
 ok($result, "Hello, world!\n");
