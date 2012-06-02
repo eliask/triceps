@@ -87,6 +87,12 @@ See the file COPYRIGHT for the copyright notice and license information
 
 	<xi:include href="file:///DOCS/020enter.xml"/>
 
+	<!--
+	<xi:include href="file:///DOCS/030build.xml"/>
+	-->
+
+	<xi:include href="file:///DOCS/040apifund.xml"/>
+
 	<xi:include href="file:///DOCS/biblio.xml"/>
 
 	<index/>

@@ -381,14 +381,6 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		processing its done.
 		</para>
 
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
 	</sect1>
 
 </chapter>

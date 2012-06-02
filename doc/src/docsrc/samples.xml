@@ -304,6 +304,7 @@ while(&readLine) {
 	&#x2011; non-breaking hyphen
 	&sbnbrk; (raw &#xFEFF;)  non-breaking zero-width space
 	&#xAD; soft hyphen
+	&Cpp; "C++" that is non-breakable
 
 		<indexterm>
 			<primary>Pthreads wrapper</primary>
