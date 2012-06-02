@@ -85,6 +85,8 @@ See the file COPYRIGHT for the copyright notice and license information
 
 	<xi:include href="file:///DOCS/010field.xml"/>
 
+	<xi:include href="file:///DOCS/biblio.xml"/>
+
 	<index/>
 
 	<colophon>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+	<bibliography>
+		<title>Bibliography</title>
+		<bibliodiv>
+
+		<biblioentry id="Babkin10">
+			<authorgroup>
+				<author><firstname>Sergey A.</firstname><surname>Babkin</surname></author>
+			</authorgroup>
+			<copyright> <year>2010</year> </copyright>
+			<isbn>1-451-53661-5</isbn>
+			<publisher>
+				<publishername>Createspace</publishername>
+			</publisher>
+			<title>The practice of parallel programming</title>
+		</biblioentry>
+
+		</bibliodiv>
+	</bibliography>
