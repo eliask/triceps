@@ -20,6 +20,7 @@ sub xmlify # (text_line)
 
 	# this is specific to the Triceps examples
 	$tl =~ s/\&send\b/print/g;
+	$tl =~ s/\&sendf\b/printf/g;
 	$tl =~ s/\&readLine\b/<STDIN>/g;
 	
 	$tl =~ s/\&/\&amp;/g;

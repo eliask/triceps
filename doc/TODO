@@ -35,11 +35,12 @@ Things that need to be done:
 * doc: update the examples from xTrafficAgg in the final docs
   (aggregator "before" is now called before the mods)
 * doc: building apps with a private copy of Triceps
+* doc: in preface tell about the varying depth of discussion
 
 App ideas:
 * queries on CSV files
 * distributed cron
 
 Used blog entries:
-001 - last para TBU
+000-004
 028

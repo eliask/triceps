@@ -486,6 +486,12 @@ if (isin != NULL) {
 		<indexterm>
 			<primary>Fortran</primary>
 		</indexterm>
+		<indexterm>
+			<primary>GOTO</primary>
+		</indexterm>
+		<indexterm>
+			<primary>label</primary>
+		</indexterm>
 		<para>
 		Basically, writing in CCL feels like programming in Fortran in the 50s:
 		lots of labels, lots of GOTOs. Each stream is essentially a label, when
@@ -513,42 +519,6 @@ if (isin != NULL) {
 		The SQL statement structure also adds to the confusion: each statement
 		has the destination followed by the source of the data, so each
 		statement reads like it flows backwards.
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
 		</para>
 	</sect1>
 
