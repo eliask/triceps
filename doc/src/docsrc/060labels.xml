@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+
+<chapter id="ch_LabelsRowops" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Row Operations With Labels</title>
+
+	<sect1 id="sc_Labels">
+		<title>Labels</title>
+
+		<para>
+		In each CEP engine there are two kinds of logic: One is to get some
+		request, look up some state, maybe update some state, and return the
+		result. The other has to do with the maintenance of the state: make
+		sure that when one part of the state is changed, the change propagates
+		consistently through the rest of it. If we take a common RDBMS for an
+		analog, the first kind would be like the ad-hoc queries, the second
+		kind will be like the triggers. The CEP engines are very much like
+		database engines driven by triggers, so the second kind tends to
+		account for a lot of code.
+		</para>
+
+		<para>
+		The first kind of logic is often very nicely accommodated by the
+		procedural logic. The second kind often (but not always) can benefit
+		from a more relational, SQLy definition. However the SQLy definitions
+		don't stay SQLy for long.  When every every SQL
+		statement executes, it gets compiled first into the procedural form,
+		and only then executes as the procedural code.
+		</para>
+
+		<para>
+		The Triceps approach is tilted toward the procedural execution. That is,
+		the procedural definitions come out of the box, and then the high-level
+		relational logic can be defined on top of them with the templates and
+		code generators.
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+		</indexterm>
+		<para>
+		These bits of code, especially where the first and second kind connect,
+		need some way to pass the data and operations between them. In Triceps
+		these connection points are called Labels.
+		</para>
+
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<para>
+		The streaming data rows enter the procedural logic through a label.
+		Each row causes one call on the label. From the functional standpoint
+		they are the same as Coral8 Streams, as has been shown in
+		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
+		Except that in Triceps the labels receive not just
+		rows but operations on rows, as in Aleri: a combination of a row and an
+		operation code. 
+		</para>
+
+		<para>
+		They are named <quote>labels</quote> because Triceps has been built
+		around the more procedural ideas, and when looked at from that side,
+		the labels are targets of calls and GOTOs.
+		</para>
+
+		<indexterm>
+			<primary>data flow</primary>
+		</indexterm>
+		<indexterm>
+			<primary>GOTO</primary>
+		</indexterm>
+		<para>
+		If the streaming model is defined as a data flow graph, each arrow in
+		the graph is essentially a GOTO operation, and each node is a label.
+		</para>
+
+		<para>
+		A Triceps label is not quite a GOTO label, since the actual procedural
+		control always returns back after executing the label's code. It can be
+		thought of as a label of a function or procedure. But if the caller
+		does nothing but immedially return after getting the control back, it
+		works very much like a GOTO label.
+		</para>
+
+		<para>
+		Each label accepts operations on rows of a certain type.
+		</para>
+
+		<para>
+		Each label belongs to a certain execution unit, so a label can be used
+		only strictly inside one thread and can not be shared between threads.
+		</para>
+
+		<para>
+		Each label may have some code to execute when it receives a row
+		operation. The labels without code can be useful too.
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>chaining</secondary>
+		</indexterm>
+		<para>
+		A Triceps model contains the straightforward code and the mode complex
+		stateful elements, such as tables, aggregators, joiners (which may be
+		implemented in &Cpp; or in Perl, or created as user templates). These
+		stateful elements would have some input labels, where the actions may
+		be sent to them (and the actions may also be done as direct method
+		calls), and output labels, where they would produce the indications of
+		the changed state and/or responses to the queries. This is shown
+		schematically in
+		<xref linkend="fig_label_chain" xrefstyle="select: label nopage"/>.
+		The output labels
+		are typically the ones without code (<quote>dummy labels</quote>). They do nothing
+		by themselves, but can pass the data to the other labels. This passing
+		of data is achieved by <i>chaining</i> the labels: when a label is
+		called, it will first execute its own code (if it has any), and then
+		call the same operation on whatever labels are chained from it. Which
+		may have more labels chained from them in turn. So, to pass the data,
+		chain the input label of the following element to the output label of
+		the previous element.
+		</para>
+
+		<figure id="fig_label_chain" >
+			<title>Stateful elements with chained labels.</title>
+			<xi:include href="file:///FIGS/label-000-chain.xml"/> 
+			<!-- <graphic scale="100%" contentwidth="5in" fileref="label-000-chain.svg"/> -->
+		</figure>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>

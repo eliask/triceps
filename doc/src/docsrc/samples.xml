@@ -156,8 +156,8 @@ if (a &lt; b) {
 					<para>
 					The diagram will be here.
 					</para>
-					<xi:include href="file:///FIGS/samplesdraw.xml"/>
-					<!-- <graphic scale="100%" contentwidth="4in" fileref="samplesdraw.svg"/> -->
+					<!-- <xi:include href="file:///FIGS/samplesdraw.xml"/> -->
+					<graphic scale="100%" contentwidth="4in" fileref="samplesdraw.svg"/>
 					<!-- <graphic fileref="samplesdraw.svg"/> -->
 				</figure>
 				<para>

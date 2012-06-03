@@ -668,9 +668,6 @@ $result = $row->hexdump()
 		to debug the more weird issues.
 		</para>
 
-		<para>
-		</para>
-
 	</sect1>
 
 </chapter>
