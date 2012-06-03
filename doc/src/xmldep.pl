@@ -101,9 +101,9 @@ foreach $topf (@topfiles) {
 	my $htmlfile = $topf;
 	my $pdffile = $topf;
 
-	# the file swill actually be pre-processed from doc/ to docsrc/ first,
+	# the files will actually be pre-processed from docsrc/ to ./ first,
 	# so adjust for it
-	$topf =~ s/^docsrc\//doc\//;
+	$topf =~ s/^docsrc\///;
 
 	$fofile =~ s/\.xml$/\.fo/;
 	$fofile =~ s/^docsrc\///;
@@ -116,7 +116,7 @@ foreach $topf (@topfiles) {
 	print "  figrefs/refs \\\n";
 	foreach $f (@deps) {
 		$ff = $f;
-		$ff =~ s/^docsrc\//doc\//;
+		$ff =~ s/^docsrc\///;
 		print "  $ff \\\n";
 	}
 	print "\n";

@@ -2,7 +2,7 @@
 TARGETS = guide # allpics # samples
 HTMLTARGETS = $(foreach t, $(TARGETS), ../html/$(t).html)
 PDFTARGETS = $(foreach t, $(TARGETS), ../pdf/$(t).pdf)
-SOURCES =  $(foreach t, $(TARGETS), doc/$(t).xml)
+SOURCES =  $(foreach t, $(TARGETS), $(t).xml)
 DEPENDSOURCES =  $(foreach t, $(TARGETS), docsrc/$(t).xml)
 
 # The config files require the absolute paths.
@@ -26,13 +26,15 @@ ENTS_FO = entpdf/user.ent
 ENTS_HTML = enthtml/user.ent
 FOP = $(TOOLS_FOP)/fop
 
-CONFIGS = Makefile $(TOOLS_SETTINGS) $(TOOLS_CATALOG) $(TOOLS_MANAGER) $(STYLESHEET_FO)
+CONFIGS = Makefile $(TOOLS_SETTINGS) $(TOOLS_CATALOG) $(TOOLS_MANAGER) $(STYLESHEET_FO) \
+	$(DOC_CFG)/excatalog.xml $(DOC_CFG)/excataloghtml.xml
 
 .PHONY: all pdf html cfg
 
 all: cfg pdf html
 
-cfg: $(TOOLS_SETTINGS) $(TOOLS_CATALOG) $(TOOLS_MANAGER)
+cfg: $(TOOLS_SETTINGS) $(TOOLS_CATALOG) $(TOOLS_MANAGER) \
+	$(DOC_CFG)/excatalog.xml $(DOC_CFG)/excataloghtml.xml
 
 pdf: subdirs autodepend $(PDFTARGETS)
 
@@ -61,7 +63,7 @@ endif
 
 # only remove the work files, not the final results
 cleanwork:
-	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.pdf *.fo *.png *.gif *.tiff *.svg docsrc/allpics.xml
+	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.xml *.pdf *.fo *.png *.gif *.tiff *.svg docsrc/allpics.xml
 	rm -rf cfg doc
 	#$(MAKE) -C seq clean
 	$(MAKE) -C figrefs clean
@@ -76,7 +78,7 @@ $(DOC_CFG)/%: cfgsrc/% Makefile
 	[ -d cfg ] || mkdir cfg
 	sed 's|\$${DOC_SRC}|$(DOC_SRC)|g;s|\$${TOOLS_BASE}|${TOOLS_BASE}|g' <$< >$@
 
-doc/%.xml: docsrc/%.xml xmlpre.pl
+%.xml: docsrc/%.xml xmlpre.pl
 	./xmlpre.pl <$< >$@
 
 CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1 
@@ -97,16 +99,16 @@ CATALOG_DEBUG_SETTING = # XML_DEBUG_CATALOG=1
 #			--stringparam  ulink.hyphenate ' ' \
 #			$(FONT_SIZE_PARAM) \
 #			
-%.fo: doc/%.xml $(CONFIGS) $(STYLESHEET_FO) $(ENTS_FO)
+%.fo: %.xml $(CONFIGS) $(STYLESHEET_FO) $(ENTS_FO)
 	. $(TOOLS_SETTINGS); \
-		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml ./excatalog.xml" \
+		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml $(DOC_CFG)/excatalog.xml" \
 		$(CATALOG_DEBUG_SETTING) \
 		xsltproc --output $@ --xinclude \
 			$(STYLESHEET_FO) $<
 
-../html/%.html: doc/%.xml $(CONFIGS) $(STYLESHEET_HTML) $(ENTS_HTML)
+../html/%.html: %.xml $(CONFIGS) $(STYLESHEET_HTML) $(ENTS_HTML)
 	. $(TOOLS_SETTINGS); \
-		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml ./excataloghtml.xml" \
+		XML_CATALOG_FILES="$(TOOLS_XSL)/catalog.xml $(TOOLS_DTD)/catalog.xml $(DOC_CFG)/excataloghtml.xml" \
 		$(CATALOG_DEBUG_SETTING) \
 		xsltproc --output $@ --xinclude \
 			$(STYLESHEET_HTML) $<
