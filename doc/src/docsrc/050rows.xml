@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+
+<chapter id="ch_Rows" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Rows</title>
+
+	<para>
+	In Triceps the relational data is stored and passed around as rows
+	(once in a while I call them records, which is the same thing
+	here). Each row belongs to a certain type, that defines the types
+	of the fields. Each field may belong to one of the simple types.
+	</para>
+
+	<sect1 id="sc_SimpleTypes">
+		<title>Simple types</title>
+
+		<indexterm>
+			<primary>type</primary>
+			<secondary>simple</secondary>
+		</indexterm>
+
+		<para>
+		The simple values in Triceps belong to one of the simple types:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		uint8
+		</listitem>
+		<listitem>
+		int32
+		</listitem>
+		<listitem>
+		int64
+		</listitem>
+		<listitem>
+		float64
+		</listitem>
+		<listitem>
+		string
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		I like the explicit specification of the data size, so it's not some
+		mysterious <quote>double</quote> but an explicit <quote>float64</quote>.
+		</para>
+
+		<para>
+		When the data is stored in the rows, it's stored in the strongly-typed
+		binary format. When it's extracted from the rows for the Perl code to
+		access, it gets converted into the Perl values. And the other way
+		around, when stored into the rows, the conversion is done from the Perl
+		values.
+		</para>
+
+		<para>
+		<pre>uint8</pre> is the type intended to represent the raw bytes. So, for example,
+		when they are compared, they should be compared as raw bytes, not
+		according to the locale. Since Perl stores the raw bytes in strings,
+		and its <pre>pack()</pre> and <pre>unpack()</pre> functions operate on strings, The Perl side
+		of Triceps extracts the uint8 values from records into Perl strings,
+		and the other way around. 
+		</para>
+
+		<para>
+		The string type is intended to represent a text string in whatever
+		current locale (at some point it may become always UTF-8, this question
+		is open for now).
+		</para>
+
+		<para>
+		Perl on the 32-bit machines has an issue with int64: it has no type to
+		represent it directly. Because of that, when the int64 values are
+		passed to Perl on the 32-bit machines, they are converted into the
+		floating-point numbers. This gives only 54 bits (including sign) of
+		precision, but that's close enough. Anyway, the 32-bit machines are
+		obsolete by now, and Triceps it targeted towards the 64-bit machines.
+		</para>
+
+		<para>
+		On the 64-bit machines both int32 and int64 translate to the Perl
+		64-bit integers.
+		</para>
+
+		<para>
+		Note that there is no special type for timestamps. As of version 1.0
+		there is no time-based processing inside Triceps, but that does not
+		prevent you from passing around timestamps as data and use them in your
+		logic. Just store the timestamps as integers (or, if you prefer,
+		as floating point numbers). When the time-based processing will be
+		added to Perl, the plan is to still use the int64 to store the number
+		of microseconds since the Unix epoch. My experience with the time types
+		in the other CEP systems is that they cause nothing but confusion.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_RowTypes">
+		<title>Row types</title>
+
+		<indexterm>
+			<primary>type</primary>
+			<secondary>row</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>RowType</primary>
+		</indexterm>
+		<para>
+		A row type is created from a sequence of (field-name, field-type)
+		string pairs, for example:
+		</para>
+
+<pre>
+$rt1 = Triceps::RowType->new(
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+</pre>
+
+		<para>
+		Even though the pairs look like a hash, don't use an actual hash to
+		create row types! The order of pairs in a hash is unpredictable, while
+		the order of fields in a row type usually matters.
+		</para>
+
+		<para>
+		In an actual row the field may have a value or be NULL. The NULLs are
+		represented in Perl as <pre>undef</pre>.
+		</para>
+
+		<indexterm>
+			<primary>type</primary>
+			<secondary>array</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>arrays</primary>
+		</indexterm>
+		<para>
+		The real-world records tend to be pretty wide and contain
+		repetitive data. Hundreds of fields are not unusual, and I know of a
+		case when an Aleri customer wanted to have records of two thousand
+		fields (and succeeded). This just begs for arrays. So the Triceps rows
+		allow the array fields. They are specified by adding <quote>[]</quote> at the end of
+		field type. The arrays may only be made up of fixed-width data, so no
+		arrays of strings.
+		</para>
+
+<pre>
+$rt2 = Triceps::RowType->new(
+	a => "uint8[]",
+	b => "int32[]",
+	c => "int64[]",
+	d => "float64[]",
+	e => "string", # no arrays of strings!
+) or die "$!";
+</pre>
+
+		<indexterm>
+			<primary>arrays</primary>
+			<secondary>empty</secondary>
+		</indexterm>
+		<para>
+		The arrays are of variable length, whatever array data passed when a
+		row is created determines its length. The individual elements in the
+		array may not be NULL (and if undefs are passed in the array used to
+		construct the row, they will be replaced with 0s). The whole array
+		field may be NULL, and this situation is equivalent to an empty array.
+		</para>
+
+		<para>
+		The type uint8 is typically used in arrays, <quote>uint8[]</quote> is the Triceps
+		way to define a blob field. In Perl the <quote>uint8[]</quote> is represented as a
+		string value, same as a simple <quote>unit8</quote>.
+		</para>
+
+		<para>
+		The rest of array values are represented in Perl as references to Perl
+		arrays, containing the actual values.
+		</para>
+
+		<para>
+		The row type objects provide a way for introspection:
+		</para>
+
+<pre>
+$rt->getdef()
+</pre>
+
+		<para>
+		returns back the array of pairs used to create this type. It can be
+		used among other things for the schema inheritance. For example, the
+		multi-part messages with daily unique ids can be defined as:
+		</para>
+
+<pre>
+$rtMsgKey = Triceps::RowType->new(
+	date => "string",
+	id => "int32",
+) or die "$!";
+
+$rtMsg = Triceps::RowType->new(
+	$rtMsgKey->getdef(),
+	from => "string",
+	to => "string",
+	subject => "string",
+) or die "$!";
+
+$rtMsgPart = Triceps::RowType->new(
+	$rtMsgKey->getdef(),
+	type => "string",
+	payload => "string",
+) or die "$!";
+</pre>
+
+		<para>
+		The meaning here is the same as in the CCL example:
+		</para>
+
+<pre>
+create schema rtMsgKey (
+	string date,
+	integer id
+);
+create schema rtMsg inherits from rtMsgKey (
+	string from,
+	string to,
+	string subject
+);
+create schema rtMsgPart inherits from rtMsgKey (
+	string type,
+	string payload
+);
+</pre>
+
+		<para>
+		The grand plan is to provide some better ways of defining the
+		commonality of fields between row types. It should include the ability
+		to rename fields, to avoid conflicts, and to remember this equivalence
+		to be reused in the further joins without the need to write it over and
+		over again. But it has not come to the implementation stage yet.
+		</para>
+
+		<para>
+		The other methods are:
+		</para>
+
+<pre>
+$rt->getFieldNames()
+</pre>
+
+		<para>
+		returns the array of field names only.
+		</para>
+
+<pre>
+$rt->getFieldTypes()
+</pre>
+
+		<para>
+		returns the array of field types only.
+		</para>
+
+<pre>
+$rt->getFieldMapping()
+</pre>
+
+		<para>
+		returns the array of pairs that map the field names to their indexes in
+		the field definitions. It can be stored into a hash and used for
+		name-to-index translation. It's used mostly in the templates, to
+		generate code that accesses data in the rows by field index (which is
+		more efficient than access by name). For example, for <pre>rtMsgKey</pre>
+		defined above it would return <pre>(date => 0, id => 1)</pre>.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>

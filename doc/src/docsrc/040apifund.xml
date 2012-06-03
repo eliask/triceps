@@ -306,17 +306,131 @@ print &Triceps::opcodeString(&Triceps::OP_INSERT);
 		string name is not valid for this kind of constants, it would also
 		return <pre>undef</pre>.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_objprint">
+		<title>Printing the object contents</title>
+
+		<indexterm>
+			<primary>print</primary>
+		</indexterm>
+		<para>
+		When debugging the programs, it's important to find from the error
+		messages, what is going on, what kinds of objects are getting involved.
+		Because of this, many of the Triceps objects provide a way to print out
+		their contents into a string. This is done with the method
+		<pre>print()</pre>. The simplest use is as follows:
+		</para>
+
+<pre>
+$message = "Error in object " . $object->print();
+</pre>
 
 		<para>
+		Most of the objects tend to have a pretty complicated internal
+		structure and are printed on multiple lines. They look better when the
+		components are appropriately indented. The default call prints as if
+		the basic message is un-indented, and indents every extra level by 2
+		spaces.
 		</para>
 
 		<para>
+		This can be changed with extra arguments. The general format of
+		<pre>print()</pre> is:
+		</para>
+
+<programlisting>$object-&gt;print(<i>[indent, [subindent] ]</i>)</programlisting>
+
+		<para>
+		where <i>indent</i> is the initial indentation, and <i>subindent</i> is
+		the additional indentation for every level. So the default <pre>print()</pre> is
+		equivalent to <pre>print("", "  ")</pre>.
 		</para>
 
 		<para>
+		A special case is
+		</para>
+
+<pre>
+$object->print(undef)
+</pre>
+
+		<para>
+		It prints the object in a single line, without line breaks.
 		</para>
 
 		<para>
+		Here is an example of how a row type object would get printed. The details
+		of the row types will be described later, for now just assume that a
+		row type is defined as:
+		</para>
+
+<pre>
+$rt1 = Triceps::RowType->new(
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+</pre>
+
+		<para>
+		Then <pre>$rt1->print()</pre> produces:
+		</para>
+
+<pre>
+row {
+  uint8 a,
+  int32 b,
+  int64 c,
+  float64 d,
+  string e,
+}
+</pre>
+
+		<para>
+		With extra arguments <pre>$rt1->print("++", "--")</pre>:
+		</para>
+
+<pre>
+row {
+++--uint8 a,
+++--int32 b,
+++--int64 c,
+++--float64 d,
+++--string e,
+++}
+</pre>
+
+		<para>
+		The first line doesn't have a <quote>++</quote> because the
+		assumption is that the text gets appended to some other text
+		already on this line, so any prefixes are used only for the
+		following lines.
+		</para>
+
+		<para>
+		And finally with an undef argument <pre>$rt1->print(undef)</pre>:
+		</para>
+
+<pre>
+row { uint8 a, int32 b, int64 c, float64 d, string e, }
+</pre>
+
+		<indexterm>
+			<primary>printP</primary>
+		</indexterm>
+		<para>
+		The Rows and Rowops do not have the <pre>print()</pre> method.
+		That's largely because the &Cpp; code does not deal with printing
+		the actual data, this is left to the Perl code. So instead
+		they have the method <pre>printP()</pre> that does a similar
+		job. Only it's simpler and doesn't have any of the indenting
+		niceties. It always prints the data in a single line. The <quote>P</quote> 
+		in <quote>printP</quote> stands for <quote>Perl</quote>. The name
+		is also different because of this lack of indenting niceties.
+		See more about it in the description of Rows XXXLINK.
 		</para>
 	</sect1>
 
