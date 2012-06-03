@@ -287,6 +287,144 @@ $rt->getFieldMapping()
 		more efficient than access by name). For example, for <pre>rtMsgKey</pre>
 		defined above it would return <pre>(date => 0, id => 1)</pre>.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_RowTypesEquiv">
+		<title>Row types equivalence</title>
+
+		<indexterm>
+			<primary>type</primary>
+			<secondary>match</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>type</primary>
+			<secondary>equals</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>RowType</primary>
+			<secondary>match</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>RowType</primary>
+			<secondary>equals</secondary>
+		</indexterm>
+
+		<para>
+		The Triceps objects are usually strongly typed. A label handles rows of
+		a certain type. A table stores rows of a certain type.
+		</para>
+
+		<para>
+		However there may be multiple ways to check whether a row fits for a
+		certain type:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		It may be a row of the exact same type, created with the same RowType object.
+		</listitem>
+		<listitem>
+		It may be a row of another type but one with the exact same definition.
+		</listitem>
+		<indexterm>
+			<primary>case sensitivity</primary>
+		</indexterm>
+		<listitem>
+		It may be a row of another type that has the same number of fields and
+		field types but different field names. The field names (and everything
+		else in Triceps) are case-sensitive.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The row types may be compared for these conditions using the methods:
+		</para>
+
+<pre>
+$rt1->same($rt2)
+$rt1->equals($rt2)
+$rt1->match($rt2)
+</pre>
+
+		<para>
+		The comparisons are hierarchical: if two type references are the same,
+		they would also be equal and matching; two equal types are also
+		matching.
+		</para>
+
+		<para>
+		Most of the objects would accept the rows of any matching type (this
+		may change or become adjustable in the future). However if the rows are
+		not of the same type, this check involves a performance penalty. If the
+		types are the same, the comparison is limited to comparing the
+		pointers. But if not, then the whole type definition has to be
+		compared. So every time a row of a different type is passed, it would
+		involve the overhead of type comparison.
+		</para>
+
+		<para>
+		For example:
+		</para>
+
+<pre>
+my @schema = (
+	a => "int32",
+	b => "string"
+);
+
+my $rt1 = Triceps::RowType->new(@schema) or die "$!";
+# $rt2 is equal to $rt1: same field names and field types
+my $rt2 = Triceps::RowType->new(@schema) or die "$!"; 
+# $rt3  matches $rt1 and $rt2: same field types but different names
+my $rt3 = Triceps::RowType->new(
+	A => "int32",
+	B => "string"
+) or die "$!";
+
+my $lab = $unit->makeDummyLabel($rt1, "lab") or die "$!";
+# same type, efficient
+my $rop1 = $lab->makeRowop(&Triceps::OP_INSERT,
+	$rt1->makeRowArray(1, "x")) or die "$!";
+# different row type, involves a comparison overhead
+my $rop2 = $lab->makeRowop(&Triceps::OP_INSERT,
+	$rt2->makeRowArray(1, "x")) or die "$!";
+# different row type, involves a comparison overhead
+my $rop3 = $lab->makeRowop(&Triceps::OP_INSERT,
+	$rt3->makeRowArray(1, "x")) or die "$!";
+</pre>
+
+		<para>
+		A dummy label used here is a label that does nothing (its usefulness
+		will be explained later).
+		</para>
+
+		<indexterm>
+			<primary>Row</primary>
+			<secondary>re-typing</secondary>
+		</indexterm>
+		<para>
+		Once the Rowop is constructed, no further penalty is involved: the
+		row in the Rowop is re-typed to the type of the label from now on.
+		It's physically still the same row with another reference to it,
+		but when you get it back from the Rowop, it will have the label's
+		type. It's all a part of the interesting interaction between &Cpp;
+		and Perl. All the type checking is done in the Perl XS layer.
+		The &Cpp; code just expects that the data is always right and doesn't
+		carry the types around. When the Perl code wants to get the row
+		back from the Rowop, it wants to know the type of the row.
+		The only way to get it is to look, what is the label of this
+		Rowop, and get the row type from the label. This is also the
+		reason why the types have to be checked when the Rowop is
+		constructed: if a wrong row is placed into the Rowop, there will
+		be no later opportunity to check it for correctness, and bad
+		data may cause a crash.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
