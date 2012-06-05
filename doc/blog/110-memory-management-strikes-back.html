@@ -1,0 +1,37 @@
+Memory management strikes back 
+
+I've started collecting the docs, and I've found that I wrote up a whole set of rules for how to keep the memory references correct. And I've also found that I've completely ignored them. This means that the rules are way too tricky, and thus don't make a whole lot of sense. Something had to be done about it. And here we go:
+
+First, the problems come not with the data that goes through the models but with the models themselves. The data gets reference-counted without any issues. The reference loops can get formed only between the elements of the models: labels, tables etc. If you don't need them destroyed until the program exits (or more exactly, until the Perl interpreter instance exits), there is no problem. The leaks would happen only if the model elements get created and destroyed as the program runs, such as if you use them to parse and process the short-lived ad-hoc queries.
+
+Second, these leaks are pretty hard to diagnose. There are some packages, like Devel::Cycle, but they won't detect the loops that involve a reference at C++ level. And when the Perl interpreter exits, it clears up all the variables used, even the ones involved in the loops, so if you run it under valgrind, valgrind doesn't show any leaks. If the Perl interpreter allowed to detect all these left-over variables, it would work as a high-level version of valgrind, and it would help.
+
+Third, Perl provides the weak references (using the module Scalar::Util) but the problem is that you need to not forget weakening the references manually. Too much work, too much attention. 
+
+Fourth, here are the new, simplified rules.
+
+Have more faith in the label clearing as the driving force. When you create the template objects, don't be afraid to have references to other objects, to units etc., as long as they get cleared by the label clearing logic. But make sure that the label clearing logic gets actually called. When you delete a unit, make sure to call its clearing either directly or through deletion of the unit clearing trigger.
+
+I've been talking about how if a label used by an object receives $self as an argument, it should have a clearing function that would undefine that object hash. And I've never actually done it in any of the join and aggregation examples. Defining it every time is too much work and too easy to forget. The new and better approach: now there is a pre-defined function Triceps::clearArgs(). Just reuse it, there is no need to re-create it from scratch. Better yet, now it gets used automatically if the clearing function for a label is specified as <b>undef</b> (if you really want the clearing to do nothing, use "sub {}" instead).
+
+Some templates don't have their own input labels, instead they just combine and tie together a few internal objects, and use the input labels of some of these internal objects as their inputs. JoinTwo is one of them, it just combines two LookupJoins. Without an input label, there would be no clearing, and the template object's has would never be undefined. To make life easier, now there is a way to create the special clearing-only labels:
+
+<pre>$lb = $unit-&gt;makeClearingLabel("name", @args);
+</pre>
+
+Since the call is from "should never fail" category, on any errors it will confess. There is no need to check the result. The result can be saved in a variable or can be simply ignored. If you throw away the result, you won't be able to access that label from the Perl code but it won't be lost: it will be still referenced from the unit, until the unit gets cleared.
+
+For a concrete usage example, here is how JoinTwo uses it:
+
+<pre>$self-&gt;{clearingLabel} = $self-&gt;{unit}-&gt;makeClearingLabel(
+  $self-&gt;{name} . ".clear", $self);
+</pre>
+
+Passing $self as an argument makes sure that $self gets cleared.
+
+Note how the clearing label doesn't have a row type. In reality every label does how a row type, just it would be silly to abuse the random row types to create the clearing-only labels. Because of this, the clearing labels are created with a special empty row type that has no fields in it. If you ever want to use this row type for any other purposes, you can get it with the method
+
+<pre>$rt = $unit-&gt;getEmptyRowType();
+</pre>
+
+Each unit has its own copy of the empty row type, and although they are all matching and equal, they are not the same. However nothing stops you from mixing them up, a row type as such is not connected to a unit, it's just convenient to create an empty row type once in a unit and then reuse it when the unit creates the clearing-only labels.
