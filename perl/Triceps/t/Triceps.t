@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 108 };
+BEGIN { plan tests => 112 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -154,6 +154,18 @@ ok(&Triceps::isNop(&Triceps::OP_NOP));
 #########################
 # clearArgs
 
+package ttt;
+
+sub new
+{
+	my $class = shift;
+	my $self = {a => 1, b => 2};
+	bless $self, $class;
+	return $self;
+}
+
+package main;
+
 my $scalar = 1;
 my @array = (1, 2, 3);
 my %hash = (a => 1, b => 2);
@@ -165,12 +177,18 @@ my $noref = "abc";
 my $rscalar = \$scalar;
 my $rarray = \@array;
 my $rhash = \%hash;
+my $rclass = ttt->new();
+ok(ref $rclass, "ttt");
+my $rclasscopy = $rclass;
+ok(exists $rclasscopy->{a});
 
-&Triceps::clearArgs($noref, $rscalar, $rarray, $rhash);
+&Triceps::clearArgs($noref, $rscalar, $rarray, $rhash, $rclass);
 ok(!defined $noref);
 ok(!defined $rscalar);
 ok(!defined $rarray);
 ok(!defined $rhash);
+ok(!defined $rclass);
 ok(!defined $scalar);
 ok(!(@array));
 ok(!(%hash));
+ok(!exists $rclasscopy->{a});

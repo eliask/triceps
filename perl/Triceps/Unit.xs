@@ -335,6 +335,10 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *clear, SV *exec, ...
 		RowType *rt = wrt->get();
 
 		Onceref<PerlCallback> clr;
+		if (!SvOK(clear)) {
+			// take the default
+			clear = get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0);
+		}
 		if (SvOK(clear)) {
 			clr = new PerlCallback();
 			PerlCallbackInitializeSplit(clr, "Triceps::Unit::makeLabel(clear)", clear, 5, items-5);

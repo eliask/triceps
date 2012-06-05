@@ -80,9 +80,11 @@ sub clearArgs
 			undef $$v;
 		} elsif ($rt eq 'ARRAY') {
 			undef @$v;
-		} else {
-			# the blessed types are normally hashes, so undef the rest as hashes
+		} elsif ($rt eq 'HASH') {
 			undef %$v;
+		} else {
+			# the blessed types are normally hashes, so take this guess
+			eval { undef %$v; };
 		}
 		undef $v;
 	}
@@ -115,6 +117,7 @@ require Triceps::JoinTwo;
 
 # The special variables.
 our $_CROAK_MSG; # used to temporarily store the croak message in the XS code
+our $_DEFAULT_CLEAR_LABEL = \&clearArgs; # used if the label's clear function is undef
 
 1;
 __END__
