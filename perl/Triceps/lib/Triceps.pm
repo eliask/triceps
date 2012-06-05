@@ -67,6 +67,27 @@ sub _compareNumber {
 	$_[0] <=> $_[1];
 }
 
+# The default label clearing code.
+# Undefines all the values referred to by the reference arguments.
+# Then undefines all the arguments.
+sub clearArgs 
+{
+	for my $v (@_) {
+		my $rt = ref $v;
+		if ($rt eq '') {
+			# nothing
+		} elsif ($rt eq 'SCALAR') {
+			undef $$v;
+		} elsif ($rt eq 'ARRAY') {
+			undef @$v;
+		} else {
+			# the blessed types are normally hashes, so undef the rest as hashes
+			undef %$v;
+		}
+		undef $v;
+	}
+}
+
 require XSLoader;
 XSLoader::load('Triceps', $VERSION);
 
@@ -118,8 +139,6 @@ More details will be added later as the features become available.
 =head2 EXPORT
 
 None by default.
-
-
 
 =head1 SEE ALSO
 

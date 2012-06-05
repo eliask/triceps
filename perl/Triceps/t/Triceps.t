@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 98 };
+BEGIN { plan tests => 108 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -151,3 +151,26 @@ ok(!&Triceps::isNop(&Triceps::OP_INSERT));
 ok(!&Triceps::isNop(&Triceps::OP_DELETE));
 ok(&Triceps::isNop(&Triceps::OP_NOP));
 
+#########################
+# clearArgs
+
+my $scalar = 1;
+my @array = (1, 2, 3);
+my %hash = (a => 1, b => 2);
+ok(defined $scalar);
+ok(@array);
+ok(%hash);
+
+my $noref = "abc";
+my $rscalar = \$scalar;
+my $rarray = \@array;
+my $rhash = \%hash;
+
+&Triceps::clearArgs($noref, $rscalar, $rarray, $rhash);
+ok(!defined $noref);
+ok(!defined $rscalar);
+ok(!defined $rarray);
+ok(!defined $rhash);
+ok(!defined $scalar);
+ok(!(@array));
+ok(!(%hash));
