@@ -200,6 +200,18 @@ setName(WrapUnit *self, char *name)
 		Unit *u = self->get();
 		u->setName(name);
 
+# get the empty row type
+WrapRowType *
+getEmptyRowType(WrapUnit *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = new WrapRowType(u->getEmptyRowType());
+	OUTPUT:
+		RETVAL
+
 # operations on tracer
 WrapUnitTracer *
 getTracer(WrapUnit *self)
@@ -319,7 +331,7 @@ makeDummyLabel(WrapUnit *self, WrapRowType *wrt, char *name)
 # make a label with executable Perl code
 # @param self - unit where the new label belongs
 # @param wrt - row type for the label
-# @param name - name o fthe label
+# @param name - name of the label
 # @param clear - the Perl function reference to be called when the label gets cleared,
 #        may be undef
 # @param exec - the Perl function reference for label execution
@@ -354,6 +366,42 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *clear, SV *exec, ...
 		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, cb));
 	OUTPUT:
 		RETVAL
+
+# Make a label that does nothing other than clearing of the argument objects.
+# The row type of this label is always the empty row type.
+# Confesses on errors.
+# @param self - unit where the new label belongs
+# @param name - name of the label
+# @param ... -  args used for clearing with Triceps::clearArgs()
+WrapLabel *
+makeClearingLabel(WrapUnit *self, char *name, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Unit::makeClearingLabel";
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+
+		try { do {
+			clearErrMsg();
+			Unit *unit = self->get();
+			RowType *rt = unit->getEmptyRowType();
+
+			Onceref<PerlCallback> clr;
+			SV *clear = get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0);
+
+			if (!SvOK(clear)) {
+				throw Triceps::Exception(strprintf("%s: $Triceps::_DEFAULT_CLEAR_LABEL does not contain a reference to clearArgs function", funcName), false);
+			}
+
+			clr = new PerlCallback();
+			PerlCallbackInitializeSplit(clr, funcName, clear, 2, items-2);
+			if (clr->code_ == NULL)
+				break; // error message is already set
+
+			RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, NULL));
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
 
 # clear the labels, makes the unit non-runnable
 void

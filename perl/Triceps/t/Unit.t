@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 149 };
+BEGIN { plan tests => 151 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -43,6 +43,13 @@ ok(!$v);
 $u2->setName("unit2");
 $v = $u2->getName();
 ok($v, "unit2");
+
+###################### empty row type #################################
+
+$rte = $u1->getEmptyRowType();
+ok(ref $rte, "Triceps::RowType");
+$v = $rte->getdef();
+ok($#v, -1);
 
 ###################### makeTable prep #################################
 

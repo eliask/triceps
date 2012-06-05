@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 43 };
+BEGIN { plan tests => 49 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -173,16 +173,40 @@ sub new
 
 package main;
 
-my $tobj = ttt->new();
-ok(ref $tobj, "ttt");
-my $tcopy = $tobj;
-ok(exists $tcopy->{a});
+{
+	my $tobj = ttt->new();
+	ok(ref $tobj, "ttt");
+	my $tcopy = $tobj;
+	ok(exists $tcopy->{a});
 
-$plab = $u1->makeLabel($rt1, "plab", undef, \&plab_exec, $tobj);
-ok(ref $plab, "Triceps::Label");
+	$plab = $u1->makeLabel($rt1, "plab", undef, \&plab_exec, $tobj);
+	ok(ref $plab, "Triceps::Label");
 
-$plab->clear();
-ok($! . "", "");
+	$plab->clear();
+	ok($! . "", "");
 
-# the undefuned clearSub equals to clearArgs() which will wipe out the object
-ok(!exists $tcopy->{a});
+	# the undefuned clearSub equals to clearArgs() which will wipe out the object
+	ok(!exists $tcopy->{a});
+}
+
+######################## ClearingLabel ####################################
+# it's really a special simplified PerlLabel that does nothing but
+# calls clearArgs() at clearing time, and should never be sent any data
+
+{
+	my $tobj = ttt->new();
+	ok(ref $tobj, "ttt");
+	my $tcopy = $tobj;
+	ok(exists $tcopy->{a});
+
+	my $clab = $u1->makeClearingLabel("clab", $tobj);
+	ok(ref $clab, "Triceps::Label");
+	ok($clab->getName(), "clab");
+
+	$clab->clear();
+	ok($! . "", "");
+
+	# clearing calls clearArgs() which will wipe out the object
+	ok(!exists $tcopy->{a});
+}
+
