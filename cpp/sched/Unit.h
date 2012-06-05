@@ -19,6 +19,7 @@
 namespace TRICEPS_NS {
 
 class Unit;
+class RowType;
 
 // One frame of the Unit's scheduling queue.
 class UnitFrame : public Tray
@@ -200,6 +201,19 @@ public:
 	// be deleted early, or some such. This does not clear the label!
 	void  forgetLabel(Label *lab);
 
+	// An empty row type is convenient for creation of labels that do
+	// nothing but do the clearing of some objects when told to.
+	// The idea is that rather than abusing some related row type for
+	// each of these labels, could as well just make one empty row type
+	// for all of them. And the Unit is a convenient place to create
+	// and keep track of this one copy of the empty row type that can 
+	// be happily reused for as many labels as needed.
+	// The empty row type has no fields in it.
+	RowType *getEmptyRowType() const
+	{
+		return emptyRowType_;
+	}
+
 	// }
 
 	// Tracing interface.
@@ -312,7 +326,8 @@ protected:
 	UnitFrame *outerFrame_; // the outermost frame
 	UnitFrame *innerFrame_; // the current innermost frame (may happen to be the same as outermost)
 	Autoref<Tracer> tracer_; // the tracer object
-	string name_; // human-readable name for tracing
+	string name_; // human-readable name for tracing and messages
+	Autoref <RowType> emptyRowType_; // a convenience copy of row type with no fields
 	// Keeping track of labels
 	typedef map<Label *, Autoref<Label> > LabelMap;
 	LabelMap labelMap_;

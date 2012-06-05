@@ -10,6 +10,7 @@
 #include <sched/Gadget.h>
 #include <common/StringUtil.h>
 #include <common/Exception.h>
+#include <type/CompactRowType.h>
 
 namespace TRICEPS_NS {
 
@@ -125,6 +126,11 @@ Unit::Unit(const string &name) :
 	// the outermost frame is always present
 	innerFrame_ = outerFrame_ = new UnitFrame;
 	queue_.push_front(outerFrame_);
+
+	// create the empty row type instance
+	RowType::FieldVec fv; // empty!
+	emptyRowType_ = new CompactRowType(fv);
+	assert(emptyRowType_->getErrors().isNull());
 }
 
 Unit::~Unit()

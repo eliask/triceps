@@ -58,6 +58,7 @@ UTESTCASE mkunit(Utest *utest)
 	UT_IS(unit1->getTracer().get(), tracer1);
 
 	UT_ASSERT(unit1->empty());
+	UT_ASSERT(unit1->getEmptyRowType() != NULL);
 }
 
 UTESTCASE mklabel(Utest *utest)
