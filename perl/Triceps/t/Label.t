@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 38 };
+BEGIN { plan tests => 43 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -160,3 +160,29 @@ ok($! . "", "Triceps::Label::getCode: label is not a Perl Label, has no Perl cod
 $lb->clear(); # even a non-Perl label can be cleared
 ok($! . "", "");
 
+# clearing of the objects by the default Triceps::clearArgs
+package ttt;
+
+sub new
+{
+	my $class = shift;
+	my $self = {a => 1, b => 2};
+	bless $self, $class;
+	return $self;
+}
+
+package main;
+
+my $tobj = ttt->new();
+ok(ref $tobj, "ttt");
+my $tcopy = $tobj;
+ok(exists $tcopy->{a});
+
+$plab = $u1->makeLabel($rt1, "plab", undef, \&plab_exec, $tobj);
+ok(ref $plab, "Triceps::Label");
+
+$plab->clear();
+ok($! . "", "");
+
+# the undefuned clearSub equals to clearArgs() which will wipe out the object
+ok(!exists $tcopy->{a});
