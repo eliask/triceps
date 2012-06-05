@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 18 };
+BEGIN { plan tests => 20 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -341,3 +341,23 @@ index error:
   nested index 1 'primary':
     can not find the key field 'xxx'/);
 #print "$@\n";
+
+#########
+# clearing
+
+{
+	my $unit = Triceps::Unit->new("unit") or die "$!";
+
+	my $collapse = Triceps::Collapse->new(
+		unit => $unit,
+		name => "collapse",
+		data => [
+			name => "idata",
+			rowType => $rtData,
+			key => [ "local_ip", "remote_ip" ],
+		],
+	) or die "$!";
+	ok(exists $collapse->{datasets});
+	$unit->clearLabels();
+	ok(!exists $collapse->{datasets});
+}

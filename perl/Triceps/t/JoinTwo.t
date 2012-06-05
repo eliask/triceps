@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 190 };
+BEGIN { plan tests => 193 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1048,7 +1048,6 @@ join3r.rightLookup.out OP_INSERT source="source1" external="999" internal="4" rt
 #########
 # tests for errors
 
-
 sub tryMissingOptValue # (optName)
 {
 	my %opt = (
@@ -1382,3 +1381,21 @@ ok($@ =~ /^Option 'byLeft' contains a right-side field 'internal' that is not in
 ok($@ =~ /^Unknown value 'xxx' of option 'fieldsUniqKey', must be one of none|manual|left|right|first/);
 #print STDERR "$@\n";
 
+#########
+# clearing
+# MUST BE LAST because it will destroy everything in the unit
+
+{
+	my $join = Triceps::JoinTwo->new( 
+		name => "join",
+		leftTable => $tTrans3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["byAccount"],
+		rightIdxPath => ["lookupSrcExt"],
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+	ok(exists $join->{unit});
+
+	$vu3->clearLabels();
+	ok(!exists $join->{unit});
+}

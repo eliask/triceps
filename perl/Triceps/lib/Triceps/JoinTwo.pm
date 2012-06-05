@@ -344,6 +344,9 @@ sub new # (class, optionName => optionValue ...)
 	delete $self->{leftFromLabel}; 
 	delete $self->{rightFromLabel};
 
+	# make a clearing label, since there is no input label in this object
+	$self->{clearingLabel} = $self->{unit}->makeClearingLabel($self->{name} . ".clear", $self);
+
 	bless $self, $class;
 	return $self;
 }

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 250 };
+BEGIN { plan tests => 253 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1385,3 +1385,23 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 
 #print STDERR "err=$@\n";
 
+#########
+# clearing
+# MUST BE LAST because it will destroy everything in the unit
+
+{
+	my $j = Triceps::LookupJoin->new(
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $t,
+		rightIdxPath => ["byNotArr2"],
+		rightFields => [ "notArr1" ],
+		by => [ "acctSrc" => "notArr2" ],
+	);
+	ok(ref $j, "Triceps::LookupJoin");
+	ok(exists $j->{unit});
+
+	$vu2->clearLabels();
+	ok(!exists $j->{unit});
+}
