@@ -12,7 +12,6 @@ This file is a part of Triceps.
 See the file COPYRIGHT for the copyright notice and license information
 -->
 
-
 <chapter id="ch_LabelsRowops" xmlns:xi="http://www.w3.org/2001/XInclude">
 	<title>Row Operations With Labels</title>
 
@@ -124,7 +123,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		calls), and output labels, where they would produce the indications of
 		the changed state and/or responses to the queries. This is shown
 		in the diagram in
-		<xref linkend="fig_label_chain" xrefstyle="select: label nopage"/>.
+		<xref linkend="fig_label_chain" xrefstyle="select: label nopage"/>&#xA0;.
 		The output labels
 		are typically the ones without code (<quote>dummy labels</quote>). They do nothing
 		by themselves, but can pass the data to the other labels. This passing
@@ -213,100 +212,19 @@ execSub($label, $rowop, @args)
 		</para>
 
 		<para>
-		<pre>clearSub</pre> is the function that clears the label. More about it below.
+		<pre>clearSub</pre> is the function that clears the label. It will be explained in the
+		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
 		Either of <pre>execSub</pre> and <pre>clearSub</pre> can be specified as <pre>undef</pre>. Though
 		a label with an undefined <pre>execSub</pre> is essentially a dummy label, only
-		more heavyweight.
+		more heavyweight. The undefined <pre>clearSub</pre> causes the function
+		<pre>Triceps::clearArgs</pre> to be used as the default, which provides the
+		correct reaction for most situations.
 		</para>
 	</sect1>
 
-	<sect1 id="sc_LabelClearing">
-		<title>Label clearing</title>
+	<sect1 id="sc_LabelXXX">
+		<title>Label XXX</title>
 
-		<para>
-		The function <pre>clearSub</pre> deals with the destruction. Remember that the
-		Triceps memory management uses the reference counting, which does not like
-		the reference loops (see
-		<xref linkend="sc_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;). 
-		The reference loops cause the objects to be never
-		freed. It's no big deal if the data structures exist until the program
-		exit anyway but it becomes a memory leak if they keep being created and deleted
-		dynamically.
-		</para>
-
-		<para>
-		If the labels are arranged in a cyclic graph, they refer to each other
-		and create a reference loop. To fix this situation, the execution unit
-		keeps track of all its labels, and when it gets destoryed, clears them
-		up, breaking up the loops. 
-		</para>
-
-		<indexterm>
-			<primary>label</primary>
-			<secondary>clearing</secondary>
-		</indexterm>
-		<para>
-		The clearing of a label drops all the references to <pre>execSub</pre>, <pre>clearSub</pre>
-		and arguments, and clears all the chainings. And of course the chained
-		labels get cleared too.  But before anything else
-		is done, <pre>clearSub</pre> gets a chance to execute and clear any
-		application-level data. It gets as argument the label reference all the
-		args from the label constructor:
-		</para>
-
-<pre>
-clearSub($label, @args) 
-</pre>
-
-		<para>
-		A typical case is to keep the state of a stateful element in a hash:
-		</para>
-
-<pre>
-package MyElement;
-
-sub new # (class, unit, name...)
-{
-	my ($class, $unit, $name, @args) = @_; 
-	my $self = {};
-	... 
-	$self->inLabel = $unit->makeLabel(..., \&clear, \&handle, $self);
-	$self->outLabel = $unit->makeDummyLabel(...);
-	...
-	bless $self, $class;
-	return $self;
-}
-</pre>
-
-		<para>
-		Then the clearing function can wipe out the whole state of the element
-		by undefining its hash:
-		</para>
-
-<pre>
-sub clear # (label, self)
-{
-	my ($label, $self) = @_;
-	undef %$self;
-}
-</pre>
-
-		<indexterm>
-			<primary>memory management</primary>
-		</indexterm>
-		<para>
-		Another potential for reference loops is between the execution
-		unit and the labels. A unit keeps a reference to all its labels. So the
-		labels can not keep a reference to the unit. And they don't. Internally
-		they have a plain &Cpp; pointer to the unit. Note however that in the example shown
-		the labels have a Perl reference to the object where they belong. If
-		that object is to have a Perl reference to the unit, it would create a
-		reference loop, and the object will never be destroyed and never clear
-		the labels. So generally the objects should never keep references to
-		the unit. The unit also provides another way around this situation: it
-		has a way to force the label clearing when a helper object gets
-		destroyed. It will be described later.
-		</para>
 
 		<para>
 		</para>

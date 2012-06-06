@@ -35,11 +35,18 @@ Things that need to be done:
 * doc: update the examples from xTrafficAgg in the final docs
   (aggregator "before" is now called before the mods)
 * doc: building apps with a private copy of Triceps
+* doc: Triceps::clearArgs, empty row type, clearing label
 
 App ideas:
 * queries on CSV files
 * distributed cron
 
+Docbook stuff:
+* change the function call examples to remove italics, and use variable names
+* references for labels
+
 Used blog entries:
 000-011
+013
 028
+110 except for empty row type

@@ -101,8 +101,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 	</sect1>
 
-	<sect1 id="sc_memory">
-		<title>Memory management</title>
+	<sect1 id="sc_memory_fund">
+		<title>Memory management fundamentals</title>
 
 		<indexterm>
 			<primary>memory management</primary>
@@ -131,26 +131,29 @@ See the file COPYRIGHT for the copyright notice and license information
 			<primary>label</primary>
 		</indexterm>
 		<para>
-		The major problem with the reference counters is the reference loops.
+		The major problem with the reference counters is the reference cycles.
 		If object A has a reference to object B, and object B has a reference
 		(possibly, indirect) to object A, then neither of them will ever be
 		destroyed. Many of these cases can be resolved by keeping a reference
 		in one direction and a plain pointer in the other. This of course
 		introduces the problem of hanging pointers, so extra care has to be
 		taken to not reference them. There also are the unpleasant situations
-		when there is absolutely no way around the reference loops. For
+		when there is absolutely no way around the reference cycles. For
 		example, the Triceps label's method may keep a reference to the next
 		label, where to send its processed results. If the labels are connected
 		into a loop (a perfectly normal occurrence), this would cause a
-		reference loop. Here the way around is to know when all the labels are
+		reference cycle. Here the way around is to know when all the labels are
 		no longer used (before the thread exit), and explicitly tell them to
-		clear their references to the other labels. This breaks up the loop,
+		clear their references to the other labels. This breaks up the cycle,
 		and then bits and pieces can be collected by the reference count logic.
 		</para>
 
 		<para>
-		The reference loop problem can be seen all the way up into the Perl level.
+		The reference cycle problem can be seen all the way up into the Perl level.
 		However Triceps provides the ready solutions for its typical occurences.
+		To explain it, more about Triceps operation has to be explained first,
+		so it's described in detail later in
+		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
 		</para>
 
 		<para>
@@ -430,7 +433,8 @@ row { uint8 a, int32 b, int64 c, float64 d, string e, }
 		niceties. It always prints the data in a single line. The <quote>P</quote> 
 		in <quote>printP</quote> stands for <quote>Perl</quote>. The name
 		is also different because of this lack of indenting niceties.
-		See more about it in the description of Rows XXXLINK.
+		See more about it in the 
+		<xref linkend="sc_Rows" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;. 
 		</para>
 	</sect1>
 
