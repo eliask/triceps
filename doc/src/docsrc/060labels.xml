@@ -17,7 +17,7 @@ See the file COPYRIGHT for the copyright notice and license information
 	<title>Row Operations With Labels</title>
 
 	<sect1 id="sc_Labels">
-		<title>Labels</title>
+		<title>Labels basics</title>
 
 		<para>
 		In each CEP engine there are two kinds of logic: One is to get some
@@ -123,7 +123,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		be sent to them (and the actions may also be done as direct method
 		calls), and output labels, where they would produce the indications of
 		the changed state and/or responses to the queries. This is shown
-		schematically in
+		in the diagram in
 		<xref linkend="fig_label_chain" xrefstyle="select: label nopage"/>.
 		The output labels
 		are typically the ones without code (<quote>dummy labels</quote>). They do nothing
@@ -141,6 +141,175 @@ See the file COPYRIGHT for the copyright notice and license information
 			<xi:include href="file:///FIGS/label-000-chain.xml"/> 
 			<!-- <graphic scale="100%" contentwidth="5in" fileref="label-000-chain.svg"/> -->
 		</figure>
+
+		<para>
+		The make things clear, a label doesn't have to be a part of a stateful
+		element. The labels absolutely can exist by themselves. It's just that
+		the stateful elements can use the labels as their endpoints.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_LabelConstruction">
+		<title>Label construction</title>
+
+		<para>
+		The execution unit provides methods to construct labels. A dummy label
+		is constructed as:
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>dummy</secondary>
+		</indexterm>
+<pre>
+$label = $unit->makeDummyLabel($rowType, "name") or confess "$!";
+</pre>
+
+		<para>
+		It takes as arguments the type of rows that the label will accept and
+		the symbolic name of the label. As usual, the name can be any but for the ease of
+		debugging it's better to give the same name as the label variable.
+		</para>
+
+		<para>
+		The label with Perl code is constructed as follows:
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>Perl</secondary>
+		</indexterm>
+<pre>
+$label = $unit->makeLabel($rowType, "name", \&clearSub,
+	\&execSub, @args);
+</pre>
+
+		<para>
+		The row type and name arguments are the same as for the dummy label.
+		The following arguments provide the references to the Perl functions
+		that perform the actions. <pre>execSub</pre> is the function that executes to
+		handle the incoming rows. It gets the arguments:
+		</para>
+
+<pre>
+execSub($label, $rowop, @args)
+</pre>
+
+		<para>
+		Here <pre>$label</pre> is this label, <pre>$rowop</pre> is the row operation, and <pre>@args</pre>
+		are the same as extra arguments specified at the label creation.
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>chaining</secondary>
+		</indexterm>
+		<para>
+		The row operation actually contains the label reference, so why pass it
+		the second time? The reason lies in the chaining. The current label may
+		be chained, possibly through multiple levels, to some original label,
+		and the rowop will refer to that original label. The extra argument
+		lets the code find the current label.
+		</para>
+
+		<para>
+		<pre>clearSub</pre> is the function that clears the label. More about it below.
+		Either of <pre>execSub</pre> and <pre>clearSub</pre> can be specified as <pre>undef</pre>. Though
+		a label with an undefined <pre>execSub</pre> is essentially a dummy label, only
+		more heavyweight.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_LabelClearing">
+		<title>Label clearing</title>
+
+		<para>
+		The function <pre>clearSub</pre> deals with the destruction. Remember that the
+		Triceps memory management uses the reference counting, which does not like
+		the reference loops (see
+		<xref linkend="sc_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;). 
+		The reference loops cause the objects to be never
+		freed. It's no big deal if the data structures exist until the program
+		exit anyway but it becomes a memory leak if they keep being created and deleted
+		dynamically.
+		</para>
+
+		<para>
+		If the labels are arranged in a cyclic graph, they refer to each other
+		and create a reference loop. To fix this situation, the execution unit
+		keeps track of all its labels, and when it gets destoryed, clears them
+		up, breaking up the loops. 
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>clearing</secondary>
+		</indexterm>
+		<para>
+		The clearing of a label drops all the references to <pre>execSub</pre>, <pre>clearSub</pre>
+		and arguments, and clears all the chainings. And of course the chained
+		labels get cleared too.  But before anything else
+		is done, <pre>clearSub</pre> gets a chance to execute and clear any
+		application-level data. It gets as argument the label reference all the
+		args from the label constructor:
+		</para>
+
+<pre>
+clearSub($label, @args) 
+</pre>
+
+		<para>
+		A typical case is to keep the state of a stateful element in a hash:
+		</para>
+
+<pre>
+package MyElement;
+
+sub new # (class, unit, name...)
+{
+	my ($class, $unit, $name, @args) = @_; 
+	my $self = {};
+	... 
+	$self->inLabel = $unit->makeLabel(..., \&clear, \&handle, $self);
+	$self->outLabel = $unit->makeDummyLabel(...);
+	...
+	bless $self, $class;
+	return $self;
+}
+</pre>
+
+		<para>
+		Then the clearing function can wipe out the whole state of the element
+		by undefining its hash:
+		</para>
+
+<pre>
+sub clear # (label, self)
+{
+	my ($label, $self) = @_;
+	undef %$self;
+}
+</pre>
+
+		<indexterm>
+			<primary>memory management</primary>
+		</indexterm>
+		<para>
+		Another potential for reference loops is between the execution
+		unit and the labels. A unit keeps a reference to all its labels. So the
+		labels can not keep a reference to the unit. And they don't. Internally
+		they have a plain &Cpp; pointer to the unit. Note however that in the example shown
+		the labels have a Perl reference to the object where they belong. If
+		that object is to have a Perl reference to the unit, it would create a
+		reference loop, and the object will never be destroyed and never clear
+		the labels. So generally the objects should never keep references to
+		the unit. The unit also provides another way around this situation: it
+		has a way to force the label clearing when a helper object gets
+		destroyed. It will be described later.
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
