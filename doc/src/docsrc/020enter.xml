@@ -310,7 +310,7 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 			<primary>row operation</primary>
 		</indexterm>
 		<indexterm>
-			<primary>rowop</primary>
+			<primary>Rowop</primary>
 		</indexterm>
 		<para>
 		Note that the label's handler function doesn't just get a row as an
