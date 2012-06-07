@@ -18,7 +18,8 @@ sub makeHashSend # (self, opcode, fieldName => fieldValue, ...)
 	my $self = shift;
 	my $opcode = shift;
 	my $row = $self->resultType()->makeRowHash(@_) or Carp::confess "$!";
-	return $self->send($opcode, $row);
+	my $res = $self->send($opcode, $row) or Carp::confess "$!";
+	return $res;
 }
 
 # A convenience wrapper that creates the Row/Rowop from
@@ -31,7 +32,8 @@ sub makeArraySend # (self, opcode, fieldValue, ...)
 	my $self = shift;
 	my $opcode = shift;
 	my $row = $self->resultType()->makeRowArray(@_) or Carp::confess "$!";
-	return $self->send($opcode, $row);
+	my $res = $self->send($opcode, $row) or Carp::confess "$!";
+	return $res;
 }
 
 1;

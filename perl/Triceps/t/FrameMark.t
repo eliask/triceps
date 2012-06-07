@@ -94,11 +94,11 @@ sub nextLoop # ($label, $rowop)
 	} elsif ($callType eq "single") {
 		$u1->loopAt($m1, $newrop) or die "$!";
 	} elsif ($callType eq "fromHash") {
-		$u1->makeHashLoopAt($m1, $labStart, &Triceps::OP_DELETE, %data) or die "$!";
+		$u1->makeHashLoopAt($m1, $labStart, &Triceps::OP_DELETE, %data);
 	} elsif ($callType eq "fromArray") {
 		# a convoluted but easiest way to get the updated data in an array
 		my @adata = $rt1->makeRowHash(%data)->toArray();
-		$u1->makeArrayLoopAt($m1, $labStart, &Triceps::OP_DELETE, @adata) or die "$!";
+		$u1->makeArrayLoopAt($m1, $labStart, &Triceps::OP_DELETE, @adata);
 	}
 }
 

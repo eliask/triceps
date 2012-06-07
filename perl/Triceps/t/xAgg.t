@@ -135,8 +135,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -285,8 +284,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -407,8 +405,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -537,8 +534,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -668,8 +664,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -804,8 +799,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -922,7 +916,7 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $state->{price_sum}/$count,
-	) or die "$!";
+	);
 }
 
 sub initAverage8 #  (@args)
@@ -959,8 +953,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -1062,8 +1055,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -1185,8 +1177,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -1281,8 +1272,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -1437,8 +1427,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 
@@ -1526,8 +1515,7 @@ $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 

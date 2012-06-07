@@ -151,11 +151,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "acct") {
-		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
-		$uJoin->makeArrayCall($lbFilter, @data)
-			or die "$!";
+		$uJoin->makeArrayCall($lbFilter, @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -211,11 +209,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "acct") {
-		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
-		$uJoin->makeArrayCall($join->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($join->getInputLabel(), @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -278,11 +274,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "acct") {
-		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
-		$uJoin->makeArrayCall($lbTrans, @data)
-			or die "$!";
+		$uJoin->makeArrayCall($lbTrans, @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -348,11 +342,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "acct") {
-		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
-		$uJoin->makeArrayCall($join->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($join->getInputLabel(), @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -427,11 +419,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "acct") {
-		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
-		$uJoin->makeArrayCall($join->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($join->getInputLabel(), @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -502,8 +492,7 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "acct") {
-		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
 		my $op = shift @data; # drop the opcode field
 		my $trans = $rtInTrans->makeRowArray(@data) or die "$!";
@@ -636,11 +625,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "cur") {
-		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data);
 	} elsif ($type eq "pos") {
-		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -720,11 +707,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "cur") {
-		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data);
 	} elsif ($type eq "pos") {
-		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data);
 	} elsif ($type eq "day") { # set the business day
 		$businessDay = $data[0] + 0; # convert to an int
 	} elsif ($type eq "clear") { # clear the previous day
@@ -813,11 +798,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "cur") {
-		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data);
 	} elsif ($type eq "pos") {
-		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data);
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
 }
@@ -920,11 +903,9 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "cur") {
-		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data);
 	} elsif ($type eq "pos") {
-		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data)
-			or die "$!";
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data);
 	} elsif ($type eq "day") { # set the business day
 		$businessDay = $data[0] + 0; # convert to an int
 	} elsif ($type eq "clear") { # clear the previous day

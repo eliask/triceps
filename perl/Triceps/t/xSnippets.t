@@ -95,15 +95,13 @@ $lbA = $unit->makeLabel($rtA, "A", undef, sub {
 $lbB = $unit->makeLabel($rtA, "B", undef, sub {
 	my $rop = $_[1]; 
 	my $op = $rop->getOpcode(); my $a = $rop->getRow();
-	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 1)
-		or confess "$!";
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 1);
 }) or confess "$!";
 
 $lbC = $unit->makeLabel($rtA, "C", undef, sub {
 	my $rop = $_[1]; 
 	my $op = $rop->getOpcode(); my $a = $rop->getRow();
-	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 0)
-		or confess "$!";
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 0);
 }) or confess "$!";
 
 $lbD = $unit->makeLabel($rtD, "D", undef, sub {

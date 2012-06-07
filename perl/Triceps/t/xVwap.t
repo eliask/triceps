@@ -452,8 +452,7 @@ $tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/); # starts with a string opcode
-	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data)
-		or die "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	$uTrades->drainFrame(); # just in case, for completeness
 }
 

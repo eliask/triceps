@@ -484,8 +484,7 @@ sub computeDay # ($dateStamp)
 	our $uTraffic;
 	my $bytes = 0;
 
-	my $rhFirst = $tHourly->findIdxBy($idxHourlyByDay, day => $_[0])
-		or die "$!";
+	my $rhFirst = $tHourly->findIdxBy($idxHourlyByDay, day => $_[0]);
 	my $rhEnd = $rhFirst->nextGroupIdx($idxHourlyByDayGroup)
 		or die "$!";
 	for (my $rhi = $rhFirst; 
@@ -495,7 +494,7 @@ sub computeDay # ($dateStamp)
 	$uTraffic->makeHashCall($tDaily->getInputLabel(), "OP_INSERT",
 		day => $_[0],
 		bytes => $bytes,
-	) or die "$!";
+	);
 }
 
 while(&readLine) {

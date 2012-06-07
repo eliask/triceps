@@ -14,7 +14,8 @@ sub findBy # (self, fieldName => fieldValue, ...)
 {
 	my $self = shift;
 	my $row = $self->getRowType()->makeRowHash(@_) or Carp::confess "$!";
-	return $self->find($row);
+	my $res = $self->find($row) or Carp::confess "$!";
+	return $res;
 }
 
 # create a row with specified fields and find it in an expicit index, thus 
@@ -24,7 +25,8 @@ sub findIdxBy # (self, idxType, fieldName => fieldValue, ...)
 	my $self = shift;
 	my $idx = shift;
 	my $row = $self->getRowType()->makeRowHash(@_) or Carp::confess "$!";
-	return $self->findIdx($idx, $row);
+	my $res = $self->findIdx($idx, $row) or Carp::confess "$!";
+	return $res;
 }
 
 1;

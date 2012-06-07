@@ -19,7 +19,8 @@ sub makeHashCall # (self, label, opcode, fieldName => fieldValue, ...)
 	my $self = shift;
 	my $label = shift;
 	my $rowop = $label->makeRowopHash(@_) or Carp::confess "$!";
-	return $self->call($rowop);
+	my $res = $self->call($rowop) or Carp::confess "$!";
+	return $res;
 }
 
 # A convenience wrapper that creates the Rowop from
@@ -33,7 +34,8 @@ sub makeArrayCall # (self, label, opcode, fieldValue, ...)
 	my $self = shift;
 	my $label = shift;
 	my $rowop = $label->makeRowopArray(@_) or Carp::confess "$!";
-	return $self->call($rowop);
+	my $res = $self->call($rowop) or Carp::confess "$!";
+	return $res;
 }
 
 # A convenience wrapper that creates the Rowop from
@@ -47,7 +49,8 @@ sub makeHashSchedule # (self, label, opcode, fieldName => fieldValue, ...)
 	my $self = shift;
 	my $label = shift;
 	my $rowop = $label->makeRowopHash(@_) or Carp::confess "$!";
-	return $self->schedule($rowop);
+	my $res = $self->schedule($rowop) or Carp::confess "$!";
+	return $res;
 }
 
 # A convenience wrapper that creates the Rowop from
@@ -61,7 +64,8 @@ sub makeArraySchedule # (self, label, opcode, fieldValue, ...)
 	my $self = shift;
 	my $label = shift;
 	my $rowop = $label->makeRowopArray(@_) or Carp::confess "$!";
-	return $self->schedule($rowop);
+	my $res = $self->schedule($rowop) or Carp::confess "$!";
+	return $res;
 }
 
 # A convenience wrapper that creates the Rowop from
@@ -77,7 +81,8 @@ sub makeHashLoopAt # (self, mark, label, opcode, fieldName => fieldValue, ...)
 	my $mark = shift;
 	my $label = shift;
 	my $rowop = $label->makeRowopHash(@_) or Carp::confess "$!";
-	return $self->loopAt($mark, $rowop);
+	my $res = $self->loopAt($mark, $rowop) or Carp::confess "$!";
+	return $res;
 }
 
 # A convenience wrapper that creates the Rowop from
@@ -93,7 +98,8 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 	my $mark = shift;
 	my $label = shift;
 	my $rowop = $label->makeRowopArray(@_) or Carp::confess "$!";
-	return $self->loopAt($mark, $rowop);
+	my $res = $self->loopAt($mark, $rowop) or Carp::confess "$!";
+	return $res;
 }
 
 1;

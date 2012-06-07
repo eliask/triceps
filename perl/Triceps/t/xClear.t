@@ -122,7 +122,7 @@ our $lbClear = $uChunks->makeLabel($rtNote, "lbClear", undef, sub {
 	}
 	$uChunks->makeHashCall($lbReportNote, "OP_INSERT",
 		text => "done clearing",
-	) or confess "$!";
+	);
 }) or confess "$!";
 
 while(&readLine) {
@@ -136,7 +136,7 @@ while(&readLine) {
 			$uChunks->makeHashCall($tData->getInputLabel(), "OP_INSERT",
 				s => ("data_" . $seq),
 				i => $seq,
-			) or confess "$!";
+			);
 		}
 	} elsif ($type eq "dump") {
 		for (my $rhit = $tData->begin(); !$rhit->isNull(); $rhit = $rhit->next()) {
@@ -148,7 +148,7 @@ while(&readLine) {
 	} elsif ($type eq "clear") {
 		$uChunks->makeHashCall($lbClear, "OP_INSERT",
 			text => "clear",
-		) or confess "$!";
+		);
 	} elsif ($type eq "idle") {
 		$uChunks->schedule($trayIdle);
 		$trayIdle->clear();

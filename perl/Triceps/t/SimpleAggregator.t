@@ -79,8 +79,7 @@ sub runExample($$$) # ($unit, $tabType, $aggName)
 	while(&readLine) {
 		chomp;
 		my @data = split(/,/); # starts with a string opcode
-		$unit->makeArrayCall($t->getInputLabel(), @data)
-			or confess "$!";
+		$unit->makeArrayCall($t->getInputLabel(), @data);
 		$unit->drainFrame(); # just in case, for completeness
 	}
 	# XXX this leaks labels $lbPrint until the unit gets cleared

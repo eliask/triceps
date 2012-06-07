@@ -189,8 +189,7 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "rate") {
-		$uArb->makeArrayCall($tRate->getInputLabel(), @data)
-			or die "$!";
+		$uArb->makeArrayCall($tRate->getInputLabel(), @data);
 	}
 	$uArb->drainFrame(); # just in case, for completeness
 }
@@ -271,8 +270,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 	my $ccy2 = $row->get("ccy2");
 	my $rate1 = $row->get("rate");
 
-	my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2)
-		or die "$!";
+	my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2);
 	my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12)
 		or die "$!";
 	for (; !$rhi->same($rhiEnd); $rhi = $rhi->nextIdx($ixtCcy12)) {
@@ -280,8 +278,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 		my $ccy3 = $row2->get("ccy2");
 		my $rate2 = $row2->get("rate");
 
-		my $rhj = $tRate->findIdxBy($ixtCcy12, ccy1 => $ccy3, ccy2 => $ccy1)
-			or die "$!";
+		my $rhj = $tRate->findIdxBy($ixtCcy12, ccy1 => $ccy3, ccy2 => $ccy1);
 		# it's a leaf primary index, so there may be no more than one match
 		next
 			if ($rhj->isNull());
@@ -343,8 +340,7 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "rate") {
-		$uArb->makeArrayCall($tRate->getInputLabel(), @data)
-			or die "$!";
+		$uArb->makeArrayCall($tRate->getInputLabel(), @data);
 	}
 	$uArb->drainFrame(); # just in case, for completeness
 }
@@ -492,8 +488,7 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "rate") {
-		$uArb->makeArrayCall($tRate->getInputLabel(), @data)
-			or die "$!";
+		$uArb->makeArrayCall($tRate->getInputLabel(), @data);
 	}
 	$uArb->drainFrame(); # just in case, for completeness
 }
