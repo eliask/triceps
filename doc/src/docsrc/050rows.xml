@@ -442,8 +442,10 @@ my $rop3 = $lab->makeRowop(&Triceps::OP_INSERT,
 		The row type provides the constructor methods for the rows:
 		</para>
 
-<programlisting>$row = $rowType-&gt;makeRowArray(<i>fieldValue1, ..., fieldValueN</i>);
-$row = $rowType-&gt;makeRowHash(<i>fieldName =&gt; fieldValue, ...</i>);</programlisting>
+<pre>
+$row = $rowType->makeRowArray(@fieldValues);
+$row = $rowType->makeRowHash($fieldName => $fieldValue, ...);
+</pre>
 
 		<para>
 		Here <pre>$row</pre> is a reference to the resulting row. As usual, in case of
@@ -539,7 +541,9 @@ $row = $rt1->makeRowArray("abcd", [0, 0]) or die "$!";
 		selected fields:
 		</para>
 
-<programlisting>$row2 = $row1-&gt;copymod(<i>fieldName =&gt; fieldValue, ...</i>);</programlisting>
+<pre>
+$row2 = $row1->copymod($fieldName => $fieldValue, ...);
+</pre>
 
 		<para>
 		The fields that are not explicitly specified will be left unchanged.

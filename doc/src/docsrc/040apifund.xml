@@ -342,11 +342,11 @@ $message = "Error in object " . $object->print();
 		<pre>print()</pre> is:
 		</para>
 
-<programlisting>$object-&gt;print(<i>[indent, [subindent] ]</i>)</programlisting>
+<programlisting>$object-&gt;print(<i>[$indent, [$subindent] ]</i>)</programlisting>
 
 		<para>
-		where <i>indent</i> is the initial indentation, and <i>subindent</i> is
-		the additional indentation for every level. So the default <pre>print()</pre> is
+		where <i>$indent</i> is the initial indentation, and <i>$subindent</i> is
+		the additional indentation for every level. The default <pre>print()</pre> is
 		equivalent to <pre>print("", "  ")</pre>.
 		</para>
 
