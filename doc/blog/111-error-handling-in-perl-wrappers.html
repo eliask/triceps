@@ -1,0 +1,19 @@
+error handling in the Perl wrappers
+
+Since the API started the transition to confessing on the fatal errors instead of just returning an undef and an error message, I've converted the Perl wrapper methods to do the same. This includes:
+
+<pre>AggregatorContext::makeHashSend()
+AggregatorContext::makeArraySend()
+
+Label::makeRowopHash()
+Label::makeRowopArray()
+
+Table::findBy()Table::findIdxBy() 
+
+Unit::makeHashCall()
+Unit::makeArrayCall()
+Unit::makeHashSchedule()
+Unit::makeArraySchedule()
+Unit::makeHashLoopAt()
+Unit::makeArrayLoopAt() 
+</pre>
