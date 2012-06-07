@@ -278,6 +278,29 @@ $label1->clearChained();
 		</para>
 
 		<para>
+		To check if there are any labels chained from this one, use:
+		</para>
+
+<pre>
+$result = $label->hasChained();
+</pre>
+
+		<para>
+		The same check can be done with
+		</para>
+
+<pre>
+@chain = $label->getChain();
+
+if ($#chain >= 0) { ... }
+</pre>
+
+		<para>
+		but <pre>hasChained()</pre> is more efficient since it doesn't have
+		to construct that intermediate array.
+		</para>
+
+		<para>
 		The whole label can be cleared with
 		</para>
 
@@ -366,9 +389,264 @@ $label->setName($name);
 	<sect1 id="sc_Rowop">
 		<title>Row operations</title>
 
+		<indexterm>
+			<primary>Rowop</primary>
+		</indexterm>
+		<indexterm>
+			<primary>row operation</primary>
+		</indexterm>
+
+		<para>
+		A row operation (also known as rowop) in Triceps is an unit of work for
+		a label. It's always destined for a particular label (which could also
+		pass it to its chained labels), and has a row to process and an opcode.
+		The defined opcodes are:
+		</para>
+
+		<indexterm>
+			<primary>opcode</primary>
+		</indexterm>
+		<itemizedlist>
+		<listitem>
+			<pre>Triceps::OP_NOP</pre> or <pre>"OP_NOP"</pre>
+		</listitem>
+		<listitem>
+			<pre>Triceps::OP_INSERT</pre> or <pre>"OP_INSERT"</pre>
+		</listitem>
+		<listitem>
+			<pre>Triceps::OP_DELETE</pre> or <pre>"OP_DELETE"</pre>
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		A row operation is constructed as:
+		</para>
+
+<pre>
+$rowop = $label->makeRowop($opcode, $row);
+</pre>
+
+		<para>
+		The opcode may be specified as a Triceps constant or as a string.
+		Historically, there is also an optional extra argument for enqueuing
+		mode but it's already obsolete.
+		</para>
+
+		<para>
+		Since the labels are single-threaded, the rowops are single-threaded
+		too. The rowops are immutable, just as the rows are. It's possible
+		to keep a rowop around and call it over and over again.
+		</para>
+
+		<para>
+		A copy of rowop (not just another reference but an honest separate
+		copied object) can be created with:
+		</para>
+
+<pre>
+$rowop2 = $rowop1->copy();
+</pre>
+
+		<para>
+		However, since the rowops are immutable, a reference is just as good as
+		a copy. This method is historic and will likely be removed or modified.
+		</para>
+
+		<para>
+		A more interesting operation is the rowop adoption:
+		it is a way to pass the row and opcode from one rowop to another new
+		one, with a different label:
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>adoption</secondary>
+		</indexterm>
+<pre>
+$rowop2 = $label->adopt($rowop1);
+</pre>
+
+		<para>
+		It is very convenient for building the label handlers that pass the
+		rowops to the other labels unchanged. For example, a label
+		that filters the data and passes it to the next label, can implemented as
+		follows:
+		</para>
+
+<pre>
+my $lab1 = $unit->makeLabel($rt1, "lab1", undef, sub {
+	my ($label, $rowop) = @_;
+	if ($rowop->getRow()->get("a") > 10) {
+		$unit->call($lab2->adopt($rowop));
+	}
+}) or confess "$!";
+</pre>
+
+		<para>
+		The same functionality as <pre>adopt()</pre> also can be done with
+		</para>
+
+<pre>
+$rowop2 = $label->makeRowop($rowop1->getOpcode(), $rowop1->getRow());
+</pre>
+
+		<para>
+		But <pre>adopt()</pre> is easier to call and also more efficient,
+		because less of the intermediate data surfaces from the &Cpp; level to
+		the Perl level.
+		</para>
+
+		<para>
+		The references to rowops can be compared as usual:
+		</para>
+
+<pre>
+$rowop1->same($rowop2)
+</pre>
+
+		<para>
+		returns true if both point to the same rowop object.
+		</para>
+
+		<para>
+		The rowop data can be extracted back:
+		</para>
+
+<pre>
+$label = $rowop->getLabel();
+$opcode = $rowop->getOpcode();
+$row = $rowop->getRow();
+</pre>
+
+		<para>
+		There also are calls to directly check the meaning of the opcode:
+		</para>
+
+<pre>
+$rowop->isNop()
+$rowop->isInsert()
+$rowop->isDelete()
+</pre>
+
+		<para>
+		The typical idiom for the label's handler function is:
+		</para>
+
+<pre>
+if ($rowop->isInsert()) {
+	# handle the insert logic ...
+} elsif($rowop->isDelete()) {
+	# handle the delete logic...
+}
+</pre>
+
+		<para>
+		The NOPs get silently ignored in this idiom, as they should be.
+		Generally there is no point in creation of the rowops with the <pre>OP_NOP</pre> opcode,
+		unless you want to use them for some weird logic.
+		</para>
+
+		<para>
+		The main Triceps package also provides functions to check the extracted
+		opcode values directly:
+		</para>
+
+<pre>
+Triceps::isNop($opcode)
+Triceps::isInsert($opcode)
+Triceps::isDelete($opcode)
+</pre>
+
+		<para>
+		The same-named methods of Rowop are just the more convenient and
+		efficient way to say
+		</para>
+
+<pre>
+Triceps::isNop($rowop->getOpcode())
+Triceps::isInsert($rowop->getOpcode())
+Triceps::isDelete($rowop->getOpcode())
+</pre>
+
+		<para>
+		The functions to convert between the opcode integer values and strings
+		are:
+		</para>
+
+		<indexterm>
+			<primary>constants</primary>
+		</indexterm>
+<pre>
+$opcode = &Triceps::stringOpcode($opcodeName);
+$opcodeName = &Triceps::opcodeString($opcode); 
+</pre>
+
+		<para>
+		A Rowop can be printed (usually for debugging purposes) with
+		</para>
+
+<pre>
+$string = $rowop->printP();
+</pre>
+
+		<para>
+		Just as with a row, the method <pre>printP()</pre> is implemented in Perl. In
+		the future a <pre>print()</pre> done right in C++ may be added, but for now I try
+		to keep all the interpretation of the data on the Perl side. Even though
+		<pre>printP()</pre> is implemented in Perl, it can print the rowops
+		for any kinds of labels.  The
+		following example gives an idea of the format in which the rowops get
+		printed:
+		</para>
+
+<pre>
+$lb = $unit->makeDummyLabel($rt, "lb");
+$rowop = $lb->makeRowop(&Triceps::OP_INSERT, $row);
+print $rowop->printP(), "\n";
+</pre>
+
+		<para>
+		would produce
+		</para>
+
+<pre>
+lb OP_INSERT a="123" b="456" c="3000000000000000" d="3.14" e="text" 
+</pre>
+
+		<para>
+		The row contents is printed through <pre>Row::printP()</pre>, so it has
+		the same format.
+		</para>
+
+<pre>
+</pre>
+
 		<para>
 		</para>
 
+<pre>
+</pre>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 	</sect1>
 
 </chapter>
