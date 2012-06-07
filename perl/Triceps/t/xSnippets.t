@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 6 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -124,3 +124,44 @@ D OP_INSERT key="key1" value="-1" negative="1"
 
 }
 
+#########################
+# Filtering of rows by adoption.
+
+{
+use strict;
+
+my $result;
+
+my $unit = Triceps::Unit->new("unit") or confess "$!";
+
+my @schema = (
+	a => "int32",
+	b => "string"
+);
+
+my $rt1 = Triceps::RowType->new(@schema) or confess "$!";
+
+my $lab2;
+
+my $lab1 = $unit->makeLabel($rt1, "lab1", undef, sub {
+	my ($label, $rowop) = @_;
+	if ($rowop->getRow()->get("a") > 10) {
+		$unit->call($lab2->adopt($rowop));
+	}
+}) or confess "$!";
+
+$lab2 = $unit->makeLabel($rt1, "lab2", undef, sub {
+	$result .= $_[1]->printP();
+	$result .= "\n";
+}) or confess "$!";
+
+# the test
+$unit->makeHashCall($lab1, "OP_INSERT", a => 20, b => "xxx");
+$unit->makeHashCall($lab1, "OP_DELETE", a => 1, b => "yyy");
+#print $result;
+ok($result,
+'lab2 OP_INSERT a="20" b="xxx" 
+');
+
+undef $lab2;
+}
