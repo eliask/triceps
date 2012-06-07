@@ -13,7 +13,7 @@ See the file COPYRIGHT for the copyright notice and license information
 -->
 
 <chapter id="ch_LabelsRowops" xmlns:xi="http://www.w3.org/2001/XInclude">
-	<title>Row Operations With Labels</title>
+	<title>Labels and Row Operations</title>
 
 	<sect1 id="sc_Labels">
 		<title>Labels basics</title>
@@ -400,23 +400,9 @@ $label->setName($name);
 		A row operation (also known as rowop) in Triceps is an unit of work for
 		a label. It's always destined for a particular label (which could also
 		pass it to its chained labels), and has a row to process and an opcode.
-		The defined opcodes are:
+		The opcodes will be described momentarily in the
+		<xref linkend="sc_opcodes" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
-
-		<indexterm>
-			<primary>opcode</primary>
-		</indexterm>
-		<itemizedlist>
-		<listitem>
-			<pre>Triceps::OP_NOP</pre> or <pre>"OP_NOP"</pre>
-		</listitem>
-		<listitem>
-			<pre>Triceps::OP_INSERT</pre> or <pre>"OP_INSERT"</pre>
-		</listitem>
-		<listitem>
-			<pre>Triceps::OP_DELETE</pre> or <pre>"OP_DELETE"</pre>
-		</listitem>
-		</itemizedlist>
 
 		<para>
 		A row operation is constructed as:
@@ -427,9 +413,9 @@ $rowop = $label->makeRowop($opcode, $row);
 </pre>
 
 		<para>
-		The opcode may be specified as a Triceps constant or as a string.
-		Historically, there is also an optional extra argument for enqueuing
-		mode but it's already obsolete.
+		The opcode may be specified an integer or as a string.
+		Historically, there is also an optional extra argument for the enqueuing
+		mode but it's already obsolete, so I don't show it here.
 		</para>
 
 		<para>
@@ -464,7 +450,9 @@ $rowop = $label->makeRowopArray($opcode, @fields);
 			<primary>error handling</primary>
 		</indexterm>
 		<para>
-		Internally they are currently implemented in Perl, and just wrap
+		Note that they don't need the row type argument any more,
+		because the label knows the row type and provides it.
+		Internally these methods are currently implemented in Perl, and just wrap
 		the two calls into one. They also use the new error handling
 		convention, and confess on any errors. There is normally no
 		need to check their result. In the future they will be rewritten
@@ -507,7 +495,7 @@ $rowop2 = $label->adopt($rowop1);
 		<para>
 		It is very convenient for building the label handlers that pass the
 		rowops to the other labels unchanged. For example, a label
-		that filters the data and passes it to the next label, can implemented as
+		that filters the data and passes it to the next label, can be implemented as
 		follows:
 		</para>
 
@@ -521,7 +509,9 @@ my $lab1 = $unit->makeLabel($rt1, "lab1", undef, sub {
 </pre>
 
 		<para>
-		The same functionality as <pre>adopt()</pre> also can be done with
+		This code doesn't even look at the opcode in the rowop, it just
+		passes it through and lets the next label worry about it.
+		The functionality of <pre>adopt()</pre> also can be implemented with
 		</para>
 
 <pre>
@@ -554,69 +544,6 @@ $rowop1->same($rowop2)
 $label = $rowop->getLabel();
 $opcode = $rowop->getOpcode();
 $row = $rowop->getRow();
-</pre>
-
-		<para>
-		There also are calls to directly check the meaning of the opcode:
-		</para>
-
-<pre>
-$rowop->isNop()
-$rowop->isInsert()
-$rowop->isDelete()
-</pre>
-
-		<para>
-		The typical idiom for the label's handler function is:
-		</para>
-
-<pre>
-if ($rowop->isInsert()) {
-	# handle the insert logic ...
-} elsif($rowop->isDelete()) {
-	# handle the delete logic...
-}
-</pre>
-
-		<para>
-		The NOPs get silently ignored in this idiom, as they should be.
-		Generally there is no point in creation of the rowops with the <pre>OP_NOP</pre> opcode,
-		unless you want to use them for some weird logic.
-		</para>
-
-		<para>
-		The main Triceps package also provides functions to check the extracted
-		opcode values directly:
-		</para>
-
-<pre>
-Triceps::isNop($opcode)
-Triceps::isInsert($opcode)
-Triceps::isDelete($opcode)
-</pre>
-
-		<para>
-		The same-named methods of Rowop are just the more convenient and
-		efficient way to say
-		</para>
-
-<pre>
-Triceps::isNop($rowop->getOpcode())
-Triceps::isInsert($rowop->getOpcode())
-Triceps::isDelete($rowop->getOpcode())
-</pre>
-
-		<para>
-		The functions to convert between the opcode integer values and strings
-		are:
-		</para>
-
-		<indexterm>
-			<primary>constants</primary>
-		</indexterm>
-<pre>
-$opcode = &Triceps::stringOpcode($opcodeName);
-$opcodeName = &Triceps::opcodeString($opcode); 
 </pre>
 
 		<para>
@@ -655,35 +582,146 @@ lb OP_INSERT a="123" b="456" c="3000000000000000" d="3.14" e="text"
 		The row contents is printed through <pre>Row::printP()</pre>, so it has
 		the same format.
 		</para>
+	</sect1>
 
+	<sect1 id="sc_opcodes">
+		<title>Opcodes</title>
+
+		<para>
+		The defined opcodes are:
+		</para>
+
+		<indexterm>
+			<primary>opcode</primary>
+		</indexterm>
+		<itemizedlist>
+		<listitem>
+			<pre>&Triceps::OP_NOP</pre> or <pre>"OP_NOP"</pre>
+		</listitem>
+		<listitem>
+			<pre>&Triceps::OP_INSERT</pre> or <pre>"OP_INSERT"</pre>
+		</listitem>
+		<listitem>
+			<pre>&Triceps::OP_DELETE</pre> or <pre>"OP_DELETE"</pre>
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The meaning is straightforward: NOP does nothing, INSERT inserts
+		a row, DELETE deletes a row. There is no opcode to replace or
+		update a row. The updates are done as two separate operations: first
+		DELETE the old value then INSERT the new value. The order is
+		important: the old value has to be deleted before inserting the new one.
+		But there is no requirement that these operations must go one
+		after another. If you want to update ten rows, you can first
+		delete all ten and then insert the new ten. In the
+		normal processing the end result will be the same, even though
+		it might go through some different intermediate states.
+		It's a good idea to write your models to follow the same principle.
+		</para>
+
+		<para>
+		Internally an opcode is always represented as an integer constant.
+		The same constant value can be obtained by calling the functions
+		<pre>&Triceps::OP_*</pre>. However when constructing the rowops,
+		you can also use the string literals <pre>"OP_*"</pre> with
+		the same result, they will be automatically transtaled to the integers. 
+		In fact, the string literal form is slightly
+		faster (unless you save the result of the function in a variable
+		and then use the integer value from that variable for the
+		repeated construction).
+		</para>
+
+		<para>
+		But when you get the opcodes back from rowops, they are always
+		returned as integers. Triceps provides functions that convert
+		the opcodes between the integer and string constants:
+		</para>
+
+		<indexterm>
+			<primary>constants</primary>
+		</indexterm>
 <pre>
+$opcode = &Triceps::stringOpcode($opcodeName);
+$opcodeName = &Triceps::opcodeString($opcode); 
 </pre>
 
 		<para>
+		They come handy for all kinds of print-outs. If you pass the invalid
+		values, the conversion to integers will return an <pre>undef</pre>.
+		</para>
+
+		<para>
+		The conversion of the invalid integers to strings is more interesting.
+		And by the way, you can pass the invalid integer opcodes to the
+		rowop construction too, and they won't be caught. The way they
+		will be processed is a bit of a lottery. The proper integer values
+		are actually bitmasks, and they are nicely formatted to make sense.
+		The invalid values would make some random bitmasks, and they will
+		get processed in some unpredictable way. When converting an invalid
+		integer to a string, <pre>opcodeString</pre> tries to predict and 
+		show this way in a set of letters <pre>I</pre> and <pre>D</pre>
+		in square brackets, for INSERT and DELETE flags. If both are present, 
+		usually the INSERT flag wins over the DELETE in the processing. 
+		If none are present, it's a NOP.
+		</para>
+
+		<para>
+		In the normal
+		processing you don't normally read the opcode and then compare
+		it with different values. Instead you check the meaning of the
+		opcode (that is internally a bitmask) directly with the rowop methods:
 		</para>
 
 <pre>
+$rowop->isNop()
+$rowop->isInsert()
+$rowop->isDelete()
 </pre>
 
 		<para>
+		The typical idiom for the label's handler function is:
+		</para>
+
+<pre>
+if ($rowop->isInsert()) {
+	# handle the insert logic ...
+} elsif($rowop->isDelete()) {
+	# handle the delete logic...
+}
+</pre>
+
+		<para>
+		The NOPs get silently ignored in this idiom, as they should be.
+		Generally there is no point in creating the rowops with the <pre>OP_NOP</pre> opcode,
+		unless you want to use them for some weird logic.
 		</para>
 
 		<para>
+		The main Triceps package also provides functions to check the integer
+		opcode values directly:
 		</para>
 
-		<para>
-		</para>
+<pre>
+Triceps::isNop($opcode)
+Triceps::isInsert($opcode)
+Triceps::isDelete($opcode)
+</pre>
 
 		<para>
+		The same-named methods of Rowop are just the more convenient and
+		efficient way to say
 		</para>
 
-		<para>
-		</para>
+<pre>
+Triceps::isNop($rowop->getOpcode())
+Triceps::isInsert($rowop->getOpcode())
+Triceps::isDelete($rowop->getOpcode())
+</pre>
 
 		<para>
-		</para>
-
-		<para>
+		They handle the whole logic directly in &Cpp; without an extra
+		Perl conversion of the values.
 		</para>
 	</sect1>
 
