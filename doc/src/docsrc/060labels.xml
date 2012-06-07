@@ -439,6 +439,44 @@ $rowop = $label->makeRowop($opcode, $row);
 		</para>
 
 		<para>
+		A rowop can be created from a bunch of fields in an array or hash form 
+		in two steps:
+		</para>
+
+<pre>
+$rowop = $label->makeRowop($opcode, $rt->makeRowHash(
+	$fieldName => $fieldValue, ...));
+$rowop = $label->makeRowop($opcode, $rt->makeRowArray(@fields));
+</pre>
+
+		<para>
+		Since this kind of creation happens fairly often, writing out these
+		calls every time becomes tedious. The Label provides the combined
+		constructors to make life easier:
+		</para>
+
+<pre>
+$rowop = $label->makeRowopHash($opcode, $fieldName => $fieldValue, ...);
+$rowop = $label->makeRowopArray($opcode, @fields);
+</pre>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		Internally they are currently implemented in Perl, and just wrap
+		the two calls into one. They also use the new error handling
+		convention, and confess on any errors. There is normally no
+		need to check their result. In the future they will be rewritten
+		in &Cpp; for greater efficiency.
+		</para>
+
+		<para>
+		There also are the methods that create a rowop and immediately
+		call it. They will be described with the execution unit.
+		</para>
+
+		<para>
 		A copy of rowop (not just another reference but an honest separate
 		copied object) can be created with:
 		</para>
@@ -455,7 +493,7 @@ $rowop2 = $rowop1->copy();
 		<para>
 		A more interesting operation is the rowop adoption:
 		it is a way to pass the row and opcode from one rowop to another new
-		one, with a different label:
+		one, with a different label.
 		</para>
 
 		<indexterm>
