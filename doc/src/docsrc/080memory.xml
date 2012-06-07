@@ -73,8 +73,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<para>
-		The clearing of a label clears all the chainings and calls the application-level
-		clearing as well. The chained labels get cleared too, and the whole chain
+		The clearing of a label clears all the chainings.
+		The chained labels get cleared too in their turn, and eventually the whole chain
 		clears up. This removes the links in the forward direction, and if any
 		cycles were present, they become open.
 		More on the details of label clearing in the 

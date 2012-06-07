@@ -213,33 +213,158 @@ execSub($label, $rowop, @args)
 
 		<para>
 		<pre>clearSub</pre> is the function that clears the label. It will be explained in the
-		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
+		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
 		Either of <pre>execSub</pre> and <pre>clearSub</pre> can be specified as <pre>undef</pre>. Though
-		a label with an undefined <pre>execSub</pre> is essentially a dummy label, only
-		more heavyweight. The undefined <pre>clearSub</pre> causes the function
-		<pre>Triceps::clearArgs</pre> to be used as the default, which provides the
+		a label with an undefined <pre>execSub</pre> makes the label useless for anything
+		other than clearing. On an attempt to send data to it, it will complain that
+		the label has been cleared.
+		The undefined <pre>clearSub</pre> causes the function
+		<pre>Triceps::clearArgs()</pre> to be used as the default, which provides the
 		correct reaction for most situations.
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>clearing</secondary>
+		</indexterm>
+
+		<para>
+		There is a special convenience constructor for the labels that are used
+		only for clearing an object (their usefulness is discussed in
+		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;).
+		</para>
+
+<pre>
+$lb = $unit->makeClearingLabel("name", @args);
+</pre>
+
+		<para>
+		The arguments would be the references to the objects that need clearing,
+		usually the object's <pre>$self</pre>. They will be cleared with
+		<pre>Triceps::clearArgs()</pre> when the label clearing gets called.
 		</para>
 	</sect1>
 
-	<sect1 id="sc_LabelXXX">
-		<title>Label XXX</title>
-
+	<sect1 id="sc_LabelOther">
+		<title>Other label methods</title>
 
 		<para>
+		The chaining of labels is done with the call:
+		</para>
+
+<pre>
+$label1->chain($label2) or confess "$!";
+</pre>
+
+		<para>
+		<pre>$label2</pre> becomes chained to <pre>$label1</pre>.
+		A label can not be chained to itself, neither directly nor through
+		other intermediate labels. The row types of the chained labels must be equal
+		(this is more strict than for queueing up the row operations for labels,
+		and might change one or the other way in the future).
 		</para>
 
 		<para>
+		A label's chainings can be cleared with
+		</para>
+
+<pre>
+$label1->clearChained();
+</pre>
+
+		<para>
+		It returns nothing, and clears the chainings from this label. There is
+		no way to unchain only some selected labels.
 		</para>
 
 		<para>
+		The whole label can be cleared with
+		</para>
+
+<pre>
+$label->clear();
+</pre>
+
+		<para>
+		This is fully equivalent to what happens when an execution unit clears
+		the labels: it calls the clear function (if any) and clears the
+		chainings. Note that the labels that used to be chained from this one
+		do not get cleared themselves, they're only unchained from this one.
 		</para>
 
 		<para>
+		Labels have the usual way of comparing the references:
+		</para>
+
+<pre>
+$label1->same($label2)
+</pre>
+
+		<para>
+		returns true if both references point to the same label object.
 		</para>
 
 		<para>
+		The labels introspection can be done with the methods:
 		</para>
+
+<pre>
+$rowType = $label->getType();
+$unit = $label->getUnit();
+$name = $label->getName();
+@chainedLabels = $label->getChain();
+$execSubRef = $label->getCode();
+</pre>
+
+		<para>
+		If the label has been cleared, <pre>getUnit()</pre> will return an
+		<pre>undef</pre>. <pre>getChain()</pre> returns an array of references
+		to the chained labels. <pre>getCode()</pre> is actually half-done
+		because it returns just the Perl function reference to the execution
+		handler but not its arguments, nor reference to the clearing function.
+		It will be changed in the future to fix these issues.
+		<pre>getCode()</pre> is not applicable to the dummy labels, and would
+		return an <pre>undef</pre> for them.
+		</para>
+
+		<para>
+		The labels actually exist in multiple varieties. The underlying common
+		denominator is the &Cpp; class Label. This class may be extended and the
+		resulting labels embedded into the &Cpp; objects. These labels can be
+		accesses and controlled from Perl but their logic is hardcoded in their
+		objects and is not directly visible from Perl. The dummy labels are
+		a subclass of labels in general, and can be constructed directly
+		from Perl. Another subclass is the labels with the Perl handlers.
+		They can be constructed from Perl, and really only from Perl. The &Cpp;
+		code can access and control them, in a symmetrical relation. The
+		method <pre>getCode()</pre> has meaning only on these Perl labels.
+		Finally, the clearing labels also get dreated from Perl, and fundamentally
+		are Perl labels with many settings hardcoded in the constructor.
+		<pre>getCode()</pre> can be used on them too but since they have
+		no handler code, it would always return <pre>undef</pre>.
+		</para>
+
+		<para>
+		There is also a way to change a label's name:
+		</para>
+
+<pre>
+$label->setName($name);
+</pre>
+
+		<para>
+		It returns nothing, and there is probably no reason to call it. It will
+		likely be removed in the future.
+		</para>
+
+		<para>
+		The label also provides the constructor methods for the row operations, 
+		which are described below.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_Rowop">
+		<title>Row operations</title>
 
 		<para>
 		</para>
