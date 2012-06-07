@@ -179,13 +179,19 @@ ok(ref $rop, "Triceps::Rowop");
 ok($rop->printP(), "tab1.in OP_DELETE a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
 
 # errors
-$rop = $lb->makeRowopHash("OP_INSET", @dataset1);
+undef $rop;
+eval {
+	$rop = $lb->makeRowopHash("OP_INSET", @dataset1);
+};
 ok(!defined $rop);
-ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast");
+ok($@ =~ /^Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast/);
 
-$rop = $lb->makeRowopArray("OP_INSET", $row1->toArray());
+undef $rop;
+eval {
+	$rop = $lb->makeRowopArray("OP_INSET", $row1->toArray());
+};
 ok(!defined $rop);
-ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast");
+ok($@ =~ /^Triceps::Label::makeRowop: unknown opcode string 'OP_INSET', if integer was meant, it has to be cast/);
 
 undef $rop;
 eval {

@@ -86,8 +86,7 @@ sub mainloop($$$) # ($unit, $datalabel, $collapse)
 		my @data = split(/,/); # starts with a command, then string opcode
 		my $type = shift @data;
 		if ($type eq "data") {
-			my $rowop = $datalabel->makeRowopArray(@data)
-				or die "$!";
+			my $rowop = $datalabel->makeRowopArray(@data);
 			$unit->call($rowop) or die "$!";
 			$unit->drainFrame(); # just in case, for completeness
 		} elsif ($type eq "flush") {

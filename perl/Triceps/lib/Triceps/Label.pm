@@ -19,7 +19,8 @@ sub makeRowopHash # (self, opcode, fieldName => fieldValue, ...)
 	my $self = shift;
 	my $opcode = shift;
 	my $row = $self->getType()->makeRowHash(@_) or Carp::confess "$!";
-	return $self->makeRowop($opcode, $row);
+	my $rop = $self->makeRowop($opcode, $row) or Carp::confess "$!";
+	return $rop;
 }
 
 # A convenience wrapper that creates the Rowop from
@@ -33,7 +34,8 @@ sub makeRowopArray # (self, opcode, fieldValue, ...)
 	my $self = shift;
 	my $opcode = shift;
 	my $row = $self->getType()->makeRowArray(@_) or Carp::confess "$!";
-	return $self->makeRowop($opcode, $row);
+	my $rop = $self->makeRowop($opcode, $row) or Carp::confess "$!";
+	return $rop;
 }
 
 1;

@@ -302,7 +302,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 					rate2 => $rate3,
 					rate3 => $rate1,
 					looprate => $looprate,
-				) or die "$!";
+				);
 			}
 		} else {
 			if ($ccy3 lt $ccy1) { # rotate right
@@ -314,7 +314,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 					rate2 => $rate1,
 					rate3 => $rate2,
 					looprate => $looprate,
-				) or die "$!";
+				);
 			}
 		}
 		if (!defined $result) { # use the straight order
@@ -326,7 +326,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 				rate2 => $rate2,
 				rate3 => $rate3,
 				looprate => $looprate,
-			) or die "$!";
+			);
 		}
 		if ($looprate > 1) {
 			$uArb->call($result);
@@ -448,7 +448,7 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 				rate2 => $rate3,
 				rate3 => $rate1,
 				looprate => $looprate,
-			) or die "$!";
+			);
 		}
 	} else {
 		if ($ccy3 lt $ccy1) { # rotate right
@@ -460,7 +460,7 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 				rate2 => $rate1,
 				rate3 => $rate2,
 				looprate => $looprate,
-			) or die "$!";
+			);
 		}
 	}
 	if (!defined $result) { # use the straight order
@@ -472,7 +472,7 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 			rate2 => $rate2,
 			rate3 => $rate3,
 			looprate => $looprate,
-		) or die "$!";
+		);
 	}
 	if ($looprate > 1) {
 		$uArb->call($result);

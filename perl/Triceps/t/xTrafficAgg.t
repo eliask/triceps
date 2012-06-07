@@ -224,8 +224,7 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "new") {
-		my $rowop = $tPackets->getInputLabel()->makeRowopArray(@data)
-			or die "$!";
+		my $rowop = $tPackets->getInputLabel()->makeRowopArray(@data);
 		# update the current notion of time (simplistic)
 		$currentHour = &hourStamp($rowop->getRow()->get("time"));
 		if (defined($rowop->getRow()->get("local_ip"))) {
@@ -504,8 +503,7 @@ while(&readLine) {
 	my @data = split(/,/); # starts with a command, then string opcode
 	my $type = shift @data;
 	if ($type eq "new") {
-		my $rowop = $tPackets->getInputLabel()->makeRowopArray(@data)
-			or die "$!";
+		my $rowop = $tPackets->getInputLabel()->makeRowopArray(@data);
 		# update the current notion of time (simplistic)
 		$currentHour = &hourStamp($rowop->getRow()->get("time"));
 		my $lastDay = $currentDay;
