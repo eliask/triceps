@@ -65,7 +65,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		The streaming data rows enter the procedural logic through a label.
 		Each row causes one call on the label. From the functional standpoint
 		they are the same as Coral8 Streams, as has been shown in
-		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
+		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		Except that in Triceps the labels receive not just
 		rows but operations on rows, as in Aleri: a combination of a row and an
 		operation code. 
@@ -123,7 +123,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		calls), and output labels, where they would produce the indications of
 		the changed state and/or responses to the queries. This is shown
 		in the diagram in
-		<xref linkend="fig_label_chain" xrefstyle="select: label nopage"/>&#xA0;.
+		<xref linkend="fig_label_chain" xrefstyle="select: label nopage"/>&xrsp;.
 		The output labels
 		are typically the ones without code (<quote>dummy labels</quote>). They do nothing
 		by themselves, but can pass the data to the other labels. This passing
@@ -213,7 +213,7 @@ execSub($label, $rowop, @args)
 
 		<para>
 		<pre>clearSub</pre> is the function that clears the label. It will be explained in the
-		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
+		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		Either of <pre>execSub</pre> and <pre>clearSub</pre> can be specified as <pre>undef</pre>. Though
 		a label with an undefined <pre>execSub</pre> makes the label useless for anything
 		other than clearing. On an attempt to send data to it, it will complain that
@@ -231,7 +231,7 @@ execSub($label, $rowop, @args)
 		<para>
 		There is a special convenience constructor for the labels that are used
 		only for clearing an object (their usefulness is discussed in
-		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;).
+		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
 		</para>
 
 <pre>

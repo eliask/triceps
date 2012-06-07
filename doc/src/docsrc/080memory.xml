@@ -25,7 +25,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		Remember that the
 		Triceps memory management uses the reference counting, which does not like
 		the reference cycles, as has been mentioned in
-		<xref linkend="sc_memory_fund" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;. 
+		<xref linkend="sc_memory_fund" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 		The reference cycles cause the objects to be never
 		freed. It's no big deal if the data structures exist until the program
 		exit anyway but it becomes a memory leak if they keep being created and deleted
@@ -78,7 +78,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		clears up. This removes the links in the forward direction, and if any
 		cycles were present, they become open.
 		More on the details of label clearing in the 
-		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;. 
+		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 		</para>
 
 		<para>

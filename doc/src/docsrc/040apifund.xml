@@ -153,7 +153,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		However Triceps provides the ready solutions for its typical occurences.
 		To explain it, more about Triceps operation has to be explained first,
 		so it's described in detail later in
-		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;.
+		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -434,7 +434,7 @@ row { uint8 a, int32 b, int64 c, float64 d, string e, }
 		in <quote>printP</quote> stands for <quote>Perl</quote>. The name
 		is also different because of this lack of indenting niceties.
 		See more about it in the 
-		<xref linkend="sc_Rows" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;. 
+		<xref linkend="sc_Rows" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 		</para>
 	</sect1>
 

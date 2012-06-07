@@ -272,7 +272,7 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		<para>
 		Then we create a label. If you look at the <quote>SQLy vs
 		procedural</quote> example in
-		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&#xA0;,
+		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
 		you'll see that the labels are analogs of
 		streams in Coral8. And that's what they are in Triceps. Of course,
 		now, in the days of the structured programming, we don't create labels

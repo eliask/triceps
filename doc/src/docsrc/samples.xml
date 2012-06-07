@@ -305,6 +305,7 @@ while(&readLine) {
 	&sbnbrk; (raw &#xFEFF;)  non-breaking zero-width space
 	&#xAD; soft hyphen
 	&Cpp; "C++" that is non-breakable
+	&xrsp; spacing in PDF after xrefs, translates to &#xA0;
 
 		<indexterm>
 			<primary>Pthreads wrapper</primary>
