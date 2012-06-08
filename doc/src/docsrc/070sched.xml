@@ -179,10 +179,19 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		It provides 3 basic ways of executing of a rowop:
 		</para>
 
+		<indexterm>
+			<primary>unit</primary>
+		</indexterm>
+		<indexterm>
+			<primary>row operation</primary>
+		</indexterm>
 		<variablelist>
 			<varlistentry>
 				<term>Call:</term>
 				<listitem>
+				<indexterm>
+					<primary>call</primary>
+				</indexterm>
 				<para>
 				Execute the label right now, including all the nested calls.
 				All of this will be completed after the call returns.
@@ -192,6 +201,9 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 			<varlistentry>
 				<term>Fork:</term>
 				<listitem>
+				<indexterm>
+					<primary>fork</primary>
+				</indexterm>
 				<para>
 				Execute the label after the current label returns but
 				before anything else is done. Obviously, if multiple labels are
@@ -205,6 +217,9 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 			<varlistentry>
 				<term>Schedule:</term>
 				<listitem>
+				<indexterm>
+					<primary>schedule</primary>
+				</indexterm>
 				<para>
 				Execute the label after everything else is done.
 				</para>
@@ -218,6 +233,18 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		on an example of a fairly convoluted scheduling sequence.
 		</para>
 
+		<indexterm>
+			<primary>queue</primary>
+		</indexterm>
+		<indexterm>
+			<primary>frame</primary>
+		</indexterm>
+		<indexterm>
+			<primary>stack</primary>
+		</indexterm>
+		<indexterm>
+			<primary>draining</primary>
+		</indexterm>
 		<para>
 		A scheduler in the execution unit keeps a stack of queues. Each queue
 		is essentially a stack frame, so I'll be using the terms <pre>queue</pre> and
