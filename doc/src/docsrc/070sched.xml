@@ -168,8 +168,268 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		it. Such elements have to internally collapse the outgoing transactions
 		along the new key, adding overhead.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_basic">
+		<title>Basic scheduling in Triceps</title>
 
 		<para>
+		In Triceps the scheduling is done by the execution unit, or simply
+		<quote>unit</quote> as it's often referred to.
+		It provides 3 basic ways of executing of a rowop:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term>Call:</term>
+				<listitem>
+				<para>
+				Execute the label right now, including all the nested calls.
+				All of this will be completed after the call returns.
+				</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>Fork:</term>
+				<listitem>
+				<para>
+				Execute the label after the current label returns but
+				before anything else is done. Obviously, if multiple labels are
+				forked, they will execute in order after the current label
+				returns (but before its caller gets the control back).
+				This method has looked promising at one point but has currently
+				fallen out of favor and will likely be removed in the future.
+				</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>Schedule:</term>
+				<listitem>
+				<para>
+				Execute the label after everything else is done.
+				</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		This is kind of intuitively clear but the details might sometimes
+		be a bit surprising. So let us look in detail at how it works inside
+		on an example of a fairly convoluted scheduling sequence.
+		</para>
+
+		<para>
+		A scheduler in the execution unit keeps a stack of queues. Each queue
+		is essentially a stack frame, so I'll be using the terms <pre>queue</pre> and
+		<pre>frame</pre> interchangeably. The stack always contains at least one
+		queue, which is called the outermost stack frame.
+		</para>
+
+		<para>
+		When the new rowops come from the outside world, they are added with
+		<pre>schedule()</pre> to that stack frame. That's what <pre>schedule()</pre> does: always
+		adds rowops to the outermost stack frame. If rowops 1, 2 and 3 are
+		added, the stack looks like this (the brackets denote a stack frame):
+		</para>
+
+<pre>
+[1, 2, 3]
+</pre>
+
+		<para>
+		The unit method <pre>drainFrame()</pre> is then used to run the
+		scheduler and process the rowops. It makes the unit call each rowop on
+		the innermost frame (which is initially the same as outermost
+		frame, since there is only one frame) in order.
+		</para>
+
+		<para>
+		First it calls the rowop 1. It's removed from the queue, then a new
+		frame is pushed onto the stack:
+		</para>
+
+<pre>
+[ ] ~1
+[2, 3]
+</pre>
+
+		<para>
+		This new frame is the rowop 1's frame, which is marked on the diagram
+		by <quote>~1</quote>. The diagram shows the most recently pushed, innermost,
+		frame on the top, and the oldest, outermost frame on the bottom. The
+		concepts of <quote>innermost</quote> and <quote>outermost</quote>
+		come from the nested calls: the most recent call is nested the deepest
+		in the middle and is the innermost one.
+		</para>
+
+		<para>
+		Then the rowop 1 executes. If it
+		calls rowop 4, another frame is pushed onto the stack for it:
+		</para>
+
+<pre>
+[ ] ~4
+[ ] ~1
+[2, 3]
+</pre>
+
+		<para>
+		Then the rowop 4 executes. The rowop 4 never gets onto any of the queues.
+		The call just pushes a new frame and executes the rowop right away.
+		The identity of rowop being processed is kept in the call context. A
+		call also involves a direct C++ call on the thread stack, and if any
+		Perl code is involved, a Perl call too. Because of this, if you nest
+		the calls too deeply, you may run out of the thread stack space and
+		get it to crash.
+		</para>
+
+		<para>
+		After the rowop 4 is finished (not calling any other
+		rowops), the innermost empty frame is popped before the execution of
+		rowop 1 continues. The queue stack reverts to the previous state.
+		</para>
+
+<pre>
+[ ] ~1
+[2, 3]
+</pre>
+
+		<para>
+		Suppose then rowop 1 forks rowops 5 and 6. They are appended to the
+		innermost frame in the order they are forked.
+		</para>
+
+<pre>
+[5, 6] ~1
+[2, 3]
+</pre>
+
+		<para>
+		If rowop 1 then calls rowop 7, again a frame is pushed onto the stack
+		before it executes:
+		</para>
+
+<pre>
+[ ] ~7
+[5, 6] ~1
+[2, 3]
+</pre>
+
+		<para>
+		The rowops 5 and 6 still don't execute, they keep sitting on the queue
+		until the rowop 1 would return.
+		After the call of rowop 7 completes, the scheduler stack returns to
+		the previous state.
+		</para>
+
+		<para>
+		Suppose now the execution of rowop 1 completes. But its stack frame can
+		not be popped yet, because it is not empty. The scheduler calls
+		<pre>drainFrame()</pre> recursively, which picks the next rowop from the innermost
+		queue (rowop 5), and calls it, pushing a new stack frame and executing
+		the rowop 5 code:
+		</para>
+
+<pre>
+[ ] ~5
+[6] ~1*
+[2, 3]
+</pre>
+
+		<para>
+		The former rowop 1's frame is now marked with <quote>~1*</quote>
+		for the ease of tracking, even though it has completed.
+		</para>
+
+		<para>
+		If rowop 5 forks rowop 8, the stack becomes:
+		</para>
+
+<pre>
+[8] ~5
+[6] ~1*
+[2, 3]
+</pre>
+
+		<para>
+		When the execution of rowop 5 returns, its queue is also not empty. So
+		the scheduler starts draining the innermost frame again, and calls rowop 8.
+		During its execution the stack is:
+		</para>
+
+<pre>
+[ ] ~8
+[ ] ~5*
+[6] ~1*
+[2, 3]
+</pre>
+
+		<para>
+		Suppose the rowop 8 doesn't call or fork anything else and returns. Its
+		innermost queue is empty, so the call completes and pops the stack
+		frame:
+		</para>
+
+<pre>
+[ ] ~5*
+[6] ~1*
+[2, 3]
+</pre>
+
+		<para>
+		Now the queue of rowop 5 is also empty, so its draining completes and
+		pops the drained frame:
+		</para>
+
+<pre>
+[6] ~1*
+[2, 3]
+</pre>
+
+		<para>
+		The draining of the rowop 1's frame continues by picking the rowop 6
+		from the queue and calling it:
+		</para>
+
+<pre>
+[ ] ~6
+[ ] ~1*
+[2, 3]
+</pre>
+
+		<para>
+		Suppose rowop 6 calls <pre>schedule()</pre> of rowop 9. Rowop 9 is then
+		added to the outermost queue:
+		</para>
+
+<pre>
+[ ] ~6
+[ ] ~1*
+[2, 3, 9]
+</pre>
+
+		<para>
+		Rowop 6 then returns, its queue is empty, so it's popped and its call completes.
+		</para>
+
+<pre>
+[ ] ~1*
+[2, 3, 9]
+</pre>
+
+		<para>
+		Now the queue of rowop 1 has become empty, so it's popped from the
+		stack and the call of rowop 1 completes:
+		</para>
+
+<pre>
+[2, 3, 9]
+</pre>
+
+		<para>
+		The unit method <pre>drainFrame()</pre> keeps running on the outermost
+		frame, now taking the rowop 2 and executing it, and so on, until the
+		outermost queue becomes empty, and <pre>drainFrame()</pre> returns.
 		</para>
 
 		<para>
@@ -180,6 +440,28 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 
 		<para>
 		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+<pre>
+</pre>
+
+
+<pre>
+</pre>
+
+
+<pre>
+</pre>
+
+
+<pre>
+</pre>
+
 	</sect1>
 
 </chapter>
