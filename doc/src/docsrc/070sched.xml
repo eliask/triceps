@@ -72,6 +72,108 @@ See the file COPYRIGHT for the copyright notice and license information
 		born. The Triceps scheduling still has issues to resolve, but overall
 		it still feels much better than the Coral8 one.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_no_bundling">
+		<title>No bundling</title>
+
+		<para>
+		The most important principle of Triceps scheduling is: No Bundling.
+		Every rowop is for itself. The bundling is what messes up the Coral8
+		scheduler the most. 
+		</para>
+
+		<para>
+		What is a bundle? It's a set of records that go through the execution
+		together. If you have a model consisting of two functional elements F1
+		and F2 connected in a sequential fashion 
+		</para>
+
+<pre>
+F1->F2 
+</pre>
+
+		<para>
+		and a few loose records R1, R2, R3, the
+		normal execution order without bundling will be:
+		</para>
+
+<pre>
+F1(R1), F2(R1), F1(R2), F2(R2), F1(R3), F2(R3)
+</pre>
+
+		<para>
+		Each row goes through the whole model (a real simple one in this case)
+		before the next one is touched. This allows F2 to take into
+		accont the state of F1 exactly as it was right after processing
+		the same record, without any interventions in between.
+		</para>
+
+		<para>
+		If the same records are placed in a bundle (R1, R2, R3), the execution
+		order will be different:
+		</para>
+
+<pre>
+F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
+</pre>
+
+		<para>
+		The whole bundle goes through F1 before the rows go to F2.
+		</para>
+
+		<para>
+		That would not be a problem, and even could be occasionally useful, if
+		the bundles were always created explicitly. In the reality of Coral8,
+		every time a statement produces multiple record from a single one
+		(think of a join that picks multiple records from another side), it
+		creates a bundle and messes up all the logic after it. Some logic gets
+		affected so badly that a few statements in CCL (like ON UPDATE) had to
+		be designated as always ignoring the bundles, otherwise they would not
+		work at all. At DB I wrote a CCL pattern for breaking up the bundles.
+		It's rather heavyweight and thus could not be used all over the place
+		but provides a generic solution for the most unpleasant cases.
+		</para>
+
+		<para>
+		Worse yet, the bundles may get created in Coral8 absolutely
+		accidentally: if two records happen to have the same timestamp, for all
+		practical purposes they would act as a bundle. In the models that were
+		designed without the appropriate guards, this leads to the time-based
+		bugs that are hard to catch and debug. Writing these guards correctly
+		is hard, and testing them is even harder. 
+		</para>
+
+		<para>
+		Another issue with bundles is that they make the large queries slower.
+		Suppose you do a query from a window that returns a million
+		records. All of them will be collected in a bundle, then the
+		bundle will be sent to the interface gateway that would build one huge
+		protocol packet, which will then be sent to the client, which will
+		receive the whole packet and then finally iterate on the records in it.
+		Assuming that nothing runs out of memory along the way, it will be a
+		long time until the client sees the first record. Very, very
+		annoying.
+		</para>
+
+		<para>
+		Aleri also has its own version of bundles, called transactions, but a
+		more smart one. Aleri always relies on the primary keys. The condition
+		for a transaction is that it must never contain multiple modification
+		for the same primary key. Since there are no execution order guarantees
+		between the functional elements, in this respect the transactions work
+		in the same way as loose records, only with a more efficient
+		communication between threads. Still, if the primary key changes in an
+		element (say, an aggregator), the condition does not propagate through
+		it. Such elements have to internally collapse the outgoing transactions
+		along the new key, adding overhead.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
