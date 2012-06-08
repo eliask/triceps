@@ -438,4 +438,36 @@ row { uint8 a, int32 b, int64 c, float64 d, string e, }
 		</para>
 	</sect1>
 
+	<sect1 id="sc_hungarian">
+		<title>The Hungarian notation</title>
+
+		<para>
+		The Hungarian notation is the idea that the name of each variable
+		should be prefixed with some abbreviation of its type. It has probably
+		become most widely known from the Microsoft operating systems.
+		</para>
+
+		<para>
+		Overall it's a complete abomination and brain damage. But 
+		I'm using it widely in the examples in this manual. Why? The problem is that there
+		usually too many components for one logical purpose. For a table, there
+		would be a row type, a table type, and the table itself. Rather than
+		inventing separate names for them, it's easier to have a common name
+		and an uniform prefix. Eventually something better would have to be
+		done but for now I've fallen back on the Hungarian notation.
+		One possibility is to just not give names to the intermediate
+		entities. Say just have a named table, and then there would be
+		the the type of the table and the row type of the table.
+		</para>
+
+		<para>
+		Among the CEP systems, Triceps is not unique in the Hungarian notation
+		department. Coral8/Sybase CCL has this mess of lots of schemas, input
+		streams, windows and output streams, with the same naming problems. The
+		uniform naming prefixes or suffixes help making this mess more
+		navigable. I haven't actually used StreamBase but from reading the
+		documentation I get the feeling that the Hungarian notation is probably
+		useful for its SQL as well.
+		</para>
+	</sect1>
 </chapter>
