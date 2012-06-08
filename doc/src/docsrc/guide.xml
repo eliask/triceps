@@ -97,6 +97,8 @@ See the file COPYRIGHT for the copyright notice and license information
 
 	<xi:include href="file:///DOCS/060labels.xml"/>
 
+	<xi:include href="file:///DOCS/070sched.xml"/>
+
 	<xi:include href="file:///DOCS/080memory.xml"/>
 
 	<xi:include href="file:///DOCS/biblio.xml"/>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_scheduling" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Scheduling</title>
+
+	<sect1 id="sc_sched_overview">
+		<title>Overview of the scheduling</title>
+
+		<indexterm>
+			<primary>scheduling</primary>
+		</indexterm>
+		<indexterm>
+			<primary>model</primary>
+		</indexterm>
+		<para>
+		The scheduling determines, in which order the row operations are
+		processed. If there are multiple operations available, which one
+		should be processed first?  The scheduler keeps a queue of the operations
+		and selects, which one to execute next.  This has a major effect on the
+		logic of a CEP model.  
+		</para>
+
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<indexterm>
+			<primary>StreamBase</primary>
+		</indexterm>
+		<para>
+		There are multiple approaches to scheduling. Aleri essentially doesn't
+		have any, except for the flow control between threads, because each its
+		element is a separate thread. Coral8 has an intricate scheduling
+		algorithm. Sybase R5 has the same logic as Coral8 inside each thread.
+		StreamBase presumably also has some.
+		</para>
+
+		<para>
+		The scheduling logic in Triceps is different from the other CEP
+		systems. The Coral8 logic looks at first like the only reasonable way
+		to go, but could not be used in Triceps for three reasons: First, it's a trade
+		secret, so it can't be simply reused. If I'd never seen it, that would
+		not be an issue but I've worked on it and implemented its version for
+		R5. Second, it relies on the properties that the compiler computes from
+		the model graph analysis. Triceps has no compiler, and could not do
+		this. Third, in reality it simply doesn't work that well. There are
+		quite a few cases when the Coral8 scheduler comes up with a strange and
+		troublesome execution order.
+		</para>
+
+		<para>
+		For a while I've hoped that Triceps would need no scheduler at all, and
+		everything would be handled by the procedural calls. This has proved to
+		have its own limitations, and thus the labels and their scheduling were
+		born. The Triceps scheduling still has issues to resolve, but overall
+		it still feels much better than the Coral8 one.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+	</sect1>
+
+</chapter>
