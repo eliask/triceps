@@ -686,7 +686,7 @@ foreach my $row (@rowset) {
 		</para>
 
 		<para>
-		Now, why does the mark is placed on the frame that is one out from the
+		Now, why does the mark get placed on the frame that is one out from the
 		current one? After all, this means that X1 can not wait for the
 		loop to complete. It has to return before the second iteration of
 		the loop can start. And then the rest of the loop will run before
