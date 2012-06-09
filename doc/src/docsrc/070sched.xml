@@ -637,8 +637,14 @@ foreach my $row (@rowset) {
 		<para>
 		Then the loop wold have its mark object M. The label A will execute
 		<pre>setMark(M)</pre>, and the label C will execute <pre>loopAt(M, rowop(A))</pre>. The rest
-		of the execution can as well use <pre>call()</pre>.
+		of the execution can as well use <pre>call()</pre>, as shown in
+		<xref linkend="fig_sched_loop" xrefstyle="select: label nopage"/>&xrsp;.
 		</para>
+
+		<figure id="fig_sched_mark" >
+			<title>Proper calls in a loop.</title>
+			<xi:include href="file:///FIGS/label-011-mark.xml"/> 
+		</figure>
 
 		<para>
 		When A2 calls setMark(M), the stack will look like this:
