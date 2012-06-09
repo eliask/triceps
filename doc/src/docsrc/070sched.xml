@@ -458,17 +458,309 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		frame, now taking the rowop 2 and executing it, and so on, until the
 		outermost queue becomes empty, and <pre>drainFrame()</pre> returns.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_loop">
+		<title>Loop scheduling</title>
+
+		<indexterm>
+			<primary>schedule</primary>
+			<secondary>loop</secondary>
+		</indexterm>
+		<para>
+		The easiest and most efficient way to schedule the loops is to do it
+		procedurally, something like this:
+		</para>
+
+<pre>
+foreach my $row (@rowset) {
+	$unit->call($lbA->makeRowop(&Triceps::OP_INSERT, $row)); 
+}
+</pre>
 
 		<para>
+		However the labels topologically connected into a loop can come handy
+		as well. Some logic may be easier to express this way. Suppose the
+		model contains the labels connected in a loop, as in
+		<xref linkend="fig_sched_loop" xrefstyle="select: label nopage"/>&xrsp;.
+		</para>
+
+		<figure id="fig_sched_loop" >
+			<title>Labels forming a loop.</title>
+			<xi:include href="file:///FIGS/label-010-loop.xml"/> 
+		</figure>
+
+		<para>
+		But if handled simple-mindedly, it can use a lot of stack space.
+		Suppose some rowop X1 is scheduled for label X, and causes the loop
+		to be executed twice, with rowops X1, A2, B3, C4, A5, B6, C7, Y8. If each
+		operation is done as a <pre>call()</pre>, the stack grows like this: It starts with
+		X1 scheduled.
+		</para>
+
+<pre>
+[X1]
+</pre>
+
+		<para>
+		Which then gets executed, with its own execution frame (marked as such
+		for clarity):
+		</para>
+
+<pre>
+[ ] ~X1
+[ ]
+</pre>
+
+		<para>
+		Which then calls A2:
+		</para>
+
+<pre>
+[ ] ~A2
+[ ] ~X1
+[ ]
+</pre>
+
+		<para>
+		By the time the execution comes to Y8, the stack looks like this:
+		</para>
+
+<pre>
+[ ] ~Y8
+[ ] ~C7
+[ ] ~B6
+[ ] ~A5
+[ ] ~C4
+[ ] ~B3
+[ ] ~A2
+[ ] ~X1
+[ ]
+</pre>
+
+		<para>
+		The loop has been converted into recursion, and the whole length of
+		execution is the depth of the recursion. If the loop executes a million
+		times, the stack will be three million levels deep. Worse yet, it's not
+		just the Triceps scheduler stack that grows, it's also the process
+		(C++) stack.
 		</para>
 
 		<para>
+		Would things be better with <pre>fork()</pre> instead of
+		<pre>call()</pre> used throughout the loop? It starts the same way:
+		</para>
+
+<pre>
+[X1]
+</pre>
+
+		<para>
+		Then X1 executes, gets its own frame and forks A2:
+		</para>
+
+<pre>
+[A2] ~X1
+[ ]
+</pre>
+
+		<para>
+		Then A2 executes, gets its own frame and forks B3:
+		</para>
+
+<pre>
+[B3] ~A2
+[ ] ~X1*
+[ ]
+</pre>
+
+		<para>
+		Even though X1 has completed, its stack frame stays until all the rowops
+		forked in it complete too.
+		By the end of the loop the stack picture becomes exactly the same as with
+		<pre>call()</pre>. For a while I've thought that optimizing out the empty stack
+		frames would solve the problem, but no, that doesn't work: the problem
+		is that the C++ process stack keeps growing no matter what. The jump
+		back in the loop needs to be placed into an earlier stack frame to
+		prevent the stack from growing.
 		</para>
 
 		<para>
+		One way to do it would be to use the <pre>schedule()</pre> operation in
+		C to jump back to A, placing the rowop A5 back onto the outermost
+		frame. The scheduler stack at the end of C4 would look like:
+		</para>
+
+<pre>
+[ ] ~C4
+[ ] ~B3
+[ ] ~A2
+[ ] ~X1
+[A5]
+</pre>
+
+		<para>
+		Then the stack would unwind back to:
+		</para>
+
+<pre>
+[A5]
+</pre>
+
+		<para>
+		And the next iteration of the loop will start afresh. The problem here
+		is that if X1 wanted to complete the loop and then do something, it
+		can't. By the time the second iteration of the loop starts, X1 is
+		completely gone. It would be better to be able to enqueue the next
+		execution of the loop at the specific point of the stack.
+		</para>
+
+		<indexterm>
+			<primary>frame mark</primary>
+		</indexterm>
+		<para>
+		Here the concept of the frame mark comes in. A frame mark is a token
+		object, completely opaque to the program. It can be used only in two
+		operations:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		<pre>setMark()</pre> remembers the  position in the frame stack, just
+		outside the current frame.
+		</listitem>
+		<listitem>
+		<pre>loopAt()</pre> enqueues a rowop at the marked frame.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		Then the loop wold have its mark object M. The label A will execute
+		<pre>setMark(M)</pre>, and the label C will execute <pre>loopAt(M, rowop(A))</pre>. The rest
+		of the execution can as well use <pre>call()</pre>.
 		</para>
 
 		<para>
+		When A2 calls setMark(M), the stack will look like this:
+		</para>
+
+<pre>
+[ ] ~A2
+[ ] ~X1, mark M
+[ ]
+</pre>
+
+		<para>
+		The mark M remembers the frame one outer to the current one. The stack
+		at the end of C4, after it has called <pre>loopAt(M, A5)</pre>, is:
+		</para>
+
+<pre>
+[ ] ~C4
+[ ] ~B3
+[ ] ~A2
+[A5] ~X1, mark M
+[ ]
+</pre>
+
+		<para>
+		The stack then unwinds until A5 starts its execution:
+		</para>
+
+<pre>
+[ ] ~A5
+[ ] ~X1*, mark M
+[ ]
+</pre>
+
+		<para>
+		Each iteration starts with a fresh stack, and the stack depth is
+		limited to one iteration. The nested loops can also be properly
+		executed.
+		</para>
+
+		<para>
+		Now, why does the mark is placed on the frame that is one out from the
+		current one? After all, this means that X1 can not wait for the
+		loop to complete. It has to return before the second iteration of
+		the loop can start. And then the rest of the loop will run before
+		the control returns to X1's caller. At least the caller of X1 can
+		wait for the loop to complete before continuing its execution.
+		Why all this trouble? Its the result of a compromise.
+		Suppose that it did remember the current frame. Then at
+		the end of C4 the stack will be:
+		</para>
+
+<pre>
+[ ] ~C4
+[ ] ~B3
+[A5] ~A2, mark M
+[ ] ~X1
+[ ]
+</pre>
+
+		<para>
+		The stack will unwind until A5. Which would then have its own frame
+		pushed onto the stack, and the code in the label A will call <pre>setMark(M)</pre> 
+		again, moving the mark to A5's own frame because it's the topmost frame now:
+		</para>
+
+<pre>
+[ ] ~A5, mark M
+[ ] ~A2*
+[ ] ~X1
+[ ]
+</pre>
+
+		<para>
+		So on each iteration of the loop one extra frame will be pushed onto
+		the stack, and the mark moved by one level. A loop executing a million
+		times will push a million frames, which is bad. Marking the next outer
+		frame prevents this. Another option would have been to put the
+		mark operation in X, but that would mean that every loop must have a preceding
+		label that just marks the frame (well, and potentially could do the
+		other initializations too), which seems to be too annoying.
+		</para>
+
+		<para>
+		It's one problem or the other, and the lesser problem won.
+		This is still messy, and I'm still thinking about the ways to improve
+		the situation.
+		</para>
+
+		<para>
+		What happens after the stack unwinds past the mark? The mark gets
+		unset. When someone calls <pre>loopAt()</pre> with an unset mark, the rowop is
+		enqueued in the outermost frame, having the same effect as schedule<pre>()</pre>.
+		</para>
+
+		<para>
+		This handling of an unset mark comes handy in case if the loop execution
+		takes a pause in the middle. Suppose the label B finds that it can't process
+		the rowop B3 until some other data has arrived. What it can do then is remember
+		B3 somewhere in the thread state and return. The loop has not completed but
+		it can't progress either, so the call unrolls until it becomes empty.
+		Since the frame of X1 is popped off the stack, the mark M gets unset. 
+		The knowledge that the loop needs to be continued stays remembered
+		in the state.
+		</para>
+
+		<para>
+		After some time that awaited data arrives, as some other rowop. When that
+		rowop gets processed, it finds that remembered state with B3 and makes
+		it continue, maybe by calling <pre>call(B3)</pre> again. So now the
+		logic in B finds all the data it needs and continues with the loop,
+		calling C4. C4 will do its job and call <pre>loopAt(M, A5)</pre>.
+		But the mark M has been unset a while ago!  Scheduling A5 at the outermost
+		frame seems to be a logical thing to do at this point. Then whatever
+		current processing will complete and unwind, and the loop will continue
+		after it.
+		</para>
+
+		<para>
+		What if <pre>setMark()</pre> is called when there is only one frame on
+		the stack? Then there is no second frame outer to it. The mark will
+		simply be left unset.
 		</para>
 
 		<para>
@@ -477,14 +769,8 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 <pre>
 </pre>
 
-
 <pre>
 </pre>
-
-
-<pre>
-</pre>
-
 
 <pre>
 </pre>
