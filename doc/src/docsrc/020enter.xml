@@ -212,7 +212,8 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		Then we create a Triceps execution unit. An execution unit keeps the
 		Triceps context and controls the execution for one thread. Nothing
 		really stops you from having multiple execution units in the same
-		thread, however there is not a whole lot of benefit in it either. But
+		thread. It might come handy if you want to essentially make multiple
+		ilogical user thread, each with its own unit in one kernel thread.  But
 		a single execution unit must never ever be used in multiple threads.
 		It's single-threaded by design and has no synchronization in it. 
 		</para>

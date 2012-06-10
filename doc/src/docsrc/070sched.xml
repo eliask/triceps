@@ -768,12 +768,277 @@ foreach my $row (@rowset) {
 		the stack? Then there is no second frame outer to it. The mark will
 		simply be left unset.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_unit">
+		<title>Execution unit</title>
+
+		<para>
+		After discussing the principles of scheduling in Triceps, let's get
+		down to the nuts and bolts.
+		</para>
+
+		<indexterm>
+			<primary>unit</primary>
+		</indexterm>
+		<para>
+		A unit is created as:
+		</para>
+
+<pre>
+$myUnit = Triceps::Unit->new("name") or confess "$!";
+</pre>
+
+		<para>
+		The name argument is as usual used for later debugging, and by
+		convention should be the same as the name of the unit variable
+		(<quote>myUnit</quote> in this case). The name can also be changed later:
+		</para>
+
+<pre>
+$myUnit->setName("newName");
+</pre>
+
+		<para>
+		It returns no value. Though in practice there is no good reason for changing names,
+		and this call will likely be removed in the future. The name can be
+		read back:
+		</para>
+
+<pre>
+$name = $myUnit->getName();
+</pre>
+
+		<para>
+		Also, as usual, the variable $myName here contains a reference to the
+		actual unit object, and two references can be compared for whether they
+		refer to the same object:
+		</para>
+
+<pre>
+$result = $unit1->same($unit2);
+</pre>
+
+		<para>
+		The rowops are enqueued with the calls:
+		</para>
+
+<pre>
+$unit->call($rowop, ...);
+$unit->fork($rowop, ...);
+$unit->schedule($rowop, ...); 
+</pre>
+
+		<para>
+		<quote>Enqueued</quote> is an ugly word but since I've already used the
+		word <quote>schedule</quote> for a specific purpose, I needed another word to name
+		all these operations together. Hence <quote>enqueue</quote>.
+		</para>
+
+		<para>
+		The <quote>...</quote> shows that multiple rowops may be passed as arguments.
+		So the real signature of these methods is:
+		</para>
+
+<pre>
+$unit->call(@rowops);
+$unit->fork(@rowops);
+$unit->schedule(@rowops); 
+</pre>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		But this way it loos more confusing. 
+		Calling these functions with multiple arguments produces the same
+		result as doing multiple calls with one argument at a time. Not only
+		rowops but also <i>trays</i> (to be discussed later) of rowops can be
+		used as arguments.
+		</para>
+
+		<para>
+		These methods are among those
+		that use the new error handling, that makes the operation to confess
+		on any fatal errors. So there is no need to check their results with
+		<quote><pre>or confess</pre></quote>.
+		</para>
+
+		<para>
+		Also there is a call that selects the enqueueing mode by argument:
+		</para>
+
+<pre>
+$unit->enqueque($mode, @rowops);
+</pre>
+
+		<para>
+		The calling rules are exactly the same for the other enqueueing methods,
+		may have multiple rowops or trays as arguments, no need to check the result.
+		The <pre>$mode</pre> argument is one of:
+		</para>
+
+		<indexterm>
+			<primary>constants</primary>
+		</indexterm>
+		<itemizedlist>
+		<listitem>
+		<pre>&Triceps::EM_CALL</pre> or <pre>"EM_CALL"</pre>
+		</listitem>
+		<listitem>
+		<pre>&Triceps::EM_FORK</pre> or <pre>"EM_FORK"</pre>
+		</listitem>
+		<listitem>
+		<pre>&Triceps::EM_SCHEDULE</pre> or <pre>"EM_SCHEDULE"</pre>
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		As usual, there are calls to convert between the integer constant and
+		string representations:
+		</para>
+
+<pre>
+$string = &Triceps::emString($value);
+$value = &Triceps::stringEm($string);
+</pre>
+
+		<para>
+		And as usual, if the value can not be translated, they return <pre>undef</pre>.
+		</para>
+
+		<para>
+		The frame marks for looping are created as their own class:
+		</para>
+
+		<indexterm>
+			<primary>frame mark</primary>
+		</indexterm>
+<pre>
+$mark = Triceps::FrameMark->new("name") or confess "$!";
+</pre>
+
+		<para>
+		The name can be obtained back from the mark:
+		</para>
+
+<pre>
+$name = $mark->getName();
+</pre>
+
+		<para>
+		Other than that, the frame marks are completely opaque, and can be used
+		only for the loop scheduling. Not even the <pre>same()</pre> method is supported
+		for them at the moment, though it probably will be in the future. The
+		mark gets set and used as:
+		</para>
+
+<pre>
+$unit->setMark($mark);
+$unit->loopAt($mark, @rowops);
+</pre>
+
+		<para>
+		The rowop arguments of the <pre>loopAt()</pre> are the same as for the
+		other enqueueing functions, and as for other functions they may happen
+		to be trays. These methods also use the new error handling scheme, and
+		will confess on errors. No need to check the results.
+		</para>
+
+		<para>
+		The methods for creation of labels have been already discussed in
+		<xref linkend="sc_Label_construction" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		Here is their recap along with the similar methods for creation of
+		tables and trays that will be discussed later:
+		</para>
+
+<pre>
+$label = $unit->makeDummyLabel($rowType, "name") 
+	or confess "$!";
+$label = $unit->makeLabel($rowType, "name",
+	$clearSub, $execSub, @args) or confess "$!";
+$label = $unit->makeClearingLabel("name", @args);
+$table = $unit->makeTable($tableType, $enqMode, "name") 
+	or confess "$!";
+$tray = $unit->makeTray(@rowops) or confess "$!"; 
+</pre>
+
+		<para>
+		Of them <pre>makeClearingLabel()</pre> uses the new error handling convention,
+		confessing by itself, and the rest return an undef on errors that
+		has to be checked. It's actually real difficult to make 
+		<pre>makeClearingLabel()</pre> fail, only by corrupting some of the Triceps
+		internal variables, and it was a late additiion, so going straight
+		with the new convention for it made sense.
+		</para>
+
+		<indexterm>
+			<primary>memory management</primary>
+		</indexterm>
+		<para>
+		A special thing about the labels is that when a unit creates
+		a label, it keeps a reference to it, for clearing. A label keeps a pointer
+		back to the unit but not a reference (if you call <pre>getUnit()</pre>
+		on a label, the returned value becomes a reference). For a table
+		or a tray, the unit doesn't keep a reference to them. Instead,
+		they keep a reference to the unit. With the tables, it can get
+		pretty involved: A table has labels associated with it.
+		When a table is created, it also creates these labels.
+		The unit keeps references of these labels. The table also
+		keeps references of these labels. The table keeps a reference
+		of the unit. The labels (they are at the &Cpp; level, not Perl level)
+		have pointers to the unit and the
+		table but not references, to avoid the reference cycles.
+		</para>
+
+		<para>
+		See more on the memory management and label clearing in the
+		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		The unit can be checked for the emptiness of its queues:
+		</para>
+
+<pre>
+$result = $unit->empty();
+</pre>
+
+		<para>
+		The functions for execution from the queues are:
+		</para>
+
+<pre>
+$unit->callNext();
+$unit->drainFrame();
+</pre>
+
+		<para>
+		<pre>callNext()</pre> takes one label from the top (innermost) stack frame queue and calls it.
+		If the innermost frame happens to be empty, it does nothing. 
+		<pre>drainFrame()</pre> calls the rowops from the top stack frame until it becomes
+		empty. This includes any rowops that may be created and enqueued as
+		part of the execution of the previous rowops. But it doesn't pop the
+		frame from the stack.  And of course the method
+		<pre>call()</pre> causes the argument rowops to be executed immediately, without
+		even being technically enqueued.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_mainloop">
+		<title>The main loop</title>
 
 		<para>
 		</para>
 
-<pre>
-</pre>
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 <pre>
 </pre>
