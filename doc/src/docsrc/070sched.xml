@@ -829,6 +829,9 @@ $unit->fork($rowop, ...);
 $unit->schedule($rowop, ...); 
 </pre>
 
+		<indexterm>
+			<primary>enqueue</primary>
+		</indexterm>
 		<para>
 		<quote>Enqueued</quote> is an ugly word but since I've already used the
 		word <quote>schedule</quote> for a specific purpose, I needed another word to name
@@ -949,6 +952,32 @@ $unit->loopAt($mark, @rowops);
 		</para>
 
 		<para>
+		There also are the convenience methods that create the rowops
+		from the field values and immediately enqueue them:
+		</para>
+
+<pre>
+$unit->makeHashCall($label, $opcode, 
+	$fieldName => $fieldValue, ...);
+$unit->makeArrayCall($label, $opcode, @fieldValues);
+
+$unit->makeHashSchedule($label, $opcode, 
+	$fieldName => $fieldValue, ...);
+$unit->makeArraySchedule($label, $opcode, @fieldValues);
+
+$unit->makeHashLoopAt($mark, $label, $opcode, 
+	$fieldName => $fieldValue, ...);
+$unit->makeArrayLoopAt($mark, $label, $opcode, @fieldValues);
+</pre>
+
+		<para>
+		These are essentially the shorter ways to make the rowops and enqueue
+		them without the three-deep calls. Only the methods for the most 
+		frequently used enqueueing modes are provided, not for all of them.
+		All these methods also confess on errors.
+		</para>
+
+		<para>
 		The methods for creation of labels have been already discussed in
 		<xref linkend="sc_Label_construction" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		Here is their recap along with the similar methods for creation of
@@ -958,11 +987,15 @@ $unit->loopAt($mark, @rowops);
 <pre>
 $label = $unit->makeDummyLabel($rowType, "name") 
 	or confess "$!";
+
 $label = $unit->makeLabel($rowType, "name",
 	$clearSub, $execSub, @args) or confess "$!";
+
 $label = $unit->makeClearingLabel("name", @args);
+
 $table = $unit->makeTable($tableType, $enqMode, "name") 
 	or confess "$!";
+
 $tray = $unit->makeTray(@rowops) or confess "$!"; 
 </pre>
 
@@ -1028,8 +1061,115 @@ $unit->drainFrame();
 		</para>
 	</sect1>
 
+	<sect1 id="sc_sched_unwind">
+		<title>Error handling during the execution</title>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		When the labels execute, they may produce errors in one of two ways:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		The Perl code in the label might die.
+		</listitem>
+		<listitem>
+		The call topology might violate the rules. 
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The rules are basically that you can't make the recursive calls.
+		A label may not make calls directly or through other labels to itself.
+		The idea is to catch the call sequences that are likely to go into 
+		the deep recursion and overflow the stack. It catches them early,
+		on the first attempt of recursion. If you need to do the recursion,
+		use <pre>schedule()</pre> or <pre>loopAt()</pre>. That way you 
+		avoid overrunning the stack.
+		</para>
+
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
+		<indexterm>
+			<primary>draining</primary>
+		</indexterm>
+		<indexterm>
+			<primary>stack</primary>
+			<secondary>unwinding</secondary>
+		</indexterm>
+		<para>
+		Whichever way the error is detected, it causes the Triceps call
+		stack to be unwound. The Perl error messages from <pre>die</pre> or <pre>confess</pre>
+		and the &Cpp; tracing of rowop calls and label chainings get
+		combined into a common stack trace. When the code gets back to
+		Perl, the XS code triggers a <pre>confess</pre>. If that happens to be in the
+		handler of another rowop, it continues the Triceps hybrid stack
+		unwinding. If not caught by <pre>eval</pre>, it keeps going to the topmost
+		<pre>call()</pre> or <pre>drainFrame()</pre> and causes the whole program to die.
+		Which is a reasonable reaction most of the time.
+		</para>
+
+		<para>
+		Remember, the root cause is a serious error that is likely to leave the
+		model in an inconsistent state, and it should usually be considered
+		as fatal. If you want to catch the errors, nip them in the bud
+		by wrapping your Perl code in <pre>eval</pre>. Then you can handle
+		the errors before thay have a chance to propagate.
+		</para>
+
+		<para>
+		An interesting question is, what happens to the rowops that were
+		in the Triceps stack frames when the stack gets unwound? They
+		get thrown away. The memory gets collected thanks to the reference
+		counting, but the rowops and their sequence order get thrown away.
+		The reason is basically that there may be no catching of the
+		errors until unwinding to the <pre>drainFrame()</pre>. The choice is to either
+		throw away everything after the first error or keep trying to
+		execute the following rowops, collecting the errors. And that
+		might become a lot of errors. I've taken the choice of stopping
+		as early as possible, because the state of the model will probably
+		be corrupted anyway and nothing but garbage would be coming out
+		(if anything would be coming at all and not be stuck in an
+		endless loop).
+		</para>
+	</sect1>
+
 	<sect1 id="sc_sched_mainloop">
 		<title>The main loop</title>
+
+		<indexterm>
+			<primary>main loop</primary>
+		</indexterm>
+		<para>
+		The execution unit doesn't magically process the data by itself.
+		The data needs to be pushed into it, and the unit has to be told
+		to process it. There has to be some internal code to drive it,
+		that would continuously read the data, schedule, drain.
+		</para>
+
+		<para>
+		A typical way of processing the incoming rowops in a loop is:
+		</para>
+
+<pre>
+$stop = 0; 
+while (!$stop) {
+	$rowop = readRowop(); # some user-defined function
+	$unit->schedule($rowop);
+	$unit->drainFrame();
+} 
+</pre>
+
+		<para>
+		Some of the executed rowops may set <pre>$stop</pre>, and the main loop
+		will exit.
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
