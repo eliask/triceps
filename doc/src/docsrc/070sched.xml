@@ -820,6 +820,21 @@ $result = $unit1->same($unit2);
 </pre>
 
 		<para>
+		A unit also keeps an empty row type (one with no fields), primarily for the
+		creation of the clearing labels, but you can use it for any other purposes
+		too. You can get it with the method:
+		</para>
+
+<pre>
+$rt = $unit->getEmptyRowType();
+</pre>
+
+		<para>
+		Each unit has its own instance of an empty row type. Its purely for
+		the conveniece of memory management, they are all equivalent.
+		</para>
+
+		<para>
 		The rowops are enqueued with the calls:
 		</para>
 
