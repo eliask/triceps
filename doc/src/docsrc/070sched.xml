@@ -1184,9 +1184,80 @@ while (!$stop) {
 		</para>
 
 		<para>
+		Many of the examples in this manual use the main loop along the
+		following lines (with variations, to fit the examples, and as the
+		main loop was refined over time):
+		</para>
+
+<pre>
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "lbCur") {
+		$unit->makeArrayCall($lbCur, @data);
+	} elsif ($type eq "lbPos") {
+		$unit->makeArrayCall($lbPos, @data);
+	}
+	$unit->drainFrame();
+}
+</pre>
+
+		<para>
+		It reads the CSV (Comma-Separated Values) data from stdin,
+		with the label name in the first column, the opcode in the
+		second, and the data fields in the rest. Then dispatches
+		according to the label. Doing a <pre>call()</pre> instead 
+		of <pre>schedule()</pre> works just as well, and the following
+		<pre>drainFrame()</pre> takes care of any rowops scheduled
+		from the call.
 		</para>
 
 		<para>
+		Many variations are possible. It can be generalized to look up
+		the labels from the hash:
+		</para>
+
+<pre>
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	$unit->makeArrayCall($labels{$type}, @data);
+	$unit->drainFrame();
+}
+</pre>
+
+		<para>
+		Or call the procedural functions for some types:
+		</para>
+
+<pre>
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "lbCur") {
+		$unit->makeArrayCall($lbCur, @data);
+	} elsif ($type eq "lbPos") {
+		$unit->makeArrayCall($lbPos, @data);
+	} elsif ($type eq "clear") { # clear the previous day
+		&clearByDate($tPosition, @data);
+	}
+	$unit->drainFrame();
+}
+</pre>
+
+		<para>
+		Though none of these small examples are production-ready. At the
+		very least, their parsing of the CSV data is primitive. It
+		can't handle the quoting properly and can't parse the data
+		with commas in it.
+		</para>
+
+		<para>
+		A better ready way to parse the data will be provided in the future.
+		For now, make your own.
 		</para>
 
 		<para>
