@@ -1172,15 +1172,45 @@ $unit->drainFrame();
 <pre>
 $stop = 0; 
 while (!$stop) {
-	$rowop = readRowop(); # some user-defined function
+	$rowop = &readRowop(); # some user-defined function
+	$unit->call($rowop);
+	$unit->drainFrame();
+} 
+</pre>
+
+		<para>
+		The rowops coming from the outside get executed as they are received,
+		and then any rows left over from them get handled by <pre>drainFrame()</pre>
+		before the next incoming rowop is read.
+		Some of the executed rowops may set <pre>$stop</pre>, and the main loop
+		will exit. 
+		</para>
+
+		<para>
+		There is also another version of the main loop that has been more
+		historic:
+		</para>
+
+<pre>
+$stop = 0; 
+while (!$stop) {
+	$rowop = &readRowop(); # some user-defined function
 	$unit->schedule($rowop);
 	$unit->drainFrame();
 } 
 </pre>
 
 		<para>
-		Some of the executed rowops may set <pre>$stop</pre>, and the main loop
-		will exit.
+		It uses <pre>schedule()</pre> instead of <pre>call()</pre> for the rowop.
+		As long as only one rowop is scheduled before draining the frame, both
+		versions work equally well. But if you schedule multiple rowops before
+		draining the frame, you can introduce a subtle unpredictability in the
+		execution order. It is described in detail in
+		<xref linkend="sc_sched_issues" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		Actually, you can have the same problem if you don't drain the frame
+		after each top-level <pre>call()</pre> too. But mentally <pre>call()</pre> kind of reminds
+		better to feed the rowops one at a time, and also is slightly more
+		efficient, so now I prefer the version with it.
 		</para>
 
 		<para>
@@ -1258,6 +1288,136 @@ while(&readLine) {
 		<para>
 		A better ready way to parse the data will be provided in the future.
 		For now, make your own.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_issues">
+		<title>Issues with the Triceps scheduling</title>
+
+		<para>
+		As much as I like it, the Triceps scheduling is not perfect, and has
+		some open issues at the moment.  Some of them have been already
+		mentioned in the description of the loop scheduling: it's a bit
+		confusing that the frame mark is placed on the next outer scheduling
+		stack frame and not on the current one. This leads to the interesting
+		effects in execution order.
+		</para>
+
+		<para>
+		The other one has been mentioned in the main loop discussion:
+		the <pre>schedule()</pre> call, when used from inside the scheduled code,
+		may introduce unpredictability in the execution order. It puts the rowop
+		after the last rowop in the outermost stack frame. But the outermost
+		stack frame may contain a whole queue of rowops that come from the outside.
+		This means that the exact order of execution will depend on the timing
+		of the rowops arriving from outside. 
+		</para>
+
+		<para>
+		Let me demonstrate it with an example. Suppose the main loop tries to
+		optimize by collecting and schedulng as many incoming rowops as it can
+		before running them:
+		</para>
+
+		<indexterm>
+			<primary>main loop</primary>
+		</indexterm>
+<pre>
+$stop = 0; 
+while (!$stop) {
+	&waitForIncomingData(); # some user-defined function
+	while ($rowop = &readRowop()) { # some user-defined function
+		$unit->schedule($rowop);
+	}
+	$unit->drainFrame();
+} 
+</pre>
+
+		<para>
+		Suppose the rowops A, B, C, D are being received from the outside.
+		When the rowop A executes, it schedules the rowop E. Then depending
+		on the timing of the packets in the network, the call sequence may
+		be
+		</para>
+
+<pre>
+schedule(A)
+drainFrame()
+schedule(B)
+drainFrame()
+schedule(C)
+drainFrame()
+schedule(D)
+drainFrame()
+</pre>
+
+		<para>
+		or
+		</para>
+
+<pre>
+schedule(A)
+schedule(B)
+drainFrame()
+schedule(C)
+schedule(D)
+drainFrame()
+</pre>
+
+		<para>
+		or
+		</para>
+
+<pre>
+schedule(A)
+schedule(B)
+schedule(C)
+schedule(D)
+drainFrame()
+</pre>
+
+		<para>
+		or a few other combinations. In the first case the actual execution order
+		will be A, E, B, C, D. That's because when A schedules E, E will be picked
+		up and executed by the first following frame drain. In the second case the
+		execution order will be A, B, E, C, D. Here when E gets scheduled, B is 
+		already on the queue in front of it. In the third case the order will
+		be A, B, C, D, E. And it will fluctuate at random between the runs.
+		</para>
+
+		<para>
+		If the repeatable execution order is important (and usually it is), 
+		the solution if to feed the rowops one by one and drain the frame
+		right afterwards. Then the execution order will always be A, E, B, C, D.
+		When feeding one by one, <pre>call()</pre> can be used instead of <pre>schedule()</pre>,
+		and even slightly more efficient. Just don't forget to drain the frame
+		after each call.
+		</para>
+
+		<para>
+		The same issue happens with the loops that have been temporarily
+		stopped and then resumed on arrival of more data from outside. The mark
+		of such a loop will be unset when the loop continues, and looping at
+		this mark will be equivalent to <pre>schedule()</pre>, having the same
+		repeatability problem. The same solution works for this issue too.
+		</para>
+
+		<para>
+		The call <pre>fork()</pre> is not exactly useful. It was created when I've
+		thought that it's the solution to the problem of the loops. Which it
+		has turned out to not solve, and another solution had to be devised.
+		Now it really doesn't have much use, and will probably be removed in
+		the future.
+		</para>
+
+		<para>
+		I have a few ideas for better solutions of these issues, but they will
+		need a bit more experimentation. Just keep in mind that the scheduling
+		will be refined in the future. It will still have the same general
+		shape but differ in detail.
+		</para>
+
+		<para>
 		</para>
 
 		<para>
