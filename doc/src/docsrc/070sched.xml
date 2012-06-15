@@ -1403,7 +1403,7 @@ drainFrame()
 		</para>
 
 		<para>
-		The call <pre>fork()</pre> is not exactly useful. It was created when I've
+		The method <pre>fork()</pre> is not exactly useful. It was created when I've
 		thought that it's the solution to the problem of the loops. Which it
 		has turned out to not solve, and another solution had to be devised.
 		Now it really doesn't have much use, and will probably be removed in
@@ -1415,6 +1415,181 @@ drainFrame()
 		need a bit more experimentation. Just keep in mind that the scheduling
 		will be refined in the future. It will still have the same general
 		shape but differ in detail.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_tray">
+		<title>Trays, or yes bundling</title>
+
+		<para>
+		Even though Triceps does no bundling in scheduling, there still is a
+		need to store the sequences of row operations. This is an important
+		distinction, since the stored sequences are to be scheduled somewhere
+		in the future (or maybe not scheduled at all, but iterated through
+		manually). If and when they get scheduled, they will be unbundled. The
+		ordered storage only provides the order for that future scheduling or
+		iteration.
+		</para>
+
+		<para>
+		The easiest way to store rowops is to put them into the Perl arrays,
+		like:
+		</para>
+
+<pre>
+my @ops = ($rowop1, $rowop2);
+push @ops, $rowop3;
+</pre>
+
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		However the &Cpp; internals of Triceps do not know about the Perl
+		arrays. And some of them can work directly with the sequences of rowops. So
+		Triceps defines an internal sort-of-equivalent of Perl array for
+		rowops, called a <i>Tray</i>.
+		</para>
+
+		<para>
+		The trays have first been used to <quote>catch</quote> the side effects of
+		operations on the stateful elements, so the name <quote>tray</quote> came from the
+		metaphor <quote>put a tray under it to catch the drippings</quote>.
+		</para>
+
+		<para>
+		The trays get created as:
+		</para>
+
+<pre>
+$tray = $unit->makeTray(@rowops) or confess "$!";
+</pre>
+
+		<para>
+		A tray always stores rowops for only one unit. It can be only used in
+		one thread. A tray can be used in all the enqueueing methods,
+		just like the direct rowops:
+		</para>
+
+<pre>
+$unit->call($tray);
+$unit->fork($tray);
+$unit->schedule($tray);
+$unit->enqueue($mode, $tray);
+$unit->loopAt($mark, $tray);
+</pre>
+
+		<para>
+		Moreover, multiple trays may be passed, and the loose rowops and trays
+		can be mixed in the multiple arguments of these functions, for example:
+		</para>
+
+<pre>
+$unit->call($rowopStartPkg, $tray, $rowopEndPkg);
+</pre>
+
+		<indexterm>
+			<primary>protocol</primary>
+		</indexterm>
+		<para>
+		In this example nothing really stops you from placing the start and end
+		rowops into the tray too. A tray may contain the rowops of any types
+		mixed in any order. This is by design, and it's an important feature
+		that allows to build the protocol blocks out of rowops and perform an
+		orderly data exchange. This feature is an absolute necessity for proper
+		inter-process and inter-thread communication.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<para>
+		The ability to send the rows of multiple types through the same channel
+		in order is a must, and its lack makes the communication with some
+		other CEP systems exceedingly difficult. Coral8 supports only one
+		stream per connection. Aleri (and I believe Sybase R5) allows to send
+		multiple streams through the same connection but has no guarantees of
+		order between them. I don't know about the others, check yourself.
+		</para>
+
+		<para>
+		To iterate on a tray in the Perl code, it can be converted to a Perl array:
+		</para>
+
+<pre>
+@array = $tray->toArray();
+</pre>
+
+		<para>
+		The size of the tray (the count of rowops in it) can be read directly
+		without a conversion, and the unit can be read back too:
+		</para>
+
+<pre>
+$size = $tray->size();
+$traysUnit = $tray->getUnit();
+</pre>
+
+		<para>
+		Another way to create a tray is by copying an existing one:
+		</para>
+
+<pre>
+$tray2 = $tray1->copy();
+</pre>
+
+		<para>
+		This copies the contents (which is the references to the rowops) and
+		does not create any ties between the trays. The copying is really just
+		a more efficient way to do
+		</para>
+
+<pre>
+$tray2 = $tray1->getUnit()->makeTray($tray1->toArray());
+</pre>
+
+		<para>
+		The tray references can be compared for whether they point to the same
+		tray object:
+		</para>
+
+<pre>
+$result = $tray1->same($tray2);
+</pre>
+
+		<para>
+		The contents of a tray may be cleared. Which is more convenient and
+		more efficient than discarding a tray and creating another one:
+		</para>
+
+<pre>
+$tray->clear();
+</pre>
+
+		<para>
+		The data may be added to the back of a tray:
+		</para>
+
+<pre>
+$tray->push(@rowops);
+</pre>
+
+		<para>
+		Multiple rowops can be pushed in a single call. There are no other
+		Perl-like operations on a tray: it's either create from a set of
+		rowops, push, or convert to a Perl array.
+		</para>
+
+		<para>
+		Note that the trays are mutable, unlike the rows and rowops. Multiple
+		references to a tray will see the same contents. If a tray is changed
+		through one reference, the others will see the changes too.
 		</para>
 
 		<para>
