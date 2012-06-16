@@ -1,0 +1,7 @@
+the Unit update 
+
+I've been editing the docs about Units, and there have been a couple of developments.
+
+First, I've noticed that I've already got a decent fix for the more serious scheduling issue. To get the predictable order with the scheduling, just always feed the rowops one by one into the model. I've been doing it in the later examples all over the place.
+
+Second, I think I've found a nice compromise for the tracing that on one hand doesn't create deep indentation, and on the other hand lets to find the nesting boundaries easy: add "{" and "}" at the end of the lines before and after running the label. Then it can be written to a file and an editor like vi or Emacs can be used to jump from one end to the other. 
