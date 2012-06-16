@@ -458,6 +458,52 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		frame, now taking the rowop 2 and executing it, and so on, until the
 		outermost queue becomes empty, and <pre>drainFrame()</pre> returns.
 		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>chaining</secondary>
+		</indexterm>
+		<para>
+		An interesting question is, what happens with the chained labels?
+		Where do they fit in the order of execution? It turns out to be
+		a bit of a mix between a <pre>call()</pre> and a <pre>fork()</pre>.
+		They get checked after the original label completes its execution 
+		and has its frame drained but before that frame gets popped.
+		</para>
+
+		<para>
+		If any chained labels are found, they are called one by one.
+		Each of them has a new frame created, executes, has the frame
+		drained and popped, and then the next one is picked up. The nested
+		chaining causes the nested execution. Suppose the label W has the
+		labels X and Y chained to it, and the label X in turn has the label Z chained to
+		it. And the rowop W1 gets called. Which also causes the chained
+		labels to be called; let's mark these calls as X1, Y1 and Z1. By the
+		time the label Z runs, the top of the stack will be:
+		</para>
+
+<pre>
+[ ] ~Z1
+[ ] ~X1*
+[ ] ~W1*
+...
+</pre>
+
+		<para>
+		Then after Z1 completes, the stack will get unwound back to W1, and then
+		Y1 will start its execution, with the top of stack looking as:
+		</para>
+
+<pre>
+[ ] ~Y1
+[ ] ~W1*
+...
+</pre>
+
+		<para>
+		It all looks a bit tricky but it matches the intuitive expectations
+		pretty well.
+		</para>
 	</sect1>
 
 	<sect1 id="sc_sched_loop">
@@ -732,6 +778,7 @@ foreach my $row (@rowset) {
 		It's one problem or the other, and the lesser problem won.
 		This is still messy, and I'm still thinking about the ways to improve
 		the situation.
+XXX use chaining
 		</para>
 
 		<para>
@@ -1590,6 +1637,64 @@ $tray->push(@rowops);
 		Note that the trays are mutable, unlike the rows and rowops. Multiple
 		references to a tray will see the same contents. If a tray is changed
 		through one reference, the others will see the changes too.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_tracing">
+		<title>Tracing the execution</title>
+
+		<indexterm>
+			<primary>tracing</primary>
+		</indexterm>
+
+		<para>
+		When developing the CEP models, there always comes the question: WTF
+		had just happened? How did it manage get this result? Followed by
+		subscribing to many intermediate results and trying to piece together
+		the execution order.
+		</para>
+
+		<para>
+		Triceps provides two solutions for this situation: First, the
+		procedural approach should make the logic much easier to follow.
+		Second, it has a ready way to trace the execution and then read the
+		trace in one piece. It can also be used to analyze any variables on the
+		fly, and possibly stop the execution and enter some manual mode.
+		</para>
+
+		<para>
+		The idea here is simple: provide the Unit with a method that will be
+		called:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		before a label executes,
+		</listitem>
+		<listitem>
+		after the label executes but before draining its frame,
+		</listitem>
+		<listitem>
+		after the frame is drained but before the chained labels execute,
+		</listitem>
+		<listitem>
+		after all the execution caused by a label is completed.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>

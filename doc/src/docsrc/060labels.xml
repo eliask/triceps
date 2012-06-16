@@ -399,7 +399,7 @@ $label->setName($name);
 		<para>
 		A row operation (also known as rowop) in Triceps is an unit of work for
 		a label. It's always destined for a particular label (which could also
-		pass it to its chained labels), and has a row to process and an opcode.
+		pass the rowop to its chained labels), and has a row to process and an opcode.
 		The opcodes will be described momentarily in the
 		<xref linkend="sc_opcodes" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
