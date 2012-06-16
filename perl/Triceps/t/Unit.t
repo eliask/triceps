@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 151 };
+BEGIN { plan tests => 155 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -163,7 +163,8 @@ ok(ref $dielab, "Triceps::Label");
 $v = $dumlab->chain($xlab2);
 ok($v);
 
-$history = "";
+our $history = "";
+our @history; # for the other version of Perl tracing
 
 # prepare rowops for enqueueing
 
@@ -635,13 +636,15 @@ ok($v, $s_expect_verbose);
 
 ### same again but with Perl tracer
 
+# x_Unit_A
 sub tracerCb() # unit, label, fromLabel, rop, when, extra
 {
 	my ($unit, $label, $from, $rop, $when, @extra) = @_;
-	my $msg;
 	our $history;
 
-	$msg = "unit '" . $unit->getName() . "' " . Triceps::tracerWhenHumanString($when) . " label '" . $label->getName() . "' ";
+	my $msg = "unit '" . $unit->getName() . "' " 
+		. Triceps::tracerWhenHumanString($when) . " label '" 
+		. $label->getName() . "' ";
 	if (defined $fromLabel) {
 		$msg .= "(chain '" . $fromLabel->getName() . "') ";
 	}
@@ -740,6 +743,91 @@ $c_expect =
 
 $v = $sntr->print();
 ok($v, $c_expect);
+
+### same chained input but with Perl printing of rows
+
+# x_Unit_B
+sub traceStringRowop
+{
+	my ($unit, $label, $fromLabel, $rowop, $when, 
+		$verbose, $rlog, $rnest) = @_;
+
+	if ($verbose) {
+		${$rnest}++ if ($when == &Triceps::TW_BEFORE);
+		${$rnest}-- if ($when == &Triceps::TW_AFTER);
+	} else {
+		return if ($when != &Triceps::TW_BEFORE);
+	}
+
+
+	my $msg =  "unit '" . $unit->getName() . "' " 
+		. Triceps::tracerWhenHumanString($when) . " label '"
+		. $label->getName() . "' ";
+	if (defined $fromLabel) {
+		$msg .= "(chain '" . $fromLabel->getName() . "') ";
+	}
+	my $tail = "";
+	if ($when == &Triceps::TW_BEFORE) {
+		$tail = " {";
+	} elsif ($when == &Triceps::TW_AFTER) {
+		$tail = " }";
+	}
+	push (@{$rlog}, ("  " x ${$rnest}) . $msg . "op " 
+		. $rowop->printP() . $tail);
+
+	if ($verbose) {
+		${$rnest}++ if ($when == &Triceps::TW_BEFORE);
+		${$rnest}-- if ($when == &Triceps::TW_AFTER);
+	}
+}
+
+undef @history;
+my $tnest =  -1; # keeps track of the tracing nesting level
+$ptr = Triceps::UnitTracerPerl->new(\&traceStringRowop, 1, \@history, \$tnest);
+$u1->setTracer($ptr);
+ok($! . "", "");
+
+$u1->schedule($c_op1);
+$u1->schedule($c_op2);
+ok(!$u1->empty());
+
+$u1->drainFrame();
+ok($u1->empty());
+
+$c_expect_rows = ""
+	. "unit 'u1' before label 'lab1' op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "  unit 'u1' drain label 'lab1' op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "  unit 'u1' before-chained label 'lab1' op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "    unit 'u1' before label 'lab2' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "      unit 'u1' drain label 'lab2' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "        unit 'u1' before label 'lab3' (chain 'lab2') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "          unit 'u1' drain label 'lab3' (chain 'lab2') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "        unit 'u1' after label 'lab3' (chain 'lab2') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "    unit 'u1' after label 'lab2' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "    unit 'u1' before label 'lab3' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "      unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "    unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "unit 'u1' after label 'lab1' op lab1 OP_INSERT a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "unit 'u1' before label 'lab1' op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "  unit 'u1' drain label 'lab1' op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "  unit 'u1' before-chained label 'lab1' op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "    unit 'u1' before label 'lab2' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "      unit 'u1' drain label 'lab2' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "        unit 'u1' before label 'lab3' (chain 'lab2') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "          unit 'u1' drain label 'lab3' (chain 'lab2') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "        unit 'u1' after label 'lab3' (chain 'lab2') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "    unit 'u1' after label 'lab2' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "    unit 'u1' before label 'lab3' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  {\n"
+	. "      unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\" \n"
+	. "    unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }\n"
+	. "unit 'u1' after label 'lab1' op lab1 OP_DELETE a=\"123\" b=\"456\" c=\"789\" d=\"3.14\" e=\"text\"  }"
+	;
+
+
+ok(join("\n", @history), $c_expect_rows);
+# print join("\n", @history), "\n";
 
 #############################################################
 # frame marks are tested in FrameMark.t
