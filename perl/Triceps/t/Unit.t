@@ -551,48 +551,48 @@ $s_expect =
 	;
 
 $s_expect_verbose =
-	"unit 'u1' before label 'lab4' op OP_NOP\n"
-	. "unit 'u1' before label 'lab3' op OP_INSERT\n"
+	"unit 'u1' before label 'lab4' op OP_NOP {\n"
+	. "unit 'u1' before label 'lab3' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab3' op OP_INSERT\n"
-	. "unit 'u1' after label 'lab3' op OP_INSERT\n"
-	. "unit 'u1' before label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab3' op OP_INSERT }\n"
+	. "unit 'u1' before label 'lab3' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab3' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab3' op OP_DELETE }\n"
 	. "unit 'u1' drain label 'lab4' op OP_NOP\n"
-	. "unit 'u1' before label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab2' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab2' op OP_INSERT\n"
-	. "unit 'u1' after label 'lab2' op OP_INSERT\n"
-	. "unit 'u1' before label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab2' op OP_INSERT }\n"
+	. "unit 'u1' before label 'lab2' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab2' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab2' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab4' op OP_NOP\n"
-	. "unit 'u1' before label 'lab5' op OP_NOP\n"
-	. "unit 'u1' before label 'lab3' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab2' op OP_DELETE }\n"
+	. "unit 'u1' after label 'lab4' op OP_NOP }\n"
+	. "unit 'u1' before label 'lab5' op OP_NOP {\n"
+	. "unit 'u1' before label 'lab3' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab3' op OP_INSERT\n"
-	. "unit 'u1' after label 'lab3' op OP_INSERT\n"
-	. "unit 'u1' before label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab3' op OP_INSERT }\n"
+	. "unit 'u1' before label 'lab3' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab3' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab3' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab3' op OP_DELETE }\n"
 	. "unit 'u1' drain label 'lab5' op OP_NOP\n"
-	. "unit 'u1' before label 'lab2' op OP_INSERT\n"
+	. "unit 'u1' before label 'lab2' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab2' op OP_INSERT\n"
-	. "unit 'u1' after label 'lab2' op OP_INSERT\n"
-	. "unit 'u1' before label 'lab2' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab2' op OP_INSERT }\n"
+	. "unit 'u1' before label 'lab2' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab2' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab2' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab5' op OP_NOP\n"
-	. "unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab2' op OP_DELETE }\n"
+	. "unit 'u1' after label 'lab5' op OP_NOP }\n"
+	. "unit 'u1' before label 'lab1' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab1' op OP_INSERT\n"
-	. "unit 'u1' after label 'lab1' op OP_INSERT\n"
-	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab1' op OP_INSERT }\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab1' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab1' op OP_DELETE\n"
-	. "unit 'u1' before label 'lab1' op OP_INSERT\n"
+	. "unit 'u1' after label 'lab1' op OP_DELETE }\n"
+	. "unit 'u1' before label 'lab1' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab1' op OP_INSERT\n"
-	. "unit 'u1' after label 'lab1' op OP_INSERT\n"
-	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab1' op OP_INSERT }\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab1' op OP_DELETE\n"
-	. "unit 'u1' after label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' after label 'lab1' op OP_DELETE }\n"
 	;
 
 # execute with scheduling of op4, op5
@@ -645,7 +645,13 @@ sub tracerCb() # unit, label, fromLabel, rop, when, extra
 	if (defined $fromLabel) {
 		$msg .= "(chain '" . $fromLabel->getName() . "') ";
 	}
-	$msg .= "op " . Triceps::opcodeString($rop->getOpcode()) . "\n";
+	$msg .= "op " . Triceps::opcodeString($rop->getOpcode());
+	if ($when == &Triceps::TW_BEFORE) {
+		$msg .= " {";
+	} elsif ($when == &Triceps::TW_AFTER) {
+		$msg .= " }";
+	}
+	$msg .= "\n";
 	$history .= $msg;
 }
 
@@ -699,37 +705,37 @@ $u1->drainFrame();
 ok($u1->empty());
 
 $c_expect =
-	"unit 'u1' before label 'lab1' op OP_INSERT\n"
+	"unit 'u1' before label 'lab1' op OP_INSERT {\n"
 	. "unit 'u1' drain label 'lab1' op OP_INSERT\n"
 	. "unit 'u1' before-chained label 'lab1' op OP_INSERT\n"
-		. "unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT\n"
+		. "unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT {\n"
 		. "unit 'u1' drain label 'lab2' (chain 'lab1') op OP_INSERT\n"
 		. "unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_INSERT\n"
-			. "unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT\n"
+			. "unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT {\n"
 			. "unit 'u1' drain label 'lab3' (chain 'lab2') op OP_INSERT\n"
-			. "unit 'u1' after label 'lab3' (chain 'lab2') op OP_INSERT\n"
-		. "unit 'u1' after label 'lab2' (chain 'lab1') op OP_INSERT\n"
+			. "unit 'u1' after label 'lab3' (chain 'lab2') op OP_INSERT }\n"
+		. "unit 'u1' after label 'lab2' (chain 'lab1') op OP_INSERT }\n"
 
-		. "unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT\n"
+		. "unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT {\n"
 		. "unit 'u1' drain label 'lab3' (chain 'lab1') op OP_INSERT\n"
-		. "unit 'u1' after label 'lab3' (chain 'lab1') op OP_INSERT\n"
-	. "unit 'u1' after label 'lab1' op OP_INSERT\n"
+		. "unit 'u1' after label 'lab3' (chain 'lab1') op OP_INSERT }\n"
+	. "unit 'u1' after label 'lab1' op OP_INSERT }\n"
 
-	. "unit 'u1' before label 'lab1' op OP_DELETE\n"
+	. "unit 'u1' before label 'lab1' op OP_DELETE {\n"
 	. "unit 'u1' drain label 'lab1' op OP_DELETE\n"
 	. "unit 'u1' before-chained label 'lab1' op OP_DELETE\n"
-		. "unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE\n"
+		. "unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE {\n"
 		. "unit 'u1' drain label 'lab2' (chain 'lab1') op OP_DELETE\n"
 		. "unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_DELETE\n"
-			. "unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE\n"
+			. "unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE {\n"
 			. "unit 'u1' drain label 'lab3' (chain 'lab2') op OP_DELETE\n"
-			. "unit 'u1' after label 'lab3' (chain 'lab2') op OP_DELETE\n"
-		. "unit 'u1' after label 'lab2' (chain 'lab1') op OP_DELETE\n"
+			. "unit 'u1' after label 'lab3' (chain 'lab2') op OP_DELETE }\n"
+		. "unit 'u1' after label 'lab2' (chain 'lab1') op OP_DELETE }\n"
 
-		. "unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE\n"
+		. "unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE {\n"
 		. "unit 'u1' drain label 'lab3' (chain 'lab1') op OP_DELETE\n"
-		. "unit 'u1' after label 'lab3' (chain 'lab1') op OP_DELETE\n"
-	. "unit 'u1' after label 'lab1' op OP_DELETE\n"
+		. "unit 'u1' after label 'lab3' (chain 'lab1') op OP_DELETE }\n"
+	. "unit 'u1' after label 'lab1' op OP_DELETE }\n"
 	;
 
 $v = $sntr->print();

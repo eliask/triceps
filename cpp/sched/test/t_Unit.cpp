@@ -561,37 +561,37 @@ UTESTCASE chaining(Utest *utest)
 	UT_ASSERT(unit->empty());
 
 	string expect = 
-		"unit 'u' before label 'lab1' op OP_INSERT\n"
+		"unit 'u' before label 'lab1' op OP_INSERT {\n"
 		"unit 'u' drain label 'lab1' op OP_INSERT\n"
 		"unit 'u' before-chained label 'lab1' op OP_INSERT\n"
-			"unit 'u' before label 'lab2' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' before label 'lab2' (chain 'lab1') op OP_INSERT {\n"
 			"unit 'u' drain label 'lab2' (chain 'lab1') op OP_INSERT\n"
 			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_INSERT\n"
-				"unit 'u' before label 'lab3' (chain 'lab2') op OP_INSERT\n"
+				"unit 'u' before label 'lab3' (chain 'lab2') op OP_INSERT {\n"
 				"unit 'u' drain label 'lab3' (chain 'lab2') op OP_INSERT\n"
-				"unit 'u' after label 'lab3' (chain 'lab2') op OP_INSERT\n"
-			"unit 'u' after label 'lab2' (chain 'lab1') op OP_INSERT\n"
+				"unit 'u' after label 'lab3' (chain 'lab2') op OP_INSERT }\n"
+			"unit 'u' after label 'lab2' (chain 'lab1') op OP_INSERT }\n"
 
-			"unit 'u' before label 'lab3' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' before label 'lab3' (chain 'lab1') op OP_INSERT {\n"
 			"unit 'u' drain label 'lab3' (chain 'lab1') op OP_INSERT\n"
-			"unit 'u' after label 'lab3' (chain 'lab1') op OP_INSERT\n"
-		"unit 'u' after label 'lab1' op OP_INSERT\n"
+			"unit 'u' after label 'lab3' (chain 'lab1') op OP_INSERT }\n"
+		"unit 'u' after label 'lab1' op OP_INSERT }\n"
 
-		"unit 'u' before label 'lab1' op OP_DELETE\n"
+		"unit 'u' before label 'lab1' op OP_DELETE {\n"
 		"unit 'u' drain label 'lab1' op OP_DELETE\n"
 		"unit 'u' before-chained label 'lab1' op OP_DELETE\n"
-			"unit 'u' before label 'lab2' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' before label 'lab2' (chain 'lab1') op OP_DELETE {\n"
 			"unit 'u' drain label 'lab2' (chain 'lab1') op OP_DELETE\n"
 			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_DELETE\n"
-				"unit 'u' before label 'lab3' (chain 'lab2') op OP_DELETE\n"
+				"unit 'u' before label 'lab3' (chain 'lab2') op OP_DELETE {\n"
 				"unit 'u' drain label 'lab3' (chain 'lab2') op OP_DELETE\n"
-				"unit 'u' after label 'lab3' (chain 'lab2') op OP_DELETE\n"
-			"unit 'u' after label 'lab2' (chain 'lab1') op OP_DELETE\n"
+				"unit 'u' after label 'lab3' (chain 'lab2') op OP_DELETE }\n"
+			"unit 'u' after label 'lab2' (chain 'lab1') op OP_DELETE }\n"
 
-			"unit 'u' before label 'lab3' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' before label 'lab3' (chain 'lab1') op OP_DELETE {\n"
 			"unit 'u' drain label 'lab3' (chain 'lab1') op OP_DELETE\n"
-			"unit 'u' after label 'lab3' (chain 'lab1') op OP_DELETE\n"
-		"unit 'u' after label 'lab1' op OP_DELETE\n"
+			"unit 'u' after label 'lab3' (chain 'lab1') op OP_DELETE }\n"
+		"unit 'u' after label 'lab1' op OP_DELETE }\n"
 	;
 
 	string tlog = trace->getBuffer()->print();

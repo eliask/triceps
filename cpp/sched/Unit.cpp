@@ -87,6 +87,13 @@ void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fr
 	};
 	res.append(strprintf("op %p %s", rop, Rowop::opcodeString(rop->getOpcode()) ));
 
+	if (verbose_) {
+		if (when == TW_BEFORE)
+			res.append(" {");
+		else if (when == TW_AFTER)
+			res.append(" }");
+	}
+
 	buffer_->appendMsg(false, res);
 	// XXX print the row too?
 }
@@ -112,6 +119,13 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 	};
 	res.append("op ");
 	res.append(Rowop::opcodeString(rop->getOpcode()));
+
+	if (verbose_) {
+		if (when == TW_BEFORE)
+			res.append(" {");
+		else if (when == TW_AFTER)
+			res.append(" }");
+	}
 
 	buffer_->appendMsg(false, res);
 	
