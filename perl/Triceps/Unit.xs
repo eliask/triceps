@@ -200,6 +200,15 @@ setName(WrapUnit *self, char *name)
 		Unit *u = self->get();
 		u->setName(name);
 
+int
+getStackDepth(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = u->getStackDepth();
+	OUTPUT:
+		RETVAL
+
 # get the empty row type
 WrapRowType *
 getEmptyRowType(WrapUnit *self)

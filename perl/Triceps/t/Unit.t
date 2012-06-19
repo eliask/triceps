@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 155 };
+BEGIN { plan tests => 156 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -37,6 +37,8 @@ $v = $u1->same($u1);
 ok($v);
 $v = $u1->same($u2);
 ok(!$v);
+
+ok($u1->getStackDepth(), 1);
 
 ###################### name setting #################################
 

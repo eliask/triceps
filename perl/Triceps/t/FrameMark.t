@@ -54,6 +54,10 @@ ok(ref $rt1, "Triceps::RowType");
 sub startLoop # ($label, $rowop)
 {
 	my ($label, $rowop) = @_;
+
+	my $depth = $u1->getStackDepth();
+	($depth == 2) or die "Stack depth growing to $depth";
+
 	$result .= $rowop->printP() . "\n";
 	$u1->setMark($m1);
 
