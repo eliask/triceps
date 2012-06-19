@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 156 };
+BEGIN { plan tests => 160 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -830,6 +830,26 @@ $c_expect_rows = ""
 
 ok(join("\n", @history), $c_expect_rows);
 # print join("\n", @history), "\n";
+
+{
+	my @res;
+
+	# the stack treatment with chaining
+	my $x_lab1 = $u1->makeLabel($rt1, "lab1", undef, sub {
+		push(@res, $u1->getStackDepth());
+	});
+	ok(ref $x_lab1, "Triceps::Label");
+	my $x_lab2 = $u1->makeLabel($rt1, "lab2", undef, sub {
+		push(@res, $u1->getStackDepth());
+	});
+	ok(ref $x_lab2, "Triceps::Label");
+
+	$x_lab1->chain($x_lab2);
+
+	$v = $u1->makeHashCall($x_lab1, "OP_INSERT", @dataset1);
+	ok($v);
+	ok(join("-", @res), "2-2");
+}
 
 #############################################################
 # frame marks are tested in FrameMark.t
