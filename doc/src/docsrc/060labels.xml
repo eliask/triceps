@@ -333,11 +333,22 @@ $label1->same($label2)
 
 <pre>
 $rowType = $label->getType();
+$rowType = $label->getRowType();
 $unit = $label->getUnit();
 $name = $label->getName();
 @chainedLabels = $label->getChain();
 $execSubRef = $label->getCode();
 </pre>
+
+		<para>
+		The methods <pre>getType()</pre> and <pre>getRowType()</pre> are the same, they both return
+		the row type of the label. <pre>getType()</pre> is shorter, which looked convenient
+		for a while, but <pre>getRowType()</pre> has the name consistent with the
+		rest of the classes. This consistency comes useful when passing the objects
+		of various types to the same methods, using the Perl's name-based
+		polymorphism. For now both of them are present, but <pre>getType()</pre> will
+		likely be deprecated in the future.
+		</para>
 
 		<para>
 		If the label has been cleared, <pre>getUnit()</pre> will return an

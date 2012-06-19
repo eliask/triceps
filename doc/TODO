@@ -5,6 +5,7 @@ Things that need to be done:
 * in RowHandle add getTable()
 * add the row contents access methods directly on a row handle?
 * in Row add the array index argument in get()
+* add get() and friends directly on Rowop
 * identify a group for iteration by the pair (parent index type, leaf index type)
 * groupSize() outside of the aggregator context
 * iteration backwards
@@ -29,6 +30,7 @@ Things that need to be done:
 * for basic persistence, add dump of tables, quick disconnect of results on reload
 * register error messages from the outside scopes, to be printed on failure in the called functions
 * in Tray handle the undefs and NULLs better (see XXX)
+* rewrite makeLoop* with a Loop object
 
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
@@ -36,6 +38,8 @@ Things that need to be done:
   (aggregator "before" is now called before the mods)
 * doc: building apps with a private copy of Triceps
 * doc: Triceps::clearArgs, empty row type, clearing label
+
+* doc: Unit::getStackDepth(), makeLoopHead(), makeLoopAround()
 
 App ideas:
 * queries on CSV files

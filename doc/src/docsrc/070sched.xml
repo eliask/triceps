@@ -473,37 +473,11 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 
 		<para>
 		If any chained labels are found, they are called one by one.
-		Each of them has a new frame created, executes, has the frame
-		drained and popped, and then the next one is picked up. The nested
-		chaining causes the nested execution. Suppose the label W has the
-		labels X and Y chained to it, and the label X in turn has the label Z chained to
-		it. And the rowop W1 gets called. Which also causes the chained
-		labels to be called; let's mark these calls as X1, Y1 and Z1. By the
-		time the label Z runs, the top of the stack will be:
+		But they don't get a new frame created. They all reuse the frame
+		left over from the parent label. The frame gets popped only
+		after all the chained labels have completed.
 		</para>
 
-<pre>
-[ ] ~Z1
-[ ] ~X1*
-[ ] ~W1*
-...
-</pre>
-
-		<para>
-		Then after Z1 completes, the stack will get unwound back to W1, and then
-		Y1 will start its execution, with the top of stack looking as:
-		</para>
-
-<pre>
-[ ] ~Y1
-[ ] ~W1*
-...
-</pre>
-
-		<para>
-		It all looks a bit tricky but it matches the intuitive expectations
-		pretty well.
-		</para>
 	</sect1>
 
 	<sect1 id="sc_sched_loop">
@@ -776,9 +750,16 @@ foreach my $row (@rowset) {
 
 		<para>
 		It's one problem or the other, and the lesser problem won.
+		To further reduce the complexity, I've also added the methods 
+		<pre>makeLoopHead()</pre> and <pre>makeLoopAround()</pre> that take care of constructing
+		the whole front part of the loop, including the setting of the mark.
+		They will be described below in
+		<xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		This is still messy, and I'm still thinking about the ways to improve
 		the situation.
 XXX use chaining
+XXX add
+($dummy, $first, $mark) = $unit->makeLoopHead("name", $cleasSub, $execSub, @args);
 		</para>
 
 		<para>
@@ -1095,12 +1076,146 @@ $tray = $unit->makeTray(@rowops) or confess "$!";
 		</para>
 
 		<para>
+		The convenience methods to create the whole front part of the 
+		topological loop are:
+		</para>
+
+<pre>
+($labelBegin, $labelNext, $frameMark) = $unit->makeLoopHead(
+	$rowType, "name", $clearSub, $execSub, @args);
+
+($labelBegin, $labelNext, $frameMark) = $unit->makeLoopAround(
+	"name", $labelFirst);
+</pre>
+
+		<para>
+		You don't have to use them, you can create the loops manually. These
+		methods merely make it more convenient. Remember also that a procedural
+		loop is usually much easier to write and debug and read later than a
+		topological one.
+		</para>
+
+		<para>
+		These methods use the new error handling convention, confessing
+		on the errors. There is no need to check the result.
+		</para>
+
+		<para>
+		<pre>makeLoopHead()</pre> creates the front part of the loop that starts
+		with a Perl label. It gets the arguments for that label and
+		creates it among the other things. <pre>makeLoopAround()</pre> creates
+		the front part of the loop around an existing label that
+		will be the first one executed in the loop. <pre>makeLoopHead()</pre> 
+		is really redundant and can be replaced with a combination
+		of <pre>makeLabel()</pre> and <pre>makeLoopAround()</pre>.
+		</para>
+
+		<para>
+		They both return the same results, a triplet:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		The label where you send a rowop to initiate the loop (remember that
+		the loop consists of one row going through the loop at a time), 
+		<pre>$labelBegin</pre>.
+		</listitem>
+		<listitem>
+		The label that you use at the end of the loop in the <pre>loopAt()</pre> to
+		do the next iteration of the loop, <pre>$labelNext</pre>.
+		</listitem>
+		<listitem>
+		The frame mark that you use in <pre>loopAt()</pre>, <pre>$frameMark</pre>. You don't need to
+		set the frame mark, it will be set for you in the wrapper logic.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The name is used to construct the names of the elements by adding 
+		a dotted suffix: <quote>name.begin</quote>, <quote>name.next</quote> for 
+		<pre>makeLoopHead()</pre> or <quote>name.wrapnext</quote> for <pre>makeLoopAround()</pre>,
+		<quote>name.mark</quote>.
+		</para>
+
+		<para>
+		<pre>makeLoopAround()</pre> takes the row type for its created labels
+		from the first label that is given to it as an argument.
+		</para>
+
+		<para>
+		The makeLoop methods may be easier to understand if you look at their source code:
+		</para>
+
+<pre>
+sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
+{
+	my ($self, $rt, $name, $clear, $exec, @args) = @_;
+
+	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
+
+	my $lbNext = $self->makeLabel($rt, $name . ".next", $clear, sub {
+		$self->setMark($mark);
+		&$exec(@_);
+	}, @args) or confess "$!";
+
+	my $lbBegin = $self->makeLabel($rt, $name . ".begin", undef, sub {
+		$self->call($lbNext->adopt($_[1]));
+	}) or confess "$!";
+
+	return ($lbBegin, $lbNext, $mark);
+}
+
+sub makeLoopAround # ($self, $name, $lbFirst)
+{
+	my ($self, $name, $lbFirst) = @_;
+	my $rt = $lbFirst->getRowType();
+
+	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
+
+	my $lbWrapNext = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
+		$self->setMark($mark);
+	}) or confess "$!";
+	$lbWrapNext->chain($lbFirst) or confess "$!";
+
+	my $lbBegin = $self->makeLabel($rt, $name . ".begin", undef, sub {
+		$self->call($lbWrapNext->adopt($_[1]));
+	}) or confess "$!";
+
+	return ($lbBegin, $lbWrapNext, $mark);
+}
+</pre>
+
+		<para>
+		The label execution handlers in them use <pre>$_[1]</pre> to get their rowop
+		argument, without assigning it to a variable first.
+		An extended example of them will also be shown in XXXXX
+		</para>
+
+		<para>
 		The unit can be checked for the emptiness of its queues:
 		</para>
 
 <pre>
 $result = $unit->empty();
 </pre>
+
+		<para>
+		Also the current depth of the call stack (the number of the
+		stack frames on the queue) can be found with:
+		</para>
+
+<pre>
+$result = $unit->getStackDepth();
+</pre>
+
+		<para>
+		It isn't of any use for the model logic as such but comes handy
+		for debugging, to check in the loops that you haven't accidentally
+		created a stack growing with iterations. When the unit is not
+		running, the stack depth is 1, since the outermost frame always
+		stays on the stack. When a rowop is being executed, the stack
+		depth is at least 2.
+		</para>
 
 		<para>
 		The functions for execution from the queues are:
