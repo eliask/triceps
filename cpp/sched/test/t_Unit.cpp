@@ -48,6 +48,8 @@ UTESTCASE mkunit(Utest *utest)
 	Autoref<Unit> unit1 = new Unit("my unit");
 	UT_IS(unit1->getName(), "my unit");
 	
+	UT_IS(unit1->getStackDepth(), 1);
+
 	unit1->setName("xxx");
 	UT_IS(unit1->getName(), "xxx");
 
@@ -730,6 +732,8 @@ public:
 	{
 		Utest *utest = utest_; // variable expected by all macros
 		Unit *unit1 = unit_;
+
+		UT_IS(unit1->getStackDepth(), 2);
 
 		Autoref<Unit> unit2 = new Unit("u2");
 

@@ -178,6 +178,13 @@ public:
 		name_ = name;
 	}
 
+	// Get the depth of the frame stack in the queue.
+	// Very useful for debugging of the stack growtn.
+	int getStackDepth() const
+	{
+		return stackDepth_;
+	}
+
 	// There is an issue with potential circular references, when the labels
 	// refer to each other with Autorefs, and the topology includes a loop.
 	// Then the labels in the loop will never be freed. A solution used here
@@ -328,6 +335,7 @@ protected:
 	Autoref<Tracer> tracer_; // the tracer object
 	string name_; // human-readable name for tracing and messages
 	Autoref <RowType> emptyRowType_; // a convenience copy of row type with no fields
+	int stackDepth_; // number of frames in the queue
 	// Keeping track of labels
 	typedef map<Label *, Autoref<Label> > LabelMap;
 	LabelMap labelMap_;

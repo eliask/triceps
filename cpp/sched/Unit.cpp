@@ -135,7 +135,7 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 ///////////////////////////// Unit //////////////////////////////////
 
 Unit::Unit(const string &name) :
-	name_(name)
+	name_(name), stackDepth_(1)
 {
 	// the outermost frame is always present
 	innerFrame_ = outerFrame_ = new UnitFrame;
@@ -349,6 +349,7 @@ void Unit::pushFrame()
 		queue_.push_front(innerFrame_);
 		freePool_.pop_front(); // only after it has been pushed onto queue
 	}
+	stackDepth_++;
 	// fprintf(stderr, "DEBUG Unit::pushFrame (%d) new %p\n", (int)queue_.size(), innerFrame_);
 }
 
@@ -363,6 +364,7 @@ void Unit::popFrame()
 		freePool_.push_front(innerFrame_); // save for later
 		queue_.pop_front();
 		innerFrame_ = queue_.front();
+		stackDepth_--;
 	}
 	// fprintf(stderr, "DEBUG Unit::popFrame (%d) now %p\n", (int)queue_.size(), innerFrame_);
 }
