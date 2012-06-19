@@ -102,4 +102,44 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 	return $res;
 }
 
+# Create a whole combination for the start of the loop:
+#  1. The label that wraps the execution of the whole loop
+#    and provides the frame for the mark.
+#  2. The first label inside the actual loop, that runs on
+#    every iteration. It gets the clearSub and execSub to execute in it.
+#    The user code doesn't need to bother about setting
+#    the frame mark, it's set in the wrapper.
+#  3. The frame mark.
+#
+# Confesses on any error.
+#
+# @param rt - row type for the looping rows
+# @param name - base name for the labels and the mark.
+#     The names are created with suffixes as:
+#     1. Whole-loop label: .begin
+#     2. First label in the loop: .next
+#     3. The frame mark: .mark
+# @param clearSub - clearing function for .next
+# @param execSub - handler function for .next
+# @param args - args for .next
+# @returns - a triplet of
+#     ($begin_label, $next_label, $frame_mark)
+sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
+{
+	my ($self, $rt, $name, $clear, $exec, @args) = @_;
+
+	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
+
+	my $lbNext = $self->makeLabel($rt, $name . ".next", $clear, sub {
+		$self->setMark($mark);
+		&$exec(@_);
+	}, @args) or confess "$!";
+
+	my $lbBegin = $self->makeLabel($rt, $name . ".begin", undef, sub {
+		$self->call($lbNext->adopt($_[1]));
+	}) or confess "$!";
+
+	return ($lbBegin, $lbNext, $mark);
+}
+
 1;

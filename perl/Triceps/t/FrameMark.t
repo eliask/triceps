@@ -15,8 +15,9 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 23 };
+BEGIN { plan tests => 24 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -24,6 +25,39 @@ ok(1); # If we made it this far, we're ok.
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
+
+#########################
+# helper functions to support either user i/o or i/o from vars
+
+# vars to serve as input and output sources
+my @input;
+my $result;
+
+# simulates user input: returns the next line or undef
+sub readLine # ()
+{
+	$_ = shift @input;
+	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	return $_;
+}
+
+# write a message to user
+sub send # (@message)
+{
+	$result .= join('', @_);
+}
+
+# versions for the real user interaction
+sub readLineX # ()
+{
+	$_ = <STDIN>;
+	return $_;
+}
+
+sub sendX # (@message)
+{
+	print @_;
+}
 
 ###################### new #################################
 
@@ -186,3 +220,82 @@ ok($u1->empty());
 ok($result, $expect);
 #print STDERR $result;
 
+############################################################
+# test of makeLoopHead()
+
+sub doFib {
+# compute some Fibonacci numbers in a perverse way
+
+$uFib = Triceps::Unit->new("uFib") or confess "$!";
+
+my $rtFib = Triceps::RowType->new(
+	iter => "int32", # iteration number
+	cur => "int64", # current number
+	prev => "int64", # previous number
+) or confess "$!";
+
+my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
+	&send($_[1]->getRow()->get("cur"));
+});
+
+my $lbCompute; # will fill in later
+
+my ($lbBegin, $lbNext, $markFib) = $uFib->makeLoopHead(
+	$rtFib, "Fib", undef, sub {
+		my $iter = $_[1]->getRow()->get("iter");
+		if ($iter <= 1) {
+			$uFib->call($lbPrint->adopt($_[1]));
+		} else {
+			$uFib->call($lbCompute->adopt($_[1]));
+		}
+	}
+);
+
+$lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $cur = $row->get("cur");
+	$uFib->makeHashLoopAt($markFib, $lbNext, $_[1]->getOpcode(),
+		iter => $row->get("iter") - 1,
+		cur => $cur + $row->get("prev"),
+		prev => $cur,
+	);
+}) or confess "$!";
+
+my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
+	my $row = $_[1]->getRow();
+	$uFib->makeHashCall($lbBegin, $_[1]->getOpcode(),
+		iter => $row->get("iter"),
+		cur => 1,
+		prev => 0,
+	);
+	&send(" is Fibonacci number ", $row->get("iter"), "\n");
+}) or confess "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	$uFib->makeArrayCall($lbMain, @data);
+	$uFib->drainFrame(); # just in case, for completeness
+}
+
+} # doFib
+
+@input = (
+	"OP_INSERT,1\n",
+	"OP_DELETE,2\n",
+	"OP_INSERT,5\n",
+	"OP_INSERT,6\n",
+);
+$result = undef;
+&doFib();
+#print $result;
+ok($result, 
+'OP_INSERT,1
+1 is Fibonacci number 1
+OP_DELETE,2
+1 is Fibonacci number 2
+OP_INSERT,5
+5 is Fibonacci number 5
+OP_INSERT,6
+8 is Fibonacci number 6
+');

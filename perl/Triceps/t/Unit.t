@@ -852,7 +852,7 @@ ok(join("\n", @history), $c_expect_rows);
 }
 
 #############################################################
-# frame marks are tested in FrameMark.t
+# frame marks are tested in FrameMark.t, as well as makeLoopHead()
 
 #############################################################
 # MUST BE LAST
