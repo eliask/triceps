@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 24 };
+BEGIN { plan tests => 25 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -223,7 +223,7 @@ ok($result, $expect);
 ############################################################
 # test of makeLoopHead()
 
-sub doFib {
+sub doFibHead {
 # compute some Fibonacci numbers in a perverse way
 
 $uFib = Triceps::Unit->new("uFib") or confess "$!";
@@ -278,7 +278,7 @@ while(&readLine) {
 	$uFib->drainFrame(); # just in case, for completeness
 }
 
-} # doFib
+} # doFibHead
 
 @input = (
 	"OP_INSERT,1\n",
@@ -287,7 +287,7 @@ while(&readLine) {
 	"OP_INSERT,6\n",
 );
 $result = undef;
-&doFib();
+&doFibHead();
 #print $result;
 ok($result, 
 'OP_INSERT,1
@@ -299,3 +299,83 @@ OP_INSERT,5
 OP_INSERT,6
 8 is Fibonacci number 6
 ');
+
+############################################################
+# test of makeLoopAround()
+
+sub doFibAround {
+# compute some Fibonacci numbers in a perverse way
+
+$uFib = Triceps::Unit->new("uFib") or confess "$!";
+
+my $rtFib = Triceps::RowType->new(
+	iter => "int32", # iteration number
+	cur => "int64", # current number
+	prev => "int64", # previous number
+) or confess "$!";
+
+my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
+	&send($_[1]->getRow()->get("cur"));
+});
+
+my ($lbBegin, $lbNext, $markFib); # will fill in later
+
+$lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $cur = $row->get("cur");
+	my $iter = $row->get("iter");
+	if ($iter <= 1) {
+		$uFib->call($lbPrint->adopt($_[1]));
+	} else {
+		$uFib->makeHashLoopAt($markFib, $lbNext, $_[1]->getOpcode(),
+			iter => $row->get("iter") - 1,
+			cur => $cur + $row->get("prev"),
+			prev => $cur,
+		);
+	}
+}) or confess "$!";
+
+($lbBegin, $lbNext, $markFib) = $uFib->makeLoopAround(
+	"Fib", $lbCompute
+);
+
+
+my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
+	my $row = $_[1]->getRow();
+	$uFib->makeHashCall($lbBegin, $_[1]->getOpcode(),
+		iter => $row->get("iter"),
+		cur => 1,
+		prev => 0,
+	);
+	&send(" is Fibonacci number ", $row->get("iter"), "\n");
+}) or confess "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	$uFib->makeArrayCall($lbMain, @data);
+	$uFib->drainFrame(); # just in case, for completeness
+}
+
+} # doFibAround
+
+@input = (
+	"OP_INSERT,1\n",
+	"OP_DELETE,2\n",
+	"OP_INSERT,5\n",
+	"OP_INSERT,6\n",
+);
+$result = undef;
+&doFibAround();
+#print $result;
+ok($result, 
+'OP_INSERT,1
+1 is Fibonacci number 1
+OP_DELETE,2
+1 is Fibonacci number 2
+OP_INSERT,5
+5 is Fibonacci number 5
+OP_INSERT,6
+8 is Fibonacci number 6
+');
+

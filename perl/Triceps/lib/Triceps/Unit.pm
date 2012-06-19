@@ -103,7 +103,7 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 }
 
 # Create a whole combination for the start of the loop:
-#  1. The label that wraps the execution of the whole loop
+#  1. The label that begins the execution of the whole loop
 #    and provides the frame for the mark.
 #  2. The first label inside the actual loop, that runs on
 #    every iteration. It gets the clearSub and execSub to execute in it.
@@ -140,6 +140,41 @@ sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 	}) or confess "$!";
 
 	return ($lbBegin, $lbNext, $mark);
+}
+
+# Similar to makeLoopHead() but the first label inside the loop
+# already exists, so just makes the rest: the begin label, the
+# frame mark, and the helper label that will set the mark.
+#
+# Confesses on any error.
+#
+# @param name - base name for the labels and the mark.
+#     The names are created with suffixes as:
+#     1. Whole-loop label: .begin
+#     2. Wrapper for the first label in the loop: .wrapnext;
+#        that should be used with loopAt().
+#     3. The frame mark: .mark
+# @param lbFirst - the label that starts the loop. Its row type
+#     also becomes the row type of the created labels.
+# @returns - a triplet of
+#     ($begin_label, $next_label, $frame_mark)
+sub makeLoopAround # ($self, $name, $lbFirst)
+{
+	my ($self, $name, $lbFirst) = @_;
+	my $rt = $lbFirst->getRowType();
+
+	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
+
+	my $lbWrapNext = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
+		$self->setMark($mark);
+	}) or confess "$!";
+	$lbWrapNext->chain($lbFirst) or confess "$!";
+
+	my $lbBegin = $self->makeLabel($rt, $name . ".begin", undef, sub {
+		$self->call($lbWrapNext->adopt($_[1]));
+	}) or confess "$!";
+
+	return ($lbBegin, $lbWrapNext, $mark);
 }
 
 1;
