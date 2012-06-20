@@ -210,6 +210,13 @@ while(&readLine) {
 </pre>
 				</para>
 
+<exdump>
+> this is an input string
+adjask jdwqej jklewq jkljfkasd
+> this is another input string
+tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala
+</exdump>
+
 				<para>
 				tralala tralala <pre>a->b()</pre> tralala tralala <pre>&f(x)</pre> tralala tralala tralala tralala
 				tralala tralala tralala tralala tralala tralala tralala tralala

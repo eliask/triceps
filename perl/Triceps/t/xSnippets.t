@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 6 };
+BEGIN { plan tests => 14 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -163,3 +163,47 @@ ok($result,
 
 undef $lab2;
 }
+
+#########################
+# Fibonacci stuff.
+
+{
+use strict;
+
+sub fib1 # ($n)
+{
+	my $n = shift;
+	if ($n <= 2) {
+		return 1;
+	} else {
+		return &fib1($n-1) + &fib1($n-2);
+	}
+}
+ok(&fib1(1), 1);
+ok(&fib1(2), 1);
+ok(&fib1(3), 2);
+ok(&fib1(5), 5);
+
+sub fibStep2 # ($prev, $preprev)
+{
+	return ($_[0] + $_[1], $_[0]);
+}
+
+sub fib2 # ($n)
+{
+	my $n = shift;
+	my @prev = (1, 0); # n and n-1
+
+	while ($n > 1) {
+		@prev = &fibStep2(@prev);
+		$n--;
+	}
+	return $prev[0];
+}
+ok(&fib2(1), 1);
+ok(&fib2(2), 1);
+ok(&fib2(3), 2);
+ok(&fib2(5), 5);
+
+}
+

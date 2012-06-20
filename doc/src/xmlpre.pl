@@ -10,6 +10,7 @@
 
 use strict;
 
+# encode the XML-forbidden characters in their XML representation
 sub xmlify # (text_line)
 {
 	my $tl = shift;
@@ -31,8 +32,30 @@ sub xmlify # (text_line)
 	return $tl;
 }
 
+# split a string into an array of lines no longer than $max,
+# trying to break at the spaces
+sub splitwords # ($l, $max)
+{
+	my $l = shift;
+	my $max = shift;
+	my @res;
+	while (length($l) > $max) {
+		# the pattern is greedy, so it would find the last space before $max chars
+		if ($l =~ s/^(.{1,$max}) +//) {
+			push @res, $1;
+		} else {
+			die "Can not break up a line to $max chars, line is:\n$l\n";
+		}
+	}
+	push @res, $l;
+	return @res;
+}
+
+# length after which the result dump lines should get broken up
+my $MAXLEN = 65;
 
 my $pre = 0;
+my $dump = 0; # in the results dump from an example
 my $lf = ''; # used to drop the extra LFs from inside <pre>
 while(<STDIN>) {
 	if ($pre) {
@@ -44,10 +67,32 @@ while(<STDIN>) {
 			print $lf, &xmlify($_);
 			$lf = "\n";
 		}
+	} elsif ($dump) {
+		if (/^<\/exdump>\s*$/) {
+			$dump = 0;
+			print "</programlisting>\n";
+		} else {
+			chomp;
+			my $input = s/^> //; # the input lines start with "> "
+			print $lf;
+			print("<emphasis>") if ($input);
+			if (length($_) <= $MAXLEN) {
+				print &xmlify($_);
+			} else {
+				print &xmlify(join("\n  ", &splitwords($_, $MAXLEN)));
+			}
+			print("</emphasis>") if ($input);
+			$lf = "\n";
+		}
 	} else {
 		if (/^<pre>\s*$/) {
 			# start of the multi-line block
 			$pre = 1;
+			$lf = '';
+			print "<programlisting>";
+		} elsif (/^<exdump>\s*$/) {
+			# start of the multi-line block
+			$dump = 1;
 			$lf = '';
 			print "<programlisting>";
 		} else {

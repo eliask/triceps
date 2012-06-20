@@ -40,6 +40,7 @@ Things that need to be done:
 * doc: Triceps::clearArgs, empty row type, clearing label
 
 * doc: Unit::getStackDepth(), makeLoopHead(), makeLoopAround()
+* doc: describe the convention for the example input/results dump
 
 App ideas:
 * queries on CSV files

@@ -498,6 +498,9 @@ foreach my $row (@rowset) {
 }
 </pre>
 
+		<indexterm>
+			<primary>topological loop</primary>
+		</indexterm>
 		<para>
 		However the labels topologically connected into a loop can come handy
 		as well. Some logic may be easier to express this way. Suppose the
@@ -757,9 +760,6 @@ foreach my $row (@rowset) {
 		<xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		This is still messy, and I'm still thinking about the ways to improve
 		the situation.
-XXX use chaining
-XXX add
-($dummy, $first, $mark) = $unit->makeLoopHead("name", $cleasSub, $execSub, @args);
 		</para>
 
 		<para>
@@ -1080,6 +1080,10 @@ $tray = $unit->makeTray(@rowops) or confess "$!";
 		topological loop are:
 		</para>
 
+		<indexterm>
+			<primary>schedule</primary>
+			<secondary>loop</secondary>
+		</indexterm>
 <pre>
 ($labelBegin, $labelNext, $frameMark) = $unit->makeLoopHead(
 	$rowType, "name", $clearSub, $execSub, @args);
@@ -1188,7 +1192,8 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 		<para>
 		The label execution handlers in them use <pre>$_[1]</pre> to get their rowop
 		argument, without assigning it to a variable first.
-		An extended example of them will also be shown in XXXXX
+		An extended example of them will also be shown in 
+		<xref linkend="sc_sched_loop_ex" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -1453,6 +1458,274 @@ while(&readLine) {
 		</para>
 	</sect1>
 
+	<sect1 id="sc_sched_loop_ex">
+		<title>Example of a looped model</title>
+
+		<para>
+		Building of the models with the loop much easier to understand 
+		with an example. So let's make an example that computes the
+		Fibonacci numbers. It's a real overcomplicated and perverse way of
+		calculating the Fibonacci numbers. But it also is a great 
+		fit to the type of problems that get solved with the
+		topological loop, only of a simple kind.
+		</para>
+
+		<indexterm>
+			<primary>topological loop</primary>
+		</indexterm>
+		<indexterm>
+			<primary>schedule</primary>
+			<secondary>loop</secondary>
+		</indexterm>
+		<para>
+		First, a quick reminder of what is a Fibonacci number.
+		Historically it's a solution to the problem of breeding
+		the spherical rabbits in vacuum. But in the mathematical
+		reality it's the sequence of numbers where each number
+		is a sum of the two previous ones. Two initial elements
+		are defined to be equal to 1, and it goes from there:
+		</para>
+
+		<para>
+		F<subscript><i>i</i></subscript> = F<subscript><i>i</i>-1</subscript> + F<subscript><i>i</i>-2</subscript>
+		</para>
+
+		<para>
+		F<subscript>1</subscript> = 1; F<subscript>2</subscript> = 1
+		</para>
+
+		<para>
+		The Fibonacci numbers are often used as an example of recursive
+		computations in the beginner's books on programming. The computation
+		of the <i>n</i>-th Fibonacci number is usually shown computed like this:
+		</para>
+
+<!-- t/xSnippets.t -->
+<pre>
+sub fib1 # ($n)
+{
+	my $n = shift;
+	if ($n <= 2) {
+		return 1;
+	} else {
+		return &fib1($n-1) + &fib1($n-2);
+	}
+}
+</pre>
+
+		<para>
+		However that's not a good way to compute in the real world.
+		When a function calls itself recursively once, its complexity
+		is linear, O(<i>n</i>). When a function calls itself twice or more,
+		its complexity becomes exponential, O(e<superscript><i>n</i></superscript>).
+		At first you might think that it's only quadratic O(<i>n</i><superscript>2</superscript>)
+		because it forks two ways on each step. But these two ways keep forking
+		and forking on each step, and it compounds to exponential. Which is
+		a real bad thing.
+		</para>
+
+		<para>
+		To think of it, it's a huge waste, since the (<i>n</i>-2)&emdash;th
+		number is calculated anyway for the (<i>n</i>-1)&emdash;th number.
+		Why calculate it separately the second time? We could as well have saved
+		and reused it. The Lisp people have figured this
+		out a long time ago, and the Lisp books are full of examples that
+		do exactly that. However I'm too lazy to explain how they work, so we're
+		going to skip it together with the conversion of a tail recursion
+		into a loop and get directly to the loop version. I find the loop
+		version more natural and easier to write than a recursion anyway.
+		</para>
+
+<!-- t/xSnippets.t -->
+<pre>
+sub fibStep2 # ($prev, $preprev)
+{
+	return ($_[0] + $_[1], $_[0]);
+}
+
+sub fib2 # ($n)
+{
+	my $n = shift;
+	my @prev = (1, 0); # n and n-1
+
+	while ($n > 1) {
+		@prev = &fibStep2(@prev);
+		$n--;
+	}
+	return $prev[0];
+}
+</pre>
+
+		<para>
+		The split into two functions is not mandatory for the loop
+		version, it just does the clean separation of the loop counter
+		logic and of the computation of the next step of the function.
+		(But for the recursion version if would be mandatory).
+		</para>
+
+		<para>
+		I'm going to take this procedural loop version and transform
+		it into a topological loop. It actually happens to be a real
+		good match for the topological loop. In a topological loop
+		a record keeps traveling through it and being transformed
+		until it satisfies the loop exit condition. Here
+		<pre>@prev</pre> is the record contents, and the iteration count
+		will be added to them to keep track of the exit condition.
+		</para>
+
+<pre>
+$uFib = Triceps::Unit->new("uFib") or confess "$!";
+
+my $rtFib = Triceps::RowType->new(
+	iter => "int32", # iteration number
+	cur => "int64", # current number
+	prev => "int64", # previous number
+) or confess "$!";
+
+my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
+	&send($_[1]->getRow()->get("cur"));
+});
+
+my $lbCompute; # will fill in later
+
+my ($lbBegin, $lbNext, $markFib) = $uFib->makeLoopHead(
+	$rtFib, "Fib", undef, sub {
+		my $iter = $_[1]->getRow()->get("iter");
+		if ($iter <= 1) {
+			$uFib->call($lbPrint->adopt($_[1]));
+		} else {
+			$uFib->call($lbCompute->adopt($_[1]));
+		}
+	}
+);
+
+$lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $cur = $row->get("cur");
+	$uFib->makeHashLoopAt($markFib, $lbNext, $_[1]->getOpcode(),
+		iter => $row->get("iter") - 1,
+		cur => $cur + $row->get("prev"),
+		prev => $cur,
+	);
+}) or confess "$!";
+
+my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
+	my $row = $_[1]->getRow();
+	$uFib->makeHashCall($lbBegin, $_[1]->getOpcode(),
+		iter => $row->get("iter"),
+		cur => 1,
+		prev => 0,
+	);
+	&send(" is Fibonacci number ", $row->get("iter"), "\n");
+}) or confess "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	$uFib->makeArrayCall($lbMain, @data);
+	$uFib->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		You can see that it has grown quite a bit. That's why the procedural
+		loops are generally a better idea. However if the computation involves
+		a lot of the SQLy logic, the topological loops are still beneficial.
+		Also, the Triceps <pre>call()</pre> is at the moment not a real call:
+		you pass the arguments, you call the code but you don't directly
+		get the results. You could pass them back through some static
+		variables, or you could use the topological loop to pass them
+		directly to the next iteration of the loop.
+		</para>
+
+		<para>
+		The main loop reads the CSV lines with opcodes (which aren't
+		really used here, just passed through and then thrown away
+		before printing) and calls <pre>$lbMain</pre>. Here is an example
+		of an input and output as they would intermix if the input
+		was typed from the keyboard. As in the rest of this manual,
+		the input lines are shown in italics.
+		</para>
+
+<exdump>
+> OP_INSERT,1
+1 is Fibonacci number 1
+> OP_DELETE,2
+1 is Fibonacci number 2
+> OP_INSERT,5
+5 is Fibonacci number 5
+> OP_INSERT,6
+8 is Fibonacci number 6
+</exdump>
+
+		<para>
+		The input lines contain the values only for the field <pre>iter</pre>, 
+		which intentionally happens to be the first field in the row type. The
+		other fields will be reset anyway in <pre>$lbMain</pre>, so they are left as NULL.
+		</para>
+
+		<para>
+		The point of <pre>$lbMain</pre> is to call the loop begin label <pre>$lbBegin</pre> and then
+		print the message about which Fibonacci number was requested. The value
+		of the computed number is printed at the end of the loop, so when the
+		words <quote>is Fibonacci number</quote> are printed after it, that demonstrates that the
+		execution of <pre>$lbMain</pre> continues only after the loop is completed.
+		</para>
+
+		<para>
+		The loop logic is split into two labels <pre>$lbNext</pre> and <pre>$lbCompute</pre> purely
+		to show that it can be split like this. <pre>$lbNext</pre> handles the loop termination
+		condition, and <pre>$lbCompute</pre> does essentially the work of <pre>fibStep2()</pre>. After
+		the loop terminates, it passes the result row to <pre>$lbPrint</pre> for the priniting
+		of the value. 
+		</para>
+
+		<para>
+		When the code for <pre>$lbNext</pre> is created, it contains the call of <pre>$lbCompute</pre>.
+		However the label <pre>$lbCompute</pre> has not been created at this time yet! Not a problem,
+		creating in advance an empty variable <pre>$lbCompute</pre> is enough. The closure in <pre>$lbNext</pre> will keep
+		a reference to that variable, and the variable will be filled with the reference
+		to the label later (but before the main loop executes).
+		</para>
+
+		<para>
+		And here is the version with <pre>makeLoopAround()</pre>:
+		</para>
+
+<pre>
+my ($lbBegin, $lbNext, $markFib); # will fill in later
+
+$lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $cur = $row->get("cur");
+	my $iter = $row->get("iter");
+	if ($iter <= 1) {
+		$uFib->call($lbPrint->adopt($_[1]));
+	} else {
+		$uFib->makeHashLoopAt($markFib, $lbNext, $_[1]->getOpcode(),
+			iter => $row->get("iter") - 1,
+			cur => $cur + $row->get("prev"),
+			prev => $cur,
+		);
+	}
+}) or confess "$!";
+
+($lbBegin, $lbNext, $markFib) = $uFib->makeLoopAround(
+	"Fib", $lbCompute
+);
+</pre>
+
+		<para>
+		The unit, row type, <pre>$lbPrint</pre>, <pre>$lbMain</pre> and 
+		the main loop have stayed the same,
+		so they are omitted from this example. The whole loop logic, both
+		the termination condition and the computation step, have been 
+		collected into one label <pre>$lbCompute</pre>, to show that it can be done this
+		way too. Then the loop head is created around <pre>$lbCompute</pre>.
+		</para>
+
+	</sect1>
+
 	<sect1 id="sc_sched_issues">
 		<title>Issues with the Triceps scheduling</title>
 
@@ -1556,8 +1829,12 @@ drainFrame()
 		after each call.
 		</para>
 
+		<indexterm>
+			<primary>schedule</primary>
+			<secondary>loop</secondary>
+		</indexterm>
 		<para>
-		The same issue happens with the loops that have been temporarily
+		The same issue happens with the topological loops that have been temporarily
 		stopped and then resumed on arrival of more data from outside. The mark
 		of such a loop will be unset when the loop continues, and looping at
 		this mark will be equivalent to <pre>schedule()</pre>, having the same

@@ -37,7 +37,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -290,13 +290,13 @@ $result = undef;
 &doFibHead();
 #print $result;
 ok($result, 
-'OP_INSERT,1
+'> OP_INSERT,1
 1 is Fibonacci number 1
-OP_DELETE,2
+> OP_DELETE,2
 1 is Fibonacci number 2
-OP_INSERT,5
+> OP_INSERT,5
 5 is Fibonacci number 5
-OP_INSERT,6
+> OP_INSERT,6
 8 is Fibonacci number 6
 ');
 
@@ -339,7 +339,6 @@ $lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
 	"Fib", $lbCompute
 );
 
-
 my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 	my $row = $_[1]->getRow();
 	$uFib->makeHashCall($lbBegin, $_[1]->getOpcode(),
@@ -369,13 +368,13 @@ $result = undef;
 &doFibAround();
 #print $result;
 ok($result, 
-'OP_INSERT,1
+'> OP_INSERT,1
 1 is Fibonacci number 1
-OP_DELETE,2
+> OP_DELETE,2
 1 is Fibonacci number 2
-OP_INSERT,5
+> OP_INSERT,5
 5 is Fibonacci number 5
-OP_INSERT,6
+> OP_INSERT,6
 8 is Fibonacci number 6
 ');
 
