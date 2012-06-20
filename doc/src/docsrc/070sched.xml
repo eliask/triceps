@@ -1573,6 +1573,7 @@ sub fib2 # ($n)
 		will be added to them to keep track of the exit condition.
 		</para>
 
+<!-- t/FrameMark.t doFibHead -->
 <pre>
 $uFib = Triceps::Unit->new("uFib") or confess "$!";
 
@@ -1616,7 +1617,7 @@ my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 		cur => 1,
 		prev => 0,
 	);
-	&send(" is Fibonacci number ", $row->get("iter"), "\n");
+	&send(" is a Fibonacci number ", $row->get("iter"), "\n");
 }) or confess "$!";
 
 while(&readLine) {
@@ -1647,15 +1648,16 @@ while(&readLine) {
 		the input lines are shown in italics.
 		</para>
 
+<!-- t/FrameMark.t doFibHead -->
 <exdump>
 > OP_INSERT,1
-1 is Fibonacci number 1
+1 is a Fibonacci number 1
 > OP_DELETE,2
-1 is Fibonacci number 2
+1 is a Fibonacci number 2
 > OP_INSERT,5
-5 is Fibonacci number 5
+5 is a Fibonacci number 5
 > OP_INSERT,6
-8 is Fibonacci number 6
+8 is a Fibonacci number 6
 </exdump>
 
 		<para>
@@ -1668,7 +1670,7 @@ while(&readLine) {
 		The point of <pre>$lbMain</pre> is to call the loop begin label <pre>$lbBegin</pre> and then
 		print the message about which Fibonacci number was requested. The value
 		of the computed number is printed at the end of the loop, so when the
-		words <quote>is Fibonacci number</quote> are printed after it, that demonstrates that the
+		words <quote>is a Fibonacci number</quote> are printed after it, that demonstrates that the
 		execution of <pre>$lbMain</pre> continues only after the loop is completed.
 		</para>
 
@@ -1692,6 +1694,7 @@ while(&readLine) {
 		And here is the version with <pre>makeLoopAround()</pre>:
 		</para>
 
+<!-- t/FrameMark.t doFibAround -->
 <pre>
 my ($lbBegin, $lbNext, $markFib); # will fill in later
 

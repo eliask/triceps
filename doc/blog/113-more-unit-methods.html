@@ -1,0 +1,33 @@
+more Unit methods 
+
+I still keep adding stuff. In Unit I've added 3 more methods:
+
+<pre>$result = $unit-&gt;getStackDepth();
+</pre>
+
+Returns the current depth of the call stack (the number of the&nbsp; stack frames on the queue). It isn't of any use for the model logic as such but comes handy for debugging, to check in the loops that you haven't accidentally created a stack growing with iterations. When the unit is not running, the stack depth is 1, since the outermost frame always stays on the stack. When a rowop is being executed, the stack depth is at least 2.
+
+<pre>($labelBegin, $labelNext, $frameMark) = $unit-&gt;makeLoopHead(
+&nbsp;&nbsp;&nbsp; $rowType, "name", $clearSub, $execSub, @args);
+
+($labelBegin, $labelNext, $frameMark) = $unit-&gt;makeLoopAround(
+&nbsp;&nbsp;&nbsp; "name", $labelFirst);
+</pre>
+
+The convenience methods to create the whole front part of the topological loop.
+
+These methods use the new error handling convention, confessing on the errors. There is no need to check the result.
+
+<b>makeLoopHead()</b> creates the front part of the loop that starts with a Perl label. It gets the arguments for that label and creates it among the other things.<b> makeLoopAround()</b> creates the front part of the loop around an existing label that will be the first one executed in the loop. <b>makeLoopHead()</b> is really redundant and can be replaced with a combination of <b>makeLabel()</b> and <b>makeLoopAround()</b>.
+
+They both return the same results, a triplet:
+
+<ul>
+<li>The label where you send a rowop to initiate the loop (remember that the loop consists of one row going through the loop at a time), $labelBegin.</li>
+<li>The label that you use at the end of the loop in the loopAt() to do the next iteration of the loop, $labelNext.</li>
+<li>The frame mark that you use in loopAt(), $frameMark. You don't need to set the frame mark, it will be set for you in the wrapper logic.</li>
+</ul>
+
+The name is used to construct the names of the elements by adding a dotted suffix: “name.begin”, “name.next” for <b>makeLoopHead()</b> or “name.wrapnext” for <b>makeLoopAround()</b>, “name.mark”. <b>makeLoopAround()</b> takes the row type for its created labels from the first label that is given to it as an argument.
+
+The manual contains a whole new big example with them, but I see no point in copying it to the blog now, you'll have to read the manual for it.

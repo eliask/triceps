@@ -346,7 +346,7 @@ my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 		cur => 1,
 		prev => 0,
 	);
-	&send(" is Fibonacci number ", $row->get("iter"), "\n");
+	&send(" is a Fibonacci number ", $row->get("iter"), "\n");
 }) or confess "$!";
 
 while(&readLine) {
@@ -369,12 +369,12 @@ $result = undef;
 #print $result;
 ok($result, 
 '> OP_INSERT,1
-1 is Fibonacci number 1
+1 is a Fibonacci number 1
 > OP_DELETE,2
-1 is Fibonacci number 2
+1 is a Fibonacci number 2
 > OP_INSERT,5
-5 is Fibonacci number 5
+5 is a Fibonacci number 5
 > OP_INSERT,6
-8 is Fibonacci number 6
+8 is a Fibonacci number 6
 ');
 

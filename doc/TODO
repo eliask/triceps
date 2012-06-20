@@ -39,8 +39,9 @@ Things that need to be done:
 * doc: building apps with a private copy of Triceps
 * doc: Triceps::clearArgs, empty row type, clearing label
 
-* doc: Unit::getStackDepth(), makeLoopHead(), makeLoopAround()
 * doc: describe the convention for the example input/results dump
+* doc: delaying a loop in the middle may be not a good idea because the caller
+  may be expecting its result
 
 App ideas:
 * queries on CSV files
