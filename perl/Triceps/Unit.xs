@@ -241,23 +241,23 @@ getTracer(WrapUnit *self)
 void
 setTracer(WrapUnit *self, SV *arg)
 	CODE:
-		clearErrMsg();
-		Unit *u = self->get();
-		Unit::Tracer *tracer = NULL;
-		if (SvOK(arg)) {
-			if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
-				WrapUnitTracer *twrap = (WrapUnitTracer *)SvIV((SV*)SvRV( arg ));
-				if (twrap == 0 || twrap->badMagic()) {
-					setErrMsg( "Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer" );
-					XSRETURN_UNDEF;
+		try { do {
+			clearErrMsg();
+			Unit *u = self->get();
+			Unit::Tracer *tracer = NULL;
+			if (SvOK(arg)) {
+				if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+					WrapUnitTracer *twrap = (WrapUnitTracer *)SvIV((SV*)SvRV( arg ));
+					if (twrap == 0 || twrap->badMagic()) {
+						throw Triceps::Exception("Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer", false);
+					}
+					tracer = twrap->get();
+				} else{
+					throw Triceps::Exception("Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer", false);
 				}
-				tracer = twrap->get();
-			} else{
-				setErrMsg( "Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer" );
-				XSRETURN_UNDEF;
-			}
-		} // otherwise leave the tracer as NULL
-		u->setTracer(tracer);
+			} // otherwise leave the tracer as NULL
+			u->setTracer(tracer);
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 WrapTable *
 makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)

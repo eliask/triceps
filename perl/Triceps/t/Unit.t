@@ -465,11 +465,15 @@ ok(! defined $v);
 ok($! . "", "");
 
 # try to set an invalid value
-$u1->setTracer(10);
-ok($! . "", "Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer");
+eval {
+	$u1->setTracer(10);
+};
+ok($@ =~ "^Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer");
 
-$u1->setTracer($u1);
-ok($! . "", "Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer");
+eval {
+	$u1->setTracer($u1);
+};
+ok($@ =~ "^Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer");
 
 #############################################################
 # test all 3 kinds of scheduling for correct functioning - as in t_Unit.cpp scheduling()
