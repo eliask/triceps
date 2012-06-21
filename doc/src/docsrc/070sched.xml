@@ -2073,40 +2073,446 @@ $tray->push(@rowops);
 		after the frame is drained but before the chained labels execute,
 		</listitem>
 		<listitem>
-		after all the execution caused by a label is completed.
+		after all the execution caused by the label is completed.
 		</listitem>
 		</itemizedlist>
 
 		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
+		For the simple tracing, there is a small simple tracer provided. It
+		actually executes directly as compiled in C++, so it's quite
+		efficient:
 		</para>
 
 <pre>
+$tracer = Triceps::UnitTracerStringName(option => $value, ...)
+	or confess "$!";
 </pre>
+
+		<para>
+		The arguments are specified as the option name-value pairs.
+		</para>
+
+		<para>
+		The only option supported is <pre>verbose</pre>, which may be 0 (default) or
+		non-0. If it's 0 (false), the tracer will record a message only before
+		executing each label. If true, it will record a message after each
+		stage. The class is named UnitTracerStringName because it records the
+		execution trace in the string format, including the names of the
+		labels. The tracer is set into the unit:
+		</para>
+
+		<indexterm>
+			<primary>unit</primary>
+		</indexterm>
+		<indexterm>
+			<primary>tracing</primary>
+		</indexterm>
+<pre>
+$unit->setTracer($tracer); 
+</pre>
+		
+		<para>
+		The unit's current tracer can also be read back:
+		</para>
 
 <pre>
+$oldTracer = $unit->getTracer();
 </pre>
 
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		If no tracer was previously set, <pre>getTracer()</pre> will return <pre>undef</pre>.
+		And <pre>undef</pre> can also be used as an argument of <pre>setTracer()</pre>, to
+		cancel any previously set tracing. <pre>setTracer()</pre> has the new-style
+		error handling and confesses on errors.
+		</para>
+
+		<para>
+		The tracer references can be compared for whether they refer to the
+		same underlying object:
+		</para>
+
+<pre>
+$result = $tracer1->same($tracer2);
+</pre>
+
+		<para>
+		There are multiple kinds of tracer objects, and <pre>same()</pre> can
+		be called safely for either kind of tracer, including mixing them
+		together. Of course, the tracers of different kinds definitely would
+		not be the same tracer object.
+		</para>
+
+		<para>
+		As the unit runs, the tracing information gets collected in the tracer
+		object. It can be extracted back with:
+		</para>
+
+<pre>
+$data = $tracer->print();
+</pre>
+
+		<para>
+		This does not reset the trace. To reset it, use:
+		</para>
+
+<pre>
+$tracer->clearBuffer();
+</pre>
+
+		<para>
+		Here is a code sequence designed to produce a fairly involved trace:
+		</para>
+
+<!-- t/Unit.t, with ok() replaced with confess() -->
+<pre>
+$sntr = Triceps::UnitTracerStringName->new(verbose => 1);
+$u1->setTracer($sntr);
+
+$c_lab1 = $u1->makeDummyLabel($rt1, "lab1") 
+	or confess "$!";
+$c_lab2 = $u1->makeDummyLabel($rt1, "lab2") 
+	or confess "$!";
+$c_lab3 = $u1->makeDummyLabel($rt1, "lab3") 
+	or confess "$!";
+
+$c_op1 = $c_lab1->makeRowop(&Triceps::OP_INSERT, $row1) 
+	or confess "$!";
+$c_op2 = $c_lab1->makeRowop(&Triceps::OP_DELETE, $row1) 
+	or confess "$!";
+
+$v = $c_lab1->chain($c_lab2) or confess "$!";
+$v = $c_lab1->chain($c_lab3) or confess "$!";
+$v = $c_lab2->chain($c_lab3) or confess "$!";
+
+$u1->schedule($c_op1);
+$u1->schedule($c_op2);
+
+$u1->drainFrame();
+</pre>
+
+		<para>
+		The trace is:
+		</para>
+
+<exdump>
+unit 'u1' before label 'lab1' op OP_INSERT {
+unit 'u1' drain label 'lab1' op OP_INSERT
+unit 'u1' before-chained label 'lab1' op OP_INSERT
+unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT {
+unit 'u1' drain label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT {
+unit 'u1' drain label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u1' after label 'lab3' (chain 'lab2') op OP_INSERT }
+unit 'u1' after label 'lab2' (chain 'lab1') op OP_INSERT }
+unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT {
+unit 'u1' drain label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u1' after label 'lab3' (chain 'lab1') op OP_INSERT }
+unit 'u1' after label 'lab1' op OP_INSERT }
+unit 'u1' before label 'lab1' op OP_DELETE {
+unit 'u1' drain label 'lab1' op OP_DELETE
+unit 'u1' before-chained label 'lab1' op OP_DELETE
+unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE {
+unit 'u1' drain label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE {
+unit 'u1' drain label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u1' after label 'lab3' (chain 'lab2') op OP_DELETE }
+unit 'u1' after label 'lab2' (chain 'lab1') op OP_DELETE }
+unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE {
+unit 'u1' drain label 'lab3' (chain 'lab1') op OP_DELETE
+unit 'u1' after label 'lab3' (chain 'lab1') op OP_DELETE }
+unit 'u1' after label 'lab1' op OP_DELETE }
+</exdump>
+
+		<para>
+		In non-verbose mode the same trace would be:
+		</para>
+
+<exdump>
+unit 'u1' before label 'lab1' op OP_INSERT
+unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u1' before label 'lab1' op OP_DELETE
+unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE
+</exdump>
+
+		<para>
+		The verbose trace has the <quote>before</quote> and <quote>after</quote> lines marked
+		with the curly braces, so that when it gets loaded into an editor,
+		it can be navigated relatively easily.
+		</para>
+
+		<para>
+		The actual contents of the rows is not printed in either case. This
+		is basically because the tracer is implemented in &Cpp;, and I've been
+		trying to keep the knowledge of the meaning of the simple data types
+		out of the &Cpp; code as much as possible for now. But it can be
+		implemented with a Perl tracer.
+		</para>
+
+		<para>
+		A Perl tracer is created with:
+		</para>
+
+<pre>
+$tracer = Triceps::UnitTracerPerl->new($sub, @args) 
+	or confess "$!";
+</pre>
+
+		<para>
+		The arguments are a reference to a function, and optionally arguments
+		for it. The resulting tracer can be used in the unit's <pre>setTracer()</pre> as
+		usual.
+		</para>
+
+		<para>
+		The function of the Perl tracer gets called as:
+		</para>
+
+<pre>
+&$sub($unit, $label, $fromLabel, $rowop, $when, @args)
+</pre>
+
+		<para>
+		The arguments are:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		<pre>$unit</pre> is the usual unit reference.
+		</listitem>
+		<listitem>
+		<pre>$label</pre> is the current label being traced.
+		</listitem>
+		<listitem>
+		<pre>$fromLabel</pre> is the parent label in the chaining (would be
+		<pre>undef</pre> if the current label is called directly, without
+		chaining from anything).
+		</listitem>
+		<listitem>
+		<pre>$rowop</pre> is the current row operation.
+		</listitem>
+		<listitem>
+		<pre>$when</pre> is an integer constant showing the point when the
+		tracer is being called. It's value may be one of
+		<pre>&Triceps::TW_BEFORE</pre>, <pre>&Triceps::TW_BEFORE_DRAIN</pre>,
+		<pre>&Triceps::TW_BEFORE_CHAINED</pre>, <pre>&Triceps::TW_AFTER</pre>;
+		the prefix <pre>TW</pre> stands for <quote>tracer when</quote>.
+		</listitem>
+		<listitem>
+		<pre>@args</pre> are the extra arguments passed from the tracer creation.
+		</listitem>
+		</itemizedlist>
+
+		<indexterm>
+			<primary>constants</primary>
+		</indexterm>
+		<para>
+		The <pre>TW_*</pre> constants can as usual be converted to and from
+		strings with the calls
+		</para>
+
+<pre>
+$string = &Triceps::tracerWhenString($value);
+$value = &Triceps::stringTracerWhen($string);
+</pre>
+
+		<para>
+		There also are the conversion functions with strings more suitable for
+		the human-readable messages: <quote>before</quote>, <quote>drain</quote>, <quote>before-chained</quote>,
+		<quote>drain</quote>. These are actually the conversions used in the
+		UnitTracerStringName. The functions for them are:
+		</para>
+
+<pre>
+$string = &Triceps::tracerWhenHumanString($value);
+$value = &Triceps::humanStringTracerWhen($string);
+</pre>
+
+		<para>
+		The Perl tracers allow to execute any arbitrary actions when tracing.
+		They can act as breakpoints by looking for certain conditions and
+		opening a debugging session when those are met.
+		</para>
+
+		<para>
+		For an example of a Perl tracer, let's start with a
+		tracer function that works like UnitTracerStringName:
+		</para>
+
+<!-- t/Unit.t x_Unit_A -->
+<pre>
+sub tracerCb()
+{
+	my ($unit, $label, $from, $rop, $when, @extra) = @_;
+	our $history;
+
+	my $msg = "unit '" . $unit->getName() . "' " 
+		. Triceps::tracerWhenHumanString($when) . " label '" 
+		. $label->getName() . "' ";
+	if (defined $fromLabel) {
+		$msg .= "(chain '" . $fromLabel->getName() . "') ";
+	}
+	$msg .= "op " . Triceps::opcodeString($rop->getOpcode());
+	if ($when == &Triceps::TW_BEFORE) {
+		$msg .= " {";
+	} elsif ($when == &Triceps::TW_AFTER) {
+		$msg .= " }";
+	}
+	$msg .= "\n";
+	$history .= $msg;
+}
+
+undef $history;
+$ptr = Triceps::UnitTracerPerl->new(\&tracerCb);
+$u1->setTracer($ptr);
+</pre>
+
+		<para>
+		It's slightly different, in the way that it always produces the
+		verbose trace, and that it collectes the trace in the global
+		variable <pre>$history</pre>. But the resulting text is the same as
+		with UnitTracerStringName.
+		</para>
+
+		<para>
+		Now let's improve on it by printing the
+		whole rowop contents too. In a <quote>proper</quote> way this advanced
+		tracer would be defined as a class constructing the tracer objects.
+		But to reduce the amount of code let's just make it a standalone
+		function to be used with the Perl tracer constructor. 
+		</para>
+
+		<para>
+		And for extra nicety let's make the result nicely indented, with two spaces
+		per the indenting level. The indenting
+		is actually not such a great idea: with the long sequences of the calls
+		between the labels, the nesting levels would also be deep, and the
+		output would be indented way off the right end of the screen. That's why
+		it's not done in UnitTracerStringName (though it might be a good idea
+		as an option). But for the small short examples it works well.
+		The function would take 3 extra arguments:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		Verbosity, a boolean value.
+		</listitem>
+		<listitem>
+		Reference to an array variable where to append the text of the trace.
+		This is more flexible than the fixed <pre>$history</pre>. The array will contain
+		the lines of the trace as its elements. And appending to an array
+		should be more efficient than appending to the end of a potentially
+		very long string.
+		</listitem>
+		<listitem>
+		Reference to a scalar variable that would be used to keep the indenting level.
+		The value of that variable will be updated as the tracing happens. Its
+		initial value will determine the initial indenting level. Keeping the
+		indenting is actually not easy because the indenting level
+		can be changed for two reasons,
+		the label chaining and the label calls. To get the logic working, one
+		indenting level gets added before in advance, in front of the outermost
+		trace lines. So, to make the outermost
+		lines appear with no indenting, initialize this variable to -1 and not 0.
+		</listitem>
+		</itemizedlist>
+
+<!-- t/Unit.t x_Unit_B -->
+<pre>
+sub traceStringRowop
+{
+	my ($unit, $label, $fromLabel, $rowop, $when, 
+		$verbose, $rlog, $rnest) = @_;
+
+	if ($verbose) {
+		${$rnest}++ if ($when == &Triceps::TW_BEFORE);
+		${$rnest}-- if ($when == &Triceps::TW_AFTER);
+	} else {
+		return if ($when != &Triceps::TW_BEFORE);
+	}
+
+
+	my $msg =  "unit '" . $unit->getName() . "' " 
+		. Triceps::tracerWhenHumanString($when) . " label '"
+		. $label->getName() . "' ";
+	if (defined $fromLabel) {
+		$msg .= "(chain '" . $fromLabel->getName() . "') ";
+	}
+	my $tail = "";
+	if ($when == &Triceps::TW_BEFORE) {
+		$tail = " {";
+	} elsif ($when == &Triceps::TW_AFTER) {
+		$tail = " }";
+	}
+	push (@{$rlog}, ("  " x ${$rnest}) . $msg . "op " 
+		. $rowop->printP() . $tail);
+
+	if ($verbose) {
+		${$rnest}++ if ($when == &Triceps::TW_BEFORE);
+		${$rnest}-- if ($when == &Triceps::TW_AFTER);
+	}
+}
+
+undef @history;
+my $tnest =  -1; # keeps track of the tracing nesting level
+$ptr = Triceps::UnitTracerPerl->new(\&traceStringRowop, 1, \@history, \$tnest);
+$u1->setTracer($ptr);
+</pre>
+
+		<para>
+		For the same call sequence as before, the output will be as follows
+		(sorry, the effect of the indenting gets spoiled a bit by the
+		wrapping of the long lines):
+		</para>
+
+<pre>
+unit 'u1' before label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
+  unit 'u1' drain label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+  unit 'u1' before-chained label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+    unit 'u1' before label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
+      unit 'u1' drain label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+        unit 'u1' before label 'lab3' (chain 'lab2') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
+          unit 'u1' drain label 'lab3' (chain 'lab2') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+        unit 'u1' after label 'lab3' (chain 'lab2') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
+    unit 'u1' after label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
+    unit 'u1' before label 'lab3' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
+      unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+    unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
+unit 'u1' after label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
+unit 'u1' before label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
+  unit 'u1' drain label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+  unit 'u1' before-chained label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+    unit 'u1' before label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
+      unit 'u1' drain label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+        unit 'u1' before label 'lab3' (chain 'lab2') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
+          unit 'u1' drain label 'lab3' (chain 'lab2') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+        unit 'u1' after label 'lab3' (chain 'lab2') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
+    unit 'u1' after label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
+    unit 'u1' before label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
+      unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+    unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
+unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
+</pre>
+
+		<para>
+		As mentioned before, each label produces two levels of indenting: one
+		for everything after <quote>before</quote>, another one for the nested
+		labels.
+		</para>
+
+		<para>
+		Eventually this tracing should become another standard class in Triceps.
+		</para>
 	</sect1>
 
 </chapter>
