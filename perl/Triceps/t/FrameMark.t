@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 25 };
+BEGIN { plan tests => 21 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -100,11 +100,11 @@ sub startLoop # ($label, $rowop)
 
 	if ($data{count} == 0) {
 		$data{id} = 1;
-		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) )) or die "$!";
+		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) ));
 		$data{id} = 2;
-		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) )) or die "$!";
+		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) ));
 		$data{id} = 3;
-		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) )) or die "$!";
+		$u1->fork($labNext->makeRowop(&Triceps::OP_NOP, $rt1->makeRowHash(%data) ));
 		# also test that the mark from unit 1 gets caught
 		eval {
 			$u2->loopAt($m1, $labu2->makeRowop(&Triceps::OP_INSERT, $rowop->getRow()));
@@ -159,7 +159,7 @@ ok(ref $firstRowop, "Triceps::Rowop");
 # run the test with single-records
 $result = "";
 $callType = "single";
-ok($u1->schedule($firstRowop));
+$u1->schedule($firstRowop);
 
 $expect = "labStart OP_INSERT count=\"0\" id=\"99\" 
 bad loopAt: Triceps::Unit::loopAt: mark belongs to a different unit 'u1'
@@ -193,7 +193,7 @@ ok($result, $expect);
 # run the test with trays
 $result = "";
 $callType = "tray";
-ok($u1->schedule($firstRowop));
+$u1->schedule($firstRowop);
 
 $u1->drainFrame();
 ok($u1->empty());
@@ -203,7 +203,7 @@ ok($result, $expect);
 # run the test with makeHashLoopAt
 $result = "";
 $callType = "fromHash";
-ok($u1->schedule($firstRowop));
+$u1->schedule($firstRowop);
 
 $u1->drainFrame();
 ok($u1->empty());
@@ -213,7 +213,7 @@ ok($result, $expect);
 # run the test with makeArrayLoopAt
 $result = "";
 $callType = "fromArray";
-ok($u1->schedule($firstRowop));
+$u1->schedule($firstRowop);
 
 $u1->drainFrame();
 ok($u1->empty());

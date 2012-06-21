@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 154 };
+BEGIN { plan tests => 143 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -211,9 +211,7 @@ ok(ref $trayem, "Triceps::Tray");
 $v = $u1->empty();
 ok($v);
 
-$v = $u1->schedule($rop11, $tray2, $rop12, $trayem);
-ok($v);
-#print STDERR $! . "\n";
+$u1->schedule($rop11, $tray2, $rop12, $trayem);
 
 $v = $u1->empty();
 ok(!$v);
@@ -234,8 +232,7 @@ ok($v);
 
 # fork
 
-$v = $u1->fork($rop11, $tray2, $rop12, $trayem);
-ok($v);
+$u1->fork($rop11, $tray2, $rop12, $trayem);
 $v = $u1->empty();
 ok(!$v);
 $history = "";
@@ -251,8 +248,7 @@ ok($v);
 # call
 
 $history = "";
-$v = $u1->call($rop11, $tray2, $rop12, $trayem);
-ok($v);
+$u1->call($rop11, $tray2, $rop12, $trayem);
 # no drain, CALL gets executed immediately
 ok($history, 
 	  "x xlab1 op=OP_INSERT row=[123, 456, 789, 3.14, text]\n"
@@ -264,8 +260,7 @@ ok($v);
 
 # enqueue with constant
 
-$v = $u1->enqueue(&Triceps::EM_FORK, $rop11, $tray2, $rop12, $trayem);
-ok($v);
+$u1->enqueue(&Triceps::EM_FORK, $rop11, $tray2, $rop12, $trayem);
 $v = $u1->empty();
 ok(!$v);
 $history = "";
@@ -280,8 +275,7 @@ ok($v);
 
 # enqueue with string
 
-$v = $u1->enqueue("EM_SCHEDULE", $rop11, $tray2, $rop12, $trayem);
-ok($v);
+$u1->enqueue("EM_SCHEDULE", $rop11, $tray2, $rop12, $trayem);
 $v = $u1->empty();
 ok(!$v);
 $history = "";
@@ -361,7 +355,7 @@ ok(ref $elab1, "Triceps::Label");
 $erop = $elab1->makeRowop("OP_INSERT", $row1);
 ok(ref $erop, "Triceps::Rowop");
 
-$v = $u1->schedule($erop);
+$u1->schedule($erop);
 eval {
 	$u1->drainFrame();
 };
@@ -369,7 +363,7 @@ ok($@ =~ /^an error in label handler at [^\n]*
 Detected in the unit 'u1' label 'elab1' execution handler.
 Called through the label 'elab1'. at/);
 
-$v = $u1->call($rop11);
+$u1->call($rop11);
 $xlab1->clear(); # now the label could not call anything any more
 eval {
 	$u1->call($rop11);
@@ -603,9 +597,7 @@ $s_expect_verbose =
 # execute with scheduling of op4, op5
 
 $u1->schedule($s_op4);
-ok($! . "", "");
 $u1->enqueue("EM_SCHEDULE", $s_op5);
-ok($! . "", "");
 ok(!$u1->empty());
 
 $u1->drainFrame();
@@ -626,9 +618,7 @@ $sntr = Triceps::UnitTracerStringName->new(verbose => 1);
 $u1->setTracer($sntr);
 
 $u1->fork($s_op4);
-ok($! . "", "");
 $u1->enqueue("EM_FORK", $s_op5);
-ok($! . "", "");
 ok(!$u1->empty());
 
 $u1->drainFrame();
@@ -666,9 +656,7 @@ $ptr = Triceps::UnitTracerPerl->new(\&tracerCb);
 $u1->setTracer($ptr);
 
 $u1->fork($s_op4);
-ok($! . "", "");
 $u1->enqueue("EM_FORK", $s_op5);
-ok($! . "", "");
 ok(!$u1->empty());
 
 $u1->drainFrame();
