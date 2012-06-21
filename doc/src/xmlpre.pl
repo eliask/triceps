@@ -39,10 +39,19 @@ sub splitwords # ($l, $max)
 	my $l = shift;
 	my $max = shift;
 	my @res;
+
+	# in XML form set tabs to 2 chars to reduce width
+	$l =~ s/\t/  /g;
+
+	# remember the initial indenting of the line
+	$l =~ /^(\s*)/;
+	my $indent = $1;
+
 	while (length($l) > $max) {
 		# the pattern is greedy, so it would find the last space before $max chars
 		if ($l =~ s/^(.{1,$max}) +//) {
 			push @res, $1;
+			$l = $indent . "    " . $l; # indent the wrapped lines
 		} else {
 			die "Can not break up a line to $max chars, line is:\n$l\n";
 		}
@@ -52,7 +61,7 @@ sub splitwords # ($l, $max)
 }
 
 # length after which the result dump lines should get broken up
-my $MAXLEN = 65;
+my $MAXLEN = 70;
 
 my $pre = 0;
 my $dump = 0; # in the results dump from an example
@@ -79,7 +88,7 @@ while(<STDIN>) {
 			if (length($_) <= $MAXLEN) {
 				print &xmlify($_);
 			} else {
-				print &xmlify(join("\n  ", &splitwords($_, $MAXLEN)));
+				print &xmlify(join("\n", &splitwords($_, $MAXLEN)));
 			}
 			print("</emphasis>") if ($input);
 			$lf = "\n";

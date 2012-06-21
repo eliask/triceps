@@ -2469,11 +2469,11 @@ $u1->setTracer($ptr);
 
 		<para>
 		For the same call sequence as before, the output will be as follows
-		(sorry, the effect of the indenting gets spoiled a bit by the
-		wrapping of the long lines):
+		(I've tried to wrap the long lines in a logically consistent way
+		but it still spoils the effect of indenting a bit):
 		</para>
 
-<pre>
+<exdump>
 unit 'u1' before label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
   unit 'u1' drain label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
   unit 'u1' before-chained label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
@@ -2502,7 +2502,7 @@ unit 'u1' before label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14"
       unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
     unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
 unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
-</pre>
+</exdump>
 
 		<para>
 		As mentioned before, each label produces two levels of indenting: one
