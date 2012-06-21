@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 160 };
+BEGIN { plan tests => 154 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -458,7 +458,6 @@ ok(ref $v, "Triceps::UnitTracerPerl");
 ok($trp1->same($v));
 
 $u1->setTracer(undef);
-ok($! . "", "");
 
 $v = $u1->getTracer();
 ok(! defined $v);
@@ -519,7 +518,6 @@ sub exe_sched_fork_call # (label, rowop, lab1, lab2, lab3, row)
 
 $sntr = Triceps::UnitTracerStringName->new();
 $u1->setTracer($sntr);
-ok($! . "", "");
 
 $s_lab1 = $u1->makeDummyLabel($rt1, "lab1");
 ok(ref $s_lab1, "Triceps::Label");
@@ -626,7 +624,6 @@ ok($v, "");
 
 $sntr = Triceps::UnitTracerStringName->new(verbose => 1);
 $u1->setTracer($sntr);
-ok($! . "", "");
 
 $u1->fork($s_op4);
 ok($! . "", "");
@@ -667,7 +664,6 @@ sub tracerCb() # unit, label, fromLabel, rop, when, extra
 undef $history;
 $ptr = Triceps::UnitTracerPerl->new(\&tracerCb);
 $u1->setTracer($ptr);
-ok($! . "", "");
 
 $u1->fork($s_op4);
 ok($! . "", "");
@@ -685,7 +681,6 @@ ok($history, $s_expect_verbose);
 
 $sntr = Triceps::UnitTracerStringName->new(verbose => 1);
 $u1->setTracer($sntr);
-ok($! . "", "");
 
 $c_lab1 = $u1->makeDummyLabel($rt1, "lab1");
 ok(ref $c_lab1, "Triceps::Label");
@@ -791,7 +786,6 @@ undef @history;
 my $tnest =  -1; # keeps track of the tracing nesting level
 $ptr = Triceps::UnitTracerPerl->new(\&traceStringRowop, 1, \@history, \$tnest);
 $u1->setTracer($ptr);
-ok($! . "", "");
 
 $u1->schedule($c_op1);
 $u1->schedule($c_op2);
