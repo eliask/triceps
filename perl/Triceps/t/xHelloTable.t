@@ -36,6 +36,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -77,15 +78,14 @@ sub helloWorldDirect()
 
 	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
 
-	while(&readLine()) {
+	while(&readLine) {
 		chomp;
 		my @data = split(/\W+/);
 
 		# the common part: find if there already is a count for this address
-		my $pattern = $rtCount->makeRowHash(
+		my $rhFound = $tCount->findBy(
 			address => $data[1]
 		) or confess "$!";
-		my $rhFound = $tCount->find($pattern) or confess "$!";
 		my $cnt = 0;
 		if (!$rhFound->isNull()) {
 			$cnt = $rhFound->getRow()->get("count");
@@ -157,16 +157,37 @@ $result = undef;
 &helloWorldDirect();
 # XXX the result depends on the hashing order
 ok($result, 
-	"Received 'world' 1 times\n" .
-	"Received 'table' 2 times\n" .
-	"address=\"world\" count=\"1\" \n" .
-	"address=\"table\" count=\"2\" \n" .
-	"Address 'x' is not found\n" .
-	"Received 'world' 0 times\n" .
-	"Address 'y' is not found\n" .
-	"Received 'table' 0 times\n" .
-	"Received 'table' 3 times\n" .
-	"Unknown command 'goodbye'\n"
+"> Hello, table!
+> Hello, world!
+> Hello, table!
+> count world
+Received 'world' 1 times
+> Count table
+Received 'table' 2 times
+> dump
+address=\"world\" count=\"1\" 
+address=\"table\" count=\"2\" 
+> delete x
+Address 'x' is not found
+> delete world
+> count world
+Received 'world' 0 times
+> remove y
+Address 'y' is not found
+> remove table
+> count table
+Received 'table' 0 times
+> Hello, table!
+> Hello, table!
+> Hello, table!
+> Hello, world!
+> count table
+Received 'table' 3 times
+> clear
+> dump
+> goodbye, world
+Unknown command 'goodbye'
+"
 );
 
 #########################
@@ -223,7 +244,7 @@ sub helloWorldLabels()
 	or confess "$!";
 	$ttCount->initialize() or confess "$!";
 
-	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
+	my $tCount = $hwunit->makeTable($ttCount, "EM_CALL", "tCount") or confess "$!";
 
 	my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
 		"lbPrintCount", undef, sub { # (label, rowop)
@@ -237,30 +258,27 @@ sub helloWorldLabels()
 	# the updates will be sent here, for the tables to process
 	my $lbTableInput = $tCount->getInputLabel();
 
-	while(&readLine()) {
+	while(&readLine) {
 		chomp;
 		my @data = split(/\W+/);
 
 		# the common part: find if there already is a count for this address
-		my $pattern = $rtCount->makeRowHash(
+		my $rhFound = $tCount->findBy(
 			address => $data[1]
 		) or confess "$!";
-		my $rhFound = $tCount->find($pattern) or confess "$!";
 		my $cnt = 0;
 		if (!$rhFound->isNull()) {
 			$cnt = $rhFound->getRow()->get("count");
 		}
 
 		if ($data[0] =~ /^hello$/i) {
-			$hwunit->schedule($lbTableInput->makeRowop(&Triceps::OP_INSERT,
-				$lbTableInput->getType()->makeRowHash(
-					address => $data[1],
-					count => $cnt+1,
-				))
+			$hwunit->makeHashSchedule($lbTableInput, "OP_INSERT",
+				address => $data[1],
+				count => $cnt+1,
 			) or confess "$!";
 		} elsif ($data[0] =~ /^clear$/i) {
-			$hwunit->schedule($lbTableInput->makeRowop(&Triceps::OP_DELETE,
-				$lbTableInput->getType()->makeRowHash(address => $data[1]))
+			$hwunit->makeHashSchedule($lbTableInput, "OP_DELETE",
+				address => $data[1]
 			) or confess "$!";
 		} else {
 			&send("Unknown command '$data[0]'\n");
@@ -283,12 +301,19 @@ sub helloWorldLabels()
 $result = undef;
 &helloWorldLabels();
 ok($result, 
-	"OP_INSERT 'table', count 1\n" .
-	"OP_INSERT 'world', count 1\n" .
-	"OP_DELETE 'table', count 1\n" .
-	"OP_INSERT 'table', count 2\n" .
-	"OP_DELETE 'table', count 2\n" .
-	"OP_INSERT 'table', count 1\n" .
-	"Unknown command 'goodbye'\n"
+"> Hello, table!
+OP_INSERT 'table', count 1
+> Hello, world!
+OP_INSERT 'world', count 1
+> Hello, table!
+OP_DELETE 'table', count 1
+OP_INSERT 'table', count 2
+> clear, table
+OP_DELETE 'table', count 2
+> Hello, table!
+OP_INSERT 'table', count 1
+> goodbye, world
+Unknown command 'goodbye'
+"
 );
 
