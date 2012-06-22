@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 4 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -61,20 +62,20 @@ sub sendX # (@message)
 
 sub helloWorldDirect()
 {
-	my $hwunit = Triceps::Unit->new("hwunit") or die "$!";
+	my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
 	my $rtCount = Triceps::RowType->new(
 		address => "string",
 		count => "int32",
-	) or die "$!";
+	) or confess "$!";
 
 	my $ttCount = Triceps::TableType->new($rtCount)
 		->addSubIndex("byAddress", 
 			Triceps::IndexType->newHashed(key => [ "address" ])
 		)
-	or die "$!";
-	$ttCount->initialize() or die "$!";
+	or confess "$!";
+	$ttCount->initialize() or confess "$!";
 
-	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or die "$!";
+	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
 
 	while(&readLine()) {
 		chomp;
@@ -83,8 +84,8 @@ sub helloWorldDirect()
 		# the common part: find if there already is a count for this address
 		my $pattern = $rtCount->makeRowHash(
 			address => $data[1]
-		) or die "$!";
-		my $rhFound = $tCount->find($pattern) or die "$!";
+		) or confess "$!";
+		my $rhFound = $tCount->find($pattern) or confess "$!";
 		my $cnt = 0;
 		if (!$rhFound->isNull()) {
 			$cnt = $rhFound->getRow()->get("count");
@@ -94,8 +95,8 @@ sub helloWorldDirect()
 			my $new = $rtCount->makeRowHash(
 				address => $data[1],
 				count => $cnt+1,
-			) or die "$!";
-			$tCount->insert($new) or die "$!";
+			) or confess "$!";
+			$tCount->insert($new) or confess "$!";
 		} elsif ($data[0] =~ /^count$/i) {
 			&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
 		} elsif ($data[0] =~ /^dump$/i) {
@@ -110,7 +111,7 @@ sub helloWorldDirect()
 			&send("Address '", $data[1], "' is not found\n") unless $res;
 		} elsif ($data[0] =~ /^remove$/i) {
 			if (!$rhFound->isNull()) {
-				$tCount->remove($rhFound) or die "$!";
+				$tCount->remove($rhFound) or confess "$!";
 			} else {
 				&send("Address '", $data[1], "' is not found\n");
 			}
@@ -118,7 +119,7 @@ sub helloWorldDirect()
 			my $rhi = $tCount->begin(); 
 			while (!$rhi->isNull()) {
 				my $rhnext = $tCount->next($rhi);
-				$tCount->remove($rhi) or die("$!");
+				$tCount->remove($rhi) or confess("$!");
 				$rhi = $rhnext;
 			}
 		} else {
@@ -187,20 +188,20 @@ sub new # (class, unit, args of makeTable...)
 package main;
 
 {
-	my $hwunit = Triceps::Unit->new("hwunit") or die "$!";
+	my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
 	my $rtCount = Triceps::RowType->new(
 		address => "string",
 		count => "int32",
-	) or die "$!";
+	) or confess "$!";
 
 	my $ttCount = Triceps::TableType->new($rtCount)
 		->addSubIndex("byAddress", 
 			Triceps::IndexType->newHashed(key => [ "address" ])
 		)
-	or die "$!";
-	$ttCount->initialize() or die "$!";
+	or confess "$!";
+	$ttCount->initialize() or confess "$!";
 
-	my $tCount = MyTable->new($hwunit, $ttCount, &Triceps::EM_CALL, "tCount") or die "$!";
+	my $tCount = MyTable->new($hwunit, $ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
 	ok(ref $tCount, "MyTable");
 }
 
@@ -209,20 +210,20 @@ package main;
 
 sub helloWorldLabels()
 {
-	my $hwunit = Triceps::Unit->new("hwunit") or die "$!";
+	my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
 	my $rtCount = Triceps::RowType->new(
 		address => "string",
 		count => "int32",
-	) or die "$!";
+	) or confess "$!";
 
 	my $ttCount = Triceps::TableType->new($rtCount)
 		->addSubIndex("byAddress", 
 			Triceps::IndexType->newHashed(key => [ "address" ])
 		)
-	or die "$!";
-	$ttCount->initialize() or die "$!";
+	or confess "$!";
+	$ttCount->initialize() or confess "$!";
 
-	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or die "$!";
+	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
 
 	my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
 		"lbPrintCount", undef, sub { # (label, rowop)
@@ -230,8 +231,8 @@ sub helloWorldLabels()
 			my $row = $rowop->getRow();
 			&send(&Triceps::opcodeString($rowop->getOpcode), " '", 
 				$row->get("address"), "', count ", $row->get("count"), "\n");
-		} ) or die "$!";
-	$tCount->getOutputLabel()->chain($lbPrintCount) or die "$!";
+		} ) or confess "$!";
+	$tCount->getOutputLabel()->chain($lbPrintCount) or confess "$!";
 
 	# the updates will be sent here, for the tables to process
 	my $lbTableInput = $tCount->getInputLabel();
@@ -243,8 +244,8 @@ sub helloWorldLabels()
 		# the common part: find if there already is a count for this address
 		my $pattern = $rtCount->makeRowHash(
 			address => $data[1]
-		) or die "$!";
-		my $rhFound = $tCount->find($pattern) or die "$!";
+		) or confess "$!";
+		my $rhFound = $tCount->find($pattern) or confess "$!";
 		my $cnt = 0;
 		if (!$rhFound->isNull()) {
 			$cnt = $rhFound->getRow()->get("count");
@@ -256,11 +257,11 @@ sub helloWorldLabels()
 					address => $data[1],
 					count => $cnt+1,
 				))
-			) or die "$!";
+			) or confess "$!";
 		} elsif ($data[0] =~ /^clear$/i) {
 			$hwunit->schedule($lbTableInput->makeRowop(&Triceps::OP_DELETE,
 				$lbTableInput->getType()->makeRowHash(address => $data[1]))
-			) or die "$!";
+			) or confess "$!";
 		} else {
 			&send("Unknown command '$data[0]'\n");
 		}
