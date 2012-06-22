@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_tables" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Tables</title>
+
+	<sect1 id="sc_table_hello">
+		<title>Hello, tables!</title>
+
+		<indexterm>
+			<primary>table</primary>
+		</indexterm>
+
+		<para>
+		The tables are the fundamental elements of state-keeping in Triceps. 
+		Let's start with a basic example:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldDirect reduced, shifted left -->
+<pre>
+my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
+my $rtCount = Triceps::RowType->new(
+	address => "string",
+	count => "int32",
+) or confess "$!";
+
+my $ttCount = Triceps::TableType->new($rtCount)
+	->addSubIndex("byAddress", 
+		Triceps::IndexType->newHashed(key => [ "address" ])
+	)
+or confess "$!";
+$ttCount->initialize() or confess "$!";
+
+my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") 
+	or confess "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/\W+/);
+
+	# the common part: find if there already is a count for this address
+	my $rhFound = $tCount->findBy(
+		address => $data[1]
+	);
+	my $cnt = 0;
+	if (!$rhFound->isNull()) {
+		$cnt = $rhFound->getRow()->get("count");
+	}
+
+	if ($data[0] =~ /^hello$/i) {
+		my $new = $rtCount->makeRowHash(
+			address => $data[1],
+			count => $cnt+1,
+		) or confess "$!";
+		$tCount->insert($new) or confess "$!";
+	} elsif ($data[0] =~ /^count$/i) {
+		&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
+	} else {
+		&send("Unknown command '$data[0]'\n");
+	}
+}
+</pre>
+
+		<para>
+		What happens here? The main loop reads the lines from standard input, splits
+		into words and uses
+		the first word as a command and the second word as a key. Note that
+		it's not CSV format, it's words with the non-alphanumeric characters separating
+		the words. <quote>Hello, table!</quote>, <quote>hello world</quote>, <quote>count world</quote> are examples
+		of the valid inputs. For someting different, the commands are compared
+		with their case ignored (but the case matters for the key).
+		</para>
+
+		<para>
+		The example counts,
+		how many times each key has been <pre>hello</pre>-ed, and prints this count back
+		on the command <pre>count</pre>. Here is a sample, with the input
+		lines printed in italics:
+		</para>
+
+<exdump>
+> Hello, table!
+> Hello, world!
+> Hello, table!
+> count world
+Received 'world' 1 times
+> Count table
+Received 'table' 2 times
+</exdump>
+
+		<para>
+		In this example the table is read and modified using the direct procedural calls.
+		As you can see, there isn't even any need for unit scheduling and
+		such. There is a scheduler-based interface to the tables too, it will be shown
+		soon. But in many cases the direct access is easier. Indeed,
+		this particular example could have been implemented with the plain Perl
+		hashes. Nothing wrong with that either. Well, the Perl tables provide
+		many more intersting ways of indexing the data. But if you don't need them,
+		they don't matter. And at some future point the
+		tables will be supporting the on-disk persistence, but no reason to
+		bother much about that now: things are likely to change a dozen times
+		yet before that happens. Feel free to just use the Perl data structures
+		if they make the code easier.
+		</para>
+
+		<para>
+		A table is created through a table type. This allows to stamp out
+		duplicate tables of the same type, which can get handy when the
+		multithreading will be added. A table is local to a thread. A table
+		type can be shared between threads. To look up
+		something in another thread's table, you'd either have to ask it
+		through a request-reply protocol or to keep a local copy of the table.
+		Such a copy can be easily done by creating a copy table from the same type.
+		</para>
+
+		<para>
+		In reality, right now all the business with table types separated from
+		the tables is more pain than gain. It not only adds extra steps but
+		also makes difficult to define a template that acts on a table by
+		defining extra features on it. Something will be done about it, I have
+		a few ideas.
+		</para>
+
+		<para>
+		The table type gets first created and configured, then initialized.
+		After a table type is initialized, it can not be changed any more.
+		That's the point of the initialization call: tell the type that all
+		the configuration has been done, and it can go immutable now. 
+		Fundamentally, configuting a table type just makes it collect
+		bits and pieces. Nothing but the most gross errors can be detected
+		at that point. At initialization time everything comes together
+		and everything gets checked for consistency.  A table
+		type must be fully initialized in one thread before it can be shared
+		with other threads. The historic reason for this API is that it mirrors
+		the &Cpp; API, which has turned out not to look that good in Perl. It's
+		another candidate for a change. 
+		</para>
+
+		<para>
+		A table type gets the row type and at least one index. Here it's a
+		hashed index by the key field <pre>address</pre>. "Hashed" means that
+		you can look up the rows by the key value but there are no promises
+		about any specific row order. And the hashing is used to make the
+		key comparisons more efficient. The key of a hashed index may
+		consist of multiple fields.
+		</para>
+
+		<para>
+		The table is then created from the table type, enqueueing mode 
+		(another hold-over, just always use <pre>EM_CALL</pre>, this
+		argument will be removed in the future), and given a name.
+		</para>
+
+		<para>
+		The rows can then be inserted into the table (and removed too, not
+		shown in this example yet). The default behavior of the hashed index is to
+		replace the old row if a new row with the same key is inserted.
+		</para>
+
+		<para>
+		The search in the table is done by the method <pre>findBy()</pre> with 
+		the key fields of the index.  Which returns a RowHandle
+		object. A RowHandle is essentially an iterator in the table. Even if
+		the row is not found, a RowHandle will be still returned but it will be
+		null, which is checked for by <pre>$rh->isNull()</pre>.
+		</para>
+
+		<para>
+		No matter which command will be used, it's always useful to look up
+		the previous row for the key: its contents would be either printed
+		or provide the previous value for the increase. So the model does
+		it first and gets the count from it. If it's not found, then the 
+		count is set to 0. 
+		</para>
+
+		<para>
+		Then it looks at the command and does what it's been told.
+		Updating the count amounts to creating a new row with the new
+		values and inserting it into the table. It replaces the previous one.
+		</para>
+
+		<para>
+		This is just the tip of the iceberg. The tables in Triceps have a lot
+		more features.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_table_label">
+		<title>Tables and labels</title>
+
+		<indexterm>
+			<primary>label</primary>
+		</indexterm>
+
+		<para>
+		A table does not have to be operated in a procedural way. It can be
+		plugged into the the scheduler machinery. Whenever a table is created,
+		three labels are created with it.
+		</para>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>table</secondary>
+		</indexterm>
+		<itemizedlist>
+		<listitem>
+		The input label is for sending the modification rowops to the
+		table. The table provides the handler for it that applies the
+		incoming rowops to the table. 
+		</listitem>
+		<listitem>
+		The output label propagates the
+		modifications done to the table. It is a dummy label, and does
+		nothing by itself. It's there for chaining the other labels to it. The
+		output rowop comes quite handy to propagate the table's modifications
+		to the rest of the state.
+		</listitem>
+		<indexterm>
+			<primary>tracing</primary>
+		</indexterm>
+		<listitem>
+		The pre-modification label is also a dummy label, for chaining other
+		labels to it. It sends the rowops right before they are applied
+		to the table. This comes very handy for the elements that need to
+		act depending on the previous state of the table, such as joins.
+		The pre-modification label doesn't simply mirror the input label.
+		The rows received on the input label may trigger the automatic changes
+		to the table, such as an old row being deleted when a new row with
+		the same key is inserted. All these modifications, be they automatic
+		or explicit, will be reported to the pre-modification label.
+		Since the pre-modification label is used relatively rarely, it contains
+		a special optimization: if there is no label chained to it, no rowop
+		will be sent to it in the first place. Don't be surprised if you
+		enable the tracing and don't see it in the trace.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		Again, the rowops coming through these labels aren't necessarily
+		the same. If a DELETE rowop comes to the input label, referring to a
+		row that is not in the table, it will not propagate anywhere. If an INSERT rowop
+		comes in and causes another row to be replaced, the replaced row will
+		be sent to the pre-modification and output labels as a DELETE rowop first.
+		</para>
+
+		<indexterm>
+			<primary>scheduling</primary>
+			<secondary>recursion</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>recursion</primary>
+		</indexterm>
+		<indexterm>
+			<primary>schedule</primary>
+			<secondary>loop</secondary>
+		</indexterm>
+		<para>
+		In the <quote>no bundling</quote> spirit, a rowop is sent to the pre-modification
+		label right before it's applied to the table, and to the output label
+		right after it's applied. If the labels executed from there need to read the table,
+		they can, and will find the table in the exact state with no intervening
+		modifications. However, they can't modify the table neither directly nor
+		by calling its input label. When these labels are called, the table is in
+		the middle of a modification and it can't accept another one. Such attempts
+		are treated as recursive modifications, forbidden, and the program 
+		will die on them. If you need to modify
+		the table, use <pre>schedule()</pre> or <pre>loopAt()</pre> to have the next modification done
+		later. However there are no guarantees about other modifications getting
+		done in between. When the looped rowop executes, it might need to check the state
+		of the table again and decide if its operation still makes sense.
+		</para>
+
+		<para>
+		So, let's make a version of <quote>Hello, table</quote> example that passes the
+		modification requests as rowops through the labels. It will print the information about
+		the updates to the table as they happen, so there is no more use having a
+		separate command for that. But for another demonstration let's add a
+		command that would clear the counter of hellos.  Here is its code:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldLabels shifted left -->
+<pre>
+my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
+my $rtCount = Triceps::RowType->new(
+	address => "string",
+	count => "int32",
+) or confess "$!";
+
+my $ttCount = Triceps::TableType->new($rtCount)
+	->addSubIndex("byAddress", 
+		Triceps::IndexType->newHashed(key => [ "address" ])
+	)
+or confess "$!";
+$ttCount->initialize() or confess "$!";
+
+my $tCount = $hwunit->makeTable($ttCount, "EM_CALL", "tCount") or confess "$!";
+
+my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
+	"lbPrintCount", undef, sub { # (label, rowop)
+		my ($label, $rowop) = @_;
+		my $row = $rowop->getRow();
+		&send(&Triceps::opcodeString($rowop->getOpcode), " '", 
+			$row->get("address"), "', count ", $row->get("count"), "\n");
+	} ) or confess "$!";
+$tCount->getOutputLabel()->chain($lbPrintCount) or confess "$!";
+
+# the updates will be sent here, for the tables to process
+my $lbTableInput = $tCount->getInputLabel();
+
+while(&readLine) {
+	chomp;
+	my @data = split(/\W+/);
+
+	# the common part: find if there already is a count for this address
+	my $rhFound = $tCount->findBy(
+		address => $data[1]
+	);
+	my $cnt = 0;
+	if (!$rhFound->isNull()) {
+		$cnt = $rhFound->getRow()->get("count");
+	}
+
+	if ($data[0] =~ /^hello$/i) {
+		$hwunit->makeHashSchedule($lbTableInput, "OP_INSERT",
+			address => $data[1],
+			count => $cnt+1,
+		);
+	} elsif ($data[0] =~ /^clear$/i) {
+		$hwunit->makeHashSchedule($lbTableInput, "OP_DELETE",
+			address => $data[1]
+		);
+	} else {
+		&send("Unknown command '$data[0]'\n");
+	}
+	$hwunit->drainFrame();
+}
+</pre>
+
+		<para>
+		The table creation is the same as last time. The only difference is that
+		it uses <pre>"EM_CALL"</pre> instead of <pre>&Triceps::EM_CALL</pre>, both being equivalent.
+		The row finding in the table is also the same.
+		</para>
+
+		<para>
+		The printing of the modifications to the table is done with <pre>$lbPrintCount</pre>,
+		which is connected to the table's output label. It prints the opcode,
+		the address of the greeting, and the count of greetings. It will
+		show us what is happening to the table as soon as it happens.
+		An unit trace could be used instead but a custom printout contains
+		less noise.
+		The pre-modification label is of no interest here, so it's not used.
+		</para>
+
+		<para>
+		The references to the labels of a table are gotten with:
+		</para>
+
+<pre>
+$label = $table->getInputLabel();
+$label = $table->getPreLabel();
+$label = $table->getOutputLabel();
+</pre>
+
+		<para>
+		The deletion does not require an exact row to be sent in. All it needs
+		is a row with the keys for deletion, the rest of the fields in it
+		are ignored. So the <quote>clear</quote> command puts only the key field in it.
+		</para>
+
+		<para>
+		Here is an example of input (in italics) and output:
+		</para>
+
+<exdump>
+> Hello, table!
+OP_INSERT 'table', count 1
+> Hello, world!
+OP_INSERT 'world', count 1
+> Hello, table!
+OP_DELETE 'table', count 1
+OP_INSERT 'table', count 2
+> clear, table
+OP_DELETE 'table', count 2
+> Hello, table!
+OP_INSERT 'table', count 1
+</exdump>
+
+		<para>
+		An interesting thing happens after the second <quote>Hello, table!</quote>: the code
+		send only an <pre>OP_INSERT</pre> but the output shows an <pre>OP_DELETE</pre> and <pre>OP_INSERT</pre>.
+		The <pre>OP_DELETE</pre> for the old row gets automatically generated when a
+		row with repeated key is inserted. 
+		Now, depending on what you want, just sending in the first place the consequent inserts of
+		rows with the same keys, and relying on the table's internal
+		consistency to turn them into updates, might be a good thing or not.
+		Overall it's a dirty way to write but sometimes it comes convenient.
+		The clean way is to send the explicit deletes first. When the data
+		goes through the table, it gets automatically cleaned.
+		The subscribers to the table's output and pre-modification labels
+		get the clean and consistent picture: a row never gets simply replaced, they
+		always see an <pre>OP_DELETE</pre> first and only then an <pre>OP_INSERT</pre>.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+	</sect1>
+
+</chapter>

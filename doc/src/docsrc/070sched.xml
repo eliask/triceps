@@ -304,7 +304,7 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		Then the rowop 4 executes. The rowop 4 never gets onto any of the queues.
 		The call just pushes a new frame and executes the rowop right away.
 		The identity of rowop being processed is kept in the call context. A
-		call also involves a direct C++ call on the thread stack, and if any
+		call also involves a direct &Cpp; call on the thread stack, and if any
 		Perl code is involved, a Perl call too. Because of this, if you nest
 		the calls too deeply, you may run out of the thread stack space and
 		get it to crash.
@@ -566,7 +566,21 @@ foreach my $row (@rowset) {
 		execution is the depth of the recursion. If the loop executes a million
 		times, the stack will be three million levels deep. Worse yet, it's not
 		just the Triceps scheduler stack that grows, it's also the process
-		(C++) stack.
+		(&Cpp;) stack.
+		</para>
+
+		<indexterm>
+			<primary>scheduling</primary>
+			<secondary>recursion</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>recursion</primary>
+		</indexterm>
+
+		<para>
+		Which is why this kind of recursive calls are explicitly forbidden
+		in Triceps. If you try to do it, on the first recursive call the
+		execution will die with an error.
 		</para>
 
 		<para>
@@ -603,7 +617,7 @@ foreach my $row (@rowset) {
 		By the end of the loop the stack picture becomes exactly the same as with
 		<pre>call()</pre>. For a while I've thought that optimizing out the empty stack
 		frames would solve the problem, but no, that doesn't work: the problem
-		is that the C++ process stack keeps growing no matter what. The jump
+		is that the &Cpp; process stack keeps growing no matter what. The jump
 		back in the loop needs to be placed into an earlier stack frame to
 		prevent the stack from growing.
 		</para>
@@ -2079,7 +2093,7 @@ $tray->push(@rowops);
 
 		<para>
 		For the simple tracing, there is a small simple tracer provided. It
-		actually executes directly as compiled in C++, so it's quite
+		actually executes directly as compiled in &Cpp; so it's quite
 		efficient:
 		</para>
 
