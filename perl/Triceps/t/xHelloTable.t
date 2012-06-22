@@ -85,7 +85,7 @@ sub helloWorldDirect()
 		# the common part: find if there already is a count for this address
 		my $rhFound = $tCount->findBy(
 			address => $data[1]
-		) or confess "$!";
+		);
 		my $cnt = 0;
 		if (!$rhFound->isNull()) {
 			$cnt = $rhFound->getRow()->get("count");
@@ -265,7 +265,7 @@ sub helloWorldLabels()
 		# the common part: find if there already is a count for this address
 		my $rhFound = $tCount->findBy(
 			address => $data[1]
-		) or confess "$!";
+		);
 		my $cnt = 0;
 		if (!$rhFound->isNull()) {
 			$cnt = $rhFound->getRow()->get("count");
@@ -275,11 +275,11 @@ sub helloWorldLabels()
 			$hwunit->makeHashSchedule($lbTableInput, "OP_INSERT",
 				address => $data[1],
 				count => $cnt+1,
-			) or confess "$!";
+			);
 		} elsif ($data[0] =~ /^clear$/i) {
 			$hwunit->makeHashSchedule($lbTableInput, "OP_DELETE",
 				address => $data[1]
-			) or confess "$!";
+			);
 		} else {
 			&send("Unknown command '$data[0]'\n");
 		}
