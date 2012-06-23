@@ -63,7 +63,7 @@ while(&readLine) {
 			address => $data[1],
 			count => $cnt+1,
 		) or confess "$!";
-		$tCount->insert($new) or confess "$!";
+		$tCount->insert($new);
 	} elsif ($data[0] =~ /^count$/i) {
 		&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
 	} else {
@@ -99,6 +99,10 @@ Received 'world' 1 times
 Received 'table' 2 times
 </exdump>
 
+		<indexterm>
+			<primary>table</primary>
+			<secondary>procedural API</secondary>
+		</indexterm>
 		<para>
 		In this example the table is read and modified using the direct procedural calls.
 		As you can see, there isn't even any need for unit scheduling and
@@ -173,7 +177,7 @@ Received 'table' 2 times
 		the key fields of the index.  Which returns a RowHandle
 		object. A RowHandle is essentially an iterator in the table. Even if
 		the row is not found, a RowHandle will be still returned but it will be
-		null, which is checked for by <pre>$rh->isNull()</pre>.
+		NULL, which is checked for by <pre>$rh->isNull()</pre>.
 		</para>
 
 		<para>
@@ -212,6 +216,10 @@ Received 'table' 2 times
 		<indexterm>
 			<primary>label</primary>
 			<secondary>table</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>table</primary>
+			<secondary>label API</secondary>
 		</indexterm>
 		<itemizedlist>
 		<listitem>
@@ -252,6 +260,18 @@ Received 'table' 2 times
 		row that is not in the table, it will not propagate anywhere. If an INSERT rowop
 		comes in and causes another row to be replaced, the replaced row will
 		be sent to the pre-modification and output labels as a DELETE rowop first.
+		</para>
+
+		<para>
+		Anf of course the table may be modified through the procedural
+		interface. These modifications also produce rowops on the
+		pre-modification and output labels.
+		</para>
+
+		<para>
+		The labels of the table have names. They are produced by adding
+		suffixes to the table name. They are "tablename.in", "tablename.pre"
+		and "tablename.out".
 		</para>
 
 		<indexterm>
@@ -412,17 +432,104 @@ OP_INSERT 'table', count 1
 		get the clean and consistent picture: a row never gets simply replaced, they
 		always see an <pre>OP_DELETE</pre> first and only then an <pre>OP_INSERT</pre>.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_table_delete">
+		<title>Deleting a row</title>
 
 		<para>
+		Deleting a row from a table through the input label is simple: send a
+		rowop with <pre>OP_DELETE</pre>, it will find the row with the matching key 
+		and delete it, as was shown above.
+		In the procedural way the same can be done with the method
+		<pre>deleteRow()</pre>. The added row deletion code for the main loop of the original 
+		version of <quote>Hello, table</quote> from
+		<xref linkend="sc_table_hello" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		is:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldDirect fragment, shifted left -->
+<pre>
+	elsif ($data[0] =~ /^delete$/i) {
+		my $res = $tCount->deleteRow($rtCount->makeRowHash(
+			address => $data[1],
+		));
+		&send("Address '", $data[1], "' is not found\n") unless $res;
+	}
+</pre>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<indexterm>
+			<primary>table</primary>
+			<secondary>procedural API</secondary>
+		</indexterm>
+		<para>
+		The result allows to differentiate between the situations when the 
+		row was found and deleted and the row was not found.
+		On any error the call confesses. The <pre>insert()</pre> method also
+		follows this new convention and confesses on errors.
 		</para>
 
 		<para>
+		However we already find the row handle in advance in <pre>$rhFound</pre>. For this case a more
+		efficient form is available, and it can be added to the example as:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldDirect fragment, shifted left -->
+<pre>
+		elsif ($data[0] =~ /^remove$/i) {
+			if (!$rhFound->isNull()) {
+				$tCount->remove($rhFound);
+			} else {
+				&send("Address '", $data[1], "' is not found\n");
+			}
+		}
+</pre>
+
+		<para>
+		It removes a specific row handle from the table. In whichever way you
+		find it, you can remove it. An attempt to remove a NULL handle would be
+		an error (and this method also confesses on errors).
 		</para>
 
 		<para>
+		The reason why <pre>remove()</pre> is more efficient than <pre>deleteRow()</pre> is
+		that <pre>deleteRow()</pre> amounts to finding the row handle by key and then
+		removing it. And the <pre>OP_DELETE</pre> rowop sent to the input label
+		calls <pre>deleteRow()</pre>.
 		</para>
 
 		<para>
+		<pre>deleteRow()</pre> never deletes more than one row, even if multiple
+		rows match (yes, the indexes don't have to be unique).
+		There isn't any method to delete multiple rows at once. Every row has
+		to be deleted by itself.
+		As an example, here is the implementation of the command <quote>clear</quote> for
+		<quote>Hello, table</quote> that clears all the table contents by
+		iterating through it:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldDirect fragment, shifted left -->
+<pre>
+	elsif ($data[0] =~ /^clear$/i) {
+		my $rhi = $tCount->begin(); 
+		while (!$rhi->isNull()) {
+			my $rhnext = $rhi->next();
+			$tCount->remove($rhi);
+			$rhi = $rhnext;
+		}
+	}
+</pre>
+
+		<para>
+		After a handle is removed from the table, it continues to exist, as
+		long as there are references to it. It could even be inserted back into
+		the table. However until (and unless) it's inserted back, it can not be
+		used for iteration any more. Calling <pre>next()</pre> on a handle that
+		is not in the table would just return a NULL handle. So the next row has
+		to be found before removing the current one.
 		</para>
 
 		<para>

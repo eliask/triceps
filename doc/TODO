@@ -31,6 +31,9 @@ Things that need to be done:
 * register error messages from the outside scopes, to be printed on failure in the called functions
 * in Tray handle the undefs and NULLs better (see XXX)
 * rewrite makeLoop* with a Loop object
+* make the Perl tracer with row contents a standard Triceps object
+* in the C++-underlying-Perl objects have a place to keep $self,
+  with $obj->getSelf()->{CLASS} containing the blessing.
 
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
@@ -42,17 +45,22 @@ Things that need to be done:
 * doc: describe the convention for the example input/results dump
 * doc: delaying a loop in the middle may be not a good idea because the caller
   may be expecting its result
+* doc: for EM_* say that the string versions are acceptable
+* doc: when the XS arg type doesn't match or the object is undef,
+  id does a simple die(), not confess()
 
 App ideas:
 * queries on CSV files
 * distributed cron
+* data cache
 
 Docbook stuff:
 
 Used blog entries:
 000-011
-013-024
-027-028
+013-025
+027-029
+032-033
 043
 095
 110
