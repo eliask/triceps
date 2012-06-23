@@ -27,6 +27,11 @@ See the file COPYRIGHT for the copyright notice and license information
 		Let's start with a basic example:
 		</para>
 
+		<indexterm>
+			<primary>table</primary>
+			<secondary>insert</secondary>
+		</indexterm>
+
 <!-- t/xHelloTable.t helloWorldDirect reduced, shifted left -->
 <pre>
 my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
@@ -172,6 +177,13 @@ Received 'table' 2 times
 		replace the old row if a new row with the same key is inserted.
 		</para>
 
+		<indexterm>
+			<primary>table</primary>
+			<secondary>find</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>RowHandle</primary>
+		</indexterm>
 		<para>
 		The search in the table is done by the method <pre>findBy()</pre> with 
 		the key fields of the index.  Which returns a RowHandle
@@ -465,6 +477,10 @@ OP_INSERT 'table', count 1
 			<primary>table</primary>
 			<secondary>procedural API</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>table</primary>
+			<secondary>remove</secondary>
+		</indexterm>
 		<para>
 		The result allows to differentiate between the situations when the 
 		row was found and deleted and the row was not found.
@@ -531,8 +547,171 @@ OP_INSERT 'table', count 1
 		is not in the table would just return a NULL handle. So the next row has
 		to be found before removing the current one.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_table_RowHandle">
+		<title>A closer look at the RowHandles</title>
+
+		<indexterm>
+			<primary>RowHandle</primary>
+		</indexterm>
+		<para>
+		A few uses of the RowHandles have been shown by now. So, what is a
+		RowHandle? As Captain Obvious would say, RowHandle is a class (or
+		package, in Perl terms) implementing a row handle.
+		</para>
 
 		<para>
+		A RowHandle keeps a table's service information (including the index
+		data) for a single data row, including of course a reference to the row
+		itself. Each row is stored in the table through its handle. A RowHandle
+		always belongs to a particular table, the RowHandles can not be shared
+		nor moved between two tables, even if the tables are of the same type.
+		Since the tables are single-threaded, obviously the RowHandles may not
+		be shared between the threads either.
+		</para>
+
+		<para>
+		However a RowHandle may exist without being inserted into a table. In
+		this case it still has a spiritual connection to that table but is not
+		included in the index, and will be destroyed as soon as all the
+		references to it disappear.
+		</para>
+
+		<para>
+		The insertion of a row into a table actually happens in two steps:
+		</para>
+
+		<orderedlist>
+		<listitem>
+		A RowHandle is created for a row.
+		</listitem>
+		<listitem>
+		This new handle is inserted into the table.
+		</listitem>
+		</orderedlist>
+
+		<para>
+		This is done with the following code:
+		</para>
+
+<pre>
+$rh = $table->makeRowHandle($row) or confess "$!";
+$table->insert($rh);
+</pre>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>insert</secondary>
+		</indexterm>
+		<para>
+		Only it just so happens that to make life easier, the method
+		<pre>insert()</pre> has been made to accept either a row handle or
+		directly a row. If it finds a row, it makes a handle for it behind the
+		curtains and then proceeds with the insertion of that handle. Passing a
+		row directly is also more efficient (if you don't have a handle already
+		created for it for some other reason) because the row handle creation
+		then happens entirely in the &Cpp; code, without surfacing into Perl.
+		</para>
+
+		<para>
+		A handle can be created for any row of a type matching the table's
+		row type. For a while it was accepting only equal types but that
+		was not consistent with what the labels are doing, so I've changed it.
+		</para>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		The method <pre>insert()</pre> has a return value. It's often ignored but occasionally
+		comes handy.  1 means that the row has been inserted successfully, and
+		0 means that the row has been rejected. On errors it confesses.
+		An attempt to insert a NULL handle or a handle that is already in the
+		table will cause a rejection, not an error.
+		Also the table's index may reject a row with duplicate key (though
+		right now this option is not implemented, and the hash index silently
+		replaces the old row with the new one).
+		</para>
+
+		<para>
+		There is a method to find out if a row handle is in the table or not:
+		</para>
+
+<pre>
+$result = $rh->isInTable();
+</pre>
+
+		<para>
+		Though it's used mostly for debugging, when some strange things start going on.
+		</para>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>find</secondary>
+		</indexterm>
+		<para>
+		The searching for rows in the table by key has been previously shown with the
+		method <pre>findBy()</pre>. Which happens to be a wrapper over a more general method
+		<pre>find()</pre>: it constructs a row from its argument fields and then calls
+		<pre>find()</pre> with that row as a sample of data to find.
+		The method <pre>find()</pre> is similar to <pre>insert()</pre> in the
+		handling of its arguments: the <quote>proper</quote> way is to give
+		it a row handle argument, but the more efficient way is to give it a 
+		row argument, and it will create the handle for it as needed before
+		performing a search.
+		</para>
+
+		<para>
+		Now you might wonder: huh, <pre>find()</pre> takes a row handle and returns a row
+		handle? What's the point? Why not just use the first row handle? Well,
+		those are different handles:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		The argument handle is normally not in the table. It's created brand
+		new from a row that contains the keys that you want to find, just for
+		the purpose of searching.
+		</listitem>
+		<listitem>
+		The returned handle is always in the table (of course, unless it's
+		NULL). It can be further used to extract back the row data, and/or for
+		iteration.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		Though nothing really prevents you from searching for a handle that is
+		already in the table. You'll just get back the same handle, after
+		gratuitously spending some CPU time. (There are exceptions to this,
+		with the more complex indexes that will be described later).
+		</para>
+
+		<para>
+		Why do you need to create new a row handle just for the search? Due to
+		the internal mechanics of the implementation. A handle stores the
+		helper information for the index. For example, the hash index
+		calculates the hash value of all the row's key fields once and
+		stores it in the row handle. Despite it being called a hash index, it
+		really stores the data in a tree, with the hash value used to speed up
+		the comparisons for the tree order. It's much easier to make both the
+		<pre>insert()</pre> and <pre>find()</pre> work with the hash value and row reference
+		stored in the same way in a handle than to implement them differently. Because of
+		this, <pre>find()</pre> uses the exactly same row handle argument format as
+		<pre>insert()</pre>.
+		</para>
+
+		<para>
+		Can you create multiple row handles referring to the same row? Sure,
+		knock yourself out. From the table's perspective it's the same thing as
+		multiple row handles for multiple copies of the row with the same values
+		in them, only using less memory.
+		</para>
+
+		<para>
+		There is more to the row handles than has been touched upon yet. It
+		will all be revealed when more of the table features are described.
 		</para>
 
 		<para>
