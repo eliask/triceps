@@ -100,7 +100,7 @@ sub helloWorldDirect()
 		} elsif ($data[0] =~ /^count$/i) {
 			&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
 		} elsif ($data[0] =~ /^dump$/i) {
-			for (my $rhi = $tCount->begin(); !$rhi->isNull(); $rhi = $tCount->next($rhi)) {
+			for (my $rhi = $tCount->begin(); !$rhi->isNull(); $rhi = $rhi->next()) {
 				&send($rhi->getRow->printP(), "\n");
 			}
 		} elsif ($data[0] =~ /^delete$/i) {
@@ -117,7 +117,7 @@ sub helloWorldDirect()
 		} elsif ($data[0] =~ /^clear$/i) {
 			my $rhi = $tCount->begin(); 
 			while (!$rhi->isNull()) {
-				my $rhnext = $tCount->next($rhi);
+				my $rhnext = $rhi->next();
 				$tCount->remove($rhi);
 				$rhi = $rhnext;
 			}
