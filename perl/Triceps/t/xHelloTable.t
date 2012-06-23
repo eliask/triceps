@@ -96,7 +96,7 @@ sub helloWorldDirect()
 				address => $data[1],
 				count => $cnt+1,
 			) or confess "$!";
-			$tCount->insert($new) or confess "$!";
+			$tCount->insert($new);
 		} elsif ($data[0] =~ /^count$/i) {
 			&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
 		} elsif ($data[0] =~ /^dump$/i) {
@@ -107,11 +107,10 @@ sub helloWorldDirect()
 			my $res = $tCount->deleteRow($rtCount->makeRowHash(
 				address => $data[1],
 			));
-			die "$!" unless defined $res;
 			&send("Address '", $data[1], "' is not found\n") unless $res;
 		} elsif ($data[0] =~ /^remove$/i) {
 			if (!$rhFound->isNull()) {
-				$tCount->remove($rhFound) or confess "$!";
+				$tCount->remove($rhFound);
 			} else {
 				&send("Address '", $data[1], "' is not found\n");
 			}
@@ -119,7 +118,7 @@ sub helloWorldDirect()
 			my $rhi = $tCount->begin(); 
 			while (!$rhi->isNull()) {
 				my $rhnext = $tCount->next($rhi);
-				$tCount->remove($rhi) or confess("$!");
+				$tCount->remove($rhi);
 				$rhi = $rhnext;
 			}
 		} else {
