@@ -446,6 +446,64 @@ OP_INSERT 'table', count 1
 		</para>
 	</sect1>
 
+	<sect1 id="sc_table_iteration">
+		<title>Basic iteration through the table</title>
+
+		<para>
+		Let's add a dump of the table contents to the "Hello, table" example,
+		either version of it. For that, the code needs to go through every record
+		in the table:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldDirect fragment, shifted left -->
+<pre>
+	elsif ($data[0] =~ /^dump$/i) {
+		for (my $rhi = $tCount->begin(); !$rhi->isNull(); $rhi = $rhi->next()) {
+			&send($rhi->getRow->printP(), "\n");
+		}
+	}
+</pre>
+
+		<para>
+		As you can see, the row handle works kind of like an STL iterator.
+		Only the end of iteration is detected by receiving a NULL row handle.
+		Calling <pre>next()</pre> on a NULL row handle is OK but it would just return
+		another NULL handle.
+		And there is no decrementing the iterator, you can only go forward
+		with <pre>next()</pre>. The backwards iteration is in the plans but
+		not implemented yet.
+		</para>
+
+		<para>
+		An example of this fragment's output would be:
+		</para>
+
+<!-- t/xHelloTable.t helloWorldDirect fragment, removed backslashes -->
+<exdump>
+> Hello, table!
+> Hello, world!
+> Hello, table!
+> count world
+Received 'world' 1 times
+> Count table
+Received 'table' 2 times
+> dump
+address="world" count="1" 
+address="table" count="2" 
+</exdump>
+
+		<para>
+		The order of the rows in the printout is the same as the order of rows
+		in the table's index. Which is no particular order, since it's a hashed
+		index. As long as you stay with the same 64-bit AMD64 architecture
+		(with LSB-first byte order), it will stay the same on consecutive runs.
+		But switching to a 32-bit machine or to an MSB-first byte order (such
+		as a SPARC, if you can still find one) will change the hash
+		calculation, and with it the resulting row order. There are the
+		ordered indexes as well, they will be described later.
+		</para>
+	</sect1>
+
 	<sect1 id="sc_table_delete">
 		<title>Deleting a row</title>
 
@@ -454,9 +512,10 @@ OP_INSERT 'table', count 1
 		rowop with <pre>OP_DELETE</pre>, it will find the row with the matching key 
 		and delete it, as was shown above.
 		In the procedural way the same can be done with the method
-		<pre>deleteRow()</pre>. The added row deletion code for the main loop of the original 
-		version of <quote>Hello, table</quote> from
-		<xref linkend="sc_table_hello" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		<pre>deleteRow()</pre>. The added row deletion code for the main loop of 
+		<quote>Hello, table</quote> (either version, but particularly relevant
+		for the one from
+		<xref linkend="sc_table_hello" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;)
 		is:
 		</para>
 
