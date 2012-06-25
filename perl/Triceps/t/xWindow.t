@@ -78,7 +78,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-or confess "$!";
+	or confess "$!";
 $ttWindow->initialize() or confess "$!";
 our $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
@@ -189,7 +189,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-or confess "$!";
+	or confess "$!";
 $ttWindow->initialize() or confess "$!";
 our $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
@@ -319,7 +319,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-or confess "$!";
+	or confess "$!";
 $ttWindow->initialize() or confess "$!";
 our $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
@@ -456,7 +456,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-or confess "$!";
+	or confess "$!";
 $ttWindow->initialize() or confess "$!";
 our $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
@@ -487,7 +487,7 @@ our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
 	->addSubIndex("bySymbol", 
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 	)
-or confess "$!";
+	or confess "$!";
 $ttAvgPrice->initialize() or confess "$!";
 our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, 
 	&Triceps::EM_CALL, "tAvgPrice") or confess "$!";
