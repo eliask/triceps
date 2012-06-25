@@ -101,6 +101,58 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 	</sect1>
 
+	<sect1 id="sc_confessions">
+		<title>Deaths and confessions</title>
+
+		<indexterm>
+			<primary>die</primary>
+		</indexterm>
+		<indexterm>
+			<primary>confess</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Carp</primary>
+		</indexterm>
+		<para>
+		The Triceps code and the examples in this manual use the module
+		<pre>Carp</pre>, and in particular its method <pre>confess()</pre> extensively.
+		<pre>Carp</pre> is a standard part of modern Perl, so all you need to do is just say
+		</para>
+
+<pre>
+use Carp;
+</pre>
+
+		<para>
+		It provides the smarter ways to report the fatal errors found in the
+		libraries. The problem with the simple <pre>die()</pre> is that it reports an
+		error but prints only the location where it has been called, which may
+		be ten layers deep inside a library, not a full stack trace. The
+		functions in <pre>Carp</pre> fix that. The most interesting one is <pre>confess()</pre>. It
+		works just like <pre>die()</pre> but prints the whole stack trace.
+		</para>
+
+		<para>
+		The full description of Carp is available at 
+		<ulink url="http://perldoc.perl.org/Carp.html"/>.
+		It has more functions: for warnings, and to report only the location of
+		the call from the user code to the library. However I find the full
+		stack trace the most helpful thing in any case.
+		</para>
+
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
+		<para>
+		When the Triceps &Cpp; code detects errors, it also gets reported back to
+		Perl by confessing. With some exceptions though: the errors
+		detected by the code auto-generated in XS, such as bad call arguments,
+		still report through the plain <pre>die()</pre>. I haven't figured out yet if there
+		is a way to make all the cases of <pre>die()</pre> work like <pre>confess()</pre>. Maybe there
+		is, maybe by intercepting the <pre>SIGDIE</pre> <quote>signal</quote>. Or maybe there isn't any.
+		</para>
+	</sect1>
+
 	<sect1 id="sc_memory_fund">
 		<title>Memory management fundamentals</title>
 

@@ -46,8 +46,7 @@ Things that need to be done:
 * doc: delaying a loop in the middle may be not a good idea because the caller
   may be expecting its result
 * doc: for EM_* say that the string versions are acceptable
-* doc: when the XS arg type doesn't match or the object is undef,
-  id does a simple die(), not confess()
+* doc: make an explicit section on the error handling connentions (near deaths and confessions)
 
 App ideas:
 * queries on CSV files
@@ -59,8 +58,7 @@ Docbook stuff:
 Used blog entries:
 000-011
 013-025
-027-029
-032-034
+027-035
 043
 095
 110

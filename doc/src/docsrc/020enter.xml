@@ -196,6 +196,9 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 )) or confess "$!";
 </pre>
 
+		<indexterm>
+			<primary>confess</primary>
+		</indexterm>
 		<para>
 		What happens there? First, we import the Triceps module and the Carp
 		module. The Carp module isn't strictly necessary but it makes the
@@ -381,7 +384,6 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		evaluates the label function right now, and returns after all its
 		processing its done.
 		</para>
-
 	</sect1>
 
 </chapter>
