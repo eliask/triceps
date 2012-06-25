@@ -36,7 +36,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -133,31 +133,31 @@ while(&readLine) {
 $result = undef;
 &doWindow();
 ok($result, 
-'1,AAA,10,10
+'> 1,AAA,10,10
 tWindow.out OP_INSERT id="1" symbol="AAA" price="10" size="10" 
 New contents:
   id="1" symbol="AAA" price="10" size="10" 
-2,BBB,100,100
+> 2,BBB,100,100
 tWindow.out OP_INSERT id="2" symbol="BBB" price="100" size="100" 
 New contents:
   id="2" symbol="BBB" price="100" size="100" 
-3,AAA,20,20
+> 3,AAA,20,20
 tWindow.out OP_INSERT id="3" symbol="AAA" price="20" size="20" 
 New contents:
   id="1" symbol="AAA" price="10" size="10" 
   id="3" symbol="AAA" price="20" size="20" 
-4,BBB,200,200
+> 4,BBB,200,200
 tWindow.out OP_INSERT id="4" symbol="BBB" price="200" size="200" 
 New contents:
   id="2" symbol="BBB" price="100" size="100" 
   id="4" symbol="BBB" price="200" size="200" 
-5,AAA,30,30
+> 5,AAA,30,30
 tWindow.out OP_DELETE id="1" symbol="AAA" price="10" size="10" 
 tWindow.out OP_INSERT id="5" symbol="AAA" price="30" size="30" 
 New contents:
   id="3" symbol="AAA" price="20" size="20" 
   id="5" symbol="AAA" price="30" size="30" 
-6,BBB,300,300
+> 6,BBB,300,300
 tWindow.out OP_DELETE id="2" symbol="BBB" price="100" size="100" 
 tWindow.out OP_INSERT id="6" symbol="BBB" price="300" size="300" 
 New contents:
@@ -259,39 +259,39 @@ while(&readLine) {
 $result = undef;
 &doSecondary();
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
 Average price: 10
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 Contents:
   id="2" symbol="BBB" price="100" size="100" 
 Average price: 100
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
   id="3" symbol="AAA" price="20" size="20" 
 Average price: 15
-OP_INSERT,4,BBB,200,200
+> OP_INSERT,4,BBB,200,200
 Contents:
   id="2" symbol="BBB" price="100" size="100" 
   id="4" symbol="BBB" price="200" size="200" 
 Average price: 150
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 Contents:
   id="3" symbol="AAA" price="20" size="20" 
   id="5" symbol="AAA" price="30" size="30" 
 Average price: 25
-OP_INSERT,6,BBB,300,300
+> OP_INSERT,6,BBB,300,300
 Contents:
   id="4" symbol="BBB" price="200" size="200" 
   id="6" symbol="BBB" price="300" size="300" 
 Average price: 250
-OP_DELETE,3
+> OP_DELETE,3
 Contents:
   id="5" symbol="AAA" price="30" size="30" 
 Average price: 30
-OP_DELETE,5
+> OP_DELETE,5
 Contents:
 Average price: Undefined
 ');
@@ -411,25 +411,25 @@ $result = undef;
 &doManualAgg1();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
 lbAverage OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
   id="3" symbol="AAA" price="20" size="20" 
 lbAverage OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 Contents:
   id="3" symbol="AAA" price="20" size="20" 
   id="5" symbol="AAA" price="30" size="30" 
 lbAverage OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 Contents:
   id="5" symbol="AAA" price="30" size="30" 
 lbAverage OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 Contents:
 ');
 
@@ -561,28 +561,28 @@ $result = undef;
 &doManualAgg2();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
   id="3" symbol="AAA" price="20" size="20" 
 tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 Contents:
   id="3" symbol="AAA" price="20" size="20" 
   id="5" symbol="AAA" price="30" size="30" 
 tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 Contents:
   id="5" symbol="AAA" price="30" size="30" 
 tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 Contents:
 tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30" 
 ');
@@ -601,27 +601,27 @@ $result = undef;
 &doManualAgg2();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
   id="3" symbol="AAA" price="20" size="20" 
 tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 Contents:
   id="3" symbol="AAA" price="20" size="20" 
   id="5" symbol="AAA" price="30" size="30" 
 tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
 tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
-OP_INSERT,5,BBB,30,30
+> OP_INSERT,5,BBB,30,30
 Contents:
   id="5" symbol="BBB" price="30" size="30" 
 tAvgPrice.out OP_INSERT symbol="BBB" id="5" price="30" 
-OP_INSERT,7,AAA,40,40
+> OP_INSERT,7,AAA,40,40
 Contents:
   id="3" symbol="AAA" price="20" size="20" 
   id="7" symbol="AAA" price="40" size="40" 
