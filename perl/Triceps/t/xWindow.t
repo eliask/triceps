@@ -63,15 +63,15 @@ sub sendX # (@message)
 
 sub doWindow {
 
-my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
-my $rtTrade = Triceps::RowType->new(
+our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
 ) or confess "$!";
 
-my $ttWindow = Triceps::TableType->new($rtTrade)
+our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("bySymbol", 
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 			->addSubIndex("last2",
@@ -80,16 +80,16 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
+our $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # remember the index type by symbol, for searching on it
-my $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
 # remember the FIFO index, for finding the start of the group
-my $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
 
 # print out the changes to the table as they happen
-my $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
+our $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n"); # print the change
 	}) or confess "$!";
@@ -171,15 +171,15 @@ New contents:
 
 sub doSecondary {
 
-my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
-my $rtTrade = Triceps::RowType->new(
+our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
 ) or confess "$!";
 
-my $ttWindow = Triceps::TableType->new($rtTrade)
+our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
 		Triceps::IndexType->newHashed(key => [ "id" ])
 	)
@@ -201,7 +201,7 @@ our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
 
 # remember, which was the last row modified
 our $rLastMod;
-my $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
+our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
 	}) or confess "$!";
@@ -302,14 +302,14 @@ Average price: Undefined
 sub doManualAgg1 {
 
 our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
-my $rtTrade = Triceps::RowType->new(
+our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
 ) or confess "$!";
 
-my $ttWindow = Triceps::TableType->new($rtTrade)
+our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
 		Triceps::IndexType->newHashed(key => [ "id" ])
 	)
@@ -331,7 +331,7 @@ our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
 
 # remember, which was the last row modified
 our $rLastMod;
-my $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
+our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
 	}) or confess "$!";
@@ -439,14 +439,14 @@ Contents:
 sub doManualAgg2 {
 
 our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
-my $rtTrade = Triceps::RowType->new(
+our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
 ) or confess "$!";
 
-my $ttWindow = Triceps::TableType->new($rtTrade)
+our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
 		Triceps::IndexType->newHashed(key => [ "id" ])
 	)
@@ -468,7 +468,7 @@ our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
 
 # remember, which was the last row modified
 our $rLastMod;
-my $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
+our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
 	}) or confess "$!";
@@ -483,7 +483,7 @@ our $rtAvgPrice = Triceps::RowType->new(
 	price => "float64", # avg price of the last 2 trades
 ) or confess "$!";
 
-my $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
+our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
 	->addSubIndex("bySymbol", 
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 	)
