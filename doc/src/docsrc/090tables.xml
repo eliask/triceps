@@ -156,6 +156,10 @@ Received 'table' 2 times
 		another candidate for a change. 
 		</para>
 
+		<indexterm>
+			<primary>index</primary>
+			<secondary>hashed</secondary>
+		</indexterm>
 		<para>
 		A table type gets the row type and at least one index. Here it's a
 		hashed index by the key field <pre>address</pre>. "Hashed" means that
@@ -771,6 +775,385 @@ $result = $rh->isInTable();
 		<para>
 		There is more to the row handles than has been touched upon yet. It
 		will all be revealed when more of the table features are described.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_table_windoe">
+		<title>A window is a FIFO</title>
+
+		<indexterm>
+			<primary>window</primary>
+		</indexterm>
+		<indexterm>
+			<primary>FIFO</primary>
+		</indexterm>
+
+		<para>
+		A fairly typical situation in the CEP world is when a model needs to
+		keep a limited history of events. For a simple example, let's discuss,
+		how to remember the last two trades per stock symbol. The size of two
+		has been chosen to keep the sample input and outputs small.
+		</para>
+
+		<para>
+		This is normally called a window logic, with a sliding window. You can
+		think of it in a mechanical analogy: as the trades become available,
+		they get printed on a long tape. However the tape is covered with a
+		masking plate. The plate has a window cut in it that lets you see only
+		the last two trades.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<para>
+		Some CEP systems have the special data structures that implement this
+		logic, that are called windows. Triceps has a feature on a table
+		instead that makes a table work as a window. It's not unique in this
+		department: for example Coral8 does the opposite, calls everything a
+		window, even if some windows are really tables in every regard but
+		name.
+		</para>
+
+		<para>
+		Here is a Triceps example of keeping the window for the last two trades
+		and iteration over it:
+		</para>
+
+<!-- t/xWindow.t doWindow -->
+<pre>
+our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or confess "$!";
+
+our $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+			->addSubIndex("last2",
+				Triceps::IndexType->newFifo(limit => 2)
+			)
+	)
+	or confess "$!";
+$ttWindow->initialize() or confess "$!";
+our $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
+
+# remember the index type by symbol, for searching on it
+our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+# remember the FIFO index, for finding the start of the group
+our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+
+# print out the changes to the table as they happen
+our $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n"); # print the change
+	}) or confess "$!";
+$tWindow->getOutputLabel()->chain($lbWindowPrint) or confess "$!";
+
+while(&readLine) {
+	chomp;
+	my $rTrade = $rtTrade->makeRowArray(split(/,/)) or confess "$!";
+	my $rhTrade = $tWindow->makeRowHandle($rTrade) or confess "$!";
+	$tWindow->insert($rhTrade);
+	# There are two ways to find the first record for this
+	# symbol. Use one way for the symbol AAA and the other for the rest.
+	my $rhFirst;
+	if ($rTrade->get("symbol") eq "AAA") {
+		$rhFirst = $tWindow->findIdx($itSymbol, $rTrade) or confess "$!";
+	} else  {
+		# $rhTrade is now in the table but it's the last record
+		$rhFirst = $rhTrade->firstOfGroupIdx($itLast2) or confess "$!";
+	}
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	&send("New contents:\n");
+	for (my $rhi = $rhFirst; 
+			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
+		&send("  ", $rhi->getRow()->printP(), "\n");
+	}
+}
+</pre>
+
+		<para>
+		This example reads the trade records in CSV format, inserts them into
+		the table, and then prints the actual modifications reported by the
+		table and the new state of the window for this symbol. And here is a sample
+		log, with the input lines in italics:
+		</para>
+
+<exdump>
+> 1,AAA,10,10
+tWindow.out OP_INSERT id="1" symbol="AAA" price="10" size="10" 
+New contents:
+  id="1" symbol="AAA" price="10" size="10" 
+> 2,BBB,100,100
+tWindow.out OP_INSERT id="2" symbol="BBB" price="100" size="100" 
+New contents:
+  id="2" symbol="BBB" price="100" size="100" 
+> 3,AAA,20,20
+tWindow.out OP_INSERT id="3" symbol="AAA" price="20" size="20" 
+New contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+> 4,BBB,200,200
+tWindow.out OP_INSERT id="4" symbol="BBB" price="200" size="200" 
+New contents:
+  id="2" symbol="BBB" price="100" size="100" 
+  id="4" symbol="BBB" price="200" size="200" 
+> 5,AAA,30,30
+tWindow.out OP_DELETE id="1" symbol="AAA" price="10" size="10" 
+tWindow.out OP_INSERT id="5" symbol="AAA" price="30" size="30" 
+New contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+> 6,BBB,300,300
+tWindow.out OP_DELETE id="2" symbol="BBB" price="100" size="100" 
+tWindow.out OP_INSERT id="6" symbol="BBB" price="300" size="300" 
+New contents:
+  id="4" symbol="BBB" price="200" size="200" 
+  id="6" symbol="BBB" price="300" size="300" 
+</exdump>
+
+		<para>
+		You can see that the window logic works: at no time is there
+		more than two rows in each group. As more rows are inserted,
+		the oldest rows get deleted.
+		</para>
+
+		<para>
+		Now let's dig into the code.
+		The first thing to notice is that the table type has two
+		indexes (strictly speaking, index types, but most of the time
+		they can be called indexes without creating a confusion) in it. Unlike
+		your typical database, the indexes in this example are nested.
+		</para>
+
+<pre>
+TableType
++-IndexType Hash "bySymbol"
+  +-IndexType Fifo "last2"
+</pre>
+
+		<para>
+		If you follow the nesting, you can see, that the first call <pre>addSubIndex()</pre>
+		adds an index type to the table type, while the textually second
+		<pre>addSubIndex()</pre> adds an index to the previous index.
+		</para>
+
+		<para>
+		The same can also be written out in multiple separate calls,
+		with the intermediate results stored in the variables:
+		</para>
+
+<pre>
+$itLast2 = Triceps::IndexType->newFifo(limit => 2);
+$itSymbol = Triceps::IndexType->newHashed(key => [ "symbol" ]);
+$itSymbol->addSubIndex("last2", $itLast2);
+$ttWindow = Triceps::TableType->new($rtTrade);
+$ttWindow->addSubIndex("bySymbol", $itSymbol);
+</pre>
+
+		<para>
+		I'm not perfectly happy with the way the table types are constructed
+		with the index types right now, since the parenthesis levels have
+		turned out a bit hard to track. This is another example of following
+		the &Cpp; API in Perl that didn't work out too well, and it will change
+		in the future. But for now please bear with it.
+		</para>
+
+		<para>
+		The index nesting is kind of intuitively clear, but the details may
+		take some time to get your head wrapped around them. You can think of
+		it as the inner index type creating the miniature tables that hold the
+		rows, and then the outer index holding not individual rows but those
+		miniature tables. So, to find the rows in the table you go through two
+		levels of indexes: first through the outer index, and then through the
+		inner one. The table takes care of these details and makes them
+		transparent, unless you want to stop your search at an intermediate
+		level: such as, to find <i>all</i> the transactions with a given
+		symbol, you need to do a search in the outer index, but then from that
+		point iterate through all rows in the found inner index. For this you
+		obviously have to tell the table, where do you want to stop in
+		the search.
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>FIFO</secondary>
+		</indexterm>
+		<para>
+		The outer index is the hash index that we've seen before, the inner
+		index is a FIFO index. A FIFO index doesn't have any key, it just keeps
+		the rows in the order they were inserted. You can search in a FIFO
+		index but most of the time it's not the best idea: since it has no
+		keys, it searches linearly through all its rows until it finds an exact
+		match (or runs out of rows). It's a reasonable last-resort way but it's
+		not fast and in many cases not what you want. This also sends
+		a few ripples through the row deletion. Remember that the method
+		<pre>deleteRow()</pre> and sending the <pre>OP_DELETE</pre> to the table's input label invoke
+		<pre>find()</pre>, which would cause the linear search on the FIFO indexes. So
+		when you use a FIFO index, it's usually better to find the row handle
+		you want to delete in some other way and then call <pre>remove()</pre> on it, or
+		use another approach that will be shown later. Or just keep inserting
+		the rows and never delete them, like this example does.
+		</para>
+
+		<para>
+		A FIFO index may contain multiple copies of an exact same
+		row. It doesn't care, it just keeps whatever rows were given to it in
+		whatever order they were given. 
+		</para>
+
+		<para>
+		By default a FIFO index just keeps whatever rows come to it. However it
+		may have a few options. Setting the option <pre>limit</pre> limits the number of
+		rows stored in the index (not per the whole table but per one of those
+		<quote>miniature tables</quote>). When you try to insert one row too many, the oldest
+		row gets thrown out, and the limit stays unbroken. That's what creates
+		the window behavior: keep the most recent N rows.
+		</para>
+
+		<para>
+		If you look at the sample output, you can see that inserting the rows
+		with ids 1-4 generates only the insert events on the table. But the
+		rows 5 and 6 start overflowing their FIFO indexes, and cause the oldest
+		row to be automatically deleted before completing the insert of the new
+		one.
+		</para>
+
+		<para>
+		A FIFO index doesn't have to be nested inside a hash index. If you put
+		a FIFO index at the top level, it will control the whole table. So it
+		would be not two last record per key but two last records inserted in the
+		whole table.
+		</para>
+
+		<para>
+		Continuing with the example, the table gets created, and then the index
+		types get extracted back from the table type. Now, why not just write
+		out the table type creation as shown above and remember the index
+		references? At some point in the past this actually would have worked
+		but not any more. It has to do with the way the table type and its
+		index types are connected. It's occasionally convenient to create one
+		index type and then reuse it in multiple table types. However for the
+		whole thing to work, the index type must be tied to its particular
+		table type. This tying together happens when the table type is
+		initialized. If you put the same index type into two table types, then when
+		the first table type is initialized, the index type will get tied to
+		it. The second table type would then fail to initialize because an
+		index in it is already tied elsewhere. To get around this
+		dilemma, now when you call <pre>addSubIndex()</pre>, it doesn't connect the
+		original index type, instead it makes a copy of it. That copy then gets
+		tied with the table type and later gets returned back with <pre>findSubIndex()</pre>.
+		</para>
+
+		<para>
+		The table methods that take an index type argument
+		absolutely require that the index type must be tied to that table's type. If
+		you try to pass a seemingly the same index type that has not been tied,
+		or has been tied to a different table type, that is an error. 
+		</para>
+
+		<para>
+		One last note on this subject: there is
+		no interdependency between the methods <pre>makeTable()</pre> and <pre>findSubIndex()</pre>,
+		they can be done in either order.
+		</para>
+
+		<para>
+		The example output comes from two sources. The running updates on the table's
+		modifications (the lines with <pre>OP_INSERT</pre> and <pre>OP_DELETE</pre>) are printed from the label
+		<pre>$lbWindowPrint</pre>. The new window contents is printed from the main loop.
+		</para>
+
+		<para>
+		The main loop reads the trade records in the simple
+		CSV format without the opcode, and for simplicity inserts directly 
+		into the table with the procedural API, bypassing
+		the scheduler. After the row is inserted, the contents of its index
+		group (that <quote>miniature table</quote>) gets printed. The insertion could as
+		well have been done with passing directly the row reference, without
+		explicitly creating a handle. But that handle will be used to
+		demonstrate an interesting point.
+		</para>
+
+		<para>
+		To print the contents of an index group, we need to find its
+		boundaries. In Triceps these boundaries are expressed as the first row
+		handle of the group, and as the row handle right after the group. There
+		is an internal logic to that, and it will be explained later, but for
+		now just take it on faith.
+		</para>
+
+		<para>
+		With the information we have, there are two ways to find the first row of the group:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		With the table's method <pre>findIdx()</pre>. It's very much like <pre>find()</pre>, only it
+		has an extra argument of a specific index type. If the index type given
+		has no further nesting in it, <pre>findIdx()</pre> works exactly like <pre>find()</pre>. In
+		fact, <pre>find()</pre> is exactly such a special case of <pre>findIdx()</pre> with an
+		automatically chosen index type. If you use an index type with further nesting
+		under it, <pre>findIdx()</pre> will return the handle of the first row in the
+		group under it (or the usual NULL row handle if not found).
+		</listitem>
+		<indexterm>
+			<primary>RowHandle</primary>
+		</indexterm>
+		<listitem>
+		If we create the row handle explicitly before inserting it into the
+		table, as was done in the example, that will be the exact row handle
+		inserted into the table. Not a copy or anything but this particular row
+		handle. After a row handle gets inserted into the table, it knows its
+		position in the indexes. It knows, in which group it is.
+		And we still have a reference to it. So then
+		we can use this knowledge to navigate within the group, 
+		jump to the first row handle in the group
+		with <pre>firstOfGroupIdx()</pre>. It also takes an index type but in this case
+		it's the type that controls the group, the FIFO index in out case.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The example shows both ways. As a demonstration, it uses the first way
+		if the symbol is <quote>AAA</quote> and the second way for all the other symbols.
+		</para>
+
+		<para>
+		The end boundary is found by calling <pre>nextGroupIdx()</pre> on the first row's
+		handle. The handle of the newly inserted row could have also been used for
+		<pre>nextGroupIdx()</pre>, or any other handle in the group. For any
+		handle belonging to the same group, the result is exactly the same.
+		</para>
+
+		<para>
+		And finally, after the iteration boundaries have been found,
+		the iteration on the group can run. The end
+		condition comparison is done with <pre>same()</pre>, to compare the row
+		handle references and not just their Perl-level wrappers. The stepping
+		is done with <pre>nextIdx()</pre>, with is exactly like <pre>next()</pre> but according to a
+		particular index, the FIFO one. This has actually been done purely to
+		show off this method. In this particular case the result produced by
+		<pre>next()</pre>, <pre>nextIdx()</pre> on the FIFO index type and <pre>nextIdx()</pre> on 
+		the outer hash index type is exactly the same. We'll come to the reasons of
+		that yet.
+		</para>
+
+		<para>
+		Looking forward, as you iterate through the group, you could do some manual aggregation
+		along the way. For example, find the average price of the last two
+		trades, and then do something useful with it.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
