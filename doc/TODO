@@ -34,6 +34,7 @@ Things that need to be done:
 * make the Perl tracer with row contents a standard Triceps object
 * in the C++-underlying-Perl objects have a place to keep $self,
   with $obj->getSelf()->{CLASS} containing the blessing.
+* when printing table types and such, make sure to \-escape the funny characters
 
 * doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
@@ -60,5 +61,7 @@ Used blog entries:
 013-025
 027-037
 043
+047
+048 except for getKeys()
 095
 110
