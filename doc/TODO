@@ -48,6 +48,7 @@ Things that need to be done:
   may be expecting its result
 * doc: for EM_* say that the string versions are acceptable
 * doc: make an explicit section on the error handling connentions (near deaths and confessions)
+* doc: put somewhere that a row handle is an iterator on all the table's indexes
 
 App ideas:
 * queries on CSV files
@@ -59,7 +60,7 @@ Docbook stuff:
 Used blog entries:
 000-011
 013-025
-027-037
+027-039
 043
 047
 048 except for getKeys()

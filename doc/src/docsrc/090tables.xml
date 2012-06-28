@@ -783,6 +783,8 @@ $result = $rh->isInTable();
 		<para>
 		There is more to the row handles than has been touched upon yet. It
 		will all be revealed when more of the table features are described.
+		The internal structure of the row handles will be described in the
+		<xref linkend="sc_table_indextree" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 
@@ -925,6 +927,10 @@ New contents:
   id="6" symbol="BBB" price="300" size="300" 
 </exdump>
 
+		<indexterm>
+			<primary>index</primary>
+			<secondary>group</secondary>
+		</indexterm>
 		<para>
 		You can see that the window logic works: at no time is there
 		more than two rows in each group. As more rows are inserted,
@@ -2025,6 +2031,425 @@ sub {
 		want to deal with the code generation and compilation, you can just
 		call your class methods and whatnot to interpret the arguments. But if
 		the code will be reused, the compilation is more efficient.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_table_indextree">
+		<title>The index tree</title>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>leaf</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>index</primary>
+			<secondary>non-leaf</secondary>
+		</indexterm>
+		<para>
+		The index types in a table type can form a pretty much arbitrary tree.
+		Following the common tree terminology, the index types that have no
+		other index types nested in them, are called the <i>leaf</i> index
+		types. Since there seems to be no good one-word naming for the index
+		types that have more index types nested in them ("inner"? "nested" is
+		too confusing), I simply call them <i>non-leaf</i>.
+		</para>
+
+		<para>
+		At the moment the Hashed, Sorted and Ordered index types can be used
+		only in both leaf and non-leaf positions. The FIFO index types must
+		always be in the leaf position, they don't allow the further nesting.
+		</para>
+
+		<para>
+		Now is the time to look deeper into what is going on inside a table.
+		Note that I've been very carefully talking about <quote>index types</quote> and not
+		<quote>indexes</quote>. In this section the difference matters. The index types are in
+		the table type, the indexes are in the table. One index type may
+		generate multiple indexes.
+		</para>
+
+		<para>
+		This will become clearer after you see the illustrations. 
+		First, the legend in the
+		<xref linkend="fig_idx_legend" xrefstyle="select: label nopage"/>&xrsp;.
+		</para>
+
+		<figure id="fig_idx_legend" >
+			<title>Drawings legend.</title>
+			<xi:include href="file:///FIGS/idx-000-legend.xml"/> 
+		</figure>
+
+		<indexterm>
+			<primary>RowHandle</primary>
+		</indexterm>
+		<para>
+		The nodes belonging to the table type are shown in red, the nodes
+		belonging to the table are shown in blue, and the contents of the
+		RowHandle is shown separately in yellow. The lines on the drawings
+		represent not exactly pointers as such but more of the logical
+		connections that may be more complicated than the simple pointers.
+		</para>
+
+		<para>
+		The lines in the RowHandle don't mean anything at all, they just show
+		that the parts go together. In reality a RowHandle is a chunk of
+		memory, with various elements placed in that memory. As far as indexes
+		are concerned, the RowHandle contains an iterator for every index where
+		it belongs. This lets it know its position in the table, to iterate
+		along every index, and, most importantly, to be removed quickly from
+		every index. A RowHandle belongs to one index of each index type, and
+		contains the matching number of iterators in it.
+		</para>
+
+		<para>
+		The table type is shown as a normal flat tree. But the table itself is
+		more complex and becomes 3-dimensional. Its <quote>view from above</quote> matches
+		the table type's tree but the data grows <quote>up</quote> in the third dimension.
+		</para>
+
+		<para>
+		Let's start with the simplest case: a table type with only one index
+		type. Whether the index type is hash or FIFO, doesn't matter here.
+		</para>
+
+<pre>
+TableType
++-IndexType "A"
+</pre>
+
+		<para>
+		<xref linkend="fig_idx_one" xrefstyle="select: label nopage"/>&xrsp;
+		shows the table structure.
+		</para>
+
+		<figure id="fig_idx_one" >
+			<title>One index type.</title>
+			<xi:include href="file:///FIGS/idx-010-one.xml"/> 
+		</figure>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>root</secondary>
+		</indexterm>
+		<para>
+		The table here always contains exactly one index, matching the one
+		defined index type, and the root index. The root index is very dumb,
+		its only purpose is to tie together the multiple top-level indexes into
+		a tree.
+		</para>
+
+		<para>
+		The only index of type A provides an ordering of the records, and this
+		ordering is used for the iteration on the table.
+		</para>
+
+		<para>
+		For the next example let's look at the straight nesting in
+		<xref linkend="fig_idx_nested" xrefstyle="select: label nopage"/>&xrsp;.
+		</para>
+
+<pre>
+TableType
++-IndexType "A"
+  +-IndexType "B"
+</pre>
+
+		<figure id="fig_idx_nested" >
+			<title>Straight nesting.</title>
+			<xi:include href="file:///FIGS/idx-020-nested.xml"/> 
+		</figure>
+
+		<para>
+		The stack of row references is shown visually divided to match the
+		indexing, but in reality there is no special division. This was done
+		purely to make the picture easier to read.
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>group</secondary>
+		</indexterm>
+		<para>
+		There is still only one index of type A. And this is always the case
+		with the top-level indexes, there is only one of them. This index
+		divides the rows into 3 <i>groups</i>. Just like the rows in a leaf
+		index, the groups in a non-leaf index are ordered in some 
+		index-specific way.
+		</para>
+
+		<para>
+		Each group then has its own second-level index of type B. Which then
+		defines an order for the rows in it. To reiterate: the index of type A
+		splits the rows by groups, then the group's index of type B defines the
+		order of the rows in the group.
+		</para>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>iteration</secondary>
+		</indexterm>
+		<para>
+		So what happens when we iterate through the table and ask for the next
+		row handle? The current row handle contains the iterators in the
+		indexes of types A and B. The easy thing is to advance the iterator of
+		type B. Yeah, but in <i>which</i> index? The 
+		<xref linkend="fig_idx_nested" xrefstyle="select: label nopage"/>&xrsp;
+		shows three indexes of
+		type B, let's call them B1, B2 and B3. The iterator of type B in the
+		row handle tells the relative position in the index, but it doesn't
+		tell, which index it is. We need to step back and look at the index
+		type A. It's the top-level index type, so there is always only one
+		index for it. Then we take the iterator of type A and find this row's
+		group in the index A. The group contains the index of type B, say B1.
+		We can then take this index B1, take the iterator of type B from the
+		row handle, and advance this iterator in this index. If the advance
+		succeeded, then great, we've got the next row handle. But if the
+		current row was the last row in B1, we need to step back to the index A
+		again, advance the current row handle's iterator of type A there, find
+		its index B2, and pick the first row handle of B2.
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>default</secondary>
+		</indexterm>
+		<para>
+		This process is what happens when we use <pre>$rh->nextIdx($itB)</pre>. 
+		The iteration goes by the leaf
+		index type B, however it relies on all the index types in the path from
+		the table type to B. If we do <pre>$rh->next()</pre>, the result is the same
+		because the <i>first leaf</i> index type is used as the default index type for
+		the iteration.
+		</para>
+
+		<para>
+		If we do <pre>$rh->next($itA)</pre>, the semantics is still the same:
+		return the next row handle (not the next group). There is no way to get
+		to the row handle without going all the way through a leaf index. So
+		when a non-leaf index type is used for the iteration, it gets
+		implicitly extended to its first nested leaf index type. 
+		</para>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>insert</secondary>
+		</indexterm>
+		<para>
+		What would happen if a new row gets inserted, and the index type A
+		determines that it does not belong to any of the existing groups? A new
+		group will be created and inserted in the appropriate position in A's
+		order. This group will have a new index of type B created, and the new
+		row inserted in that index.
+		</para>
+
+		<para>
+		What would happen if both rows in B1 are removed? B1 will become empty
+		and will be collapsed. The index A will delete the B1's group and B1
+		itself, and will remain with only two groups. The effect propagates
+		upwards: if all the rows are removed, the last index of type B will
+		collapse, then the index A will become empty and also collapse and be
+		deleted. The only thing left will be the root index that stays in the
+		existence no matter what.
+		</para>
+
+		<para>
+		When a table is first created, it has only the root index. The rest of
+		the indexes pop into the existence as the rows get inserted. If you
+		wonder, yes, this does apply to a table type with only one index type
+		as well. Just this point has not been brought up until now.
+		</para>
+
+		<para>
+		Among all this froth of creation and collapse the iterators stay
+		stable. Once a row is inserted, the indexes leading to it are not going
+		anywhere (at least until that row gets removed). But since other rows
+		and groups may be inserted around it, the notion of what row is next,
+		will change over time.
+		</para>
+
+		<para>
+		Let's go through how the other index-related operations work.
+		</para>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>iteration</secondary>
+		</indexterm>
+		<para>
+		The iteration through the whole table starts with <pre>begin()</pre> or
+		<pre>beginIdx()</pre>, the first being a form of the second that always uses the
+		first leaf index type. <pre>beginIdx()</pre> is fairly straightforward: it just
+		follows the path from the root to the leaf, picking the first position
+		in each index along the way, until it hits the RowHandle, as is shown in
+		<xref linkend="fig_idx_nested_begin" xrefstyle="select: label nopage"/>&xrsp;.
+		That found RowHandle becomes its result. If the table is
+		empty, it returns the NULL row handle.
+		</para>
+
+		<figure id="fig_idx_nested_begin" >
+			<title><pre>begin()</pre>, <pre>beginIdx($itA)</pre> and <pre>beginIdx($itB)</pre> work the same for this table.</title>
+			<xi:include href="file:///FIGS/idx-021-nested-begin.xml"/> 
+		</figure>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>find</secondary>
+		</indexterm>
+		<para>
+		The next pair is <pre>find()</pre> and <pre>findIdx()</pre> (and
+		<pre>findBy()</pre> and <pre>findIdxBy()</pre> are wrappers around those). 
+		As usual, <pre>find()</pre> is the same
+		thing as <pre>findIdx()</pre> on the table's first leaf index type. It also
+		follows the path from the root to the target index type. On each step
+		it tries to find a matching position in the current index. If the
+		position could not be found, the search fails and a NULL row handle is
+		returned. If found, it is used to progress to the next index.
+		</para>
+
+		<para>
+		As has been mentioned in
+		<xref linkend="sc_table_RowHandle" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;, 
+		the search always works internally on a
+		RowHandle argument. If a plain Row is used as an argument, a new
+		temporary RowHandle will be created for it, searched, and then freed
+		after the search. This works well for two reasons. First, the indexes
+		already have the functions for comparing two row handles to build their
+		ordering. The same functions are reused for the search. Second, the row
+		handles contain not only the index iterators but also the cached
+		information from the rows, to make the comparisons faster. The exact
+		kind of cached information varies by the index type. The FIFO,
+		Sorted and Ordered indexes
+		use none. The Hashed indexes calculate a hash of the key field values,
+		that will be used as a quick differentiator for the search. This
+		information gets created when the row handle gets created. Whether the
+		row handle is then used to insert into the table or to search in it,
+		the hash is then used in the same way, to speed up the comparisons.
+		</para>
+
+		<para>
+		In <pre>findIdx()</pre>, the non-leaf index type arguments behave differently
+		than the leaf ones: up to and including the index of the target type,
+		the search works as usual. But then at the next level the logic
+		switches to the same as in <pre>beginIdx()</pre>, going for the first row handle
+		of the first leaf sub-index. This lets you find the first row handle of
+		the matching group under the target index type.
+		</para>
+
+		<para>
+		If you use <pre>$table->findIdx($itA, $rh)</pre>, on 
+		<xref linkend="fig_idx_nested_findidx" xrefstyle="select: label nopage"/>&xrsp;
+		it will go through
+		the root index to the index A. There it will try to find the matching
+		position. If none is found, the search ends and returns a NULL row
+		handle. If the position is found, the search progresses towards the
+		first leaf sub-index type. Which is the index type B, and which
+		conveniently sits in this case right under A. The position in the index
+		A determines, which index of type B will be used for the next step.
+		Suppose it's the second position, so the second index of type B is
+		used. Since we're now past the target index A, the logic used is the
+		same as for <pre>beginIdx()</pre>, and the first position in B2 is picked. Which
+		then leads to the first row handle of the second sub-stack of handles.
+		</para>
+
+		<figure id="fig_idx_nested_findidx" >
+			<title><pre>findIdx($itA, $rh)</pre> goes through A and then switches to the <pre>beginIdx()</pre> logic.</title>
+			<xi:include href="file:///FIGS/idx-022-nested-findidx.xml"/> 
+		</figure>
+
+		<para>
+		The method <pre>firstOfGroupIdx()</pre> allows to navigate within a group, to jump
+		from some row somewhere in the group to the first one, and then from
+		there iterate through the group. The example in
+		<xref linkend="sc_table_fifo" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		made use of it.
+		</para>
+
+		<para>
+		The 
+		<xref linkend="fig_idx_nested_firstOfGroupIdx" xrefstyle="select: label nopage"/>&xrsp;
+		shows an example of <pre>$table->firstOfGroupIdx($itB, $rh)</pre>,
+		where <pre>$rh</pre> is pointing to the third record in B2. What it needs to do is
+		go back to B2, and then execute the <pre>begin()</pre> logic from there on.
+		However, remember, the row handle does not have a pointer to the
+		indexes in the path, it only has the iterators. So, to find B2, the
+		method does not really back up from the original row. It has to start
+		all the way back from the root and follow the path to B2 using the iterators in
+		<pre>$rh</pre>. Since it uses the ready iterators, this works fast and requires no
+		row comparisons. But logically it's equivalent to backing up by one level,
+		and I'll continue calling it that for simpicity.
+		Once B2 (an index of type B) is reached, the <pre>begin()</pre> logic goes for
+		the first row in there.
+		</para>
+
+		<para>
+		<pre>firstOfGroupIdx()</pre> works on both leaf and non-leaf index type arguments
+		in the same way: it backs up from the reference row to the index of
+		that type and executes the <pre>begin()</pre> logic from there. Obviously, if you
+		use it on a non-leaf index type, the <pre>begin()</pre>-like part will follow its
+		first leaf index type.
+		</para>
+
+		<figure id="fig_idx_nested_firstOfGroupIdx" >
+			<title><pre>firstOfGroupIdx($itB, $rh)</pre>.</title>
+			<xi:include href="file:///FIGS/idx-023-nested-firstOfGroupIdx.xml"/> 
+		</figure>
+
+		<para>
+		The method <pre>nextGroupIdx()</pre> jumps to the first row of the next group,
+		according to the argument index type. To do that, it has to retrace one
+		level higher than <pre>firstOfGroupIdx()</pre>. 
+		<xref linkend="fig_idx_nested_nextGroupIdx" xrefstyle="select: label nopage"/>&xrsp;
+		shows that
+		<pre>$table->nextGroupIdx($itB, $rh)</pre> that starts from the same row handle
+		as in
+		<xref linkend="fig_idx_nested_firstOfGroupIdx" xrefstyle="select: label nopage"/>&xrsp;,
+		has to logically back up to the index A, go to the next
+		iterator there, and then follow to the first row of B3.
+		</para>
+
+		<figure id="fig_idx_nested_nextGroupIdx" >
+			<title><pre>nextGroupIdx($itB, $rh)</pre>.</title>
+			<xi:include href="file:///FIGS/idx-024-nested-nextGroupIdx.xml"/> 
+		</figure>
+
+		<para>
+		As before, in reality there is no backing up, just the path is retraced
+		from the root using the iterators in the row handle. Once the parent of
+		index type B is reached (which is the index of type A), the path
+		follows not the iterator from the row handle but the next one (yes,
+		copied from the row handle, increased, followed). This gives the index
+		of type B that contains the next group. And from there the same
+		<pre>begin()</pre>-like logic finds its first row.
+		</para>
+
+		<para>
+		Same as <pre>firstOfGroupIdx()</pre>, <pre>nextGroupIdx()</pre> may be used on both the leaf
+		and non-leaf indexes, with the same logic.
+		</para>
+
+		<para>
+		It's kind of annoying that <pre>firstOfGroupIdx()</pre> and <pre>nextGroupIdx()</pre> take
+		the index type inside the group while <pre>findIdx()</pre> uses takes the parent
+		index type to act on the same group. But as you can see, each of them
+		follows its own internal logic, and I'm not sure if they can be
+		reconciled to be more consistent.
+		</para>
+
+		<para>
+		At the moment the only navigation is forward. There is no matching
+		<pre>last()</pre>, <pre>prev()</pre> or <pre>lastGroupIdx()</pre> or <pre>prevGroupIdx()</pre>. They are in the
+		plan, but so far they are the victims of corner-cutting. Though there is a version of
+		<pre>last()</pre> in the AggregatorContext, since it happens to be particularly important
+		for the aggregation.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
