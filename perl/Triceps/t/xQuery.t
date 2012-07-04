@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 3 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -344,11 +344,11 @@ sub makeServerOutLabel # ($fromLabel)
 
 package Query1;
 
-sub new # ($class, $name, $table)
+sub new # ($class, $table, $name)
 {
 	my $class = shift;
-	my $name = shift;
 	my $table = shift;
+	my $name = shift;
 
 	my $unit = $table->getUnit();
 	my $rt = $table->getRowType();
@@ -403,7 +403,7 @@ sub runQuery1
 my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
-my $query = Query1->new("qWindow", $tWindow);
+my $query = Query1->new($tWindow, "qWindow");
 my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
@@ -423,7 +423,7 @@ run(\%dispatch);
 );
 $result = undef;
 &runQuery1();
-print $result;
+#print $result;
 ok($result, 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
@@ -436,4 +436,135 @@ qWindow.out,OP_NOP,,,,
 qWindow.out,OP_INSERT,3,AAA,20,20
 qWindow.out,OP_INSERT,5,AAA,30,30
 qWindow.out,OP_NOP,,,,
+');
+
+#########################
+# Module for querying the table, version 2: including the table.
+
+package TableQuery2;
+use Carp;
+
+sub new # ($class, $unit, $tabType, $name)
+{
+	my $class = shift;
+	my $unit = shift;
+	my $tabType = shift;
+	my $name = shift;
+
+	my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+		or confess "Query2 table creation failed: $!";
+	my $rt = $table->getRowType();
+
+	my $self = {};
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{table} = $table;
+	$self->{qLabel} = $unit->makeLabel($rt, $name . ".query", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{resLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{resLabel}, "OP_NOP");
+	}, $self);
+	$self->{resLabel} = $unit->makeDummyLabel($rt, $name . ".response");
+	
+	$self->{sendLabel} = &ExitServer::makeServerOutLabel($self->{resLabel});
+
+	bless $self, $class;
+	return $self;
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+sub getQueryLabel # ($self)
+{
+	my $self = shift;
+	return $self->{qLabel};
+}
+
+sub getResponseLabel # ($self)
+{
+	my $self = shift;
+	return $self->{resLabel};
+}
+
+sub getSendLabel # ($self)
+{
+	my $self = shift;
+	return $self->{sendLabel};
+}
+
+sub getTable # ($self)
+{
+	my $self = shift;
+	return $self->{table};
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{table}->getInputLabel();
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{table}->getOutputLabel();
+}
+
+sub getPreLabel # ($self)
+{
+	my $self = shift;
+	return $self->{table}->getPreLabel();
+}
+
+package main;
+
+#########################
+# Server with module version 2.
+
+sub runQuery2
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $window = TableQuery2->new($uTrades, $ttWindow, "window");
+
+my %dispatch;
+$dispatch{$window->getName()} = $window->getInputLabel();
+$dispatch{$window->getQueryLabel()->getName()} = $window->getQueryLabel();
+$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = (
+	"window,OP_INSERT,1,AAA,10,10\n",
+	"window,OP_INSERT,3,AAA,20,20\n",
+	"window.query,OP_INSERT\n",
+	"window,OP_INSERT,5,AAA,30,30\n",
+	"window.query,OP_INSERT\n",
+);
+$result = undef;
+&runQuery2();
+#print $result;
+ok($result, 
+'> window,OP_INSERT,1,AAA,10,10
+> window,OP_INSERT,3,AAA,20,20
+> window.query,OP_INSERT
+> window,OP_INSERT,5,AAA,30,30
+> window.query,OP_INSERT
+window.response,OP_INSERT,1,AAA,10,10
+window.response,OP_INSERT,3,AAA,20,20
+window.response,OP_NOP,,,,
+window.response,OP_INSERT,3,AAA,20,20
+window.response,OP_INSERT,5,AAA,30,30
+window.response,OP_NOP,,,,
 ');
