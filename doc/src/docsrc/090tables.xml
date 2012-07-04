@@ -3000,6 +3000,60 @@ $result = $idxType1->match($idxType2);
 		the sorted condition must also be the same, and by extension this
 		means the same condition for the Ordered index.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_table_copy_tray">
+		<title>The copy tray</title>
+
+		<para>
+		The table methods <pre>insert()</pre>, <pre>remove()</pre> and <pre>deleteRow()</pre> have an extra
+		optional argument: the copy tray.
+		</para>
+
+		<indexterm>
+			<primary>copy tray</primary>
+		</indexterm>
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		If used, it will put a copy of all the rowops produced during the
+		operation (including the output of the aggregators, which will be
+		described in 
+		XXX forward ref
+		) into that tray. The
+		idea here is to use it in cases if you don't want to connect the output
+		labels of the table directly, but instead collect and process the rows
+		from the tray manually afterwards. Like this:
+		</para>
+
+<pre>
+$ctr = $unit->makeTray();
+$table->insert($row, $ctr);
+foreach my $rop ($ctr->toArray()) {
+	...
+}
+</pre>
+
+		<para>
+		However in reality it didn't work out so well. The processing loop
+		would have to have all the lengthy if-else sequences to branch first by
+		the label (if there are any aggregators) and then by opcode. It looks
+		too difficult. Well, it could work in the simple situations but not
+		more than that.
+		</para>
+
+		<para>
+		In the future this feature will likely be deprecated unless it proves
+		itself useful, and I already have a better idea. Because of this, I see
+		no point in going into the more extended examples.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
