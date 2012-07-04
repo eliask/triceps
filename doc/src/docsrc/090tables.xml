@@ -3048,8 +3048,19 @@ foreach my $rop ($ctr->toArray()) {
 		itself useful, and I already have a better idea. Because of this, I see
 		no point in going into the more extended examples.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_table_wrapup">
+		<title>Table wrap-up</title>
 
 		<para>
+		Not all of the table's features have been shown yet. The table
+		class is the cornerstone of Triceps, and everything is connected
+		to it.  The aggregators
+		work with the tables and are a whole separate big subject with their
+		own chapter. There also are many more options and methods that
+		haven't been touched upon yet. They are enumerated in the reference
+		chapter, please refer there.
 		</para>
 
 		<para>
