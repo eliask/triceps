@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 2 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -22,6 +22,7 @@ use IO::Socket::INET;
 ok(1); # If we made it this far, we're ok.
 
 use strict;
+no warnings;
 
 #########################
 
@@ -72,17 +73,18 @@ our %inbufs; # input buffers, collecting the whole lines
 our %outbufs; # output buffers
 our $poll; # the poll object
 our $cur_cli; # the id of the current client being processed
+our $srv_exit; # exit when all the client connections are closed
 
 # writing to the output buffers
 sub outBuf # ($id, $string)
 {
 	my $id = shift;
 	my $line = shift;
-	#&sendX("XXX writing1 to $id: $line\n");
+	&sendX("XXX writing1 to $id: $line\n");
 	$outbufs{$id} .= $line;
 	#&sendX("XXX writing to $id: ", $outbufs{$id}, "\n");
 	# If there is anything to write on a buffer, stop reading from it.
-	$poll->mask($clients{$id} => (POLLHUP|POLLOUT));
+	$poll->mask($clients{$id} => POLLOUT);
 }
 
 sub outCurBuf # ($string)
@@ -114,8 +116,9 @@ sub mainLoop # ($srvsock, $%labels)
 
 	$srvsock->blocking(0);
 	$poll->mask($srvsock => POLLIN);
+	$srv_exit = 0;
 
-	while(1) {
+	while(!$srv_exit || keys %clients != 0) {
 		my $r = $poll->poll();
 		confess "poll failed: $!" if ($r < 0 && ! $!{EAGAIN} && ! $!{EINTR});
 
@@ -139,7 +142,7 @@ sub mainLoop # ($srvsock, $%labels)
 		while (($id, $h) = each %clients) {
 			$cur_cli = $id;
 			$mask = $poll->events($h);
-			if ($mask & POLLHUP) {
+			if (($mask & POLLHUP) && !defined $outbufs{$id}) {
 				&sendX("Lost client $client_id\n");
 				closeClient($id, $h);
 				next;
@@ -156,11 +159,13 @@ sub mainLoop # ($srvsock, $%labels)
 						substr($outbufs{$id}, 0, $n) = '';
 					}
 				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
-					confess "write to client $id failed: $!";
+					warn "write to client $id failed: $!";
+					closeClient($id, $h);
+					next;
 				}
 			}
 			if ($mask & POLLIN) {
-				$n = $h->sysread($s, 1000);
+				$n = $h->sysread($s, 10000);
 				if ($n == 0) {
 					&sendX("Lost client $client_id\n");
 					closeClient($id, $h);
@@ -168,7 +173,9 @@ sub mainLoop # ($srvsock, $%labels)
 				} elsif ($n > 0) {
 					$inbufs{$id} .= $s;
 				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
-					confess "read from client $id failed: $!";
+					warn "read from client $id failed: $!";
+					closeClient($id, $h);
+					next;
 				}
 			}
 			# The way this works, if there is no '\n' before EOF,
@@ -189,13 +196,18 @@ sub mainLoop # ($srvsock, $%labels)
 					my @data = split(/,/, $line);
 					my $lname = shift @data;
 					my $label = $labels->{$lname};
-					confess "unknown label '$label' received from client $id: $line "
-						unless defined $label;
-					my $unit = $label->getUnit();
-					confess "label '$label' received from client $id has been cleared"
-						unless defined $unit;
-					$unit->makeArrayCall($label, @data);
-					$unit->drainFrame();
+					if (defined $label) {
+						my $unit = $label->getUnit();
+						confess "label '$lname' received from client $id has been cleared"
+							unless defined $unit;
+						eval {
+							$unit->makeArrayCall($label, @data);
+							$unit->drainFrame();
+						};
+						warn "input data error: $@\nfrom data: $line\n" if $@;
+					} else {
+						warn "unknown label '$lname' received from client $id: $line "
+					}
 				}
 			}
 		}
@@ -230,6 +242,33 @@ sub startServer # ($labels)
 }
 
 #########################
+# The common client that connects to the port, sends and receives data,
+# and waits for the server to exit.
+
+sub run # ($labels)
+{
+	my $labels = shift;
+
+	my ($port, $pid) = startServer($labels);
+	my $sock = IO::Socket::INET->new(
+		Proto => "tcp",
+		PeerAddr => "localhost",
+		PeerPort => $port,
+	) or confess "socket failed: $!";
+	while(&readLine) {
+		$sock->print($_);
+		$sock->flush();
+	}
+	$sock->print("exit,OP_INSERT\n");
+	$sock->flush();
+	$sock->shutdown(1); # SHUT_WR
+	while(<$sock>) {
+		&send($_);
+	}
+	waitpid($pid, 0);
+}
+
+#########################
 # Common Triceps types.
 
 # The basic table type to be used as template argument.
@@ -251,19 +290,160 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 $ttWindow->initialize() or confess "$!";
 
 #########################
-# A test of echo server.
+# A basic manual test of echo server.
 
 if (0) {
 	my $uEcho = Triceps::Unit->new("uEcho");
 	my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
 		&outCurBuf($_[1]->printP() . "\n");
 	});
+	my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
+		&outCurBuf(join(",", "echo", &Triceps::opcodeString($_[1]->getOpcode()),
+			$_[1]->getRow()->toArray()) . "\n");
+	});
+	my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
+		exit(0);
+	});
 
 	my %dispatch;
 	$dispatch{"echo"} = $lbEcho;
+	$dispatch{"echo2"} = $lbEcho2;
+	$dispatch{"exit"} = $lbExit;
 
 	my ($port, $pid) = &startServer(\%dispatch);
 	print STDERR "port=$port pid=$pid\n";
+	waitpid($pid, 0);
 	exit(0);
 }
 
+#########################
+# Module for server control.
+package ExitServer;
+use Carp;
+
+# Exiting the server.
+
+sub makeExitLabel # ($unit, $name)
+{
+	my $unit = shift;
+	my $name = shift;
+	return $unit->makeLabel($unit->getEmptyRowType(), $name, undef, sub {
+		$srv_exit = 1;
+	});
+}
+
+# Sending of rows to the server output.
+sub makeServerOutLabel # ($fromLabel)
+{
+	my $fromLabel = shift;
+	my $unit = $fromLabel->getUnit();
+	my $fromName = $fromLabel->getName();
+	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
+		$fromName . "serverOut", undef, sub {
+			&main::outCurBuf(join(",", $fromName, 
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		});
+	$fromLabel->chain($lbOut) or confess "$!";
+	return $lbOut;
+}
+
+
+#########################
+# Module for querying the table, version 1: no conditions.
+
+package Query1;
+
+sub new # ($class, $name, $table)
+{
+	my $class = shift;
+	my $name = shift;
+	my $table = shift;
+
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	my $self = {};
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{table} = $table;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+package main;
+
+#########################
+# Server with module version 1.
+
+sub runQuery1
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query1->new("qWindow", $tWindow);
+my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = (
+	"tWindow,OP_INSERT,1,AAA,10,10\n",
+	"tWindow,OP_INSERT,3,AAA,20,20\n",
+	"qWindow,OP_INSERT\n",
+	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"qWindow,OP_INSERT\n",
+);
+$result = undef;
+&runQuery1();
+print $result;
+ok($result, 
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+');
