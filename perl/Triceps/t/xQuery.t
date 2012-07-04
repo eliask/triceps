@@ -184,6 +184,8 @@ sub mainLoop # ($srvsock, $%labels)
 					&outCurBuf("$line\n");
 				} else {
 					chomp $line;
+					local $/ = "\r"; # take care of a possible CR-LF
+					chomp $line;
 					my @data = split(/,/, $line);
 					my $lname = shift @data;
 					my $label = $labels->{$lname};
@@ -228,15 +230,6 @@ sub startServer # ($labels)
 }
 
 #########################
-# A test of echo server.
-
-if (0) {
-	my ($port, $pid) = &startServer(0);
-	print STDERR "port=$port pid=$pid\n";
-	exit(0);
-}
-
-#########################
 # Common Triceps types.
 
 # The basic table type to be used as template argument.
@@ -256,4 +249,21 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
+
+#########################
+# A test of echo server.
+
+if (0) {
+	my $uEcho = Triceps::Unit->new("uEcho");
+	my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
+		&outCurBuf($_[1]->printP() . "\n");
+	});
+
+	my %dispatch;
+	$dispatch{"echo"} = $lbEcho;
+
+	my ($port, $pid) = &startServer(\%dispatch);
+	print STDERR "port=$port pid=$pid\n";
+	exit(0);
+}
 
