@@ -19,6 +19,9 @@ BEGIN { plan tests => 37 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
+# the warnings mode causes confusing warnings about data type conversions
+no warnings;
+
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
@@ -82,7 +85,7 @@ $r1 = $rt1->makeRowHash(
 ok(ref $r1, "Triceps::Row");
 
 # try giving a non-numeric and non-convertible value to a numeric field
-print STDERR "\nIgnore the following message about non-numeric, if any\n";
+#print STDERR "\nIgnore the following message about non-numeric, if any\n";
 $r1 = $rt1->makeRowHash(
 	a => "uint8",
 	b => "z123",
