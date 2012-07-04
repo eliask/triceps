@@ -3062,20 +3062,6 @@ foreach my $rop ($ctr->toArray()) {
 		haven't been touched upon yet. They are enumerated in the reference
 		chapter, please refer there.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-
 	</sect1>
 
 </chapter>

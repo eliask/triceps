@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_templates" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Templates</title>
+
+	<sect1 id="sc_template_intro">
+		<title>Comparative modularity</title>
+
+		<indexterm>
+			<primary>template</primary>
+		</indexterm>
+		<para>
+		The templates are the Triceps term for the reusable program modules.
+		I've adopted the term from &Cpp; because that was my inspiration
+		for flexibility. But the Triceps templates are much more flexible yet.
+		The problem with the &Cpp; templates is that you have to write in them
+		like in a functional language, substituting loops with recursion,
+		with perverse nested calls for branching, and the result is quite
+		hard to diagnose. Triceps uses the Perl's compilation on the fly
+		to make things easier and more powerful.
+		</para>
+
+		<para>
+		Triceps is not unique in the desire for modularity. The other CEP
+		systems have it too, but they tend to have it even more rigid than
+		the &Cpp; templates.  Let me show on a simple example.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<para>
+		Coral8 doesn't provide a way to query the windows directly, especially
+		when the CCL is compiled without debugging. So you're expected to make
+		your own. People at a company where I've worked have developed a nice
+		pattern that goes approximately like this:
+		</para>
+
+<pre>
+// some window that we want to make queryable
+create window w_my schema s_my
+keep last per key_a per key_b
+keep 1 week;
+
+// the stream to send the query requests
+// (the schema can be shared by all simple queries) 
+create schema s_query (
+	qqq_id string // unique id of the query
+);
+create input stream query_my schema s_query;
+
+// the stream to return the results
+// (all result streams will inherit a partial schema)
+create schema s_result (
+	qqq_id string, // returns back the id received in the query
+	qqq_end boolean, // will be TRUE in the special end indicator record
+);
+create output stream result_my schema inherits from s_result, s_my;
+
+// now process the query
+insert into result_my
+select q.qqq_id, NULL, w.*
+from s_query as q, w_my as w;
+
+// the end marker
+insert into result_my (qqq_id, qqq_end)
+select qqq_id, TRUE
+from s_query;
+</pre>
+
+		<para>
+		To query the window, a program would select a unique query id,
+		subscribe to result_my with a filter <pre>(qqq_id = unique_id)</pre> and send a
+		record of <pre>(unique_id)</pre> into <pre>query_my</pre>. Then it would sit and
+		collect the result rows. Finally it would get a row with <pre>qqq_end = TRUE</pre>
+		and disconnect.
+		</para>
+
+		<para>
+		This is a fairly large amount of code to be repeated for every window.
+		What I would like to to instead is to just write:
+		</para>
+
+<pre>
+create window w_my schema s_my
+keep last per key_a per key_b
+keep 1 week;
+
+make_queryable(w_my);
+</pre>
+
+		<para>
+		and have the template <pre>make_queryable</pre> expand into the rest of the code
+		(obviously, the schema definitions would not need to be expanded
+		repeatedly, they would go into an include file).
+		</para>
+
+		<para>
+		To make things more interesting, it would be nice to have the query
+		filter the results by some field values. Nothing as fancy as SQL, just
+		by equality to some fields. Suppose, s_my includes the fields field_c
+		and field_d, and we want to be able to filter by them. Then the query
+		can be done as:
+		</para>
+
+<pre>
+create input stream query_my schema inherits from s_query (
+	field_c integer,
+	field_d string
+);
+
+// result_my is the same as before...
+
+// query with filtering (in a rather inefficient way) 
+insert into result_my
+select q.qqq_id, NULL, w.*
+from s_query as q, w_my as w
+where
+	(q.field_c is null or q.field_c = w.field_c)
+	and (q.field_d is null or q.field_d = w.field_d);
+
+// the end marker is as before
+insert into result_my (qqq_id, qqq_end)
+select qqq_id, TRUE
+from s_query;
+</pre>
+
+		<para>
+		It would be nice then to create this kind of query as a template
+		instantiation
+		</para>
+
+<pre>
+make_query(w_my, (field_c, field_d));
+</pre>
+
+		<para>
+		Or even better, have the template determine the non-NULL
+		fields in the query record and compile the right query on the
+		fly.
+		</para>
+
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<indexterm>
+			<primary>StreamBase</primary>
+		</indexterm>
+		<para>
+		But the Coral8 modules (nor the later Sybase CEP R5) aren't flexible
+		enough to do any of it. A CCL module requires a fixed schema for all its
+		interfaces.
+		The StreamBase language is more flexible and
+		allows to achieve some of the flexibility through the capture
+		fields, where the <quote>logically unimportant</quote> fields
+		are carried through the module as one combined payload field. 
+		But they don't allow the variable lists of fields as parameters either,
+		nor generation of different model topologies depending on the parameters.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>
