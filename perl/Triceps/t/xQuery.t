@@ -80,16 +80,13 @@ sub outBuf # ($id, $string)
 {
 	my $id = shift;
 	my $line = shift;
-	&sendX("XXX writing1 to $id: $line\n");
 	$outbufs{$id} .= $line;
-	#&sendX("XXX writing to $id: ", $outbufs{$id}, "\n");
 	# If there is anything to write on a buffer, stop reading from it.
 	$poll->mask($clients{$id} => POLLOUT);
 }
 
 sub outCurBuf # ($string)
 {
-	#&sendX("XXX writing cur $cur_cli: ", $_[0], "\n");
 	outBuf($cur_cli, @_);
 }
 
@@ -128,7 +125,7 @@ sub mainLoop # ($srvsock, $%labels)
 				if (defined $client) {
 					$client->blocking(0);
 					$clients{++$client_id} = $client;
-					&sendX("Accepted client $client_id\n");
+					# &send("Accepted client $client_id\n");
 					$poll->mask($client => (POLLIN|POLLHUP));
 				} elsif($!{EAGAIN} || $!{EINTR}) {
 					last;
@@ -143,7 +140,7 @@ sub mainLoop # ($srvsock, $%labels)
 			$cur_cli = $id;
 			$mask = $poll->events($h);
 			if (($mask & POLLHUP) && !defined $outbufs{$id}) {
-				&sendX("Lost client $client_id\n");
+				# &send("Lost client $client_id\n");
 				closeClient($id, $h);
 				next;
 			}
@@ -167,7 +164,7 @@ sub mainLoop # ($srvsock, $%labels)
 			if ($mask & POLLIN) {
 				$n = $h->sysread($s, 10000);
 				if ($n == 0) {
-					&sendX("Lost client $client_id\n");
+					# &send("Lost client $client_id\n");
 					closeClient($id, $h);
 					next;
 				} elsif ($n > 0) {
@@ -182,32 +179,25 @@ sub mainLoop # ($srvsock, $%labels)
 			# the last line won't be processed.
 			# Also, the whole output for all the input will be buffered
 			# before it can be sent.
-			#&sendX("XXX input buffer for $id: ", $inbufs{$id}, "\n");
 			while($inbufs{$id} =~ s/^(.*)\n//) {
 				my $line = $1;
-				#&sendX("XXX line for $id: $line\n");
-				if (0) {
-					# for debugging, an echo server
-					&outCurBuf("$line\n");
+				chomp $line;
+				local $/ = "\r"; # take care of a possible CR-LF
+				chomp $line;
+				my @data = split(/,/, $line);
+				my $lname = shift @data;
+				my $label = $labels->{$lname};
+				if (defined $label) {
+					my $unit = $label->getUnit();
+					confess "label '$lname' received from client $id has been cleared"
+						unless defined $unit;
+					eval {
+						$unit->makeArrayCall($label, @data);
+						$unit->drainFrame();
+					};
+					warn "input data error: $@\nfrom data: $line\n" if $@;
 				} else {
-					chomp $line;
-					local $/ = "\r"; # take care of a possible CR-LF
-					chomp $line;
-					my @data = split(/,/, $line);
-					my $lname = shift @data;
-					my $label = $labels->{$lname};
-					if (defined $label) {
-						my $unit = $label->getUnit();
-						confess "label '$lname' received from client $id has been cleared"
-							unless defined $unit;
-						eval {
-							$unit->makeArrayCall($label, @data);
-							$unit->drainFrame();
-						};
-						warn "input data error: $@\nfrom data: $line\n" if $@;
-					} else {
-						warn "unknown label '$lname' received from client $id: $line "
-					}
+					warn "unknown label '$lname' received from client $id: $line "
 				}
 			}
 		}
