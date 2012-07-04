@@ -15,8 +15,11 @@ See the file COPYRIGHT for the copyright notice and license information
 <book id="GUIDE" xmlns:xi="http://www.w3.org/2001/XInclude">
 	<bookinfo>
 		<title>
-			Triceps CEP v1.0 Developer's Guide
+			Complex Event Processing with Triceps CEP v1.0
 		</title>
+		<subtitle>
+			Developer's Guide
+		</subtitle>
 		<author>
 			<firstname>Sergey</firstname>
 			<othername role="mi">A.</othername>
