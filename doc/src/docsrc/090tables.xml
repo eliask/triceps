@@ -2671,8 +2671,334 @@ TableType
 		a DELETE before the INSERT of the new version of the recond, then this
 		problem won't occur and the order of index types will not matter.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_table_idx_intro">
+		<title>Table and index type introspection</title>
 
 		<para>
+		A lot of information about a table type and the index types in it 
+		can be read back from them.
+		</para>
+
+<pre>
+$result = $tabType->isInitialized();
+$result = $idxType->isInitialized();
+</pre>
+
+		<para>
+		return whether a table or index type has been initialized.
+		The index type gets initialized when the table type where it belongs
+		gets initialized.  After a table or index type has been initialized, it can not
+		be changed any more, and any methods that change it will return an
+		error.
+		When an index type becomes initialized, it becomes tied to a particular
+		table type. This table type can be read with
+		</para>
+
+<pre>
+$tabType = $idxType->getTabtype() or confess "$!";
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>copy</secondary>
+		</indexterm>
+		<para>
+		Even though an initialized index type can't be tied to another table,
+		when you add it to another table or index type, a deep copy with
+		all its sub-indexes will be made automatically, and that copy will 
+		be uninitialized. So it will be able to get initialized and tied to 
+		the new table. However if you want to add more sub-indexes to it,
+		do a manual copy first:
+		</para>
+
+<pre>
+$idxTypeCopy = $idxType->copy();
+</pre>
+
+		<para>
+		The information about the nested indexes can be found with:
+		</para>
+
+<pre>
+$itSub = $tabType->findSubIndex("indexName") or confess "$!";
+@itSubs = $tabType->getSubIndexes();
+
+$itSub = $idxType->findSubIndex("indexName") or confess "$!";
+@itSubs = $idxType->getSubIndexes();
+</pre>
+
+		<para>
+		The <pre>findSubIndex()</pre> has been already shown in
+		<xref linkend="sc_table_secondary" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		It allows to find the index types on the next level of nesting, starting
+		down from the table, and going recursively into the sub-indexes.
+		<pre>getSubIndexes()</pre> returns the information about the index types of the
+		next level at once, as the name => value pairs. The result array
+		can be placed into a hash but that would lose the order
+		of the sub-indexes, and the order is important for the logic.
+		</para>
+
+		<para>
+		This finds the index types step by step. An easier way to find an index
+		type in a table type by the <quote>path of the index</quote> is with
+		</para>
+
+<pre>
+$idxType = $tabType->findIndexPath(\@idxNames);
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>path</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		The arguments in the array form a path of names in the index type tree. If the path
+		is not found, the function would confess.
+		An empty path is also illegal and would cause the same result.
+		Yes, the argument is not an array but a reference to array. This
+		array is used essentially as a path object. For example the
+		index from the
+		<xref linkend="sc_table_secondary" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		could be found as:
+		</para>
+
+<pre>
+$itLast2 = $ttWindow->findIndexPath([ "bySymbol", "last2" ]);
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>key</secondary>
+		</indexterm>
+		<para>
+		The key (the set of fields that uniquely identify the rows) of the index type 
+		can be found with
+		</para>
+
+<pre>
+@keys = $it->getKey();
+</pre>
+
+		<para>
+		It can be used on any kind of index types but actually returns the data
+		only for the Hashed index types.  On the other index types it returns an 
+		empty array, though a better support will be available for the 
+		Sorted and Ordered indexes in the future.
+		</para>
+
+		<para>
+		A fairly common need is to find an index by its name path, and also all the
+		key fields that are used by all the indexes in this path. It's used
+		for such purposes as joins, and it allows to treat a nested index
+		pretty much as a composition of all the indexes in its path.
+		The method
+		</para>
+
+<pre>
+($idxType, @keys) = $tableType->findIndexKeyPath(\@path);
+</pre>
+
+		<para>
+		solves this problem and
+		finds by path an index type that allows the direct look-up by key
+		fields. It requires that every index type in the path returns a
+		non-empty array of fields in <pre>getKey()</pre>. In practice it means that every
+		index in the path must be a Hashed index. Otherwise the method
+		confesses. When the Sorted and maybe other index types will support
+		<pre>getKey()</pre>, they will be usable with this method too.
+		</para>
+
+		<para>
+		Besides checking that each index type in the path works by keys, this
+		method builds and returns the list of all the key fields required for a
+		look-up in this index. Note that <pre>@keys</pre> is an actual array and not a
+		reference to array. The return protocol of this method is a little
+		weird: it returns an array of values, with the first value being the
+		reference to the index type, and the rest of them the names of the key
+		fields. If the table type were defined as
+		</para>
+
+<pre>
+$tt = Triceps::TableType->new($rt)
+	->addSubIndex("byCcy1",
+		Triceps::IndexType->newHashed(key => [ "ccy1" ])
+		->addSubIndex("byCcy12",
+			Triceps::IndexType->newHashed(key => [ "ccy2" ])
+		)
+	)
+	->addSubIndex("byCcy2",
+		Triceps::IndexType->newHashed(key => [ "ccy2" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+</pre>
+
+		<para>
+		then <pre>$tt->findIndexKeyPath([ "byCcy1", "byCcy12" ])</pre> would return 
+		<pre>($ixtref, "ccy1", "ccy2")</pre>, 
+		where <pre>$ixtref</pre> is the reference to the index type. When
+		assigned to <pre>($ixt, @keys)</pre>, <pre>$ixtref</pre> would go into <pre>$ixt</pre>, and 
+		<pre>("ccy1", "ccy2")</pre> would go into <pre>@keys</pre>.
+		</para>
+
+		<para>
+		The key field names in the result go in the order they occurred in the
+		definition, from the outermost to the innermost index. The key fields
+		must not duplicate.  It's possible to define the index types where the
+		key fields duplicate in the path, say:
+		</para>
+
+<pre>
+$tt = Triceps::TableType->new($rt)
+	->addSubIndex("byCcy1",
+		Triceps::IndexType->newHashed(key => [ "ccy1" ])
+		->addSubIndex("byCcy12",
+			Triceps::IndexType->newHashed(key => [ "ccy2", "ccy1" ])
+		)
+	)
+or confess "$!";
+</pre>
+
+		<para>
+		And they would even work fine, with just a little extra overhead from
+		duplication. But <pre>findIndexKeyPath()</pre> will refuse such indexes and
+		confess.
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>type id</secondary>
+		</indexterm>
+		<para>
+		The kind of the index type is also known as the type id. It can be found
+		for an index type with
+		</para>
+
+<pre>
+$id = $idxType->getIndexId();
+</pre>
+
+		<para>
+		It's an integer constant, matching one of the values:
+		</para>
+
+		<indexterm>
+			<primary>constants</primary>
+		</indexterm>
+		<itemizedlist>
+		<listitem>
+		<pre>&Triceps::IT_HASHED</pre>
+		</listitem>
+		<listitem>
+		<pre>&Triceps::IT_FIFO</pre>
+		</listitem>
+		<listitem>
+		<pre>&Triceps::IT_SORTED</pre>
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		There is no different id for the ordered index, because it's
+		built on top of the sorted index, and would return <pre>&Triceps::IT_SORTED</pre>.
+		</para>
+
+		<para>
+		The conversion between the strings and constants for index type ids is done with
+		</para>
+
+<pre>
+$intId = &Triceps::stringIndexId($stringId);
+$stringId = &Triceps::indexIdString($intId);
+</pre>
+
+		<para>
+		If an invalid value is supplied, the conversion functions will return <pre>undef</pre>.
+		</para>
+
+		<para>
+		There is also a way to find the first index type of a particular kind.
+		It's called somewhat confusingly
+		</para>
+
+<pre>
+$itSub = $idxType->findSubIndexById($indexTypeId) or confess "$!";
+</pre>
+
+		<para>
+		where <pre>$indexTypeId</pre> is one of either of Triceps constants or the
+		matching strings <pre>"IT_HASHED"</pre>, <pre>"IT_FIFO"</pre>, <pre>"IT_SORTED"</pre>.
+		</para>
+
+		<para>
+		Technically, there is also IT_ROOT but it's of little use for this
+		situation since it's the root of the index type tree hidden inside the
+		table type, and would never be a sub-index type. It's possible to
+		iterate through all the possible index type ids as
+		</para>
+
+<pre>
+for ($i = 0; $i < &Triceps::IT_LAST; $i++) { ... }
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>default</secondary>
+		</indexterm>
+		<para>
+		The first leaf sub-index type, that is the default for iteration,
+		can be found explicitly as
+		</para>
+
+<pre>
+$itSub = $tabType->getFirstLeaf();
+$itSub = $idxType->getFirstLeaf();
+</pre>
+
+		<para>
+		The usual reference comparison methods are:
+		</para>
+
+<pre>
+$result = $tabType1->same($tabType2);
+$result = $tabType1->equals($tabType2);
+$result = $tabType1->match($tabType2); 
+
+$result = $idxType1->same($idxType2);
+$result = $idxType1->equals($idxType2);
+$result = $idxType1->match($idxType2); 
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>equals</secondary>
+		</indexterm>
+		<para>
+		Two index types are considered equal when they are of the same kind
+		(type id), their type-specific parameters are equal, they have the
+		same number of sub-indexes, with the same names, and equal pair-wise.
+		They must also have the equal aggregators, with will be described in
+		detail in the 
+		XXX chapter forward ref
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>match</secondary>
+		</indexterm>
+		<para>
+		Two index types are considered matching when they are of the same kind,
+		have matching type-specific parameters, they have the same number of
+		sub-indexes, which are matching pair-wise, and the matching aggregators.
+		As far as the type-specific parameters are concerned, it depends on the
+		kind of the index type. The FIFO type considers any parameters matching.
+		For a Hashed index the key fields must be the same. For a Sorted index
+		the sorted condition must also be the same, and by extension this
+		means the same condition for the Ordered index.
 		</para>
 
 		<para>
@@ -2684,8 +3010,7 @@ TableType
 		<para>
 		</para>
 
-		<para>
-		</para>
+
 	</sect1>
 
 </chapter>
