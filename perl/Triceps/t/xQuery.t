@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 8 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -412,17 +412,15 @@ $dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+# the same input and result gets reused mutiple times
+my @inputQuery1 = (
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"qWindow,OP_INSERT\n",
 	"tWindow,OP_INSERT,5,AAA,30,30\n",
 	"qWindow,OP_INSERT\n",
 );
-$result = undef;
-&runQuery1();
-#print $result;
-ok($result, 
+my $expectQuery1 = 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > qWindow,OP_INSERT
@@ -434,7 +432,13 @@ qWindow.out,OP_NOP,,,,
 qWindow.out,OP_INSERT,3,AAA,20,20
 qWindow.out,OP_INSERT,5,AAA,30,30
 qWindow.out,OP_NOP,,,,
-');
+';
+
+@input = @inputQuery1;
+$result = undef;
+&runQuery1();
+#print $result;
+ok($result, $expectQuery1);
 
 #########################
 # Module for querying the table, version 2: including the table.
@@ -655,29 +659,11 @@ $dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
-	"tWindow,OP_INSERT,1,AAA,10,10\n",
-	"tWindow,OP_INSERT,3,AAA,20,20\n",
-	"qWindow,OP_INSERT\n",
-	"tWindow,OP_INSERT,5,AAA,30,30\n",
-	"qWindow,OP_INSERT\n",
-);
+@input = @inputQuery1;
 $result = undef;
 &runQuery3();
 #print $result;
-ok($result, 
-'> tWindow,OP_INSERT,1,AAA,10,10
-> tWindow,OP_INSERT,3,AAA,20,20
-> qWindow,OP_INSERT
-> tWindow,OP_INSERT,5,AAA,30,30
-> qWindow,OP_INSERT
-qWindow.out,OP_INSERT,1,AAA,10,10
-qWindow.out,OP_INSERT,3,AAA,20,20
-qWindow.out,OP_NOP,,,,
-qWindow.out,OP_INSERT,3,AAA,20,20
-qWindow.out,OP_INSERT,5,AAA,30,30
-qWindow.out,OP_NOP,,,,
-');
+ok($result, $expectQuery1);
 
 #########################
 # Module for querying the table, version 4: with fields for querying.
@@ -1092,3 +1078,77 @@ qWindow.out,OP_INSERT,4,BBB,20,20
 qWindow.out,OP_NOP,,,,
 ');
 
+#########################
+# example of Triceps::Opt::handleUnitTypeLabel()
+
+package ServerOutput;
+use Carp;
+
+# Sending of rows to the server output.
+sub new # ($class, $option => $value, ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, undef ],
+		unit => [ undef, \&Triceps::Opt::ck_ref(@_, "Triceps::Unit") ],
+		rowType => [ undef, \&Triceps::Opt::ck_ref(@_, "Triceps::RowType") ],
+		fromLabel => [ undef, \&Triceps::Opt::ck_ref(@_, "Triceps::Label") ],
+	}, @_);
+
+	&Triceps::Opt::handleUnitTypeLabel("$class::new",
+		unit => \$self->{unit},
+		rowType => \$self->{rowType},
+		fromLabel => \$self->{fromLabel}
+	);
+	my $fromLabel = $self->{fromLabel};
+	
+	if (!defined $self->{name}) {
+		confess "$class::new: must specify at least one of the options name and fromLabel"
+			unless (defined $self->{fromLabel});
+		$self->{name} = $fromLabel->getName() . ".serverOut";
+	}
+
+	my $lbOut = $self->{unit}->makeLabel($fromLabel->getType(), 
+		$self->{name}, undef, sub {
+			&main::outCurBuf(join(",", 
+				$fromLabel? $fromLabel->getName() : $self->{name}, 
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		}, $self # $self is not used in the function but used for cleaning
+	);
+	$self->{outLabel} = $lbOut;
+	$fromLabel->chain($lbOut) or confess "$!";
+
+	bless $self, $class;
+	return $self;
+}
+
+package main;
+
+#########################
+# Example with ServerOutput, using Query1.
+
+sub runServerOutputFromLabel
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query1->new($tWindow, "qWindow");
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = @inputQuery1;
+$result = undef;
+&runServerOutputFromLabel();
+#print $result;
+ok($result, $expectQuery1);
