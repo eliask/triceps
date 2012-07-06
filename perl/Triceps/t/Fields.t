@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 20 };
+BEGIN { plan tests => 26 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -101,3 +101,12 @@ ok(&Triceps::Fields::isArrayType("int32[]"));
 ok(!&Triceps::Fields::isArrayType("string"));
 ok(!&Triceps::Fields::isArrayType("uint8"));
 ok(!&Triceps::Fields::isArrayType("uint8[]"));
+
+#########################
+# isStringType()
+ok(&Triceps::Fields::isStringType("uint8"));
+ok(&Triceps::Fields::isStringType("uint8[]"));
+ok(&Triceps::Fields::isStringType("string"));
+ok(!&Triceps::Fields::isStringType("int32"));
+ok(!&Triceps::Fields::isStringType("int64[]"));
+ok(!&Triceps::Fields::isStringType("float64"));

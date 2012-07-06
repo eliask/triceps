@@ -191,11 +191,19 @@ sub filterToPairs($$$) # ($caller, \@incoming, \@patterns) # no $self, it's a st
 #
 
 # Check whether a type is an array type.
-# It would be if the type ands in "[]", unless it's an uint8.
+# It would be if the type ends in "[]", unless it's an uint8.
 sub isArrayType($) # typeDef
 {
 	my $typeDef = shift;
 	return ($typeDef =~ /\[\]$/ && $typeDef !~ /^uint8/);
+}
+
+# Check whether a type has to be compared as a string (i.e. string or 
+# uint8 or uint8[]).
+sub isStringType($) # typeDef
+{
+	my $typeDef = shift;
+	return ($typeDef =~ /^(string|uint8)/);
 }
 
 1;

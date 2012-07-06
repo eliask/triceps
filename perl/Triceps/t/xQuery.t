@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 5 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -568,3 +568,288 @@ window.response,OP_INSERT,3,AAA,20,20
 window.response,OP_INSERT,5,AAA,30,30
 window.response,OP_NOP,,,,
 ');
+
+#########################
+# Module for querying the table, version 3: with options.
+
+package Query3;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+package main;
+
+#########################
+# Server with module version 3.
+
+sub runQuery3
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query3->new(table => $tWindow, name => "qWindow");
+my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = (
+	"tWindow,OP_INSERT,1,AAA,10,10\n",
+	"tWindow,OP_INSERT,3,AAA,20,20\n",
+	"qWindow,OP_INSERT\n",
+	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"qWindow,OP_INSERT\n",
+);
+$result = undef;
+&runQuery3();
+#print $result;
+ok($result, 
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+');
+
+#########################
+# Module for querying the table, version 4: with fields for querying.
+
+package Query4;
+use Carp;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+		fields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+		saveCodeTo => [ undef, \&Triceps::Opt::ck_refscalar ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	my $fields = $self->{fields};
+	if (defined $fields) {
+		my %rtdef = $rt->getdef();
+
+		# Generate the code of the comparison function by the fields.
+		# Since the simplified CSV parsing in the mainLoop() provides
+		# no easy way to send NULLs, consider any empty or 0 value
+		# in the query row equivalent to NULLs.
+		my $gencmp = '
+			sub # ($query, $data)
+			{
+				use strict;
+				my ($query, $data) = @_;';
+		foreach my $f (@$fields) {
+			my $t = $rtdef{$f};
+			confess "$class::new: unknown field '$f', the row type is:\n"
+					. $rt->print() . " "
+				unless defined $t;
+			$gencmp .= '
+				my $v = $query->get("' . quotemeta($f) . '");
+				if ($v) {';
+			if (&Triceps::Fields::isStringType($t)) {
+				$gencmp .= '
+					return 0 if ($v ne $data->get("' . quotemeta($f) . '"));';
+			} else {
+				$gencmp .= '
+					return 0 if ($v != $data->get("' . quotemeta($f) . '"));';
+			}
+			$gencmp .= '
+				}';
+		}
+		$gencmp .= '
+				return 1; # all succeeded
+			}';
+
+		${$self->{saveCodeTo}} = $gencmp if (defined($self->{saveCodeTo}));
+		$self->{compare} = eval $gencmp;
+		confess("Internal error: $class failed to compile the comparator:\n$@\nfunction text:\n$gencmp ")
+			if $@;
+	}
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $query = $rop->getRow();
+		my $cmp = $self->{compare};
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			if (!defined $cmp || &$cmp($query, $rh->getRow())) {
+				$self->{unit}->call(
+					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+			}
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+package main;
+
+#########################
+# Server with module version 4.
+
+sub runQuery4
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $cmpcode;
+my $query = Query4->new(table => $tWindow, name => "qWindow",
+	fields => ["symbol", "price"], saveCodeTo => \$cmpcode );
+# as a demonstration
+&send("Code:\n$cmpcode\n");
+my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = (
+	"tWindow,OP_INSERT,1,AAA,10,10\n",
+	"tWindow,OP_INSERT,3,AAA,20,20\n",
+	"tWindow,OP_INSERT,4,BBB,20,20\n",
+	"qWindow,OP_INSERT\n",
+	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"qWindow,OP_INSERT,5,AAA,0,0\n",
+	"qWindow,OP_INSERT,0,,20,0\n",
+);
+$result = undef;
+&runQuery4();
+#print $result;
+ok($result, 
+'Code:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				my ($query, $data) = @_;
+				my $v = $query->get("symbol");
+				if ($v) {
+					return 0 if ($v ne $data->get("symbol"));
+				}
+				my $v = $query->get("price");
+				if ($v) {
+					return 0 if ($v != $data->get("price"));
+				}
+				return 1; # all succeeded
+			}
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> tWindow,OP_INSERT,4,BBB,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT,5,AAA,0,0
+> qWindow,OP_INSERT,0,,20,0
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+');
+
