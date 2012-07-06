@@ -1476,12 +1476,12 @@ while(&readLine) {
 		<title>Example of a looped model</title>
 
 		<para>
-		Building of the models with the loop much easier to understand 
+		How to build the models with the topological loop is much easier to understand 
 		with an example. So let's make an example that computes the
 		Fibonacci numbers. It's a real overcomplicated and perverse way of
 		calculating the Fibonacci numbers. But it also is a great 
 		fit to the type of problems that get solved with the
-		topological loop, only of a simple kind.
+		topological loop, one of a simple kind.
 		</para>
 
 		<indexterm>
