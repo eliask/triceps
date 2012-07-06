@@ -1472,6 +1472,371 @@ while(&readLine) {
 		</para>
 	</sect1>
 
+	<sect1 id="sc_sched_mainloop_socket">
+		<title>Main loop with a socket</title>
+
+		<indexterm>
+			<primary>main loop</primary>
+		</indexterm>
+		<indexterm>
+			<primary>socket</primary>
+		</indexterm>
+		<para>
+		A fairly typical situation is when a CEP model has to run in a daemon
+		process, receiving and sending data through the network sockets.
+		Here goes an example that does this. It's not production-ready either.
+		It still has the issue with the parsing of the CSV data, its
+		handling of the errors is not well-tested, and it makes a few
+		simplifying assumptions about the buffering (more on this below). 
+		Other than that, it's a decent starting point.
+		If you want to copy-and-paste
+		this code for your experiments, it can be found in
+		<pre>perl/Triceps/t/xQuery.t</pre>.
+		</para>
+
+<!-- t/xQuery.t, with requires assembled, with if(0) removed -->
+<pre>
+use Triceps;
+use Carp;
+use Errno qw(EINTR EAGAIN);
+use IO::Poll qw(POLLIN POLLOUT POLLHUP);
+use IO::Socket;
+use IO::Socket::INET;
+
+# the socket and buffering control for the main loop;
+# they are all indexed by a unique id
+our %clients; # client sockets
+our %inbufs; # input buffers, collecting the whole lines
+our %outbufs; # output buffers
+our $poll; # the poll object
+our $cur_cli; # the id of the current client being processed
+our $srv_exit; # exit when all the client connections are closed
+
+# writing to the output buffers
+sub outBuf # ($id, $string)
+{
+	my $id = shift;
+	my $line = shift;
+	$outbufs{$id} .= $line;
+	# If there is anything to write on a buffer, stop reading from it.
+	$poll->mask($clients{$id} => POLLOUT);
+}
+
+sub outCurBuf # ($string)
+{
+	outBuf($cur_cli, @_);
+}
+
+sub closeClient # ($id, $h)
+{
+	my $id = shift;
+	my $h = shift;
+	$poll->mask($h, 0);
+	$h->close();
+	delete $clients{$id}; # OK perl Perl manual even when iterating
+	delete $inbufs{$id};
+	delete $outbufs{$id};
+}
+
+# The server main loop. Runs with the specified server socket.
+# Uses the labels hash to send the incoming data to Triceps.
+sub mainLoop # ($srvsock, $%labels)
+{
+	my $srvsock = shift;
+	my $labels = shift;
+
+	my $client_id = 0; # unique strings
+	our $poll = IO::Poll->new();
+
+	$srvsock->blocking(0);
+	$poll->mask($srvsock => POLLIN);
+	$srv_exit = 0;
+
+	while(!$srv_exit || keys %clients != 0) {
+		my $r = $poll->poll();
+		confess "poll failed: $!" if ($r < 0 && ! $!{EAGAIN} && ! $!{EINTR});
+
+		if ($poll->events($srvsock)) {
+			while(1) {
+				my $client = $srvsock->accept();
+				if (defined $client) {
+					$client->blocking(0);
+					$clients{++$client_id} = $client;
+					# &send("Accepted client $client_id\n");
+					$poll->mask($client => (POLLIN|POLLHUP));
+				} elsif($!{EAGAIN} || $!{EINTR}) {
+					last;
+				} else {
+					confess "accept failed: $!";
+				}
+			}
+		}
+
+		my ($id, $h, $mask, $n, $s);
+		while (($id, $h) = each %clients) {
+			$cur_cli = $id;
+			$mask = $poll->events($h);
+			if (($mask & POLLHUP) && !defined $outbufs{$id}) {
+				# &send("Lost client $client_id\n");
+				closeClient($id, $h);
+				next;
+			}
+			if ($mask & POLLOUT) {
+				$s = $outbufs{$id};
+				$n = $h->syswrite($s);
+				if (defined $n) {
+					if ($n >= length($s)) {
+						delete $outbufs{$id};
+						# now can accept more input
+						$poll->mask($h => (POLLIN|POLLHUP));
+					} else {
+						substr($outbufs{$id}, 0, $n) = '';
+					}
+				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
+					warn "write to client $id failed: $!";
+					closeClient($id, $h);
+					next;
+				}
+			}
+			if ($mask & POLLIN) {
+				$n = $h->sysread($s, 10000);
+				if ($n == 0) {
+					# &send("Lost client $client_id\n");
+					closeClient($id, $h);
+					next;
+				} elsif ($n > 0) {
+					$inbufs{$id} .= $s;
+				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
+					warn "read from client $id failed: $!";
+					closeClient($id, $h);
+					next;
+				}
+			}
+			# The way this works, if there is no '\n' before EOF,
+			# the last line won't be processed.
+			# Also, the whole output for all the input will be buffered
+			# before it can be sent.
+			while($inbufs{$id} =~ s/^(.*)\n//) {
+				my $line = $1;
+				chomp $line;
+				local $/ = "\r"; # take care of a possible CR-LF
+				chomp $line;
+				my @data = split(/,/, $line);
+				my $lname = shift @data;
+				my $label = $labels->{$lname};
+				if (defined $label) {
+					my $unit = $label->getUnit();
+					confess "label '$lname' received from client $id has been cleared"
+						unless defined $unit;
+					eval {
+						$unit->makeArrayCall($label, @data);
+						$unit->drainFrame();
+					};
+					warn "input data error: $@\nfrom data: $line\n" if $@;
+				} else {
+					warn "unknown label '$lname' received from client $id: $line "
+				}
+			}
+		}
+	}
+}
+</pre>
+
+		<para>
+		The general outline follows the single-threaded multiplexing server described in
+		<biblioref linkend="Babkin10"/>. <pre>mainLoop()</pre> gets the server socket
+		and a dispatch table of labels as its arguments. It then proceeds with waiting
+		for connections. 
+		</para>
+
+		<para>
+		Once a connection is received, it gets added to the set of
+		active connections, to get included in the waiting for the input data.
+		The input data is read as simplified CSV (no commas in the middle of values).
+		It's expected to have the format:
+		</para>
+
+<pre>
+name,opcode,data...
+</pre>
+
+		<para>
+		Such as:
+		</para>
+
+<pre>
+window,OP_INSERT,5,AAA,30,30
+window.query,OP_INSERT
+exit,OP_NOP
+</pre>
+
+		<para>
+		The name part is then used to find a label in the dispatch table. The
+		rest of the data is used to create a rowop for that label and execute it.
+		</para>
+
+		<para>
+		The data is sent back to the client through buffering. To send some data
+		to a client, use 
+		</para>
+
+<pre>
+&outBuf($id, $text);
+</pre>
+
+		<para>
+		The <pre>$id</pre> is the unique id of the client. How do you find, what is the id
+		of the client you want to send the data to? When an input line is processed,
+		the main loop knows, from what client it was received. It puts the id of that
+		client in the global variable <pre>$cur_cli</pre>. You can take it from there and remember.
+		If you want to reply to the current client, you don't need to bother yourself
+		with the id at all, just call
+		</para>
+
+<pre>
+&outCurBuf($text);
+</pre>
+
+		<para>
+		If you remember an id for the future use, you'd probably need to check that
+		the client hasn't disconnected before sending data to it:
+		</para>
+
+<pre>
+if (exists $clients{$id}) {
+	&outBuf($id, $text);
+}
+</pre>
+
+		<para>
+		Otherwise your output attempts would be leaking memory in the output buffer.
+		In any case, if a client has disconnected, the further processing of its requests
+		shoudl usually be stopped. The client ids are not reused, so this check is
+		always safe.
+		</para>
+
+		<para>
+		Once some output is buffered to send to a client, the further input from that
+		client stops being accepted until the output buffer drains. But the processing
+		in the Triceps unit scheduler keeps running until it runs out of things to do
+		before it returns to the main loop. All this time the output buffer keeps
+		collecting data without sending it to the client.  Also, the input
+		buffer might happen to already contain multiple lines. Then all these lines
+		will be processed before the data from the output buffer starts being sent
+		to the client. If a request produces a large amount of data, all this data
+		will be buffered first. It's a simplification but really the commercial
+		CEP systems aren't doing a whole lot better: when asked for the contents of
+		a table/window/materliaized view, Coral8 and Aleri and Sybase (don't know
+		about StreamBase but it might be not different either) would make a copy
+		of it first before sending the data. In some cases the copy is more efficient
+		because it references the rows rather than copying the whole byte data, but
+		in the grand scheme of things it's all the same.
+		</para>
+
+		<para>
+		Internally the information about the client sockets and their buffers is
+		kept in the global hashes <pre>%clients</pre>, <pre>%inbufs</pre>, <pre>%outbufs</pre>.
+		It could be done a a single hash of objects but this was simpler.
+		</para>
+
+		<para>
+		The loop exits when the global variable <pre>$srv_exit</pre> gets set 
+		(synchronously, i.e. by one of the label handlers) to 1 and all the 
+		clients disconnect. The requirement for disconnection of all the clients
+		makes sure that all the output buffers get flushed before exit, and
+		that was the easiest way to achieve this goal.
+		</para>
+
+		<para>
+		<pre>mainLoop()</pre> relies on the listening socket being already created,
+		bound and given to it as a parameter. Here is a function used in the examples
+		to create this socket and run the server in a separate process:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+sub startServer # ($labels)
+{
+	my $labels = shift;
+
+	my $srvsock = IO::Socket::INET->new(
+		Proto => "tcp",
+		LocalPort => 0,
+		Listen => 10,
+	) or confess "socket failed: $!";
+	my $port = $srvsock->sockport() or confess "sockport failed: $!";
+	my $pid = fork();
+	confess "fork failed: $!" unless defined $pid;
+	if ($pid) {
+		# parent
+		$srvsock->close();
+	} else {
+		# child
+		&mainLoop($srvsock, $labels);
+		exit(0);
+	}
+	return ($port, $pid);
+}
+</pre>
+
+		<para>
+		It binds the socket to the port 0 to request that the OS bind it to
+		a randum unused port. The port number is then read back with <pre>sockport()</pre>.
+		The pair of the port numer and the server's child process id is then returned
+		as the result. The process where the server runs is in this case
+		just a child process, it's not properly daemonized.
+		</para>
+
+		<para>
+		For a simple complete example, let's make an echo server that would print
+		back the rows it receives:
+		</para>
+
+<!-- t/xQuery.t, shifted left -->
+<pre>
+my $uEcho = Triceps::Unit->new("uEcho");
+my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
+	&outCurBuf($_[1]->printP() . "\n");
+});
+my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
+	&outCurBuf(join(",", "echo", &Triceps::opcodeString($_[1]->getOpcode()),
+		$_[1]->getRow()->toArray()) . "\n");
+});
+my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
+	$srv_exit = 1;
+});
+
+my %dispatch;
+$dispatch{"echo"} = $lbEcho;
+$dispatch{"echo2"} = $lbEcho2;
+$dispatch{"exit"} = $lbExit;
+
+my ($port, $pid) = &startServer(\%dispatch);
+print STDERR "port=$port pid=$pid\n";
+waitpid($pid, 0);
+exit(0);
+</pre>
+
+		<para>
+		It starts the server and waits for it to exit. <pre>waitpid()</pre> is used here
+		in a simplified way too, it should properly be done in a loop until
+		it succeeds or an error other than <pre>EINTR</pre> is returned.
+		</para>
+
+		<para>
+		<pre>$rt</pre> is the row type for the expected data. It's not particularly
+		important here, so I didn't show its definition. Two labels, <quote>echo</quote>
+		and <quote>echo2</quote> differ in the way they print the data back:
+		<quote>echo</quote> prints it in the symbolic form while <quote>echo2</quote>
+		prints in CSV. The label <quote>exit</quote> sets the exit flag.
+		</para>
+
+		<para>
+		The names in the dispatch table don't have to be the same as the names of
+		the labels. It's often convenient to have them the same but not mandatory.
+		</para>
+	</sect1>
+
 	<sect1 id="sc_sched_loop_ex">
 		<title>Example of a looped model</title>
 
