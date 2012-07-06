@@ -307,7 +307,7 @@ if (0) {
 
 #########################
 # Module for server control.
-package ExitServer;
+package ServerHelpers;
 use Carp;
 
 # Exiting the server.
@@ -327,7 +327,7 @@ sub makeServerOutLabel # ($fromLabel)
 	my $unit = $fromLabel->getUnit();
 	my $fromName = $fromLabel->getName();
 	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
-		$fromName . "serverOut", undef, sub {
+		$fromName . ".serverOut", undef, sub {
 			&main::outCurBuf(join(",", $fromName, 
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
@@ -405,12 +405,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query1->new($tWindow, "qWindow");
-my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -473,7 +473,7 @@ sub new # ($class, $unit, $tabType, $name)
 	}, $self);
 	$self->{resLabel} = $unit->makeDummyLabel($rt, $name . ".response");
 	
-	$self->{sendLabel} = &ExitServer::makeServerOutLabel($self->{resLabel});
+	$self->{sendLabel} = &ServerHelpers::makeServerOutLabel($self->{resLabel});
 
 	bless $self, $class;
 	return $self;
@@ -549,7 +549,7 @@ my $window = $uTrades->makeTableQuery2($ttWindow, "window");
 my %dispatch;
 $dispatch{$window->getName()} = $window->getInputLabel();
 $dispatch{$window->getQueryLabel()->getName()} = $window->getQueryLabel();
-$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -648,12 +648,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query3->new(table => $tWindow, name => "qWindow");
-my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -803,12 +803,12 @@ my $query = Query4->new(table => $tWindow, name => "qWindow",
 	fields => ["symbol", "price"], saveCodeTo => \$cmpcode );
 # as a demonstration
 &send("Code:\n$cmpcode\n");
-my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -871,12 +871,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query4->new(table => $tWindow, name => "qWindow");
-my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1027,12 +1027,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query5->new(table => $tWindow, name => "qWindow",);
-my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
