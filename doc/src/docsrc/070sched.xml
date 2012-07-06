@@ -1642,6 +1642,9 @@ sub mainLoop # ($srvsock, $%labels)
 }
 </pre>
 
+		<indexterm>
+			<primary>dispatch table</primary>
+		</indexterm>
 		<para>
 		The general outline follows the single-threaded multiplexing server described in
 		<biblioref linkend="Babkin10"/>. <pre>mainLoop()</pre> gets the server socket
@@ -1715,6 +1718,18 @@ if (exists $clients{$id}) {
 		always safe.
 		</para>
 
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<indexterm>
+			<primary>StreamBase</primary>
+		</indexterm>
 		<para>
 		Once some output is buffered to send to a client, the further input from that
 		client stops being accepted until the output buffer drains. But the processing
@@ -1792,6 +1807,9 @@ sub startServer # ($labels)
 		back the rows it receives:
 		</para>
 
+		<indexterm>
+			<primary>dispatch table</primary>
+		</indexterm>
 <!-- t/xQuery.t, shifted left -->
 <pre>
 my $uEcho = Triceps::Unit->new("uEcho");
