@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 7 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -31,7 +31,6 @@ no warnings;
 
 #########################
 # helper functions to support either user i/o or i/o from vars
-
 
 # vars to serve as input and output sources
 my @input;
@@ -338,6 +337,9 @@ sub makeServerOutLabel # ($fromLabel)
 	return $lbOut;
 }
 
+
+######################################################################################
+# XXX the order of the output lines depends on the hashing order
 
 #########################
 # Module for querying the table, version 1: no conditions.
@@ -741,7 +743,6 @@ sub new # ($class, $optionName => $optionValue ...)
 	$self->{unit} = $unit;
 	$self->{name} = $name;
 	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
-		# This version ignores the row contents, just dumps the table.
 		my ($label, $rop, $self) = @_;
 		my $query = $rop->getRow();
 		my $cmp = $self->{compare};
@@ -848,6 +849,240 @@ qWindow.out,OP_NOP,,,,
 qWindow.out,OP_INSERT,3,AAA,20,20
 qWindow.out,OP_INSERT,5,AAA,30,30
 qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+');
+
+#########################
+# Server with module version 4, used with no query fields.
+
+sub runQuery4a
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query4->new(table => $tWindow, name => "qWindow");
+my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = (
+	"tWindow,OP_INSERT,1,AAA,10,10\n",
+	"tWindow,OP_INSERT,3,AAA,20,20\n",
+	"qWindow,OP_INSERT\n",
+	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"qWindow,OP_INSERT\n",
+);
+$result = undef;
+&runQuery4a();
+#print $result;
+ok($result, 
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+');
+
+#########################
+# Module for querying the table, version 5: with query fields auto-determined.
+
+package Query5;
+use Carp;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		my ($label, $rop, $self) = @_;
+		my $query = $rop->getRow();
+		my $cmp = $self->genComparison($query);
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			if (&$cmp($query, $rh->getRow())) {
+				$self->{unit}->call(
+					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+			}
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+# Generate the comparison function on the fly from the fields in the
+# query row.
+# Since the simplified CSV parsing in the mainLoop() provides
+# no easy way to send NULLs, consider any empty or 0 value
+# in the query row equivalent to NULLs.
+sub genComparison # ($self, $query)
+{
+	my $self = shift;
+	my $query = shift;
+
+	my %qhash = $query->toHash();
+	my %rtdef = $self->{table}->getRowType()->getdef();
+	my ($f, $v);
+
+	my $gencmp = '
+			sub # ($query, $data)
+			{
+				use strict;';
+
+	while (($f, $v) = each %qhash) {
+		next unless($v);
+		my $t = $rtdef{$f};
+
+		if (&Triceps::Fields::isStringType($t)) {
+			$gencmp .= '
+				return 0 if ($_[0]->get("' . quotemeta($f) . '")
+					ne $_[1]->get("' . quotemeta($f) . '"));';
+		} else {
+			$gencmp .= '
+				return 0 if ($_[0]->get("' . quotemeta($f) . '")
+					!= $_[1]->get("' . quotemeta($f) . '"));';
+		}
+	}
+	$gencmp .= '
+				return 1; # all succeeded
+			}';
+
+	my $compare = eval $gencmp;
+	confess("Internal error: Query '" . $self->{name} 
+			. "' failed to compile the comparator:\n$@\nfunction text:\n$gencmp ")
+		if $@;
+
+	# for debugging
+	&main::outCurBuf("Compiled comparator:\n$gencmp\n");
+
+	return $compare;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+package main;
+
+#########################
+# Server with module version 5.
+
+sub runQuery5
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query5->new(table => $tWindow, name => "qWindow",);
+my $srvout = &ExitServer::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ExitServer::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = (
+	"tWindow,OP_INSERT,1,AAA,10,10\n",
+	"tWindow,OP_INSERT,3,AAA,20,20\n",
+	"tWindow,OP_INSERT,4,BBB,20,20\n",
+	"qWindow,OP_INSERT\n",
+	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"qWindow,OP_INSERT,5,AAA,0,0\n",
+	"qWindow,OP_INSERT,0,,20,0\n",
+);
+$result = undef;
+&runQuery5();
+#print $result;
+ok($result, 
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> tWindow,OP_INSERT,4,BBB,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT,5,AAA,0,0
+> qWindow,OP_INSERT,0,,20,0
+Compiled comparator:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				return 1; # all succeeded
+			}
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+Compiled comparator:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				return 0 if ($_[0]->get("symbol")
+					ne $_[1]->get("symbol"));
+				return 0 if ($_[0]->get("id")
+					!= $_[1]->get("id"));
+				return 1; # all succeeded
+			}
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+Compiled comparator:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				return 0 if ($_[0]->get("price")
+					!= $_[1]->get("price"));
+				return 1; # all succeeded
+			}
 qWindow.out,OP_INSERT,3,AAA,20,20
 qWindow.out,OP_INSERT,4,BBB,20,20
 qWindow.out,OP_NOP,,,,
