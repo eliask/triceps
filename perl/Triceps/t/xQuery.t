@@ -270,7 +270,7 @@ our $rtTrade = Triceps::RowType->new(
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("bySymbol", 
-		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		Triceps::SimpleOrderedIndex->new(symbol => "ASC")
 			->addSubIndex("last2",
 				Triceps::IndexType->newFifo(limit => 2)
 			)
@@ -336,9 +336,6 @@ sub makeServerOutLabel # ($fromLabel)
 	return $lbOut;
 }
 
-
-######################################################################################
-# XXX the order of the output lines depends on the hashing order
 
 #########################
 # Module for querying the table, version 1: no conditions.
