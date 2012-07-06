@@ -216,3 +216,16 @@ rowType(WrapTableType *self)
 	OUTPUT:
 		RETVAL
 
+# get back the row type, with a consistent name
+WrapRowType *
+getRowType(WrapTableType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+
+		clearErrMsg();
+		TableType *tbt = self->get();
+		RETVAL = new WrapRowType(const_cast<RowType *>(tbt->rowType()));
+	OUTPUT:
+		RETVAL
+

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 74 };
+BEGIN { plan tests => 75 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -47,6 +47,9 @@ $tt1 = Triceps::TableType->new($rt1);
 ok(ref $tt1, "Triceps::TableType");
 
 $ret = $tt1->rowType();
+ok(ref $ret, "Triceps::RowType");
+
+$ret = $tt1->getRowType();
 ok(ref $ret, "Triceps::RowType");
 
 ###################### addSubIndex #################################

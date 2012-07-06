@@ -1174,7 +1174,7 @@ my $query = Query1->new($tWindow, "qWindow");
 my $srvout = ServerOutput->new(
 	name => "out",
 	unit => $uTrades,
-	rowType => $query->getOutputLabel()->getRowType(),
+	rowType => $tWindow->getRowType(),
 );
 $query->getOutputLabel()->chain($srvout->getInputLabel())
 	or confess "$!";
