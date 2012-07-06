@@ -528,6 +528,14 @@ sub getPreLabel # ($self)
 	return $self->{table}->getPreLabel();
 }
 
+# add a factory to the Unit type
+package Triceps::Unit;
+
+sub makeTableQuery2 # ($self, $tabType, $name)
+{
+	return TableQuery2->new(@_);
+}
+
 package main;
 
 #########################
@@ -537,7 +545,7 @@ sub runQuery2
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $window = TableQuery2->new($uTrades, $ttWindow, "window");
+my $window = $uTrades->makeTableQuery2($ttWindow, "window");
 
 my %dispatch;
 $dispatch{$window->getName()} = $window->getInputLabel();
