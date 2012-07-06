@@ -2960,6 +2960,16 @@ $itSub = $idxType->getFirstLeaf();
 </pre>
 
 		<para>
+		If an index is already a leaf, <pre>getFirstLeaf()</pre> on it
+		will return itself.
+		The <quote>leaf-ness</quote> of an index type can be found with:
+		</para>
+
+<pre>
+$result = $idxType->isLeaf();
+</pre>
+
+		<para>
 		The usual reference comparison methods are:
 		</para>
 
