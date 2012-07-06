@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 8 };
+BEGIN { plan tests => 9 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -1092,9 +1092,9 @@ sub new # ($class, $option => $value, ...)
 
 	&Triceps::Opt::parse($class, $self, {
 		name => [ undef, undef ],
-		unit => [ undef, \&Triceps::Opt::ck_ref(@_, "Triceps::Unit") ],
-		rowType => [ undef, \&Triceps::Opt::ck_ref(@_, "Triceps::RowType") ],
-		fromLabel => [ undef, \&Triceps::Opt::ck_ref(@_, "Triceps::Label") ],
+		unit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label") } ],
 	}, @_);
 
 	&Triceps::Opt::handleUnitTypeLabel("$class::new",
@@ -1110,7 +1110,7 @@ sub new # ($class, $option => $value, ...)
 		$self->{name} = $fromLabel->getName() . ".serverOut";
 	}
 
-	my $lbOut = $self->{unit}->makeLabel($fromLabel->getType(), 
+	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
 		$self->{name}, undef, sub {
 			&main::outCurBuf(join(",", 
 				$fromLabel? $fromLabel->getName() : $self->{name}, 
@@ -1118,17 +1118,25 @@ sub new # ($class, $option => $value, ...)
 				$_[1]->getRow()->toArray()) . "\n");
 		}, $self # $self is not used in the function but used for cleaning
 	);
-	$self->{outLabel} = $lbOut;
-	$fromLabel->chain($lbOut) or confess "$!";
+	$self->{inLabel} = $lb;
+	if (defined $fromLabel) {
+		$fromLabel->chain($lb) or confess "$!";
+	}
 
 	bless $self, $class;
 	return $self;
 }
 
+sub getInputLabel() # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
 package main;
 
 #########################
-# Example with ServerOutput, using Query1.
+# Example with ServerOutput attached to label, using Query1.
 
 sub runServerOutputFromLabel
 {
@@ -1137,7 +1145,7 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query1->new($tWindow, "qWindow");
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = ServerOutput->new(fromLabel => $query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
@@ -1152,3 +1160,47 @@ $result = undef;
 &runServerOutputFromLabel();
 #print $result;
 ok($result, $expectQuery1);
+
+#########################
+# Example with ServerOutput created independently, using Query1.
+
+sub runServerOutputFromRowType
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query1->new($tWindow, "qWindow");
+my $srvout = ServerOutput->new(
+	name => "out",
+	unit => $uTrades,
+	rowType => $query->getOutputLabel()->getRowType(),
+);
+$query->getOutputLabel()->chain($srvout->getInputLabel())
+	or confess "$!";
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = @inputQuery1;
+$result = undef;
+&runServerOutputFromRowType();
+#print $result;
+ok($result,
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+out,OP_INSERT,1,AAA,10,10
+out,OP_INSERT,3,AAA,20,20
+out,OP_NOP,,,,
+out,OP_INSERT,3,AAA,20,20
+out,OP_INSERT,5,AAA,30,30
+out,OP_NOP,,,,
+');
