@@ -1655,7 +1655,9 @@ sub mainLoop # ($srvsock, $%labels)
 		<para>
 		Once a connection is received, it gets added to the set of
 		active connections, to get included in the waiting for the input data.
-		The input data is read as simplified CSV (no commas in the middle of values).
+		The input data is read as simplified CSV (no commas in the middle of values,
+		and no way to reprsent the NULL values othar than for those omitted at the end
+		of the line).
 		It's expected to have the format:
 		</para>
 

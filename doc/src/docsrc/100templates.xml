@@ -48,6 +48,9 @@ See the file COPYRIGHT for the copyright notice and license information
 		pattern that goes approximately like this:
 		</para>
 
+		<indexterm>
+			<primary>CCL</primary>
+		</indexterm>
 <pre>
 // some window that we want to make queryable
 create window w_my schema s_my
@@ -169,8 +172,147 @@ make_query(w_my, (field_c, field_d));
 		But they don't allow the variable lists of fields as parameters either,
 		nor generation of different model topologies depending on the parameters.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_template_variety">
+		<title>Template variety</title>
 
 		<para>
+		A template in Triceps is generally a function or class that
+		creates a fragment of the model based on its arguments.
+		It provides the access points used to connect this fragment to the rest
+		of the model.
+		</para>
+
+		<para>
+		There are different ways do do this. They can be broadly classified 
+		in the order of increasing complexity as:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		A function that creates a single Triceps object and returns it.
+		The benefit is that the function would automatically choose some complex
+		object parameters based on the function parameters, thus turning
+		a complex creation into a simple one.
+		</listitem>
+		<listitem>
+		A class that similarly creates multiple fixed objects and interconnects
+		them properly. It would also provide the accessor methods to export
+		the access points of this sub-model. Since the Perl functions may
+		return multiple values, this functionality sometimes can be
+		conveniently done with a function as well, returning the access
+		points in the return array.
+		</listitem>
+		<listitem>
+		A class or function that creates multiple objects, with their number and
+		connections dependent on the parameters. For a simple example, a template
+		might receive multiple functions/closures as arguments and then create
+		a pipeline of computational labels, each of them computing one
+		function (of course, this really makes sense only when each label
+		runs in a separate thread).
+		</listitem>
+		<listitem>
+		A class or function that automatically generates the Perl code that
+		will be used in the created objects. For a simple example, given the
+		pairs of field names and values, a template can generate the code for a filter
+		label that would pass only the rows where these fields have these values.
+		The same effect can often be achieved by the interpretation as well:
+		keep the arguments until the evaluation needs to be done, and then
+		interpret them. But the early code generation with compilation 
+		improves the efficiency of the computation. It's the same idea
+		as in the &Cpp; templates: do more of the hard work at the compile time
+		and then run faster.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The more complex and flexible is the template, the more difficult
+		it's generally to write and debug, but then it just works, encapsulating
+		a complex problem with a simpler interface. There is also the problem
+		of user errors: when the user gives an incorrect argument to a complex
+		template, understanding what exactly went wrong when the error manifests
+		itself, may be quite difficult. The &Cpp; templates are a good
+		example of this. However the use of Perl, a general programming
+		language, as a template language in Triceps provides a good solution
+		for this problem: just check the arguments early in the template and
+		produce the meaningful error messages. It may be a bit cumbersome
+		to write but then easy to use. I also have plans for improving the
+		automatic error reports, to make tracking through the layers
+		of templates easier with minimal code additions in the templates.
+		</para>
+
+		<para>
+		I will show the examples of all the template types by implementing the table
+		querying, the same I have shown in CCL in
+		<xref linkend="sc_template_intro" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		only now in Triceps.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_template_wrapper">
+		<title>Simple wrapper templates</title>
+
+		<para>
+		The query examples will be using the main loop with sockets from the
+		<xref linkend="sc_sched_mainloop_socket" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		It has two repeating tasks: requesting the socket server to exit, and sending the
+		rows from some label back into the socket. These tasks can be nicely handled
+		with the simple templates:
+		</para>
+
+<pre>
+package ServerHelpers;
+use Carp;
+
+# Exiting the server.
+sub makeExitLabel # ($unit, $name)
+{
+	my $unit = shift;
+	my $name = shift;
+	return $unit->makeLabel($unit->getEmptyRowType(), $name, undef, sub {
+		$srv_exit = 1;
+	});
+}
+
+# Sending of rows to the server output.
+sub makeServerOutLabel # ($fromLabel)
+{
+	my $fromLabel = shift;
+	my $unit = $fromLabel->getUnit();
+	my $fromName = $fromLabel->getName();
+	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
+		$fromName . ".serverOut", undef, sub {
+			&main::outCurBuf(join(",", $fromName, 
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		});
+	$fromLabel->chain($lbOut) or confess "$!";
+	return $lbOut;
+}
+</pre>
+
+		<para>
+		Each function is a separate template, they're wrapped into a common
+		package only for the packaging reasons.
+		</para>
+
+		<para>
+		<pre>makeExitLabel()</pre> is quite simple, it creates a label with hardcoded
+		function of setting the variable <pre>$srv_exit</pre>. Even its row type
+		is hardcoded to the empty rows.
+		</para>
+
+		<para>
+		<pre>makeServerOutLabel()</pre> is more interesting. It prints the rows received from
+		another label into the socket in the simple CSV (as usual, no commas in the
+		values) format, the same as is expected by the socket server. It finds the
+		unit and row type from that parent label, creates the printing label
+		and chains it off the parent label. The newly created label is returned.
+		The return value can be kept in a variable or immediately discarded;
+		since the created label is already chained, it won't disappear.
+		Tha name of the new label is produced from the name of the parent
+		label by appending <quote>.serverOut</quote> to it.
 		</para>
 
 		<para>
