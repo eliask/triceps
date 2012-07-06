@@ -7,6 +7,7 @@
 
 package Triceps::Opt;
 use Carp;
+use Scalar::Util;
 
 # The idea here is that there may be many classes that take
 # arguments in the form optName  => optValue, and it would be
@@ -97,19 +98,19 @@ sub ck_ref
 	return if !defined $optval; # undefined value is OK
 	my $rval = ref $optval;
 	Carp::confess "Option '$optname' of class '$class' must be a reference to '$refto', is '$rval'"
-		unless ($rval eq $refto);
+		unless ($rval eq $refto || &Scalar::Util::blessed($optval) && $optval->isa($refto));
 	if (defined  $reftoref) {
 		if ($rval eq "ARRAY") {
 			foreach my $v (@$optval) {
 				$rval = ref $v;
 				Carp::confess "Option '$optname' of class '$class' must be a reference to '$refto' '$reftoref', is '$refto' '$rval'"
-					unless ($rval eq $reftoref);
+					unless ($rval eq $reftoref || &Scalar::Util::blessed($v) && $v->isa($reftoref));
 			}
 		} elsif ($rval eq "HASH") {
 			foreach my $v (values %$optval) {
 				$rval = ref $v;
 				Carp::confess "Option '$optname' of class '$class' must be a reference to '$refto' '$reftoref', is '$refto' '$rval'"
-					unless ($rval eq $reftoref);
+					unless ($rval eq $reftoref || &Scalar::Util::blessed($v) && $v->isa($reftoref));
 			}
 		} else {
 			Carp::confess "Incorrect arguments, may use the second type only if the first is ARRAY or HASH"
