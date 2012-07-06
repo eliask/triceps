@@ -96,7 +96,7 @@ sub closeClient # ($id, $h)
 	my $h = shift;
 	$poll->mask($h, 0);
 	$h->close();
-	delete $clients{$id}; # OK perl Perl manual even when iterating
+	delete $clients{$id}; # OK per Perl manual even when iterating
 	delete $inbufs{$id};
 	delete $outbufs{$id};
 }
@@ -292,7 +292,7 @@ if (0) {
 			$_[1]->getRow()->toArray()) . "\n");
 	});
 	my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
-		exit(0);
+		$srv_exit = 1;
 	});
 
 	my %dispatch;
