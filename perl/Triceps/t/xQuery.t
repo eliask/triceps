@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 11 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -1113,7 +1113,7 @@ sub new # ($class, $option => $value, ...)
 	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
 		$self->{name}, undef, sub {
 			&main::outCurBuf(join(",", 
-				$fromLabel? $fromLabel->getName() : $self->{name}, 
+				$fromLabel? $fromLabel->getName() : $self->{name},
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
 		}, $self # $self is not used in the function but used for cleaning
@@ -1204,3 +1204,136 @@ out,OP_INSERT,3,AAA,20,20
 out,OP_INSERT,5,AAA,30,30
 out,OP_NOP,,,,
 ');
+
+#########################
+# example of Triceps::Opt::checkMutuallyExclusive()
+
+package ServerOutput2;
+use Carp;
+
+# Sending of rows to the server output.
+sub new # ($class, $option => $value, ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, undef ],
+		unit => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label") } ],
+	}, @_);
+
+	my $fromLabel = $self->{fromLabel};
+	if (&Triceps::Opt::checkMutuallyExclusive("$class::new", 1,
+			rowType => $self->{rowType},
+			fromLabel => $self->{fromLabel}
+		) eq "fromLabel"
+	) {
+		$self->{rowType} = $fromLabel->getRowType();
+	}
+	
+	if (!defined $self->{name}) {
+		confess "$class::new: must specify at least one of the options name and fromLabel"
+			unless (defined $self->{fromLabel});
+		$self->{name} = $fromLabel->getName() . ".serverOut";
+	}
+
+	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
+		$self->{name}, undef, sub {
+			&main::outCurBuf(join(",", 
+				$fromLabel? $fromLabel->getName() : $self->{name},
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		}, $self # $self is not used in the function but used for cleaning
+	);
+	$self->{inLabel} = $lb;
+	if (defined $fromLabel) {
+		$fromLabel->chain($lb) or confess "$!";
+	}
+
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel() # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+package main;
+
+#########################
+# Example with ServerOutput attached to label, using Query1.
+
+sub runServerOutput2FromLabel
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query1->new($tWindow, "qWindow");
+my $srvout = ServerOutput2->new(
+	unit => $uTrades,
+	fromLabel => $query->getOutputLabel()
+);
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = @inputQuery1;
+$result = undef;
+&runServerOutput2FromLabel();
+#print $result;
+ok($result, $expectQuery1);
+
+#########################
+# Example with ServerOutput created independently, using Query1.
+
+sub runServerOutput2FromRowType
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query1->new($tWindow, "qWindow");
+my $srvout = ServerOutput2->new(
+	name => "out",
+	unit => $uTrades,
+	rowType => $tWindow->getRowType(),
+);
+$query->getOutputLabel()->chain($srvout->getInputLabel())
+	or confess "$!";
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = @inputQuery1;
+$result = undef;
+&runServerOutput2FromRowType();
+#print $result;
+ok($result,
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+out,OP_INSERT,1,AAA,10,10
+out,OP_INSERT,3,AAA,20,20
+out,OP_NOP,,,,
+out,OP_INSERT,3,AAA,20,20
+out,OP_INSERT,5,AAA,30,30
+out,OP_NOP,,,,
+');
+
