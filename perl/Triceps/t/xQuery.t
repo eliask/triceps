@@ -311,7 +311,6 @@ package ExitServer;
 use Carp;
 
 # Exiting the server.
-
 sub makeExitLabel # ($unit, $name)
 {
 	my $unit = shift;
