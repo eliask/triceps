@@ -58,6 +58,19 @@ sub sendX # (@message)
 	print @_;
 }
 
+# a template to make a label that prints the data passing through another label
+sub makePrintLabel($$) # ($print_label_name, $parent_label)
+{
+	my $name = shift;
+	my $lbParent = shift;
+	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
+		undef, sub { # (label, rowop)
+			&send($_[1]->printP(), "\n");
+		}) or die "$!";
+	$lbParent->chain($lb) or die "$!";
+	return $lb;
+}
+
 #########################
 # the simple window
 
@@ -487,11 +500,7 @@ our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
 
 # place to send the average: could be a dummy label, but to keep the
 # code smaller also print the rows here, instead of in a separate label
-our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tAvgPrice->getOutputLabel()->chain($lbAverage) or confess "$!";
+our $lbAverage = makePrintLabel("lbAverage", $tAvgPrice->getOutputLabel());
 
 # Send the average price of the symbol in the last modified row
 sub computeAverage2 # (row)

@@ -46,6 +46,13 @@ sub send # (@message)
 	$result .= join('', @_);
 }
 
+# write a message to user, like printf
+sub sendf # ($msg, $vars...)
+{
+	$fmt = shift;
+	$result .= sprintf($fmt, @_);
+}
+
 # versions for the real user interaction
 sub readLineX # ()
 {
@@ -56,6 +63,19 @@ sub readLineX # ()
 sub sendX # (@message)
 {
 	print @_;
+}
+
+# a template to make a label that prints the data passing through another label
+sub makePrintLabel($$) # ($print_label_name, $parent_label)
+{
+	my $name = shift;
+	my $lbParent = shift;
+	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
+		undef, sub { # (label, rowop)
+			&send($_[1]->printP(), "\n");
+		}) or die "$!";
+	$lbParent->chain($lb) or die "$!";
+	return $lb;
 }
 
 #########################
@@ -126,12 +146,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -275,12 +291,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -396,12 +408,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -525,12 +533,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -655,12 +659,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -790,12 +790,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -944,12 +940,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -1046,12 +1038,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
@@ -1170,7 +1158,7 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
-		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
+		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
 	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 	or confess "$!";
@@ -1265,7 +1253,7 @@ $idxByPrice = $ttWindow->findSubIndex("bySymbol")
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
-		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
+		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
 	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 	or confess "$!";
@@ -1420,7 +1408,7 @@ $idxByOrder = $ttWindow->findSubIndex("bySymbol")
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
-		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
+		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
 	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
 	or confess "$!";
@@ -1506,12 +1494,8 @@ my $tWindow = $uTrades->makeTable($ttWindow,
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
-my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
 
 while(&readLine) {
 	chomp;
