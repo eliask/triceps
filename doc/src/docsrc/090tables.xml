@@ -1266,6 +1266,7 @@ TableType
 
 		<indexterm>
 			<primary>aggregation</primary>
+			<secondary>manual</secondary>
 		</indexterm>
 		<para>
 		To illustrate the point, here is a modified version of the previous
@@ -1869,7 +1870,7 @@ PerlSortedIndex(SimpleOrder a ASC, b DESC, )
 		extensibility of Triceps:
 		</para>
 
-<!-- lib/Triceps/SimpleOrderedIndex.pm with XXX lines dropped  -->
+<!-- lib/Triceps/SimpleOrderedIndex.pm with "XXX" lines dropped  -->
 <pre>
 package Triceps::SimpleOrderedIndex;
 use Carp;
@@ -2991,9 +2992,9 @@ $result = $idxType1->match($idxType2);
 		Two index types are considered equal when they are of the same kind
 		(type id), their type-specific parameters are equal, they have the
 		same number of sub-indexes, with the same names, and equal pair-wise.
-		They must also have the equal aggregators, with will be described in
+		They must also have the equal aggregators, which will be described in
 		detail in the 
-		XXX chapter forward ref
+		<xref linkend="ch_aggregation" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<indexterm>
@@ -3030,7 +3031,7 @@ $result = $idxType1->match($idxType2);
 		If used, it will put a copy of all the rowops produced during the
 		operation (including the output of the aggregators, which will be
 		described in 
-		XXX forward ref
+		<xref linkend="ch_aggregation" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		) into that tray. The
 		idea here is to use it in cases if you don't want to connect the output
 		labels of the table directly, but instead collect and process the rows

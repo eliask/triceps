@@ -241,6 +241,321 @@ tWindow.aggrVwap OP_INSERT symbol="def" id="18" volume="1200" vwap="193.5"
 		<para>
 		After this highlight, let's look at the aggregators from the bottom up.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_manual">
+		<title>Manual aggregation</title>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>manual</secondary>
+		</indexterm>
+
+		<para>
+		The table exanmple in
+		<xref linkend="sc_table_secondary" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		prints the aggregated
+		information (the average price of two records). This can be
+		fairly easily changed to put the information into the rows and send
+		them on as labels. The function <pre>printAverage()</pre> has morphed into
+		<pre>computeAverage()</pre>, while the rest of the example stayed the same
+		and is omitted:
+		</para>
+
+<!-- t/xWindow.t doManualAgg1 -->
+<pre>
+our $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or confess "$!";
+
+# place to send the average: could be a dummy label, but to keep the
+# code smaller also print the rows here, instead of in a separate label
+our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or confess "$!";
+
+# Send the average price of the symbol in the last modified row
+sub computeAverage # (row)
+{
+	return unless defined $rLastMod;
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	&send("Contents:\n");
+	my $avg = 0;
+	my ($sum, $count);
+	my $rhLast;
+	for (my $rhi = $rhFirst; 
+			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
+		&send("  ", $rhi->getRow()->printP(), "\n");
+		$rhLast = $rhi;
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	if ($count) {
+		$avg = $sum/$count;
+		$uTrades->call($lbAverage->makeRowop(&Triceps::OP_INSERT,
+			$rtAvgPrice->makeRowHash(
+				symbol => $rhLast->getRow()->get("symbol"),
+				id => $rhLast->getRow()->get("id"),
+				price => $avg
+			)
+		));
+	}
+}
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	my $op = shift @data; # string opcode, if incorrect then will die later
+	my $rTrade = $rtTrade->makeRowArray(@data) or confess "$!";
+	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
+		or confess "$!";
+	$uTrades->call($rowop) or confess "$!";
+	&computeAverage();
+	undef $rLastMod; # clear for the next iteration
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		For the demonstration, the aggregated rows sent to <pre>$lbAverage</pre> get
+		printed. The rows being aggregated are printed during the iteration
+		too, indented after <quote>Contents:</quote>. And here is a sample
+		run's result, with the input records shown in italics:
+		</para>
+
+<!-- t/xWindow.t doManualAgg1 -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+lbAverage OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+lbAverage OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+lbAverage OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+Contents:
+  id="5" symbol="AAA" price="30" size="30" 
+lbAverage OP_INSERT symbol="AAA" id="5" price="30" 
+> OP_DELETE,5
+Contents:
+</exdump>
+
+		<para>
+		There are a couple of things to notice about it: it produces only the
+		INSERT rowops, no DELETEs, and when the last record of the group is
+		removed, that event produces nothing.
+		</para>
+
+		<para>
+		The first item is mildly problematic because the processing downstream
+		from here might not be able to handle the updates properly without the
+		DELETE rowops. It can be worked around fairly easily by connecting
+		another table to store the aggregation results,
+		with the same primary key as the aggregation key. 
+		That table would automatically transform
+		the repeated INSERTs on the same key to a DELETE-INSERT sequence.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<para>
+		The second item is actually pretty bad because it means that the last
+		record deleted gets stuck in the aggregation results. The Coral8
+		solution for this situation is to send a row with all non-key fields
+		set to NULL, to reset them (interestingly, it's a relatively recent
+		addition, that bug took Coral8 years to notice). But with the opcodes
+		available, we can as well send a DELETE rowop with the key fields filled,
+		the helper table will fill in the rest of the fields, and produce a
+		clean DELETE.
+		</para>
+
+		<para>
+		All this can be done by the following changes. Add the table, remember
+		its input label in <pre>$lbAvgPriceHelper</pre>. It will be used to send the
+		aggregated rows instead of <pre>$tAvgPrice</pre>.
+		Then still use <pre>$tAvgPrice</pre> to print the records coming out, but now
+		connect it after the helper table.  And in <pre>computeAverage()</pre> change the
+		destination label and add the case for when the group becomes empty
+		(<pre>$count == 0</pre>).
+		The rest of the example stays the same.
+		</para>
+
+<!-- t/xWindow.t doManualAgg2 -->
+<pre>
+our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+	)
+	or confess "$!";
+$ttAvgPrice->initialize() or confess "$!";
+our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, 
+	&Triceps::EM_CALL, "tAvgPrice") or confess "$!";
+our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
+
+# place to send the average: could be a dummy label, but to keep the
+# code smaller also print the rows here, instead of in a separate label
+our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or confess "$!";
+$tAvgPrice->getOutputLabel()->chain($lbAverage) or confess "$!";
+
+# Send the average price of the symbol in the last modified row
+sub computeAverage2 # (row)
+{
+	return unless defined $rLastMod;
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	&send("Contents:\n");
+	my $avg = 0;
+	my ($sum, $count);
+	my $rhLast;
+	for (my $rhi = $rhFirst; 
+			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
+		&send("  ", $rhi->getRow()->printP(), "\n");
+		$rhLast = $rhi;
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	if ($count) {
+		$avg = $sum/$count;
+		$uTrades->makeHashCall($lbAvgPriceHelper, &Triceps::OP_INSERT,
+			symbol => $rhLast->getRow()->get("symbol"),
+			id => $rhLast->getRow()->get("id"),
+			price => $avg
+		);
+	} else {
+		$uTrades->makeHashCall($lbAvgPriceHelper, &Triceps::OP_DELETE,
+			symbol => $rLastMod->get("symbol"),
+		);
+	}
+}
+</pre>
+
+		<para>
+		Then the output for the same input becomes:
+		</para>
+
+<!-- t/xWindow.t doManualAgg2 1st run -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+Contents:
+  id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="30" 
+> OP_DELETE,5
+Contents:
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30" 
+</exdump>
+
+		<para>
+		All fixed, the proper DELETEs are coming out.
+		The last line shows the empty group contents in the table
+		but the DELETE row is still coming out.
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>of DELETEs</secondary>
+		</indexterm>
+		<para>
+		Why should we worry so much about the DELETEs? Because without them,
+		relying on just INSERTs for updates, it's easy to create bugs. The last
+		example still has an issue with handling the row replacement by
+		INSERTs.  Can you spot it from reading the code?
+		</para>
+
+		<para>
+		Here is run example that highlights the issue (as usual, the input
+		lines are in italics):
+		</para>
+
+<!-- t/xWindow.t doManualAgg2 2nd run -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="1" price="10" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="3" price="15" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_INSERT,5,BBB,30,30
+Contents:
+  id="5" symbol="BBB" price="30" size="30" 
+tAvgPrice.out OP_INSERT symbol="BBB" id="5" price="30" 
+> OP_INSERT,7,AAA,40,40
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="7" symbol="AAA" price="40" size="40" 
+tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="25" 
+tAvgPrice.out OP_INSERT symbol="AAA" id="7" price="30" 
+</exdump>
+
+		<para>
+		The row with id=5 has been replaced to change the symbol from <quote>AAA</quote> to
+		<quote>BBB</quote>. This act changes both the groups of <quote>AAA</quote> and of <quote>BBB</quote>, removing the
+		row from the first one and inserting it into the second one. Yet only
+		the output for <quote>BBB</quote> came out. The printout of the next row with id=7 and
+		symbol=<quote>AAA</quote> shows that the row with id=5 has been indeed removed from
+		the group <quote>AAA</quote>. It even corrects the result. But until that row came in,
+		the average for the symbol <quote>AAA</quote> remained unchanged and incorrect.
+		</para>
+
+		<para>
+		There are multiple ways to fix this issue but first it had to be
+		noticed. Which requires a lot of attention to detail. It's much better
+		to avoid these bugs in the first place by sending the clean and nice
+		input.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
