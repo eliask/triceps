@@ -362,7 +362,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -477,25 +477,25 @@ $result = undef;
 &doVwapFunction();
 #print $result;
 ok($result, 
-'OP_INSERT,11,abc,123,100
+'> OP_INSERT,11,abc,123,100
 tWindow.aggrVwap OP_INSERT symbol="abc" id="11" volume="100" vwap="123" 
-OP_INSERT,12,abc,125,300
+> OP_INSERT,12,abc,125,300
 tWindow.aggrVwap OP_DELETE symbol="abc" id="11" volume="100" vwap="123" 
 tWindow.aggrVwap OP_INSERT symbol="abc" id="12" volume="400" vwap="124.5" 
-OP_INSERT,13,def,200,100
+> OP_INSERT,13,def,200,100
 tWindow.aggrVwap OP_INSERT symbol="def" id="13" volume="100" vwap="200" 
-OP_INSERT,14,fgh,1000,100
+> OP_INSERT,14,fgh,1000,100
 tWindow.aggrVwap OP_INSERT symbol="fgh" id="14" volume="100" vwap="1000" 
-OP_INSERT,15,abc,128,300
+> OP_INSERT,15,abc,128,300
 tWindow.aggrVwap OP_DELETE symbol="abc" id="12" volume="400" vwap="124.5" 
 tWindow.aggrVwap OP_INSERT symbol="abc" id="15" volume="700" vwap="126" 
-OP_INSERT,16,fgh,1100,25
+> OP_INSERT,16,fgh,1100,25
 tWindow.aggrVwap OP_DELETE symbol="fgh" id="14" volume="100" vwap="1000" 
 tWindow.aggrVwap OP_INSERT symbol="fgh" id="16" volume="125" vwap="1020" 
-OP_INSERT,17,def,202,100
+> OP_INSERT,17,def,202,100
 tWindow.aggrVwap OP_DELETE symbol="def" id="13" volume="100" vwap="200" 
 tWindow.aggrVwap OP_INSERT symbol="def" id="17" volume="200" vwap="201" 
-OP_INSERT,18,def,192,1000
+> OP_INSERT,18,def,192,1000
 tWindow.aggrVwap OP_DELETE symbol="def" id="17" volume="200" vwap="201" 
 tWindow.aggrVwap OP_INSERT symbol="def" id="18" volume="1200" vwap="193.5" 
 ');
