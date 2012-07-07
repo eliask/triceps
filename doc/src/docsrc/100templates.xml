@@ -261,6 +261,7 @@ make_query(w_my, (field_c, field_d));
 		with the simple templates:
 		</para>
 
+<!-- t/xQuery.t -->
 <pre>
 package ServerHelpers;
 use Carp;
@@ -313,6 +314,762 @@ sub makeServerOutLabel # ($fromLabel)
 		since the created label is already chained, it won't disappear.
 		Tha name of the new label is produced from the name of the parent
 		label by appending <quote>.serverOut</quote> to it.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_template_intercon">
+		<title>Templates of interconnected components</title>
+
+		<para>
+		Let's move on to the query template. It will work a little
+		differently than the CCL version. First, the socket main loop
+		allows to send the response directly to the same client who
+		issued the request. So there is no need for adding the request
+		id field in the response and for the client filtering by it.
+		Second, Triceps rows have the opcode field, which can be used
+		to signal the end of the response. For example, the data
+		rows can be sent with the opcode INSERT and the indication of
+		the end of response can be sent with the opcode NOP and
+		all fields NULL.  The query template can then be made as follows:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package Query1;
+
+sub new # ($class, $table, $name)
+{
+	my $class = shift;
+	my $table = shift;
+	my $name = shift;
+
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	my $self = {};
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{table} = $table;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+</pre>
+
+		<para>
+		It creates the input label that does the work and the dummy output
+		label that is used to send the result. The logic is easy: whenever
+		a rowop is received on the input label, iterate through the table
+		and send the contents to the output label. The contents of that
+		received rowop doesn't even matter. The getter methods allow to
+		get the endpoints.
+		</para>
+
+		<para>
+		Now this example can be used in a program. Most of it is the example
+		infrastructure: the function to start the server in background and connect
+		a client to it, the creation of the row type and table type to
+		query, and then finally near the end the interesting part: the
+		usage of the query template.
+		</para>
+
+<!-- t/xQuery.t, assembled from 3 parts -->
+<pre>
+
+# The common client that connects to the port, sends and receives data,
+# and waits for the server to exit.
+sub run # ($labels)
+{
+	my $labels = shift;
+
+	my ($port, $pid) = startServer($labels);
+	my $sock = IO::Socket::INET->new(
+		Proto => "tcp",
+		PeerAddr => "localhost",
+		PeerPort => $port,
+	) or confess "socket failed: $!";
+	while(&readLine) {
+		$sock->print($_);
+		$sock->flush();
+	}
+	$sock->print("exit,OP_INSERT\n");
+	$sock->flush();
+	$sock->shutdown(1); # SHUT_WR
+	while(<$sock>) {
+		&send($_);
+	}
+	waitpid($pid, 0);
+}
+
+# The basic table type to be used as template argument.
+our $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or confess "$!";
+
+our $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("bySymbol", 
+		Triceps::SimpleOrderedIndex->new(symbol => "ASC")
+			->addSubIndex("last2",
+				Triceps::IndexType->newFifo(limit => 2)
+			)
+	)
+	or confess "$!";
+$ttWindow->initialize() or confess "$!";
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query1->new($tWindow, "qWindow");
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+</pre>
+
+		<para>
+		The function <pre>run()</pre> takes care of making the example easier to run:
+		it starts the server in the background, reads the input data and
+		sends it to the server, then reads the responses and prints them
+		back, and finally waits for the server process to exit. It also takes
+		care of sending the exit request to the server when the input
+		reaches EOF.  The approach
+		with first sending all the data there and then reading all the responses
+		back is not very good. It works only if either the data gets sent
+		without any responses, or a small amount of data (not to overflow the
+		TCP buffers along the way) gets sent and then it's all the responses
+		coming back.  But it's simple, and it works good enough for the
+		small examples. And actually many of the commercial CEP interfaces
+		work exacly like this: they either publish the data to the model
+		or send a small subscription request and print the data received
+		from the subscription.
+		</para>
+
+		<para>
+		The row type and table type have been just copied from some
+		other example. There is no particular meaning to why such
+		fields were selected or why the table has such indexes.
+		They have been selected semi-randomly. The only triucky thing
+		that affects the result is that this table implements a window
+		with a limit of 2 rows per symbol.
+		</para>
+
+		<para>
+		After the table is created, the template instantiation is a single
+		call, <pre>Query1->new()</pre>. Then the output label of the query
+		template gets connected to a label that sends the output back to the
+		client, and that's it.
+		</para>
+
+		<para>
+		Here is an example of a run, with the input rows printed 
+		as always in italics.
+		</para>
+
+<!-- t/xQuery.t, Query1 -->
+<exdump>
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+</exdump>
+
+		<para>
+		Because of the way <pre>run()</pre> works, all the input rows are
+		printed before the output ones. If it were smarter and knew, when
+		to expect the responses before sending more inputs, 
+		the output would have been:
+		</para>
+
+<!-- t/xQuery.t, Query1, reordered -->
+<exdump>
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_NOP,,,,
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+</exdump>
+
+		<para>
+		Two rows get inserted into the table,
+		then a query is done, then one more row is inserted, then another
+		query sent. When the third row is inserted, the first row gets
+		thrown away by the window limit, so the second query also
+		returns two rows albeit different than the first query does.
+		</para>
+
+		<para>
+		It is possible to fold the table and the client send label creation 
+		into the template as well.  It will then be used as follows:
+		</para>
+
+<!-- t/xQuery.t, Query2 -->
+<pre>
+my $window = $uTrades->makeTableQuery2($ttWindow, "window");
+
+my %dispatch;
+$dispatch{$window->getName()} = $window->getInputLabel();
+$dispatch{$window->getQueryLabel()->getName()} = $window->getQueryLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+</pre>
+
+		<para>
+		The rest of the infrastructure would stay unchanged. Just to show
+		how it can be done, I've even added a factory method
+		<pre>Unit::makeTableQuery2()</pre>. The implementation of this
+		template is:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package TableQuery2;
+use Carp;
+
+sub new # ($class, $unit, $tabType, $name)
+{
+	my $class = shift;
+	my $unit = shift;
+	my $tabType = shift;
+	my $name = shift;
+
+	my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+		or confess "Query2 table creation failed: $!";
+	my $rt = $table->getRowType();
+
+	my $self = {};
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{table} = $table;
+	$self->{qLabel} = $unit->makeLabel($rt, $name . ".query", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{resLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{resLabel}, "OP_NOP");
+	}, $self);
+	$self->{resLabel} = $unit->makeDummyLabel($rt, $name . ".response");
+	
+	$self->{sendLabel} = &ServerHelpers::makeServerOutLabel($self->{resLabel});
+
+	bless $self, $class;
+	return $self;
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+sub getQueryLabel # ($self)
+{
+	my $self = shift;
+	return $self->{qLabel};
+}
+
+sub getResponseLabel # ($self)
+{
+	my $self = shift;
+	return $self->{resLabel};
+}
+
+sub getSendLabel # ($self)
+{
+	my $self = shift;
+	return $self->{sendLabel};
+}
+
+sub getTable # ($self)
+{
+	my $self = shift;
+	return $self->{table};
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{table}->getInputLabel();
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{table}->getOutputLabel();
+}
+
+sub getPreLabel # ($self)
+{
+	my $self = shift;
+	return $self->{table}->getPreLabel();
+}
+
+# add a factory to the Unit type
+package Triceps::Unit;
+
+sub makeTableQuery2 # ($self, $tabType, $name)
+{
+	return TableQuery2->new(@_);
+}
+
+</pre>
+
+		<para>
+		The meat of the logic stays the same. The creation of the table
+		and of the client sending label are added around it, as well as
+		a bunch of getter methods to get access to the components.
+		</para>
+
+		<para>
+		The output of this example is the same, with the only difference
+		that it expects and sends different label names:
+		</para>
+
+<!-- t/xQuery.t, Query2 -->
+<exdump>
+> window,OP_INSERT,1,AAA,10,10
+> window,OP_INSERT,3,AAA,20,20
+> window.query,OP_INSERT
+> window,OP_INSERT,5,AAA,30,30
+> window.query,OP_INSERT
+window.response,OP_INSERT,1,AAA,10,10
+window.response,OP_INSERT,3,AAA,20,20
+window.response,OP_NOP,,,,
+window.response,OP_INSERT,3,AAA,20,20
+window.response,OP_INSERT,5,AAA,30,30
+window.response,OP_NOP,,,,
+</exdump>
+	</sect1>
+
+	<sect1 id="sc_template_options">
+		<title>Template options</title>
+
+		<para>
+		Often the arguments of the template constructor become more convenient
+		to organize in the option name-value pairs. It becomes particularly
+		useful when there are many arguments and/or when some of them really
+		are optional. For our little query template this is not the case
+		but it can be written with options nevertheless (a modification of the
+		original version, without the table in it):
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package Query3;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+</pre>
+
+		<para>
+		The getter methods stayed the same, so I've skipped them here.
+		The call has changed:
+		</para>
+
+<!-- t/xQuery.t, Query3 -->
+<pre>
+my $query = Query3->new(table => $tWindow, name => "qWindow");
+</pre>
+
+		<para>
+		The output stayed the same.
+		</para>
+
+		<para>
+		The class Triceps::Opt is used to parse the arguments formatted as
+		options. There is actually a similar option parser in CPAN but it
+		didn't do everything I wanted, and considering how tiny it is, it's
+		easier to write a new one from scratch than to extend that one. I also
+		like to avoid the extra dependencies.
+		</para>
+
+		<para>
+		The heart of it is the method <pre>Triceps::Opt::parse()</pre>. 
+		It's normally called from a class constructor to parse the constructor's options,
+		but can be called from the other functions as well.
+		It does the following: 
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		Checks that all the options are known.
+		</listitem>
+		<listitem>
+		Checks that the values are acceptable.
+		</listitem>
+		<listitem>
+		Copies the values into the instance hash of the calling class.
+		</listitem>
+		<listitem>
+		Provides the default values for the unspecified options.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		If anything goes wrong, it confesses with a reasonable message. The
+		arguments tell the class name for the messages (since, remember, it
+		is normally called from the class constructor), the
+		reference to the object instance hash where to copy the options, the
+		descriptions of the supported options, and the actual key-value pairs.
+		</para>
+
+		<para>
+		At the end of it, if all went well, the query's <pre>$self</pre> will have the 
+		values at keys <quote>name</quote> and <quote>table</quote>.
+		</para>
+
+		<para>
+		The options descriptions go in pairs of option name and an array
+		reference with description. The array contains the default value and
+		the checking function, either of which may be <pre>undef</pre>. The checking
+		function returns if everything went fine or confesses on any errors. To die
+		happily with a proper message, it gets not only the value to
+		check but more, altogether:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		The value to check.
+		</listitem>
+		<listitem>
+		The name of the option.
+		</listitem>
+		<listitem>
+		The name of the class, for error messages.
+		</listitem>
+		<listitem>
+		The object instance (<pre>$self</pre>), just in case.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		If you want to do multiple checks, you just make a closure and call all
+		the checks in sequence, passing <pre>@_</pre> to them all, like shown here for
+		the option <quote>table</quote>. If more arguments need to be passed to
+		the checking function, just add them after <pre>@_</pre> (or, if you
+		prefer, before it, if you write your checking function that way). 
+		</para>
+
+		<para>
+		You can create any checking functions, but a few ready ones are provided:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		<pre>Triceps::Opt::ck_mandatory</pre> checks that the value is defined.
+		</listitem>
+		<listitem>
+		<pre>Triceps::Opt::ck_ref</pre> checks that the value is a reference to a
+		particular class, or a class derived from it. Just give the class name as the extra argument. Or,
+		to check that the reference is to array or hash, make the argument
+		<pre>"ARRAY"</pre> or <pre>"HASH"</pre>. Or an empty string <pre>""</pre> to check that it's not a
+		reference at all. For the arrays and hashes it can also check the
+		values contained in them for being references to the correct types: give that
+		type as the second extra argument. But it doesn't go deeper than that,
+		just one nesting level. It might be extended later, but for now one nesting
+		level has been enough.
+		</listitem>
+		<listitem>
+		<pre>Triceps::Opt::ck_refscalar</pre> checks that the value is a reference to a
+		scalar. This is designed to check the arguments which are used to
+		return data back to the caller, and it would accept any previous value
+		in that scalar: an actual scalar value, an <pre>undef</pre> or a reference,
+		since it's about to be overwritten anyway.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The <pre>ck_ref()</pre> and <pre>ck_refscalar()</pre> allow the value to be undefined, so they
+		can safely be used on the truly optional options. When I come up with more of
+		the useful check functions, I'll add them.
+		</para>
+
+		<para>
+		Triceps::Opt provides more helper functions to deal with options after
+		they have been parsed. One of them is <pre>handleUnitTypeLabel()</pre> that handles
+		a very specific but frequently occuring case: Depending on the usage, sometimes
+		it's more convenient to give the template the input row type and unit, and later chain
+		its input to another label; and sometimes it's more convenient to give it
+		another ready label and have the template find out the row type and unit from it,
+		and chain its input to that label automatically, like <pre>ServerHelpers::makeServerOutLabel()</pre> 
+		was shown doing in
+		<xref linkend="sc_template_wrapper" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		It's possible if the unit, row type and source label are made the optional options.
+		</para>
+
+		<para>
+		<pre>Triceps::Opt::handleUnitTypeLabel()</pre> takes care of sorting out what information
+		is available, that enough of it is available, that exactly one of row type or
+		source label options is specified, and fills in the unit and row type
+		values from the source label (specifying the unit option along with
+		the source label is OK as long as the unit is the same). To show it
+		off, I re-wrote the <pre>ServerHelpers::makeServerOutLabel()</pre> as 
+		a class with options:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package ServerOutput;
+use Carp;
+
+# Sending of rows to the server output.
+sub new # ($class, $option => $value, ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, undef ],
+		unit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label") } ],
+	}, @_);
+
+	&Triceps::Opt::handleUnitTypeLabel("$class::new",
+		unit => \$self->{unit},
+		rowType => \$self->{rowType},
+		fromLabel => \$self->{fromLabel}
+	);
+	my $fromLabel = $self->{fromLabel};
+	
+	if (!defined $self->{name}) {
+		confess "$class::new: must specify at least one of the options name and fromLabel"
+			unless (defined $self->{fromLabel});
+		$self->{name} = $fromLabel->getName() . ".serverOut";
+	}
+
+	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
+		$self->{name}, undef, sub {
+			&main::outCurBuf(join(",", 
+				$fromLabel? $fromLabel->getName() : $self->{name},
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		}, $self # $self is not used in the function but used for cleaning
+	);
+	$self->{inLabel} = $lb;
+	if (defined $fromLabel) {
+		$fromLabel->chain($lb) or confess "$!";
+	}
+
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel() # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+</pre>
+
+		<para>
+		The arguments to <pre>Triceps::Opt::handleUnitTypeLabel()</pre> are the
+		caller function name for the error messages, and the pairs of option name
+		and reference to the option value for the unit, row type and the source
+		label.
+		</para>
+
+		<para>
+		The new class also has the optional option <quote>name</quote>. If it's
+		not specified and <quote>fromLabel</quote> is specified, the name
+		is generated by appending a suffix to the name of the source label.
+		The new class can be used in one of two ways, either
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+my $srvout = ServerOutput->new(fromLabel => $query->getOutputLabel());
+</pre>
+
+		<para>
+		or
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+my $srvout = ServerOutput->new(
+	name => "out",
+	unit => $uTrades,
+	rowType => $tWindow->getRowType(),
+);
+$query->getOutputLabel()->chain($srvout->getInputLabel())
+	or confess "$!";
+</pre>
+
+		<para>
+		The second form comes handy if you want to create it before creating
+		the query.
+		</para>
+
+		<para>
+		The other helper function is <pre>Triceps::Opt::checkMutuallyExclusive()</pre>.
+		It checks that no more than one option from the list is specified.
+		The joins use it to allow multiple ways to specify the join condition.
+		For now I'll show a bit contrived example, rewriting the last example
+		of ServerOutput with it:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package ServerOutput2;
+use Carp;
+
+# Sending of rows to the server output.
+sub new # ($class, $option => $value, ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, undef ],
+		unit => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType") } ],
+		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label") } ],
+	}, @_);
+
+	my $fromLabel = $self->{fromLabel};
+	if (&Triceps::Opt::checkMutuallyExclusive("$class::new", 1,
+			rowType => $self->{rowType},
+			fromLabel => $self->{fromLabel}
+		) eq "fromLabel"
+	) {
+		$self->{rowType} = $fromLabel->getRowType();
+	}
+	
+	if (!defined $self->{name}) {
+		confess "$class::new: must specify at least one of the options name and fromLabel"
+			unless (defined $self->{fromLabel});
+		$self->{name} = $fromLabel->getName() . ".serverOut";
+	}
+
+	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
+		$self->{name}, undef, sub {
+			&main::outCurBuf(join(",", 
+				$fromLabel? $fromLabel->getName() : $self->{name},
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		}, $self # $self is not used in the function but used for cleaning
+	);
+	$self->{inLabel} = $lb;
+	if (defined $fromLabel) {
+		$fromLabel->chain($lb) or confess "$!";
+	}
+
+	bless $self, $class;
+	return $self;
+}
+</pre>
+
+		<para>
+		The arguments of the <pre>Triceps::Opt::checkMutuallyExclusive()</pre>
+		are the caller name for error messages, flag whether one of the mutually
+		exclusive options must be specified, and the pairs of option names and
+		values (this time not references, just values). It returns the name of
+		the only option specified by the user, or <pre>undef</pre> if none were.
+		If more than one option was used, or if none were used and the mandatory
+		flag is set, the function will confess.
+		</para>
+
+		<para>
+		The way this version of the code works, the option <quote>unit</quote>
+		must be specified in any case, so the use case with the source label becomes:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+my $srvout = ServerOutput2->new(
+	unit => $uTrades,
+	fromLabel => $query->getOutputLabel()
+);
+</pre>
+
+		<para>
+		The use case with the independent creation is the same as with 
+		the previous version of the <pre>ServerOutput</pre>.
 		</para>
 
 		<para>
