@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 20 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -108,7 +109,7 @@ sub dataToString # (@dataSet)
 
 ###################### 1. hardcoded VWAP #################################
 
-# XXX this is too difficult to do manually every time, should be a better way...
+# pretty difficult to do manually every time...
 
 $vu1 = Triceps::Unit->new("vu1");
 ok(ref $vu1, "Triceps::Unit");
@@ -398,7 +399,7 @@ my $myAggFunctions = {
 	},
 };
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -406,7 +407,7 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -416,7 +417,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 		->addSubIndex("fifo", Triceps::IndexType->newFifo())
 	)
-or die "$!";
+or confess "$!";
 
 # the aggregation result
 my $rtVwap;
@@ -435,19 +436,19 @@ Triceps::SimpleAggregator::make(
 	functions => $myAggFunctions,
 	saveRowTypeTo => \$rtVwap,
 	saveComputeTo => \$compText,
-) or die "$!";
+);
 
-$ttWindow->initialize() or die "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
