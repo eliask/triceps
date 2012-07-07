@@ -315,6 +315,32 @@ sub makeServerOutLabel # ($fromLabel)
 		Tha name of the new label is produced from the name of the parent
 		label by appending <quote>.serverOut</quote> to it.
 		</para>
+
+		<para>
+		Another similar template that is used throughout the following
+		chapters creates a label that prints the rowop contents:
+		</para>
+
+<!-- t/Collapse.t and other files -->
+<pre>
+# a template to make a label that prints the data passing through another label
+sub makePrintLabel($$) # ($print_label_name, $parent_label)
+{
+	my $name = shift;
+	my $lbParent = shift;
+	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
+		undef, sub { # (label, rowop)
+			&send($_[1]->printP(), "\n");
+		}) or die "$!";
+	$lbParent->chain($lb) or die "$!";
+	return $lb;
+}
+</pre>
+
+		<para>
+		It works very much the same as <pre>makeServerOutLabel()</pre>, only
+		prints to a different destination.
+		</para>
 	</sect1>
 
 	<sect1 id="sc_template_intercon">

@@ -309,11 +309,7 @@ sub computeAverage # (row)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	my $op = shift @data; # string opcode, if incorrect then will die later
-	my $rTrade = $rtTrade->makeRowArray(@data) or confess "$!";
-	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
-		or confess "$!";
-	$uTrades->call($rowop) or confess "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	&computeAverage();
 	undef $rLastMod; # clear for the next iteration
 	$uTrades->drainFrame(); # just in case, for completeness
@@ -406,11 +402,7 @@ our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
 
 # place to send the average: could be a dummy label, but to keep the
 # code smaller also print the rows here, instead of in a separate label
-our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
-	undef, sub { # (label, rowop)
-		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tAvgPrice->getOutputLabel()->chain($lbAverage) or confess "$!";
+our $lbAverage = makePrintLabel("lbAverage", $tAvgPrice->getOutputLabel());
 
 # Send the average price of the symbol in the last modified row
 sub computeAverage2 # (row)
@@ -443,6 +435,15 @@ sub computeAverage2 # (row)
 	}
 }
 </pre>
+
+		<para>
+		The change is straightforward.
+		The label <pre>$lbAverage</pre> 
+		now reverts to just printing the rowops going through it, 
+		so it can be created with the template <pre>makePrintLabel()</pre> 
+		described in
+		<xref linkend="sc_template_wrapper" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
 
 		<para>
 		Then the output for the same input becomes:
@@ -543,6 +544,389 @@ tAvgPrice.out OP_INSERT symbol="AAA" id="7" price="30"
 		noticed. Which requires a lot of attention to detail. It's much better
 		to avoid these bugs in the first place by sending the clean and nice
 		input.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_proper">
+		<title>Introducing the proper aggregation</title>
+
+		<para>
+		Since the manual aggregation is error-prone, Triceps can manage it for
+		you and do it right. The only thing you need to do is do the actual
+		iteration and computation. Here is the rewrite of the same example with
+		a Triceps aggregator:
+		</para>
+
+<!-- t/xAgg.t doNonAdditive -->
+<pre>
+my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or die "$!";
+
+# the aggregation result
+my $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+) or die "$!";
+
+# aggregation handler: recalculate the average each time the easy way
+sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or die "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or die "$!";
+	$context->send($opcode, $res) or die "$!";
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage1)
+			)
+		)
+	)
+or die "$!";
+$ttWindow->initialize() or die "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or die "$!";
+
+# label to print the result of aggregation
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		What has changed in this code? The things got rearranged a bit.The
+		aggregator is now defined as a part of the table type, so the
+		aggregation result row type and its computation function had to be
+		moved up.
+		</para>
+
+		<indexterm>
+			<primary>AggregatorType</primary>
+		</indexterm>
+		<indexterm>
+			<primary>index</primary>
+			<secondary>aggregation</secondary>
+		</indexterm>
+		<para>
+		The AggregatorType object holds the information about the aggregator.
+		In the table type, the aggregator type gets attached to an index type
+		with <pre>setAggregator()</pre>. In this case, to the FIFO index type. 
+		The parent of that index type determines the aggregation groups,
+		grouping happening by its combined key fields (that is, all the
+		key fields of all the indexes in the path starting from the root).
+		For aggregation the working or non-working method <pre>getKey()</pre> doesn't matter,
+		so any of the Hashed, Ordered and Sorted index types can be used.
+		The index type where the aggregator type is attached determines the
+		order of the rows in the groups. If you use FIFO, the rows will
+		be in the order of arrival. If you use Ordered or Sorted, the rows
+		will be in the sort order. If you use Hashed, the rows will be
+		in some random order, which is not particularly useful.
+		</para>
+
+		<para>
+		At present an index type may have no more than one aggregator type
+		attached to it. There is no particular reason for that, other than that
+		it was slightly easier to implement, and that I can't think yet of a
+		real-word situation where multiple aggregators on the same index would
+		be needed. If this situation will ever occur, this support can be
+		added. However a table type may have multiple aggregator types in it,
+		on different indexes. You can save a reference to an aggregator
+		type in a variable and reuse it in the different table types too
+		(though not multiple times in the same table, since that would cause a
+		naming conflict).
+		</para>
+
+		<para>
+		The aggregator type is created with the arguments of 
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		result row type,
+		</listitem>
+		<listitem>
+		aggregator name, 
+		</listitem>
+		<listitem>
+		group initialization Perl function (which may be
+		<pre>undef</pre>, as in this example), 
+		</listitem>
+		<listitem>
+		group computation Perl function, 
+		</listitem>
+		<listitem>
+		the optional arguments for the functions. 
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		Note that there is a
+		difference in naming between the aggregator types and index types: an
+		aggregator type knows its name, while an index type does not. An index
+		type is given a name only in its hierarchy inside the table type, but
+		it does not know its name.
+		</para>
+
+		<para>
+		When a table is created, it finds all the aggregator types in it, and
+		creates an output label for each of them. The names of the aggregator
+		types are used as suffixes to the table name. In this example the
+		aggregator will have its output label named <quote>tWindow.aggrAvgPrice</quote>.
+		This puts all the aggregator types in the table into the same
+		namespace, so make sure to give them different names in the same table
+		type. Also avoid the names <quote>in</quote>, <quote>out</quote> and <quote>pre</quote> 
+		because these are already
+		taken by the table's own labels. The aggregator labels in the table can
+		be found with
+		</para>
+
+<pre>
+$aggLabel = $table->getAggregatorLabel("aggName") or confess "$!";
+</pre>
+
+		<para>
+		The aggregator types are theoretically multithreaded, but for all I can
+		tell, they will not integrate with the Perl multithreading well, due to
+		the way the Perl objects (the execution methods!) are tied to each
+		thread's separate interpreter. In the future expect that the table
+		types with aggregators could not be shared between the threads.
+		But then again, maybe they could be copied between the threads and that
+		would work just as well.
+		</para>
+
+		<para>
+		After the logic is moved into a managed aggregator, the main loop
+		becomes simpler.  
+		</para>
+
+		<para>
+		The computation function gets a lot more arguments than it used to. The
+		most interesting and most basic ones are <pre>$context</pre>, <pre>$opcode</pre>, and <pre>$rh</pre>.
+		The rest are useful in the more complex cases only.
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>context</secondary>
+		</indexterm>
+		<para>
+		The aggregator type is exactly that: a type. It doesn't know, on which
+		table or index, or even index type it will be used. And indeed, it
+		might be used on multiple tables and index types. But to do the
+		iteration on the rows, the computation function needs to get this
+		information somehow. And it does, in the form of aggregator context.
+		The manual aggregation used the last table output row to find, on which
+		exact group to iterate. The managed aggregator gets the last modified
+		row handle as the argument <pre>$rh</pre>. But our simple aggregator doesn't even
+		need to consult <pre>$rh</pre> because the context takes care of finding the
+		group too: it knows the exact group and exact index that needs to be
+		aggregated (look at the index tree drawings in
+		<xref linkend="sc_table_indextree" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for the difference between an index type and an index).
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>iteration</secondary>
+		</indexterm>
+		<para>
+		The context provides its own <pre>begin()</pre> and <pre>next()</pre> methods. They are
+		actually slightly more efficient than the usual table iteration methods
+		because they take advantage of that exact known index. The most
+		important part, they work differently.
+		</para>
+
+<pre>
+$rhi = $context->next($rhi);
+</pre>
+
+		<para>
+		returns a NULL row handle when it reaches the end of the group. Do not,
+		I repeat, <b>DO NOT</b> use the <pre>$rhi->next()</pre> in the aggregators, or
+		you'll get some very wrong results.
+		</para>
+
+		<para>
+		The context also has a bit more of its own magic.
+		</para>
+
+<pre>
+$rh = $context->last();
+</pre>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>last</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>first</secondary>
+		</indexterm>
+		<para>
+		returns the last row handle in the group. This comes very handy because
+		in most of the cases you want the data from the last row to fill the
+		fields that haven't been aggregated as such. This is like the SQL
+		function <pre>LAST()</pre>. Using the fields from the argument <pre>$rh</pre>, unless they
+		are the key fields for this group, is generally not a good idea because
+		it adds an extra dependency on the order of modifications to the table.
+		The <pre>FIRST()</pre> or <pre>LAST()</pre> (i.e. the 
+		context's <pre>begin()</pre> or <pre>last()</pre>) are much
+		better and not any more expensive.
+		</para>
+
+<pre>
+$size = $context->groupSize();
+</pre>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>count</secondary>
+		</indexterm>
+		<para>
+		returns the number of rows in the group. It's your value of <pre>COUNT(*)</pre> in
+		SQL terms, and if that's all you need, you don't need to iterate.
+		</para>
+
+<pre>
+$context->send($opcode, $row) or confess "$!";
+</pre>
+
+		<para>
+		constructs a result rowop and sends it to the aggregator's output
+		label. Remember, the aggregator type as such knows nothing about this
+		label, so the path through the context is the only path. Note also that
+		it takes a row and not a rowop, because a label is needed to construct
+		the rowop in the first place.
+		</para>
+
+<pre>
+$rt = $context->resultType();
+</pre>
+
+		<para>
+		provides the result row type needed to construct the result row.
+		There also are a couple of convenience methods that combine
+		the row construction and sending, that can be used instead:
+		</para>
+
+<pre>
+$context->makeHashSend ($opcode, $fieldName => $fieldValue, ...);
+$context->makeArraySend($opcode, @fieldValues);
+</pre>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		These two methods confess on any errors, and their result doesn't
+		need to be checked.
+		</para>
+
+		<para>
+		The final thing about the aggregator context: it works only inside the
+		aggregator computation function. Once the function returns, all its
+		methods start returning <pre>undef</pre>. So there is no point in trying
+		to save it for later in a global variable or such, don't do that.
+		</para>
+
+		<para>
+		As you can see, <pre>computeAverage()</pre> has the same logic as before, only
+		now it uses the aggregation context. And I've removed the debugging
+		printout of the rows in the group.
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>opcode</secondary>
+		</indexterm>
+		<para>
+		The last unexplained piece is the opcode handling and that comparison
+		to <pre>OP_NOP</pre>. Basically, the table calls the aggregator computation
+		every time something changes in its index. It describes the reason for
+		the call in the argument <pre>$aggop</pre> (<quote>aggregation operation</quote>). Depending on
+		how clever an aggregator wants to be, it may do something useful on all
+		of these occasions, or only on some of them. The simple aggregator that
+		doesn't try any smart optimizations but just goes and iterates through
+		the rows every time only needs to react in some of the cases. To make
+		its life easier, Triceps pre-computes the opcode that should be used
+		for the result and puts it into the argument <pre>$opcode</pre>. So to
+		ignore the non-interesting calls, the simple aggregator computation can
+		just return if it sees the opcode <pre>OP_NOP</pre>.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<para>
+		Why does it also check for the group size being 0? Again, Triceps
+		provides flexibility in the aggregators. Among other things, it allows to
+		implement the logic like Coral8, when on deletion of the last row in
+		the group the aggregator would send a row with all non-key fields set
+		to NULL (it can take the key fields from the argument <pre>$rh</pre>). So for this
+		specific purpose the computation function gets called with all rows
+		deleted from the group, and <pre>$opcode</pre> set to <pre>OP_INSERT</pre>. And, by the way,
+		a true Coral8-styled aggregator would ignore all the calls where the
+		<pre>$opcode</pre> is not <pre>OP_INSERT</pre>. But the normal aggregators need to avoid
+		doing this kind of crap, so they have to ignore the calls where
+		<pre>$context->groupSize()==0</pre>.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
