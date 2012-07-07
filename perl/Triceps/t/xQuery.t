@@ -712,6 +712,9 @@ sub new # ($class, $optionName => $optionValue ...)
 				my %rtdef = $self->{table}->getRowType()->getdef();
 				foreach my $f (@{$self->{fields}}) {
 					my $v = $query->get($f);
+					# Since the simplified CSV parsing in the mainLoop() provides
+					# no easy way to send NULLs, consider any empty or 0 value
+					# in the query row equivalent to NULLs.
 					if ($v 
 					&& (&Triceps::Fields::isStringType($rtdef{$f})
 						? $query->get($f) ne $data->get($f)
