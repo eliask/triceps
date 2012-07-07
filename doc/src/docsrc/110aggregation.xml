@@ -377,6 +377,10 @@ Contents:
 		clean DELETE.
 		</para>
 
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>helper table</secondary>
+		</indexterm>
 		<para>
 		All this can be done by the following changes. Add the table, remember
 		its input label in <pre>$lbAvgPriceHelper</pre>. It will be used to send the
@@ -559,7 +563,7 @@ tAvgPrice.out OP_INSERT symbol="AAA" id="7" price="30"
 
 <!-- t/xAgg.t doNonAdditive -->
 <pre>
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -567,14 +571,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
@@ -592,15 +596,15 @@ sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -616,10 +620,10 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -912,30 +916,310 @@ $context->makeArraySend($opcode, @fieldValues);
 		</para>
 
 		<para>
+		And here is an example of the output from that code
+		(as usual, the input lines are in italics):
+		</para>
+
+<!-- t/xAgg.t doNonAdditive -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+> OP_DELETE,5
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
+</exdump>
+
+		<para>
+		As you can see, it's exactly the same as from the manual aggregation
+		example with the helper table, minus the debugging printout of the
+		group contents. However here it's done without the helper table:
+		instead the aggregation function is called before and after each
+		update.
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>helper table</secondary>
+		</indexterm>
+		<para>
+		This presents a memory vs CPU compromise: a helper table uses more
+		memory but requires less CPU for the aggregation computations
+		(presumably, the insertion of the row into the table is less
+		computationally intensive than the iteration through the original
+		records).
 		</para>
 
 		<para>
+		The managed aggregators can be made to work with a helper table too:
+		just chain a helper table to the aggregator's label, and in the
+		aggregator computation add
+		</para>
+
+<pre>
+return if ($opcode == &Triceps::OP_DELETE
+	&& $context->groupSize() != 1);
+</pre>
+
+		<para>
+		This would skip all the DELETEs except for the last one, before the
+		group collapses.
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>optimization</secondary>
+		</indexterm>
+		<para>
+		There is also a way to optimize this logic right inside the aggregator:
+		remember the last INSERT row sent, and on DELETE just resend the same
+		row. This remembered last state can also be used for the other
+		interesting optimizations that will be shown later.
+		XXX reference the additive agg
+		</para>
+
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<para>
+		Which approach is better, depends on the particular case. If you need
+		to store the results of aggregation in a table for the future look-ups
+		anyway, then that table is no extra overhead. That's what the
+		Aleri system does internally: since each element in its model keeps a
+		primary-indexed table (<quote>materialized view</quote>) of the result, that table
+		is used whenever possible to generate the DELETEs without involving any
+		logic. Or the extra optimization inside the aggregator can seriously
+		improve the performance on the large groups. Sometimes you may want
+		both. 
 		</para>
 
 		<para>
+		Now let's look at the run with the same input that went wrong with
+		the manual aggregation:
+		</para>
+
+<!-- t/xAgg.t doNonAdditive no missing DELETE -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_INSERT,5,BBB,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="5" price="30" 
+> OP_INSERT,7,AAA,40,40
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="30" 
+</exdump>
+
+		<para>
+		Here it goes right. Triceps recognizes that the second INSERT with id=5
+		moves the row to another group. So it performs the aggregation logic
+		for both groups. First for the group where the row gets removed, it
+		updates the aggregator result with a DELETE and INSERT (note that
+		id became 3, since it's now the last row left in that group).
+		Then for the group where the row gets added, and since there was nothing in
+		that group before, it generates only an INSERT.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_window">
+		<title>Tricks with aggregation on a sliding window</title>
+
+		<para>
+		Now it all works as it should, but there is still some room for improvement,
+		related to the way the sliding window limits are handled.
 		</para>
 
 		<para>
+		Let's look again at the sample aggregation output with row deletion, copied
+		here for convenience:
+		</para>
+
+<!-- t/xAgg.t doNonAdditive, second copy -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+> OP_DELETE,5
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
+</exdump>
+
+		<para>
+		When the row with id=3 is deleted, the average price reverts to 30,
+		which is the price of the trade with id=5, not the average of trades
+		with id 1 and 5. 
 		</para>
 
 		<para>
+		This is because the table is actually a sliding window, with the
+		FIFO index having a limit of 2 rows
+		</para>
+
+<!-- fragment of the previous example -->
+<pre>
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage1)
+			)
+		)
+	)
+or confess "$!";
+</pre>
+
+		<para>
+		When the row with id=5 was inserted,
+		it pushed out the row with id=1. Deleting the record with id=3 does not
+		put that row with id=1 back. You can see the group contents in an even
+		earlier printout with the manual aggregation, also copied here for
+		convenience: 
+		</para>
+
+<!-- t/xWindow.t doManualAgg1, 2nd copy -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+lbAverage OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+lbAverage OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+Contents:
+  id="3" symbol="AAA" price="20" size="20" 
+  id="5" symbol="AAA" price="30" size="30" 
+lbAverage OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+Contents:
+  id="5" symbol="AAA" price="30" size="30" 
+lbAverage OP_INSERT symbol="AAA" id="5" price="30" 
+> OP_DELETE,5
+Contents:
+</exdump>
+
+		<para>
+		Like the toothpaste, once out of the tube, it's not easy to put back.
+		But for this particular kind of toothpaste there is a trick: keep more
+		rows in the group just in case but use only the last few for the
+		actual aggregation. To allow an occasional deletion of a single row, we
+		can keep 3 rows instead of 2.
 		</para>
 
 		<para>
+		So, change the table definition:
+		</para>
+
+<pre>
+...
+			Triceps::IndexType->newFifo(limit => 3)
+... 
+</pre>
+
+		<para>
+		and modify the aggregator function to use only the last 2 rows from the
+		group, even if more are available:
+		</para>
+
+<!-- t/xAgg.t doExtraRecord -->
+<pre>
+sub computeAverage2 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+
+	my $skip = $context->groupSize()-2;
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		if ($skip > 0) {
+			$skip--;
+			next;
+		}
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
+}
+</pre>
+
+		<para>
+		The output from this version becomes:
+		</para>
+
+<!-- t/xAgg.t doExtraRecord -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="20" 
+> OP_DELETE,5
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="20" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+</exdump>
+
+		<para>
+		Now after <pre>OP_DELETE,3</pre> the average price becomes 20, the
+		average of 10 and 30, because the row with id=1 comes into play again.
+		Can you repeat that in the SQLy languages?
 		</para>
 
 		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
+		This version stores one extra row and thus can handle only one deletion
+		(until the deleted row's spot gets pushed out of the window naturally,
+		then it can handle another). It can not handle the arbitrary
+		modifications properly. If you insert another row with id=3 for the
+		same symbol <quote>AAA</quote>, the new version will be placed again at the end of the
+		window. If it was the last row anyway, that is fine. But if it was not
+		the last, as in this example, that would be an incorrect order that
+		will produce incorrect results.
 		</para>
 
 		<para>
