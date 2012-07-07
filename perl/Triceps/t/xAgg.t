@@ -36,7 +36,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -172,18 +172,18 @@ $result = undef;
 &doNonAdditive();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
@@ -201,19 +201,19 @@ $result = undef;
 &doNonAdditive();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_INSERT,5,BBB,30,30
+> OP_INSERT,5,BBB,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="20" 
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="5" price="30" 
-OP_INSERT,7,AAA,40,40
+> OP_INSERT,7,AAA,40,40
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="20" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="30" 
 ');
@@ -317,18 +317,18 @@ $result = undef;
 &doExtraRecord();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="20" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="20" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 ');
@@ -435,21 +435,21 @@ $result = undef;
 &doSortById();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="20" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="20" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_INSERT,7,AAA,40,40
+> OP_INSERT,7,AAA,40,40
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="35" 
 ');
@@ -561,23 +561,23 @@ $result = undef;
 &doRememberLast();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,4,BBB,200,200
+> OP_INSERT,4,BBB,200,200
 tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
@@ -687,23 +687,23 @@ $result = undef;
 &doRememberLastNR();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,4,BBB,200,200
+> OP_INSERT,4,BBB,200,200
 tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
@@ -818,23 +818,23 @@ $result = undef;
 &doSimpleAdditiveState();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,4,BBB,200,200
+> OP_INSERT,4,BBB,200,200
 tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
@@ -851,15 +851,15 @@ $result = undef;
 &doSimpleAdditiveState();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,1,10
+'> OP_INSERT,1,AAA,1,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="1" 
-OP_INSERT,2,AAA,1e20,20
+> OP_INSERT,2,AAA,1e20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="1" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="2" price="5e+19" 
-OP_INSERT,3,AAA,2,10
+> OP_INSERT,3,AAA,2,10
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="2" price="5e+19" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="5e+19" 
-OP_INSERT,4,AAA,3,10
+> OP_INSERT,4,AAA,3,10
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="5e+19" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="4" price="1.5" 
 ');
@@ -968,23 +968,23 @@ $result = undef;
 &doSimpleAdditiveNoLast();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,4,BBB,200,200
+> OP_INSERT,4,BBB,200,200
 tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
@@ -1065,23 +1065,23 @@ $result = undef;
 &doPrintCall();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 AO_AFTER_INSERT OP_INSERT 1 id="1" symbol="AAA" price="10" size="10" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 AO_AFTER_INSERT OP_INSERT 1 id="2" symbol="BBB" price="100" size="100" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 AO_BEFORE_MOD OP_DELETE 1 NULL
 AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="AAA" price="20" size="20" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 AO_BEFORE_MOD OP_DELETE 2 NULL
 AO_AFTER_DELETE OP_NOP 2 id="1" symbol="AAA" price="10" size="10" 
 AO_AFTER_INSERT OP_INSERT 2 id="5" symbol="AAA" price="30" size="30" 
-OP_INSERT,3,BBB,20,20
+> OP_INSERT,3,BBB,20,20
 AO_BEFORE_MOD OP_DELETE 2 NULL
 AO_BEFORE_MOD OP_DELETE 1 NULL
 AO_AFTER_DELETE OP_INSERT 1 id="3" symbol="AAA" price="20" size="20" 
 AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="BBB" price="20" size="20" 
-OP_DELETE,5
+> OP_DELETE,5
 AO_BEFORE_MOD OP_DELETE 1 NULL
 AO_AFTER_DELETE OP_INSERT 0 id="5" symbol="AAA" price="30" size="30" 
 AO_COLLAPSE OP_NOP 0 NULL
@@ -1286,21 +1286,21 @@ $result = undef;
 &doNonAdditive3();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,1,10
+'> OP_INSERT,1,AAA,1,10
 1
-OP_INSERT,2,AAA,1,10
+> OP_INSERT,2,AAA,1,10
 1
-OP_INSERT,3,AAA,1,10
+> OP_INSERT,3,AAA,1,10
 1
-OP_INSERT,4,AAA,1e16,10
+> OP_INSERT,4,AAA,1e16,10
 2500000000000001
-OP_INSERT,5,BBB,1e16,10
+> OP_INSERT,5,BBB,1e16,10
 10000000000000000
-OP_INSERT,6,BBB,1,10
+> OP_INSERT,6,BBB,1,10
 5000000000000000
-OP_INSERT,7,BBB,1,10
+> OP_INSERT,7,BBB,1,10
 3333333333333333.5
-OP_INSERT,8,BBB,1,10
+> OP_INSERT,8,BBB,1,10
 2500000000000000
 ');
 
@@ -1309,21 +1309,21 @@ $result = undef;
 &doOrderedSum();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,1,10
+'> OP_INSERT,1,AAA,1,10
 1
-OP_INSERT,2,AAA,1,10
+> OP_INSERT,2,AAA,1,10
 1
-OP_INSERT,3,AAA,1,10
+> OP_INSERT,3,AAA,1,10
 1
-OP_INSERT,4,AAA,1e16,10
+> OP_INSERT,4,AAA,1e16,10
 2500000000000001
-OP_INSERT,5,BBB,1e16,10
+> OP_INSERT,5,BBB,1e16,10
 10000000000000000
-OP_INSERT,6,BBB,1,10
+> OP_INSERT,6,BBB,1,10
 5000000000000000
-OP_INSERT,7,BBB,1,10
+> OP_INSERT,7,BBB,1,10
 3333333333333334
-OP_INSERT,8,BBB,1,10
+> OP_INSERT,8,BBB,1,10
 2500000000000001
 ');
 
@@ -1427,21 +1427,21 @@ $result = undef;
 &doOrderedSum2();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,1,10
+'> OP_INSERT,1,AAA,1,10
 1
-OP_INSERT,2,AAA,1,10
+> OP_INSERT,2,AAA,1,10
 1
-OP_INSERT,3,AAA,1,10
+> OP_INSERT,3,AAA,1,10
 1
-OP_INSERT,4,AAA,1e16,10
+> OP_INSERT,4,AAA,1e16,10
 2500000000000001
-OP_INSERT,5,BBB,1e16,10
+> OP_INSERT,5,BBB,1e16,10
 10000000000000000
-OP_INSERT,6,BBB,1,10
+> OP_INSERT,6,BBB,1,10
 5000000000000000
-OP_INSERT,7,BBB,1,10
+> OP_INSERT,7,BBB,1,10
 3333333333333334
-OP_INSERT,8,BBB,1,10
+> OP_INSERT,8,BBB,1,10
 2500000000000001
 ');
 
@@ -1523,23 +1523,23 @@ $result = undef;
 &doSimpleAgg();
 #print $result;
 ok($result, 
-'OP_INSERT,1,AAA,10,10
+'> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
-OP_INSERT,4,BBB,200,200
+> OP_INSERT,4,BBB,200,200
 tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
 tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
-OP_DELETE,3
+> OP_DELETE,3
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
-OP_DELETE,5
+> OP_DELETE,5
 tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
 ');
 
