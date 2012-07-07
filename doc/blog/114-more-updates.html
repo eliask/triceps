@@ -1,0 +1,29 @@
+more updates
+
+Some more stuff has been getting cleaned up:
+
+<pre>$unit-&gt;setTracer($tracer);
+</pre>
+
+now confesses on errors, so the problem with its error checking is fixed.
+
+The tables now allow to create rowops of rows of all matching types, not only of the equal types. The approach with matching types was not consistent with what the labels did, so I've changed it.
+
+The TableType now has the method
+
+<pre>$tt-&gt;getRowType() 
+</pre>
+
+that has the name consistent with the tables and labels. The old method rowType() also still exists.
+
+The Opt::ck_ref() now also accepts the subclasses of the defined classes.
+
+The new helper Fields::isStringType() has been added.
+
+There also have been some major addition of the examples:
+
+I've added a pretty big example of the main loop that includes the full socket handling in the chapter on Scheduling. It's not exactly production-ready but gives some idea.
+
+Another addition in the chapter on Scheduling is an example of a topological loop that computes the Fibonacci numbers. 
+
+Many new examples have been added to the chapter on Templates.
