@@ -1220,6 +1220,9 @@ qWindow.out,OP_NOP,,,,
 		not participate in the filtering.
 		</para>
 
+		<indexterm>
+			<primary>code generation</primary>
+		</indexterm>
 		<para>
 		Looking at the query execution code, now there is a lot more
 		going on in it. And quite a bit of it is static, that could be
@@ -1561,22 +1564,6 @@ qWindow.out,OP_NOP,,,,
 		The code generation on the fly is a powerful tool and is used
 		throughout Triceps.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 
 </chapter>

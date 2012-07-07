@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_aggregation" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Aggregation</title>
+
+	<sect1 id="sc_aggregation_vwap">
+		<title>The ubiquitous VWAP</title>
+
+		<indexterm>
+			<primary>aggregation</primary>
+		</indexterm>
+		<para>
+		Every CEP supplier loves an example of VWAP calculation: it's small,
+		it's about that quintessential CEP activity: aggregation, and it sounds
+		like something from the real world.
+		</para>
+
+		<indexterm>
+			<primary>VWAP</primary>
+		</indexterm>
+		<para>
+		A quick sidebar: what is the VWAP? It's the Value-Weighted Average
+		Price: the average price for the shares traded during some period of
+		time, usually a day. If you take the price of every share traded during
+		the day and calculate the average, you get the VWAP. What is the
+		value-weighted part? The shares don't usually get sold one by one.
+		They're sold in the variable-sized lots. If you think in the terms of
+		lots and not individual shares, you have to weigh the trade prices (not
+		to be confused with costs) for the lots proportional to the number of
+		shares in them.
+		</para>
+
+		<para>
+		I've been using VWAP for trying out the different approaches to the aggregation.
+		There are multiple ways to do it, from fully manual, to the 
+		aggregator infrastructure with manual computation of the aggregations,
+		to the simple aggregation functions.
+		The cutest version of VWAP so far is implemented
+		as a user-defined aggregation function for the SimpleAggregator.
+		Here is how it goes:
+		</para>
+
+<!-- t/xVwap.t example 3 -->
+<pre>
+# VWAP function definition
+my $myAggFunctions = {
+	myvwap => {
+		vars => { sum => 0, count => 0, size => 0, price => 0 },
+		step => '($%size, $%price) = @$%argiter; '
+			. 'if (defined $%size && defined $%price) '
+				. '{$%count += $%size; $%sum += $%size * $%price;}',
+		result => '($%count == 0? undef : $%sum / $%count)',
+	},
+};
+
+my $uTrades = Triceps::Unit->new("uTrades");
+
+# the input data
+my $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+) or confess "$!";
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("fifo", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+
+# the aggregation result
+my $rtVwap;
+my $compText; # for debugging
+
+Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "aggrVwap",
+	idxPath => [ "bySymbol", "fifo" ],
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+		id => "int32", "last", sub {$_[0]->get("id");},
+		volume => "float64", "sum", sub {$_[0]->get("size");},
+		vwap => "float64", "myvwap", sub { [$_[0]->get("size"), $_[0]->get("price")];},
+	],
+	functions => $myAggFunctions,
+	saveRowTypeTo => \$rtVwap,
+	saveComputeTo => \$compText,
+);
+
+$ttWindow->initialize() or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
+
+# label to print the result of aggregation
+my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
+	undef, sub { # (label, rowop)
+		&send($_[1]->printP(), "\n");
+	}) or confess "$!";
+$tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint)
+	or confess "$!";
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a string opcode
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
+	$uTrades->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<indexterm>
+			<primary>SimpleAggregator</primary>
+		</indexterm>
+		<para>
+		The aggregators get defined as parts of the table type. 
+		<pre>Triceps::SimpleAggregator::make()</pre> is a kind of a template
+		that adds an aggregator definition to the table type
+		that is specified in the option <quote>tabType</quote>.
+		An aggeragtor doesn't live in a vacuum, it always works
+		as a part of the table type. As the table gets modified, the
+		aggregator also re-computes its aggregation results.
+		The fine distinction is that the aggregator is a part
+		of the table type, and is common for all the tables of this
+		type. But the table stores its aggregation state, and
+		when an aggregator runs on a table, it uses and modifies that
+		state.
+		</para>
+
+		<para>
+		The name of the aggregator is how you can find its result
+		later in the table: each aggregator has an output label
+		created for it, that can be found with 
+		<pre>$table->getAggregatorLabel()</pre>. The option <quote>idxPath</quote> defines
+		both the grouping of the rows for this aggregator and their
+		order in the group. The index type at the path determines the order
+		and its parent defines the groups. In this case the grouping
+		happens by symbol, and the rows in the groups go in the FIFO
+		order. This means that the aggregation function <pre>last</pre>  
+		will be selecting the row that has been inserted last,
+		in the FIFO order.
+		</para>
+
+		<para>
+		The option <quote>result</quote> defines both the row type
+		of the result and the rules for its computation. Each field
+		is defined there with four elements: name, type, aggregation function name,
+		and the function reference to select the value to be aggregated from the
+		row. Triceps provides a bunch of pre-defined aggregation functions
+		like <pre>first</pre>, <pre>last</pre>, <pre>sum</pre>, <pre>count</pre>, <pre>avg</pre> and so on. But VWAP is not
+		one of them (well, maybe now it should be, but then this example
+		would be less interesting). Not to worry, the user can add custom
+		aggregation functions, and that's what this example does.
+		</para>
+
+		<para>
+		The option <quote>functions</quote> contains the definitions
+		of such user-defined aggregation functions. Here it defines the
+		function <pre>myvwap</pre>. It defines the state variables that will be
+		used to keep the intermediate values for a group, a step computation,
+		and the result computation. Whenever the group changes, the
+		aggregator will reset the state variables to the default values
+		and iterate through the new contents of the group. It will
+		perform the step computation for each row and collect the
+		data in the intermediate variables. After the iteration it will
+		perform the result computation and produce the final value.
+		</para>
+
+		<para>
+		The VWAP computation in a weird one, taking two fields as arguments.
+		These two fields get packed into an array reference by 
+		</para>
+
+<!-- fragment from the code above -->
+<pre>
+sub { [$_[0]->get("size"), $_[0]->get("price")];}
+</pre>
+
+		<para>
+		and then the step computation unpacks and handles them.
+		In the aggregator computations the syntax <pre>$%name</pre>
+		refers to the intermediate variables and also to a few pre-defined ones.
+		<pre>$%argiter</pre> is the value extracted from the current row
+		during the iteration.
+		</para>
+
+		<para>
+		And that's pretty much it: send the rows to the table, the
+		iterator state gets updated to match the table contents,
+		computes the results and sends them. For example:
+		</para>
+
+<!-- t/xVwap.t example 3 -->
+<exdump>
+> OP_INSERT,11,abc,123,100
+tWindow.aggrVwap OP_INSERT symbol="abc" id="11" volume="100" vwap="123" 
+> OP_INSERT,12,abc,125,300
+tWindow.aggrVwap OP_DELETE symbol="abc" id="11" volume="100" vwap="123" 
+tWindow.aggrVwap OP_INSERT symbol="abc" id="12" volume="400" vwap="124.5" 
+> OP_INSERT,13,def,200,100
+tWindow.aggrVwap OP_INSERT symbol="def" id="13" volume="100" vwap="200" 
+> OP_INSERT,14,fgh,1000,100
+tWindow.aggrVwap OP_INSERT symbol="fgh" id="14" volume="100" vwap="1000" 
+> OP_INSERT,15,abc,128,300
+tWindow.aggrVwap OP_DELETE symbol="abc" id="12" volume="400" vwap="124.5" 
+tWindow.aggrVwap OP_INSERT symbol="abc" id="15" volume="700" vwap="126" 
+> OP_INSERT,16,fgh,1100,25
+tWindow.aggrVwap OP_DELETE symbol="fgh" id="14" volume="100" vwap="1000" 
+tWindow.aggrVwap OP_INSERT symbol="fgh" id="16" volume="125" vwap="1020" 
+> OP_INSERT,17,def,202,100
+tWindow.aggrVwap OP_DELETE symbol="def" id="13" volume="100" vwap="200" 
+tWindow.aggrVwap OP_INSERT symbol="def" id="17" volume="200" vwap="201" 
+> OP_INSERT,18,def,192,1000
+tWindow.aggrVwap OP_DELETE symbol="def" id="17" volume="200" vwap="201" 
+tWindow.aggrVwap OP_INSERT symbol="def" id="18" volume="1200" vwap="193.5" 
+</exdump>
+
+		<para>
+		When a group gets modified, the aggregator first sends a DELETE
+		of the old contents, then an INSERT of the new contents. But when the
+		first row gets inserted in a group, there is nothing to delete,
+		and only INSERT is sent. And the opposite, when the last row
+		is deleted from a group, only the DELETE is sent.
+		</para>
+
+		<para>
+		After this highlight, let's look at the aggregators from the bottom up.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>
