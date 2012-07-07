@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 15 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -62,7 +63,7 @@ sub sendX # (@message)
 
 sub doNonAdditive {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -70,14 +71,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
@@ -95,15 +96,15 @@ sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -119,18 +120,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -206,7 +207,7 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="30"
 
 sub doExtraRecord {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -214,14 +215,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage2 # (table, context, aggop, opcode, rh, state, args...)
@@ -244,15 +245,15 @@ sub computeAverage2 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -268,18 +269,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -325,7 +326,7 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10"
 
 sub doSortById {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -333,14 +334,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage3 # (table, context, aggop, opcode, rh, state, args...)
@@ -363,15 +364,15 @@ sub computeAverage3 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -389,18 +390,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		->addSubIndex("last3",
 			Triceps::IndexType->newFifo(limit => 3))
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -450,7 +451,7 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="35"
 
 sub doRememberLast {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -458,14 +459,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
@@ -476,7 +477,7 @@ sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 	if ($opcode == &Triceps::OP_DELETE) {
-		$context->send($opcode, $$state) or die "$!";
+		$context->send($opcode, $$state) or confess "$!";
 		return;
 	}
 
@@ -487,16 +488,16 @@ sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
+	) or confess "$!";
 	${$state} = $res;
-	$context->send($opcode, $res) or die "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 sub initRememberLast #  (@args)
@@ -518,18 +519,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -581,7 +582,7 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 
 sub doRememberLastNR {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -589,14 +590,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
@@ -607,7 +608,7 @@ sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 	if ($opcode == &Triceps::OP_DELETE) {
-		$context->send($opcode, $state) or die "$!";
+		$context->send($opcode, $state) or confess "$!";
 		return;
 	}
 
@@ -618,16 +619,16 @@ sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
+	) or confess "$!";
 	$_[5] = $res;
-	$context->send($opcode, $res) or die "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 sub initRememberLast5 #  (@args)
@@ -648,18 +649,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -712,7 +713,7 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 
 sub doSimpleAdditiveState {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -720,14 +721,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
@@ -737,7 +738,7 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	
 	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
 	if ($aggop == &Triceps::AO_BEFORE_MOD) { 
-		$context->send($opcode, $state->{lastrow}) or die "$!";
+		$context->send($opcode, $state->{lastrow}) or confess "$!";
 		return;
 	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
 		$rowchg = -1;
@@ -752,17 +753,17 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $count = $context->groupSize();
 	my $avg = $state->{price_sum}/$count;
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
+	) or confess "$!";
 	$state->{lastrow} = $res;
 
-	$context->send($opcode, $res) or die "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 sub initAverage7 #  (@args)
@@ -783,18 +784,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -873,7 +874,7 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="4" price="1.5"
 
 sub doSimpleAdditiveNoLast {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -881,14 +882,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
@@ -909,7 +910,7 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $count = $context->groupSize();
 
 	$context->makeHashSend($opcode, 
@@ -937,18 +938,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -1000,7 +1001,7 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 
 sub doPrintCall {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -1008,14 +1009,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage9 # (table, context, aggop, opcode, rh, state, args...)
@@ -1039,18 +1040,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -1104,7 +1105,7 @@ AO_COLLAPSE OP_NOP 0 NULL
 
 sub doNonAdditive3 {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -1112,14 +1113,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage10 # (table, context, aggop, opcode, rh, state, args...)
@@ -1137,15 +1138,15 @@ sub computeAverage10 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -1161,18 +1162,18 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -1188,7 +1189,7 @@ while(&readLine) {
 
 sub doOrderedSum {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -1196,14 +1197,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 our $idxByPrice;
 
@@ -1225,15 +1226,15 @@ sub computeAverage11 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or die "$!";
+	my $rLast = $context->last()->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -1253,21 +1254,21 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			->addSubIndex("multi", Triceps::IndexType->newFifo())
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 $idxByPrice = $ttWindow->findSubIndex("bySymbol")
-	->findSubIndex("byPrice") or die "$!";
+	->findSubIndex("byPrice") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -1344,7 +1345,7 @@ OP_INSERT,8,BBB,1,10
 
 sub doOrderedSum2 {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -1352,14 +1353,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or die "$!";
+) or confess "$!";
 
 our $idxByOrder;
 
@@ -1380,15 +1381,15 @@ sub computeAverage12 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->lastIdx($idxByOrder)->getRow() or die "$!";
+	my $rLast = $context->lastIdx($idxByOrder)->getRow() or confess "$!";
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or die "$!";
-	$context->send($opcode, $res) or die "$!";
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -1408,21 +1409,21 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or die "$!";
-$ttWindow->initialize() or die "$!";
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 $idxByOrder = $ttWindow->findSubIndex("bySymbol")
-	->findSubIndex("last4") or die "$!";
+	->findSubIndex("last4") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send(sprintf("%.17g\n", $_[1]->getRow()->get("price")));
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;
@@ -1461,7 +1462,7 @@ OP_INSERT,8,BBB,1,10
 
 sub doSimpleAgg {
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -1469,7 +1470,7 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -1481,7 +1482,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			Triceps::IndexType->newFifo(limit => 2)
 		)
 	)
-or die "$!";
+or confess "$!";
 
 # the aggregation result
 my $rtAvgPrice;
@@ -1498,19 +1499,19 @@ Triceps::SimpleAggregator::make(
 	],
 	saveRowTypeTo => \$rtAvgPrice,
 	saveComputeTo => \$compText,
-) or die "$!";
+) or confess "$!";
 
-$ttWindow->initialize() or die "$!";
+$ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or die "$!";
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or die "$!";
+	}) or confess "$!";
 $tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or die "$!";
+	or confess "$!";
 
 while(&readLine) {
 	chomp;

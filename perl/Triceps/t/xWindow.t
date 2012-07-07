@@ -231,11 +231,7 @@ sub printAverage # (row)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	my $op = shift @data; # string opcode, if incorrect then will die later
-	my $rTrade = $rtTrade->makeRowArray(@data) or confess "$!";
-	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
-		or confess "$!";
-	$uTrades->call($rowop) or confess "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	&printAverage();
 	undef $rLastMod; # clear for the next iteration
 	$uTrades->drainFrame(); # just in case, for completeness
@@ -347,7 +343,7 @@ our $rtAvgPrice = Triceps::RowType->new(
 ) or confess "$!";
 
 # place to send the average: could be a dummy label, but to keep the
-# code smalled also print the rows here, instead of in a separate label
+# code smaller also print the rows here, instead of in a separate label
 our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
@@ -385,11 +381,7 @@ sub computeAverage # (row)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	my $op = shift @data; # string opcode, if incorrect then will die later
-	my $rTrade = $rtTrade->makeRowArray(@data) or confess "$!";
-	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
-		or confess "$!";
-	$uTrades->call($rowop) or confess "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	&computeAverage();
 	undef $rLastMod; # clear for the next iteration
 	$uTrades->drainFrame(); # just in case, for completeness
@@ -494,7 +486,7 @@ our $tAvgPrice = $uTrades->makeTable($ttAvgPrice,
 our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
 
 # place to send the average: could be a dummy label, but to keep the
-# code smalled also print the rows here, instead of in a separate label
+# code smaller also print the rows here, instead of in a separate label
 our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
@@ -535,11 +527,7 @@ sub computeAverage2 # (row)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	my $op = shift @data; # string opcode, if incorrect then will die later
-	my $rTrade = $rtTrade->makeRowArray(@data) or confess "$!";
-	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
-		or confess "$!";
-	$uTrades->call($rowop) or confess "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	&computeAverage2();
 	undef $rLastMod; # clear for the next iteration
 	$uTrades->drainFrame(); # just in case, for completeness
