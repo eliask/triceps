@@ -680,7 +680,6 @@ sub new # ($class, $optionName => $optionValue ...)
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 		fields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
-		saveCodeTo => [ undef, \&Triceps::Opt::ck_refscalar ],
 	}, @_);
 	
 	my $name = $self->{name};
@@ -692,42 +691,12 @@ sub new # ($class, $optionName => $optionValue ...)
 	my $fields = $self->{fields};
 	if (defined $fields) {
 		my %rtdef = $rt->getdef();
-
-		# Generate the code of the comparison function by the fields.
-		# Since the simplified CSV parsing in the mainLoop() provides
-		# no easy way to send NULLs, consider any empty or 0 value
-		# in the query row equivalent to NULLs.
-		my $gencmp = '
-			sub # ($query, $data)
-			{
-				use strict;
-				my ($query, $data) = @_;';
 		foreach my $f (@$fields) {
 			my $t = $rtdef{$f};
 			confess "$class::new: unknown field '$f', the row type is:\n"
 					. $rt->print() . " "
 				unless defined $t;
-			$gencmp .= '
-				my $v = $query->get("' . quotemeta($f) . '");
-				if ($v) {';
-			if (&Triceps::Fields::isStringType($t)) {
-				$gencmp .= '
-					return 0 if ($v ne $data->get("' . quotemeta($f) . '"));';
-			} else {
-				$gencmp .= '
-					return 0 if ($v != $data->get("' . quotemeta($f) . '"));';
-			}
-			$gencmp .= '
-				}';
 		}
-		$gencmp .= '
-				return 1; # all succeeded
-			}';
-
-		${$self->{saveCodeTo}} = $gencmp if (defined($self->{saveCodeTo}));
-		$self->{compare} = eval $gencmp;
-		confess("Internal error: $class failed to compile the comparator:\n$@\nfunction text:\n$gencmp ")
-			if $@;
 	}
 
 	$self->{unit} = $unit;
@@ -737,11 +706,24 @@ sub new # ($class, $optionName => $optionValue ...)
 		my $query = $rop->getRow();
 		my $cmp = $self->{compare};
 		my $rh = $self->{table}->begin();
-		for (; !$rh->isNull(); $rh = $rh->next()) {
-			if (!defined $cmp || &$cmp($query, $rh->getRow())) {
-				$self->{unit}->call(
-					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		ITER: for (; !$rh->isNull(); $rh = $rh->next()) {
+			if (defined $self->{fields}) {
+				my $data = $rh->getRow();
+				my %rtdef = $self->{table}->getRowType()->getdef();
+				foreach my $f (@{$self->{fields}}) {
+					my $v = $query->get($f);
+					if ($v 
+					&& (&Triceps::Fields::isStringType($rtdef{$f})
+						? $query->get($f) ne $data->get($f)
+						: $query->get($f) != $data->get($f)
+						)
+					) {
+						next ITER;
+					}
+				}
 			}
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
 		}
 		# The end is signaled by OP_NOP with empty fields.
 		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
@@ -783,9 +765,7 @@ my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $cmpcode;
 my $query = Query4->new(table => $tWindow, name => "qWindow",
-	fields => ["symbol", "price"], saveCodeTo => \$cmpcode );
-# as a demonstration
-&send("Code:\n$cmpcode\n");
+	fields => ["symbol", "price"]);
 my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
@@ -809,23 +789,7 @@ $result = undef;
 &runQuery4();
 #print $result;
 ok($result, 
-'Code:
-
-			sub # ($query, $data)
-			{
-				use strict;
-				my ($query, $data) = @_;
-				my $v = $query->get("symbol");
-				if ($v) {
-					return 0 if ($v ne $data->get("symbol"));
-				}
-				my $v = $query->get("price");
-				if ($v) {
-					return 0 if ($v != $data->get("price"));
-				}
-				return 1; # all succeeded
-			}
-> tWindow,OP_INSERT,1,AAA,10,10
+'> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > tWindow,OP_INSERT,4,BBB,20,20
 > qWindow,OP_INSERT
