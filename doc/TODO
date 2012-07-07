@@ -50,6 +50,8 @@ Things that need to be done:
 * doc: make an explicit section on the error handling connentions (near deaths and confessions)
 * doc: put somewhere that a row handle is an iterator on all the table's indexes
 * doc: for tables say that more will be coming, and the reference
+* doc: TableType::getRowType()
+* doc: template with field filtering in the result
 
 App ideas:
 * queries on CSV files
@@ -64,8 +66,8 @@ Used blog entries:
 043
 047
 048
-065
+064-065
 076
 095
-103 also put into the index type reference
+103-104 also put into the reference
 110

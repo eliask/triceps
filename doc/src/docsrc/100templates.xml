@@ -1071,6 +1071,499 @@ my $srvout = ServerOutput2->new(
 		The use case with the independent creation is the same as with 
 		the previous version of the <pre>ServerOutput</pre>.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_template_codegen">
+		<title>Code generation in the templates</title>
+
+		<para>
+		Suppose we want to filter the result of the query by the
+		equality to the fields in the query request row. The list
+		of the fields would be given to the query template. 
+		The query code would check if these fields are not NULL
+		(and since the simplistic CSV parsing is not good enough
+		to tell between NULL and empty values, not an empty
+		value either), and pass only the rows that match it.
+		Here we go (skipping the methods that are the same as before):
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package Query4;
+use Carp;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+		fields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	my $fields = $self->{fields};
+	if (defined $fields) {
+		my %rtdef = $rt->getdef();
+		foreach my $f (@$fields) {
+			my $t = $rtdef{$f};
+			confess "$class::new: unknown field '$f', the row type is:\n"
+					. $rt->print() . " "
+				unless defined $t;
+		}
+	}
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		my ($label, $rop, $self) = @_;
+		my $query = $rop->getRow();
+		my $cmp = $self->{compare};
+		my $rh = $self->{table}->begin();
+		ITER: for (; !$rh->isNull(); $rh = $rh->next()) {
+			if (defined $self->{fields}) {
+				my $data = $rh->getRow();
+				my %rtdef = $self->{table}->getRowType()->getdef();
+				foreach my $f (@{$self->{fields}}) {
+					my $v = $query->get($f);
+					# Since the simplified CSV parsing in the mainLoop() provides
+					# no easy way to send NULLs, consider any empty or 0 value
+					# in the query row equivalent to NULLs.
+					if ($v 
+					&& (&Triceps::Fields::isStringType($rtdef{$f})
+						? $query->get($f) ne $data->get($f)
+						: $query->get($f) != $data->get($f)
+						)
+					) {
+						next ITER;
+					}
+				}
+			}
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+</pre>
+
+		<para>
+		Used as:
+		</para>
+
+<!-- t/xQuery.t Query4 -->
+<pre>
+my $query = Query4->new(table => $tWindow, name => "qWindow",
+	fields => ["symbol", "price"]);
+</pre>
+
+		<para>
+		The field names get checked up front for correctness.
+		And then at run time the code iterates through them and
+		does the checking. Since the comparisons have to be done
+		differently for the string and numeric values,
+		<pre>Triceps::Fields::isStringType()</pre> is used to check
+		the type of the fields. Triceps::Fields is a collection
+		of functions that help dealing with fields in the templates.
+		</para>
+
+		<para>
+		If the option <quote>fields</quote> is not specified, it would
+		work the same as before and produce the same result.
+		For the filtering by symbol and price, a sample output is:
+		</para>
+
+<!-- t/xQuery.t, Query4 -->
+<exdump>
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> tWindow,OP_INSERT,4,BBB,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT,5,AAA,0,0
+> qWindow,OP_INSERT,0,,20,0
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+</exdump>
+
+		<para>
+		The table data now has one more row of data added to it, with the
+		symbol <quote>BBB</quote>.
+		The first query has no values to filter in it, so it just dumps
+		the whole table as before. The second query filters by the symbol
+		<quote>AAA</quote>. The field for price is 0, so it gets treated
+		as empty and excluded from the comparison. The fields for id and
+		size are not in the fields option, so they get ignored even if
+		the value of id is 5. The third query filters by the price 
+		equal to 20. The symbol field is empty in the query, so it does
+		not participate in the filtering.
+		</para>
+
+		<para>
+		Looking at the query execution code, now there is a lot more
+		going on in it. And quite a bit of it is static, that could be
+		computed at the time the query object is created.
+		The next version does that, building and compiling the
+		comparator function in advance:
+		</para>
+
+<!-- t/xQuery.t -->
+<pre>
+package Query5;
+use Carp;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+		fields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+		saveCodeTo => [ undef, \&Triceps::Opt::ck_refscalar ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	my $fields = $self->{fields};
+	if (defined $fields) {
+		my %rtdef = $rt->getdef();
+
+		# Generate the code of the comparison function by the fields.
+		# Since the simplified CSV parsing in the mainLoop() provides
+		# no easy way to send NULLs, consider any empty or 0 value
+		# in the query row equivalent to NULLs.
+		my $gencmp = '
+			sub # ($query, $data)
+			{
+				use strict;
+				my ($query, $data) = @_;';
+		foreach my $f (@$fields) {
+			my $t = $rtdef{$f};
+			confess "$class::new: unknown field '$f', the row type is:\n"
+					. $rt->print() . " "
+				unless defined $t;
+			$gencmp .= '
+				my $v = $query->get("' . quotemeta($f) . '");
+				if ($v) {';
+			if (&Triceps::Fields::isStringType($t)) {
+				$gencmp .= '
+					return 0 if ($v ne $data->get("' . quotemeta($f) . '"));';
+			} else {
+				$gencmp .= '
+					return 0 if ($v != $data->get("' . quotemeta($f) . '"));';
+			}
+			$gencmp .= '
+				}';
+		}
+		$gencmp .= '
+				return 1; # all succeeded
+			}';
+
+		${$self->{saveCodeTo}} = $gencmp if (defined($self->{saveCodeTo}));
+		$self->{compare} = eval $gencmp;
+		confess("Internal error: $class failed to compile the comparator:\n$@\nfunction text:\n$gencmp ")
+			if $@;
+	}
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		my ($label, $rop, $self) = @_;
+		my $query = $rop->getRow();
+		my $cmp = $self->{compare};
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			if (!defined $cmp || &$cmp($query, $rh->getRow())) {
+				$self->{unit}->call(
+					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+			}
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+</pre>
+
+		<para>
+		The code of the anonymous comparison function gets generated in <pre>$gencmp</pre> 
+		and then compiled by using <pre>eval</pre>. <pre>eval</pre> returns the pointer to the
+		compiled function which is then used at run time. The generation
+		uses all the same logic to decide on the string or numeric
+		comparisons, and also effectively unrolls the loop. When generating
+		the string constants in functions from the user-supplied values, 
+		it's important to enquote them with <pre>quotemeta()</pre>. Even when we're
+		talking about the field names, they still could have some funny
+		characters in them. The option <quote>saveCodeTo</quote> can be used
+		to get the source code of the comparator, it gets saved at the
+		reference after it gets generated.
+		</para>
+
+		<para>
+		If the filter field option is not used, the comparator remains undefined.
+		</para>
+
+		<para>
+		The use of this version is the same as of the previous one, but
+		to show the source code of the comparator, I've added its printout:
+		</para>
+
+<!-- t/xQuery.t, Query5 -->
+<pre>
+my $cmpcode;
+my $query = Query5->new(table => $tWindow, name => "qWindow",
+	fields => ["symbol", "price"], saveCodeTo => \$cmpcode );
+# as a demonstration
+&send("Code:\n$cmpcode\n");
+</pre>
+
+		<para>
+		This produces the result:
+		</para>
+
+<!-- t/xQuery.t, Query5 -->
+<exdump>
+Code:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				my ($query, $data) = @_;
+				my $v = $query->get("symbol");
+				if ($v) {
+					return 0 if ($v ne $data->get("symbol"));
+				}
+				my $v = $query->get("price");
+				if ($v) {
+					return 0 if ($v != $data->get("price"));
+				}
+				return 1; # all succeeded
+			}
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> tWindow,OP_INSERT,4,BBB,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT,5,AAA,0,0
+> qWindow,OP_INSERT,0,,20,0
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+</exdump>
+
+		<para>
+		Besides the code printout, the result is the same as last time.
+		</para>
+
+		<para>
+		Now, why list the fields in an option? Why not just take them all?
+		After all, if the user doesn't want filtering on some field, he
+		can always simply not set it in the query row. If the efficiency
+		is a concern, with possibly hundreds of fields in the row with
+		only few of them used for filtering, we can do better: we can
+		generate and compile the comparison function after we see the
+		query row. Here goes the next version that does all this:
+		</para>
+
+<pre>
+package Query6;
+use Carp;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rt = $table->getRowType();
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rt, $name . ".in", undef, sub {
+		my ($label, $rop, $self) = @_;
+		my $query = $rop->getRow();
+		my $cmp = $self->genComparison($query);
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			if (&$cmp($query, $rh->getRow())) {
+				$self->{unit}->call(
+					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+			}
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rt, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+# Generate the comparison function on the fly from the fields in the
+# query row.
+# Since the simplified CSV parsing in the mainLoop() provides
+# no easy way to send NULLs, consider any empty or 0 value
+# in the query row equivalent to NULLs.
+sub genComparison # ($self, $query)
+{
+	my $self = shift;
+	my $query = shift;
+
+	my %qhash = $query->toHash();
+	my %rtdef = $self->{table}->getRowType()->getdef();
+	my ($f, $v);
+
+	my $gencmp = '
+			sub # ($query, $data)
+			{
+				use strict;';
+
+	while (($f, $v) = each %qhash) {
+		next unless($v);
+		my $t = $rtdef{$f};
+
+		if (&Triceps::Fields::isStringType($t)) {
+			$gencmp .= '
+				return 0 if ($_[0]->get("' . quotemeta($f) . '")
+					ne $_[1]->get("' . quotemeta($f) . '"));';
+		} else {
+			$gencmp .= '
+				return 0 if ($_[0]->get("' . quotemeta($f) . '")
+					!= $_[1]->get("' . quotemeta($f) . '"));';
+		}
+	}
+	$gencmp .= '
+				return 1; # all succeeded
+			}';
+
+	my $compare = eval $gencmp;
+	confess("Internal error: Query '" . $self->{name} 
+			. "' failed to compile the comparator:\n$@\nfunction text:\n$gencmp ")
+		if $@;
+
+	# for debugging
+	&main::outCurBuf("Compiled comparator:\n$gencmp\n");
+
+	return $compare;
+}
+</pre>
+
+		<para>
+		Thie option <quote>fields</quote> is gone, and the code generation
+		has moved into the method <pre>genComparison()</pre>, that gets called for
+		each query. I've inserted the sending back of the comparison source code
+		at the end of it, to make it easier to understand. Obviously, if this
+		code were used in production, this would have to be commented out,
+		and maybe some better option added for debugging.
+		An example of the output is:
+		</para>
+
+<!-- t/xQuery.t, Query6 -->
+<exdump>
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> tWindow,OP_INSERT,4,BBB,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT,5,AAA,0,0
+> qWindow,OP_INSERT,0,,20,0
+Compiled comparator:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				return 1; # all succeeded
+			}
+qWindow.out,OP_INSERT,1,AAA,10,10
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+Compiled comparator:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				return 0 if ($_[0]->get("symbol")
+					ne $_[1]->get("symbol"));
+				return 0 if ($_[0]->get("id")
+					!= $_[1]->get("id"));
+				return 1; # all succeeded
+			}
+qWindow.out,OP_INSERT,5,AAA,30,30
+qWindow.out,OP_NOP,,,,
+Compiled comparator:
+
+			sub # ($query, $data)
+			{
+				use strict;
+				return 0 if ($_[0]->get("price")
+					!= $_[1]->get("price"));
+				return 1; # all succeeded
+			}
+qWindow.out,OP_INSERT,3,AAA,20,20
+qWindow.out,OP_INSERT,4,BBB,20,20
+qWindow.out,OP_NOP,,,,
+</exdump>
+
+		<para>
+		The first query contains no filter fields, so the function compiles
+		to the constant 1. The second query has the fields id and symbol
+		not empty, so the filtering goes by them. The third query has only
+		the price field, and it is used for filtering.
+		</para>
+
+		<para>
+		The code generation on the fly is a powerful tool and is used
+		throughout Triceps.
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
