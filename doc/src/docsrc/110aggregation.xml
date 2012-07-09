@@ -983,8 +983,8 @@ return if ($opcode == &Triceps::OP_DELETE
 		row, as will be shown in
 		<xref linkend="sc_aggregation_optimized" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		This remembered last state can also be used for the other
-		interesting optimizations that will be shown later.
-		XXX reference the additive agg
+		interesting optimizations that will be shown in
+		<xref linkend="sc_aggregation_additive" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<indexterm>
@@ -1452,6 +1452,10 @@ or confess "$!";
 			<primary>aggregation</primary>
 			<secondary>initialization</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>state</secondary>
+		</indexterm>
 		<para>
 		The aggregator type now has an initialization function. (This function
 		is <b>not</b> of the same kind as for the sorted index!) This function gets
@@ -1575,10 +1579,325 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 		will have separate aggregation states.
 		</para>
 
+	</sect1>
+
+	<sect1 id="sc_aggregation_additive">
+		<title>Additive aggregation</title>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>optimization</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>additive</secondary>
+		</indexterm>
 		<para>
+		In some cases the aggregation values don't have to be calculated by
+		going through all the rows from scratch every time. If you do a sum of
+		a field, you can as well add the value of the field when a row is
+		inserted and subtract when a row is deleted. Not surprisingly, this is
+		called an <quote>additive aggregation</quote>.
 		</para>
 
 		<para>
+		The averaging can also be done as an additive aggregation: it amounts
+		to a sum divided by a count. The sum can obviously be done additively.
+		The count is potentially additive too, but even better, we have the
+		shortcut of <pre>$context->groupSize()</pre>. Well, at least for the same
+		definition of count that has been used previously in the non-additive example. The
+		SQL definition of count (and of average) includes only the non-NULL
+		values, but in the next example we will go with the Perl approach where
+		a NULL is taken to have the same meaning as 0. The proper SQL count
+		could not use that shortcut but would still be additive.
+		</para>
+
+		<para>
+		Triceps provides a way to implement the additive aggregation too. It
+		calls the aggregation computation function for each changed row, giving
+		it an opportunity to react. The argument <pre>$aggop</pre> indicates, what has
+		happened. Here is the same example from
+		<xref linkend="sc_aggregation_proper" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		rewritten in an additive way:
+		</para>
+
+<!-- t/xAgg.t doSimpleAdditiveState -->
+<pre>
+# aggregation handler: recalculate the average additively
+sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	my $rowchg;
+	
+	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
+	if ($aggop == &Triceps::AO_BEFORE_MOD) { 
+		$context->send($opcode, $state->{lastrow}) or confess "$!";
+		return;
+	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
+		$rowchg = -1;
+	} elsif ($aggop == &Triceps::AO_AFTER_INSERT) { 
+		$rowchg = 1;
+	} else { # AO_COLLAPSE, also has opcode OP_DELETE
+		return
+	}
+
+	$state->{price_sum} += $rowchg * $rh->getRow()->get("price");
+
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $count = $context->groupSize();
+	my $avg = $state->{price_sum}/$count;
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	$state->{lastrow} = $res;
+
+	$context->send($opcode, $res) or confess "$!";
+}
+
+sub initAverage7 #  (@args)
+{
+	return { lastrow => undef, price_sum => 0 };
+}
+</pre>
+
+		<para>
+		The tricks of keeping an extra row from
+		<xref linkend="sc_aggregation_window" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		could not be used with the additive aggregation. An additive
+		aggregation relies on Triceps to tell it, which rows are deleted and
+		which inserted, so it can not do any extra skipping easily. The index
+		for the aggregation has to be defined with the correct limits. If we
+		want an average of the last 2 rows, we set the limit to 2:
+		</para>
+
+<!-- t/xAgg.t doSimpleAdditiveState -->
+<pre>
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", \&initAverage7, \&computeAverage7)
+			)
+		)
+	)
+or confess "$!";
+</pre>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>state</secondary>
+		</indexterm>
+		<para>
+		The aggregation state has grown: now it includes not only the last sent
+		row but also the sum of the price, which is used for the aggregation,
+		kept together in a hash. The last sent row doesn't really have to be
+		kept, and I'll show another example without it, but for now let's look
+		at how things are done when it is kept.
+		</para>
+
+		<para>
+		The argument <pre>$aggop</pre> describes, why the computation is being called.
+		Note that Triceps doesn't know if the aggregation is additive or not.
+		It does the calls the same in every case. Just in the previous examples
+		we weren't interested in this information and didn't look at it. <pre>$aggop</pre>
+		contains one of the constant values:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		<pre>&Triceps::AO_BEFORE_MOD</pre>: the group is about to be modified,
+		need to send a DELETE of the old aggregated row. The argument <pre>$opcode</pre> 
+		will always be <pre>OP_DELETE</pre>.
+		</listitem>
+		<listitem>
+		<pre>&Triceps::AO_AFTER_DELETE</pre>: the group has been modified by
+		deleting a row from it. The argument <pre>$rh</pre> will refer to the row handle
+		being deleted. The <pre>$opcode</pre> may be either <pre>OP_NOP</pre> or <pre>OP_INSERT</pre>. A single
+		operation on a table may affect multiple rows: an insert may trigger
+		the replacement policy in the indexes and cause one or more rows to be
+		deleted. If there are multiple rows deleted or inserted in a group, the
+		additive aggregator needs to know about all of them to keep its state
+		correct but does not need (and even must not) send a new result until
+		the last one of them has been processed. The call for the last
+		modification will have the opcode of <pre>OP_INSERT</pre>. The preceding
+		intermediate ones will have the opcode of <pre>OP_NOP</pre>. An important point,
+		even though a row is being deleted from the group, the aggregator
+		opcode is <pre>OP_INSERT</pre>, because it inserts the new aggregator state!
+		</listitem>
+		<listitem>
+		<pre>&Triceps::AO_AFTER_INSERT</pre>: the group has been modified by
+		inserting a row into it. Same as for <pre>AO_AFTER_DELETE</pre>, <pre>$rh</pre> will refer to
+		the row handle being inserted, and <pre>$opcode</pre> will be <pre>OP_NOP</pre> or <pre>OP_INSERT</pre>.
+		</listitem>
+		<indexterm>
+			<primary>memory management</primary>
+		</indexterm>
+		<listitem>
+		<pre>&Triceps::AO_COLLAPSE</pre>: called after the last row is deleted
+		from the group, just before the whole group is collapsed and deleted.
+		This allows the aggregator to destroy its state properly. For most of
+		the aggregators there is nothing special to be done. The only case when
+		you want to do something is if your state causes some circular
+		references. Perl doesn't free the circular references until the whole
+		interpreter exits, and so you'd have to break the circle to let them be
+		freed immediately. The aggregator should not produce any results on
+		this call. The <pre>$opcode</pre> will be <pre>OP_NOP</pre>.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The computation reacts accordingly: for the before-modification it
+		re-sends the old result with the new opcode, for the collapse it does
+		nothing, and for after-modification it calculates the sign, whether the
+		value from <pre>$rh</pre> needs to be added or subtracted from the sum. I'm
+		actually thinking, maybe this sign should be passed as a separate
+		argument too, and then both the aggregation operation constants
+		<pre>AO_AFTER_*</pre> can be merged into one. We'll see, maybe it will be changed
+		in the future.
+		</para>
+
+		<para>
+		Then the addition/subtraction is done and the state updated.
+		</para>
+
+		<para>
+		After that, if the row does not need to be sent (opcode is <pre>OP_NOP</pre> or
+		group size is 0), the function can as well return here without
+		constructing the new row.
+		</para>
+
+		<para>
+		If the row needs to be produced, continue with the same logic as the
+		non-additive aggregator, only without iteration through the group. The
+		id field in the result is produced by essentially the SQL <pre>LAST()</pre> 
+		operator. <pre>LAST()</pre> and <pre>FIRST()</pre> are not additive, they refer to the values
+		in the last or first row in the group's order, and simply can not be
+		calculated from looking at which rows are being inserted and deleted
+		without knowing their order in the group. But they are fast as they are,
+		and do not require iteration. The same goes for the row count (as long
+		as we don't care about excluding NULLs, violating the SQL semantics).
+		And for averaging there is the last step to do after the additive part
+		is done: divide the sum by the count.
+		</para>
+
+		<para>
+		All these non-additive steps are done in this last section, then the
+		result row is constructed, remembered and sent.
+		</para>
+
+		<para>
+		Not all the aggregation operations can be expressed in an additive way.
+		It may even vary by the data. For <pre>MAX()</pre>, the insertion of a row can be
+		always done additively, just comparing the new value with the
+		remembered maximum, and replacing it if the new value is greater. The
+		deletion can also compare the deleted value with the remembered
+		maximum. If the deleted value is less, then the maximum is unchanged.
+		But if the deleted value is equal to the maximum, <pre>MAX()</pre> has to iterate
+		through all the values and find the new maximum. 
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>floating point error</secondary>
+		</indexterm>
+		<para>
+		There is also an issue with the floating point precision in the
+		additive aggregation. It's not such a big issue if the rows are only
+		added and never deleted from the group, but can get much worse with the
+		deletion. Let me show it with a sample run of the additive code:
+		</para>
+
+<!-- t/xAgg.t doSimpleAdditiveState precision loss -->
+<exdump>
+> OP_INSERT,1,AAA,1,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="1" 
+> OP_INSERT,2,AAA,1e20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="1" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="2" price="5e+19" 
+> OP_INSERT,3,AAA,2,10
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="2" price="5e+19" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="5e+19" 
+> OP_INSERT,4,AAA,3,10
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="5e+19" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="4" price="1.5" 
+</exdump>
+
+		<para>
+		Why is the last result 1.5 while it had to be (2+3)/2 = 2.5? Because
+		adding together 1e20 and 2 had pushed the 2 beyond the precision of
+		floating-point number. 1e20+2 = 1e20. So when the row with 1e20 was
+		deleted from the group and subtracted form the sum, that left 0. Which
+		got then averaged with 3, producing 1.5.
+		</para>
+
+		<para>
+		Of course, with the real stock prices there won't be that much
+		variation. But the subtler errors will still accumulate over time, and
+		you have to expect them and plan accordingly.
+		</para>
+
+		<para>
+		Switching to a different subject, the additive aggregation contains
+		enough information in its state to generate the result rows quickly
+		without an iteration. This means that keeping the saved result row for
+		DELETEs doesn't give a whole lot of advantage and adds at least a
+		little memory overhead. We can change the code and avoid keeping
+		it:
+		</para>
+
+<!-- t/xAgg.t doSimpleAdditiveNoLast -->
+<pre>
+sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	my $rowchg;
+	
+	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
+	if ($aggop == &Triceps::AO_COLLAPSE) { 
+		return
+	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
+		$state->{price_sum} -= $rh->getRow()->get("price");
+	} elsif ($aggop == &Triceps::AO_AFTER_INSERT) { 
+		$state->{price_sum} += $rh->getRow()->get("price");
+	}
+	# on AO_BEFORE_MOD do nothing
+
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $count = $context->groupSize();
+
+	$context->makeHashSend($opcode, 
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $state->{price_sum}/$count,
+	);
+}
+
+sub initAverage8 #  (@args)
+{
+	return { price_sum => 0 };
+}
+</pre>
+
+		<para>
+		On <pre>AO_BEFORE_MOD</pre> it doesn't do any change to the additive state but then produces
+		the result row from that state as usual, using the supplied <pre>$opcode</pre> value of
+		<pre>OP_DELETE</pre>.
+		The other change in this example is that the sum gets directly added or
+		subtracted in <pre>AO_AFTER_*</pre> instead of computing the sign first. It's all
+		pretty much self-explanatory.
 		</para>
 
 		<para>
