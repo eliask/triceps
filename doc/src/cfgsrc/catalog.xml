@@ -6,6 +6,8 @@
   <rewriteSystem systemIdStartString="http://docbook.sourceforge.net/release/xsl/current/" rewritePrefix="file://${TOOLS_BASE}/docbook-xsl-1.75.2/"/>
   <rewriteURI uriStartString="http://docbook.sourceforge.net/release/xsl/1.75.2/" rewritePrefix="file://${TOOLS_BASE}/docbook-xsl-1.75.2/"/>
   <rewriteSystem systemIdStartString="http://docbook.sourceforge.net/release/xsl/1.75.2/" rewritePrefix="file://${TOOLS_BASE}/docbook-xsl-1.75.2/"/>
+  <rewriteURI uriStartString="http://docbook.sourceforge.net/release/images/" rewritePrefix="file://${TOOLS_BASE}/docbook-xsl-1.75.2/images/"/>
+  <rewriteSystem systemIdStartString="http://docbook.sourceforge.net/release/images/" rewritePrefix="file://${TOOLS_BASE}/docbook-xsl-1.75.2/images/"/>
 
 <!-- ...................................................................... -->
 <!-- XML Catalog data for DocBook XML V4.5CR3 ................................ -->
