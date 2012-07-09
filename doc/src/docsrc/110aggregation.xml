@@ -1578,7 +1578,6 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 		Since the rows are grouped by the symbol, the symbols <quote>AAA</quote> and <quote>BBB</quote>
 		will have separate aggregation states.
 		</para>
-
 	</sect1>
 
 	<sect1 id="sc_aggregation_additive">
@@ -1629,7 +1628,6 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
 	my $rowchg;
 	
-	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
 	if ($aggop == &Triceps::AO_BEFORE_MOD) { 
 		$context->send($opcode, $state->{lastrow}) or confess "$!";
 		return;
@@ -1862,7 +1860,6 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
 	my $rowchg;
 	
-	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
 	if ($aggop == &Triceps::AO_COLLAPSE) { 
 		return
 	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
@@ -1899,14 +1896,141 @@ sub initAverage8 #  (@args)
 		subtracted in <pre>AO_AFTER_*</pre> instead of computing the sign first. It's all
 		pretty much self-explanatory.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_args">
+		<title>Computation function arguments</title>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>arguments</secondary>
+		</indexterm>
 
 		<para>
+		Let's look up close at what calls are done to the aggregation
+		computation function. Just make a <quote>computation</quote> that prints the call
+		arguments:
+		</para>
+
+<!-- t/xAgg.t doPrintCall -->
+<pre>
+sub computeAverage9 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	
+	&send(&Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", $context->groupSize(), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n");
+}
+</pre>
+
+		<para>
+		It prints the aggregation operation, the result opcode, row count in
+		the group, and the argument row (or <quote>NULL</quote>). The aggregation is done
+		as before, on the same FIFO index with the size limit of 2.
 		</para>
 
 		<para>
+		To make keeping track of the printout easier, I broke up the sequence
+		into multiple fragments, with a description after each fragment:
 		</para>
 
+<!-- t/xAgg.t doPrintCall -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+AO_AFTER_INSERT OP_INSERT 1 id="1" symbol="AAA" price="10" size="10" 
+> OP_INSERT,2,BBB,100,100
+AO_AFTER_INSERT OP_INSERT 1 id="2" symbol="BBB" price="100" size="100" 
+</exdump>
+
 		<para>
+		The INSERT of the first row in each group causes only one call. There is
+		no previous value to delete, only a new one to insert. The call happens
+		after the row has been inserted into the group.
+		</para>
+
+<!-- t/xAgg.t doPrintCall -->
+<exdump>
+> OP_INSERT,3,AAA,20,20
+AO_BEFORE_MOD OP_DELETE 1 NULL
+AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="AAA" price="20" size="20" 
+</exdump>
+
+		<para>
+		Adding the second record in a group means that the aggregation result
+		for this group is modified. So first the aggregator is called to delete
+		the old result, then the new row gets inserted, and the aggregator is
+		called the second time to produce its new result.
+		</para>
+
+<!-- t/xAgg.t doPrintCall -->
+<exdump>
+> OP_INSERT,5,AAA,30,30
+AO_BEFORE_MOD OP_DELETE 2 NULL
+AO_AFTER_DELETE OP_NOP 2 id="1" symbol="AAA" price="10" size="10" 
+AO_AFTER_INSERT OP_INSERT 2 id="5" symbol="AAA" price="30" size="30" 
+</exdump>
+
+		<para>
+		The insertion of the third row in a group triggers the replacement policy in the
+		FIFO index. The replacement policy causes the row with id=1 to be
+		deleted before the row with id=5 is inserted. For the aggregator result
+		it's still a single delete-insert pair: First, before modification, the
+		old aggregation result is deleted. Then the contents of the group gets
+		modified with both the delete and insert. And then the aggregator gets
+		told, what has been modified. The deletion of the row with id=1 is not
+		the last step, so that call gets the opcode of <pre>OP_NOP</pre>. Note that the
+		group size with it is 2, not 1. That's because the aggregator gets
+		notified only after all the modifications are already done. So the
+		additive part of the computation must never read the group size or do
+		any kind of iteration through the group, because that would often cause
+		an incorrect result: it has no way to tell, what other modifications
+		have been already done to the group. The last <pre>AO_AFTER_INSERT</pre> gets the
+		opcode of <pre>OP_INSERT</pre> which tells the computation to send the new result
+		of the aggregation. When the opcode is <pre>OP_INSERT</pre>, reading the group
+		size and the other group information becomes safe, because by this
+		time all the modifications are guaranteed to be done, and the additive
+		notifications have caught up with all the changes.
+		</para>
+
+<!-- t/xAgg.t doPrintCall -->
+<exdump>
+> OP_INSERT,3,BBB,20,20
+AO_BEFORE_MOD OP_DELETE 2 NULL
+AO_BEFORE_MOD OP_DELETE 1 NULL
+AO_AFTER_DELETE OP_INSERT 1 id="3" symbol="AAA" price="20" size="20" 
+AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="BBB" price="20" size="20" 
+</exdump>
+
+		<para>
+		This insert is of a <quote>dirty</quote> kind, the one that replaces the row using
+		the replacement policy of the hashed primary index, without deleting
+		its old state first. It also moves the row from one aggregation group
+		to another. So the table logic calls <pre>AO_BEFORE_MOD</pre> for each of the
+		modified groups, then modifies the contents of the groups, then tells
+		both groups about the modifications. In this case both calls with
+		<pre>AO_AFTER_*</pre> have the opcode of <pre>OP_INSERT</pre> because each of them is the
+		last and only change to a separate aggregation group.
+		</para>
+
+<!-- t/xAgg.t doPrintCall -->
+<exdump>
+> OP_DELETE,5
+AO_BEFORE_MOD OP_DELETE 1 NULL
+AO_AFTER_DELETE OP_INSERT 0 id="5" symbol="AAA" price="30" size="30" 
+AO_COLLAPSE OP_NOP 0 NULL
+</exdump>
+
+		<para>
+		This operation removes the last row in a group. It starts as usual with
+		deleting the old state. The next <pre>AO_AFTER_DELETE</pre> with <pre>OP_INSERT</pre> is
+		intended for the Coral8-style aggregators that produce only the rows
+		with the INSERT opcodes, never DELETEs, to let them insert the NULL (or
+		zero) values in all the non-key fields. For the normal aggregators the
+		work is all done after <pre>OP_DELETE</pre>. That's why all the shown examples were
+		checking for <pre>$context->groupSize() == 0</pre> and returning if so. The
+		group size will be zero in absolutely no other case than after the
+		deletion of the last row. Finally <pre>AO_COLLAPSE</pre> allows to clean up the
+		aggregator's group state if it needs any cleaning. It has the opcode
+		<pre>OP_NOP</pre> because no rows need to be sent.
 		</para>
 
 		<para>
