@@ -806,6 +806,9 @@ $rh = $context->last();
 			<primary>aggregation</primary>
 			<secondary>first</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>SQL</primary>
+		</indexterm>
 		<para>
 		returns the last row handle in the group. This comes very handy because
 		in most of the cases you want the data from the last row to fill the
@@ -1598,6 +1601,9 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 		called an <quote>additive aggregation</quote>.
 		</para>
 
+		<indexterm>
+			<primary>SQL</primary>
+		</indexterm>
 		<para>
 		The averaging can also be done as an additive aggregation: it amounts
 		to a sum divided by a count. The sum can obviously be done additively.
@@ -1773,6 +1779,9 @@ or confess "$!";
 		constructing the new row.
 		</para>
 
+		<indexterm>
+			<primary>SQL</primary>
+		</indexterm>
 		<para>
 		If the row needs to be produced, continue with the same logic as the
 		non-additive aggregator, only without iteration through the group. The
@@ -2380,6 +2389,450 @@ $idxByOrder = $ttWindow->findIndexPath("bySymbol", "last4");
 		sub-index anyway). But don't use the random unrelated index types. If
 		you do, the context would return some unexpected values for those, and
 		you may end up with endless loops.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_simple">
+		<title>SimpleAggregator</title>
+
+		<indexterm>
+			<primary>SQL</primary>
+		</indexterm>
+		<indexterm>
+			<primary>SimpleAggregator</primary>
+		</indexterm>
+		<para>
+		Even though the writing the aggregation computation functions manually
+		gives the flexibility, it's too much work for the simple cases. 
+		The SimpleAggregator template takes care of most of that work
+		and allows you to specify the aggregation in a way similar to SQL.
+		It has been already shown on the VWAP example, ans here is the 
+		trade aggregation example from
+		<xref linkend="sc_aggregation_proper" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		rewritten with SimpleAggregator:
+		</para>
+
+<!-- t/xAgg.t doSimpleAgg -->
+<pre>
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+		)
+	)
+or confess "$!";
+
+# the aggregation result
+my $rtAvgPrice;
+my $compText; # for debugging
+
+Triceps::SimpleAggregator::make(
+	tabType => $ttWindow,
+	name => "aggrAvgPrice",
+	idxPath => [ "bySymbol", "last2" ],
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+		id => "int32", "last", sub {$_[0]->get("id");},
+		price => "float64", "avg", sub {$_[0]->get("price");},
+	],
+	saveRowTypeTo => \$rtAvgPrice,
+	saveComputeTo => \$compText,
+);
+
+$ttWindow->initialize() or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
+
+# label to print the result of aggregation
+my $lbAverage = makePrintLabel("lbAverage", 
+	$tWindow->getAggregatorLabel("aggrAvgPrice"));
+</pre>
+
+		<para>
+		The main loop and the printing is the same as before. The result
+		produced is also exactly the same as before.
+		</para>
+
+		<para>
+		But the aggregator is created with <pre>Triceps::SimpleAggregator::make()</pre>.
+		Its arguments are in the option format: the option name-value pairs, in
+		any order. 
+		</para>
+
+<pre>
+$tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
+</pre>
+
+		<para>
+		It returns back the table type that it received as an option
+		on success or confesses on errors.
+		But most of the time there is not a whole lot of use to that
+		return value, and it gets simply ignored.
+		Most of the <quote>options</quote> are actually mandatory. The
+		aggregator type is connected to the table type with the options:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term>tabType</term>
+				<listitem>
+				Table type to put the aggregator on. It must be un-initialized yet.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>idxPath</term>
+				<listitem>
+				A reference to an array of index names, forming the path to the
+				index where the aggregator type will be set.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>name</term>
+				<listitem>
+				The aggregator type name.
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		The result row type and computation is defined with the option
+		<quote>result</quote>: each group of four values in that array defines one result
+		field: 
+		</para>
+		
+		<itemizedlist>
+		<listitem>
+		The field name. 
+		</listitem>
+		<listitem>
+		The field type. 
+		</listitem>
+		<listitem>
+		The aggregation function name used to compute the field. There is no
+		way to combine multiple aggregation functions or even an aggregation function
+		and any arithmetics in a field computation. The workaround is to compute
+		each function in a separate field, and then send the result rows to a
+		computational label that would arithmetically combine these fields into one.
+		</listitem>
+		<listitem>
+		A closure that extracts the aggregation function argument from the row
+		(well, it can be any function reference, doesn't have to be an
+		anonymous closure). 
+		That closure gets the row as the argument <pre>$_[0]</pre>
+		and returns the extracted value to run the aggregation on. 
+		</listitem>
+		</itemizedlist>
+		
+		<para>
+		The field name is by convention separated from its definition fields by <pre>=></pre>.
+		Remember, it's just a convention, for Perl a <pre>=></pre> is just as good as
+		a comma.
+		</para>
+
+		<para>
+		<pre>SimpleAggregator::make()</pre> automatically generates the result row
+		type and aggregation function, creates an aggregator type from them,
+		and sets it on the index type. 
+		The information about the aggregation result
+		can be found by traversing through the index type tree, or by
+		constructing a table and getting the row type from the aggregator
+		result label. However it's often easier to save it during construction,
+		and the option (this time an optional one!) <quote>saveRowTypeTo</quote> allows to
+		do this. Give it a reference to a variable, and the row type will be
+		placed into that variable.
+		</para>
+
+		<para>
+		Most of the time the things would just work. However if they don't and
+		something dies in the aggregator, you will need the source code of the
+		compute function to make sense of these errors. The option
+		<pre>saveComputeTo</pre> gives a variable to save that source code for future
+		perusal and other entertainment. Here is the compute function that 
+		gets produced by the example above:
+		</para>
+
+<!-- saved by uncommenting the print in t/xAgg.t doSimpleAgg -->
+<pre>
+sub {
+	use strict;
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
+	my $v2_count = 0;
+	my $v2_sum = 0;
+	my $npos = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
+		my $row = $rhi->getRow();
+		# field price=avg
+		my $a2 = $args[2]($row);
+		{ if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
+		$npos++;
+	}
+	my $rowLast = $context->last()->getRow();
+	my $l0 = $args[0]($rowLast);
+	my $l1 = $args[1]($rowLast);
+	$context->makeArraySend($opcode,
+		($l0), # symbol
+		($l1), # id
+		(($v2_count == 0? undef : $v2_sum / $v2_count)), # price
+	);
+}
+</pre>
+
+		<para>
+		At the moment the compute function is quite straightforward and just
+		does the aggregation from scratch every time. It doesn't support the
+		additive aggregation nor the DELETE optimization. It's only smart enough to
+		skip the iteration if all the result consists of only aggregation
+		functions <pre>first</pre>, <pre>last</pre>
+		and <pre>count_star</pre>. It receives the closures for the argument extraction as
+		arguments in <pre>@args</pre>, SimpleAggregator arranges these arguments
+		when it creates the aggregator.
+		</para>
+
+		<para>
+		The aggregation functions available at the moment are:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term><pre>first</pre></term>
+				<listitem>
+				Value from the first row in the group.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>last</pre></term>
+				<listitem>
+				Value from the last row in the group.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>count_star</pre></term>
+				<listitem>
+				Number of rows in the group, like SQL <pre>COUNT(*)</pre>. Since there is
+				no argument for this function, use <pre>undef</pre> instead of the
+				argument closure.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>sum</pre></term>
+				<listitem>
+				Sum of the values.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>max</pre></term>
+				<listitem>
+				The maximal value.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>min</pre></term>
+				<listitem>
+				The minimal value.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>avg</pre></term>
+				<listitem>
+				The average of all the non-NULL values.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>avg_perl</pre></term>
+				<listitem>
+				The average of all values, with NULL values treated in Perl
+				fashion as zeroes. So, technically when the example above used
+				<pre>avg</pre>, it works the same as the previous versions only for the
+				non-NULL fields. To be really the same, it should have used
+				<pre>avg_perl</pre>.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>nth_simple</pre></term>
+				<listitem>
+				The Nth value from the start of the group. This is a tricky
+				function because it needs two arguments: the value of N and the
+				field selector. Multiple direct arguments will be supported in
+				the future but right now it works through a workaround: the
+				argument closure must return not just the extracted field but a
+				reference to array with two values, the N and the field. For
+				example, <pre>sub { [1, $_[0]->get("id")];}</pre>. The N is
+				counted starting from 0, so the value of 1 will return the
+				second record. This function works in a fairly simple-minded
+				and inefficient way at the moment.
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		As usual in Triceps and Perl, the case of the aggregation function name
+		matters. The names have to be used in lowercase as shown.
+		There will be more functions to come, and you can even already add your own,
+		as has been shown in
+		<xref linkend="sc_aggregation_vwap" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		The user-defined aggregation functions are defined with the option
+		<quote>functions</quote>. Let's take another look at the code
+		from the VWAP example:
+		</para>
+
+<!-- t/xVwap.t example 3 -->
+<pre>
+# VWAP function definition
+my $myAggFunctions = {
+	myvwap => {
+		vars => { sum => 0, count => 0, size => 0, price => 0 },
+		step => '($%size, $%price) = @$%argiter; '
+			. 'if (defined $%size && defined $%price) '
+				. '{$%count += $%size; $%sum += $%size * $%price;}',
+		result => '($%count == 0? undef : $%sum / $%count)',
+	},
+};
+
+...
+
+Triceps::SimpleAggregator::make(
+	functions => $myAggFunctions,
+);
+</pre>
+
+		<para>
+		The definition of the functions is a reference to a hash, keyed
+		by the function name. Each function definition in order is
+		a hash of options, keyed by the option name. When
+		the SimpleAggregator builds the common computation function,
+		it assembles the code by tying together the code fragments
+		from these options: 
+		Whenever the group changes, the
+		aggregator will reset the function state variables to the default values
+		and iterate through the new contents of the group. It will
+		perform the step computation for each row and collect the
+		data in the intermediate variables. After the iteration it will
+		perform the result computation of all the functions
+		and produce the final value.
+		</para>
+
+		<para>
+		The expected format of the values of these
+		options varies with the option. The option <quote>result</quote>
+		is mandatory, the rest can be skipped if not needed. The supported
+		options are:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term><pre>argcount</pre></term>
+				<listitem>
+				Integer. Defines the number of arguments of the function, which
+				may currently be 0 or 1, with 1 being the default. If this option
+				is 0, SimpleAggregator will check that the argument closure
+				is <pre>undef</pre>.
+				If the aggregation function needs more arguments than one,
+				they have to be packed into an array or hash, and then its
+				reference used as a single argument. The standard function
+				<pre>nth_simple</pre> and the VWAP function provide the examples
+				of how to do this.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>vars</pre></term>
+				<listitem>
+				Reference to a hash. Defines the variables used to
+				keep the context of this function during the iteration 
+				(the hash keys are the variable names) and their initial values
+				(specified as the values in the hash).
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>step</pre></term>
+				<listitem>
+				<para>
+				String. The code fragment to compute a single step of iteration.
+				It can refer to the variables defined in <pre>vars</pre> and to a few of
+				the pre-defined values using the syntax <pre>$%name</pre> (which has
+				been chosen because it's illegal in the normal Perl variable syntax).
+				When SimpleAggregator generates the code, it creates the actual scope
+				variables for everything defined in <pre>vars</pre>, then substitutes
+				them for the <pre>$%</pre> syntax in the string and inserts the result
+				into its group iteration code.
+				</para>
+				<para>
+				If this option is not defined, SimpleAggregator assumes that this function
+				doesn't need it. If no functions in the aggregation define the <pre>step</pre>,
+				the iteration does not get included into the generated code altogether.
+				</para>
+				<para>
+				The defined special values are:
+				</para>
+				<itemizedlist>
+					<listitem>
+					<pre>$%argiter</pre> - The function's argument extracted from the current row.
+					</listitem>
+					<listitem>
+					<pre>$%niter</pre> - The number of the current row in the group, starting from 0.
+					</listitem>
+					<listitem>
+					<pre>$%groupsize</pre> - The size of the group (<pre>$context->groupSize()</pre>).
+					</listitem>
+				</itemizedlist>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><pre>result</pre></term>
+				<listitem>
+				<para>
+				String. The code fragment to compute the result of the function.
+				This option is mandatory. Works in the same way as <pre>step</pre>, only
+				gets executed once per call of the computation function, and the defined
+				special values are different:
+				</para>
+				<itemizedlist>
+					<listitem>
+					<pre>$%argfirst</pre> - The function's argument extracted from the first row.
+					</listitem>
+					<listitem>
+					<pre>$%arglast</pre> - The function's argument extracted from the last row.
+					</listitem>
+					<listitem>
+					<pre>$%groupsize</pre> - The size of the group (<pre>$context->groupSize()</pre>).
+					</listitem>
+				</itemizedlist>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		I can think of many ways the SimpleAggregator can be improved, but for
+		now they have been pushed into the future to keep it simple.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
