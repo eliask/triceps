@@ -1482,7 +1482,7 @@ Triceps::SimpleAggregator::make(
 	],
 	saveRowTypeTo => \$rtAvgPrice,
 	saveComputeTo => \$compText,
-) or confess "$!";
+);
 
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
