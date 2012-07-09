@@ -1389,7 +1389,6 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="35"
 
 <!-- t/xAgg.t doRememberLast -->
 <pre>
-# aggregation handler: recalculate the average each time the easy way
 sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
@@ -2031,6 +2030,362 @@ AO_COLLAPSE OP_NOP 0 NULL
 		deletion of the last row. Finally <pre>AO_COLLAPSE</pre> allows to clean up the
 		aggregator's group state if it needs any cleaning. It has the opcode
 		<pre>OP_NOP</pre> because no rows need to be sent.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_multi_idx">
+		<title>Using multiple indexes</title>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>multiple indexes</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>floating point error</secondary>
+		</indexterm>
+		<para>
+		I've mentioned before that the floating numbers are tricky to handle.
+		Even without additive aggregation the result depends on the rounding.
+		Which in turn depends on the order in which the operations are done.
+		Let's look at a version of the aggregation code that highlights this
+		issue.
+		</para>
+
+<!-- t/xAgg.t doNonAdditive3 -->
+<pre>
+sub computeAverage10 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode != &Triceps::OP_INSERT);
+
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last4",
+			Triceps::IndexType->newFifo(limit => 4)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage10)
+			)
+		)
+	)
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
+
+# label to print the result of aggregation
+my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
+	undef, sub { # (label, rowop)
+		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
+	}) or confess "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
+	or confess "$!";
+</pre>
+
+		<para>
+		The differences from the previously shown basic aggregation are:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		the FIFO limit has been increased to 4;
+		</listitem>
+		<listitem>
+		the only result value printed by the <pre>$lbAverage</pre> handler is the price,
+		and it's printed with a higher precision to make the difference
+		visible;
+		</listitem>
+		<listitem>
+		the aggregator computation only does the inserts, to reduce the clutter
+		in the results and highlight the issue.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		And here is an example of how the order of computation matters:
+		</para>
+
+<!-- t/xAgg.t doNonAdditive3 -->
+<exdump>
+> OP_INSERT,1,AAA,1,10
+1
+> OP_INSERT,2,AAA,1,10
+1
+> OP_INSERT,3,AAA,1,10
+1
+> OP_INSERT,4,AAA,1e16,10
+2500000000000001
+> OP_INSERT,5,BBB,1e16,10
+10000000000000000
+> OP_INSERT,6,BBB,1,10
+5000000000000000
+> OP_INSERT,7,BBB,1,10
+3333333333333333.5
+> OP_INSERT,8,BBB,1,10
+2500000000000000
+</exdump>
+
+		<para>
+		Of course, the real prices won't vary so wildly. But the other values
+		could. This example is specially stacked to demonstrate the point. The
+		final results for <quote>AAA</quote> and <quote>BBB</quote> should be the same but aren't. Why? The
+		precision of the 64-bit floating-point numbers is such that adding 1
+		to 1e16 makes this 1 fall beyond the precision, and the result is still
+		1e16. On the other hand, adding 3 to 1e16 makes at least a part of it
+		stick. 1 still falls off but the other 2 of 3 sticks on. Next look at the
+		data sets: if you add 1e16+1+1+1, that's adding 1e16+1 repeated three
+		times, and the result is still the same unchanged 1e16. But if you add
+		1+1+1+1e16, that's adding 3+1e16, and now the result is different and
+		more correct. When the averages get computed from these different values
+		by dividing the sums by 4, the results are also different.
+		</para>
+
+		<para>
+		Overall the rule of thumb for adding the floating point numbers is
+		this: add them up in the order from the smallest to the largest. (What
+		if the numbers can be negative too? I don't know, that goes beyond my
+		knowledge of floating point calculations. My guess is that you still
+		arrange them in the ascending order, only by the absolute value.) So
+		let's do it in the aggregator.
+		</para>
+
+<!-- t/xAgg.t doOrderedSum -->
+<pre>
+our $idxByPrice;
+
+# aggregation handler: sum in proper order
+sub computeAverage11 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	our $idxByPrice;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode != &Triceps::OP_INSERT);
+
+	my $sum = 0;
+	my $count = 0;
+	my $end = $context->endIdx($idxByPrice);
+	for (my $rhi = $context->beginIdx($idxByPrice); !$rhi->same($end); 
+			$rhi = $rhi->nextIdx($idxByPrice)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last4",
+			Triceps::IndexType->newFifo(limit => 4)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage11)
+			)
+		)
+		->addSubIndex("byPrice",
+			Triceps::SimpleOrderedIndex->new(price => "ASC",)
+			->addSubIndex("multi", Triceps::IndexType->newFifo())
+		)
+	)
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
+
+$idxByPrice = $ttWindow->findIndexPath("bySymbol", "byPrice");
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>multimap</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>index</primary>
+			<secondary>ordered</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>index</primary>
+			<secondary>FIFO</secondary>
+		</indexterm>
+		<para>
+		Here another index type is added, ordered by price. It has to be
+		non-leaf, with a FIFO index type nested in it, to allow for multiple
+		rows having the same price in them. That would work out more
+		efficiently if the ordered index could have a multimap mode, but that
+		is not supported yet.
+		</para>
+
+		<para>
+		When the compute function does its iteration, it now goes by that
+		index. The aggregator can't be simply moved to that new index type,
+		because it still needs to get the last trade id in the order in which the rows
+		are inserted into the group. Instead it has to work with two index
+		types: the one on which the aggregator is defined, and the additional
+		one. The calls for iteration on an additional index are different.
+		<pre>$context->beginIdx()</pre> is similar to <pre>$context->begin()</pre> but the end
+		condition and the next step are done differently. 
+		When <pre>$rhi->nextIdx()</pre> reaches the end of the group,
+		it returns not a NULL row handle but a handle value that has to be found in
+		advance with <pre>$context->endIdx()</pre>.  Perhaps the
+		consistency in this department can be improved in the future.
+		</para>
+
+		<para>
+		And finally, the reference to that additional index type has to make it
+		somehow into the compute function. It can't be given as an argument
+		because it's not known yet at the time when the aggregator is
+		constructed (and no, reordering the index types won't help because the
+		index types are copied when connected to their parents, and we need the
+		exact index type that ends up in the assembled table type). So a global
+		variable <pre>$idxByPrice</pre> is used. The index type reference is found and
+		placed there, and later when the compute function runs, it takes the reference from
+		the global variable.
+		</para>
+
+		<para>
+		The printout from this version on the same input is:
+		</para>
+
+<!-- t/xAgg.t doOrderedSum -->
+<exdump>
+> OP_INSERT,1,AAA,1,10
+1
+> OP_INSERT,2,AAA,1,10
+1
+> OP_INSERT,3,AAA,1,10
+1
+> OP_INSERT,4,AAA,1e16,10
+2500000000000001
+> OP_INSERT,5,BBB,1e16,10
+10000000000000000
+> OP_INSERT,6,BBB,1,10
+5000000000000000
+> OP_INSERT,7,BBB,1,10
+3333333333333334
+> OP_INSERT,8,BBB,1,10
+2500000000000001
+</exdump>
+
+		<para>
+		Now no matter what the order of the row arrival, the prices get added
+		up in the same order from the smallest to the largest and produce the
+		same correct (inasmuch the floating point precision allows) result.
+		</para>
+
+		<para>
+		Which index type is used to put the aggregator on, doesn't matter a
+		whole lot. The computation can be turned around, with the ordered index
+		used as the main one, and the last value from the FIFO index obtained
+		with <pre>$context->lastIdx()</pre>:
+		</para>
+
+<!-- t/xAgg.t doOrderedSum2 -->
+<pre>
+our $idxByOrder;
+
+# aggregation handler: sum in proper order
+sub computeAverage12 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	our $idxByOrder;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode != &Triceps::OP_INSERT);
+
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->lastIdx($idxByOrder)->getRow() or confess "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	$context->send($opcode, $res) or confess "$!";
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last4",
+			Triceps::IndexType->newFifo(limit => 4)
+		)
+		->addSubIndex("byPrice",
+			Triceps::SimpleOrderedIndex->new(price => "ASC",)
+			->addSubIndex("multi", Triceps::IndexType->newFifo())
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", undef, \&computeAverage12)
+			)
+		)
+	)
+or confess "$!";
+$ttWindow->initialize() or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, 
+	&Triceps::EM_CALL, "tWindow") or confess "$!";
+
+$idxByOrder = $ttWindow->findIndexPath("bySymbol", "last4");
+</pre>
+
+		<para>
+		The last important note: when aggregating with multiple indexes, always
+		use the sibling index types forming the same group or their nested
+		sub-indexes (since the actual order is defined by the first leaf
+		sub-index anyway). But don't use the random unrelated index types. If
+		you do, the context would return some unexpected values for those, and
+		you may end up with endless loops.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
