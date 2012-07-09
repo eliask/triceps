@@ -730,7 +730,7 @@ my $rtAvgPrice = Triceps::RowType->new(
 	price => "float64", # avg price of the last 2 trades
 ) or confess "$!";
 
-# aggregation handler: recalculate the average each time the easy way
+# aggregation handler: recalculate the average additively
 sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
@@ -887,7 +887,7 @@ my $rtAvgPrice = Triceps::RowType->new(
 	price => "float64", # avg price of the last 2 trades
 ) or confess "$!";
 
-# aggregation handler: recalculate the average each time the easy way
+# aggregation handler: recalculate the average additively
 sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
