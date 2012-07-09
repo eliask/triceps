@@ -980,7 +980,9 @@ return if ($opcode == &Triceps::OP_DELETE
 		<para>
 		There is also a way to optimize this logic right inside the aggregator:
 		remember the last INSERT row sent, and on DELETE just resend the same
-		row. This remembered last state can also be used for the other
+		row, as will be shown in
+		<xref linkend="sc_aggregation_optimized" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		This remembered last state can also be used for the other
 		interesting optimizations that will be shown later.
 		XXX reference the additive agg
 		</para>
@@ -1357,13 +1359,232 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="35"
 		For a new subject, this table type indexes by id twice: once as a
 		primary index, another time as a nested one. Are both of them really
 		necessary or would just the nested one be good enough? That depends on
-		your input data. If you get the deletes like <pre>OP_DELETE,3</pre> with all the
+		your input data. If you get the DELETEs like <pre>OP_DELETE,3</pre> with all the
 		other fields as NULL, then a separate primary index is definitely
-		needed. But if the deletes come exactly as the same records that were
+		needed. But if the DELETEs come exactly as the same records that were
 		inserted, only with a different opcode, like <pre>OP_DELETE,3,AAA,20,20</pre>
 		then the primary index can be skipped because the nested sorted index
 		will be able to find the rows correctly and handle them. The bottom
 		line is, the fully correct DELETE records are good.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_optimized">
+		<title>Optimized DELETEs</title>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>optimization</secondary>
+		</indexterm>
+		<para>
+		I've already mentioned that the DELETEs coming out of an aggregator do not have
+		to be recalculated every time. Instead the rows can be remembered from
+		the insert time, and simply re-sent with the new opcode. That allows to
+		trade the CPU time for the extra memory. Of course, this works best
+		when there are many rows per aggregation group, then more CPU
+		time is saved on not iterating through them. How many is <quote>many</quote>? It
+		depends on the particular cases. You'd have to measure. Anyway, here is
+		how it's done:
+		</para>
+
+<!-- t/xAgg.t doRememberLast -->
+<pre>
+# aggregation handler: recalculate the average each time the easy way
+sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+	if ($opcode == &Triceps::OP_DELETE) {
+		$context->send($opcode, $$state) or confess "$!";
+		return;
+	}
+
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	${$state} = $res;
+	$context->send($opcode, $res) or confess "$!";
+}
+
+sub initRememberLast #  (@args)
+{
+	my $refvar;
+	return \$refvar;
+}
+
+my $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("byId", 
+		Triceps::IndexType->newHashed(key => [ "id" ])
+	)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+		->addSubIndex("last2",
+			Triceps::IndexType->newFifo(limit => 2)
+			->setAggregator(Triceps::AggregatorType->new(
+				$rtAvgPrice, "aggrAvgPrice", \&initRememberLast, \&computeAverage4)
+			)
+		)
+	)
+or confess "$!";
+</pre>
+
+		<para>
+		The rest of the example stays the same, so it's not shown. Even in the
+		part that is shown, very little has changed. 
+		</para>
+
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>initialization</secondary>
+		</indexterm>
+		<para>
+		The aggregator type now has an initialization function. (This function
+		is <b>not</b> of the same kind as for the sorted index!) This function gets
+		called every time a new aggregation group gets created, before the
+		first row is inserted into it. It initializes the aggregator group's
+		Perl state by creating and returning the state value (the state is per
+		aggregator type, so if there are two parallel index types, each with an
+		aggregator, each aggregator will have its own group state). 
+		</para>
+
+		<para>
+		The state is stored in the group as a single Perl variable. So it
+		usually is a reference to a more complex object. 
+		In this case the value returned is a reference
+		to a variable that would contain a Row reference. (Ironically, the
+		simplest case looks a bit more confusing than if it were a reference to
+		an array or hash). Returning a reference to a <pre>my</pre> variable is a way to
+		create a reference to an anonymous value: each time <pre>my</pre> executes, it
+		creates a new value. Which is then kept in a reference after the
+		initialization function returns. The next time the function executes,
+		<pre>my</pre> would create another new value.
+		</para>
+
+		<para>
+		The computation function has that state passed as an argument and now
+		makes use of it. It has two small additions. Before sending a new
+		result row, that row gets remembered in the state reference. And then
+		before doing any computation the function checks, whether the required
+		opcode is DELETE, and if so then simply resends the last result with
+		the new opcode. Remember, the rows are not copied but
+		reference-counted, so this is fairly cheap.
+		</para>
+
+		<para>
+		The extra level of referencing is used because simply assigning to
+		<pre>$state</pre> would only change the local variable and not the value kept in
+		the group.
+		</para>
+
+		<para>
+		However if you change the argument of the function directly, that would
+		change the value kept in the group (similar to changing the loop
+		variable in a <i>foreach</i> loop). So you can save a bit of overhead
+		by eliminating the extra indirection. The modified version will be:
+		</para>
+
+<!-- t/xAgg.t doRememberLastNR -->
+<pre>
+sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
+{
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+
+	# don't send the NULL record after the group becomes empty
+	return if ($context->groupSize()==0
+		|| $opcode == &Triceps::OP_NOP);
+	if ($opcode == &Triceps::OP_DELETE) {
+		$context->send($opcode, $state) or confess "$!";
+		return;
+	}
+
+	my $sum = 0;
+	my $count = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); 
+			$rhi = $context->next($rhi)) {
+		$count++;
+		$sum += $rhi->getRow()->get("price");
+	}
+	my $rLast = $context->last()->getRow() or confess "$!";
+	my $avg = $sum/$count;
+
+	my $res = $context->resultType()->makeRowHash(
+		symbol => $rLast->get("symbol"), 
+		id => $rLast->get("id"), 
+		price => $avg
+	) or confess "$!";
+	$_[5] = $res;
+	$context->send($opcode, $res) or confess "$!";
+}
+
+sub initRememberLast5 #  (@args)
+{
+	return undef;
+}
+</pre>
+
+		<para>
+		Even though the initialization function returns <pre>undef</pre>, it still
+		must be present. If it's not present, the state argument of the
+		comparison function will contain a special hardcoded and unmodifiable
+		<pre>undef</pre> constant, and nothing could be remembered.
+		</para>
+
+		<para>
+		And here is an example of its work:
+		</para>
+
+<!-- t/xAgg.t doRememberLastNR -->
+<exdump>
+> OP_INSERT,1,AAA,10,10
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,2,BBB,100,100
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="2" price="100" 
+> OP_INSERT,3,AAA,20,20
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="1" price="10" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="3" price="15" 
+> OP_INSERT,4,BBB,200,200
+tWindow.aggrAvgPrice OP_DELETE symbol="BBB" id="2" price="100" 
+tWindow.aggrAvgPrice OP_INSERT symbol="BBB" id="4" price="150" 
+> OP_INSERT,5,AAA,30,30
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="3" price="15" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="25" 
+> OP_DELETE,3
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="25" 
+tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="5" price="30" 
+> OP_DELETE,5
+tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30" 
+</exdump>
+
+		<para>
+		Since the rows are grouped by the symbol, the symbols <quote>AAA</quote> and <quote>BBB</quote>
+		will have separate aggregation states.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
