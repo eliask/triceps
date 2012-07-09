@@ -554,7 +554,7 @@ address="table" count="2"
 		</indexterm>
 		<indexterm>
 			<primary>table</primary>
-			<secondary>remove</secondary>
+			<secondary>remove row</secondary>
 		</indexterm>
 		<para>
 		The result allows to differentiate between the situations when the 
