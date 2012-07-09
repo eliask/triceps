@@ -736,7 +736,6 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
 	my $rowchg;
 	
-	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
 	if ($aggop == &Triceps::AO_BEFORE_MOD) { 
 		$context->send($opcode, $state->{lastrow}) or confess "$!";
 		return;
@@ -893,7 +892,6 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
 	my $rowchg;
 	
-	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
 	if ($aggop == &Triceps::AO_COLLAPSE) { 
 		return
 	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
@@ -1010,12 +1008,11 @@ my $rtAvgPrice = Triceps::RowType->new(
 	price => "float64", # avg price of the last 2 trades
 ) or confess "$!";
 
-# aggregation handler: recalculate the average each time the easy way
+# aggregation handler: print the call information
 sub computeAverage9 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
 	
-	#print STDERR &Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", $context->groupSize(), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n";
 	&send(&Triceps::aggOpString($aggop), " ", &Triceps::opcodeString($opcode), " ", $context->groupSize(), " ", (!$rh->isNull()? $rh->getRow()->printP(): "NULL"), "\n");
 }
 
@@ -1196,7 +1193,7 @@ my $rtAvgPrice = Triceps::RowType->new(
 
 our $idxByPrice;
 
-# aggregation handler: recalculate the average each time the easy way
+# aggregation handler: sum in proper order
 sub computeAverage11 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
@@ -1352,7 +1349,7 @@ my $rtAvgPrice = Triceps::RowType->new(
 
 our $idxByOrder;
 
-# aggregation handler: recalculate the average each time the easy way
+# aggregation handler: sum in proper order
 sub computeAverage12 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
