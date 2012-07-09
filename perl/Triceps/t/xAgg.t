@@ -1244,8 +1244,7 @@ $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
-$idxByPrice = $ttWindow->findSubIndex("bySymbol")
-	->findSubIndex("byPrice") or confess "$!";
+$idxByPrice = $ttWindow->findIndexPath("bySymbol", "byPrice");
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
@@ -1399,8 +1398,7 @@ $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
-$idxByOrder = $ttWindow->findSubIndex("bySymbol")
-	->findSubIndex("last4") or confess "$!";
+$idxByOrder = $ttWindow->findIndexPath("bySymbol", "last4");
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
