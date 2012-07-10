@@ -149,7 +149,7 @@ our $FUNCTIONS = {
 #       source code, the saved value may be undef if the init is not used
 #   saveComputeTo (optional, ref to a scalar) - where to save a copy of the compute
 #       function source code
-# @return - the same TableType, with added aggregator, or die
+# @return - the same TableType, with added aggregator, or confess
 sub make # (optName => optValue, ...)
 {
 	my $opts = {}; # the parsed options
@@ -171,25 +171,10 @@ sub make # (optName => optValue, ...)
 	${$opts->{saveRowTypeTo}} = undef if (defined($opts->{saveRowTypeTo}));
 
 	# find the index type, on which to build the aggregator
-	my $idx;
-	{
-		my @path = @{$opts->{idxPath}};
-		confess "$myname: idxPath must be an array of non-zero length"
-			unless ($#path >= 0);
-		my $cur = $opts->{tabType}; # the root of the tree
-		my $progress = '';
-		foreach my $p (@path) {
-			$progress .= $p;
-			$cur = $cur->findSubIndex($p) 
-				or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $opts->{tabType}->print() . " ");
-			$progress .= '.';
-		}
-		$idx = $cur;
-	}
+	my $idx = $opts->{tabType}->findIndexPath(@{$opts->{idxPath}});
 	confess "$myname: the index type is already initialized, can not add an aggregator on it"
 		if ($idx->isInitialized());
 	
-
 	# check the result definition and build the result row type and code snippets for the computation
 	my $rtRes;
 	my $needIter = 0; # flag: some of the functions require iteration
@@ -435,7 +420,7 @@ sub runExample($$$) # ($unit, $tabType, $aggName)
 	my $lbPrint = $unit->makeLabel($lbAgg->getType(), "lbPrint",
 		undef, sub { # (label, rowop)
 			&send($_[1]->printP(), "\n");
-		}) or die "$!";
+		}) or confess "$!";
 
 	$lbAgg->chain($lbPrint) or confess "$!";
 
@@ -455,7 +440,7 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or die "$!";
+) or confess "$!";
 
 # create a new table type for trades, to put an aggregator on
 
@@ -476,9 +461,9 @@ sub makeTtWindow
 #########################
 # touch-test of all the main code-building paths
 
-my $uTrades = Triceps::Unit->new("uTrades") or die "$!";
+my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
 
-my $ttWindow = &makeTtWindow or die "$!";
+my $ttWindow = &makeTtWindow or confess "$!";
 
 my $compText = 1;
 my $initText = 1;
@@ -543,7 +528,7 @@ t.myAggr OP_DELETE symbol="AAA" id="5" volume="30" count="1"
 #########################
 # test of path for the count only
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 
 undef $compText;
 undef $rtAggr;
@@ -601,7 +586,7 @@ t.myAggr OP_DELETE count="1"
 #########################
 # test of path for the first only
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 
 undef $compText;
 undef $rtAggr;
@@ -659,7 +644,7 @@ t.myAggr OP_DELETE symbol="AAA"
 #########################
 # test of path for the last only
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 
 undef $compText;
 undef $rtAggr;
@@ -717,7 +702,7 @@ t.myAggr OP_DELETE symbol="AAA"
 #########################
 # test without optional options
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 
 $res = MySimpleAggregator::make(
 	tabType => $ttWindow,
@@ -732,7 +717,7 @@ ok(ref $res, "Triceps::TableType");
 #########################
 # errors: missing mandatory options
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 $res = eval {
 	MySimpleAggregator::make(
 		name => "myAggr",
@@ -744,7 +729,7 @@ $res = eval {
 }; 
 ok($@ =~ /^Option 'tabType' must be specified for class 'MySimpleAggregator'/);
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 $res = eval {
 	MySimpleAggregator::make(
 		tabType => $ttWindow,
@@ -756,7 +741,7 @@ $res = eval {
 };
 ok($@ =~ /^Option 'name' must be specified for class 'MySimpleAggregator'/);
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 $res = eval {
 	MySimpleAggregator::make(
 		tabType => $ttWindow,
@@ -768,7 +753,7 @@ $res = eval {
 };
 ok($@ =~ /^Option 'idxPath' must be specified for class 'MySimpleAggregator'/);
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 $res = eval {
 	MySimpleAggregator::make(
 		tabType => $ttWindow,
@@ -783,7 +768,7 @@ ok($@ =~ /^Option 'result' must be specified for class 'MySimpleAggregator'/);
 
 sub tryBadOptValue($$) # (optName, optValue)
 {
-	$ttWindow = &makeTtWindow or die "$!";
+	$ttWindow = &makeTtWindow or confess "$!";
 	my %opts = (
 		tabType => $ttWindow,
 		name => "myAggr",
@@ -824,14 +809,16 @@ ok($@ =~ /^Option 'result' of class 'MySimpleAggregator' must be a reference to 
 tryBadOptValue(
 		idxPath => [ ],
 );
-ok($@ =~ /^MySimpleAggregator::make: idxPath must be an array of non-zero length/);
+ok($@ =~ /^Triceps::TableType::findIndexPath: idxPath must be an array of non-zero length, table type is:/);
+#print "$@\n";
 
 tryBadOptValue(
 		idxPath => [ "bySymbol", "zzz" ],
 );
-ok($@ =~ /^MySimpleAggregator::make: unable to find the index type at path 'bySymbol.zzz'/);
+ok($@ =~ /^Triceps::TableType::findIndexPath: unable to find the index type at path 'bySymbol.zzz', table type is:/);
+#print "$@\n";
 
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 $ttWindow->initialize();
 $res = eval {
 	MySimpleAggregator::make(
@@ -959,7 +946,7 @@ ok($@ =~ /^MySimpleAggregator: internal error in definition of aggregation funct
 
 #########################
 # test the aggregation functions that weren't exercised in the first example
-$ttWindow = &makeTtWindow or die "$!";
+$ttWindow = &makeTtWindow or confess "$!";
 
 undef $compText;
 undef $rtAggr;
