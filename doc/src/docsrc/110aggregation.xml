@@ -2825,23 +2825,487 @@ Triceps::SimpleAggregator::make(
 		I can think of many ways the SimpleAggregator can be improved, but for
 		now they have been pushed into the future to keep it simple.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_aggregation_simple_guts">
+		<title>The guts of SimpleAggregator</title>
+
+		<indexterm>
+			<primary>SimpleAggregator</primary>
+		</indexterm>
 
 		<para>
+		The implementation of the SimpleAggregator has turned out to be
+		surprisingly small. Not quite tiny but still
+		small. I've liked it so much that I've even saved the original small
+		version in the file <pre>xSimpleAggregator.t</pre>. As more features will be
+		added, the <quote>official</quote> version of the SimpleAggregator will grow (and
+		already did) but that example file will stay small and simple.
+		</para>
+
+		<indexterm>
+			<primary>template</primary>
+		</indexterm>
+		<para>
+		It's a nice example of yet another kind of template that I want
+		to present. I'm going to go through it, interlacing the code with the
+		commentary.
+		</para>
+
+<!-- t/xSimpleAggregator.t -->
+<pre>
+package MySimpleAggregator;
+use Carp;
+
+use strict;
+
+our $FUNCTIONS = {
+	first => {
+		result => '$%argfirst',
+	},
+	last => {
+		result => '$%arglast',
+	},
+	count_star => {
+		argcount => 0,
+		result => '$%groupsize',
+	},
+	count => {
+		vars => { count => 0 },
+		step => '$%count++ if (defined $%argiter);',
+		result => '$%count',
+	},
+	sum => {
+		vars => { sum => 0 },
+		step => '$%sum += $%argiter;',
+		result => '$%sum',
+	},
+	max => {
+		vars => { max => 'undef' },
+		step => '$%max = $%argiter if (!defined $%max || $%argiter > $%max);',
+		result => '$%max',
+	},
+	min => {
+		vars => { min => 'undef' },
+		step => '$%min = $%argiter if (!defined $%min || $%argiter < $%min);',
+		result => '$%min',
+	},
+	avg => {
+		vars => { sum => 0, count => 0 },
+		step => 'if (defined $%argiter) { $%sum += $%argiter; $%count++; }',
+		result => '($%count == 0? undef : $%sum / $%count)',
+	},
+	avg_perl => { # Perl-like treat the NULLs as 0s
+		vars => { sum => 0 },
+		step => '$%sum += $%argiter;',
+		result => '$%sum / $%groupsize',
+	},
+	nth_simple => { # inefficient, need proper multi-args for better efficiency
+		vars => { n => 'undef', tmp => 'undef', val => 'undef' },
+		step => '($%n, $%tmp) = @$%argiter; if ($%n == $%niter) { $%val = $%tmp; }',
+		result => '$%val',
+	},
+};
+</pre>
+
+		<para>
+		The package name of this saved simple version is MySimpleAggregator,
+		to avoid confusion with the <quote>official</quote> SimpleAggregator class.
+		First goes the definition of the aggregation functions.
+		They are defined in exactly the same way as the vwap function has been
+		shown before.  They are fairly straightforward.
+		You can use them as the starting point for adding your own.
+		</para>
+
+<pre>
+sub make # (optName => optValue, ...)
+{
+	my $opts = {}; # the parsed options
+	my $myname = "MySimpleAggregator::make";
+	
+	&Triceps::Opt::parse("MySimpleAggregator", $opts, {
+			tabType => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TableType") } ],
+			name => [ undef, \&Triceps::Opt::ck_mandatory ],
+			idxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+			result => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+			saveRowTypeTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+			saveInitTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+			saveComputeTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+		}, @_);
+</pre>
+
+		<para>
+		The options get parsed. Since it's not a proper object constructor but a factory,
+		it uses the hash <pre>$opts</pre> instead of <pre>$self</pre> to save the
+		processed copy of the options. This early version doesn't have
+		an option for the user-supplied aggregation function definitions.
+		</para>
+
+<pre>
+	# reset the saved source code
+	${$opts->{saveInitTo}} = undef if (defined($opts->{saveInitTo}));
+	${$opts->{saveComputeTo}} = undef if (defined($opts->{saveComputeTo}));
+	${$opts->{saveRowTypeTo}} = undef if (defined($opts->{saveRowTypeTo}));
+</pre>
+
+		<para>
+		The generated source code will not be placed
+		into the <pre>save*</pre> references until the table type gets initialized, so for the
+		meantime they get filled with <pre>undef</pre>s.
+		</para>
+
+<pre>
+	# find the index type, on which to build the aggregator
+	my $idx = $opts->{tabType}->findIndexPath(@{$opts->{idxPath}});
+	confess "$myname: the index type is already initialized, can not add an aggregator on it"
+		if ($idx->isInitialized());
+</pre>
+
+		<para>
+		Since the SimpleAggregator uses an existing table with existing index,
+		it doesn't require the aggregation key: it just takes an index that
+		forms the group, and whatever key that leads to this index becomes the
+		aggregation key.
+		</para>
+
+<pre>
+	# check the result definition and build the result row type and code snippets for the computation
+	my $rtRes;
+	my $needIter = 0; # flag: some of the functions require iteration
+	my $needfirst = 0; # the result needs the first row of the group
+	my $needlast = 0; # the result needs the last row of the group
+	my $codeInit = ''; # code for function initialization
+	my $codeStep = ''; # code for iteration
+	my $codeResult = ''; # code to compute the intermediate values for the result
+	my $codeBuild = ''; # code to build the result row
+	my @compArgs; # the field functions are passed as args to the computation
+	{
+		my $grpstep = 4; # definition grouped by 4 items per result field
+		my @resopt = @{$opts->{result}};
+		my @rtdefRes; # field definition for the result
+		my $id = 0; # numeric id of the field
+
+		while ($#resopt >= 0) {
+			confess "$myname: the values in the result definition must go in groups of 4"
+				unless ($#resopt >= 3);
+			my $fld = shift @resopt;
+			my $type = shift @resopt;
+			my $func = shift @resopt;
+			my $funcarg = shift @resopt;
+
+			confess("$myname: the result field name must be a string, got a " . ref($fld) . " ")
+				unless (ref($fld) eq '');
+			confess("$myname: the result field type must be a string, got a " . ref($type) . " for field '$fld'")
+				unless (ref($type) eq '');
+			confess("$myname: the result field function must be a string, got a " . ref($func) . " for field '$fld'")
+				unless (ref($func) eq '');
+</pre>
+
+		<para>
+		This starts the loop that goes over the result fields and builds the
+		code to create them. The code will be built in multiple snippets that
+		will eventually be combined to produce the compute function. Since the
+		arguments go in groups of 4, it becomes fairly easy to miss one element
+		somewhere, and then everything gets real confusing. So the code
+		attempts to check the types of the arguments, in hopes of catching
+		these off-by-ones as early as possible. The variable <pre>$id</pre> will be used
+		to produce the unique prefixes for the function's variables.
+		</para>
+
+<pre>
+			my $funcDef = $FUNCTIONS->{$func}
+				or confess("$myname: function '" . $func . "' is unknown");
+
+			my $argCount = $funcDef->{argcount}; 
+			$argCount = 1 # 1 is the default value
+				unless defined($argCount);
+			confess("$myname: in field '$fld' function '$func' requires an argument computation that must be a Perl sub reference")
+				unless ($argCount == 0 || ref $funcarg eq 'CODE');
+			confess("$myname: in field '$fld' function '$func' requires no argument, use undef as a placeholder")
+				unless ($argCount != 0 || !defined $funcarg);
+
+			push(@rtdefRes, $fld, $type);
+
+			push(@compArgs, $funcarg)
+				if (defined $funcarg);
+</pre>
+
+		<para>
+		The function definition for a field gets pulled out by name, and
+		the arguments of the field are checked for correctness.
+		The types of the fields get collected for the row definition, and the
+		aggregation argument computation closures (or, technically, functions)
+		get also collected, to pass later as the arguments of the compute
+		function.
+		</para>
+
+<pre>
+			# add to the code snippets
+
+			### initialization
+			my $vars = $funcDef->{vars};
+			if (defined $vars) {
+				foreach my $v (keys %$vars) {
+					# the variable names are given a unique prefix;
+					# the initialization values are constants, no substitutions
+					$codeInit .= "  my \$v${id}_${v} = " . $vars->{$v} . ";\n";
+				}
+			} else {
+				$vars = { }; # a dummy
+			}
+</pre>
+
+		<para>
+		The initialization fragment gets processed if defined. 
+		The unique names for variables are generated from the <pre>$id</pre> and the
+		variable name in the definition, so that there would be no interference
+		between the result fields. And the initialization snippets are collected
+		in <pre>$codeInit</pre>. The initialization values are not enquoted
+		because they are expected to be either numeric or <pre>undef</pre>.
+		It's one of the shortcuts taken. A better way would be to put
+		these values as-is into the argument array passed to the computation
+		function.
+		</para>
+		
+<pre>
+			### iteration
+			my $step = $funcDef->{step};
+			if (defined $step) {
+				$needIter = 1;
+				$codeStep .= "    # field $fld=$func\n";
+				if (defined $funcarg) {
+					# compute the function argument from the current row
+					$codeStep .= "    my \$a${id} = \$args[" . $#compArgs ."](\$row);\n";
+				}
+				# substitute the variables in $step
+				$step =~ s/\$\%(\w+)/&replaceStep($1, $func, $vars, $id, $argCount)/ge;
+				$codeStep .= "    { $step; }\n";
+			}
+</pre>
+
+		<para>
+		Then the iteration fragment gets processed.
+		The logic remembers
+		in <pre>$needIter</pre> if any of the functions involved needs iteration.
+		Before the iteration snippet gets collected, it has the <pre>$%</pre>
+		names substitutted, and placed into a block, just in case if it wants
+		to define some local variables.  An extra <quote>;</quote> is added
+		just in case, it doesn't hurt and helps if it was forgotten in the
+		function definition.
+		</para>
+
+<pre>
+			### result building
+			my $result = $funcDef->{result};
+			confess "MySimpleAggregator: internal error in definition of aggregation function '$func', missing result computation"
+				unless (defined $result);
+			# substitute the variables in $result
+			if ($result =~ /\$\%argfirst/) {
+				$needfirst = 1;
+				$codeResult .= "  my \$f${id} = \$args[" . $#compArgs ."](\$rowFirst);\n";
+			}
+			if ($result =~ /\$\%arglast/) {
+				$needlast = 1;
+				$codeResult .= "  my \$l${id} = \$args[" . $#compArgs ."](\$rowLast);\n";
+			}
+			$result =~ s/\$\%(\w+)/&replaceResult($1, $func, $vars, $id, $argCount)/ge;
+			$codeBuild .= "    ($result), # $fld\n";
+
+			$id++;
+		}
+		$rtRes = Triceps::RowType->new(@rtdefRes)
+			or confess "$myname: invalid result row type definition: $!";
+	}
+	${$opts->{saveRowTypeTo}} = $rtRes if (defined($opts->{saveRowTypeTo}));
+</pre>
+
+		<para>
+		In the same way the result computation is created, and remembers if any
+		function wanted the fields from the first or last row. And eventually
+		after all the functions have been processed, the result row type is created. 
+		If it was asked to save, it gets saved.
+		</para>
+
+<pre>
+	# build the computation function
+	my $compText = "sub {\n";
+	$compText .= "  use strict;\n";
+	$compText .= "  my (\$table, \$context, \$aggop, \$opcode, \$rh, \$state, \@args) = \@_;\n";
+	$compText .= "  return if (\$context->groupSize()==0 || \$opcode == &Triceps::OP_NOP);\n";
+	$compText .= $codeInit;
+	if ($needIter) {
+		$compText .= "  my \$npos = 0;\n";
+		$compText .= "  for (my \$rhi = \$context->begin(); !\$rhi->isNull(); \$rhi = \$context->next(\$rhi)) {\n";
+		$compText .= "    my \$row = \$rhi->getRow();\n";
+		$compText .= $codeStep;
+		$compText .= "    \$npos++;\n";
+		$compText .= "  }\n";
+	}
+	if ($needfirst) {
+		$compText .= "  my \$rowFirst = \$context->begin()->getRow();\n";
+	}
+	if ($needlast) {
+		$compText .= "  my \$rowLast = \$context->last()->getRow();\n";
+	}
+	$compText .= $codeResult;
+	$compText .= "  \$context->makeArraySend(\$opcode,\n";
+	$compText .= $codeBuild;
+	$compText .= "  );\n";
+	$compText .= "}\n";
+
+	${$opts->{saveComputeTo}} = $compText if (defined($opts->{saveComputeTo}));
+</pre>
+
+		<para>
+		The compute function gets assembled from the collected fragments.
+		The optional parts get included only if some of the functions needed them.
+		</para>
+
+<pre>
+	# compile the computation function
+	my $compFun = eval $compText
+		or confess "$myname: error in compilation of the aggregation computation:\n  $@\nfunction text:\n$compText ";
+
+	# build and add the aggregator
+	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun, @compArgs)
+		or confess "$myname: internal error: failed to build an aggregator type: $! ";
+
+	$idx->setAggregator($agg)
+		or confess "$myname: failed to set the aggregator in the index type: $! ";
+
+	return $opts->{tabType};
+}
+</pre>
+
+		<para>
+		Then the compute function is compiled. In case if the compilation
+		fails, the error message will include both the compilation error and
+		the text of the auto-generated function. Otherwise there would be no
+		way to know, what exactly went wrong. Well, since no user code is
+		included into the auto-generated function, it should never fail. Except
+		if there is some bad code in the aggregation function definitions. The
+		compiled function and collected closures are then used to create the
+		aggregator, which should also never fail.
 		</para>
 
 		<para>
+		The functions that translate the <pre>$%variable</pre> names are built after the
+		same pattern but have the different built-in variables:
+		</para>
+
+<pre>
+sub replaceStep # ($varname, $func, $vars, $id, $argCount)
+{
+	my ($varname, $func, $vars, $id, $argCount) = @_;
+
+	if ($varname eq 'argiter') {
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to 'argiter' but the function declares no arguments"
+			unless ($argCount > 0);
+		return "\$a${id}";
+	} elsif ($varname eq 'niter') {
+		return "\$npos";
+	} elsif ($varname eq 'groupsize') {
+		return "\$context->groupSize()";
+	} elsif (exists $vars->{$varname}) {
+		return "\$v${id}_${varname}";
+	} else {
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', step computation refers to an unknown variable '$varname'"
+	}
+}
+
+sub replaceResult # ($varname, $func, $vars, $id, $argCount)
+{
+	my ($varname, $func, $vars, $id, $argCount) = @_;
+
+	if ($varname eq 'argfirst') {
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+			unless ($argCount > 0);
+		return "\$f${id}";
+	} elsif ($varname eq 'arglast') {
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to '$varname' but the function declares no arguments"
+			unless ($argCount > 0);
+		return "\$l${id}";
+	} elsif ($varname eq 'groupsize') {
+		return "\$context->groupSize()";
+	} elsif (exists $vars->{$varname}) {
+		return "\$v${id}_${varname}";
+	} else {
+		confess "MySimpleAggregator: internal error in definition of aggregation function '$func', result computation refers to an unknown variable '$varname'"
+	}
+}
+</pre>
+
+		<para>
+		They check for the references to the undefined variables and confess if
+		any are found.  That's it, the whole aggregator generation.
 		</para>
 
 		<para>
+		Now let's look back at the printout of a generated computation function
+		that has been shown above..
+		The aggregation results were:
+		</para>
+
+<!-- a fragment from the bigger example above -->
+<pre>
+	result => [
+		symbol => "string", "last", sub {$_[0]->get("symbol");},
+		id => "int32", "last", sub {$_[0]->get("id");},
+		price => "float64", "avg", sub {$_[0]->get("price");},
+	],
+</pre>
+
+		<para>
+		Which produced the function:
+		</para>
+
+<!-- saved by uncommenting the print in t/xAgg.t doSimpleAgg, copy 2 -->
+<pre>
+sub {
+	use strict;
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
+	my $v2_count = 0;
+	my $v2_sum = 0;
+	my $npos = 0;
+	for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
+		my $row = $rhi->getRow();
+		# field price=avg
+		my $a2 = $args[2]($row);
+		{ if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
+		$npos++;
+	}
+	my $rowLast = $context->last()->getRow();
+	my $l0 = $args[0]($rowLast);
+	my $l1 = $args[1]($rowLast);
+	$context->makeArraySend($opcode,
+		($l0), # symbol
+		($l1), # id
+		(($v2_count == 0? undef : $v2_sum / $v2_count)), # price
+	);
+}
+</pre>
+
+		<para>
+		The fields get assigned the ids 0, 1 and 2. <pre>avg</pre> for 
+		the <pre>price</pre> field is the only function
+		here that requires the iteration, and its variables are defined with
+		the prefix <pre>$v2_</pre>. In the loop the function argument
+		closure is called from <pre>$args[2]</pre>, 
+		and its result is stored in <pre>$a2</pre> (again,
+		2 here is the id of this field). Then a copy of the step
+		computation for <pre>avg</pre> is copied in a block, with the
+		variables substituted. <pre>$%argiter</pre> becomes <pre>$a2</pre>, <pre>$%sum</pre> becomes
+		<pre>$v2_sum</pre>, <pre>$%count</pre> becomes <pre>$v2_count</pre>.
+		Then the loop ends.
 		</para>
 
 		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
+		The functions make use of the last row, so <pre>$rowLast</pre> is computed.
+		The values for the <pre>$%arglast</pre> fields 0 and 1 are calculated 
+		in <pre>$l0</pre> and <pre>$l1</pre>.
+		Then the result row is created and sent from an array of substituted
+		result snippets from all the fields. That's how it all works together.
 		</para>
 
 		<para>
