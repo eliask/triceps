@@ -382,50 +382,208 @@ lbFilterResult OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200
 		Because of this, the lookup joins work best when the reference table
 		gets pre-populated in advance and then stays stable.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_lookup_template">
+		<title>The LookupJoin template</title>
+
+		<indexterm>
+			<primary>template</primary>
+		</indexterm>
+		<indexterm>
+			<primary>LookupJoin</primary>
+		</indexterm>
+		<para>
+		When a join has to produce the new rows, with the data from both the
+		incoming row and the ones looked up in the reference table, this can
+		also be done manually but may be more convenient to do with the
+		LookupJoin template. The translation of account to the internal ids can
+		be done like this:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeft, removed saveJoinerTo -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($join->getInputLabel(), @data);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+</pre>
 
 		<para>
+		The join gets defined in the option name-value format. The options <quote>unit</quote> and
+		<quote>name</quote> are as usual.
 		</para>
 
 		<para>
+		The incoming rows are always on the left side, the table on the right.
+		LookupJoin can do either the inner join or the left outer join (since
+		it does not react to the changes of the right table and has no access
+		to the past data from the left side, the full and right outer joins are not
+		available).
+		In this case the option <quote>isLeft => 1</quote> selects the left outer join.
+		The left outer join also happens to be the default if this option is not used.
 		</para>
 
 		<para>
+		The left side is described by the option <quote>leftRowType</quote>, and causes the join's input
+		label of this row type to be created. The input label can be found with
+		<pre>$join->getInputLabel()</pre>.
 		</para>
 
 		<para>
+		The right side is a table, specified in the option <quote>rightTable</quote>. The
+		lookups in the table are done using a combination of an index and the
+		field pairing. The option <quote>by</quote> provides the field pairing. It contains
+		the pairs of field names, one from the left, and one from the right,
+		for the equal fields. They can be separated by 
+		<quote><pre>,</pre></quote> too, but <quote><pre>=></pre></quote>
+		feels more idiomatic to me. These fields from the left are translated
+		to the right and are used for lookup through the index. The index
+		is specified with the path in the option <quote>rightIdxPath</quote>. If this
+		option is missing, LookupJoin will just try to find the first top-level
+		Hashed index. Either way, the index must be a Hashed index.
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>hashed</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>index</primary>
+			<secondary>sorted</secondary>
+		</indexterm>
+		<para>
+		There is no particular reason for it not being a Sorted/Ordered index, other
+		that the <pre>getKey()</pre> call does not work for these indexes yet, and
+		that's what the LookupJoin uses to check that the right-side index key
+		matches the join key in <quote>by</quote>.
 		</para>
 
 		<para>
+		The index may be either a leaf (as in this example) or non-leaf. If
+		it's a leaf, it could look up no more than one row per key, and
+		LookupJoin uses this internally for a little optimization. Otherwise
+		LookupJoin is capable of producing multiple result rows for one input row.
 		</para>
 
 		<para>
+		Finally, there is the result row. It is built out of the two original
+		rows by picking the fields according to the options <quote>leftFields</quote> and
+		<quote>rightFields</quote>. If either option is missing, that means 
+		<quote>take all the fields</quote>. 
+		If present, it gives the patterns of the fields to let through.
+		The patterns may be either the explicit field names or regular
+		expressions implicitly anchored at both front and back. There is also a
+		bit of extra modification possible:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term>!&xrsp;<i>pattern</i></term>
+				<listitem>
+				Skip the fields matching the pattern.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><i>pattern</i>&xrsp;/&xrsp;<i>substitution</i></term>
+				<listitem>
+				Pass the matching fields and rename them according to the substitution.
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		So in this example <pre>[ "internal/acct" ]</pre> means: pass the field <pre>internal</pre>
+		but rename it to <pre>acct</pre>. If a specification element refers to a literal
+		field, like here, LookupJoin checks that the field is actually present
+		in the original row type, catching the typos. For the general regular
+		expressions it doesn't check whether the pattern matched anything. It's
+		not difficult to check but that would preclude the reuse of the same
+		patterns on the varying row types, and I'm not sure yet, what is more
+		important.
 		</para>
 
 		<para>
+		The way this whole thing works is that each field gets tested against
+		each pattern in order. The first pattern that matches determines what
+		happens to this field. If none of the patterns matches, the field gets
+		ignored. An important consequence about the skipping patterns is that
+		they don't automatically pass through the non-matching fields. You need
+		to add an explicit positive pattern at the end of the list to pass the
+		fields through. For example, to pass everything except the field
+		<pre>source</pre>, the specification would be <pre>[ "!source", ".*" ]</pre>. The <pre>"!source"</pre>
+		will catch and throw away the field <pre>source</pre>, and <pre>".*"</pre> will pass
+		through the rest of the fields.
 		</para>
 
 		<para>
+		Another important point is that the field names in the result must not
+		duplicate. It would be an error. So if the duplications happen, use the
+		substitution syntax to rename some of the fields. I'll show more
+		patterns later.
 		</para>
 
 		<para>
+		The option <quote>fieldsLeftFirst</quote> determines, which side will go first in
+		the result. By default it's set to 1 (as in this example), and the left
+		side goes first. If set to 0, the right side would go first.
 		</para>
 
 		<para>
+		This setup for the result row types is somewhat clumsy but it's a
+		reasonable first attempt. 
 		</para>
 
 		<para>
+		Now, having gone through the description, an example of how it works:
 		</para>
 
-		<para>
-		</para>
+<!-- t/xJoin.t, doLookupLeft -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+> trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
 
 		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
+		Same as before, first the accounts table gets populated, then the
+		transactions are sent. If an account is not found, this left outer join
+		still passes through the original fields from the left side. Adding an
+		account later doesn't help the rowops that already went through but the
+		new rowops will see it. The same goes for deleting an account, it
+		doesn't affect the past rowops either.
 		</para>
 
 		<para>
