@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 11 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 use strict;
@@ -67,8 +68,8 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
 		undef, sub { # (label, rowop)
 			&send($_[1]->printP(), "\n");
-		}) or die "$!";
-	$lbParent->chain($lb) or die "$!";
+		}) or confess "$!";
+	$lbParent->chain($lb) or confess "$!";
 	return $lb;
 }
 
@@ -81,13 +82,13 @@ our $rtInTrans = Triceps::RowType->new( # a transaction received
 	acctSrc => "string", # external system that sent us a transaction
 	acctXtrId => "string", # its name of the account of the transaction
 	amount => "int32", # the amount of transaction (int is easier to check)
-) or die "$!";
+) or confess "$!";
 
 our $rtAccounts = Triceps::RowType->new( # account translation map
 	source => "string", # external system that sent us a transaction
-	external => "string", # its name of the account of the transaction
+	external => "string", # its name of the account in the transaction
 	internal => "int32", # our internal account id
-) or die "$!";
+) or confess "$!";
 
 our $ttAccounts = Triceps::TableType->new($rtAccounts)
 	->addSubIndex("lookupSrcExt", # quick look-up by source and external id
@@ -103,8 +104,8 @@ our $ttAccounts = Triceps::TableType->new($rtAccounts)
 		Triceps::IndexType->newHashed(key => [ "internal" ])
 		->addSubIndex("lookupInt", Triceps::IndexType->newFifo())
 	)
-or die "$!";
-$ttAccounts->initialize() or die "$!";
+or confess "$!";
+$ttAccounts->initialize() or confess "$!";
 
 my @commonInput = (
 	"acct,OP_INSERT,source1,999,1\n",
@@ -125,10 +126,10 @@ my $code;
 
 sub doManualLookup {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	&Triceps::EM_CALL, "tAccounts") or die "$!";
+	"EM_CALL", "tAccounts") or confess "$!";
 
 my $lbFilterResult = $uJoin->makeDummyLabel($rtInTrans, "lbFilterResult");
 my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
@@ -141,7 +142,7 @@ my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
 	if (!$rh->isNull()) {
 		$uJoin->call($lbFilterResult->makeRowop($rowop->getOpcode(), $row));
 	}
-}) or die "$!";
+}) or confess "$!";
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbFilterResult);
@@ -184,10 +185,10 @@ acct,OP_DELETE,source1,999,1
 
 sub doLookupLeft {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	&Triceps::EM_CALL, "tAccounts") or die "$!";
+	"EM_CALL", "tAccounts") or confess "$!";
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -246,10 +247,10 @@ acct,OP_DELETE,source1,999,1
 
 sub doLookupFull {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	&Triceps::EM_CALL, "tAccounts") or die "$!";
+	"EM_CALL", "tAccounts") or confess "$!";
 
 our $lbTrans = $uJoin->makeDummyLabel($rtInTrans, "lbTrans");
 
@@ -313,15 +314,15 @@ our $ttAccounts2 = Triceps::TableType->new($rtAccounts)
 			->addSubIndex("grouping", Triceps::IndexType->newFifo())
 		)
 	)
-or die "$!";
-$ttAccounts2->initialize() or die "$!";
+or confess "$!";
+$ttAccounts2->initialize() or confess "$!";
 
 sub doLookupLeftMulti {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts2, 
-	&Triceps::EM_CALL, "tAccounts") or die "$!";
+	"EM_CALL", "tAccounts") or confess "$!";
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -395,10 +396,10 @@ acct,OP_DELETE,source1,999,1
 
 sub doLookupLeftMultiOne {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts2, 
-	&Triceps::EM_CALL, "tAccounts") or die "$!";
+	"EM_CALL", "tAccounts") or confess "$!";
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -467,10 +468,10 @@ acct,OP_DELETE,source1,999,1
 
 sub doLookupLeftManual {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	&Triceps::EM_CALL, "tAccounts") or die "$!";
+	"EM_CALL", "tAccounts") or confess "$!";
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -495,10 +496,10 @@ while(&readLine) {
 		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
 		my $op = shift @data; # drop the opcode field
-		my $trans = $rtInTrans->makeRowArray(@data) or die "$!";
+		my $trans = $rtInTrans->makeRowArray(@data) or confess "$!";
 		my @rows = $join->lookup($trans);
 		foreach my $r (@rows) {
-			$uJoin->call($lbPrint->makeRowop($op, $r)) or die "$!";
+			$uJoin->call($lbPrint->makeRowop($op, $r)) or confess "$!";
 		}
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
@@ -539,7 +540,7 @@ our $rtToUsd = Triceps::RowType->new( # a currency conversion to USD
 	date => "int32", # as of which date, in format YYYYMMDD
 	currency => "string", # currency code
 	toUsd => "float64", # multiplier to convert this currency to USD
-) or die "$!";
+) or confess "$!";
 
 our $rtPosition = Triceps::RowType->new( # a customer account position
 	date => "int32", # as of which date, in format YYYYMMDD
@@ -548,7 +549,7 @@ our $rtPosition = Triceps::RowType->new( # a customer account position
 	quantity => "float64", # number of shares
 	price => "float64", # share price in local currency
 	currency => "string", # currency code of the price
-) or die "$!";
+) or confess "$!";
 
 # exchange rates, to convert all currencies to USD
 our $ttToUsd = Triceps::TableType->new($rtToUsd)
@@ -559,8 +560,8 @@ our $ttToUsd = Triceps::TableType->new($rtToUsd)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or die "$!";
-$ttToUsd->initialize() or die "$!";
+or confess "$!";
+$ttToUsd->initialize() or confess "$!";
 
 # the positions in the original currency
 our $ttPosition = Triceps::TableType->new($rtPosition)
@@ -575,12 +576,12 @@ our $ttPosition = Triceps::TableType->new($rtPosition)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or die "$!";
-$ttPosition->initialize() or die "$!";
+or confess "$!";
+$ttPosition->initialize() or confess "$!";
 
 # remember the indexes for the future use
-our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or die "$!";
-our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or die "$!";
+our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or confess "$!";
+our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or confess "$!";
 
 our @inputBasicJoin = (
 	"cur,OP_INSERT,20120310,USD,1\n",
@@ -601,12 +602,12 @@ our @inputBasicJoin = (
 
 sub doJoinInner {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	&Triceps::EM_CALL, "tToUsd") or die "$!";
+	"EM_CALL", "tToUsd") or confess "$!";
 our $tPosition = $uJoin->makeTable($ttPosition, 
-	&Triceps::EM_CALL, "tPosition") or die "$!";
+	"EM_CALL", "tPosition") or confess "$!";
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -681,12 +682,12 @@ sub clearByDate($$$) # ($table, $ixt, $date)
 
 sub doJoinLeft {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	&Triceps::EM_CALL, "tToUsd") or die "$!";
+	"EM_CALL", "tToUsd") or confess "$!";
 our $tPosition = $uJoin->makeTable($ttPosition, 
-	&Triceps::EM_CALL, "tPosition") or die "$!";
+	"EM_CALL", "tPosition") or confess "$!";
 
 our $businessDay = undef;
 
@@ -774,12 +775,12 @@ join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quanti
 
 sub doJoinOuter {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	&Triceps::EM_CALL, "tToUsd") or die "$!";
+	"EM_CALL", "tToUsd") or confess "$!";
 our $tPosition = $uJoin->makeTable($ttPosition, 
-	&Triceps::EM_CALL, "tPosition") or die "$!";
+	"EM_CALL", "tPosition") or confess "$!";
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -855,34 +856,34 @@ join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04"
 
 sub doJoinFiltered {
 
-our $uJoin = Triceps::Unit->new("uJoin") or die "$!";
+our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	&Triceps::EM_CALL, "tToUsd") or die "$!";
+	"EM_CALL", "tToUsd") or confess "$!";
 our $tPosition = $uJoin->makeTable($ttPosition, 
-	&Triceps::EM_CALL, "tPosition") or die "$!";
+	"EM_CALL", "tPosition") or confess "$!";
 
 our $businessDay = undef;
 
 our $lbPositionCurrent = $uJoin->makeDummyLabel(
-	$tPosition->getRowType, "lbPositionCurrent") or die "$!";
+	$tPosition->getRowType, "lbPositionCurrent") or confess "$!";
 our $lbPositionFilter = $uJoin->makeLabel($tPosition->getRowType,
 	"lbPositionFilter", undef, sub {
 		if ($_[1]->getRow()->get("date") >= $businessDay) {
 			$uJoin->call($lbPositionCurrent->adopt($_[1]));
 		}
-	}) or die "$!";
-$tPosition->getOutputLabel()->chain($lbPositionFilter) or die "$!";
+	}) or confess "$!";
+$tPosition->getOutputLabel()->chain($lbPositionFilter) or confess "$!";
 
 our $lbToUsdCurrent = $uJoin->makeDummyLabel(
-	$tToUsd->getRowType, "lbToUsdCurrent") or die "$!";
+	$tToUsd->getRowType, "lbToUsdCurrent") or confess "$!";
 our $lbToUsdFilter = $uJoin->makeLabel($tToUsd->getRowType,
 	"lbToUsdFilter", undef, sub {
 		if ($_[1]->getRow()->get("date") >= $businessDay) {
 			$uJoin->call($lbToUsdCurrent->adopt($_[1]));
 		}
-	}) or die "$!";
-$tToUsd->getOutputLabel()->chain($lbToUsdFilter) or die "$!";
+	}) or confess "$!";
+$tToUsd->getOutputLabel()->chain($lbToUsdFilter) or confess "$!";
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
