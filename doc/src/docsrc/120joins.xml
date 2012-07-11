@@ -487,6 +487,9 @@ while(&readLine) {
 		LookupJoin is capable of producing multiple result rows for one input row.
 		</para>
 
+		<indexterm>
+			<primary>regular expression</primary>
+		</indexterm>
 		<para>
 		Finally, there is the result row. It is built out of the two original
 		rows by picking the fields according to the options <quote>leftFields</quote> and
@@ -587,18 +590,92 @@ join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct
 		</para>
 
 		<para>
+		The left-side data can also be specified in another way: the option
+		<quote>leftFromLabel</quote> provides a label which in turn provides both the input
+		row type and the unit. You can still specify the unit option as well
+		but it must match the one in the label. This is driven internally by
+		<pre>Triceps::Opt::handleUnitTypeLabel()</pre>, described in
+		<xref linkend="sc_template_options" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		so it follows the same rules.
+		The join still has its own
+		input label but it gets automatically chained to the one in the option.
+		For an example of such a join:
+		</para>
+
+<!-- t/xJoin.t, doLookupFull, removed commented-out stuff -->
+<pre>
+our $lbTrans = $uJoin->makeDummyLabel($rtInTrans, "lbTrans");
+
+our $join = Triceps::LookupJoin->new(
+	name => "join",
+	leftFromLabel => $lbTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => [ "id", "amount" ],
+	fieldsLeftFirst => 0,
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 0,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($lbTrans, @data);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		The other options demonstrate the possibilities described in the last
+		post. This time it's an inner join, the result has the right-side
+		fields going first, and the left-side fields are filtered in the
+		result by an explicit list of fields to pass.
 		</para>
 
 		<para>
+		Another way to achieve the same filtering of the left-side fields would
+		be by throwing away everything starting with <quote>acct</quote> and passing through
+		the rest:
 		</para>
 
-		<para>
-		</para>
+<pre>
+	leftFields => [ "!acct.*", ".*" ],
+</pre>
 
 		<para>
+		And here is an example of a run:
 		</para>
 
+<!-- t/xJoin.t, doLookupFull -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT acct="1" id="1" amount="100" 
+> trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT acct="1" id="2" amount="200" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE acct="2" id="3" amount="200" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
+
 		<para>
+		The input data is the same as the last time, but the result is
+		different. Since it's an inner join, the rows that don't find a match
+		don't pass through. And of course the fields are ordered and subsetted
+		differently in the result.
 		</para>
 
 		<para>
