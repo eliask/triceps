@@ -124,17 +124,88 @@ See the file COPYRIGHT for the copyright notice and license information
 		not much help. I'll show a templated and a manual example of this kind
 		for comparison.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_hello">
+		<title>Hello, joins!</title>
 
 		<para>
+		As usual, let me show a couple of little teasers before starting the
+		long bottom-up discussion. We'll eventually get by the long
+		way to the same examples, so here I'll show only some very short
+		code snippets and basic explanations.
+		</para>
+
+<!-- t/xJoin.t, doLookupFull, replaced leftFields from commented-out, removed fieldsLeftFirst, isLeft -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	name => "join",
+	leftFromLabel => $lbTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	leftFields => [ "!acct.*", ".*" ],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+);
+</pre>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>lookup</secondary>
+		</indexterm>
+		<para>
+		This is a lookup join that gets the incoming rows with transactions
+		data from the label <pre>$lbTrans</pre>, finds the account translation in the
+		table <pre>$tAccounts</pre>, and translates the external account representation
+		to internal one on its output. The join condition is an equivalent of the
+		SQLy
+		</para>
+
+		<indexterm>
+			<primary>SQL</primary>
+		</indexterm>
+<pre>
+on 
+	lbTrans.acctSrc = tAccounts.source
+	and lbTrans.acctXtrId = tAccounts.external
+</pre>
+
+		<para>
+		The condition looks up the rows in <pre>$tAccounts</pre> using the index <pre>lookupSrcExt</pre>
+		that must have the key fields <pre>source</pre> and <pre>external</pre>.
 		</para>
 
 		<para>
+		The result fields will contain all the fields from <pre>$lbTrans</pre> except those
+		starting with <quote>acct</quote> plus the field <pre>internal</pre> from <pre>$tAccounts</pre>
+		that becomes renamed to <pre>acct</pre>.
 		</para>
 
 		<para>
+		Next goes a table join:
 		</para>
 
+<!-- t/xJoin.t, doJoinInner -->
+<pre>
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "inner",
+);
+</pre>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>tables</secondary>
+		</indexterm>
 		<para>
+		It joins the tables <pre>$tPosition</pre> and <pre>$tToUsd</pre>, with the inner join logic.
+		The table <pre>$tPosition</pre> uses its index <pre>currencyLookup</pre>, and <pre>$tToUsd</pre> uses
+		its index <pre>primary</pre>. The join condition is determined by pairing the
+		key fields of the indexes.
 		</para>
 
 		<para>
