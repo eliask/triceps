@@ -384,7 +384,7 @@ lbFilterResult OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200
 		</para>
 	</sect1>
 
-	<sect1 id="sc_joins_lookup_template">
+	<sect1 id="sc_joins_lookupjoin">
 		<title>The LookupJoin template</title>
 
 		<indexterm>
@@ -815,20 +815,109 @@ join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct
 		Now it just picks the first matching row instead of multiplying the
 		rows.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_lookupjoin_iter">
+		<title>Manual iteration with LookupJoin</title>
+
+		<indexterm>
+			<primary>LookupJoin</primary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>manual iteration</secondary>
+		</indexterm>
 
 		<para>
+		Sometimes you might want to just get the list of the resulting rows
+		from LookupJoin and iterate over them by yourself, rather than have it
+		call the labels. To be honest, this looked kind of important when I
+		wrote LookupJoin first, but by now I don't see a whole lot of use in
+		it. By now, if you want to do a manual iteration, calling <pre>findBy()</pre> and
+		then iterating looks like a more useful option. But at the time there
+		was no <pre>findBy()</pre>, and this feature came to exist. Here is an example:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftManual, removed saveJoinerTo -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	automatic => 0,
+); # would die by itself on an error
+
+# label to print the changes to the detailed stats
+my $lbPrint = makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
+	} elsif ($type eq "trans") {
+		my $op = shift @data; # drop the opcode field
+		my $trans = $rtInTrans->makeRowArray(@data) or confess "$!";
+		my @rows = $join->lookup($trans);
+		foreach my $r (@rows) {
+			$uJoin->call($lbPrint->makeRowop($op, $r)) or confess "$!";
+		}
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		It copies the first LookupJoin example, only now with a manual iteration. Once the
+		option <quote>automatic</quote> is set to 0 for the join, the method
+		<pre>$join->lookup()</pre> becomes available to perform the lookup and return
+		the result rows in an array (the data sent to the input label keeps
+		working as usual, sending the result rows to the output label). This
+		involves the extra overhead of keeping all the result rows (and there
+		might be lots of them) in an array, so by default the join is compiled
+		in an automatic-only mode.
 		</para>
 
 		<para>
+		Since <pre>lookup()</pre> returns rows, not rowops, and knows nothing
+		about the opcodes, those had to be handled separately around the lookup.
 		</para>
 
 		<para>
+		The result is the same as for the first example, only the name of the
+		result label differs:
 		</para>
 
-		<para>
-		</para>
+<!-- t/xJoin.t, doLookupLeftManual -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
+lbPrint OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+> trans,OP_INSERT,2,source2,ABCD,200
+lbPrint OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+lbPrint OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+lbPrint OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
 
 		<para>
+		The print label is still connected to the output label of the LookupJoin,
+		but it's done purely for the convenience of its creation. Since no rowops
+		get sent to the LookupJoin's input, none get to its output, and none
+		get from there to the output label. Instead the main loop creates and sends the
+		rowops directly to the output label when it iterates through the lookup
+		results. Because of this the label name in the output is the name of
+		the output label.
 		</para>
 
 		<para>
