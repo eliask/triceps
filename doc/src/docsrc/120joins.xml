@@ -679,12 +679,141 @@ join.out OP_DELETE acct="2" id="3" amount="200"
 		</para>
 
 		<para>
+		The next example loses all connection with reality, it just serves to
+		demonstrate another ability of LookupJoin: matching multiple rows on
+		the right side for an incoming row. The situation itself is obviously
+		useful and normal, just it's not what normally happens with the
+		account id translation, and I was too lazy to invent another
+		realistically-looking example.
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftMulti and the type def before it, removed saveJoinerTo -->
+<pre>
+our $ttAccounts2 = Triceps::TableType->new($rtAccounts)
+	->addSubIndex("iterateSrc", # for iteration in order grouped by source
+		Triceps::IndexType->newHashed(key => [ "source" ])
+		->addSubIndex("lookupSrcExt",
+			Triceps::IndexType->newHashed(key => [ "external" ])
+			->addSubIndex("grouping", Triceps::IndexType->newFifo())
+		)
+	)
+or confess "$!";
+$ttAccounts2->initialize() or confess "$!";
+
+our $tAccounts = $uJoin->makeTable($ttAccounts2, 
+	"EM_CALL", "tAccounts") or confess "$!";
+
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+); # would die by itself on an error
+</pre>
+
+		<para>
+		The main loop is unchanged from the first LookupJoin example, so I
+		wont' copy it here. Just for something different, the join index here
+		is nested, and its path consists of two elements. It's not a leaf index
+		either, with one FIFO level under it. And when the <quote>isLeft</quote> is not
+		specified explicitly, it defaults to 1, making it a left join.
 		</para>
 
 		<para>
+		The example of a run uses a slightly different input, highlighting the ability to
+		match multiple rows:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftMulti -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> acct,OP_INSERT,source2,ABCD,10
+> acct,OP_INSERT,source2,ABCD,100
+> trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+> trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="10" 
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="100" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
+
+		<para>
+		When a row matches multiple rows in the table, it gets multiplied. The
+		join function iterates through the whole matching row group, and for
+		each found row creates a result row and calls the output label with it.
 		</para>
 
 		<para>
+		Now, what if you don't want to get multiple rows back even if they are
+		found? Of course, the best way is to just use a leaf index. But once in
+		a while you get into situations with the denormalized data in the
+		lookup table. You might know in advance that for each row in an index
+		group a certain field would be the same. Or you might not care, what
+		exact value you get as long as it's from the right group. But you might
+		really not want the input rows to multiply when they go through the
+		join. LookupJoin has a solution:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftMultiOne -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	limitOne => 1,
+); # would die by itself on an error
+</pre>
+
+		<para>
+		The option <quote>limitOne</quote> changes the processing logic to pick only the
+		first matching row. It also optimizes the join function. If <quote>limitOne</quote> is
+		not specified explicitly, the join constructor deduces it magically by
+		looking at whether the join index is a leaf or not. Actually, for a
+		leaf index it would always override <quote>limitOne</quote> to 1, even if you
+		explicitly set it to 0.
+		</para>
+
+		<para>
+		With the limit, the same input produces a different output:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftMultiOne -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> acct,OP_INSERT,source2,ABCD,10
+> acct,OP_INSERT,source2,ABCD,100
+> trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
+> trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
+
+		<para>
+		Now it just picks the first matching row instead of multiplying the
+		rows.
 		</para>
 
 		<para>
