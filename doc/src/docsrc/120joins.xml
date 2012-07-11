@@ -207,6 +207,253 @@ our $join = Triceps::JoinTwo->new(
 		its index <pre>primary</pre>. The join condition is determined by pairing the
 		key fields of the indexes.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_lookup_manual">
+		<title>The lookup join, done manually</title>
+
+		<para>
+		First let's look at a lookup done manually. It would also establish the
+		baseline for the further joins.
+		</para>
+
+		<para>
+		For the background of the model, let's consider the trade information
+		coming in from multiple sources. Each source system has its own
+		designation of the accounts on which the trades happen but ultimately
+		they are the same accounts. So there is a table that contains the
+		translation from the account designations of various external systems
+		to our system's own internal account identifier. This gets described
+		with the row types:
+		</para>
+
+<!-- t/xJoin.t -->
+<pre>
+our $rtInTrans = Triceps::RowType->new( # a transaction received
+	id => "int32", # the transaction id
+	acctSrc => "string", # external system that sent us a transaction
+	acctXtrId => "string", # its name of the account of the transaction
+	amount => "int32", # the amount of transaction (int is easier to check)
+) or confess "$!";
+
+our $rtAccounts = Triceps::RowType->new( # account translation map
+	source => "string", # external system that sent us a transaction
+	external => "string", # its name of the account in the transaction
+	internal => "int32", # our internal account id
+) or confess "$!";
+</pre>
+
+		<para>
+		Other than those basics, the rest of information is only minimal, to
+		keep the examples smaller. Even the trade ids are expected to be global
+		and not per the source systems (which is not realistic but saves
+		another little bit of work).
+		</para>
+
+		<para>
+		The accounts table can be indexed in multiple ways for multiple
+		purposes, say:
+		</para>
+
+<!-- t/xJoin.t -->
+<pre>
+our $ttAccounts = Triceps::TableType->new($rtAccounts)
+	->addSubIndex("lookupSrcExt", # quick look-up by source and external id
+		Triceps::IndexType->newHashed(key => [ "source", "external" ])
+	)
+	->addSubIndex("iterateSrc", # for iteration in order grouped by source
+		Triceps::IndexType->newHashed(key => [ "source" ])
+		->addSubIndex("iterateSrcExt", 
+			Triceps::IndexType->newHashed(key => [ "external" ])
+		)
+	)
+	->addSubIndex("lookupIntGroup", # quick look-up by internal id (to multiple externals)
+		Triceps::IndexType->newHashed(key => [ "internal" ])
+		->addSubIndex("lookupInt", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttAccounts->initialize() or confess "$!";
+</pre>
+
+		<para>
+		For our purpose of joining, the first, primary key is the way to go.
+		Using the primary key also has the advantage of making sure that there
+		is no more than one row for each key value.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>manual lookup</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>filter</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>lookup</secondary>
+		</indexterm>
+		<para>
+		The first manual lookup example will just do the filtering: find, whether there is a match
+		in the translation table, and if so then pass the row through. The
+		example goes as follows:
+		</para>
+
+<!-- t/xJoin.t, doManualLookup -->
+<pre>
+our $uJoin = Triceps::Unit->new("uJoin");
+
+our $tAccounts = $uJoin->makeTable($ttAccounts, 
+	"EM_CALL", "tAccounts") or confess "$!";
+
+my $lbFilterResult = $uJoin->makeDummyLabel($rtInTrans, "lbFilterResult");
+my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
+	my ($label, $rowop) = @_;
+	my $row = $rowop->getRow();
+	my $rh = $tAccounts->findBy(
+		source => $row->get("acctSrc"),
+		external => $row->get("acctXtrId"),
+	);
+	if (!$rh->isNull()) {
+		$uJoin->call($lbFilterResult->adopt($rowop));
+	}
+}) or confess "$!";
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $lbFilterResult);
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($lbFilter, @data);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		The <pre>findBy()</pre> is where the join actually happens: the lookup of the data
+		in a table by values from another row. Very similar to what the
+		basic window example in
+		<xref linkend="sc_table_hello" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		was doing before. It's <pre>findBy()</pre>, without the need for <pre>findByIdx()</pre>,
+		because in this case the index type used in the accounts table is its
+		first leaf index, to which <pre>findBy()</pre> defaults.
+		After that the fact of
+		successful or unsuccessful lookup is used to pass the original row
+		through or throw it away. If the found row were used to pick some
+		fields from it and stick them into the result, that would be a more
+		complete join, more like what you often expect to see.
+		</para>
+
+		<para>
+		And here is an example of the input processing:
+		</para>
+
+<!-- t/xJoin.t, doManualLookup -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
+lbFilterResult OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
+> trans,OP_INSERT,2,source2,ABCD,200
+lbFilterResult OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+lbFilterResult OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
+
+		<para>
+		It starts with populating the accounts table. Then the transactions that
+		find the match pass, and those who don't find don't pass. If more of
+		the account translations get added later, the transactions for them
+		start passing but as you can see, the result might be slightly
+		unexpected: you may get a DELETE that had no matching previous INSERT,
+		as happened for the row with id=3.
+		This happens because the lookup join keeps no history on its left side
+		and can't react properly to the changes to the table on the right.
+		Because of this, the lookup joins work best when the reference table
+		gets pre-populated in advance and then stays stable.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
