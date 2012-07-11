@@ -38,7 +38,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -166,18 +166,18 @@ $result = undef;
 &doManualLookup();
 #print $result;
 ok($result,
-'acct,OP_INSERT,source1,999,1
-acct,OP_INSERT,source1,2011,2
-acct,OP_INSERT,source2,ABCD,1
-trans,OP_INSERT,1,source1,999,100
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
 lbFilterResult OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" 
-trans,OP_INSERT,2,source2,ABCD,200
+> trans,OP_INSERT,2,source2,ABCD,200
 lbFilterResult OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" 
-trans,OP_INSERT,3,source2,QWERTY,200
-acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,3,source2,QWERTY,200
+> trans,OP_INSERT,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
 lbFilterResult OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
-acct,OP_DELETE,source1,999,1
+> acct,OP_DELETE,source1,999,1
 ');
 
 #########################
@@ -224,19 +224,19 @@ $result = undef;
 &doLookupLeft();
 #print $result;
 ok($result, 
-'acct,OP_INSERT,source1,999,1
-acct,OP_INSERT,source1,2011,2
-acct,OP_INSERT,source2,ABCD,1
-trans,OP_INSERT,1,source1,999,100
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
 join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
-trans,OP_INSERT,2,source2,ABCD,200
+> trans,OP_INSERT,2,source2,ABCD,200
 join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
-trans,OP_INSERT,3,source2,QWERTY,200
+> trans,OP_INSERT,3,source2,QWERTY,200
 join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
-acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
-acct,OP_DELETE,source1,999,1
+> acct,OP_DELETE,source1,999,1
 ');
 #$code =~ s/\n\t\t/\n/g;
 #$code =~ s/\t/  /g;
@@ -289,18 +289,18 @@ $result = undef;
 &doLookupFull();
 #print $result;
 ok($result, 
-'acct,OP_INSERT,source1,999,1
-acct,OP_INSERT,source1,2011,2
-acct,OP_INSERT,source2,ABCD,1
-trans,OP_INSERT,1,source1,999,100
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
 join.out OP_INSERT acct="1" id="1" amount="100" 
-trans,OP_INSERT,2,source2,ABCD,200
+> trans,OP_INSERT,2,source2,ABCD,200
 join.out OP_INSERT acct="1" id="2" amount="200" 
-trans,OP_INSERT,3,source2,QWERTY,200
-acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,3,source2,QWERTY,200
+> trans,OP_INSERT,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE acct="2" id="3" amount="200" 
-acct,OP_DELETE,source1,999,1
+> acct,OP_DELETE,source1,999,1
 ');
 
 #########################
@@ -369,23 +369,23 @@ $result = undef;
 &doLookupLeftMulti();
 #print $result;
 ok($result, 
-'acct,OP_INSERT,source1,999,1
-acct,OP_INSERT,source1,2011,2
-acct,OP_INSERT,source2,ABCD,1
-acct,OP_INSERT,source2,ABCD,10
-acct,OP_INSERT,source2,ABCD,100
-trans,OP_INSERT,1,source1,999,100
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> acct,OP_INSERT,source2,ABCD,10
+> acct,OP_INSERT,source2,ABCD,100
+> trans,OP_INSERT,1,source1,999,100
 join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
-trans,OP_INSERT,2,source2,ABCD,200
+> trans,OP_INSERT,2,source2,ABCD,200
 join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
 join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="10" 
 join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="100" 
-trans,OP_INSERT,3,source2,QWERTY,200
+> trans,OP_INSERT,3,source2,QWERTY,200
 join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
-acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
-acct,OP_DELETE,source1,999,1
+> acct,OP_DELETE,source1,999,1
 ');
 #$code =~ s/\n\t\t/\n/g;
 #$code =~ s/\t/  /g;
@@ -446,21 +446,21 @@ $result = undef;
 &doLookupLeftMultiOne();
 #print $result;
 ok($result, 
-'acct,OP_INSERT,source1,999,1
-acct,OP_INSERT,source1,2011,2
-acct,OP_INSERT,source2,ABCD,1
-acct,OP_INSERT,source2,ABCD,10
-acct,OP_INSERT,source2,ABCD,100
-trans,OP_INSERT,1,source1,999,100
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> acct,OP_INSERT,source2,ABCD,10
+> acct,OP_INSERT,source2,ABCD,100
+> trans,OP_INSERT,1,source1,999,100
 join.out OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
-trans,OP_INSERT,2,source2,ABCD,200
+> trans,OP_INSERT,2,source2,ABCD,200
 join.out OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
-trans,OP_INSERT,3,source2,QWERTY,200
+> trans,OP_INSERT,3,source2,QWERTY,200
 join.out OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
-acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
 join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
-acct,OP_DELETE,source1,999,1
+> acct,OP_DELETE,source1,999,1
 ');
 
 #########################
@@ -512,19 +512,19 @@ $result = undef;
 &doLookupLeftManual();
 #print $result;
 ok($result, 
-'acct,OP_INSERT,source1,999,1
-acct,OP_INSERT,source1,2011,2
-acct,OP_INSERT,source2,ABCD,1
-trans,OP_INSERT,1,source1,999,100
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
 lbPrint OP_INSERT id="1" acctSrc="source1" acctXtrId="999" amount="100" acct="1" 
-trans,OP_INSERT,2,source2,ABCD,200
+> trans,OP_INSERT,2,source2,ABCD,200
 lbPrint OP_INSERT id="2" acctSrc="source2" acctXtrId="ABCD" amount="200" acct="1" 
-trans,OP_INSERT,3,source2,QWERTY,200
+> trans,OP_INSERT,3,source2,QWERTY,200
 lbPrint OP_INSERT id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" 
-acct,OP_INSERT,source2,QWERTY,2
-trans,OP_DELETE,3,source2,QWERTY,200
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
 lbPrint OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct="2" 
-acct,OP_DELETE,source1,999,1
+> acct,OP_DELETE,source1,999,1
 ');
 #$code =~ s/\n\t\t/\n/g;
 #$code =~ s/\t/  /g;
@@ -640,27 +640,27 @@ $result = undef;
 &doJoinInner();
 #print $result;
 ok($result, 
-'cur,OP_INSERT,20120310,USD,1
-cur,OP_INSERT,20120310,GBP,2
-cur,OP_INSERT,20120310,EUR,1.5
-pos,OP_INSERT,20120310,one,AAA,100,15,USD
+'> cur,OP_INSERT,20120310,USD,1
+> cur,OP_INSERT,20120310,GBP,2
+> cur,OP_INSERT,20120310,EUR,1.5
+> pos,OP_INSERT,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
-pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,three,AAA,100,300,RUR
-pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
-cur,OP_INSERT,20120310,RUR,0.04
+> cur,OP_INSERT,20120310,RUR,0.04
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
-cur,OP_DELETE,20120310,GBP,2
+> cur,OP_DELETE,20120310,GBP,2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
-cur,OP_INSERT,20120310,GBP,2.2
+> cur,OP_INSERT,20120310,GBP,2.2
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
-pos,OP_DELETE,20120310,one,AAA,100,15,USD
+> pos,OP_DELETE,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
-pos,OP_INSERT,20120310,one,AAA,200,16,USD
+> pos,OP_INSERT,20120310,one,AAA,200,16,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
 ');
 
@@ -734,37 +734,37 @@ $result = undef;
 &doJoinLeft();
 #print $result;
 ok($result, 
-'day,20120310
-cur,OP_INSERT,20120310,USD,1
-cur,OP_INSERT,20120310,GBP,2
-cur,OP_INSERT,20120310,EUR,1.5
-pos,OP_INSERT,20120310,one,AAA,100,15,USD
+'> day,20120310
+> cur,OP_INSERT,20120310,USD,1
+> cur,OP_INSERT,20120310,GBP,2
+> cur,OP_INSERT,20120310,EUR,1.5
+> pos,OP_INSERT,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
-pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
-pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
-cur,OP_INSERT,20120310,RUR,0.04
+> cur,OP_INSERT,20120310,RUR,0.04
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
-cur,OP_DELETE,20120310,GBP,2
+> cur,OP_DELETE,20120310,GBP,2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
-cur,OP_INSERT,20120310,GBP,2.2
+> cur,OP_INSERT,20120310,GBP,2.2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
-pos,OP_DELETE,20120310,one,AAA,100,15,USD
+> pos,OP_DELETE,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
-pos,OP_INSERT,20120310,one,AAA,200,16,USD
+> pos,OP_INSERT,20120310,one,AAA,200,16,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
-day,20120311
-clear
+> day,20120311
+> clear
 join.leftLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
 join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
 join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
@@ -823,31 +823,31 @@ $result = undef;
 &doJoinOuter();
 #print $result;
 ok($result, 
-'cur,OP_INSERT,20120310,GBP,2
+'> cur,OP_INSERT,20120310,GBP,2
 join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
 join.leftLookup.out OP_DELETE date="20120310" currency="GBP" toUsd="2" 
 join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
-cur,OP_INSERT,20120310,RUR,0.04
+> cur,OP_INSERT,20120310,RUR,0.04
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
-cur,OP_DELETE,20120310,GBP,2
+> cur,OP_DELETE,20120310,GBP,2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
-cur,OP_INSERT,20120310,GBP,2.2
+> cur,OP_INSERT,20120310,GBP,2.2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
-pos,OP_DELETE,20120310,three,BBB,200,80,GBP
+> pos,OP_DELETE,20120310,three,BBB,200,80,GBP
 join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
-pos,OP_DELETE,20120310,three,AAA,100,300,RUR
+> pos,OP_DELETE,20120310,three,AAA,100,300,RUR
 join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
 join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04" 
 ');
@@ -930,36 +930,36 @@ $result = undef;
 &doJoinFiltered();
 #print $result;
 ok($result, 
-'day,20120310
-cur,OP_INSERT,20120310,USD,1
-cur,OP_INSERT,20120310,GBP,2
-cur,OP_INSERT,20120310,EUR,1.5
-pos,OP_INSERT,20120310,one,AAA,100,15,USD
+'> day,20120310
+> cur,OP_INSERT,20120310,USD,1
+> cur,OP_INSERT,20120310,GBP,2
+> cur,OP_INSERT,20120310,EUR,1.5
+> pos,OP_INSERT,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
-pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
-pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
-pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
 join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
-cur,OP_INSERT,20120310,RUR,0.04
+> cur,OP_INSERT,20120310,RUR,0.04
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
-cur,OP_DELETE,20120310,GBP,2
+> cur,OP_DELETE,20120310,GBP,2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
-cur,OP_INSERT,20120310,GBP,2.2
+> cur,OP_INSERT,20120310,GBP,2.2
 join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
 join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
 join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
 join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
-pos,OP_DELETE,20120310,one,AAA,100,15,USD
+> pos,OP_DELETE,20120310,one,AAA,100,15,USD
 join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
-pos,OP_INSERT,20120310,one,AAA,200,16,USD
+> pos,OP_INSERT,20120310,one,AAA,200,16,USD
 join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
-day,20120311
-clear
+> day,20120311
+> clear
 ');
 
