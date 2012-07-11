@@ -525,7 +525,7 @@ run(\%dispatch);
 
 		<para>
 		Here is an example of a run, with the input rows printed 
-		as always in italics.
+		as always in bold.
 		</para>
 
 <!-- t/xQuery.t, Query1 -->

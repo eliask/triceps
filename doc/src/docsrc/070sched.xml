@@ -2044,7 +2044,7 @@ while(&readLine) {
 		before printing) and calls <pre>$lbMain</pre>. Here is an example
 		of an input and output as they would intermix if the input
 		was typed from the keyboard. As in the rest of this manual,
-		the input lines are shown in italics.
+		the input lines are shown in bold.
 		</para>
 
 <!-- t/FrameMark.t doFibHead -->

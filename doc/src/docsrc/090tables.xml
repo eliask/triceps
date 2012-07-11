@@ -91,7 +91,7 @@ while(&readLine) {
 		The example counts,
 		how many times each key has been <pre>hello</pre>-ed, and prints this count back
 		on the command <pre>count</pre>. Here is a sample, with the input
-		lines printed in italics:
+		lines printed in bold:
 		</para>
 
 <exdump>
@@ -424,7 +424,7 @@ $label = $table->getOutputLabel();
 		</para>
 
 		<para>
-		Here is an example of input (in italics) and output:
+		Here is an example of input (in bold) and output:
 		</para>
 
 <exdump>
@@ -903,7 +903,7 @@ while(&readLine) {
 		This example reads the trade records in CSV format, inserts them into
 		the table, and then prints the actual modifications reported by the
 		table and the new state of the window for this symbol. And here is a sample
-		log, with the input lines in italics:
+		log, with the input lines in bold:
 		</para>
 
 <exdump>
@@ -1349,7 +1349,7 @@ while(&readLine) {
 </pre>
 
 		<para>
-		And an example of its work, with the input lines shown in italics:
+		And an example of its work, with the input lines shown in bold:
 		</para>
 
 <exdump>

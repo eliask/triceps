@@ -84,7 +84,7 @@ while(<STDIN>) {
 			chomp;
 			my $input = s/^> //; # the input lines start with "> "
 			print $lf;
-			print("<emphasis>") if ($input);
+			print("<emphasis role=\"bold\">") if ($input);
 			if (length($_) <= $MAXLEN) {
 				print &xmlify($_);
 			} else {

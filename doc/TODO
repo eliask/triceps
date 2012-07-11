@@ -47,11 +47,12 @@ Things that need to be done:
 * doc: delaying a loop in the middle may be not a good idea because the caller
   may be expecting its result
 * doc: for EM_* say that the string versions are acceptable
-* doc: make an explicit section on the error handling connentions (near deaths and confessions)
+* doc: make an explicit section on the error handling conventions (near deaths and confessions)
 * doc: put somewhere that a row handle is an iterator on all the table's indexes
 * doc: for tables say that more will be coming, and the reference
 * doc: TableType::getRowType()
 * doc: template with field filtering in the result
+* doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 App ideas:
 * queries on CSV files
@@ -66,7 +67,7 @@ Used blog entries:
 061 also put into the reference
 062-065
 076
-078
+078-079
 095
 103-104 also put into the reference
 110

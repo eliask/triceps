@@ -320,7 +320,7 @@ while(&readLine) {
 		For the demonstration, the aggregated rows sent to <pre>$lbAverage</pre> get
 		printed. The rows being aggregated are printed during the iteration
 		too, indented after <quote>Contents:</quote>. And here is a sample
-		run's result, with the input records shown in italics:
+		run's result, with the input records shown in bold:
 		</para>
 
 <!-- t/xWindow.t doManualAgg1 -->
@@ -500,7 +500,7 @@ tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30"
 
 		<para>
 		Here is run example that highlights the issue (as usual, the input
-		lines are in italics):
+		lines are in bold):
 		</para>
 
 <!-- t/xWindow.t doManualAgg2 2nd run -->
@@ -920,7 +920,7 @@ $context->makeArraySend($opcode, @fieldValues);
 
 		<para>
 		And here is an example of the output from that code
-		(as usual, the input lines are in italics):
+		(as usual, the input lines are in bold):
 		</para>
 
 <!-- t/xAgg.t doNonAdditive -->
