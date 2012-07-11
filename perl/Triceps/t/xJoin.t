@@ -140,7 +140,7 @@ my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
 		external => $row->get("acctXtrId"),
 	);
 	if (!$rh->isNull()) {
-		$uJoin->call($lbFilterResult->makeRowop($rowop->getOpcode(), $row));
+		$uJoin->call($lbFilterResult->adopt($rowop));
 	}
 }) or confess "$!";
 
