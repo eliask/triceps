@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_joins" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Joins</title>
+
+	<sect1 id="sc_joins_variety">
+		<title>Joins variety</title>
+
+		<indexterm>
+			<primary>join</primary>
+		</indexterm>
+		<para>
+		The joins are quite important for the relational data processing, and
+		come in many varieties. And the CEP systems have their own specifics.
+		Basically, in CEP you want the joins to be processed fast. The CEP
+		systems deal with the changing model state, and have to process these
+		changes incrementally.
+		</para>
+
+		<para>
+		A small change should be handled fast. It has to use the indexes to
+		find and update all the related result rows. Even though you can make
+		it just go sequentially through all the rows and find the relevant
+		ones, like in a common database, that's not what you normally want.
+		When something like this happens, the usual reaction is <quote>wtf is my
+		model suddenly so slow?</quote> following by an annoyingly long investigation
+		into the reasons of the slowness, and then rewriting the model to make
+		it work faster. It's better to just prevent the slowness in the first
+		place and make sure that the joins always use an index. And since you
+		don't have to deal much with the ad-hoc queries when you write a CEP
+		model, you can provide all the needed indexes in advance very easily.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>equi-join</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>index</primary>
+			<secondary>sorted</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<para>
+		A particularly interesting kind of joins in this regard is the
+		equi-joins: ones that join the rows by the equality of the fields in
+		them. They allow a very efficient index look-up. Because of this, they
+		are popular in the CEP world. Some systems, like Aleri, support only
+		the equi-joins to start with. The other systems are much more efficient
+		on the equi-joins than on the other kinds of joins. At the moment
+		Triceps follows the fashion of having the advanced support only for the
+		equi-joins. Even though the Sorted/Ordered indexes in Triceps should allow the
+		range-based comparisons to be efficient too, at the moment there are no
+		table methods for the look-up of ranges, they are left for the future
+		work. Of course, nothing stops you from copying an equi-join template
+		and modifying it to work by a dumb iteration. Just it would be slow,
+		and I didn't see much point in it.
+		</para>
+
+		<para>
+		There also are three common patterns of the join usage.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>lookup</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>stream-to-window</secondary>
+		</indexterm>
+		<para>
+		In the first pattern the rows sort of go by and get enriched by looking
+		up some information from a table and tacking it onto these rows.
+		Sometimes not even tacking it on but maybe just filtering the data:
+		passing through some of the rows and throwing away the rest, or
+		directing the rows into the different kinds of processing, based on the
+		looked-up data. For a reference, in the Coral8 CCL this situation is
+		called <quote>stream-to-window joins</quote>. In Triceps there are no streams and no
+		windows, so I just call them the <quote>lookup joins</quote>.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>tables</secondary>
+		</indexterm>
+		<para>
+		In the second pattern multiple stateful tables are joined together.
+		Whenever any of the tables changes, the join result also changes, and
+		the updates get propagated through. This can be done through lookups,
+		but in reality it turns out that defining manually the lookups for the
+		every possible table change becomes tedious pretty quickly. This has to
+		be addressed by the automation.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>self</secondary>
+		</indexterm>
+		<para>
+		In the third pattern the same table gets joined recursively,
+		essentially traversing a representation of a tree stored in that table.
+		This actually doesn't work well with the classic SQL unless the
+		recursion depth is strictly limited. There are SQL extensions for the
+		recursive self-joins in the modern databases but I haven't seen them in the
+		CEP systems yet. Anyway, the procedural approach tends to work for this
+		situation much better than the SQLy one, so the templates tend to be of
+		not much help. I'll show a templated and a manual example of this kind
+		for comparison.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>

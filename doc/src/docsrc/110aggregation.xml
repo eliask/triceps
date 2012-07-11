@@ -3307,13 +3307,6 @@ sub {
 		Then the result row is created and sent from an array of substituted
 		result snippets from all the fields. That's how it all works together.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 
 </chapter>
