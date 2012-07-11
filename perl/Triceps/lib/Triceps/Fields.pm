@@ -136,6 +136,81 @@ sub filterToPairs($$$) # ($caller, \@incoming, \@patterns) # no $self, it's a st
 	return @res;
 }
 
+# Build a translation function from the result(s) of filterToPairs(),
+# that would take one or more original rows and produce a result row
+# from them.
+# The arguments are passed in option form, name-value pairs.
+# Confesses on errors.
+# Note: no $class argument!!!
+#
+# Options:
+#   rowTypes - ref to an array of source row types
+#   filterPairs - ref to an array of arrays returned from filterToPairs(),
+#     the size of the top-level array must match the size of rowTypes
+#   saveCodeTo (optional) - location to save the generated source code
+# @return - a pair of (result row type, anonymous function), the function 
+#   takes the source rows on input  and produces the result row on output.
+sub makeTranslation # (optName => optValue, ...)
+{
+	my $opts = {}; # the parsed options
+	my $myname = "Triceps::Fields::makeTranslation";
+	
+	&Triceps::Opt::parse("Triceps::Fields", $opts, {
+			rowTypes => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "Triceps::RowType") } ],
+			filterPairs => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "ARRAY") } ],
+			saveCodeTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+		}, @_);
+
+	# reset the saved source code
+	${$opts->{saveCodeTo}} = undef if (defined($opts->{saveCodeTo}));
+
+	my $rts = $opts->{rowTypes};
+	my $fps = $opts->{filterPairs};
+
+	confess "$myname: the arrays of row types and filter pairs must be of the same size, got " . ($#{$rts}+1) . " and " . ($#{$fps}+1) . " elements"
+		unless ($#{$rts} == $#{$fps});
+
+	my $gencode = '
+		sub { # (@rows)
+			use strict;
+			use Carp;
+			confess "template internal error in ' . $myname  . ': result translation expected ' . ($#{$rts}+1) . ' row args, received " . ($#_+1)
+				unless ($#_ == ' . $#{$rts} . ');
+			# $result_rt comes at compile time from Triceps::Fields::makeTranslation
+			return $result_rt->makeRowArray(';
+
+	my @rowdef; # of the result row type
+	for (my $i = 0; $i <= $#{$rts}; $i++) {
+		my %origdef = $rts->[$i]->getdef();
+		my @fp = @{$fps->[$i]}; # copy the array, because it will be shifted
+		while ($#fp >= 0) {
+			my $from = shift @fp;
+			my $to = shift @fp;
+			my $type = $origdef{$from};
+			confess "$myname: unknown original field '$from' in the original row type $i:\n" . $rts->[$i]->print() . " "
+				unless (defined $type);
+			push(@rowdef, $to, $type);
+			$gencode .= '
+				$_[' . $i . ']->get("' . quotemeta($from) . '"),';
+		}
+	}
+
+	$gencode .= '
+			);
+		}';
+
+	my $result_rt = Triceps::RowType->new(@rowdef)
+		or confess "$myname: Invalid result row type specification: $! ";
+
+	${$opts->{saveCodeTo}} = $gencode if (defined($opts->{saveCodeTo}));
+
+	# compile the translation function
+	my $func = eval $gencode
+		or confess "$myname: error in compilation of the function:\n  $@\nfunction text:\n$gencode ";
+
+	return ($result_rt, $func);
+}
+
 # XXX Thoughts for the future result specification:
 #  result_fld_name: (may be a substitution regexp translated from the source field)
 #      optional type

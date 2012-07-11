@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 26 };
+BEGIN { plan tests => 45 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -93,6 +93,104 @@ ok($@ =~ /Caller: result definition error:
 The available fields are:
   abc, def, ghi
 /);
+
+#########################
+# makeTranslation()
+
+# the row types and translations that will be reused
+my $tr_rt1 = Triceps::RowType->new(
+	abc => 'string',
+	def => 'int32[]',
+	ghi => 'uint8[]',
+);
+ok(ref $tr_rt1, "Triceps::RowType");
+my $tr_row11 = $tr_rt1->makeRowArray("tabc", [1, 2, 3], "tghi");
+ok(ref $tr_row11, "Triceps::Row");
+my $tr_pairs1a = [ 'def', 'f2', 'abc', 'f1' ];
+
+my $tr_rt2 = Triceps::RowType->new(
+	one => 'string',
+	two => 'float64[]',
+	three => 'uint8',
+);
+my $tr_row21 = $tr_rt2->makeRowArray("tone", [1.5, 2.5], "x");
+ok(ref $tr_row21, "Triceps::Row");
+ok(ref $tr_rt2, "Triceps::RowType");
+my $tr_pairs2a = [ 'one', 'field1', 'two', 'field2' ];
+
+{
+	my $src;
+	my ($rt, $func) = Triceps::Fields::makeTranslation(
+		rowTypes => [ $tr_rt1, $tr_rt2 ],
+		filterPairs => [ $tr_pairs1a, $tr_pairs2a ],
+		saveCodeTo => \$src,
+	);
+	ok(ref $rt, "Triceps::RowType");
+	my $def =join(', ',  $rt->getdef());
+	ok($def, "f2, int32[], f1, string, field1, string, field2, float64[]");
+	ok($src =~ '^\n\t*sub');
+	my $res = &$func($tr_row11, $tr_row21);
+	ok(ref $res, "Triceps::Row");
+	my $p = $res->printP();
+	#print "$p\n";
+	ok($p, 'f2=["1", "2", "3"] f1="tabc" field1="tone" field2=["1.5", "2.5"] ');
+
+	# call the function with bad number of args
+	$res = eval { &$func($tr_row11) };
+	ok(!defined $res);
+	ok($@ =~ '^template internal error in Triceps::Fields::makeTranslation: result translation expected 2 row args, received 1 at');
+}
+{
+	# with 1 type
+	my ($rt, $func) = Triceps::Fields::makeTranslation(
+		rowTypes => [ $tr_rt2 ],
+		filterPairs => [ $tr_pairs2a ],
+	);
+	ok(ref $rt, "Triceps::RowType");
+	my $def =join(', ',  $rt->getdef());
+	ok($def, "field1, string, field2, float64[]");
+	my $res = &$func($tr_row21);
+	ok(ref $res, "Triceps::Row");
+	my $p = $res->printP();
+	#print "$p\n";
+	ok($p, 'field1="tone" field2=["1.5", "2.5"] ');
+}
+
+{
+	# missing mandatory args
+	eval { 
+		Triceps::Fields::makeTranslation(
+			filterPairs => [ $tr_pairs1a, $tr_pairs2a ],
+		);
+	};
+	ok($@ =~ /^Option 'rowTypes' must be specified for class 'Triceps::Fields' at/);
+
+	eval { 
+		Triceps::Fields::makeTranslation(
+			rowTypes => [ $tr_rt1, $tr_rt2 ],
+		);
+	};
+	ok($@ =~ /^Option 'filterPairs' must be specified for class 'Triceps::Fields' at/);
+
+	# args size mismatch
+	eval { 
+		Triceps::Fields::makeTranslation(
+			rowTypes => [ $tr_rt1, $tr_rt2 ],
+			filterPairs => [ $tr_pairs1a ],
+		);
+	};
+	ok($@ =~ /^Triceps::Fields::makeTranslation: the arrays of row types and filter pairs must be of the same size, got 2 and 1 elements at/);
+
+	# duplicate fields in the result
+	eval { 
+		Triceps::Fields::makeTranslation(
+			rowTypes => [ $tr_rt1, $tr_rt2 ],
+			filterPairs => [ $tr_pairs1a, [ 'one', 'f1', 'two', 'f2' ] ],
+		);
+	};
+	#print "$@\n";
+	ok($@ =~ /^Triceps::Fields::makeTranslation: Invalid result row type specification: Triceps::RowType::new: duplicate field name 'f1' for fields 3 and 2\nduplicate field name 'f2' for fields 4 and 1  at/);
+}
 
 #########################
 # isArrayType()
