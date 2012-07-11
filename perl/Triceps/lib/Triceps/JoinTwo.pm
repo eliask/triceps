@@ -259,7 +259,7 @@ sub new # (class, optionName => optionValue ...)
 				unless ($leftArr == $rightArr);
 		} else {
 			# XXX Should this comparison be smarter and allow matching
-			# unit8 and uint8[], string and unit8 or unit8[]?
+			# uint8 and uint8[], string and uint8 or uint8[]?
 			# For now the override option is the solution for it.
 			Carp::confess("Mismatched field types in the join condition: left " 
 					. $leftkeys[$i] . " " . $leftType . ", right "
