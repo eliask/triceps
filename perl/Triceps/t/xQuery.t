@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 13 };
+BEGIN { plan tests => 14 };
 use Triceps;
 use Carp;
 use Errno qw(EINTR EAGAIN);
@@ -1266,6 +1266,123 @@ Compiled comparator:
 qWindow.out,OP_INSERT,3,AAA,20,20
 qWindow.out,OP_INSERT,4,BBB,20,20
 qWindow.out,OP_NOP,,,,
+');
+
+#########################
+# Module for querying the table, version 7: with projection in the result.
+# (based on version 3)
+
+package Query7;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+		resultFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, 'ARRAY', ''); } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rtIn = $table->getRowType();
+	my $rtOut = $rtIn;
+
+	if (defined $self->{resultFields}) {
+		my @inFields = $rtIn->getFieldNames();
+		my @pairs =  &Triceps::Fields::filterToPairs($class, \@inFields, $self->{resultFields});
+		($rtOut, $self->{projectFunc}) = &Triceps::Fields::makeTranslation(
+			rowTypes => [ $rtIn ],
+			filterPairs => [ \@pairs ],
+		);
+	} else {
+		$self->{projectFunc} = sub {
+			return $_[0];
+		}
+	}
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rtIn, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", 
+					&{$self->{projectFunc}}($rh->getRow())))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rtOut, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+package main;
+
+#########################
+# Server with module version 7.
+
+sub runQuery7
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query7->new(table => $tWindow, name => "qWindow",
+	resultFields => [ "!id", ".*" ],
+);
+my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+};
+
+@input = @inputQuery1;
+$result = undef;
+&runQuery7();
+#print $result;
+ok($result, 
+'> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out,OP_INSERT,AAA,10,10
+qWindow.out,OP_INSERT,AAA,20,20
+qWindow.out,OP_NOP,,,
+qWindow.out,OP_INSERT,AAA,20,20
+qWindow.out,OP_INSERT,AAA,30,30
+qWindow.out,OP_NOP,,,
 ');
 
 #########################
