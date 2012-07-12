@@ -1023,6 +1023,93 @@ byLeft => [ 'k_(.*)/Borrow$1' ],
 		The key patterns make the long keys easier to drag around.
 		</para>
 
+		<indexterm>
+			<primary>keys</primary>
+			<secondary>type conversion</secondary>
+		</indexterm>
+		<para>
+		Second, key fields of LookupJoin don't have to be of the same type on
+		the left and on the right side. Since the key building for lookup is
+		done through Perl, the key values get automatically converted as
+		needed. 
+		</para>
+
+		<para>
+		A caveat is that the conversion might be not exactly direct. If a
+		string gets converted to a number, then any string values that do not
+		look like numbers will be converted to 0. A conversion between a string
+		and a floating-point number, in either direction, is likely to lose
+		precision. A conversion between int64 and int32 may cause the upper
+		bits to be truncated. So what gets looked up may be not what you
+		expect.
+		</para>
+
+		<para>
+		I'm not sure yet if I should add the requirement for the types being
+		exactly the same. The automatic conversions seem to be convenient, just
+		use them with care. I suppose, when the joins will get eventually
+		implemented in the &Cpp; code, this freedom would go away because it's
+		much easier and more efficient in &Cpp; to copy the field values as-is
+		than to convert them.
+		</para>
+
+		<para>
+		The only thing currently checked is whether a field is represented in
+		Perl as a scalar or an array, and that must match on the left and on
+		the right. Note that the array <pre>uint8[]</pre> gets represented in Perl as a
+		scalar string, so an <pre>uint8[]</pre> field can be matched with other scalars
+		but not with the other arrays.
+		</para>
+
+		<para>
+		Third, the key fields have the problem of duplication. The LookupJoin is
+		by definition an equi-join, it joins together the rows that have the
+		same values in a set of key fields. If all the fields from both sides
+		are to be included in the result, they key values will be present in it
+		twice, once from the left side, once from the right side. This is not
+		what is usually wanted, and the good practice is to let these fields
+		through from one side and filter out from the other side.
+		</para>
+
+		<para>
+		Letting these fields through on the left side is usually the better
+		choice. For the inner joins it doesn't really matter but for the
+		left outer joins it works much better than the with letting through
+		the fields from the right side. The reason is that when the join
+		doesn't find the match on the right side, all the right-side
+		fields will be NULL. If you pass through the key fields only from the
+		right side, they will contain NULL, and this is probably not what
+		you want.
+		</para>
+
+		<para>
+		However if for some reason, be it the order of the fields or the
+		better field types on the right side, you really want to pass the
+		key fields only from the right side, you can. LookupJoin provides
+		a special magic act enabled by the option
+		</para>
+
+<pre>
+	fieldsMirrorKey => 1
+</pre>
+
+		<para>
+		Then if the row is not found on the right side, a special right-side
+		row will be created with the key fields copied from the left side,
+		and it will be used to produce the result row. With
+		<quote>fieldsMirrorKey</quote> you are guaranteed to always have the
+		key values present on the right side.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
 		<para>
 		</para>
 
