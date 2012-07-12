@@ -1100,11 +1100,270 @@ byLeft => [ 'k_(.*)/Borrow$1' ],
 		<quote>fieldsMirrorKey</quote> you are guaranteed to always have the
 		key values present on the right side.
 		</para>
+	</sect1>
 
+	<sect1 id="sc_joins_lookupjoin_inside">
+		<title>A peek inside LookupJoin</title>
+
+		<indexterm>
+			<primary>LookupJoin</primary>
+			<secondary>code generation</secondary>
+		</indexterm>
 		<para>
+		I won't be describing in the details the internals of LookupJoin. They
+		seem a bit too big and complicated. Partially it's because the code is
+		of an older origin, and not using all the newer calls. Partially it's
+		because when I wrote it, I've tried to optimize by translating the rows
+		to an array format instead of referring to the fields by names, and
+		that made the code more tricky. Partially, the code has grown more
+		complex due to all the added options. And partially the functionality
+		just is a little tricky by itself.
 		</para>
 
 		<para>
+		But, for debugging purposes, the LookupJoin constructor can return the
+		auto-generated code of the joiner function. It's done with the option
+		<quote>saveJoinerTo</quote>:
+		</para>
+
+<pre>
+	saveJoinerTo => \$code,
+</pre>
+
+		<para>
+		This will cause the auto-generated code to be placed into the variable
+		<pre>$code</pre>. I've collected a few such examples in this section.
+		They provide a glimpse into the internal workings of the
+		joiner. It's definitely a quite advanced topic, but it's helpful if you
+		want to know, what is really going on in there.
+		</para>
+
+		<para>
+		The joiner code from the example
+		</para>
+
+<!-- t/xJoin.t, doLookupLeft, removed saveJoinerTo -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+); # would die by itself on an error
+</pre>
+
+		<para>
+		that was shown first in the
+		<xref linkend="sc_joins_lookupjoin" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		is this:
+		</para>
+
+<pre>
+sub # ($inLabel, $rowop, $self)
+{
+	my ($inLabel, $rowop, $self) = @_;
+	#print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $rowop->printP(), "\n";
+
+	my $opcode = $rowop->getOpcode(); # pass the opcode
+	my $row = $rowop->getRow();
+
+	my @leftdata = $row->toArray();
+
+	my $resRowType = $self->{resultRowType};
+	my $resLabel = $self->{outputLabel};
+
+	my $lookuprow = $self->{rightRowType}->makeRowHash(
+		source => $leftdata[1],
+		external => $leftdata[2],
+		);
+	
+	#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
+	my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
+	Carp::confess("$!") unless defined $rh;
+
+	my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+	my @result; # the result rows will be collected here
+
+	if (!$rh->isNull()) {
+		#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
+		@rightdata = $rh->getRow()->toArray();
+	}
+
+		my @resdata = ($leftdata[0],
+		$leftdata[1],
+		$leftdata[2],
+		$leftdata[3],
+		$rightdata[2],
+		);
+		my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
+		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
+		Carp::confess("$!") unless defined $resrowop;
+		Carp::confess("$!") 
+			unless $resLabel->getUnit()->call($resrowop);
+		
+}
+</pre>
+
+		<para>
+		From the example with the manual iteration:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftManual, removed saveJoinerTo -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => ["lookupSrcExt"],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	automatic => 0,
+); # would die by itself on an error
+</pre>
+
+		<para>
+		comes this code:
+		</para>
+
+<pre>
+sub  # ($self, $row)
+{
+	my ($self, $row) = @_;
+
+	#print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $row->printP(), "\n";
+
+	my @leftdata = $row->toArray();
+
+	my $lookuprow = $self->{rightRowType}->makeRowHash(
+		source => $leftdata[1],
+		external => $leftdata[2],
+		);
+	
+	#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
+	my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
+	Carp::confess("$!") unless defined $rh;
+
+	my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+	my @result; # the result rows will be collected here
+
+	if (!$rh->isNull()) {
+		#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
+		@rightdata = $rh->getRow()->toArray();
+	}
+
+		my @resdata = ($leftdata[0],
+		$leftdata[1],
+		$leftdata[2],
+		$leftdata[3],
+		$rightdata[2],
+		);
+		push @result, $self->{resultRowType}->makeRowArray(@resdata);
+		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $result[$#result]->printP(), "\n";
+	return @result;
+}
+</pre>
+
+		<para>
+		It takes different arguments because now it's not an input label handler
+		but a common function that gets called from both the label handler and the
+		<pre>lookup()</pre> method. And it collects the rows in an array to be returned
+		instead of immediately passing them on.
+		</para>
+
+		<para>
+		From the example with multiple rows matching on the right side
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftMulti and the type def before it, removed saveJoinerTo -->
+<pre>
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtInTrans,
+	rightTable => $tAccounts,
+	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
+	rightFields => [ "internal/acct" ],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+); # would die by itself on an error
+</pre>
+
+		<para>
+		comes this code:
+		</para>
+
+<pre>
+sub # ($inLabel, $rowop, $self)
+{
+	my ($inLabel, $rowop, $self) = @_;
+	#print STDERR "DEBUGX LookupJoin " . $self->{name} . " in: ", $rowop->printP(), "\n";
+
+	my $opcode = $rowop->getOpcode(); # pass the opcode
+	my $row = $rowop->getRow();
+
+	my @leftdata = $row->toArray();
+
+	my $resRowType = $self->{resultRowType};
+	my $resLabel = $self->{outputLabel};
+
+	my $lookuprow = $self->{rightRowType}->makeRowHash(
+		source => $leftdata[1],
+		external => $leftdata[2],
+		);
+	
+	#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
+	my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
+	Carp::confess("$!") unless defined $rh;
+
+	my @rightdata; # fields from the right side, defaults to all-undef, if no data found
+	my @result; # the result rows will be collected here
+
+	if ($rh->isNull()) {
+		#print STDERR "DEBUGX " . $self->{name} . " found NULL\n";
+
+		my @resdata = ($leftdata[0],
+		$leftdata[1],
+		$leftdata[2],
+		$leftdata[3],
+		$rightdata[2],
+		);
+		my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
+		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
+		Carp::confess("$!") unless defined $resrowop;
+		Carp::confess("$!") 
+			unless $resLabel->getUnit()->call($resrowop);
+		
+	} else {
+		#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
+		my $endrh = $self->{rightTable}->nextGroupIdx($self->{iterIdxType}, $rh);
+		for (; !$rh->same($endrh); $rh = $self->{rightTable}->nextIdx($self->{rightIdxType}, $rh)) {
+			@rightdata = $rh->getRow()->toArray();
+		my @resdata = ($leftdata[0],
+		$leftdata[1],
+		$leftdata[2],
+		$leftdata[3],
+		$rightdata[2],
+		);
+		my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
+		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
+		Carp::confess("$!") unless defined $resrowop;
+		Carp::confess("$!") 
+			unless $resLabel->getUnit()->call($resrowop);
+		
+		}
+	}
+}
+</pre>
+
+		<para>
+		It's more complicated in two ways: If a match is found, it has to
+		iterate through the whole matching group. And if the match is not
+		found, it still has to produce a result row for the left join with a
+		separate code fragment.
 		</para>
 
 		<para>
