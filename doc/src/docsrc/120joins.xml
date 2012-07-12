@@ -512,6 +512,21 @@ while(&readLine) {
 		</para>
 
 		<para>
+		A fairly common usage in joins is to just give the unique prefixes to
+		the left-side and right-side fields. This can be achieved with:
+		</para>
+
+<pre>
+	leftFields => [ '.*/left_$&' ],
+	rightFields => [ '.*/right_$&' ],
+</pre>
+
+		<para>
+		The <pre>$&</pre> in the substitution gets replaced with the whole matched
+		field name.
+		</para>
+
+		<para>
 		The option <quote>fieldsLeftFirst</quote> determines, which side will go first in
 		the result. By default it's set to 1 (as in this example), and the left
 		side goes first. If set to 0, the right side would go first.

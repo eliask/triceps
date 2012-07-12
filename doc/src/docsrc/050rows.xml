@@ -104,6 +104,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		added to Perl, the plan is to still use the int64 to store the number
 		of microseconds since the Unix epoch. My experience with the time types
 		in the other CEP systems is that they cause nothing but confusion.
+		XXX reference to chapter on time
 		</para>
 	</sect1>
 

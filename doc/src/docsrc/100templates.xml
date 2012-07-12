@@ -1755,6 +1755,16 @@ run(\%dispatch);
 		</para>
 
 		<para>
+		For an example of why the parenthesised groups can be useful, suppose that
+		the row type has multiple account-related elements that all start
+		with <quote>acct</quote>: <pre>acctsrc</pre>, <pre>acctinternal</pre>, <pre>acctexternal</pre>.
+		Suppose we want to insert an underscore after <quote>acct</quote>. This can be achieved
+		with the pattern <pre>'acct(.*)/acct_$1'</pre>.
+		As usual in the Perl regexps, the parenthesised groups are numbered
+		left to right, starting with <pre>$1</pre>.
+		</para>
+
+		<para>
 		If a specification element refers to a literal
 		field, like here <quote>id</quote> and <quote>size</quote>, the projection
 		checks that the field is actually present
