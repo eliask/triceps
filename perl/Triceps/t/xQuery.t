@@ -1282,7 +1282,7 @@ sub new # ($class, $optionName => $optionValue ...)
 	&Triceps::Opt::parse($class, $self, {
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
-		resultFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, 'ARRAY', ''); } ],
+		resultFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", ""); } ],
 	}, @_);
 	
 	my $name = $self->{name};
