@@ -51,7 +51,6 @@ Things that need to be done:
 * doc: put somewhere that a row handle is an iterator on all the table's indexes
 * doc: for tables say that more will be coming, and the reference
 * doc: TableType::getRowType()
-* doc: template with field filtering in the result
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 App ideas:

@@ -3062,9 +3062,10 @@ sub make # (optName => optValue, ...)
 		between the result fields. And the initialization snippets are collected
 		in <pre>$codeInit</pre>. The initialization values are not enquoted
 		because they are expected to be either numeric or <pre>undef</pre>.
-		It's one of the shortcuts taken. A better way would be to put
+		It's one of the shortcuts taken. A better way would be to either put
 		these values as-is into the argument array passed to the computation
-		function.
+		function or use the closure trick from <pre>Triceps::Fields::makeTranslation()</pre> described in
+		<xref linkend="sc_template_result" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 		
 <pre>

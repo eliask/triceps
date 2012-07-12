@@ -488,64 +488,27 @@ while(&readLine) {
 		</para>
 
 		<indexterm>
-			<primary>regular expression</primary>
+			<primary>projection</primary>
+		</indexterm>
+		<indexterm>
+			<primary>result filtering</primary>
 		</indexterm>
 		<para>
 		Finally, there is the result row. It is built out of the two original
 		rows by picking the fields according to the options <quote>leftFields</quote> and
 		<quote>rightFields</quote>. If either option is missing, that means 
 		<quote>take all the fields</quote>. 
-		If present, it gives the patterns of the fields to let through.
-		The patterns may be either the explicit field names or regular
-		expressions implicitly anchored at both front and back. There is also a
-		bit of extra modification possible:
-		</para>
-
-		<variablelist>
-			<varlistentry>
-				<term>!&xrsp;<i>pattern</i></term>
-				<listitem>
-				Skip the fields matching the pattern.
-				</listitem>
-			</varlistentry>
-
-			<varlistentry>
-				<term><i>pattern</i>&xrsp;/&xrsp;<i>substitution</i></term>
-				<listitem>
-				Pass the matching fields and rename them according to the substitution.
-				</listitem>
-			</varlistentry>
-		</variablelist>
-
-		<para>
+		The format of these options is from <pre>Triceps::Fields::filterToPairs()</pre>
+		that has been described in
+		<xref linkend="sc_template_result" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		So in this example <pre>[ "internal/acct" ]</pre> means: pass the field <pre>internal</pre>
-		but rename it to <pre>acct</pre>. If a specification element refers to a literal
-		field, like here, LookupJoin checks that the field is actually present
-		in the original row type, catching the typos. For the general regular
-		expressions it doesn't check whether the pattern matched anything. It's
-		not difficult to check but that would preclude the reuse of the same
-		patterns on the varying row types, and I'm not sure yet, what is more
-		important.
+		but rename it to <pre>acct</pre>.
 		</para>
 
 		<para>
-		The way this whole thing works is that each field gets tested against
-		each pattern in order. The first pattern that matches determines what
-		happens to this field. If none of the patterns matches, the field gets
-		ignored. An important consequence about the skipping patterns is that
-		they don't automatically pass through the non-matching fields. You need
-		to add an explicit positive pattern at the end of the list to pass the
-		fields through. For example, to pass everything except the field
-		<pre>source</pre>, the specification would be <pre>[ "!source", ".*" ]</pre>. The <pre>"!source"</pre>
-		will catch and throw away the field <pre>source</pre>, and <pre>".*"</pre> will pass
-		through the rest of the fields.
-		</para>
-
-		<para>
-		Another important point is that the field names in the result must not
+		Remember that the field names in the result must not
 		duplicate. It would be an error. So if the duplications happen, use the
-		substitution syntax to rename some of the fields. I'll show more
-		patterns later.
+		substitution syntax to rename some of the fields.
 		</para>
 
 		<para>

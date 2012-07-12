@@ -1431,6 +1431,7 @@ qWindow.out,OP_NOP,,,,
 		query row. Here goes the next version that does all this:
 		</para>
 
+<!-- t/xQuery.t, Query6 -->
 <pre>
 package Query6;
 use Carp;
@@ -1589,6 +1590,427 @@ qWindow.out,OP_NOP,,,,
 		<para>
 		The code generation on the fly is a powerful tool and is used
 		throughout Triceps.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_template_result">
+		<title>Result projection in the templates</title>
+
+		<indexterm>
+			<primary>projection</primary>
+		</indexterm>
+		<indexterm>
+			<primary>result filtering</primary>
+		</indexterm>
+		<para>
+		The other functionality provided by the Triceps::Fields is the
+		filtering of the fields in the result row type, also known as 
+		<quote>projection</quote>. You can select which fields you want
+		and which you don't want, and rename the fields.
+		</para>
+
+		<para>
+		To show how it's done, I took the Query3 example from
+		<xref linkend="sc_template_options" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		and added the result field filtering to it. I've also changed the
+		format in which it returns the results to <pre>printP()</pre>, to show the
+		field names and make the effects of the field renaming visible.
+		</para>
+
+<!-- t/xQuery.t, Query7 -->
+<pre>
+package Query7;
+
+sub new # ($class, $optionName => $optionValue ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		table => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
+		resultFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", ""); } ],
+	}, @_);
+	
+	my $name = $self->{name};
+
+	my $table = $self->{table};
+	my $unit = $table->getUnit();
+	my $rtIn = $table->getRowType();
+	my $rtOut = $rtIn;
+
+	if (defined $self->{resultFields}) {
+		my @inFields = $rtIn->getFieldNames();
+		my @pairs =  &Triceps::Fields::filterToPairs($class, \@inFields, $self->{resultFields});
+		($rtOut, $self->{projectFunc}) = &Triceps::Fields::makeTranslation(
+			rowTypes => [ $rtIn ],
+			filterPairs => [ \@pairs ],
+		);
+	} else {
+		$self->{projectFunc} = sub {
+			return $_[0];
+		}
+	}
+
+	$self->{unit} = $unit;
+	$self->{name} = $name;
+	$self->{inLabel} = $unit->makeLabel($rtIn, $name . ".in", undef, sub {
+		# This version ignores the row contents, just dumps the table.
+		my ($label, $rop, $self) = @_;
+		my $rh = $self->{table}->begin();
+		for (; !$rh->isNull(); $rh = $rh->next()) {
+			$self->{unit}->call(
+				$self->{outLabel}->makeRowop("OP_INSERT", 
+					&{$self->{projectFunc}}($rh->getRow())))
+		}
+		# The end is signaled by OP_NOP with empty fields.
+		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
+	}, $self);
+	$self->{outLabel} = $unit->makeDummyLabel($rtOut, $name . ".out");
+	
+	bless $self, $class;
+	return $self;
+}
+
+sub getInputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{inLabel};
+}
+
+sub getOutputLabel # ($self)
+{
+	my $self = shift;
+	return $self->{outLabel};
+}
+
+sub getName # ($self)
+{
+	my $self = shift;
+	return $self->{name};
+}
+
+package main;
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $query = Query7->new(table => $tWindow, name => "qWindow",
+	resultFields => [ '!id', 'size/lot_$&', '.*' ],
+);
+# print in the tokenized format
+my $srvout = $uTrades->makeLabel($query->getOutputLabel()->getType(), 
+	$query->getOutputLabel()->getName() . ".serverOut", undef, sub {
+		&main::outCurBuf($_[1]->printP() . "\n");
+	});
+$query->getOutputLabel()->chain($srvout) or confess "$!";
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$query->getName()} = $query->getInputLabel();
+$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+
+run(\%dispatch);
+</pre>
+
+		<indexterm>
+			<primary>regular expression</primary>
+		</indexterm>
+		<para>
+		The query now has the new option <quote>resultFields</quote> that
+		defines the projection. That option accepts a reference to an
+		array of pattern strings.
+		If present, it gives the patterns of the fields to let through.
+		The patterns may be either the explicit field names or regular
+		expressions implicitly anchored at both front and back. There is also a
+		bit of extra modification possible:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term>!&xrsp;<i>pattern</i></term>
+				<listitem>
+				Skip the fields matching the pattern.
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><i>pattern</i>&xrsp;/&xrsp;<i>substitution</i></term>
+				<listitem>
+				Pass the matching fields and rename them according to the substitution.
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		So in this example <pre>[ '!id', 'size/lot_$&', '.*' ]</pre> means:
+		skip the field <quote>id</quote>, rename the field <quote>size</quote> 
+		by prepending <quote>lot_</quote> to it,
+		and pass through the rest of the fields.
+		In the renaming pattern, <pre>$&</pre> is the reference to the whole original
+		field name. If you use the parenthesised groups, they are referred to
+		as <pre>$1</pre>, <pre>$2</pre> and so on. But if you use any of those, don't forget
+		to put the pattern into single quotes to prevent the unwanted expansion
+		in the double quotes before the projection gets a chance to see it.
+		</para>
+
+		<para>
+		If a specification element refers to a literal
+		field, like here <quote>id</quote> and <quote>size</quote>, the projection
+		checks that the field is actually present
+		in the original row type, catching the typos. For the general regular
+		expressions it doesn't check whether the pattern matched anything. It's
+		not difficult to check but that would preclude the reuse of the same
+		patterns on the varying row types, and I'm not sure yet, what is more
+		important.
+		</para>
+
+		<para>
+		The way this whole thing works is that each field gets tested against
+		each pattern in order. The first pattern that matches determines what
+		happens to this field. If none of the patterns matches, the field gets
+		ignored. An important consequence about the skipping patterns is that
+		they don't automatically pass through the non-matching fields. You need
+		to add an explicit positive pattern at the end of the list to pass the
+		fields through. <pre>'.*'</pre> serves this purpose in the example.
+		</para>
+
+		<para>
+		A consequence is that the order of the fields can't be changed
+		by the projection.  They are tested in the order they appear in the original
+		row type, and are inserted into the projected row type in the same order.
+		</para>
+
+		<para>
+		Another important point is that the field names in the result must not
+		duplicate. It would be an error. Be careful with the substitution
+		syntax to avoid creating the duplicate names.
+		</para>
+
+		<para>
+		A run example from this version, with the same input as before:
+		</para>
+
+<!-- t/xQuery.t, Query7 -->
+<exdump>
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> qWindow,OP_INSERT
+> tWindow,OP_INSERT,5,AAA,30,30
+> qWindow,OP_INSERT
+qWindow.out OP_INSERT symbol="AAA" price="10" lot_size="10" 
+qWindow.out OP_INSERT symbol="AAA" price="20" lot_size="20" 
+qWindow.out OP_NOP 
+qWindow.out OP_INSERT symbol="AAA" price="20" lot_size="20" 
+qWindow.out OP_INSERT symbol="AAA" price="30" lot_size="30" 
+qWindow.out OP_NOP 
+</exdump>
+
+		<para>
+		The rows returned are the same, but projected and printed in the
+		<pre>printP()</pre> format.
+		</para>
+
+		<para>
+		Inside the template the projection works in three steps:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		<pre>Triceps::Fields::filterToPairs()</pre> does the projection of the field names
+		and returns its result as an array of names. The names in the array go in pairs:
+		the old name and the new name in each pair. The fields that got skipped
+		do not get included in the list. In this example the array would be
+		<pre>( "symbol", "symbol", "price", "price", "size", "lot_size" )</pre>.
+		</listitem>
+
+		<listitem>
+		<pre>Triceps::Fields::makeTranslation()</pre> then takes this array along with the
+		original row type and produces the result row type and a function reference
+		that does the projection by converting an original row into the projected
+		one.
+		</listitem>
+
+		<listitem>
+		The template execution then calls this projection function for the result rows.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The split of work between <pre>filterToPairs()</pre> and <pre>makeTranslation()</pre> has been
+		done partially historically and partially  because sometimes you may want to 
+		just get the pair names array
+		and then use them on your own instead of calling <pre>makeTranslation()</pre>. There
+		is one more function that you may find useful if you do the handling
+		on your own: <pre>filter()</pre>. It takes the same arguments and does the same
+		thing as <pre>filterToPairs()</pre> but returns the result in a different format.
+		It's still an array of strings but it contains only the names of the
+		translated field names instead of the pairs, in the order matching the order
+		of the original fields. For the fields that have been skipped it contains
+		an <pre>undef</pre>. For this example it would return
+		<pre>( undef, "symbol", "price", "lot_size" )</pre>.
+		</para>
+
+		<para>
+		The calls are:
+		</para>
+
+<pre>
+@fields = &Triceps::Fields::filter(
+	$caller, \@inFields, \@translation);
+@pairs = &Triceps::Fields::filterToPairs(
+	$caller, \@inFields, \@translation);
+($rowType, $projectFunc) = &Triceps::Fields::makeTranslation(
+	$optName => $optValue, ...);
+</pre>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		All of them confess on errors, and the argument <pre>$caller</pre> is
+		used for building the error messages. The options of <pre>makeTranslations()</pre> are:
+		</para>
+
+		<para>
+		<quote>rowTypes</quote> is a reference to an array of original row types.
+		<quote>filterPairs</quote> is a reference to an array of filter pair arrays. 
+		Both of these options are mandatory.  And that's
+		right, <pre>makeTranslations()</pre> can accept and merge more than one original row type, with a
+		separate projection specification for each of them. It's not quite as
+		flexible as I'd want it to be, not allowing to reorder and mix the fields
+		from different originals (now the fields go in sequence: from the first
+		original, from the second original, and so on), but it's a decent
+		start. When you combine multiple original row types, you need to be
+		particularly careful with avoiding the duplicate field names in the
+		result.
+		</para>
+
+		<para>
+		The option <quote>saveCodeTo</quote> also allows to save the source code of the generated
+		function, same as in the Query5 example in
+		<xref linkend="sc_template_codegen" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		The general call form of <pre>makeTranslations()</pre> is:
+		</para>
+
+<pre>
+($rowType, $projectFunc) = &Triceps::Fields::makeTranslation(
+	rowTypes => [ $rt1, $rt2, ..., $rtN ],
+	filterPairs => [ \@pairs1, \@pairs2, ..., \@pairsN ],
+	saveCodeTo => \$codeVar,
+);
+</pre>
+
+		<para>
+		One of the result type or projection function referece could have also been
+		returned to a place pointed to by an option, like <quote>saveCodeTo</quote>,
+		but since Perl supports returning multiple values from a function, that looks simpler and
+		cleaner.
+		</para>
+
+		<para>
+		The projection function is then called:
+		</para>
+
+<pre>
+$row = &$projectFunc($origRow1, $origRow2, ..., $origRowN);
+</pre>
+
+		<para>
+		Naturally, <pre>makeTranslations()</pre> is a template itself. Let's look
+		at its source code, it shows a new trick.
+		</para>
+
+<!-- lib/Triceps/Fields.pm -->
+<pre>
+package Triceps::Fields;
+use Carp;
+
+use strict;
+
+sub makeTranslation # (optName => optValue, ...)
+{
+	my $opts = {}; # the parsed options
+	my $myname = "Triceps::Fields::makeTranslation";
+	
+	&Triceps::Opt::parse("Triceps::Fields", $opts, {
+			rowTypes => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "Triceps::RowType") } ],
+			filterPairs => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "ARRAY") } ],
+			saveCodeTo => [ undef, sub { &Triceps::Opt::ck_refscalar(@_) } ],
+		}, @_);
+
+	# reset the saved source code
+	${$opts->{saveCodeTo}} = undef if (defined($opts->{saveCodeTo}));
+
+	my $rts = $opts->{rowTypes};
+	my $fps = $opts->{filterPairs};
+
+	confess "$myname: the arrays of row types and filter pairs must be of the same size, got " . ($#{$rts}+1) . " and " . ($#{$fps}+1) . " elements"
+		unless ($#{$rts} == $#{$fps});
+
+	my $gencode = '
+		sub { # (@rows)
+			use strict;
+			use Carp;
+			confess "template internal error in ' . $myname  . ': result translation expected ' . ($#{$rts}+1) . ' row args, received " . ($#_+1)
+				unless ($#_ == ' . $#{$rts} . ');
+			# $result_rt comes at compile time from Triceps::Fields::makeTranslation
+			return $result_rt->makeRowArray(';
+
+	my @rowdef; # of the result row type
+	for (my $i = 0; $i <= $#{$rts}; $i++) {
+		my %origdef = $rts->[$i]->getdef();
+		my @fp = @{$fps->[$i]}; # copy the array, because it will be shifted
+		while ($#fp >= 0) {
+			my $from = shift @fp;
+			my $to = shift @fp;
+			my $type = $origdef{$from};
+			confess "$myname: unknown original field '$from' in the original row type $i:\n" . $rts->[$i]->print() . " "
+				unless (defined $type);
+			push(@rowdef, $to, $type);
+			$gencode .= '
+				$_[' . $i . ']->get("' . quotemeta($from) . '"),';
+		}
+	}
+
+	$gencode .= '
+			);
+		}';
+
+	my $result_rt = Triceps::RowType->new(@rowdef)
+		or confess "$myname: Invalid result row type specification: $! ";
+
+	${$opts->{saveCodeTo}} = $gencode if (defined($opts->{saveCodeTo}));
+
+	# compile the translation function
+	my $func = eval $gencode
+		or confess "$myname: error in compilation of the function:\n  $@\nfunction text:\n$gencode ";
+
+	return ($result_rt, $func);
+}
+</pre>
+
+		<indexterm>
+			<primary>closure</primary>
+		</indexterm>
+		<para>
+		By now almost all the parts of the implementation should look
+		familiar to you. It builds the result row definition and the
+		projection function code in parallel by iterating through the
+		originals. An interesting trick is done with passing the result
+		row type into the projection function. The function needs it
+		to create the result rows. But it can't be easily placed into
+		the function source code. So the closure property of the projection
+		function is used: whatever outside <quote>my</quote> variables occur in the function
+		at the time when it's compiled, will have their values compiled
+		hardcoded into the function. So the <quote>my</quote> variable 
+		<pre>$result_rt</pre> is  set with the result row type, and then the
+		projection function gets compiled. The projection function
+		refers to <pre>$result_rt</pre>, which gets picked up from the parent scope
+		and hardcoded in the closure.
 		</para>
 	</sect1>
 
