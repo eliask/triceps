@@ -14,7 +14,7 @@ sub printP # ($self)
 	my $self = shift;
 	my @data = $self->toHash();
 	my ($k, $v);
-	my $res;
+	my $res = '';
 	while ($#data >= 0) {
 		$k = shift @data;
 		$v = shift @data;
