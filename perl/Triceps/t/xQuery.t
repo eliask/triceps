@@ -1356,7 +1356,7 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query7->new(table => $tWindow, name => "qWindow",
-	resultFields => [ "!id", "size/lot", ".*" ],
+	resultFields => [ '!id', 'size/lot_$&', '.*' ],
 );
 # print in the tokenized format
 my $srvout = $uTrades->makeLabel($query->getOutputLabel()->getType(), 
@@ -1384,11 +1384,11 @@ ok($result,
 > qWindow,OP_INSERT
 > tWindow,OP_INSERT,5,AAA,30,30
 > qWindow,OP_INSERT
-qWindow.out OP_INSERT symbol="AAA" price="10" lot="10" 
-qWindow.out OP_INSERT symbol="AAA" price="20" lot="20" 
+qWindow.out OP_INSERT symbol="AAA" price="10" lot_size="10" 
+qWindow.out OP_INSERT symbol="AAA" price="20" lot_size="20" 
 qWindow.out OP_NOP 
-qWindow.out OP_INSERT symbol="AAA" price="20" lot="20" 
-qWindow.out OP_INSERT symbol="AAA" price="30" lot="30" 
+qWindow.out OP_INSERT symbol="AAA" price="20" lot_size="20" 
+qWindow.out OP_INSERT symbol="AAA" price="30" lot_size="30" 
 qWindow.out OP_NOP 
 ');
 
