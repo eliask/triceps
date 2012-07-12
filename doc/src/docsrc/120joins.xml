@@ -473,11 +473,17 @@ while(&readLine) {
 			<primary>index</primary>
 			<secondary>sorted</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>LookupJoin</primary>
+			<secondary>keys</secondary>
+		</indexterm>
 		<para>
 		There is no particular reason for it not being a Sorted/Ordered index, other
 		that the <pre>getKey()</pre> call does not work for these indexes yet, and
 		that's what the LookupJoin uses to check that the right-side index key
-		matches the join key in <quote>by</quote>.
+		matches the join key in <quote>by</quote>. The order of the fields in the
+		option <quote>by</quote> and in the index may vary but the set of the
+		fields must be the same.
 		</para>
 
 		<para>
@@ -897,8 +903,124 @@ lbPrint OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct=
 		results. Because of this the label name in the output is the name of
 		the output label.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_lookupjoin_keys">
+		<title>The key fields of LookupJoin</title>
+
+		<indexterm>
+			<primary>LookupJoin</primary>
+			<secondary>keys</secondary>
+		</indexterm>
+		<para>
+		The key fields are the ones that participate in the join condition.
+		I use these terms interchangeably because by the definition of
+		LookupJoin, these fields must be the key fields in the join index
+		in the right-side table. LookupJoin has a few more facilities for their
+		handling that haven't been shown yet.
+		</para>
 
 		<para>
+		First, the join condition can be specified as the
+		<pre>Triceps::Fields::filterToPairs()</pre> patterns in the option
+		<quote>byLeft</quote>. The options <quote>by</quote> and
+		<quote>byLeft</quote> are mutually exclusive and one of them
+		must be present. The condition
+		</para>
+
+<pre>
+by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+</pre>
+
+		<para>
+		can be also specified as:
+		</para>
+
+<pre>
+byLeft => [ "acctSrc/source", "acctXtrId/external" ],
+</pre>
+
+		<para>
+		The option name <quote>byLeft</quote> says that the pattern specification is for the
+		fields on the left side (there is no symmetric <quote>byRight</quote>). The
+		substitutions produce the matching field names for the right side.
+		Unlike the result pattern, here the fields that do not find a match do
+		not get included in the key. It's as if an implicit <pre>"!.*"</pre> gets added at
+		the end. In fact, <pre>"!.*"</pre> really does get added implicitly at the end.
+		</para>
+
+		<para>
+		Of course, for the example above either option doesn't make much
+		difference. It starts making the difference when the key fields follow
+		a pattern. For example, if the key fields on both sides have the names
+		<pre>acctSrc</pre> and <pre>acctXtrId</pre>, the specification with the <quote>byLeft</quote>
+		becomes a little simpler:
+		</para>
+
+<pre>
+byLeft => [ "acctSrc", "acctXtrId" ],
+</pre>
+
+		<para>
+		Even more so if the key is long, common on both sides, and all the
+		fields have a common prefix. Such as:
+		</para>
+
+<pre>
+k_AccountSystem
+k_AccountId
+k_InstrumentSystem
+k_InstrumentId
+k_TransactionDate
+k_SettlementDate
+</pre>
+
+		<para>
+		Then the join condition can be specified simply as:
+		</para>
+
+<pre>
+byLeft => [ "k_.*" ],
+</pre>
+
+		<para>
+		If say the settlement date doesn't matter for a particular join, it can be excluded:
+		</para>
+
+<pre>
+byLeft => [ "!k_SettlementDate", "k_.*" ],
+</pre>
+
+		<para>
+		If the right side represents a swap of securities, it might have two
+		parts to it, each describing its half with its key:
+		</para>
+
+<pre>
+BorrowAccountSystem
+BorrowAccountId
+BorrowInstrumentSystem
+BorrowInstrumentId
+BorrowTransactionDate
+BorrowSettlementDate
+LoanAccountSystem
+LoanAccountId
+LoanInstrumentSystem
+LoanInstrumentId
+LoanTransactionDate
+LoanSettlementDate
+</pre>
+
+		<para>
+		Then the join of the one-sided rows with the borrow part condition can be done using:
+		</para>
+
+<pre>
+byLeft => [ 'k_(.*)/Borrow$1' ],
+</pre>
+
+		<para>
+		The key patterns make the long keys easier to drag around.
 		</para>
 
 		<para>
