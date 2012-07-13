@@ -200,7 +200,7 @@ our $join = Triceps::LookupJoin->new(
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
 	#saveJoinerTo => \$code,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -265,7 +265,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 0,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -333,7 +333,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	#saveJoinerTo => \$code,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -410,7 +410,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	limitOne => 1,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -483,7 +483,7 @@ our $join = Triceps::LookupJoin->new(
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	automatic => 0,
 	#saveJoinerTo => \$code,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 my $lbPrint = makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -616,7 +616,7 @@ our $join = Triceps::JoinTwo->new(
 	rightTable => $tToUsd,
 	rightIdxPath => [ "primary" ],
 	type => "inner",
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -698,7 +698,7 @@ our $join = Triceps::JoinTwo->new(
 	rightTable => $tToUsd,
 	rightIdxPath => [ "primary" ],
 	type => "left",
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -789,7 +789,7 @@ our $join = Triceps::JoinTwo->new(
 	rightTable => $tToUsd,
 	rightIdxPath => [ "primary" ],
 	type => "outer",
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -894,7 +894,7 @@ our $join = Triceps::JoinTwo->new(
 	rightFromLabel => $lbToUsdCurrent,
 	rightIdxPath => [ "primary" ],
 	type => "left",
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
