@@ -3061,9 +3061,18 @@ sub make # (optName => optValue, ...)
 		variable name in the definition, so that there would be no interference
 		between the result fields. And the initialization snippets are collected
 		in <pre>$codeInit</pre>. The initialization values are not enquoted
-		because they are expected to be either numeric or <pre>undef</pre>.
-		It's one of the shortcuts taken. A better way would be to either put
-		these values as-is into the argument array passed to the computation
+		because they are expected to be strings suitable for such use.
+		That's why the undefined values in the function defnitions are not
+		<pre>undef</pre> but <pre>'undef'</pre>. If you'd want to initialize
+		a variable as a string <pre>"x"</pre>, you'd use it as <pre>'"x"'</pre>.
+		For the numbers it doesn't
+		really matter, the numbers just get converted to strings as needed,
+		so the zeroes are simply <pre>0</pre>s without quoting.
+		</para>
+
+		<para>
+		Another possibility would be to have the actual values as-is in the hash and then either put
+		these values into the argument array passed to the computation
 		function or use the closure trick from <pre>Triceps::Fields::makeTranslation()</pre> described in
 		<xref linkend="sc_template_result" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
