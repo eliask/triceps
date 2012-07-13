@@ -171,7 +171,7 @@ on
 </pre>
 
 		<para>
-		The condition looks up the rows in <pre>$tAccounts</pre> using the index <pre>lookupSrcExt</pre>
+		The condition looks up the rows in <pre>$tAccounts</pre> using the index <quote>lookupSrcExt</quote>
 		that must have the key fields <pre>source</pre> and <pre>external</pre>.
 		</para>
 
@@ -203,8 +203,8 @@ our $join = Triceps::JoinTwo->new(
 		</indexterm>
 		<para>
 		It joins the tables <pre>$tPosition</pre> and <pre>$tToUsd</pre>, with the inner join logic.
-		The table <pre>$tPosition</pre> uses its index <pre>currencyLookup</pre>, and <pre>$tToUsd</pre> uses
-		its index <pre>primary</pre>. The join condition is determined by pairing the
+		The table <pre>$tPosition</pre> uses its index <quote>currencyLookup</quote>, and <pre>$tToUsd</pre> uses
+		its index <quote>primary</quote>. The join condition is determined by pairing the
 		key fields of the indexes.
 		</para>
 	</sect1>
@@ -412,7 +412,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -435,6 +435,10 @@ while(&readLine) {
 		<quote>name</quote> are as usual.
 		</para>
 
+		<indexterm>
+			<primary>join</primary>
+			<secondary>left outer</secondary>
+		</indexterm>
 		<para>
 		The incoming rows are always on the left side, the table on the right.
 		LookupJoin can do either the inner join or the left outer join (since
@@ -600,7 +604,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 0,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -618,6 +622,10 @@ while(&readLine) {
 }
 </pre>
 
+		<indexterm>
+			<primary>join</primary>
+			<secondary>inner</secondary>
+		</indexterm>
 		<para>
 		The other options demonstrate the possibilities described in the last
 		post. This time it's an inner join, the result has the right-side
@@ -695,7 +703,7 @@ our $join = Triceps::LookupJoin->new(
 	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
-); # would die by itself on an error
+); # would confess by itself on an error
 </pre>
 
 		<para>
@@ -760,7 +768,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	limitOne => 1,
-); # would die by itself on an error
+); # would confess by itself on an error
 </pre>
 
 		<para>
@@ -833,7 +841,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	automatic => 0,
-); # would die by itself on an error
+); # would confess by itself on an error
 
 # label to print the changes to the detailed stats
 my $lbPrint = makePrintLabel("lbPrint", $join->getOutputLabel());
@@ -1024,8 +1032,8 @@ byLeft => [ 'k_(.*)/Borrow$1' ],
 		</para>
 
 		<indexterm>
-			<primary>keys</primary>
-			<secondary>type conversion</secondary>
+			<primary>join</primary>
+			<secondary>key field types</secondary>
 		</indexterm>
 		<para>
 		Second, key fields of LookupJoin don't have to be of the same type on
@@ -1061,6 +1069,10 @@ byLeft => [ 'k_(.*)/Borrow$1' ],
 		but not with the other arrays.
 		</para>
 
+		<indexterm>
+			<primary>join</primary>
+			<secondary>key field duplication</secondary>
+		</indexterm>
 		<para>
 		Third, the key fields have the problem of duplication. The LookupJoin is
 		by definition an equi-join, it joins together the rows that have the
@@ -1153,7 +1165,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	isLeft => 1,
-); # would die by itself on an error
+); # would confess by itself on an error
 </pre>
 
 		<para>
@@ -1223,7 +1235,7 @@ our $join = Triceps::LookupJoin->new(
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	automatic => 0,
-); # would die by itself on an error
+); # would confess by itself on an error
 </pre>
 
 		<para>
@@ -1289,7 +1301,7 @@ our $join = Triceps::LookupJoin->new(
 	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
-); # would die by itself on an error
+); # would confess by itself on an error
 </pre>
 
 		<para>
@@ -1364,6 +1376,582 @@ sub # ($inLabel, $rowop, $self)
 		iterate through the whole matching group. And if the match is not
 		found, it still has to produce a result row for the left join with a
 		separate code fragment.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_jointwo">
+		<title>JoinTwo joins two tables</title>
+
+		<indexterm>
+			<primary>JoinTwo</primary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>tables</secondary>
+		</indexterm>
+		<para>
+		Fundamentally, joining the two tables is kind of like the two
+		symmetrical copies of LookupJoin, each of them reacting to the
+		changes in one table and doing look-ups in another table. 
+		For all I can tell, the CEP systems with the insert-only stream model
+		tend to start with the assumption that the LookupJoin (or whetever they
+		call it) is good enough. Then it turns out that manually writing the
+		join twice where it can be done once is a pain. So the table-to-table
+		join gets added. Then the interesting nuances crop up, since a correct
+		table-to-table join has more to it than just two stream-to-table
+		joins.  Then it turns
+		out that it would be real convenient to propagate the deletes through
+		the join, and that gets added as a special feature behind the scenes.
+		</para>
+
+		<para>
+		In Triceps, JoinTwo is the template for joining the tables. And actually
+		it is translated under the hood to two LookupJoins, but it has
+		more on top of them.
+		</para>
+
+		<para>
+		In a common
+		database a join query causes a join plan to be created: on what table
+		to iterate, and in which to look up next. A CEP system deals with the
+		changing data, and a join has to react to the data changes on each of its
+		input tables. It must have multiple plans, one for starting from each
+		of the tables. And essentially a LookupJoin embodies such a plan, and
+		JoinTwo makes two of them.
+		</para>
+
+		<para>
+		Why only two? Because it's the minimal usable number. The join logic is
+		tricky, so it's better to work out the kinks on something simpler first. And
+		it still can be scaled to many tables by joining them in stages. It's
+		not quite as efficient as a direct join of multiple tables, because the
+		result of each stage has to be put into a table, but it does the job.
+		</para>
+
+		<para>
+		I'll be doing the demonstrations of the table joins on an application
+		example from the area of stock lending. Think of a large multinational
+		broker that wants to keep track of its lending activities. It has many
+		customers to whom the stock can be loaned or from whom it can be
+		borrowed. This information comes as the records of positions, of how
+		many shares are loaned or borrowed for each customer, and at what
+		contractual price. And since the clients are from all around the world,
+		the prices may be in different currencies. A simplified and much
+		shortened version of the position information may look like this:
+		</para>
+
+<!-- t/xJoin.t -->
+<pre>
+our $rtPosition = Triceps::RowType->new( # a customer account position
+	date => "int32", # as of which date, in format YYYYMMDD
+	customer => "string", # customer account id
+	symbol => "string", # stock symbol
+	quantity => "float64", # number of shares
+	price => "float64", # share price in local currency
+	currency => "string", # currency code of the price
+) or confess "$!";
+</pre>
+
+		<para>
+		Then we want to aggregate these data in different ways, getting the
+		broker-wide summaries by the symbol, by customer etc. The aggregation
+		is updated as the business day goes on. At the end of the business day
+		the state of the day freezes, and the new day's initial data is loaded.
+		That's why the business date is part of the schema. If you wonder, the
+		next day's initial data is usually the same as at the end of the
+		previous day, except where some contractual conditions change. The
+		detailed position data is thrown away after a few days, or even right
+		at the end of the day, but the aggregation results from the end of the
+		day are kept for a longer history.
+		</para>
+
+		<para>
+		There is a problem with summing up the monetary values: they come in
+		different currencies and can not be added up directly. If we want to
+		get this kind of summaries, we have to translate all of them to a
+		single reference currency. That's what the sample joins will be doing:
+		finding the translation rates to the US dollars. The currency rates
+		come in the translation schema:
+		</para>
+
+<!-- t/xJoin.t -->
+<pre>
+our $rtToUsd = Triceps::RowType->new( # a currency conversion to USD
+	date => "int32", # as of which date, in format YYYYMMDD
+	currency => "string", # currency code
+	toUsd => "float64", # multiplier to convert this currency to USD
+) or confess "$!";
+</pre>
+
+		<para>
+		Since the currency rates change all the time, to make sense of a
+		previous day's position, the previous day's rates need to be kept around,
+		and so the rates are also marked with a date.
+		</para>
+
+		<para>
+		Having the mood set, here is the first example of a model with an inner
+		join:
+		</para>
+
+<!-- t/xJoin.t table types, no $ixt..., doJoinInner -->
+<pre>
+# exchange rates, to convert all currencies to USD
+our $ttToUsd = Triceps::TableType->new($rtToUsd)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+	)
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttToUsd->initialize() or confess "$!";
+
+# the positions in the original currency
+our $ttPosition = Triceps::TableType->new($rtPosition)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "customer", "symbol" ])
+	)
+	->addSubIndex("currencyLookup", # for joining with currency conversion
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttPosition->initialize() or confess "$!";
+
+our $uJoin = Triceps::Unit->new("uJoin");
+
+our $tToUsd = $uJoin->makeTable($ttToUsd, 
+	"EM_CALL", "tToUsd") or confess "$!";
+our $tPosition = $uJoin->makeTable($ttPosition, 
+	"EM_CALL", "tPosition") or confess "$!";
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "inner",
+); # would confess by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "cur") {
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data);
+	} elsif ($type eq "pos") {
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		The example just does the joining, leaving the aggregation to the
+		imagination of the reader. The result of a JoinTwo is not stored in a
+		table. It is a stream of ephemeral updates, same as for LookupJoin. If
+		you want to keep them, you can put them into a table yourself (and
+		maybe do the aggregation in the same table).
+		</para>
+
+		<para>
+		Both the joined tables must provide a Hashed index for the efficient
+		joining.  The index may be leaf (selecting one row per key) or non-leaf
+		(containing multiple rows per key) but it must be there. This makes
+		sure that the joins are always efficient and you don't have to hunt for
+		why your model is suddenly so slow.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>key field order</secondary>
+		</indexterm>
+		<para>
+		The indexes also provide the default way of finding the join condition:
+		the key fields in the indexes are paired up together, in the order they
+		go in the index specifications. Once again, the fields are paired not
+		by name but by order. If the indexes are nested, the outer indexes
+		precede in the order. For example, the <pre>$ttToUsd</pre> could have the same
+		index done in a nested way and it would work just as well:
+		</para>
+
+<pre>
+	->addSubIndex("byDate",
+		Triceps::IndexType->newHashed(key => [ "date" ])
+		->addSubIndex("primary",
+			Triceps::IndexType->newHashed(key => [ "currency" ])
+		)
+	) 
+</pre>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>hashed</secondary>
+		</indexterm>
+		<para>
+		Same as with LookupJoin, currently only the Hashed indexes are
+		supported, and must go through all the path. The outer index <quote>byDate</quote>
+		here can not be a Sorted/Ordered index, that would be an error and the
+		join will refuse to accept it.
+		</para>
+
+		<para>
+		But if the order of key fields in the <pre>$ttToUsd</pre> index were
+		changed to be different from <pre>$ttPosition</pre>, like this
+		</para>
+
+<pre>
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "currency", "date" ])
+	) 
+</pre>
+
+		<para>
+		then it would be a mess. The wrong fields would be matched up in the
+		join condition, which would become 
+		<pre>(tPosition.date == tToUsd.currency && tPosition.currency == tToUsd.date)</pre>, 
+		and everything would go horribly wrong.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>key field types</secondary>
+		</indexterm>
+		<para>
+		Incidentally, this situation in this particular case would be caught
+		because JoinTwo is much less lenient than LookupJoin as the key field
+		types go. It requires the types of the matching fields to be exactly
+		the same. Partially, for the reasons of catching the wrong order,
+		partially for the sake of the result consistency. JoinTwo does the
+		look-ups in both directions. And think about what happens if a string field
+		and an int32 field get matched up, and then the non-numeric strings
+		turn up in the string field, containing things like 
+		<quote>abc</quote> and <quote>qwerty</quote>. Those strings on the left side
+		will match the rows with numeric 0 on the right side. But then if the
+		row with 0 on the right side changes, it would look for the string <quote>0</quote>
+		on the left, which would not find either <quote>abc</quote> or <quote>qwerty</quote>. The state
+		of the join will become a mess. So no automatic key type conversions
+		here.
+		</para>
+
+		<para>
+		If you wonder, there are ways to specify the key fields pairing
+		explicitly, with the option <quote>by</quote> or <quote>byLeft</quote>, same as for the
+		LookupJoin. But that's all they can do: change the pairing of the
+		key fields. You can't specify any other fields. And since they are
+		optional for JoinTwo, they get usually skipped.
+		</para>
+
+		<para>
+		More of the JoinTwo options closely parallel those in LookupJoin.
+		Obviously, <quote>name</quote>, <quote>rightTable</quote> and <quote>rightIdxPath</quote> are the same, with
+		the added symmetrical <quote>leftTable</quote> and <quote>leftIdxPath</quote>. There is no <quote>unit</quote>
+		option though, the unit is always taken from the tables (which must
+		belong to the same unit).
+		The option to save the source code of the generated joiner code has
+		been split in two: <quote>leftSaveJoinerTo</quote> and <quote>rightSaveJoinerTo</quote>. Since
+		JoinTwo has to react to the updates from both sides, is has to have two
+		handlers. And since internally it uses two LookupJoin for this purpose,
+		these happen to be the joiner functions of the left and right
+		LookupJoin.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>inner</secondary>
+		</indexterm>
+		<para>
+		The option <quote>type</quote> selects the inner join mode. The inner join is the
+		default, and would have been used even if this option was not
+		specified.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>key field duplication</secondary>
+		</indexterm>
+		<para>
+		The options controlling the result are also the same as in LookupJoin: <quote>leftFields</quote>,
+		<quote>rightFields</quote>, <quote>fieldsLeftFirst</quote>.
+		The results in this example include all the fields from both sides by default.
+		JoinTwo is smart and knows how to exclude the duplicate key fields automatically.
+		</para>
+
+		<para>
+		The joins are currently not equipped to actually compute the translated
+		prices directly. They can only look up the information for it, and the
+		computation can be done later, before or during the aggregation.
+		</para>
+
+		<para>
+		That's enough explanations for now, let's look at the result. The
+		input rows are shown as usual in bold, and to make keeping track easier,
+		I broke up the output into short snippets with commentary after each one.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> cur,OP_INSERT,20120310,USD,1
+> cur,OP_INSERT,20120310,GBP,2
+> cur,OP_INSERT,20120310,EUR,1.5
+</exdump>
+
+		<para>
+		Inserting the reference currencies produces no result, since it's an
+		inner join and they have no matching positions yet.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> pos,OP_INSERT,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		Now the positions arrive and find the matching translations to USD. The
+		label names on the output are an interesting artifact of all the
+		chained labels receiving the original rowop that refers to the first
+		label in the chain. Which happens to be the output label of a
+		LookupJoin inside JoinTwo. It works conveniently for the
+		demonstrational purposes, since the name of that LookupJoin shows whether
+		the row that triggered the result came from the left or right side of
+		the JoinTwo.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+</exdump>
+
+		<para>
+		This position is out of luck: no translation for its currency. The
+		inner join is actually not a good choice here. If a row does not pass
+		through because of the lack of translation, it gets excluded even from
+		the aggregations that do not require the translation, such as those
+		that total up the quantity of a particular symbol across all the
+		customers. A left outer join would have been suited better.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		Another position arrives, same as before.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+</exdump>
+
+		<para>
+		The translation for RUR finally comes in. The position in RUR can now
+		find its match and propagate through.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+> cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+</exdump>
+
+		<para>
+		An exchange rate update for GBP arrives. It amounts to <quote>delete the old
+		translation and then insert a new one</quote>. Each of these operations
+		updates the state of the join: the disappearing translation causes all
+		the GBP positions to be deleted from the result, and the new
+		translation inserts them back, with the new value of toUsd.
+		Which is the correct behavior: to make an up date to the result
+		positions, they have to be deleted and then inserted witn the new values.
+		</para>
+
+<!-- t/xJoin.t doJoinInner -->
+<exdump>
+> pos,OP_DELETE,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+> pos,OP_INSERT,20120310,one,AAA,200,16,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+</exdump>
+
+		<para>
+		A position update arrives. Again, it's a delete-and-insert, and
+		propagates through the join as such.
+		</para>
+
+		<para>
+		That's the end of the first example. The commentary said that the
+		left outer join would have been better for the logic, so let's make
+		one for the left outer join.  All we need to change is the join type option:
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>left outer</secondary>
+		</indexterm>
+<!-- t/xJoin.t doJoinLeft -->
+<pre>
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "left",
+); # would confess by itself on an error
+</pre>
+
+		<para>
+		Now the positions would pass through even if the currency translation
+		is not available. The same input now produces a different result:
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> cur,OP_INSERT,20120310,USD,1
+> cur,OP_INSERT,20120310,GBP,2
+> cur,OP_INSERT,20120310,EUR,1.5
+> pos,OP_INSERT,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		So far things are going the same as for the inner join.
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+</exdump>
+
+		<para>
+		The first difference: even though there is no translation for RUR, the
+		row still passes through (with the field <pre>toUsd</pre> being NULL).
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		This is also unchanged.
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+</exdump>
+
+		<para>
+		The second difference: since this row from the left side has already
+		passed through, just sending another INSERT for it would make the data
+		inconsistent. The original result without the translation must be
+		deleted first, and then a new one, with translation, inserted. JoinTwo
+		is smart enough to figure it out all by itself.
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+</exdump>
+
+		<para>
+		The same logic works for the deletes, only backwards: when the
+		translation for GBP is deleted, the result rows that used it change to
+		the lose the translation.
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+</exdump>
+
+		<para>
+		And again, when the new translation for GBP comes in, the DELETE-INSERT
+		sequence is done for each of the rows. As you can see, the update of
+		the GBP translation in the last two snippets worked in not the most efficient way.
+		Fundamentally, if we knew that a DELETE of GBP will be immediately
+		followed by an INSERT, we could skip inserting and then deleting the
+		rows with the NULL in <pre>toUsd</pre>. But we don't know, and in Triceps there is
+		no way to know it.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>no primary key</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>with collapse</secondary>
+		</indexterm>
+		<para>
+		If you really, really want to avoid the propagation of these
+		intermediate changes, insert after the join a Collapse template described in 
+		XXXX add the reference
+		, and flush it only
+		after the whole update has been processed. There will be more overhead
+		in the Collapse itself, but all the logic below it will skip the
+		intermediate changes. If this logic below is heavy-weight, that might
+		be an overall win. A caveat though: a Collapse requires that the data
+		has a primary key, a JoinTwo doesn't require its result (nor its
+		inputs) to have a primary key. Because of this, the collapse might not
+		work right with every possible join, you'd have to limit yourself to
+		the joins that produce the data with a primary key.
+		</para>
+
+<!-- t/xJoin.t doJoinLeft, except day and clear -->
+<exdump>
+> pos,OP_DELETE,20120310,one,AAA,100,15,USD
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="100" price="15" currency="USD" toUsd="1" 
+> pos,OP_INSERT,20120310,one,AAA,200,16,USD
+join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+</exdump>
+
+		<para>
+		And the rest is again the same as with an inner join.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
