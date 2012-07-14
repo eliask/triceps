@@ -1937,6 +1937,17 @@ sub computeAverage9 # (table, context, aggop, opcode, rh, state, args...)
 		</para>
 
 		<para>
+		To show the order of aggregator calls relative to the table label
+		calls, I've added the labels that print the updates form the table:
+		</para>
+
+<!-- t/xAgg.t doPrintCall -->
+<pre>
+my $lbPre = makePrintLabel("lbPre", $tWindow->getPreLabel());
+my $lbOut = makePrintLabel("lbOut", $tWindow->getOutputLabel());
+</pre>
+
+		<para>
 		To make keeping track of the printout easier, I broke up the sequence
 		into multiple fragments, with a description after each fragment:
 		</para>
@@ -1944,8 +1955,12 @@ sub computeAverage9 # (table, context, aggop, opcode, rh, state, args...)
 <!-- t/xAgg.t doPrintCall -->
 <exdump>
 > OP_INSERT,1,AAA,10,10
+tWindow.pre OP_INSERT id="1" symbol="AAA" price="10" size="10" 
+tWindow.out OP_INSERT id="1" symbol="AAA" price="10" size="10" 
 AO_AFTER_INSERT OP_INSERT 1 id="1" symbol="AAA" price="10" size="10" 
 > OP_INSERT,2,BBB,100,100
+tWindow.pre OP_INSERT id="2" symbol="BBB" price="100" size="100" 
+tWindow.out OP_INSERT id="2" symbol="BBB" price="100" size="100" 
 AO_AFTER_INSERT OP_INSERT 1 id="2" symbol="BBB" price="100" size="100" 
 </exdump>
 
@@ -1959,6 +1974,8 @@ AO_AFTER_INSERT OP_INSERT 1 id="2" symbol="BBB" price="100" size="100"
 <exdump>
 > OP_INSERT,3,AAA,20,20
 AO_BEFORE_MOD OP_DELETE 1 NULL
+tWindow.pre OP_INSERT id="3" symbol="AAA" price="20" size="20" 
+tWindow.out OP_INSERT id="3" symbol="AAA" price="20" size="20" 
 AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="AAA" price="20" size="20" 
 </exdump>
 
@@ -1973,6 +1990,10 @@ AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="AAA" price="20" size="20"
 <exdump>
 > OP_INSERT,5,AAA,30,30
 AO_BEFORE_MOD OP_DELETE 2 NULL
+tWindow.pre OP_DELETE id="1" symbol="AAA" price="10" size="10" 
+tWindow.out OP_DELETE id="1" symbol="AAA" price="10" size="10" 
+tWindow.pre OP_INSERT id="5" symbol="AAA" price="30" size="30" 
+tWindow.out OP_INSERT id="5" symbol="AAA" price="30" size="30" 
 AO_AFTER_DELETE OP_NOP 2 id="1" symbol="AAA" price="10" size="10" 
 AO_AFTER_INSERT OP_INSERT 2 id="5" symbol="AAA" price="30" size="30" 
 </exdump>
@@ -2004,6 +2025,10 @@ AO_AFTER_INSERT OP_INSERT 2 id="5" symbol="AAA" price="30" size="30"
 > OP_INSERT,3,BBB,20,20
 AO_BEFORE_MOD OP_DELETE 2 NULL
 AO_BEFORE_MOD OP_DELETE 1 NULL
+tWindow.pre OP_DELETE id="3" symbol="AAA" price="20" size="20" 
+tWindow.out OP_DELETE id="3" symbol="AAA" price="20" size="20" 
+tWindow.pre OP_INSERT id="3" symbol="BBB" price="20" size="20" 
+tWindow.out OP_INSERT id="3" symbol="BBB" price="20" size="20" 
 AO_AFTER_DELETE OP_INSERT 1 id="3" symbol="AAA" price="20" size="20" 
 AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="BBB" price="20" size="20" 
 </exdump>
@@ -2023,6 +2048,8 @@ AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="BBB" price="20" size="20"
 <exdump>
 > OP_DELETE,5
 AO_BEFORE_MOD OP_DELETE 1 NULL
+tWindow.pre OP_DELETE id="5" symbol="AAA" price="30" size="30" 
+tWindow.out OP_DELETE id="5" symbol="AAA" price="30" size="30" 
 AO_AFTER_DELETE OP_INSERT 0 id="5" symbol="AAA" price="30" size="30" 
 AO_COLLAPSE OP_NOP 0 NULL
 </exdump>
@@ -2040,6 +2067,60 @@ AO_COLLAPSE OP_NOP 0 NULL
 		aggregator's group state if it needs any cleaning. It has the opcode
 		<pre>OP_NOP</pre> because no rows need to be sent.
 		</para>
+
+		<indexterm>
+			<primary>table</primary>
+			<secondary>execution order</secondary>
+		</indexterm>
+		<para>
+		To recap, the high-level order of the table operation processing is:
+		</para>
+
+		<orderedlist>
+		<listitem>
+		Execute the replacement policies on all the indexes to find all the
+		rows that need to be deleted first.
+		</listitem>
+
+		<listitem>
+		If any of the index policies forbid the modification, return 0.
+		</listitem>
+
+		<listitem>
+		Call all the aggregators with <pre>AO_BEFORE_MOD</pre> on all the affected rows.
+		</listitem>
+
+		<listitem>
+		Send these aggregator results.
+		</listitem>
+
+		<listitem>
+			<para>
+			For each affected row:
+			</para>
+			<orderedlist>
+			<listitem>
+			Call the "pre" label (if it has any labels chained to it).
+			</listitem>
+
+			<listitem>
+			Modify the row in the table.
+			</listitem>
+
+			<listitem>
+			Call the "out" label.
+			</listitem>
+			</orderedlist>
+		</listitem>
+
+		<listitem>
+		Call all the aggregators with <pre>AO_AFTER_*</pre>, on all the affected rows.
+		</listitem>
+
+		<listitem>
+		Send these aggregator results.
+		</listitem>
+		</orderedlist>
 	</sect1>
 
 	<sect1 id="sc_aggregation_multi_idx">

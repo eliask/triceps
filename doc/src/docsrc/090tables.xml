@@ -1219,6 +1219,88 @@ $ttWindow->addSubIndex("bySymbol", $itSymbol);
 		along the way. For example, find the average price of the last two
 		trades, and then do something useful with it.
 		</para>
+
+		<para>
+		There is also a piece of information that you can find without iteration:
+		the size of the group.
+		</para>
+
+		<indexterm>
+			<primary>index</primary>
+			<secondary>group size</secondary>
+		</indexterm>
+<pre>
+$size = $table->groupSizeIdx($idxType, $row_or_rh);
+</pre>
+
+		<para>
+		This information is important for the joins, and iterating every time through the
+		group is inefficient if all you want to get is the group size. Since when you need
+		this data you usually have the row and not the row handle, this operation
+		accepts either and implicitly performs a <pre>findIdx()</pre> on the row to find the
+		row handle. Moreover, even if it receives the argument of a row handle that
+		is not in the table, it will also automatically perform a <pre>findIdx()</pre> on it
+		(though calling it for a row handle in
+		the table is more efficient because the group would not need to be
+		looked up first). 
+		</para>
+
+		<para>
+		If there is no such group in the table, the result will be 0. 
+		</para>
+
+		<para>
+		The <pre>$idxType</pre> argument is the non-leaf parent index of the group. (Using a
+		leaf index type is not an error but it always returns 0, because there
+		are no groups under it). It's basically the same index type as you
+		would use in <pre>findIdx()</pre> to find the first row of the group
+		or in <pre>firstOfGroupIdx()</pre> or <pre>nextGroupIdx()</pre> to find the boundaries
+		of thr group.
+		Remember, a non-leaf
+		index type defines the groups, and the nested index types under it
+		define the order in those groups (and possibly further break them down
+		into sub-groups).
+		</para>
+
+		<para>
+		It's a bit confusing, so let's recap with another example.
+		If you have a table type defined as:
+		</para>
+
+<pre>
+our $ttPosition = Triceps::TableType->new($rtPosition)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "customer", "symbol" ])
+	) 
+	->addSubIndex("currencyLookup", # for joining with currency conversion
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	) 
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	) 
+or confess "$!";
+</pre>
+
+		<para>
+		then it would make sense to call <pre>groupSizeIdx()</pre>, 
+		<pre>firstOfGroupIdx()</pre> and <pre>nextGroupIdx()</pre>
+		with the indexes
+		<quote>currencyLookup</quote> or <quote>byDate</quote> 
+		but not with <quote>primary</quote>,
+		<quote>currencyLookup/grouping</quote> nor <quote>byDate/grouping</quote>.  You can call
+		<pre>findIdx()</pre> with any index, but for
+		<quote>currencyLookup</quote> or <quote>byDate</quote> it would return the first row of the group
+		while for
+		<quote>primary</quote>, <quote>currencyLookup/grouping</quote> or <quote>byDate/grouping</quote>
+		it would return the only matching row. On the other hand, for iteration in a group, it makes
+		sense to call <pre>nextIdx()</pre> only on 
+		<quote>primary</quote>, <quote>currencyLookup/grouping</quote> or <quote>byDate/grouping</quote>.
+		Calling <pre>nextIdx()</pre> on the non-leaf index types is not an error
+		but it would in effect resolve to the same thing as using their
+		first leaf sub-indexes.
+		</para>
 	</sect1>
 
 	<sect1 id="sc_table_secondary">
@@ -1640,7 +1722,7 @@ sub compAscDesc # ($row1, $row2, $numFldAsc, $strFldDesc)
 }
 
 my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
-	\&compAscDesc, "a", "b") or die "$!";
+	\&compAscDesc, "a", "b") or confess "$!";
 </pre>
 
 		<para>
@@ -1712,7 +1794,7 @@ sub initNumStr # ($tabt, $idxt, $rowt, @args)
 }
 
 my $sit = Triceps::IndexType->newPerlSorted("by_a_b", \&initNumStr,
-	\&compAscDesc, "a", "b") or die "$!";
+	\&compAscDesc, "a", "b") or confess "$!";
 </pre>
 
 		<para>
