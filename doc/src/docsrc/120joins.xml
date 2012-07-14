@@ -1945,6 +1945,236 @@ join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quanti
 		And the rest is again the same as with an inner join.
 		</para>
 
+		<indexterm>
+			<primary>join</primary>
+			<secondary>right outer</secondary>
+		</indexterm>
+		<para>
+		JoinTwo can do a right outer join too, just use the type <quote>right</quote>. It
+		works in exactly the same way as the left outer join, just with a
+		different table. So much the same that it's not even worth a separate
+		example.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>full outer</secondary>
+		</indexterm>
+		<para>
+		Now, the full outer join. 
+		The full outer joins usually
+		get used with a variation of the <quote>fork-join</quote> topology described in the
+		XXX add reference. 
+		In it the processing of a row can be forked into
+		multiple parallel paths, each path doing an optional part of the
+		comuptation and either providing a result row or not,
+		eventually with all the parts merged back together into one row. 
+		The full outer join is a convenient
+		way to do this merge: the paths that didn't produce the result get
+		quietly ignored, and the results that were produced get merged back
+		into a single row. The row in such situations is usually identified by
+		a primary key, so the partial results can find each other. This scheme
+		makes the most sense when the paths are executed in the parallel
+		threads, or when the processing on some paths may get delayed and then
+		continued later. If the processing is single-threaded and fast, Triceps
+		provides a more convenient procedural way of getting the same result:
+		just call every path in order and merge the results from them
+		procedurally, and you won't have to keep the intermediate results in
+		their tables forever, nor delete them manually.
+		</para>
+
+		<para>
+		Even though that use is typical, it has only the 1:1 record matching
+		and does not highlight all the abilities of the JoinTwo. So, let's come
+		up with another example that does.
+		</para>
+
+		<para>
+		The positions-and-currencies do not lend itself easily to 
+		a full outer join but we'll make them do.  Suppose that you want to get the total count of
+		positions (per symbol, or altogether), or maybe the total value, for
+		every currency. Including those for which we have the exchange rates
+		but no positions, for them the count should simply be 0 (or maybe
+		NULL). And those for which there are positions but no exchange rate translations.
+		This is a job for a full outer join, followed by an aggregation. The
+		join has the type <quote>outer</quote> and looks like this:
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<pre>
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "outer",
+); # would confess by itself on an error
+</pre>
+
+		<para>
+		As before, the aggregation part will be left to the
+		imagination of the reader. 
+		This join has the many-to-one (M:1) row matching, since there might be
+		multiple positions on the left matching one currency rate translation
+		on the right. This will create interesting effects in the output,
+		let's look at it:
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> cur,OP_INSERT,20120310,GBP,2
+join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		The first translation gets through, even though there is no position for it yet.
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> pos,OP_INSERT,20120310,two,AAA,100,8,GBP
+join.leftLookup.out OP_DELETE date="20120310" currency="GBP" toUsd="2" 
+join.leftLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		The first position for an existing translation comes in. Now the GBP
+		row has a match, so the unmatched row gets deleted and a matched one
+		gets inserted instead.
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> pos,OP_INSERT,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+</exdump>
+
+		<para>
+		The second position for GBP works differently: since there is no
+		unmatched row any more (it was taken care of by the first position),
+		there is nothing to delete. Just the second matched row gets
+		inserted. 
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> pos,OP_INSERT,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+</exdump>
+
+		<para>
+		The position without a matching currency get through as well.
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> cur,OP_INSERT,20120310,RUR,0.04
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+</exdump>
+
+		<para>
+		Now the RUR translation becomes available and it has to do the same
+		things as we've seen before, only on the other side: delete the
+		unmatched record and replace it with the matched one.
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> cur,OP_DELETE,20120310,GBP,2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+> cur,OP_INSERT,20120310,GBP,2.2
+join.rightLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.rightLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" 
+join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+</exdump>
+
+		<para>
+		Then the GBP translation gets updated. First the old translation gets
+		deleted and then the new one inserted. When the translation gets
+		deleted, all the positions in GBP lose their match. So the matched rows
+		gets deleted and replaced with the unmatched ones. When the new GBP
+		translation is inserted, the replacement goes in the other
+		direction.
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> pos,OP_DELETE,20120310,three,BBB,200,80,GBP
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+</exdump>
+
+		<para>
+		When this position goes away, the row gets deleted from the result as
+		well. However it was not the only position in GBP, so there is no need
+		to insert an unmatched record for GBP.
+		</para>
+
+<!-- t/xJoin.t doJoinOuter -->
+<exdump>
+> pos,OP_DELETE,20120310,three,AAA,100,300,RUR
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04" 
+</exdump>
+
+		<para>
+		This position was the last one in RUR. So when it gets deleted, the RUR
+		translation has no match any more. That means, after deleting the
+		matched row from the results, the unmatched row has to be
+		inserted to keep the balance right.
+		</para>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>to-many</secondary>
+		</indexterm>
+		<para>
+		This business with keeping track of the unmatched rows is
+		not unique to the full outer joins. Remember, it was showing in the
+		left outer joins too, and the right outer joins are no exception
+		either. When the first matching row gets inserted or the last matching
+		row gets deleted on the side that is opposite to the "outer side", the
+		unmatched rows have to be handled in the result. (That would be the
+		right side for the left outer joins, the left side for the right outer
+		joins, and either side for the full outer joins).
+		The special thing about the M:1 (and 1:M and M:M) joins is that
+		there may be more than one matching row.
+		On insertion, the second and following matching rows produce a different 
+		effect than the first one. On deletion, the opposite: all the
+		rows but the last work differently from the last one.
+		It's not limited to the full outer joins. M:1 or M:M with a right outer
+		join, and 1:M or M:M with a left outer join will do it too.
+		</para>
+
+		<para>
+		If you're like me, by now you'd be wondering, how does it work? If the
+		<quote>opposite side</quote> is of <quote>one</quote> variety (:1 or 1:), which can be known from
+		it using a leaf index for the join, then every insert is the first
+		insert of a matching row for this key, and every delete is the delete
+		of the last row for this key. Which means, do the empty-match business
+		every time.
+		</para>
+
+		<para>
+		If the <quote>opposite side</quote> is of the <quote>many</quote> variety (:M or M:), with a
+		non-leaf index, then things get more complicated. The join works by
+		processing the rowops coming out of the argument tables. When it gets
+		the rowop in such a situation, it goes to the table and checks, was it
+		the first (or last) row for this key? And then uses this knowledge to
+		act.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
 		<para>
 		</para>
 
