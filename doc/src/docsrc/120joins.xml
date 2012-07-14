@@ -2168,6 +2168,84 @@ join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04"
 		the first (or last) row for this key? And then uses this knowledge to
 		act.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_jointwo_keys">
+		<title>The key field duplication in JoinTwo</title>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>key field duplication</secondary>
+		</indexterm>
+		<para>
+		JoinTwo in its raw form has the same problem of the key field duplication
+		as LookupJoin (described in
+		<xref linkend="sc_joins_lookupjoin_keys" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;),
+		only worse because the table-to-table outer joins must work with the updates from
+		any side.
+		So JoinTwo has more magic built into it: it knows how to recognize this
+		situation and have the key fields copied into the result from whatever
+		side happens to be present for a particular row, and does this by default. 
+		It makes these fields always available on both sides. And along the way it also takes care of
+		modifying the option <quote>rightFields</quote> or <quote>leftFields</quote> to actually pass
+		through only one of the copies.
+		</para>
+
+		<para>
+		The default behavior is good enough for most situations. But if you want
+		more control,
+		it's done with the option <quote>fieldsUniqKey</quote>. The default value
+		of this option is <quote>first</quote>. It means: Enable the magic for copying the
+		fields from the non-NULL side to the NULL side. Look at the option
+		<quote>fieldsLeftFirst</quote> and figure out, which side goes first in the result.
+		Let the key fields pass on that side unchanged (though the user can
+		block them on that side manually too, or possibly rename them, it's his
+		choice). On the other side, automatically generate the blocking specs
+		for the key fields and prepend them to that side's result
+		specification. It's smart enough to know that an undefined <quote>leftFields</quote>
+		or <quote>rightFields</quote> means the same as <quote>.*</quote>, so an undefined result spec is
+		replaced by the blocking specs followed by <quote>.*</quote>. If you later call the
+		methods
+		</para>
+
+<pre>
+$fspec = $join->getLeftFields();
+$fspec = $join->getRightFields();
+</pre>
+
+		<para>
+		then you will actually get back the modified field specs.
+		</para>
+
+		<para>
+		If you want the key fields to be present in a different location in the
+		result, you can set <quote>fieldsUniqKey</quote> to <quote>left</quote> or <quote>right</quote>. That will
+		make them pass through on the selected side, and the blocking would be
+		automatically added on the other side.
+		</para>
+
+		<para>
+		For more control yet, set this option to <quote>manual</quote>. The magic for making
+		the key fields available on both sides will still be enabled, but no
+		automatic blocking. You can pick and choose the result fields manually,
+		exactly as you want. Remember though that there can't be multiple
+		fields with the same name in the result, so if both sides have these
+		fields named the same, you've got to block or rename one of the two
+		copies.
+		</para>
+
+		<para>
+		The final choice is <quote>none</quote>: it simply disables the key field magic.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
