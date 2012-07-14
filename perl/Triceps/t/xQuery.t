@@ -361,7 +361,7 @@ sub new # ($class, $table, $name)
 		my $rh = $self->{table}->begin();
 		for (; !$rh->isNull(); $rh = $rh->next()) {
 			$self->{unit}->call(
-				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()));
 		}
 		# The end is signaled by OP_NOP with empty fields.
 		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
@@ -467,7 +467,7 @@ sub new # ($class, $unit, $tabType, $name)
 		my $rh = $self->{table}->begin();
 		for (; !$rh->isNull(); $rh = $rh->next()) {
 			$self->{unit}->call(
-				$self->{resLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+				$self->{resLabel}->makeRowop("OP_INSERT", $rh->getRow()));
 		}
 		# The end is signaled by OP_NOP with empty fields.
 		$self->{unit}->makeArrayCall($self->{resLabel}, "OP_NOP");
@@ -608,7 +608,7 @@ sub new # ($class, $optionName => $optionValue ...)
 		my $rh = $self->{table}->begin();
 		for (; !$rh->isNull(); $rh = $rh->next()) {
 			$self->{unit}->call(
-				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()));
 		}
 		# The end is signaled by OP_NOP with empty fields.
 		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
@@ -726,7 +726,7 @@ sub new # ($class, $optionName => $optionValue ...)
 				}
 			}
 			$self->{unit}->call(
-				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+				$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()));
 		}
 		# The end is signaled by OP_NOP with empty fields.
 		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
@@ -930,7 +930,7 @@ sub new # ($class, $optionName => $optionValue ...)
 		for (; !$rh->isNull(); $rh = $rh->next()) {
 			if (!defined $cmp || &$cmp($query, $rh->getRow())) {
 				$self->{unit}->call(
-					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()));
 			}
 		}
 		# The end is signaled by OP_NOP with empty fields.
@@ -1110,7 +1110,7 @@ sub new # ($class, $optionName => $optionValue ...)
 		for (; !$rh->isNull(); $rh = $rh->next()) {
 			if (&$cmp($query, $rh->getRow())) {
 				$self->{unit}->call(
-					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()))
+					$self->{outLabel}->makeRowop("OP_INSERT", $rh->getRow()));
 			}
 		}
 		# The end is signaled by OP_NOP with empty fields.
@@ -1314,7 +1314,7 @@ sub new # ($class, $optionName => $optionValue ...)
 		for (; !$rh->isNull(); $rh = $rh->next()) {
 			$self->{unit}->call(
 				$self->{outLabel}->makeRowop("OP_INSERT", 
-					&{$self->{projectFunc}}($rh->getRow())))
+					&{$self->{projectFunc}}($rh->getRow())));
 		}
 		# The end is signaled by OP_NOP with empty fields.
 		$self->{unit}->makeArrayCall($self->{outLabel}, "OP_NOP");
