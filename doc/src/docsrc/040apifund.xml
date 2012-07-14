@@ -102,7 +102,51 @@ See the file COPYRIGHT for the copyright notice and license information
 	</sect1>
 
 	<sect1 id="sc_confessions">
-		<title>Deaths and confessions</title>
+		<title>Errors, deaths and confessions</title>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		When a Triceps method detects an error, it has two ways of reporting it:
+		</para>
+
+		<orderedlist>
+		<listitem>
+		Set the error code in the special variable <pre>$!</pre> and return an <pre>undef</pre>.
+		This is the <quote>traditional</quote> approach that is gradually replaced by the other one.
+		</listitem>
+
+		<listitem>
+		Set the error code in the special variable <pre>$@</pre> (and also <pre>$!</pre>, 
+		for compatibility with the other way) and tell the Perl interpreter to die.
+		This is the <quote>new</quote> approach. 
+		</listitem>
+		</orderedlist>
+
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
+		<para>
+		Currently most of the methods inplemented in &Cpp; through XS return the
+		errors in the first way but some have been converted to the new second way.
+		Changing all the code at once is a lot
+		of work, so the code is being converted to the new way gradually.
+		The methods implemented in Perl use the second way. The methods using the
+		second way are marked in their documentation as such. I hesitate to give
+		a whole list of them, because the list changes as more methods get converted
+		to the new way of error handling.
+		</para>
+
+		<para>
+		When you use the methods of the first group, you need to check their
+		return code. The common idiom is:
+		</para>
+
+<pre>
+my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+	or confess "$!";
+</pre>
 
 		<indexterm>
 			<primary>die</primary>
@@ -113,9 +157,10 @@ See the file COPYRIGHT for the copyright notice and license information
 		<indexterm>
 			<primary>Carp</primary>
 		</indexterm>
+
 		<para>
-		The Triceps code and the examples in this manual use the module
-		<pre>Carp</pre>, and in particular its method <pre>confess()</pre> extensively.
+		It checks the return value and dies with an error message. <pre>confess</pre> is
+		a nicer form of <pre>die</pre> and comes from the module <pre>Carp</pre>.
 		<pre>Carp</pre> is a standard part of modern Perl, so all you need to do is just say
 		</para>
 
@@ -124,32 +169,115 @@ use Carp;
 </pre>
 
 		<para>
-		It provides the smarter ways to report the fatal errors found in the
-		libraries. The problem with the simple <pre>die()</pre> is that it reports an
+		No need to download and install anything.
+		</para>
+
+		<para>
+		The problem with the simple <pre>die</pre> is that it reports an
 		error but prints only the location where it has been called, which may
 		be ten layers deep inside a library, not a full stack trace. The
-		functions in <pre>Carp</pre> fix that. The most interesting one is <pre>confess()</pre>. It
-		works just like <pre>die()</pre> but prints the whole stack trace.
+		functions in <pre>Carp</pre> fix that. <pre>confess</pre> is 
+		the most interesting one of them. It
+		works just like <pre>die</pre> but prints the whole stack trace.
 		</para>
 
 		<para>
 		The full description of Carp is available at 
 		<ulink url="http://perldoc.perl.org/Carp.html"/>.
-		It has more functions: for warnings, and to report only the location of
-		the call from the user code to the library. However I find the full
+		It has more functions, however I find the full
 		stack trace the most helpful thing in any case.
 		</para>
 
-		<indexterm>
-			<primary>XS</primary>
-		</indexterm>
 		<para>
-		When the Triceps &Cpp; code detects errors, it also gets reported back to
-		Perl by confessing. With some exceptions though: the errors
+		The nice part abour writing <pre>or confess</pre> is that the error message
+		is fully controlled. If the error happens in a template, the template
+		can produce a smarter message, telling what was wrong with it
+		arguments on the high level, for example:
+		</para>
+
+<pre>
+my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+	or confess "Query2: bad table type, table creation failed: $!";
+</pre>
+
+		<para>
+		But the problem is that you need
+		to not forget writing <pre>or confess</pre> after every call. Also,
+		it's inconvenient when the result of one call is passed directly
+		to another one, like:
+		</para>
+
+<pre>
+$self->{unit}->call(
+	$self->{resLabel}->makeRowop("OP_INSERT", $rh->getRow()));
+</pre>
+
+		<para>
+		Here <pre>call()</pre> is a method with the second way of the error reporting, and
+		it doesn't need <pre>or confess</pre>. But <pre>makeRowop()</pre> and <pre>getRow()</pre> use the
+		first way. Writing <pre>or confess</pre> for each of them would work but
+		would be quite tedious:
+		</para>
+
+<pre>
+$self->{unit}->call(
+	$self->{resLabel}->makeRowop(
+		"OP_INSERT", $rh->getRow() or confess "$!"
+	) or confess "$!"
+);
+</pre>
+
+		<para>
+		Because of this, the error checking in such nested calls usually gets skipped
+		and the error manifests itself by the enveloping call dying with the XS error
+		of bad argument type. Which doesn't print the stack trace and loses the information
+		about the original error.
+		</para>
+
+		<para>
+		The <quote>new</quote> second way of error reporting is much better in this regard. It
+		reports the error where and when it happens. It executes <pre>confess</pre>
+		directly, which includes the stack trace into the error message
+		and then proceeds like classic <pre>die</pre>. This includes the code implemented
+		both in Perl and in &Cpp; XS.
+		With some exceptions though: the errors
 		detected by the code auto-generated in XS, such as bad call arguments,
-		still report through the plain <pre>die()</pre>. I haven't figured out yet if there
-		is a way to make all the cases of <pre>die()</pre> work like <pre>confess()</pre>. Maybe there
+		still report through the plain <pre>die</pre>. I haven't figured out yet if there
+		is a way to make all the cases of <pre>die</pre> work like <pre>confess</pre>. Maybe there
 		is, maybe by intercepting the <pre>SIGDIE</pre> <quote>signal</quote>. Or maybe there isn't any.
+		At least the custom type checking for XS will eventually be changed to use <pre>confess</pre>.
+		</para>
+
+		<para>
+		If you want to intercept
+		the error to add more information to the message, use <pre>eval</pre>:
+		</para>
+
+<pre>
+eval { $self->{unit}->call($rowop) } or confess "Bad rowop argument:\n$@";
+</pre>
+
+		<para>
+		I have some better ideas about reporting the errors in the nested
+		templated but they need to be implemented and tried out yet.
+		</para>
+
+		<para>
+		When the Perl code inside a label or tracer or aggregator or index sorting handler dies, the &Cpp;
+		infrastructure around it catches the error. Here Triceps also has the old
+		and the new way of dealing with it. The old way just prints the error
+		on stderr and continues like nothing has happened. It's still used for
+		the tracers, aggregators and index sorting. The new way unrolls the stack trace through the
+		&Cpp; code and passes the <pre>die</pre> request to the Perl code that called it.
+		The labels have been converted to this new way. When one Perl label calls another
+		Perl label that calls the third Perl label, the call sequence goes in layers of 
+		Perl&emdash;&Cpp;&emdash;Perl&emdash;&Cpp;&emdash;Perl&emdash;&Cpp;&emdash;Perl. 
+		If that last label has its Perl code die
+		and there are no <pre>eval</pre>s in between, the stack will be correctly unwound
+		back through all these layers and reported in the error message.  The &Cpp;
+		code will include the reports of all the chained label calls as well.
+		If one of the intermediate Perl layers wraps the call in <pre>eval</pre>,
+		it will receive the error message with the stack trace up to that point.
 		</para>
 	</sect1>
 
