@@ -1034,9 +1034,9 @@ $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
 	&Triceps::EM_CALL, "tWindow") or confess "$!";
 
-# label to print the result of aggregation
-my $lbAverage = makePrintLabel("lbAverage", 
-	$tWindow->getAggregatorLabel("aggrAvgPrice"));
+# labels to print the table updates
+my $lbPre = makePrintLabel("lbPre", $tWindow->getPreLabel());
+my $lbOut = makePrintLabel("lbOut", $tWindow->getOutputLabel());
 
 while(&readLine) {
 	chomp;
@@ -1063,23 +1063,39 @@ $result = undef;
 #print $result;
 ok($result, 
 '> OP_INSERT,1,AAA,10,10
+tWindow.pre OP_INSERT id="1" symbol="AAA" price="10" size="10" 
+tWindow.out OP_INSERT id="1" symbol="AAA" price="10" size="10" 
 AO_AFTER_INSERT OP_INSERT 1 id="1" symbol="AAA" price="10" size="10" 
 > OP_INSERT,2,BBB,100,100
+tWindow.pre OP_INSERT id="2" symbol="BBB" price="100" size="100" 
+tWindow.out OP_INSERT id="2" symbol="BBB" price="100" size="100" 
 AO_AFTER_INSERT OP_INSERT 1 id="2" symbol="BBB" price="100" size="100" 
 > OP_INSERT,3,AAA,20,20
 AO_BEFORE_MOD OP_DELETE 1 NULL
+tWindow.pre OP_INSERT id="3" symbol="AAA" price="20" size="20" 
+tWindow.out OP_INSERT id="3" symbol="AAA" price="20" size="20" 
 AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="AAA" price="20" size="20" 
 > OP_INSERT,5,AAA,30,30
 AO_BEFORE_MOD OP_DELETE 2 NULL
+tWindow.pre OP_DELETE id="1" symbol="AAA" price="10" size="10" 
+tWindow.out OP_DELETE id="1" symbol="AAA" price="10" size="10" 
+tWindow.pre OP_INSERT id="5" symbol="AAA" price="30" size="30" 
+tWindow.out OP_INSERT id="5" symbol="AAA" price="30" size="30" 
 AO_AFTER_DELETE OP_NOP 2 id="1" symbol="AAA" price="10" size="10" 
 AO_AFTER_INSERT OP_INSERT 2 id="5" symbol="AAA" price="30" size="30" 
 > OP_INSERT,3,BBB,20,20
 AO_BEFORE_MOD OP_DELETE 2 NULL
 AO_BEFORE_MOD OP_DELETE 1 NULL
+tWindow.pre OP_DELETE id="3" symbol="AAA" price="20" size="20" 
+tWindow.out OP_DELETE id="3" symbol="AAA" price="20" size="20" 
+tWindow.pre OP_INSERT id="3" symbol="BBB" price="20" size="20" 
+tWindow.out OP_INSERT id="3" symbol="BBB" price="20" size="20" 
 AO_AFTER_DELETE OP_INSERT 1 id="3" symbol="AAA" price="20" size="20" 
 AO_AFTER_INSERT OP_INSERT 2 id="3" symbol="BBB" price="20" size="20" 
 > OP_DELETE,5
 AO_BEFORE_MOD OP_DELETE 1 NULL
+tWindow.pre OP_DELETE id="5" symbol="AAA" price="30" size="30" 
+tWindow.out OP_DELETE id="5" symbol="AAA" price="30" size="30" 
 AO_AFTER_DELETE OP_INSERT 0 id="5" symbol="AAA" price="30" size="30" 
 AO_COLLAPSE OP_NOP 0 NULL
 ');
