@@ -2326,6 +2326,275 @@ $fspec = $join->getRightFields();
 		no loss, you can safely override the type check and still get the
 		correct result.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_jointwo_inputfilter">
+		<title>JoinTwo input event filtering</title>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>input filtering</secondary>
+		</indexterm>
+		<para>
+		Let's look at how the business day logic interacts with the joins. It's
+		typical for the business applications to keep the full data for the
+		current day, or a few recent days, then clear the data that became old
+		and maybe keep it only in an aggregated form.
+		</para>
+
+		<para>
+		So, let's add the business day logic to the left join example. It uses
+		the indexes by date to find the rows that have become old:
+		</para>
+
+<!-- t/xJoin.t, collected together form fragments -->
+<pre>
+# exchange rates, to convert all currencies to USD
+our $ttToUsd = Triceps::TableType->new($rtToUsd)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+	)
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttToUsd->initialize() or confess "$!";
+
+# the positions in the original currency
+our $ttPosition = Triceps::TableType->new($rtPosition)
+	->addSubIndex("primary",
+		Triceps::IndexType->newHashed(key => [ "date", "customer", "symbol" ])
+	)
+	->addSubIndex("currencyLookup", # for joining with currency conversion
+		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+	->addSubIndex("byDate", # for cleaning by date
+		Triceps::SimpleOrderedIndex->new(date => "ASC")
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttPosition->initialize() or confess "$!";
+
+# remember the indexes for the future use
+our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or confess "$!";
+our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or confess "$!";
+
+# Go through the table and clear all the rows where the field "date"
+# is less than the date argument. The index type orders the table by date.
+sub clearByDate($$$) # ($table, $ixt, $date)
+{
+	my ($table, $ixt, $date) = @_;
+
+	my $next;
+	for (my $rhit = $table->beginIdx($ixt); !$rhit->isNull(); $rhit = $next) {
+		last if (($rhit->getRow()->get("date")) >= $date);
+		$next = $rhit->nextIdx($ixt); # advance before removal
+		$table->remove($rhit);
+	}
+}
+</pre>
+
+		<para>
+		The table types are the same as have been already shown before, they've been
+		copied here for convenience. <pre>clearByDate()</pre> is an universal function that
+		can clear the contents of any table by date, provided that the date is
+		in the field <quote>date</quote> and the index type on this table that orders the
+		rows by date is given as an argument. The index with ordering by date
+		must be not just a leaf Ordered index, but have a FIFO index nested in it.
+		Without that FIFO index, the Ordered index would allow only one row for
+		each date.
+		</para>
+
+		<para>
+		The main loop gets extended with a few more commands:
+		</para>
+
+<!-- t/xJoin.t, doJoinLeft -->
+<pre>
+our $businessDay = undef;
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "left",
+); # would confess by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "cur") {
+		$uJoin->makeArrayCall($tToUsd->getInputLabel(), @data);
+	} elsif ($type eq "pos") {
+		$uJoin->makeArrayCall($tPosition->getInputLabel(), @data);
+	} elsif ($type eq "day") { # set the business day
+		$businessDay = $data[0] + 0; # convert to an int
+	} elsif ($type eq "clear") { # clear the previous day
+		# flush the left side first, because it's an outer join
+		&clearByDate($tPosition, $ixtPositionByDate, $businessDay);
+		&clearByDate($tToUsd, $ixtToUsdByDate, $businessDay);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		The roll-over to the next business day (after the input data previously
+		shown with the left join example) then looks like this:
+		</para>
+
+<!-- t/xJoin.t, doJoinLeft -->
+<exdump>
+> day,20120311
+> clear
+join.leftLookup.out OP_DELETE date="20120310" customer="two" symbol="AAA" quantity="100" price="8" currency="GBP" toUsd="2.2" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="AAA" quantity="100" price="300" currency="RUR" toUsd="0.04" 
+join.leftLookup.out OP_DELETE date="20120310" customer="three" symbol="BBB" quantity="200" price="80" currency="GBP" toUsd="2.2" 
+join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quantity="200" price="16" currency="USD" toUsd="1" 
+</exdump>
+
+		<para>
+		Clearing the left-side table before the right-side one is more
+		efficient than the other way around, since this is a left outer join,
+		and since it's an M:1 join. If the
+		right-side table were cleared first, it would first update all the
+		result records to change all the right-side fields in them to NULL, and
+		then the clearing of the left-side table would finally delete these
+		rows. Clearing the left side first removes this churn: it deletes all
+		the rows from the result right away, and then when the right side is
+		cleared, it still tries to look up the matching rows but finds nothing
+		and produces no result. For an inner join the order would
+		not matter: either one would produce the same amount of churn.
+		For a full outer join, the M:1 consideration would come into play,
+		and removing the rows from the left side first would still be more
+		efficient. This way when it removes multiple position rows that match the same currency,
+		all of them but one generate the simple DELETEs, and only the last
+		one would follow up with an INSERT that has only the right-side data
+		in it. That row with the right-side data will get deleted when the
+		currency row gets deleted from the right side. If the right side were deleted
+		first, deleting each row on the right side would cause an output
+		of a DELETE-INSERT result pair for each of its matching 
+		position rows from the
+		left side, and would produce more churn. For the 1:1 or M:M full
+		outer joins, the order would not matter.
+		</para>
+
+		<para>
+		If you don't want these deletions to propagate though the rest of your
+		model, you can just put a filtering logic after the join, to throw away
+		all the modifications for the previous days. Through don't forget that
+		you would have then to delete the previous-day data from the rest of
+		the model's tables manually.
+		</para>
+
+		<para>
+		If you want to keep only the aggregated data, you may want to pass the
+		join output to the aggregator without filtering and then filter the
+		aggregator's output, thus stopping the updates to the aggregation
+		results. You may even have a special logic in the aggregator, that
+		would ignore the groups of the previous days. Both such approaches to
+		the aggregation filtering will be shown in 
+		XXX insert reference time-limited-propagation
+		. And they aren't any
+		less efficient than filtering on the output of the join, because if you
+		filter after the join, you'd still have to remove the rows from the
+		aggregation table, and would still have to filter after the aggregation
+		too.
+		</para>
+
+		<para>
+		Now, suppose that you want to be extra optimal and don't want any join
+		look-ups to happen at all when you delete the old data. JoinTwo has a
+		feature that lets you do that. You can make it receive the events not
+		directly from the tables but after filtering, using the options
+		<quote>leftFromLabel</quote> and <quote>rightFromLabel</quote>:
+		</para>
+
+<!-- t/xJoin.t, doJoinFiltered -->
+<pre>
+our $lbPositionCurrent = $uJoin->makeDummyLabel(
+	$tPosition->getRowType, "lbPositionCurrent") or confess "$!";
+our $lbPositionFilter = $uJoin->makeLabel($tPosition->getRowType,
+	"lbPositionFilter", undef, sub {
+		if ($_[1]->getRow()->get("date") >= $businessDay) {
+			$uJoin->call($lbPositionCurrent->adopt($_[1]));
+		}
+	}) or confess "$!";
+$tPosition->getOutputLabel()->chain($lbPositionFilter) or confess "$!";
+
+our $lbToUsdCurrent = $uJoin->makeDummyLabel(
+	$tToUsd->getRowType, "lbToUsdCurrent") or confess "$!";
+our $lbToUsdFilter = $uJoin->makeLabel($tToUsd->getRowType,
+	"lbToUsdFilter", undef, sub {
+		if ($_[1]->getRow()->get("date") >= $businessDay) {
+			$uJoin->call($lbToUsdCurrent->adopt($_[1]));
+		}
+	}) or confess "$!";
+$tToUsd->getOutputLabel()->chain($lbToUsdFilter) or confess "$!";
+
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftFromLabel => $lbPositionCurrent,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightFromLabel => $lbToUsdCurrent,
+	rightIdxPath => [ "primary" ],
+	type => "left",
+); # would confess by itself on an error
+</pre>
+
+		<para>
+		The same clearing now looks like this:
+		</para>
+
+<!-- t/xJoin.t, doJoinFiltered -->
+<exdump>
+> day,20120311
+> clear
+</exdump>
+
+		<para>
+		No output is coming from the join whatsoever. It all gets cut off
+		before it reaches the join. It's not such a great gain though. Remember
+		that if you want to keep the aggregated data, you would still have to
+		delete the original rows manually from the aggregation table afterwards. And the
+		filtering logic will add overhead, not only during the clearing but all
+		the time.
+		</para>
+
+		<para>
+		If you're not careful with the filtering conditions, it's also easy to
+		make the results of the join inconsistent. This example filters both
+		input tables on the same key field, with the same condition, so the
+		output will stay always consistent. But if any of these elements were
+		missing, it becomes possible to produce inconsistent output that has
+		the DELETEs of different rows than INSERTs, and deletions of the rows
+		that haven't been inserted in the first place. The reason is that even
+		though the input events are filtered, the table look-ups done by JoinTwo aren't. 
+		If some row comes from the right side and gets thrown away by the filter, and then
+		another row comes on the left side, passes the filter, and then finds a
+		match in that thrown-away right-side row, it will use that row in the
+		result. And the join would think that the right-side row has already
+		been seen, and would produce an incorrect update.
+		</para>
+
+		<para>
+		So these options don't make a whole lot of a win but make a major
+		opportunity for a mess, and probably should never be used. And will
+		probably be deleted in the future, unless someone finds a good use for
+		them. They have been added because at the time they provided a roundabout way to do
+		a self-join. But the later fixes to the Table logic make the self-joins
+		possible without this kind of perversions.
+		</para>
 
 		<para>
 		</para>
