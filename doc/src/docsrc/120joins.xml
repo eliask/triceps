@@ -2953,7 +2953,7 @@ __join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" 
 		the code is:
 		</para>
 
-<!-- t/xSelfJoin.t, doArbJoins -->
+<!-- t/xSelfJoin.t, doArbManual -->
 <pre>
 our $rtResult = Triceps::RowType->new(
 	ccy1 => "string", # currency code
@@ -3074,7 +3074,7 @@ makePrintLabel("lbPrint", $lbResult);
 		On feeding the same input data this code produces the result:
 		</para>
 
-<!-- t/xSelfJoin.t, doArbJoins -->
+<!-- t/xSelfJoin.t, doArbManual -->
 <exdump>
 > rate,OP_INSERT,EUR,USD,1.48
 > rate,OP_INSERT,USD,EUR,0.65
@@ -3160,6 +3160,142 @@ __lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.64" rate2="1.98" 
 		of the correctness. The manual self-join would have to mimic this order
 		to produce the correct result. In such a situation perhaps JoinTwo
 		would be easier to use than doing things manually.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_self_lookupjoin">
+		<title>Self-join done with a LookupJoin</title>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>self</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>LookupJoin</primary>
+		</indexterm>
+		<para>
+		The experience with the manual join has made me think about using a
+		similar approach to avoid triplication of the data in the version with
+		join templates. And after some false-starts, I've realized that what
+		that version needs is the LookupJoins. They replace the loops. So, one
+		more version is:
+		</para>
+
+<!-- t/xSelfJoin.t, doArbLookupJoins -->
+<pre>
+our $join1 = Triceps::LookupJoin->new(
+	name => "join1",
+	leftFromLabel => $tRate->getOutputLabel(),
+	leftFields => [ "ccy1", "ccy2", "rate/rate1" ],
+	rightTable => $tRate,
+	rightIdxPath => [ "byCcy1" ],
+	rightFields => [ "ccy2/ccy3", "rate/rate2" ],
+	byLeft => [ "ccy2/ccy1" ], 
+	isLeft => 0,
+); # would die by itself on an error
+
+our $join2 = Triceps::LookupJoin->new(
+	name => "join2",
+	leftFromLabel => $join1->getOutputLabel(),
+	rightTable => $tRate,
+	rightIdxPath => [ "byCcy1", "byCcy12" ],
+	rightFields => [ "rate/rate3" ],
+	byLeft => [ "ccy3/ccy1", "ccy1/ccy2" ], 
+	isLeft => 0,
+); # would die by itself on an error
+
+# now compute the resulting circular rate and filter the profitable loops
+our $rtResult = Triceps::RowType->new(
+	$join2->getResultRowType()->getdef(),
+	looprate => "float64",
+) or confess "$!";
+my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
+my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef, sub {
+	my ($label, $rowop) = @_;
+	my $row = $rowop->getRow();
+
+	my $ccy1 = $row->get("ccy1");
+	my $ccy2 = $row->get("ccy2");
+	my $ccy3 = $row->get("ccy3");
+	my $rate1 = $row->get("rate1");
+	my $rate2 = $row->get("rate2");
+	my $rate3 = $row->get("rate3");
+	my $looprate = $rate1 * $rate2 * $rate3;
+
+	# now build the row in normalized order of currencies
+	&send("____Order before: $ccy1, $ccy2, $ccy3\n");
+	my $result;
+	if ($ccy2 lt $ccy3) {
+		if ($ccy2 lt $ccy1) { # rotate left
+			$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+				ccy1 => $ccy2,
+				ccy2 => $ccy3,
+				ccy3 => $ccy1,
+				rate1 => $rate2,
+				rate2 => $rate3,
+				rate3 => $rate1,
+				looprate => $looprate,
+			);
+		}
+	} else {
+		if ($ccy3 lt $ccy1) { # rotate right
+			$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+				ccy1 => $ccy3,
+				ccy2 => $ccy1,
+				ccy3 => $ccy2,
+				rate1 => $rate3,
+				rate2 => $rate1,
+				rate3 => $rate2,
+				looprate => $looprate,
+			);
+		}
+	}
+	if (!defined $result) { # use the straight order
+		$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+			ccy1 => $ccy1,
+			ccy2 => $ccy2,
+			ccy3 => $ccy3,
+			rate1 => $rate1,
+			rate2 => $rate2,
+			rate3 => $rate3,
+			looprate => $looprate,
+		);
+	}
+	if ($looprate > 1) {
+		$uArb->call($result);
+	} else {
+		&send("__", $result->printP(), "\n"); # for debugging
+	}
+}) or confess "$!";
+$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
+</pre>
+
+		<para>
+		It produces the exact same result as the version with the manual loops,
+		with the only minor difference of the field order in the result
+		rows.
+		</para>
+
+		<para>
+		And, in retrospect, I should have probably made a function for the row
+		rotation, so that I would not have to copy that code here.
+		</para>
+
+		<para>
+		Well, it works the same as the version with the loops and maybe even
+		looks a little bit neater, but in practice it's much harder to write,
+		debug and understand. The caveat for the situation where the incoming
+		row might participate in the join the second time applies to this
+		version of the code as well. The same thing about the Pre and Output
+		labels would have to be done, resulting in four LookupJoins instead
+		of two. Each pair would become a manually-built analog of JoinTwo, and
+		probably it's easier to use a JoinTwo to start with.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
