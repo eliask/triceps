@@ -2597,8 +2597,8 @@ our $join = Triceps::JoinTwo->new(
 		</para>
 	</sect1>
 
-	<sect1 id="sc_joins_self">
-		<title>Self-joins</title>
+	<sect1 id="sc_joins_self_jointwo">
+		<title>Self-join done with JoinTwo</title>
 
 		<indexterm>
 			<primary>join</primary>
@@ -2922,35 +2922,244 @@ __join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" 
 		<quote>leftFromLabel</quote> you have to receive the data from the table's
 		<pre>getPreLabel()</pre>, not <pre>getOutputLabel()</pre>.
 		</para>
+	</sect1>
 
+	<sect1 id="sc_joins_self_manual">
+		<title>Self-join done manually</title>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>self</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>join</primary>
+			<secondary>manual</secondary>
+		</indexterm>
 		<para>
+		In many cases the self-joins are better
+		suited to be done by the manual looping through the data. This is
+		especially true if the table represents a tree, linked by the
+		parent-child node id and the processing has to navigate through the
+		tree. Indeed, if the tree may be of an arbitrary depth, there is no way
+		to handle if with the common joins, you will need as many joins as
+		the depth of the tree (through there are some SQL extensions for the
+		recursive self-joins).
 		</para>
 
 		<para>
+		The arbitration example can also be conveniently rewritten through the
+		manual loops. The input row type, table type, table, unit, and the main
+		loop do not change, so I won't copy them the second time. The rest of
+		the code is:
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<pre>
+our $rtResult = Triceps::RowType->new(
+	ccy1 => "string", # currency code
+	ccy2 => "string", # currency code
+	ccy3 => "string", # currency code
+	rate1 => "float64",
+	rate2 => "float64",
+	rate3 => "float64",
+	looprate => "float64",
+) or confess "$!";
+my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or confess "$!";
+my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12") or confess "$!";
+
+my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
+my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
+	my ($label, $rowop) = @_;
+	my $row = $rowop->getRow();
+	my $ccy1 = $row->get("ccy1");
+	my $ccy2 = $row->get("ccy2");
+	my $rate1 = $row->get("rate");
+
+	my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2);
+	my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12)
+		or confess "$!";
+	for (; !$rhi->same($rhiEnd); $rhi = $rhi->nextIdx($ixtCcy12)) {
+		my $row2 = $rhi->getRow();
+		my $ccy3 = $row2->get("ccy2");
+		my $rate2 = $row2->get("rate");
+
+		my $rhj = $tRate->findIdxBy($ixtCcy12, ccy1 => $ccy3, ccy2 => $ccy1);
+		# it's a leaf primary index, so there may be no more than one match
+		next
+			if ($rhj->isNull());
+		my $row3 = $rhj->getRow();
+		my $rate3 = $row3->get("rate");
+		my $looprate = $rate1 * $rate2 * $rate3;
+
+		# now build the row in normalized order of currencies
+		&send("____Order before: $ccy1, $ccy2, $ccy3\n");
+		my $result;
+		if ($ccy2 lt $ccy3) {
+			if ($ccy2 lt $ccy1) { # rotate left
+				$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+					ccy1 => $ccy2,
+					ccy2 => $ccy3,
+					ccy3 => $ccy1,
+					rate1 => $rate2,
+					rate2 => $rate3,
+					rate3 => $rate1,
+					looprate => $looprate,
+				);
+			}
+		} else {
+			if ($ccy3 lt $ccy1) { # rotate right
+				$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+					ccy1 => $ccy3,
+					ccy2 => $ccy1,
+					ccy3 => $ccy2,
+					rate1 => $rate3,
+					rate2 => $rate1,
+					rate3 => $rate2,
+					looprate => $looprate,
+				);
+			}
+		}
+		if (!defined $result) { # use the straight order
+			$result = $lbResult->makeRowopHash($rowop->getOpcode(),
+				ccy1 => $ccy1,
+				ccy2 => $ccy2,
+				ccy3 => $ccy3,
+				rate1 => $rate1,
+				rate2 => $rate2,
+				rate3 => $rate3,
+				looprate => $looprate,
+			);
+		}
+		if ($looprate > 1) {
+			$uArb->call($result);
+		} else {
+			&send("__", $result->printP(), "\n"); # for debugging
+		}
+	}
+}) or confess "$!";
+$tRate->getOutputLabel()->chain($lbCompute) or confess "$!";
+makePrintLabel("lbPrint", $lbResult);
+</pre>
+
+		<para>
+		Whenever a new rowop is processed in the table, it goes to the 
+		label <pre>$lbCompute</pre>. The row in this rowop is the first leg of the triangle. The loop
+		then finds all the possible second legs that can be connected to the
+		first leg. And then for each second leg it checks whether it can make
+		the third leg back to the original currency. If it can, good, we've
+		found a candidate for a result row.
 		</para>
 
 		<para>
+		The way the loops work, this time there is no triplication. But the
+		same triangle still can be found starting from any of its three
+		currencies. This means that to keep the data consistent, no matter what
+		was the first currency in a particular run, it still must produce the
+		exact same result row. To achieve that, the currencies get rotated as
+		explained in the previous section, making sure that the first currency is has
+		the lexically smallest name. These if-else statements do that by
+		selecting the direction of rotation (if any) and build the result
+		record in one of three ways.
 		</para>
 
 		<para>
+		Finally it compares the combined rate to 1, and if greater then sends
+		the result. If not, a debugging printout starting with <quote><pre>__</pre></quote> prints the
+		row, so that is can be seen. Another debugging printout prints the
+		original order of the currencies, letting us check that the rotation
+		was performed correctly.
 		</para>
 
 		<para>
+		On feeding the same input data this code produces the result:
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<exdump>
+> rate,OP_INSERT,EUR,USD,1.48
+> rate,OP_INSERT,USD,EUR,0.65
+> rate,OP_INSERT,GBP,USD,1.98
+> rate,OP_INSERT,USD,GBP,0.49
+> rate,OP_INSERT,EUR,GBP,0.74
+____Order before: EUR, GBP, USD
+__lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.65" looprate="0.95238" 
+> rate,OP_INSERT,GBP,EUR,1.30
+____Order before: GBP, EUR, USD
+__lbResult OP_INSERT ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.48" rate2="0.49" rate3="1.3" looprate="0.94276" 
+> rate,OP_DELETE,EUR,USD,1.48
+____Order before: EUR, USD, GBP
+__lbResult OP_DELETE ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.48" rate2="0.49" rate3="1.3" looprate="0.94276" 
+> rate,OP_INSERT,EUR,USD,1.28
+____Order before: EUR, USD, GBP
+__lbResult OP_INSERT ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.28" rate2="0.49" rate3="1.3" looprate="0.81536" 
+> rate,OP_DELETE,USD,EUR,0.65
+____Order before: USD, EUR, GBP
+__lbResult OP_DELETE ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.65" looprate="0.95238" 
+> rate,OP_INSERT,USD,EUR,0.78
+____Order before: USD, EUR, GBP
+lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
+> rate,OP_DELETE,EUR,GBP,0.74
+____Order before: EUR, GBP, USD
+lbResult OP_DELETE ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
+> rate,OP_INSERT,EUR,GBP,0.64
+____Order before: EUR, GBP, USD
+__lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.64" rate2="1.98" rate3="0.78" looprate="0.988416" 
+</exdump>
+
+		<para>
+		It's the same result as before, only without the triplicates. And you
+		can see that the rotation logic works right. The manual self-joining
+		has produced the result without triplicates, without an intermediate
+		table, and for me writing and understanding its logic is much easier
+		than with the <quote>proper</quote> joins. I'd say that the manual self-join is a
+		winner in every respect.
 		</para>
 
 		<para>
+		An interesting thing is that this manual logic produces the same result
+		independently of whether it's connected to the Output or Pre label of
+		the table. Try changing it, it works the same. This is because the
+		original row is taken directly from the input rowop, and never
+		participates in the join again; it's never read from the table by any
+		of the loops. If it were read again from the table by the loops, the
+		table connection would matter. And the correct one would be fairly weird:
+		the INSERT rowops would have to be processed coming from the Output
+		label, the DELETE rowops coming from the Pre label.
 		</para>
 
 		<para>
+		This is because the row has to be in the table to be found. And for an
+		INSERT the row gets there only after it goes through the table and
+		comes out on the Output label. But for a DELETE the row would get
+		already deleted from the table by that time. Instead it has to be
+		handled before that, on the Pre label, when the table only prepares to
+		delete it.
 		</para>
 
+		<indexterm>
+			<primary>JoinTwo</primary>
+		</indexterm>
 		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
+		If you look at the version with JoinTwo, that's also how an inner
+		self-join works. Since it's an inner join, both rows on both sides must
+		be present to produce a result. An INSERT first arrives from the Pre
+		label on the left side, doesn't find itself in the table, and produces
+		no result (again, we're talking here about the situation when a row has
+		to get joined to itself; it might well find the other pairs for itself
+		and produce a result for them but not for itself joined with itself).
+		Then it arrives the second time from the Output label on the right
+		side. Now it looks in the table, and finds itself, and produces the
+		result (an INSERT coming form the join). A DELETE also first arrives
+		from the Pre label on the left side. It finds its copy in the table and
+		produces the result (a DELETE coming from the join). When the second
+		copy of the row arrives from the Output label on the right side, it
+		doesn't find its copy in the table any more, and produces nothing. In
+		the end it's the same thing, an INSERT comes out of the join triggered
+		by the table Output label, a DELETE comes out of the join triggered by
+		the table Pre label. It's not a whimsy, it's caused by the requirements
+		of the correctness. The manual self-join would have to mimic this order
+		to produce the correct result. In such a situation perhaps JoinTwo
+		would be easier to use than doing things manually.
 		</para>
 
 		<para>
