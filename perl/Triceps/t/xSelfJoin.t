@@ -14,6 +14,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 4 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 use strict;
@@ -34,7 +35,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -64,8 +65,8 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
 		undef, sub { # (label, rowop)
 			&send($_[1]->printP(), "\n");
-		}) or die "$!";
-	$lbParent->chain($lb) or die "$!";
+		}) or confess "$!";
+	$lbParent->chain($lb) or confess "$!";
 	return $lb;
 }
 
@@ -77,7 +78,7 @@ our $rtRate = Triceps::RowType->new( # an exchange rate between two currencies
 	ccy1 => "string", # currency code
 	ccy2 => "string", # currency code
 	rate => "float64", # multiplier when exchanging ccy1 to ccy2
-) or die "$!";
+) or confess "$!";
 
 # all exchange rates
 our $ttRate = Triceps::TableType->new($rtRate)
@@ -91,8 +92,8 @@ our $ttRate = Triceps::TableType->new($rtRate)
 		Triceps::IndexType->newHashed(key => [ "ccy2" ])
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or die "$!";
-$ttRate->initialize() or die "$!";
+or confess "$!";
+$ttRate->initialize() or confess "$!";
 
 # input for the arbitration
 my @inputArb = (
@@ -117,10 +118,10 @@ my @inputArb = (
 
 sub doArbJoins {
 
-our $uArb = Triceps::Unit->new("uArb") or die "$!";
+our $uArb = Triceps::Unit->new("uArb");
 
 our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or die "$!";
+	&Triceps::EM_CALL, "tRate") or confess "$!";
 
 our $join1 = Triceps::JoinTwo->new(
 	name => "join1",
@@ -139,11 +140,11 @@ our $ttJoin1 = Triceps::TableType->new($join1->getResultRowType())
 		Triceps::IndexType->newHashed(key => [ "ccy3", "ccy1" ])
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or die "$!";
-$ttJoin1->initialize() or die "$!";
+or confess "$!";
+$ttJoin1->initialize() or confess "$!";
 our $tJoin1 = $uArb->makeTable($ttJoin1,
-	&Triceps::EM_CALL, "tJoin1") or die "$!";
-$join1->getOutputLabel()->chain($tJoin1->getInputLabel()) or die "$!";
+	&Triceps::EM_CALL, "tJoin1") or confess "$!";
+$join1->getOutputLabel()->chain($tJoin1->getInputLabel()) or confess "$!";
 
 our $join2 = Triceps::JoinTwo->new(
 	name => "join2",
@@ -161,7 +162,7 @@ our $join2 = Triceps::JoinTwo->new(
 our $rtResult = Triceps::RowType->new(
 	$join2->getResultRowType()->getdef(),
 	looprate => "float64",
-) or die "$!";
+) or confess "$!";
 my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
 my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef, sub {
 	my ($label, $rowop) = @_;
@@ -176,8 +177,8 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 	} else {
 			&send("__", $rowop->printP(), "looprate=$looprate \n"); # for debugging
 	}
-}) or die "$!";
-$join2->getOutputLabel()->chain($lbCompute) or die "$!";
+}) or confess "$!";
+$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbResult);
@@ -201,39 +202,39 @@ $result = undef;
 &doArbJoins();
 #print $result;
 ok($result, 
-'rate,OP_INSERT,EUR,USD,1.48
-rate,OP_INSERT,USD,EUR,0.65
-rate,OP_INSERT,GBP,USD,1.98
-rate,OP_INSERT,USD,GBP,0.49
-rate,OP_INSERT,EUR,GBP,0.74
+'> rate,OP_INSERT,EUR,USD,1.48
+> rate,OP_INSERT,USD,EUR,0.65
+> rate,OP_INSERT,GBP,USD,1.98
+> rate,OP_INSERT,USD,GBP,0.49
+> rate,OP_INSERT,EUR,GBP,0.74
 __join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
 __join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.65" ccy3="GBP" rate2="0.74" rate3="1.98" looprate=0.95238 
 __join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
-rate,OP_INSERT,GBP,EUR,1.30
+> rate,OP_INSERT,GBP,EUR,1.30
 __join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="EUR" rate1="1.3" ccy3="USD" rate2="1.48" rate3="0.49" looprate=0.94276 
 __join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="GBP" rate1="0.49" ccy3="EUR" rate2="1.3" rate3="1.48" looprate=0.94276 
 __join2.rightLookup.out OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.48" ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.94276 
-rate,OP_DELETE,EUR,USD,1.48
+> rate,OP_DELETE,EUR,USD,1.48
 __join2.leftLookup.out OP_DELETE ccy1="EUR" ccy2="USD" rate1="1.48" ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.94276 
 __join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="EUR" rate1="1.3" ccy3="USD" rate2="1.48" rate3="0.49" looprate=0.94276 
 __join2.rightLookup.out OP_DELETE ccy1="USD" ccy2="GBP" rate1="0.49" ccy3="EUR" rate2="1.3" rate3="1.48" looprate=0.94276 
-rate,OP_INSERT,EUR,USD,1.28
+> rate,OP_INSERT,EUR,USD,1.28
 __join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.28" ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.81536 
 __join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="EUR" rate1="1.3" ccy3="USD" rate2="1.28" rate3="0.49" looprate=0.81536 
 __join2.rightLookup.out OP_INSERT ccy1="USD" ccy2="GBP" rate1="0.49" ccy3="EUR" rate2="1.3" rate3="1.28" looprate=0.81536 
-rate,OP_DELETE,USD,EUR,0.65
+> rate,OP_DELETE,USD,EUR,0.65
 __join2.leftLookup.out OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.65" ccy3="GBP" rate2="0.74" rate3="1.98" looprate=0.95238 
 __join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
 __join2.rightLookup.out OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
-rate,OP_INSERT,USD,EUR,0.78
+> rate,OP_INSERT,USD,EUR,0.78
 lbResult OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
 lbResult OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
 lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
-rate,OP_DELETE,EUR,GBP,0.74
+> rate,OP_DELETE,EUR,GBP,0.74
 lbResult OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
 lbResult OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
 lbResult OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
-rate,OP_INSERT,EUR,GBP,0.64
+> rate,OP_INSERT,EUR,GBP,0.64
 __join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.64" ccy3="USD" rate2="1.98" rate3="0.78" looprate=0.988416 
 __join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.64" rate3="1.98" looprate=0.988416 
 __join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.64" looprate=0.988416 
@@ -244,10 +245,10 @@ __join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" 
 
 sub doArbManual {
 
-our $uArb = Triceps::Unit->new("uArb") or die "$!";
+our $uArb = Triceps::Unit->new("uArb");
 
 our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or die "$!";
+	&Triceps::EM_CALL, "tRate") or confess "$!";
 
 # now compute the resulting circular rate and filter the profitable loops
 our $rtResult = Triceps::RowType->new(
@@ -258,9 +259,9 @@ our $rtResult = Triceps::RowType->new(
 	rate2 => "float64",
 	rate3 => "float64",
 	looprate => "float64",
-) or die "$!";
-my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or die "$!";
-my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12") or die "$!";
+) or confess "$!";
+my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or confess "$!";
+my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12") or confess "$!";
 
 my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
 my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
@@ -272,7 +273,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 
 	my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2);
 	my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12)
-		or die "$!";
+		or confess "$!";
 	for (; !$rhi->same($rhiEnd); $rhi = $rhi->nextIdx($ixtCcy12)) {
 		my $row2 = $rhi->getRow();
 		my $ccy3 = $row2->get("ccy2");
@@ -331,8 +332,8 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 			&send("__", $result->printP(), "\n"); # for debugging
 		}
 	}
-}) or die "$!";
-$tRate->getOutputLabel()->chain($lbCompute) or die "$!";
+}) or confess "$!";
+$tRate->getOutputLabel()->chain($lbCompute) or confess "$!";
 makePrintLabel("lbPrint", $lbResult);
 
 while(&readLine) {
@@ -352,32 +353,32 @@ $result = undef;
 &doArbManual();
 #print $result;
 ok($result, 
-'rate,OP_INSERT,EUR,USD,1.48
-rate,OP_INSERT,USD,EUR,0.65
-rate,OP_INSERT,GBP,USD,1.98
-rate,OP_INSERT,USD,GBP,0.49
-rate,OP_INSERT,EUR,GBP,0.74
+'> rate,OP_INSERT,EUR,USD,1.48
+> rate,OP_INSERT,USD,EUR,0.65
+> rate,OP_INSERT,GBP,USD,1.98
+> rate,OP_INSERT,USD,GBP,0.49
+> rate,OP_INSERT,EUR,GBP,0.74
 ____Order before: EUR, GBP, USD
 __lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.65" looprate="0.95238" 
-rate,OP_INSERT,GBP,EUR,1.30
+> rate,OP_INSERT,GBP,EUR,1.30
 ____Order before: GBP, EUR, USD
 __lbResult OP_INSERT ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.48" rate2="0.49" rate3="1.3" looprate="0.94276" 
-rate,OP_DELETE,EUR,USD,1.48
+> rate,OP_DELETE,EUR,USD,1.48
 ____Order before: EUR, USD, GBP
 __lbResult OP_DELETE ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.48" rate2="0.49" rate3="1.3" looprate="0.94276" 
-rate,OP_INSERT,EUR,USD,1.28
+> rate,OP_INSERT,EUR,USD,1.28
 ____Order before: EUR, USD, GBP
 __lbResult OP_INSERT ccy1="EUR" ccy2="USD" ccy3="GBP" rate1="1.28" rate2="0.49" rate3="1.3" looprate="0.81536" 
-rate,OP_DELETE,USD,EUR,0.65
+> rate,OP_DELETE,USD,EUR,0.65
 ____Order before: USD, EUR, GBP
 __lbResult OP_DELETE ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.65" looprate="0.95238" 
-rate,OP_INSERT,USD,EUR,0.78
+> rate,OP_INSERT,USD,EUR,0.78
 ____Order before: USD, EUR, GBP
 lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
-rate,OP_DELETE,EUR,GBP,0.74
+> rate,OP_DELETE,EUR,GBP,0.74
 ____Order before: EUR, GBP, USD
 lbResult OP_DELETE ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
-rate,OP_INSERT,EUR,GBP,0.64
+> rate,OP_INSERT,EUR,GBP,0.64
 ____Order before: EUR, GBP, USD
 __lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.64" rate2="1.98" rate3="0.78" looprate="0.988416" 
 ');
@@ -387,10 +388,10 @@ __lbResult OP_INSERT ccy1="EUR" ccy2="GBP" ccy3="USD" rate1="0.64" rate2="1.98" 
 
 sub doArbLookupJoins {
 
-our $uArb = Triceps::Unit->new("uArb") or die "$!";
+our $uArb = Triceps::Unit->new("uArb");
 
 our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or die "$!";
+	&Triceps::EM_CALL, "tRate") or confess "$!";
 
 our $join1 = Triceps::LookupJoin->new(
 	name => "join1",
@@ -417,7 +418,7 @@ our $join2 = Triceps::LookupJoin->new(
 our $rtResult = Triceps::RowType->new(
 	$join2->getResultRowType()->getdef(),
 	looprate => "float64",
-) or die "$!";
+) or confess "$!";
 my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
 my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef, sub {
 	my ($label, $rowop) = @_;
@@ -475,8 +476,8 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 	} else {
 		&send("__", $result->printP(), "\n"); # for debugging
 	}
-}) or die "$!";
-$join2->getOutputLabel()->chain($lbCompute) or die "$!";
+}) or confess "$!";
+$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbResult);
@@ -500,32 +501,32 @@ $result = undef;
 &doArbLookupJoins();
 #print $result;
 ok($result, 
-'rate,OP_INSERT,EUR,USD,1.48
-rate,OP_INSERT,USD,EUR,0.65
-rate,OP_INSERT,GBP,USD,1.98
-rate,OP_INSERT,USD,GBP,0.49
-rate,OP_INSERT,EUR,GBP,0.74
+'> rate,OP_INSERT,EUR,USD,1.48
+> rate,OP_INSERT,USD,EUR,0.65
+> rate,OP_INSERT,GBP,USD,1.98
+> rate,OP_INSERT,USD,GBP,0.49
+> rate,OP_INSERT,EUR,GBP,0.74
 ____Order before: EUR, GBP, USD
 __lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate="0.95238" 
-rate,OP_INSERT,GBP,EUR,1.30
+> rate,OP_INSERT,GBP,EUR,1.30
 ____Order before: GBP, EUR, USD
 __lbResult OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.48" ccy3="GBP" rate2="0.49" rate3="1.3" looprate="0.94276" 
-rate,OP_DELETE,EUR,USD,1.48
+> rate,OP_DELETE,EUR,USD,1.48
 ____Order before: EUR, USD, GBP
 __lbResult OP_DELETE ccy1="EUR" ccy2="USD" rate1="1.48" ccy3="GBP" rate2="0.49" rate3="1.3" looprate="0.94276" 
-rate,OP_INSERT,EUR,USD,1.28
+> rate,OP_INSERT,EUR,USD,1.28
 ____Order before: EUR, USD, GBP
 __lbResult OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.28" ccy3="GBP" rate2="0.49" rate3="1.3" looprate="0.81536" 
-rate,OP_DELETE,USD,EUR,0.65
+> rate,OP_DELETE,USD,EUR,0.65
 ____Order before: USD, EUR, GBP
 __lbResult OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate="0.95238" 
-rate,OP_INSERT,USD,EUR,0.78
+> rate,OP_INSERT,USD,EUR,0.78
 ____Order before: USD, EUR, GBP
 lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
-rate,OP_DELETE,EUR,GBP,0.74
+> rate,OP_DELETE,EUR,GBP,0.74
 ____Order before: EUR, GBP, USD
 lbResult OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
-rate,OP_INSERT,EUR,GBP,0.64
+> rate,OP_INSERT,EUR,GBP,0.64
 ____Order before: EUR, GBP, USD
 __lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.64" ccy3="USD" rate2="1.98" rate3="0.78" looprate="0.988416" 
 ');
