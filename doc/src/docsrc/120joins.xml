@@ -3291,6 +3291,311 @@ $join2->getOutputLabel()->chain($lbCompute) or confess "$!";
 		of two. Each pair would become a manually-built analog of JoinTwo, and
 		probably it's easier to use a JoinTwo to start with.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_jointwo_glimpse">
+		<title>A glimpse inside JoinTwo and the hidden options of LookupJoin</title>
+
+		<indexterm>
+			<primary>JoinTwo</primary>
+		</indexterm>
+		<indexterm>
+			<primary>template</primary>
+		</indexterm>
+		<para>
+		The internals of JoinTwo provide an interesting example of a template
+		that builds upon other template (LookupJoin).
+		For a while JoinTwo was compact and straightforward, and easy to
+		demonstrate. Then it has grown all these extra features, options and
+		error checks, and became quite complicated. So I'll show only the
+		selected portions of the JoinTwo constructor, with the gist of its
+		functionality:
+		</para>
+
+<!-- lib/Triceps/JoinTwo.pm, edited -->
+<pre>
+...
+	my $selfJoin = $self->{leftTable}->same($self->{rightTable});
+	if ($selfJoin && !defined $self->{leftFromLabel}) {
+		# one side must be fed from Pre label (but still let the user override)
+		$self->{leftFromLabel} = $self->{leftTable}->getPreLabel();
+	}
+...
+
+	my ($leftLeft, $rightLeft);
+	if ($self->{type} eq "inner") {
+		$leftLeft = 0;
+		$rightLeft = 0;
+	} elsif ($self->{type} eq "left") {
+		$leftLeft = 1;
+		$rightLeft = 0;
+	} elsif ($self->{type} eq "right") {
+		$leftLeft = 0;
+		$rightLeft = 1;
+	} elsif ($self->{type} eq "outer") {
+		$leftLeft = 1;
+		$rightLeft = 1;
+	} else {
+		Carp::confess("Unknown value '" . $self->{type} . "' of option 'type', must be one of inner|left|right|outer");
+	}
+
+	$self->{leftRowType} = $self->{leftTable}->getRowType();
+	$self->{rightRowType} = $self->{rightTable}->getRowType();
+...
+
+	for my $side ( ("left", "right") ) {
+		if (defined $self->{"${side}FromLabel"}) {
+... 
+		} else {
+			$self->{"${side}FromLabel"} = $self->{"${side}Table"}->getOutputLabel();
+		}
+
+		my @keys;
+		($self->{"${side}IdxType"}, @keys) = $self->{"${side}Table"}->getType()->findIndexKeyPath(@{$self->{"${side}IdxPath"}});
+		# would already confess if the index is not found
+
+		if (!$self->{overrideSimpleMinded}) {
+			if (!$self->{"${side}IdxType"}->isLeaf()
+
+			&& ($self->{type} ne "inner" && $self->{type} ne $side) ) {
+				my $table = $self->{"${side}Table"};
+				my $ixt = $self->{"${side}IdxType"};
+				if ($selfJoin && $side eq "left") {
+					# the special case, reading from the table's Pre label;
+					# must adjust the count for what will happen after the row gets processed
+					$self->{"${side}GroupSizeCode"} = sub { # (opcode, row)
+						if (&Triceps::isInsert($_[0])) {
+							$table->groupSizeIdx($ixt, $_[1])+1;
+						} else {
+							$table->groupSizeIdx($ixt, $_[1])-1;
+						}
+					};
+				} else {
+					$self->{"${side}GroupSizeCode"} = sub { # (opcode, row)
+						$table->groupSizeIdx($ixt, $_[1]);
+					};
+				}
+			}
+		}
+
+...
+	my $fieldsMirrorKey = 1;
+	my $uniq = $self->{fieldsUniqKey};
+	if ($uniq eq "first") {
+		$uniq = $self->{fieldsLeftFirst} ? "left" : "right";
+	}
+	if ($uniq eq "none") {
+		$fieldsMirrorKey = 0;
+	} elsif ($uniq eq "manual") {
+		# nothing to do
+	} elsif ($uniq =~ /^(left|right)$/) {
+		my($side, @keys);
+		if ($uniq eq "left") {
+			$side = "right";
+			@keys = @rightkeys;
+		} else {
+			$side = "left";
+			@keys = @leftkeys;
+		}
+		if (!defined $self->{"${side}Fields"}) {
+			$self->{"${side}Fields"} = [ ".*" ]; # the implicit pass-all
+		}
+		unshift(@{$self->{"${side}Fields"}}, map("!$_", @keys) );
+	} else {
+		Carp::confess("Unknown value '" . $self->{fieldsUniqKey} . "' of option 'fieldsUniqKey', must be one of none|manual|left|right|first");
+	}
+
+	# now create the LookupJoins
+	$self->{leftLookup} = Triceps::LookupJoin->new(
+		unit => $self->{unit},
+		name => $self->{name} . ".leftLookup",
+		leftRowType => $self->{leftRowType},
+		rightTable => $self->{rightTable},
+		rightIdxPath => $self->{rightIdxPath},
+		leftFields => $self->{leftFields},
+		rightFields => $self->{rightFields},
+		fieldsLeftFirst => $self->{fieldsLeftFirst},
+		fieldsMirrorKey => $fieldsMirrorKey,
+		by => \@leftby,
+		isLeft => $leftLeft,
+		automatic => 1,
+		oppositeOuter => ($rightLeft && !$self->{overrideSimpleMinded}),
+		groupSizeCode => $self->{leftGroupSizeCode},
+		saveJoinerTo => $self->{leftSaveJoinerTo},
+	);
+	$self->{rightLookup} = Triceps::LookupJoin->new(
+		unit => $self->{unit},
+		name => $self->{name} . ".rightLookup",
+		leftRowType => $self->{rightRowType},
+		rightTable => $self->{leftTable},
+		rightIdxPath => $self->{leftIdxPath},
+		leftFields => $self->{rightFields},
+		rightFields => $self->{leftFields},
+		fieldsLeftFirst => !$self->{fieldsLeftFirst},
+		fieldsMirrorKey => $fieldsMirrorKey,
+		by => \@rightby,
+		isLeft => $rightLeft,
+		automatic => 1,
+		oppositeOuter => ($leftLeft && !$self->{overrideSimpleMinded}),
+		groupSizeCode => $self->{rightGroupSizeCode},
+		saveJoinerTo => $self->{rightSaveJoinerTo},
+	);
+
+	# create the output label
+	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{leftLookup}->getResultRowType(), $self->{name} . ".out");
+	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
+
+	# and connect them together
+	$self->{leftFromLabel}->chain($self->{leftLookup}->getInputLabel());
+	$self->{rightFromLabel}->chain($self->{rightLookup}->getInputLabel());
+	$self->{leftLookup}->getOutputLabel()->chain($self->{outputLabel});
+	$self->{rightLookup}->getOutputLabel()->chain($self->{outputLabel});
+</pre>
+
+		<para>
+		In the end it boils down to two LookupJoins, with the options
+		computed from the JoinTwo's options. But you might notice that there
+		are a few LookupJoin options that haven't been described before.
+		</para>
+
+		<para>
+		Despite the title of the section, these options aren't really hidden,
+		just they aren't particularly useful unless you want to use a
+		LookupJoin as a part of a multi-sided join, like JoinTwo does. It's
+		even hard to explain what do they do without explaining the JoinTwo
+		first. If you're not interested in such details, you can as well skip
+		them.
+		</para>
+
+		<para>
+		So, setting
+		</para>
+
+<pre>
+	oppositeOuter => 1,
+</pre>
+
+		<para>
+		tells that this LookupJoin is a part of an outer join, with the
+		opposite side (right side, for this LookupJoin) being an outer one
+		(well, this side might be outer too if <pre>isLeft => 1</pre>, but that's a
+		whole separate question). This enables the logic that checks whether
+		the row inserted here is the first one that matches a row in the
+		right-side table, and whether the row deleted here was the last one
+		that matches. If the condition is satisfied, not a simple INSERT or
+		DELETE rowop is produced but a correct DELETE-INSERT pair that replaces
+		the old state with the new one. It has been described in detail in
+		<xref linkend="sc_joins_jointwo" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		But how does it know whether the current row if the first one or last
+		one or neither? After all, LookupJoin doesn't have any access to the
+		left-side table. 
+		</para>
+
+		<para>
+		It has two ways to know.
+		First, by default it simply assumes that it's an one-to-something (1:1
+		or 1:M) join. Then there may be no more than one matching row on this
+		side, and every row inserted is the first one, and every row deleted is
+		the last one. Then it does the DELETE-INSERT trick every time.
+		</para>
+
+		<para>
+		Second, the option
+		</para>
+
+<pre>
+	groupSizeCode => \&groupSizeComputation,
+</pre>
+
+		<para>
+		can be used to compute the current group size for the current row. It
+		provides a function that does the computation and gets called as
+		</para>
+
+<pre>
+$gsz = &{$self->{groupSizeCode}}($opcode, $row);
+</pre>
+
+		<para>
+		Note that it doesn't get the table reference nor the index type
+		reference as arguments, so it has to be a closure with the references compiled into
+		it. JoinTwo does it with the definition
+		</para>
+
+<pre>
+sub { # (opcode, row)
+	$table->groupSizeIdx($ixt, $_[1]);
+}
+</pre>
+
+		<para>
+		Why not just pass the table and index type references to JoinTwo and
+		let it do the same computation without the mess of the closure
+		references? Because the group size computation may need to be
+		different. When the JoinTwo does a self-join, it feeds the left side
+		from the table's Pre label, and the normal group size computation would
+		be incorrect because the rowop didn't get applied to the table yet.
+		Instead it has to predict what will happen when the rowop will get
+		applied:
+		</para>
+
+<pre>
+sub { # (opcode, row)
+	if (&Triceps::isInsert($_[0])) {
+		$table->groupSizeIdx($ixt, $_[1])+1;
+	} else {    
+		$table->groupSizeIdx($ixt, $_[1])-1;
+	}           
+}
+</pre>
+
+		<para>
+		If you set the option <quote>groupSizeCode</quote> to <pre>undef</pre>, that's the default
+		value that triggers the one-to-something behavior.
+		</para>
+
+		<para>
+		The option
+		</para>
+
+<pre>
+	fieldsMirrorKey => 1,
+</pre>
+
+		<para>
+		has been already described.
+		It enables another magic behavior: mirroring the values of key fields to
+		both sides before they are used to produce the result row.  This is the heavy
+		machinery that underlies the JoinTwo's high-level option
+		<quote>fieldsUniqKey</quote>. But it hasn't been described yet that
+		the mirroring goes both ways: If this is a left join
+		and no matching row is found on the right, the values of the key fields
+		will be copied from the left to the right. If the option
+		<quote>oppositeOuter</quote> is set and causes a row with the empty left side to be
+		produced as a part of DELETE-INSERT pair, the key fields will be copied
+		from the right to the left.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
