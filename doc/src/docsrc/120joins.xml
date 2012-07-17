@@ -2595,6 +2595,363 @@ our $join = Triceps::JoinTwo->new(
 		a self-join. But the later fixes to the Table logic make the self-joins
 		possible without this kind of perversions.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_joins_self">
+		<title>Self-joins</title>
+
+		<indexterm>
+			<primary>join</primary>
+			<secondary>self</secondary>
+		</indexterm>
+
+		<para>
+		The self-joins happen when a table is joined to itself.
+		For an example of a model with self-joins, let's look at the Forex
+		trading. People exchange the currencies in every possible
+		direction in multiple markets. The Forex exchange rates are quoted
+		for every pair of currencies, in every direction.
+		</para>
+
+		<para>
+		Naturally, if you exchange one currency into another and then back into
+		the first one, you normally end up with less money than you've started
+		with. The rest becomes the transaction cost and lines the pockets of
+		the brokers, market makers and exchanges.
+		</para>
+
+		<para>
+		However once in a while some interesting things happen. If the
+		exchange rates between the different currencies become disbalanced, you
+		may be able to exchange the currency A for currency B for currency C
+		and back for currency A, and end up with more money than you've started
+		with. (You don't have to do it in sequence, you would normally do all
+		three transactions in parallel). However it's a short-lived
+		opportunity: as you perform the transactions, you'll be changing the
+		involved exchange rates towards the balance, and you won't be the only
+		one exploiting this opportunity, so you better act fast. This activity
+		of bringing the market into balance while simultaneously extracting
+		profit is called <quote>arbitration</quote>.
+		</para>
+
+		<para>
+		So let's make a model that will detect such arbitration opportunities,
+		for the following automated execution. Mind you, it's all grossly
+		simplified, but it shows the gist of it. And most importantly, it uses
+		the self-joins. Here we go:
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<pre>
+our $rtRate = Triceps::RowType->new( # an exchange rate between two currencies
+	ccy1 => "string", # currency code
+	ccy2 => "string", # currency code
+	rate => "float64", # multiplier when exchanging ccy1 to ccy2
+) or confess "$!";
+
+# all exchange rates
+our $ttRate = Triceps::TableType->new($rtRate)
+	->addSubIndex("byCcy1",
+		Triceps::IndexType->newHashed(key => [ "ccy1" ])
+		->addSubIndex("byCcy12",
+			Triceps::IndexType->newHashed(key => [ "ccy2" ])
+		)
+	)
+	->addSubIndex("byCcy2",
+		Triceps::IndexType->newHashed(key => [ "ccy2" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttRate->initialize() or confess "$!";
+
+our $uArb = Triceps::Unit->new("uArb");
+
+our $tRate = $uArb->makeTable($ttRate, 
+	&Triceps::EM_CALL, "tRate") or confess "$!";
+
+our $join1 = Triceps::JoinTwo->new(
+	name => "join1",
+	leftTable => $tRate,
+	leftIdxPath => [ "byCcy2" ],
+	leftFields => [ "ccy1", "ccy2", "rate/rate1" ],
+	rightTable => $tRate,
+	rightIdxPath => [ "byCcy1" ],
+	rightFields => [ "ccy2/ccy3", "rate/rate2" ],
+); # would die by itself on an error
+our $ttJoin1 = Triceps::TableType->new($join1->getResultRowType())
+	->addSubIndex("byCcy123",
+		Triceps::IndexType->newHashed(key => [ "ccy1", "ccy2", "ccy3" ])
+	)
+	->addSubIndex("byCcy31",
+		Triceps::IndexType->newHashed(key => [ "ccy3", "ccy1" ])
+		->addSubIndex("grouping", Triceps::IndexType->newFifo())
+	)
+or confess "$!";
+$ttJoin1->initialize() or confess "$!";
+our $tJoin1 = $uArb->makeTable($ttJoin1,
+	&Triceps::EM_CALL, "tJoin1") or confess "$!";
+$join1->getOutputLabel()->chain($tJoin1->getInputLabel()) or confess "$!";
+
+our $join2 = Triceps::JoinTwo->new(
+	name => "join2",
+	leftTable => $tJoin1,
+	leftIdxPath => [ "byCcy31" ],
+	rightTable => $tRate,
+	rightIdxPath => [ "byCcy1", "byCcy12" ],
+	rightFields => [ "rate/rate3" ],
+	# the field ordering in the indexes is already right, but
+	# for clarity add an explicit join condition too
+	byLeft => [ "ccy3/ccy1", "ccy1/ccy2" ], 
+); # would die by itself on an error
+
+# now compute the resulting circular rate and filter the profitable loops
+our $rtResult = Triceps::RowType->new(
+	$join2->getResultRowType()->getdef(),
+	looprate => "float64",
+) or confess "$!";
+my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
+my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef, sub {
+	my ($label, $rowop) = @_;
+	my $row = $rowop->getRow();
+	my $looprate = $row->get("rate1") * $row->get("rate2") * $row->get("rate3");
+
+	if ($looprate > 1) {
+		$uArb->makeHashCall($lbResult, $rowop->getOpcode(),
+			$row->toHash(),
+			looprate => $looprate,
+		);
+	} else {
+			&send("__", $rowop->printP(), "looprate=$looprate \n"); # for debugging
+	}
+}) or confess "$!";
+$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $lbResult);
+#makePrintLabel("lbPrintJoin1", $join1->getOutputLabel());
+#makePrintLabel("lbPrintJoin2", $join2->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "rate") {
+		$uArb->makeArrayCall($tRate->getInputLabel(), @data);
+	}
+	$uArb->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		The rate quotes will be coming into <pre>$tRate</pre>. The indexes are
+		provided to both work with the self-joins and to have a primary index
+		as the first leaf.
+		</para>
+
+		<para>
+		There are no special options for the self-join in JoinTwo: just use the same table
+		for both the left and right side. The first join represents two exchange
+		transactions, so it's done by matching the second currency of the first
+		quote to the first currency of the second quote. The result contains
+		three currency names and two rate multipliers.
+
+		The second join adds one more rate multiplier, returning back to the
+		first currency. Now to learn the effect of
+		the circular conversion we only need to multiply all the multipliers.
+		If it comes out below 1, the cycling transaction would return a loss,
+		if above 1, a profit.
+		</para>
+
+		<para>
+		The label <pre>$lbCompute</pre> with Perl handler performs the multiplication, and if the
+		result is over 1, passes the result to the next label <pre>$lbResult</pre>, from which then
+		the data gets printed. I've also added a debugging printout in case if
+		the row doesn't get through. That one starts with <quote><pre>__</pre></quote> and helps seeing
+		what goes on inside when no result is coming out.
+		</para>
+
+		<para>
+		Finally, the main loop reads the data and puts it into the rates table,
+		thus driving the logic.
+		</para>
+
+		<para>
+		Now let's take a look at an example of a run, with interspersed commentary.
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<exdump>
+> rate,OP_INSERT,EUR,USD,1.48
+> rate,OP_INSERT,USD,EUR,0.65
+> rate,OP_INSERT,GBP,USD,1.98
+> rate,OP_INSERT,USD,GBP,0.49
+</exdump>
+
+		<para>
+		The rate quotes start coming in. Note that the rates are separate for
+		each direction of exchange. So far nothing happens because there aren't
+		enough quotes to complete a loop of three steps.
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<exdump>
+> rate,OP_INSERT,EUR,GBP,0.74
+__join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
+__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.65" ccy3="GBP" rate2="0.74" rate3="1.98" looprate=0.95238 
+__join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
+> rate,OP_INSERT,GBP,EUR,1.30
+__join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="EUR" rate1="1.3" ccy3="USD" rate2="1.48" rate3="0.49" looprate=0.94276 
+__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="GBP" rate1="0.49" ccy3="EUR" rate2="1.3" rate3="1.48" looprate=0.94276 
+__join2.rightLookup.out OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.48" ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.94276 
+</exdump>
+
+		<para>
+		Now there are enough currencies in play to complete the loop. None of
+		them get the loop rate over 1 though, so the only printouts are from
+		the debugging logic. There are only two loops, but each of them is
+		printed three times. Why? It's a loop, so you can start from each of
+		its elements and come back to the same element. One row for each
+		starting point. And the joins find all of them.
+		</para>
+
+		<para>
+		To find and eliminate the duplicates, the order of currencies in the
+		rows can be rotated to put the alphabetically lowest currency code
+		first. Note that they can't be just sorted because the relative order
+		matters. Trading in the order GBP-USD-EUR will give a different result
+		than GBP-EUR-USD. The relative order has to be preserved. I didn't put
+		any such elimination into the example to keep it smaller.
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<exdump>
+> rate,OP_DELETE,EUR,USD,1.48
+__join2.leftLookup.out OP_DELETE ccy1="EUR" ccy2="USD" rate1="1.48" ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.94276 
+__join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="EUR" rate1="1.3" ccy3="USD" rate2="1.48" rate3="0.49" looprate=0.94276 
+__join2.rightLookup.out OP_DELETE ccy1="USD" ccy2="GBP" rate1="0.49" ccy3="EUR" rate2="1.3" rate3="1.48" looprate=0.94276 
+> rate,OP_INSERT,EUR,USD,1.28
+__join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="USD" rate1="1.28" ccy3="GBP" rate2="0.49" rate3="1.3" looprate=0.81536 
+__join2.leftLookup.out OP_INSERT ccy1="GBP" ccy2="EUR" rate1="1.3" ccy3="USD" rate2="1.28" rate3="0.49" looprate=0.81536 
+__join2.rightLookup.out OP_INSERT ccy1="USD" ccy2="GBP" rate1="0.49" ccy3="EUR" rate2="1.3" rate3="1.28" looprate=0.81536 
+</exdump>
+
+		<para>
+		Someone starts changing lots of euros for dollars, and the rate moves.
+		No good news for us yet though.
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<exdump>
+> rate,OP_DELETE,USD,EUR,0.65
+__join2.leftLookup.out OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.65" ccy3="GBP" rate2="0.74" rate3="1.98" looprate=0.95238 
+__join2.leftLookup.out OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.65" rate3="0.74" looprate=0.95238 
+__join2.rightLookup.out OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.65" looprate=0.95238 
+> rate,OP_INSERT,USD,EUR,0.78
+lbResult OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
+lbResult OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
+lbResult OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
+</exdump>
+
+		<para>
+		The rate for dollars-to-euros follows its opposite. This creates an
+		arbitration opportunity! Step two: trade in the direction
+		USD-EUR-GBP-USD, step three: PROFIT!!!
+		</para>
+
+<!-- t/xSelfJoin.t, doArbJoins -->
+<exdump>
+> rate,OP_DELETE,EUR,GBP,0.74
+lbResult OP_DELETE ccy1="EUR" ccy2="GBP" rate1="0.74" ccy3="USD" rate2="1.98" rate3="0.78" looprate="1.142856" 
+lbResult OP_DELETE ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.74" rate3="1.98" looprate="1.142856" 
+lbResult OP_DELETE ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.74" looprate="1.142856" 
+> rate,OP_INSERT,EUR,GBP,0.64
+__join2.leftLookup.out OP_INSERT ccy1="EUR" ccy2="GBP" rate1="0.64" ccy3="USD" rate2="1.98" rate3="0.78" looprate=0.988416 
+__join2.leftLookup.out OP_INSERT ccy1="USD" ccy2="EUR" rate1="0.78" ccy3="GBP" rate2="0.64" rate3="1.98" looprate=0.988416 
+__join2.rightLookup.out OP_INSERT ccy1="GBP" ccy2="USD" rate1="1.98" ccy3="EUR" rate2="0.78" rate3="0.64" looprate=0.988416 
+</exdump>
+
+		<para>
+		Our trading (and perhaps other people's trading too) moves the exchange
+		rate of euros to pounds. And with that the balance of currencies is
+		restored, and the arbitration opportunity disappears.
+		</para>
+
+		<para>
+		Now let's have a look inside JoinTwo. What is so special about the
+		self-join? Normally the join works on two separate tables. They get
+		updated one at a time. Even if some common reason causes both tables to
+		be updated, the update arrives from one table first. The join sees this
+		incoming update, looks in the unchanged second table, produces an
+		updated result. Then the update from the second table comes to the
+		join, which takes it, looks in the already modified first table, and
+		produces another updated result.
+		</para>
+
+		<para>
+		If both inputs are from the same table, this logic breaks. Two copies
+		of the updates will arrive, but by the time the first one arrives, the
+		contents of the table has been already changed. When the join looks in
+		the table, it gets the unexpected results and creates a mess.
+		</para>
+
+		<para>
+		But JoinTwo has a fix for this. It makes use of the Pre label of the
+		table for its left-side update (the right side would have worked just
+		as good, it's just a random choice):
+		</para>
+
+<!-- lib/Triceps/JoinTwo.pm -->
+<pre>
+	my $selfJoin = $self->{leftTable}->same($self->{rightTable});
+	if ($selfJoin && !defined $self->{leftFromLabel}) {
+		# one side must be fed from Pre label (but still let the user override)
+		$self->{leftFromLabel} = $self->{leftTable}->getPreLabel();
+	}
+</pre>
+
+		<para>
+		This way when the join sees the first update, the table hasn't changed
+		yet. And then the second copy of that update comes though the normal
+		output label, after the table has been modified. Everything just works
+		out as normal and the self-joins produce the correct result.
+		</para>
+
+		<para>
+		Normally you don't need to concern yourself with this, except if you're
+		trying to filter the data coming to the join. Then remember that for
+		<quote>leftFromLabel</quote> you have to receive the data from the table's
+		<pre>getPreLabel()</pre>, not <pre>getOutputLabel()</pre>.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
