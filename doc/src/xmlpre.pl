@@ -72,7 +72,7 @@ while(<STDIN>) {
 			$pre = 0;
 			print "</programlisting>\n";
 		} else {
-			chomp;
+			s/\s+$//; # trim the end spaces and line feeds
 			print $lf, &xmlify($_);
 			$lf = "\n";
 		}
@@ -81,7 +81,7 @@ while(<STDIN>) {
 			$dump = 0;
 			print "</programlisting>\n";
 		} else {
-			chomp;
+			s/\s+$//; # trim the end spaces and line feeds
 			my $input = s/^> //; # the input lines start with "> "
 			print $lf;
 			print("<emphasis role=\"bold\">") if ($input);
