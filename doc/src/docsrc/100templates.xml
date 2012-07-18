@@ -1204,6 +1204,7 @@ my $query = Query4->new(table => $tWindow, name => "qWindow",
 		<pre>Triceps::Fields::isStringType()</pre> is used to check
 		the type of the fields. Triceps::Fields is a collection
 		of functions that help dealing with fields in the templates.
+		Another similar function is <pre>Triceps::Fields::isArrayType()</pre>
 		</para>
 
 		<para>

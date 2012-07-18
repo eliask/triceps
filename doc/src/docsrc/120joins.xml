@@ -293,6 +293,9 @@ $ttAccounts->initialize() or confess "$!";
 			<primary>join</primary>
 			<secondary>lookup</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>filter</primary>
+		</indexterm>
 		<para>
 		The first manual lookup example will just do the filtering: find, whether there is a match
 		in the translation table, and if so then pass the row through. The
@@ -3578,43 +3581,6 @@ sub { # (opcode, row)
 		produced as a part of DELETE-INSERT pair, the key fields will be copied
 		from the right to the left.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 
 </chapter>
