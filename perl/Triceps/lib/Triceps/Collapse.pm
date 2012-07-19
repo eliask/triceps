@@ -34,7 +34,7 @@ sub new # ($class, $optName => $optValue, ...)
 	my $self = {};
 
 	&Triceps::Opt::parse($class, $self, {
-		unit => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+		unit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		data => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 	}, @_);
@@ -54,7 +54,9 @@ sub new # ($class, $optName => $optValue, ...)
 	$self->{datasets}{$dataset->{name}} = $dataset;
 	# check the options
 	&Triceps::Opt::handleUnitTypeLabel("Triceps::Collapse data set (". $dataset->{name} . ")",
-		"unit", \$self->{unit}, "rowType", \$dataset->{rowType}, "fromLabel", \$dataset->{fromLabel});
+		"unit at the main level", \$self->{unit}, 
+		"rowType", \$dataset->{rowType}, 
+		"fromLabel", \$dataset->{fromLabel});
 	my $lbFrom = $dataset->{fromLabel};
 
 	# create the tables

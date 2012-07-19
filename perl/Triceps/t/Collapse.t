@@ -136,7 +136,6 @@ my $unit = Triceps::Unit->new("unit");
 my $lbInput = $unit->makeDummyLabel($rtData, "lbInput");
 
 my $collapse = Triceps::Collapse->new(
-	unit => $unit,
 	name => "collapse",
 	data => [
 		name => "idata",
@@ -239,7 +238,7 @@ sub tryMissingOptValue # (optName)
 }
 
 &tryMissingOptValue("unit");
-ok($@ =~ /^Option 'unit' must be specified for class 'Triceps::Collapse'/);
+ok($@ =~ /^Triceps::Collapse data set \(idata\): option unit at the main level must be specified at/);
 &tryMissingOptValue("name");
 ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse'/);
 &tryMissingOptValue("data");
