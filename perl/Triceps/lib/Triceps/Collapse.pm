@@ -102,17 +102,13 @@ sub _handleInput # ($label, $rop, $self, $dataset)
 		# whether the row was previously deleted or not. This also handles correctly
 		# multiple inserts without a delete between them, even though this kind of
 		# input is not really expected.
-		$dataset->{tbInsert}->insert($rop->getRow())
-			or confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-insert:\n$! ";
+		$dataset->{tbInsert}->insert($rop->getRow());
 	} elsif($rop->isDelete()) {
 		# If there was a row in the insert table, delete that row (undoing the previous insert).
 		# Otherwise it means that there was no previous insert seen in this round, so this must be a
 		# deletion of a row inserted in the previous round, so insert it into the delete table.
 		if (! $dataset->{tbInsert}->deleteRow($rop->getRow())) {
-			confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-delete:\n$! "
-				if ($! ne "");
-			$dataset->{tbDelete}->insert($rop->getRow())
-				or confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed a delete-table-insert:\n$! ";
+			$dataset->{tbDelete}->insert($rop->getRow());
 		}
 	}
 }
