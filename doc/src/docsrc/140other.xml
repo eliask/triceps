@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_other" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>The other templates and solutions</title>
+
+	<sect1 id="sc_other_diamond">
+		<title>The dreaded diamond</title>
+
+		<indexterm>
+			<primary>diamond</primary>
+		</indexterm>
+		<indexterm>
+			<primary>fork-join</primary>
+		</indexterm>
+
+		<para>
+		The <quote>diamond</quote> is a particular topology of the data flow, when the
+		computation separates based on some condition and then merges again.
+		Like in
+		<xref linkend="fig_other_diamond" xrefstyle="select: label nopage"/>&xrsp;.
+		It is also known as <quote>fork-join</quote> (the <quote>join</quote> here has nothing to do with
+		the SQL join, it just means that the arrows merge to the same block).
+		</para>
+
+		<figure id="fig_other_diamond" >
+			<title>The diamond topology.</title>
+			<xi:include href="file:///FIGS/diamond-000.xml"/> 
+		</figure>
+
+		<indexterm>
+			<primary>execution order</primary>
+		</indexterm>
+		<para>
+		This topology is a known source of two problems. The first problem is
+		about the execution order.  To make things easier to see, let's
+		consider a simple example.  Suppose the rows come into the block A with
+		the schema:
+		</para>
+
+<pre>
+key => string,
+value => int32,
+</pre>
+
+		<para>
+		And come out of the blocks B and C into D with schema
+		</para>
+
+<pre>
+key => string,
+value => int32,
+negative => int32,
+</pre>
+
+		<para>
+		With the logic in the blocks being:
+		</para>
+
+<pre>
+A:
+	if value < 0 then B else C
+B:
+	negative = 1
+C: 
+	negative = 0
+</pre>
+
+		<para>
+		Yes, this is a very dumb example that can usually be handled by a
+		conditional expression in a single block. But that's to keep it
+		small and simple. A real example would often include some SQL joins, with
+		different joins done on condition.
+		</para>
+
+		<para>
+		Suppose A then gets the input, in CSV form:
+		</para>
+
+<pre>
+INSERT,key1,10
+DELETE,key1,10
+INSERT,key1,20
+DELETE,key1,20
+INSERT,key1,-1
+</pre>
+
+		<para>
+		What arrives at D should be 
+		</para>
+
+<pre>
+INSERT,key1,10,0
+DELETE,key1,10,0
+INSERT,key1,20,0
+DELETE,key1,20,0
+INSERT,key1,-1,1
+</pre>
+
+		<para>
+		And with the first four rows this is not a problem: they follow the
+		same path and are queued sequentially, so the order is preserved. But
+		the last row follows a different path. And the last two rows logically
+		represent a single update and would likely arrive closely together. The
+		last row might happen to overtake the one before it, and D would see
+		the incorrect result:
+		</para>
+
+<pre>
+INSERT,key1,10,0
+DELETE,key1,10,0
+INSERT,key1,20,0
+INSERT,key1,-1,1
+DELETE,key1,20,0
+</pre>
+
+		<para>
+		If all these input rows arrive closely one after another, the last row
+		might overtake even more of them and produce an even more disturbing
+		result like
+		</para>
+
+<pre>
+INSERT,key1,-1,1
+INSERT,key1,10,0
+DELETE,key1,10,0
+INSERT,key1,20,0
+DELETE,key1,20,0
+</pre>
+
+		<para>
+		Such misorderings may also happen between the rows with different keys.
+		Those are usually less of a problem, because usually if D keeps a
+		table, the rows with different keys may be updated in any order without
+		losing the meaning. But in case if D keeps a FIFO index (say, for
+		a window based on a row count), and the two keys fall into the same
+		FIFO bucket, their misordering would also affect the logic.
+		</para>
+
+		<para>
+		The reasons for this can be subdivided further into two classes:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		asynchronous execution,
+		</listitem>
+
+		<listitem>
+		incorrect scheduling in the synchronous execution.
+		</listitem>
+		</itemizedlist>
+
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<para>
+		If each block executes asynchronously in its own thread, there is no
+		way to predict, in which order they will actually execute. If some data
+		is sent to B and C at about the same time, it becomes a race between
+		them. One of the paths might also be longer than the other, making one
+		alternative always win the race. This kind of problems is fairly common
+		for the Aleri system that is highly multithreaded. But this is the
+		problem of absolutely any CEP engine if you split the execution by
+		multiple threads or processes.
+		</para>
+
+		<para>
+		But the single-threaded execution is not necessarily a cure either.
+		Then the order of execution is up to the scheduler. And if the
+		scheduler gets all these rows close together, and then decides to
+		process all the input of A, then all the input of B, of C and of D,
+		then D will receive the rows in the order:
+		</para>
+
+<pre>
+INSERT,key1,-1,1
+INSERT,key1,10,0
+DELETE,key1,10,0
+INSERT,key1,20,0
+DELETE,key1,20,0
+</pre>
+
+		<para>
+		Which is typical for, say, Coral8 if all the input rows arrive in a
+		single bundle (see also the 
+		<xref linkend="sc_sched_no_bundling" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
+		</para>
+
+		<para>
+		At the moment Triceps does not directly support the multithreaded
+		execution, so that renders the first sub-case moot for now. But the
+		multithreading will be added soon, and then I'll return to this aspect.
+		</para>
+
+		<para>
+		When the single-threaded scheduling is concerned, Triceps provides two
+		answers.
+		</para>
+
+		<para>
+		First, the conditional logic can often be expressed procedurally:
+		</para>
+
+<pre>
+if ($a->get("value") < 0) {
+	D($rtD->makeRowHash($a->toHash(), negative => 1));
+} else {
+	D($rtD->makeRowHash($a->toHash(), negative => 0));
+}
+</pre>
+
+		<para>
+		The procedural if-else logic can easily handle not only the simple
+		expressions but things like look-ups and modifications in the tables.
+		</para>
+
+		<para>
+		Second, if the logic is broken into the separate labels, the label call
+		semantics provides the same ordering as well:
+		</para>
+
+<pre>
+$lbA = $unit->makeLabel($rtA, "A", undef, sub {
+	my $rop = $_[1]; 
+	my $op = $rop->getOpcode(); my $a = $rop->getRow();
+	if ($a->get("value") < 0) { 
+		$unit->call($lbB->makeRowop($op, $a));
+	} else { 
+		$unit->call($lbC->makeRowop($op, $a));
+	} 
+}) or die "$!";
+
+$lbB = $unit->makeLabel($rtA, "B", undef, sub {
+	my $rop = $_[1]; 
+	my $op = $rop->getOpcode(); my $a = $rop->getRow();
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 1)
+		or die "$!";
+}) or die "$!";
+
+$lbC = $unit->makeLabel($rtA, "C", undef, sub {
+	my $rop = $_[1]; 
+	my $op = $rop->getOpcode(); my $a = $rop->getRow();
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 0)
+		or die "$!";
+}) or die "$!";
+</pre>
+
+		<indexterm>
+			<primary>scheduling</primary>
+		</indexterm>
+		<para>
+		When the label A calls the label B or C, which calls the label D, A
+		does not get to see its next input row until the whole chain of calls
+		to D and beyond completes. B and C may be replaced with the label
+		chains of arbitrary complexity, including loops, without disturbing the
+		logic.
+		</para>
+
+		<para>
+		The second problem with the diamond topology
+		happens when the blocks B and C keep the state, and the
+		input data gets updated by simply re-sending a record with the same
+		key. This kind of updates is typical for the systems that do not have
+		the concept of opcodes.
+		</para>
+
+		<para>
+		Consider a CCL example (approximate, since I can't test it) that gets
+		the reports about borrowing and loaning securities, using the sign of
+		the quantity to differentiate between borrows (-) and loans (+).
+		It then sums up the borrows and loans separately:
+		</para>
+
+		<indexterm>
+			<primary>CCL</primary>
+		</indexterm>
+<pre>
+create schema s_A (
+	id integer, 
+	symbol string,
+	quantity long
+);
+create input stream i_A schema s_A;
+
+create schema s_D (
+	symbol string,
+	borrowed boolean, // flag: loaned or borrowed
+	quantity long
+);
+// aggregated data
+create public window w_D schema s_D
+keep last per symbol, borrowed;
+
+// collection of borrows
+create public window w_B schema s_A keep last per id;
+// collection of loans
+create public window w_C schema s_A keep last per id;
+
+insert when quantity < 0
+	then w_B
+	else w_C
+select * from i_A; 
+
+// borrows aggregation
+insert into w_D
+select
+	symbol,
+	true,
+	sum(quantity)
+group by symbol
+from w_B;
+
+// loans aggregation
+insert into w_D
+select
+	symbol,
+	false,
+	sum(quantity)
+group by symbol 
+from w_C;
+</pre>
+
+		<para>
+		It works OK until a row with the same id gets updated to a different
+		sign of quantity:
+		</para>
+
+<pre>
+1,AAA,100
+....
+1,AAA,-100
+</pre>
+
+		<para>
+		If the quantity kept the same sign, the new row would simply replace
+		the old one in w_B or w_C, and the aggregation result would be right
+		again. But when the sign changes, the new row goes into a different
+		direction than the previous one. Now it ends up with both w_B and w_C
+		having rows with the same id: one old and one new!
+		</para>
+
+		<para>
+		In this case really the problem is at the <quote>fork</quote> part of the <quote>diamond</quote>,
+		the merging part of it is just along for the ride, carrying the
+		incorrect results.
+		</para>
+
+		<para>
+		This problem does not happen in the systems that have both inserts and
+		deletes. Then the data sequence becomes
+		</para>
+
+<pre>
+INSERT,1,AAA,100
+....
+DELETE,1,AAA,100
+INSERT,1,AAA,-100
+</pre>
+
+		<para>
+		The DELETE goes along the same branch as the first insert and undoes
+		its effect, then the second INSERT goes into the other branch.
+		</para>
+
+		<para>
+		Since Triceps has both INSERT and DELETE opcodes, it's immune to this
+		problem, as long as the input data has the correct DELETEs in it.
+		</para>
+
+		<para>
+		If you wonder, the CCL example can be fixed too but in a more
+		round-about way, by adding a couple of statements before the
+		<quote>insert-when</quote> statement:
+		</para>
+
+<pre>
+on w_A
+delete from w_B
+	where w_A.id = w_B.id;
+
+on w_A
+delete from w_C
+	where w_A.id = w_C.id;
+</pre>
+
+		<para>
+		This generates the matching DELETEs. Of course, if you want, you can
+		use this way with Triceps too.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>

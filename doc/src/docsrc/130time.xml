@@ -961,6 +961,9 @@ create window ... keep 3 hours;
 		</listitem>
 		</orderedlist>
 
+		<indexterm>
+			<primary>execution order</primary>
+		</indexterm>
 		<para>
 		Next issue, the execution order. The last example was relying on
 		<pre>$currentHour</pre> being updated before <pre>flushOldPackets()</pre> runs. Otherwise the
@@ -1066,13 +1069,6 @@ create window ... keep 3 hours;
 		<quote>idle</quote> row that would push through the results as a more efficient
 		batch.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 
 </chapter>
