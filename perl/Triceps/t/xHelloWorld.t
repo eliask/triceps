@@ -45,7 +45,7 @@ sub sendf # ($msg, $vars...)
 
 #########################
 
-$hwunit = Triceps::Unit->new("hwunit") or die "$!";
+$hwunit = Triceps::Unit->new("hwunit") or confess "$!";
 $hw_rt = Triceps::RowType->new(
 	greeting => "string",
 	address => "string",

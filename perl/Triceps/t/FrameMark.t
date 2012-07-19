@@ -90,7 +90,7 @@ sub startLoop # ($label, $rowop)
 	my ($label, $rowop) = @_;
 
 	my $depth = $u1->getStackDepth();
-	($depth == 2) or die "Stack depth growing to $depth";
+	($depth == 2) or confess "Stack depth growing to $depth";
 
 	$result .= $rowop->printP() . "\n";
 	$u1->setMark($m1);
@@ -113,7 +113,7 @@ sub startLoop # ($label, $rowop)
 		$@ =~ s/SCALAR\(\w+\)/SCALAR/g; # remove the varying scalar pointers
 		$result .= "bad loopAt: $@\n"
 	} else {
-		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow())) or die "$!";
+		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow())) or confess "$!";
 	}
 }
 
@@ -128,9 +128,9 @@ sub nextLoop # ($label, $rowop)
 	my $newrop = $labStart->makeRowop(&Triceps::OP_DELETE, $rt1->makeRowHash(%data) );
 	if ($callType eq "tray") {
 		my $tray = $u1->makeTray($newrop);
-		$u1->loopAt($m1, $tray) or die "$!";
+		$u1->loopAt($m1, $tray) or confess "$!";
 	} elsif ($callType eq "single") {
-		$u1->loopAt($m1, $newrop) or die "$!";
+		$u1->loopAt($m1, $newrop) or confess "$!";
 	} elsif ($callType eq "fromHash") {
 		$u1->makeHashLoopAt($m1, $labStart, &Triceps::OP_DELETE, %data);
 	} elsif ($callType eq "fromArray") {

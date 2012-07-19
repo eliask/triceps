@@ -65,8 +65,8 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
 		undef, sub { # (label, rowop)
 			&send($_[1]->printP(), "\n");
-		}) or die "$!";
-	$lbParent->chain($lb) or die "$!";
+		}) or confess "$!";
+	$lbParent->chain($lb) or confess "$!";
 	return $lb;
 }
 
