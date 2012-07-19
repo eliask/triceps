@@ -399,6 +399,587 @@ delete from w_C
 		This generates the matching DELETEs. Of course, if you want, you can
 		use this way with Triceps too.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_other_collapse">
+		<title>Collapsed updates</title>
+
+		<indexterm>
+			<primary>collapse</primary>
+		</indexterm>
+		<para>
+		First, a note: the collapse described here has nothing to do with the collapsing
+		of the aggregation groups. It's just the same word reused for a different
+		purpose.
+		</para>
+
+		<indexterm>
+			<primary>CCL</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<indexterm>
+			<primary>batch</primary>
+		</indexterm>
+		<para>
+		Sometimes the exact sequence of how a row at a particular key was
+		updated does not matter, the only interesting part is the end result.
+		Like the <pre>OUTPUT EVERY</pre> statement in CCL or the pulsed subscription in
+		Aleri. It doesn't have to be time-driven either: if the data comes in
+		as batches, it makes sense to collapse the modifications from the whole
+		batch into one, and send it at the end of the batch.
+		</para>
+
+		<para>
+		To do this in Triceps, I've made a template. Here is an example of its
+		use with interspersed commentary: 
+		</para>
+
+<!-- t/Collapse.t -->
+<pre>
+our $rtData = Triceps::RowType->new(
+	# mostly copied from the traffic aggregation example
+	local_ip => "string",
+	remote_ip => "string",
+	bytes => "int64",
+) or confess "$!";
+</pre>
+
+		<para>
+		The meaning of the rows is not particularly important for this example.
+		It just uses a pair of the IP addresses as the collapse key. The
+		collapse absolutely needs a primary key, since it has to track and
+		collapse multiple updates to the same row.
+		</para>
+
+<!-- t/Collapse.t testExplicitRowType -->
+<pre>
+my $unit = Triceps::Unit->new("unit");
+
+my $collapse = Triceps::Collapse->new(
+	unit => $unit,
+	name => "collapse",
+	data => [
+		name => "idata",
+		rowType => $rtData,
+		key => [ "local_ip", "remote_ip" ],
+	],
+);
+</pre>
+
+		<para>
+		Most of the options are self-explanatory. The dataset is defined with
+		nested options to make the API extensible, to allow multiple datasets
+		to be defined in the future. But at the moment only one is allowed. A
+		dataset collapses the data at one label: an input label and an output
+		label get defined for it, just as for the table. The data arrives at
+		the input label, gets collapsed by the primary key, and then stays in
+		the Collapse until the flush. When the Collapse gets flushed, the data
+		is sent out of its output label. After the flush, the Collapse has no
+		data in it, and starts collecting the updates again from scratch. The
+		labels gets named by connecting the names of the Collapse element, of
+		the dataset, and <quote>in</quote> or <quote>out</quote>. For this Collapse, the label names will
+		be <quote>collapse.idata.in</quote> and <quote>collapse.idata.out</quote>.
+		</para>
+
+		<para>
+		Note that the dataset options are specified in a referenced array, not
+		a hash! If you try to use a hash, it will fail. When specifying the
+		dataset options, put the <quote>name</quote> first. It's used in the error
+		messages about any issues in the dataset, and the code really expects
+		the name to go first.
+		</para>
+
+		<para>
+		Like with the other shown templates, if something goes wrong, Collapse
+		will confess. No need to follow its methods with <pre>or confess</pre>.
+		</para>
+
+<!-- t/Collapse.t testExplicitRowType -->
+<pre>
+my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
+</pre>
+
+		<para>
+		The print label gets connected to the Collapse's output
+		label. The method to get the collapse's output label is very much like
+		table's. Only it gets the dataset name as an argument.
+		</para>
+
+<!-- t/Collapse.t, assembled from main loop and testExplicitRowType -->
+<pre>
+sub mainloop($$$) # ($unit, $datalabel, $collapse)
+{
+	my $unit = shift;
+	my $datalabel = shift;
+	my $collapse = shift;
+	while(&readLine) {
+		chomp;
+		my @data = split(/,/); # starts with a command, then string opcode
+		my $type = shift @data;
+		if ($type eq "data") {
+			my $rowop = $datalabel->makeRowopArray(@data);
+			$unit->call($rowop);
+			$unit->drainFrame(); # just in case, for completeness
+		} elsif ($type eq "flush") {
+			$collapse->flush();
+		}
+	}
+}
+
+&mainloop($unit, $collapse->getInputLabel($collapse->getDatasets()), $collapse);
+</pre>
+
+		<para>
+		There will be a second example, so I've placed the main loop into a
+		function. It works in the same way as in the examples before: extracts
+		the data from the CSV format and sends it to a label. The first column
+		contains the command: <quote>data</quote> sends the data, and <quote>flush</quote> performs the
+		flush from the Collapse. The flush marks the end of the batch. Here is
+		an example of a run, with the input lines shown as usual in bold:
+		</para>
+
+<!-- t/Collapse.t testExplicitRowType -->
+<exdump>
+> data,OP_INSERT,1.2.3.4,5.6.7.8,100
+> data,OP_INSERT,1.2.3.4,6.7.8.9,1000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,1000
+> flush
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+</exdump>
+
+		<para>
+		The row for (1.2.3.4, 5.6.7.8) gets plainly inserted, and goes through
+		on the flush. The row for (1.2.3.4, 6.7.8.9) gets first inserted and then
+		deleted, so by the flush time it becomes a no-operation.
+		</para>
+
+<!-- t/Collapse.t testExplicitRowType -->
+<exdump>
+> data,OP_DELETE,1.2.3.4,5.6.7.8,100
+> data,OP_INSERT,1.2.3.4,5.6.7.8,200
+> data,OP_INSERT,1.2.3.4,6.7.8.9,2000
+> flush
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+</exdump>
+
+		<para>
+		The original row for (1.2.3.4, 5.6.7.8) gets modified, and the modification
+		goes through. The new row for (1.2.3.4, 6.7.8.9) gets inserted now,
+		and also goes through.
+		</para>
+
+<!-- t/Collapse.t testExplicitRowType -->
+<exdump>
+> data,OP_DELETE,1.2.3.4,6.7.8.9,2000
+> data,OP_INSERT,1.2.3.4,6.7.8.9,3000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,3000
+> data,OP_INSERT,1.2.3.4,6.7.8.9,4000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,4000
+> flush
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+</exdump>
+
+		<para>
+		The row for (1.2.3.4, 6.7.8.9) now gets modified twice, and after that
+		deleted. After collapse it becomes the deletion of the original row,
+		the one that was inserted before the previous flush.
+		</para>
+
+		<para>
+		The Collapse also allows to specify the row type and the input
+		connection for a dataset in a different way:
+		</para>
+
+<!-- t/Collapse.t testFromLabel, skipping tests -->
+<pre>
+my $lbInput = $unit->makeDummyLabel($rtData, "lbInput");
+
+my $collapse = Triceps::Collapse->new(
+	name => "collapse",
+	data => [
+		name => "idata",
+		fromLabel => $lbInput,
+		key => [ "local_ip", "remote_ip" ],
+	],
+);
+
+&mainloop($unit, $lbInput, $collapse);
+</pre>
+
+		<para>
+		Normally <pre>$lbInput</pre> would be not a dummy label but the output label of
+		some element. The dataset option <quote>fromLabel</quote> tells that the dataset input will
+		be coming from that label. So the Collapse can automatically both copy
+		its row type for the dataset, and also chain the dataset's input label
+		to that label. And also allowing to skip the option <quote>unit</quote>
+		at the main level.
+		It's a pure convenience, allowing to skip the manual
+		steps. In the future a Collapse dataset should probably take a whole list of source
+		labels and chain itself to all of them, but for now only one.
+		</para>
+
+		<para>
+		This example produces exactly the same output as the previous one, so
+		there is no use in copying it again.
+		</para>
+
+		<para>
+		Another item that hasn't been shown yet, you can get the list of
+		dataset names (well, currently only one name):
+		</para>
+
+<pre>
+@names = $collapse->getDatasets();
+</pre>
+
+		<para>
+		The Collapse implementation is reasonably small, and is another worthy
+		example to show. It's a common template, with no code
+		generation whatsoever, just a combination of ready components. As with
+		SimpleAggregator, the current Collapse is quite simple and will grow
+		more features over time, so I've copied the original simple version
+		into <pre>t/xCollapse.t</pre> to stay there unchanged.
+		</para>
+
+		<para>
+		The most notable thing about Collapse is that it took just about an
+		hour to write the first version of it and another three or so hours to
+		test it. Which is a lot less than the similar code in the Aleri or
+		Coral8 code base took. The reason for this is that Triceps provides the
+		fairly flexible base data structures that can be combined easily
+		directly in a scripting language. There is no need to re-do a lot from
+		scratch every time, just take something and add a little bit on top.
+		</para>
+
+		<para>
+		So here it is, with the interspersed commentary.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+sub new # ($class, $optName => $optValue, ...)
+{
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		unit => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Unit") } ],
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		data => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+	}, @_);
+	
+	# parse the data element
+	my $dataref = $self->{data};
+	my $dataset = {};
+	# dataref->[1] is the best guess for the dataset name, in case if the option "name" goes first
+	&Triceps::Opt::parse("$class data set (" . $dataref->[1] . ")", $dataset, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		key => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
+		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
+	}, @$dataref);
+</pre>
+
+		<para>
+		The options parsing goes as usual. The option <quote>data</quote> is parsed again
+		for the options inside it, and those are places into the hash
+		<pre>%$dataset</pre>.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+	# save the dataset for the future
+	$self->{datasets}{$dataset->{name}} = $dataset;
+	# check the options
+	&Triceps::Opt::handleUnitTypeLabel("Triceps::Collapse data set (". $dataset->{name} . ")",
+		"unit at the main level", \$self->{unit}, 
+		"rowType", \$dataset->{rowType}, 
+		"fromLabel", \$dataset->{fromLabel});
+	my $lbFrom = $dataset->{fromLabel};
+</pre>
+
+		<para>
+		If <quote>fromLabel</quote> is used, the row type and possibly unit are found from it
+		by <pre>Triceps::Opt::handleUnitTypeLabel()</pre>. Or if the unit was specified
+		explicitly, it gets checked for consistency with the label's unit. See
+		<xref linkend="sc_template_options" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for more detail. The early version of Collapse in <pre>t/xCollapse.t</pre> actually
+		pre-dates <pre>Triceps::Opt::handleUnitTypeLabel()</pre>, and there the similar
+		functionality is done manually.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+	# create the tables
+	$dataset->{tt} = Triceps::TableType->new($dataset->{rowType})
+		->addSubIndex("primary", 
+			Triceps::IndexType->newHashed(key => $dataset->{key})
+		);
+	$dataset->{tt}->initialize() 
+		or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
+
+	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
+		or confess "Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
+		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
+</pre>
+
+		<para>
+		The state is kept in two tables. The reason for their existence is that after
+		collapsing, the Collapse may send for each key one of:
+		<para>
+
+		<itemizedlist>
+		<listitem>
+		a single INSERT rowop, if the row was not there before and became inserted, 
+		</listitem>
+
+		<listitem>
+		a DELETE rowop if the row was there before and then became deleted, 
+		</listitem>
+
+		<listitem>
+		a DELETE followed by an INSERT if the row was there but then changed its value,
+		</listitem>
+
+		<listitem>
+		or nothing if the row was not there before, and then was inserted and deleted,
+		or if there was no change to the row.
+		</listitem>
+		</itemizedlist>
+
+		</para>
+		Accordingly, this state is kept in two tables: one contains the DELETE
+		part, another the INSERT part for each key, and either part may be
+		empty (or both, if the row at that key has not been changed). After
+		each flush both tables become empty, and then start collecting the
+		modifications again.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+	# create the labels
+	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 
+		undef, \&_handleInput, $self, $dataset)
+			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out")
+		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
+</pre>
+
+		<para>
+		The input and output labels get created. The input label has the
+		function with the processing logic set as its handler. The output label
+		is just a dummy. Note that the tables don't get connected anywhere,
+		they are just used as storage, without any immediate reactions to their
+		modifications.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+	# chain the input label, if any
+	if (defined $lbFrom) {
+		$lbFrom->chain($dataset->{lbIn})
+			or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
+		delete $dataset->{fromLabel}; # no need to keep the reference any more, avoid a reference cycle
+	}
+</pre>
+
+		<para>
+		And if the <quote>fromLabel</quote> was used, the Collapse gets connected to it. After
+		that there is no good reason to keep a separate reference to that
+		label, especially considering that it creates a reference loop
+		that would not be cleaned until the input label get cleaned by the unit. 
+		So it gets deleted early instead.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+	bless $self, $class;
+	return $self;
+}
+</pre>
+
+		<para>
+		The final blessing is boilerplate. The constructor creates the data
+		structures but doesn't implement any logic. The logic goes next:
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+# (protected)
+# handle one incoming row on a dataset's input label
+sub _handleInput # ($label, $rop, $self, $dataset)
+{
+	my $label = shift;
+	my $rop = shift;
+	my $self = shift;
+	my $dataset = shift;
+
+	if ($rop->isInsert()) {
+		# Simply add to the insert table: the effect is the same, independently of
+		# whether the row was previously deleted or not. This also handles correctly
+		# multiple inserts without a delete between them, even though this kind of
+		# input is not really expected.
+		$dataset->{tbInsert}->insert($rop->getRow());
+</pre>
+
+		<para>
+		The Collapse object knows nothing about the data that went through it
+		before. After each flush it starts again from scratch. It expects
+		that the stream of rows is self-consistent, and makes the conclusions
+		about the previous data based on the new data it sees. An INSERT rowop
+		may mean one of two things: either there was no previous record with
+		this key, or there was a previous record with this key and then it got
+		deleted. The Delete table can be used to differentiate between these situations:
+		if there was a row that was then deleted, the Delete table would
+		contain that row. But for the INSERT it doesn't matter: in either case
+		it just inserts the new row into the Insert table. If there was no such
+		row before, it would be the new INSERT. If there was such a row before,
+		it would be an INSERT following a DELETE.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+	} elsif($rop->isDelete()) {
+		# If there was a row in the insert table, delete that row (undoing the previous insert).
+		# Otherwise it means that there was no previous insert seen in this round, so this must be a
+		# deletion of a row inserted in the previous round, so insert it into the delete table.
+		if (! $dataset->{tbInsert}->deleteRow($rop->getRow())) {
+			$dataset->{tbDelete}->insert($rop->getRow());
+		}
+	}
+}
+</pre>
+
+		<para>
+		The DELETE case is more interesting. If we see a DELETE rowop, this
+		means that either there was an INSERT sent before the last flush and
+		now that INSERT becomes undone, or that there was an INSERT after the
+		flush, which also becomes undone. The actions for these cases are
+		different: if the INSERT was before the flush, this row should go into
+		the Delete table, and eventually propagate as a DELETE during the next
+		flush. If the last INSERT was after the flush, then its row would be
+		stored in the Insert table, and now we just need to delete that row and
+		pretend that it has never been.
+		</para>
+
+		<para>
+		That's what the logic does: first it tries to remove from the Insert
+		table. If succeeded, then it was an INSERT after the flush, that became
+		undone now, and there is nothing more to do. If there was no row to
+		delete, this means that the INSERT must have happened before the last
+		flush, and we need to remember this row in the Delete table and pass it
+		on in the next flush.
+		</para>
+
+		<para>
+		This logic is not resistant to the incorrect data sequences. If there
+		ever are two DELETEs for the same key in a row (which should never
+		happen in a correct sequence), the second DELETE will end up in the
+		Delete table.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+# Unlatch and flush the collected data, then latch again.
+sub flush # ($self)
+{
+	my $self = shift;
+	my $unit = $self->{unit};
+	my $OP_INSERT = &Triceps::OP_INSERT;
+	my $OP_DELETE = &Triceps::OP_DELETE;
+	foreach my $dataset (values %{$self->{datasets}}) {
+		my $tbIns = $dataset->{tbInsert};
+		my $tbDel = $dataset->{tbDelete};
+		my $lbOut = $dataset->{lbOut};
+		my $next;
+		# send the deletes always before the inserts
+		for (my $rh = $tbDel->begin(); !$rh->isNull(); $rh = $next) {
+			$next = $rh->next(); # advance the irerator before removing
+			$tbDel->remove($rh);
+			$unit->call($lbOut->makeRowop($OP_DELETE, $rh->getRow()));
+		}
+		for (my $rh = $tbIns->begin(); !$rh->isNull(); $rh = $next) {
+			$next = $rh->next(); # advance the irerator before removing
+			$tbIns->remove($rh);
+			$unit->call($lbOut->makeRowop($OP_INSERT, $rh->getRow()));
+		}
+	}
+}
+</pre>
+
+		<para>
+		The flushing is fairly straightforward: first it sends on all the
+		DELETEs, then all the INSERTs, clearing the tables along the way. At
+		first I've though of matching the DELETEs and INSERTs together, sending
+		them next to each other in case if both are available for some key.
+		It's not that difficult to do. But then I've realized that it doesn't
+		matter and just did it the simple way.
+		</para>
+
+<!-- lib/Triceps/Collapse.pm -->
+<pre>
+# Get the input label of a dataset.
+# Confesses on error.
+sub getInputLabel($$) # ($self, $dsetname)
+{
+	my ($self, $dsetname) = @_;
+	confess "Unknown dataset '$dsetname'"
+		unless exists $self->{datasets}{$dsetname};
+	return $self->{datasets}{$dsetname}{lbIn};
+}
+
+# Get the output label of a dataset.
+# Confesses on error.
+sub getOutputLabel($$) # ($self, $dsetname)
+{
+	my ($self, $dsetname) = @_;
+	confess "Unknown dataset '$dsetname'"
+		unless exists $self->{datasets}{$dsetname};
+	return $self->{datasets}{$dsetname}{lbOut};
+}
+
+# Get the lists of datasets (currently only one).
+sub getDatasets($) # ($self)
+{
+	my $self = shift;
+	return keys %{$self->{datasets}};
+}
+</pre>
+
+		<para>
+		The getter functions are fairly simple. The only catch is that the code
+		has to check for <pre>exists</pre> before it reads the value of
+		<pre>$self->{datasets}{$dsetname}{lbOut}</pre>. Otherwise, if an
+		incorrect <pre>$dsetname</pre> is used, the reading would return an <pre>undef</pre>
+		but along the way would create an unpopulated
+		<pre>$self->{datasets}{$dsetname}</pre>. Which would then cause a crash when
+		<pre>flush()</pre> tries to iterate through it and finds the dataset options
+		missing.
+		</para>
+
+		<para>
+		That's it, Collapse in a nutshell!
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
