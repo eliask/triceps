@@ -87,7 +87,7 @@ sub mainloop($$$) # ($unit, $datalabel, $collapse)
 		my $type = shift @data;
 		if ($type eq "data") {
 			my $rowop = $datalabel->makeRowopArray(@data);
-			$unit->call($rowop) or confess "$!";
+			$unit->call($rowop);
 			$unit->drainFrame(); # just in case, for completeness
 		} elsif ($type eq "flush") {
 			$collapse->flush();
@@ -120,7 +120,7 @@ my $collapse = Triceps::Collapse->new(
 		rowType => $rtData,
 		key => [ "local_ip", "remote_ip" ],
 	],
-) or confess "$!";
+);
 
 my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 
@@ -142,7 +142,7 @@ my $collapse = Triceps::Collapse->new(
 		fromLabel => $lbInput,
 		key => [ "local_ip", "remote_ip" ],
 	],
-) or confess "$!";
+);
 
 # test the errors in getting the labels
 eval {
@@ -355,7 +355,7 @@ index error:
 			rowType => $rtData,
 			key => [ "local_ip", "remote_ip" ],
 		],
-	) or confess "$!";
+	);
 	ok(exists $collapse->{datasets});
 	$unit->clearLabels();
 	ok(!exists $collapse->{datasets});
