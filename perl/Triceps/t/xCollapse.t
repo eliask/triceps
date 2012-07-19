@@ -133,17 +133,13 @@ sub _handleInput # ($label, $rop, $self, $dataset)
 		# whether the row was previously deleted or not. This also handles correctly
 		# multiple inserts without a delete between them, even though this kind of
 		# input is not really expected.
-		$dataset->{tbInsert}->insert($rop->getRow())
-			or confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-insert:\n$! ";
+		$dataset->{tbInsert}->insert($rop->getRow());
 	} elsif($rop->isDelete()) {
 		# If there was a row in the insert table, delete that row (undoing the previous insert).
 		# Otherwise it means that there was no previous insert seen in this round, so this must be a
 		# deletion of a row inserted in the previous round, so insert it into the delete table.
 		if (! $dataset->{tbInsert}->deleteRow($rop->getRow())) {
-			confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed an insert-table-delete:\n$! "
-				if ($! ne "");
-			$dataset->{tbDelete}->insert($rop->getRow())
-				or confess "Collapse " . $self->{name} . " internal error: dataset '" . $dataset->{name} . "' failed a delete-table-insert:\n$! ";
+			$dataset->{tbDelete}->insert($rop->getRow());
 		}
 	}
 }
@@ -219,7 +215,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -249,8 +245,8 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
 		undef, sub { # (label, rowop)
 			&send($_[1]->printP(), "\n");
-		}) or die "$!";
-	$lbParent->chain($lb) or die "$!";
+		}) or confess "$!";
+	$lbParent->chain($lb) or confess "$!";
 	return $lb;
 }
 
@@ -266,7 +262,7 @@ sub mainloop($$$) # ($unit, $datalabel, $collapse)
 		my $type = shift @data;
 		if ($type eq "data") {
 			my $rowop = $datalabel->makeRowopArray(@data);
-			$unit->call($rowop) or die "$!";
+			$unit->call($rowop) or confess "$!";
 			$unit->drainFrame(); # just in case, for completeness
 		} elsif ($type eq "flush") {
 			$collapse->flush();
@@ -282,14 +278,14 @@ our $rtData = Triceps::RowType->new(
 	local_ip => "string",
 	remote_ip => "string",
 	bytes => "int64",
-) or die "$!";
+) or confess "$!";
 
 #########################
 
 sub testExplicitRowType
 {
 
-my $unit = Triceps::Unit->new("unit") or die "$!";
+my $unit = Triceps::Unit->new("unit");
 
 my $collapse = MyCollapse->new(
 	unit => $unit,
@@ -299,7 +295,7 @@ my $collapse = MyCollapse->new(
 		rowType => $rtData,
 		key => [ "local_ip", "remote_ip" ],
 	],
-) or die "$!";
+) or confess "$!";
 
 my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 
@@ -310,7 +306,7 @@ my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 sub testFromLabel
 {
 
-my $unit = Triceps::Unit->new("unit") or die "$!";
+my $unit = Triceps::Unit->new("unit");
 
 my $lbInput = $unit->makeDummyLabel($rtData, "lbInput");
 
@@ -322,7 +318,7 @@ my $collapse = MyCollapse->new(
 		fromLabel => $lbInput,
 		key => [ "local_ip", "remote_ip" ],
 	],
-) or die "$!";
+) or confess "$!";
 
 # test the errors in getting the labels
 eval {
@@ -358,24 +354,25 @@ my @inputData = (
 	"flush\n",
 );
 
-my $expectResult = 'data,OP_INSERT,1.2.3.4,5.6.7.8,100
-data,OP_INSERT,1.2.3.4,6.7.8.9,1000
-data,OP_DELETE,1.2.3.4,6.7.8.9,1000
-flush
+my $expectResult = 
+'> data,OP_INSERT,1.2.3.4,5.6.7.8,100
+> data,OP_INSERT,1.2.3.4,6.7.8.9,1000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,1000
+> flush
 collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
-data,OP_DELETE,1.2.3.4,5.6.7.8,100
-data,OP_INSERT,1.2.3.4,5.6.7.8,200
-data,OP_INSERT,1.2.3.4,6.7.8.9,2000
-flush
+> data,OP_DELETE,1.2.3.4,5.6.7.8,100
+> data,OP_INSERT,1.2.3.4,5.6.7.8,200
+> data,OP_INSERT,1.2.3.4,6.7.8.9,2000
+> flush
 collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
 collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
-data,OP_DELETE,1.2.3.4,6.7.8.9,2000
-data,OP_INSERT,1.2.3.4,6.7.8.9,3000
-data,OP_DELETE,1.2.3.4,6.7.8.9,3000
-data,OP_INSERT,1.2.3.4,6.7.8.9,4000
-data,OP_DELETE,1.2.3.4,6.7.8.9,4000
-flush
+> data,OP_DELETE,1.2.3.4,6.7.8.9,2000
+> data,OP_INSERT,1.2.3.4,6.7.8.9,3000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,3000
+> data,OP_INSERT,1.2.3.4,6.7.8.9,4000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,4000
+> flush
 collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 ';
 
@@ -396,7 +393,7 @@ ok($result, $expectResult);
 
 sub tryMissingOptValue # (optName)
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit");
 	my %opt = (
 		unit => $unit,
 		name => "collapse",
@@ -421,7 +418,7 @@ ok($@ =~ /^Option 'data' must be specified for class 'MyCollapse'/);
 
 sub tryMissingDataOptValue # (optName)
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit");
 	my %data = (
 		name => "idata",
 		rowType => $rtData,
@@ -448,7 +445,7 @@ ok($@ =~ /^The data set \(idata\) must have exactly one of options rowType or fr
 
 sub tryBadOptValue # (optName, optValue, ...)
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit");
 	my %opt = (
 		unit => $unit,
 		name => "collapse",
@@ -469,7 +466,7 @@ ok($@ =~ /^Option 'unit' of class 'MyCollapse' must be a reference to 'Triceps::
 &tryBadOptValue("data", 9);
 ok($@ =~ /^Option 'data' of class 'MyCollapse' must be a reference to 'ARRAY', is ''/);
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit");
 	&tryBadOptValue("data",[
 		name => "idata",
 		rowType => $rtData,
@@ -480,7 +477,7 @@ ok($@ =~ /^Option 'data' of class 'MyCollapse' must be a reference to 'ARRAY', i
 }
 ok($@ =~ /^The data set \(idata\) must have only one of options rowType or fromLabel /);
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit");
 	&tryBadOptValue("data",[
 		name => "idata",
 		fromLabel => $unit->makeDummyLabel($rtData, "lbInput"),
@@ -491,7 +488,7 @@ ok($@ =~ /^The unit of the Collapse and the unit of its data set \(idata\) fromL
 
 sub tryBadDataOptValue # (optName, optValue, ...)
 {
-	my $unit = Triceps::Unit->new("unit") or die "$!";
+	my $unit = Triceps::Unit->new("unit");
 	my %data = (
 		name => "idata",
 		rowType => $rtData,
