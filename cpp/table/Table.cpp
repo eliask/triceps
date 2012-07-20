@@ -399,7 +399,7 @@ size_t Table::groupSizeIdx(IndexType *ixt, const RowHandle *what) const
 size_t Table::groupSizeRowIdx(IndexType *ixt, const Row *row) const
 {
 	if (row == NULL)
-		0;
+		return 0;
 
 	RowHandle *rh = makeRowHandle(row);
 	rh->incref();
