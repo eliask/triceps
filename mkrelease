@@ -19,7 +19,18 @@ DIR="$PRODUCT-$VERSION"
 }
 
 svn export "$URL" "$DIR" || exit 1
-tar czvf "$DIR.tgz" "$DIR"
+echo
+echo "Building the documentation..."
+# This is my directory with docbook tools, to avoid downnloading them into the release.
+export TRICEPS_TOOLS_BASE=$HOME/arch/docbook
+if [ ! -d "$TRICEPS_TOOLS_BASE" ]; then {
+	TRICEPS_TOOLS_BASE=
+	make -C "$DIR/doc/dbtools" all || exit 1
+} fi
+make -C "$DIR/doc/src" all || exit 1
+make -C "$DIR/doc/src" cleanwork || exit 1
+
+tar czvf "$DIR.tgz" "$DIR" || exit 1
 
 echo
 echo "Building the exported code to make sure..."
