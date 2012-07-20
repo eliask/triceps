@@ -1,9 +1,18 @@
 How to build Triceps.
 =====================
 
-The tested build environment is Linux Fedora 11. The Perl build system
-should make it work automatically on the other Unix environments as
-well but it has not been tested in practice.
+The tested build environment is Linux Fedora 11. It should work
+automatically on the other Linux systems as well but has not been tested
+much in practice.
+
+The build should work on the other Unix environments too but would
+require some manual configuration for the available libraries,
+and has not been tested either.
+
+The tested Perl version is 5.10.0, and should work on any later version
+as well. With the earlier versions your luck may vary. The Makefile.PL
+has bben configured to require at least 5.8.0 but you may edit it and
+try building on the older versions.
 
 The normal build expectation is for the 64-bit machines. The 32-bit
 machines should work (and the code even includes the special cases for
@@ -13,7 +22,8 @@ Prerequisites
 -------------
 
 Currently you must use the GNU Linux toolchain: GNU make, GNU C++ 
-compiler, valgrind.
+compiler (version 4.4.1 has been tested), valgrind. You can build
+without valgrind by running only the non-valgrind tests.
 
 Versioning
 ----------
@@ -23,16 +33,24 @@ and there is no versioning. The API may change in any way at any moment.
 
 If you build some production code with Triceps, simply include the
 Triceps shared library that was used to build it into your
-deliverables. It's best to define a custom LIBRARY name to guarantee
-its uniqueness. Put the shared library in a known directory relative
+deliverables. It's best to define a custom LIBRARY name (see
+Configurables below) to guarantee its uniqueness, in case if the
+binary is ever to run on a machine where some Triceps version has
+been installed in the system-wide directories.
+
+To build the C++ projects with this library,
+put the shared library in a known directory relative
 to your binary and build your binary with the appropriate -rpath
 setting. For example, if they are in the same directory, use
 "-Wl,-rpath='$$ORIGIN/.".  This way each project is free to have its
-own version of Triceps shared library.
+own version of Triceps shared library. Of course, the static linking
+also works.
 
 If you are concerned that your object files may later get mixed in the
 same binary with other object files using a different version of
 Triceps, also change the setting of TRICEPS_NS to a custom value.
+
+XXX custom packaging for Perl. Merge with installation.
 
 Configurables
 -------------
@@ -45,22 +63,20 @@ be edited consistently, otherwise the code will not build or will crash.
 The extra defines in CFLAGS in Makefile.inc can be used to override
 the macros defined in Conf.h.
 
-The Conf.h macros are:
+The cpp/common/Conf.h macros are:
 
 	TRICEPS_NS - C++ namespace used by Triceps.
 
 	TRICEPS_BACKTRACE - flag: use the glibc backtrace() functionality
 	to make the messages in the Triceps exceptions more useful.
 
-Makefile.inc and Makefile.PL settings:
+cpp/Makefile.inc and Makefile.PL settings:
 
-    TRICEPS_NSPR4 and -lnspr4 - enables the use of NSPR4 library
+    TRICEPS_NSPR4 and -lnspr4 in LIBS - enables the use of NSPR4 library
 	(primarily for the atomic operations). Enabled by default, disable
 	if you don't have the NSPR4 library.
 
-Other Makefile.inc settings:
-
-	LIBRARY - the base name of the library files
+	LIBRARY and MYEXTLIB - the base name of the C++ library files.
 
 Build
 -----
@@ -95,6 +111,18 @@ Other interesting make targets:
 		a release package. The package name will be triceps-<version>.tgz,
 		where the <version> is taken from the SVN directory name, from
 		where the current directory is checked out.
+		XXX builds docs
+
+
+Building the documentation
+--------------------------
+
+If you have downloaded the release package of Triceps, the documentation
+is already included it in the built form. The PDF and HTML versions are
+available in doc/pdf and doc/html. It is also available online from
+http://triceps.sf.net.
+
+XXX how to build
 
 Installation
 ------------
