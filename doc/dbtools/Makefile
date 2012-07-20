@@ -19,7 +19,7 @@ extract:
 	tar xzvf links.tgz
 
 download:
-	for i in $(FILES); do [ -f "$$i" ] || wget "http://downloads.sourceforge.net/project/triceps/docbook-for-1.0/$$i"; done
+	for i in $(FILES); do [ -f "$$i" ] || wget "http://downloads.sourceforge.net/project/triceps/docbook-for-1.0/$$i" || exit 1; done
 
 clean:
 	rm -rf $(DIRS)
