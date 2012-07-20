@@ -35,7 +35,7 @@ my $result;
 sub readLine # ()
 {
 	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
+	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
 	return $_;
 }
 
@@ -75,7 +75,7 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 
 sub doClearChunks {
 
-our $uChunks = Triceps::Unit->new("uChunks") or confess "$!";
+our $uChunks = Triceps::Unit->new("uChunks");
 
 # data is just some dumb easily-generated filler
 our $rtData = Triceps::RowType->new(
@@ -175,38 +175,38 @@ $result = undef;
 &doClearChunks();
 #print $result;
 ok($result, 
-'data,1
+'> data,1
 tJoin1.out OP_INSERT s="data_1" i="1" 
-clear
+> clear
 tJoin1.out OP_DELETE s="data_1" i="1" 
 lbReportNote OP_INSERT text="done clearing" 
-data,5
+> data,5
 tJoin1.out OP_INSERT s="data_2" i="2" 
 tJoin1.out OP_INSERT s="data_3" i="3" 
 tJoin1.out OP_INSERT s="data_4" i="4" 
 tJoin1.out OP_INSERT s="data_5" i="5" 
 tJoin1.out OP_INSERT s="data_6" i="6" 
-clear
+> clear
 tJoin1.out OP_DELETE s="data_2" i="2" 
 tJoin1.out OP_DELETE s="data_3" i="3" 
-dump
+> dump
 dump: s="data_4" i="4" 
 dump: s="data_5" i="5" 
 dump: s="data_6" i="6" 
 when idle: lbClear OP_INSERT text="clear" 
-idle
+> idle
 tJoin1.out OP_DELETE s="data_4" i="4" 
 tJoin1.out OP_DELETE s="data_5" i="5" 
-data,1
+> data,1
 tJoin1.out OP_INSERT s="data_7" i="7" 
-dump
+> dump
 dump: s="data_6" i="6" 
 dump: s="data_7" i="7" 
 when idle: lbClear OP_INSERT text="clear" 
-idle
+> idle
 tJoin1.out OP_DELETE s="data_6" i="6" 
 tJoin1.out OP_DELETE s="data_7" i="7" 
 lbReportNote OP_INSERT text="done clearing" 
-dump
-idle
+> dump
+> idle
 ');
