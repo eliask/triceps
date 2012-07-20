@@ -1,5 +1,21 @@
 use 5.008000;
 use ExtUtils::MakeMaker;
+
+# Read the parameters from Triceps Makefiles
+my $TRICEPS_CONF = `make -f ../../cpp/Makefile.inc getconf`;
+die "Failed to read the configuration: $!" if ($! != 0);
+die "Failed to read the configuration: error code $?" if ($? != 0);
+my $TRICEPS_XLIB = `make -f ../../cpp/Makefile.inc getxlib`;
+die "Failed to read the configuration: $!" if ($! != 0);
+die "Failed to read the configuration: error code $?" if ($? != 0);
+my $TRICEPS_LIBRARY = `make -f ../../cpp/Makefile.inc getlib`;
+die "Failed to read the configuration: $!" if ($! != 0);
+die "Failed to read the configuration: error code $?" if ($? != 0);
+
+chomp $TRICEPS_CONF;
+chomp $TRICEPS_XLIB;
+chomp $TRICEPS_LIBRARY;
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
@@ -9,12 +25,12 @@ WriteMakefile(
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Triceps.pm', # retrieve abstract from module
        AUTHOR         => 'Sergey Babkin <babkin@users.sf.net>') : ()),
-    LIBS              => ['-lnspr4'], # e.g., '-lm'
-    DEFINE            => '-DTRICEPS_NSPR4', # e.g., '-DHAVE_SOMETHING'
+    LIBS              => [split(/\s+/, $TRICEPS_XLIB)], # e.g., '-lm'
+    DEFINE            => $TRICEPS_CONF, # e.g., '-DHAVE_SOMETHING'
     INC               => '-I../../cpp', # e.g., '-I. -I/usr/include/other'
 	# Un-comment this if you add C files to link with later:
     OBJECT            => '$(O_FILES)', # link all the C files too
-    MYEXTLIB          => '../../cpp/build/libtriceps$(LIB_EXT)', # embed the static version into Perl shared module
+    MYEXTLIB          => '../../cpp/build/lib' . $TRICEPS_LIBRARY . '$(LIB_EXT)', # embed the static version into Perl shared module
 	CC                => 'g++ -Wno-unused-variable',
 	LD                => 'g++',
 );
