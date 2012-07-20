@@ -1941,8 +1941,8 @@ join.rightLookup.out OP_INSERT date="20120310" customer="three" symbol="BBB" qua
 		<para>
 		If you really, really want to avoid the propagation of these
 		intermediate changes, insert after the join a Collapse template described in 
-		XXXX add the reference
-		, and flush it only
+		<xref linkend="sc_other_collapse" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		and flush it only
 		after the whole update has been processed. There will be more overhead
 		in the Collapse itself, but all the logic below it will skip the
 		intermediate changes. If this logic below is heavy-weight, that might
@@ -1980,11 +1980,17 @@ join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quanti
 			<primary>join</primary>
 			<secondary>full outer</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>diamond</primary>
+		</indexterm>
+		<indexterm>
+			<primary>fork-join</primary>
+		</indexterm>
 		<para>
 		Now, the full outer join. 
 		The full outer joins usually
 		get used with a variation of the <quote>fork-join</quote> topology described in the
-		XXX add reference. 
+		<xref linkend="sc_other_diamond" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		In it the processing of a row can be forked into
 		multiple parallel paths, each path doing an optional part of the
 		comuptation and either providing a result row or not,
