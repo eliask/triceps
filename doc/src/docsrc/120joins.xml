@@ -2509,10 +2509,10 @@ join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quanti
 		join output to the aggregator without filtering and then filter the
 		aggregator's output, thus stopping the updates to the aggregation
 		results. You may even have a special logic in the aggregator, that
-		would ignore the groups of the previous days. Both such approaches to
-		the aggregation filtering will be shown in 
-		XXX insert reference time-limited-propagation
-		. And they aren't any
+		would ignore the groups of the previous days. Such optimization
+		of the aggregation filtering will be shown in the
+		<xref linkend="sc_time_limited" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		And they aren't any
 		less efficient than filtering on the output of the join, because if you
 		filter after the join, you'd still have to remove the rows from the
 		aggregation table, and would still have to filter after the aggregation

@@ -95,6 +95,9 @@ See the file COPYRIGHT for the copyright notice and license information
 		64-bit integers.
 		</para>
 
+		<indexterm>
+			<primary>time</primary>
+		</indexterm>
 		<para>
 		Note that there is no special type for timestamps. As of version 1.0
 		there is no time-based processing inside Triceps, but that does not
@@ -104,7 +107,9 @@ See the file COPYRIGHT for the copyright notice and license information
 		added to Perl, the plan is to still use the int64 to store the number
 		of microseconds since the Unix epoch. My experience with the time types
 		in the other CEP systems is that they cause nothing but confusion.
-		XXX reference to chapter on time
+		In the meantime, the time-based processing is still possible by driving
+		the notion of time explicitly. It's described in the
+		<xref linkend="ch_time" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 
