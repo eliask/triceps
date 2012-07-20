@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_build" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Building Triceps</title>
+
+	<sect1 id="sc_build_download">
+		<title>Downloading Triceps</title>
+
+		<indexterm>
+			<primary>download</primary>
+		</indexterm>
+		<para>
+		The official Triceps site is located at SourceForge.
+		</para>
+
+		<para>
+		<ulink url="http://triceps.sf.net"/> is the high-level page.
+		</para>
+
+		<para>
+		<ulink url="http://sf.net/projects/triceps"/> is the SourceForge project page.
+		</para>
+
+		<para>
+		The official releases of Triceps can be downloaded from SourceForge.
+		</para>
+
+		<para>
+		The release policy of Triceps is aimed towards the easy development.
+		As the new features are added (or sometimes removed), they are checked into
+		the SVN repository and documented in the blog form at
+		<ulink url="http://babkin-cep.blogspot.com/"/>. Periodically 
+		the documentation updates are collected from the blog into this manual,
+		and the official releases are produced.
+		</para>
+
+		<para>
+		If you want to try out the most bleeding-edge features that have been
+		described on the blog but not officially released yet, you can get the
+		most recent code directly from the SVN repository.  The SVN code can be
+		checked out with
+		</para>
+
+<pre>
+svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
+</pre>
+
+		<para>
+		You don't need any login for check-out. You can keep it current with
+		latest changes by periodically running <pre>svn update</pre>. After
+		you've checked out the trunk, you can build it as usual.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_build_refenv">
+		<title>The reference environment</title>
+
+		<indexterm>
+			<primary>build</primary>
+			<secondary>environment</secondary>
+		</indexterm>
+		<para>
+		The tested reference build environment is where I do the Triceps development,
+		and currently it is Linux Fedora 11. The build should work
+		automatically on the other Linux systems as well but has not been tested
+		much in practice.
+		</para>
+
+		<para>
+		The build should work on the other Unix environments too but would
+		require some manual configuration for the available libraries,
+		and has not been tested either.
+		</para>
+
+		<para>
+		Currently you must use the GNU Linux toolchain: GNU make, GNU C++ 
+		compiler (version 4.4.1 has been tested), valgrind. You can build
+		without valgrind by running only the non-valgrind tests.
+		</para>
+
+		<para>
+		The tested Perl version is 5.10.0, and should work on any later version
+		as well. With the earlier versions your luck may vary. The Makefile.PL
+		has been configured to require at least 5.8.0 but you may edit it and
+		try building on the older versions.
+		</para>
+
+		<para>
+		I am interested in hearing the reports about builds in various environments.
+		</para>
+
+		<para>
+		The normal build expectation is for the 64-bit machines. The 32-bit
+		machines should work (and the code even includes the special cases for
+		them) but have been untested at the moment.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_build_basic">
+		<title>The basic build</title>
+
+		<indexterm>
+			<primary>build</primary>
+		</indexterm>
+		<para>
+		If everything works, the basic build is simple, go to the Triceps
+		directory and run:
+		</para>
+
+<pre>
+make all
+make test
+</pre>
+
+		<para>
+		That would build and test both the &Cpp; and Perl portions of Triceps.
+		The &Cpp; libraries will be created under <pre>cpp/build</pre>.
+		The Perl libraries will be created under <pre>perl/Triceps/blib</pre>.
+		</para>
+
+		<para>
+		The tests are normally run with valgrind for the &Cpp; part, without valgrind
+		for the Perl part. The reason is that Perl produces lots of false positives,
+		and the suppressions depend on particular Perl versions and are not
+		exactly reliable.
+		</para>
+
+		<para>
+		If your system differs substantially, you may need to adjust the
+		configurable settings manually, since there is no <pre>./configure</pre> script
+		in the Triceps build yet. More about them later.
+		</para>
+
+		<para>
+		The other interesting <pre>make</pre> targets are:
+		</para>
+
+
+		<variablelist>
+		<varlistentry>
+			<term><pre>clean</pre></term>
+			<listitem>
+			Remove all the built files.
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>clobber</pre></term>
+			<listitem>
+			Remove the object files, forcing the libraries to be
+			rebuilt next time.
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>vtest</pre></term>
+			<listitem>
+			Run the unit tests with valgrind, checking for leaks and
+			memory corruption.
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>qtest</pre></term>
+			<listitem>
+			Run the unit tests quickly, without valgrind.
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>release</pre></term>
+			<listitem>
+			Export from SVN a clean copy of the code and create
+			a release package. The package name will be triceps-<i>version</i>.tgz,
+			where the <i>version</i> is taken from the SVN directory name, from
+			where the current directory is checked out. This includes the build
+			of the documentation.
+			</listitem>
+		</varlistentry>
+		</variablelist>
+	</sect1>
+
+	<sect1 id="sc_build_run_doc">
+		<title>Building the documentation</title>
+
+		<indexterm>
+			<primary>build</primary>
+			<secondary>documentation</secondary>
+		</indexterm>
+		<para>
+		XXXXXXXXXXXX
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+	<sect1 id="sc_build_run_simple">
+		<title>Running the examples and simple programs</title>
+
+		<indexterm>
+			<primary>examples</primary>
+		</indexterm>
+		<para>
+		Overall, the examples live together with unit tests.
+		The primary target language for Triceps is Perl, so the examples
+		from the manual are the Perl examples located in
+		<pre>perl/Triceps/t</pre>. The files with names starting with <quote><pre>x</pre></quote> contain
+		the examples as such, like <pre>xWindow.t</pre>. 
+		Usually there are multiple related
+		examples in the same file. And they are not quite exactly the same as
+		the ones in the manual, because they are plugged into the unit test
+		infrastructure: rather than reading and writing to the stdin and
+		stdout, they take the inputs from variables, put the results into
+		variables, and have the results checked for correctness. This way the
+		examples stay working and do not experience the bit rot when something
+		changes.
+		</para>
+
+		<para>
+		The other unit tests in the <pre>.t</pre> files are interesting too, since they
+		contain absolutely all the possible usages of everything, and can be
+		used as a reference. However they tend to be much more messy and hard
+		to read, exactly because they contain in them lots of tiny snippets
+		that do everything.
+		</para>
+
+		<para>
+		The easiest way to start trying out your own small programs is to place
+		them into the same directory <pre>perl/Triceps/t</pre> and run them from
+		there. Just name them with the suffix <pre>.pl</pre>, so that they would
+		not be picked up by the Perl unit test infrastructre (or if you do want
+		to run them as a part of unit tests, use the suffix <pre>.t</pre>).
+		</para>
+
+		<para>
+		To make your programs find the Triceps modules, start them with
+		</para>
+
+<pre>
+use ExtUtils::testlib;
+use Triceps;
+use Carp;
+</pre>
+
+		<para>
+		The module <pre>ExtUtils::testlib</pre> takes care of setting the
+		include paths to find Triceps. You can run them from the parent
+		directory, like:
+		</para>
+
+<pre>
+perl t/xWindow.t
+</pre>
+
+		<para>
+		The parent directory is the only choice, since <pre>ExtUtils::testlib</pre>
+		can not set up the include paths properly from the other directories.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
+</chapter>
