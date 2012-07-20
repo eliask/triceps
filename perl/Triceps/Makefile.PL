@@ -2,13 +2,13 @@ use 5.008000;
 use ExtUtils::MakeMaker;
 
 # Read the parameters from Triceps Makefiles
-my $TRICEPS_CONF = `make -f ../../cpp/Makefile.inc getconf`;
+my $TRICEPS_CONF = `make --quiet -f ../../cpp/Makefile.inc getconf`;
 die "Failed to read the configuration: $!" if ($! != 0);
 die "Failed to read the configuration: error code $?" if ($? != 0);
-my $TRICEPS_XLIB = `make -f ../../cpp/Makefile.inc getxlib`;
+my $TRICEPS_XLIB = `make --quiet -f ../../cpp/Makefile.inc getxlib`;
 die "Failed to read the configuration: $!" if ($! != 0);
 die "Failed to read the configuration: error code $?" if ($? != 0);
-my $TRICEPS_LIBRARY = `make -f ../../cpp/Makefile.inc getlib`;
+my $TRICEPS_LIBRARY = `make --quiet -f ../../cpp/Makefile.inc getlib`;
 die "Failed to read the configuration: $!" if ($! != 0);
 die "Failed to read the configuration: error code $?" if ($? != 0);
 
