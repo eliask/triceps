@@ -8,7 +8,12 @@ DEPENDSOURCES =  $(foreach t, $(TARGETS), docsrc/$(t).xml)
 # The config files require the absolute paths.
 DOC_SRC := $(shell pwd)
 DOC_CFG = $(DOC_SRC)/cfg
-TOOLS_BASE := $(shell readlink -f '$(DOC_SRC)'/../dbtools)
+
+ifeq (,$(TRICEPS_TOOLS_BASE))
+	TOOLS_BASE = $(shell readlink -f '$(DOC_SRC)'/../dbtools)
+else
+	TOOLS_BASE = $(TRICEPS_TOOLS_BASE)
+endif
 
 TOOLS_XSL = $(TOOLS_BASE)/docbook-xsl-1.75.2
 TOOLS_DTD = $(TOOLS_BASE)/docbook-xml-4.5CR3
