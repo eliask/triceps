@@ -40,8 +40,8 @@ MODULE = Triceps		PACKAGE = Triceps
 
 BOOT:
 	// the exceptions will be caught and backtraced in Perl
-	Triceps::Exception::abort_ = false;
-	Triceps::Exception::enableBacktrace_ = false;
+	TRICEPS_NS::Exception::abort_ = false;
+	TRICEPS_NS::Exception::enableBacktrace_ = false;
 	//
 	// boot sub-packages that are compiled separately
 	//

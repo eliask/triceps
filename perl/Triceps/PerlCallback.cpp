@@ -180,7 +180,7 @@ void PerlLabel::execute(Rowop *arg) const
 		// propagate to the caller
 		Erref err = new Errors(SvPV_nolen(ERRSV));
 		err->appendMsg(true, strprintf("Detected in the unit '%s' label '%s' execution handler.", getUnitName().c_str(), getName().c_str()));
-		throw Triceps::Exception(err, false);
+		throw TRICEPS_NS::Exception(err, false);
 	}
 }
 
@@ -213,7 +213,7 @@ void PerlLabel::clearSubclass()
 		// propagate to the caller
 		Erref err = new Errors(SvPV_nolen(ERRSV));
 		err->appendMsg(true, strprintf("Detected in the unit '%s' label '%s' clearing handler.", getUnitName().c_str(), getName().c_str()));
-		throw Triceps::Exception(err, false);
+		throw TRICEPS_NS::Exception(err, false);
 	}
 }
 

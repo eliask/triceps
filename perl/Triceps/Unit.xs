@@ -249,11 +249,11 @@ setTracer(WrapUnit *self, SV *arg)
 				if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
 					WrapUnitTracer *twrap = (WrapUnitTracer *)SvIV((SV*)SvRV( arg ));
 					if (twrap == 0 || twrap->badMagic()) {
-						throw Triceps::Exception("Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer", false);
+						throw TRICEPS_NS::Exception("Unit::setTracer: tracer has an incorrect magic for WrapUnitTracer", false);
 					}
 					tracer = twrap->get();
 				} else{
-					throw Triceps::Exception("Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer", false);
+					throw TRICEPS_NS::Exception("Unit::setTracer: tracer is not a blessed SV reference to WrapUnitTracer", false);
 				}
 			} // otherwise leave the tracer as NULL
 			u->setTracer(tracer);
@@ -398,7 +398,7 @@ makeClearingLabel(WrapUnit *self, char *name, ...)
 			SV *clear = get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0);
 
 			if (!SvOK(clear)) {
-				throw Triceps::Exception(strprintf("%s: $Triceps::_DEFAULT_CLEAR_LABEL does not contain a reference to clearArgs function", funcName), false);
+				throw TRICEPS_NS::Exception(strprintf("%s: $Triceps::_DEFAULT_CLEAR_LABEL does not contain a reference to clearArgs function", funcName), false);
 			}
 
 			clr = new PerlCallback();

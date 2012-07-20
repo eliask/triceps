@@ -313,11 +313,11 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 			RowHandle *rh = wrh->get();
 
 			if (rh == NULL) {
-				throw Triceps::Exception(strprintf("%s: RowHandle is NULL", funcName), false);
+				throw TRICEPS_NS::Exception(strprintf("%s: RowHandle is NULL", funcName), false);
 			}
 
 			if (wrh->ref_.getTable() != t) {
-				throw Triceps::Exception( strprintf("%s: row argument is a RowHandle in a wrong table %s",
+				throw TRICEPS_NS::Exception( strprintf("%s: row argument is a RowHandle in a wrong table %s",
 					funcName, wrh->ref_.getTable()->getName().c_str()), false );
 			}
 
@@ -356,7 +356,7 @@ deleteRow(WrapTable *self, WrapRow *wr, ...)
 				msg.append(", in row: ");
 				rt->printTo(msg, NOINDENT);
 
-				throw Triceps::Exception(msg, false);
+				throw TRICEPS_NS::Exception(msg, false);
 			}
 
 			Tray *ctr = NULL;
