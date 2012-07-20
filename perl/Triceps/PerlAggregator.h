@@ -7,6 +7,7 @@
 
 // Include TricepsPerl.h and PerlCallback.h before this one.
 
+#include <common/Conf.h>
 #include <type/AggregatorType.h>
 #include <sched/AggregatorGadget.h>
 #include <table/Aggregator.h>
@@ -16,9 +17,9 @@
 #ifndef __TricepsPerl_PerlAggregator_h__
 #define __TricepsPerl_PerlAggregator_h__
 
-using namespace Triceps;
+using namespace TRICEPS_NS;
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {
@@ -78,6 +79,6 @@ typedef Wrap<magicWrapAggregatorType, PerlAggregatorType> WrapAggregatorType;
 }; // Triceps::TricepsPerl
 }; // Triceps
 
-using namespace Triceps::TricepsPerl;
+using namespace TRICEPS_NS::TricepsPerl;
 
 #endif // __TricepsPerl_PerlAggregator_h__

@@ -12,11 +12,12 @@
 #ifndef __TricepsPerl_PerlSortCondition_h__
 #define __TricepsPerl_PerlSortCondition_h__
 
+#include <common/Conf.h>
 #include <type/SortedIndexType.h>
 
-using namespace Triceps;
+using namespace TRICEPS_NS;
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {
@@ -78,6 +79,6 @@ protected:
 }; // Triceps::TricepsPerl
 }; // Triceps
 
-using namespace Triceps::TricepsPerl;
+using namespace TRICEPS_NS::TricepsPerl;
 
 #endif // __TricepsPerl_PerlSortCondition_h__

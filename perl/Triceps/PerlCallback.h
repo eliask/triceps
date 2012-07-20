@@ -12,9 +12,11 @@
 #ifndef __TricepsPerl_PerlCallback_h__
 #define __TricepsPerl_PerlCallback_h__
 
-using namespace Triceps;
+#include <common/Conf.h>
 
-namespace Triceps
+using namespace TRICEPS_NS;
+
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {

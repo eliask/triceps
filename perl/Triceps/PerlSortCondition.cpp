@@ -15,7 +15,7 @@
 #include "PerlCallback.h"
 #include "PerlSortCondition.h"
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {

@@ -133,11 +133,12 @@ Triceps - Perl interface to the Triceps CEP engine
 
 =head1 DESCRIPTION
 
-Triceps is a Complex Event Processing engine, embeddable into the
+Triceps is an innovative Complex Event Processing engine, embeddable into the
 scripting language. At the moment the only language supported is Perl
 (and of course the native C++).
 
-More details will be added later as the features become available.
+Currently all the documentation is available only in the PDF and
+HTML formats. The man pages will be added later.
 
 =head2 EXPORT
 
@@ -145,7 +146,15 @@ None by default.
 
 =head1 SEE ALSO
 
-Triceps project at SourceForge http://sourceforge.net/projects/triceps/
+Triceps home page: http://triceps.sf.net
+
+Triceps page at SourceForge: http://sourceforge.net/projects/triceps/
+
+The documentation in PDF: http://triceps.sf.net/docs-latest/guide.pdf
+
+The documentation in HTML: http://triceps.sf.net/docs-latest/guide.html
+
+The blog with the latest information: http://babkin-cep.blogspot.com/
 
 =head1 AUTHOR
 

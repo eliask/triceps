@@ -5,6 +5,7 @@
 //
 // The "wrapper" that stores the AggregatorContext data.
 
+#include <common/Conf.h>
 #include <type/AggregatorType.h>
 #include <sched/AggregatorGadget.h>
 #include <table/Aggregator.h>
@@ -14,9 +15,9 @@
 #ifndef __TricepsPerl_WrapAggregatorContext_h__
 #define __TricepsPerl_WrapAggregatorContext_h__
 
-using namespace Triceps;
+using namespace TRICEPS_NS;
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {
@@ -119,6 +120,6 @@ private:
 }; // Triceps::TricepsPerl
 }; // Triceps
 
-using namespace Triceps::TricepsPerl;
+using namespace TRICEPS_NS::TricepsPerl;
 
 #endif // __TricepsPerl_WrapAggregatorContext_h__

@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <wrap/Wrap.h>
+#include <common/Conf.h>
 #include <common/Strprintf.h>
 #include <common/Exception.h>
 #include <mem/EasyBuffer.h>
@@ -16,9 +17,9 @@
 #ifndef __TricepsPerl_TricepsPerl_h__
 #define __TricepsPerl_TricepsPerl_h__
 
-using namespace Triceps;
+using namespace TRICEPS_NS;
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {
@@ -180,6 +181,6 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 }; // Triceps::TricepsPerl
 }; // Triceps
 
-using namespace Triceps::TricepsPerl;
+using namespace TRICEPS_NS::TricepsPerl;
 
 #endif // __TricepsPerl_TricepsPerl_h__

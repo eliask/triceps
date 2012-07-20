@@ -13,7 +13,7 @@
 
 #include "TricepsPerl.h"
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {

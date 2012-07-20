@@ -17,9 +17,9 @@
 
 // ###################################################################################
 
-using namespace Triceps;
+using namespace TRICEPS_NS;
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {

@@ -18,7 +18,7 @@
 // an aggregator handler call into a insgle Perl object, thus simplifying the
 // API for the Perl aggregators.
 
-namespace Triceps
+namespace TRICEPS_NS
 {
 namespace TricepsPerl 
 {
