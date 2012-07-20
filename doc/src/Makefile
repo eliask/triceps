@@ -68,7 +68,7 @@ endif
 
 # only remove the work files, not the final results
 cleanwork:
-	rm -f .depends .depends.tmp $(PDFTARGETS) $(HTMLTARGETS) *.xml *.pdf *.fo *.png *.gif *.tiff *.svg docsrc/allpics.xml
+	rm -f .depends .depends.tmp *.xml *.pdf *.fo *.png *.gif *.tiff *.svg docsrc/allpics.xml
 	rm -rf cfg doc
 	#$(MAKE) -C seq clean
 	$(MAKE) -C figrefs clean
