@@ -52,7 +52,7 @@ $tt->addSubIndex("indexName", $indexType) or confess "$!";
 $tt = Triceps::TableType->new($rowType) 
 	->addSubIndex("indexName1", $indexType1) 
 	->addSubIndex("indexName2", $indexType2)
-	or die "$!";
+	or confess "$!";
 </pre>
 
 		<para>
@@ -65,7 +65,7 @@ $tt = Triceps::TableType->new($rowType)
 		</para>
 
 <pre>
-$tt->initialize() or die "$!";
+$tt->initialize() or confess "$!";
 </pre>
 
 		<para>
@@ -95,7 +95,7 @@ $rowType = $tt->getRowType();
 		</para>
 
 <pre>
-$indexType = $tt->findSubIndex("indexName") or die "$!";
+$indexType = $tt->findSubIndex("indexName") or confess "$!";
 </pre>
 
 		<para>
@@ -141,7 +141,7 @@ $indexType = $tt->findIndexPath( ["indexName", "nestedIndexName"] );
 		</para>
 
 <pre>
-$indexType = $tt-findSubIndexById($indexTypeId) or die "$!";
+$indexType = $tt-findSubIndexById($indexTypeId) or confess "$!";
 </pre>
 
 		<para>
@@ -190,29 +190,4 @@ $res = $tt->print();
 		Presents the content of a table type as a human-readable description.
 		Accepts the usual <pre>print()</pre> arguments.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>

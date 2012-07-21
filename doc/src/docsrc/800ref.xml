@@ -50,4 +50,6 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/810tabtype.xml"/>
 
+		<xi:include href="file:///DOCS/812idxtype.xml"/>
+
 </chapter>
