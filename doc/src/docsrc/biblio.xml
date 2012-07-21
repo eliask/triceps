@@ -59,6 +59,22 @@ See the file COPYRIGHT for the copyright notice and license information
 			</subtitle>
 		</biblioentry>
 
+		<biblioentry id="Hyvonen86">
+			<authorgroup>
+				<author><firstname>Eero</firstname><surname>Hyvönen</surname></author>
+				<author><firstname>Jouko</firstname><surname>Seppänen</surname></author>
+			</authorgroup>
+			<copyright> <year>1986</year> </copyright>
+			<isbn>9512627876</isbn>
+			<publisher>
+				<publishername>Kirjayhtymä</publishername>
+			</publisher>
+			<title>Lisp-maailma: Johdatus kieleen ja ohjelmointiin. (Lisp World: Introduction to Language and Programming).</title>
+			<subtitle>
+				<ulink url="Russia Edition: Mir Lispa"/>
+			</subtitle>
+		</biblioentry>
+
 		<biblioentry id="StreamBase">
 			<authorgroup>
 				<author><surname>StreamBase Inc.</surname></author>

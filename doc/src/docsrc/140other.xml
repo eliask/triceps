@@ -192,6 +192,9 @@ INSERT,key1,20,0
 DELETE,key1,20,0
 </pre>
 
+		<indexterm>
+			<primary>bundling</primary>
+		</indexterm>
 		<para>
 		Which is typical for, say, Coral8 if all the input rows arrive in a
 		single bundle (see also the 

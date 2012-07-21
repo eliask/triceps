@@ -77,6 +77,9 @@ See the file COPYRIGHT for the copyright notice and license information
 	<sect1 id="sc_sched_no_bundling">
 		<title>No bundling</title>
 
+		<indexterm>
+			<primary>bundling</primary>
+		</indexterm>
 		<para>
 		The most important principle of Triceps scheduling is: No Bundling.
 		Every rowop is for itself. The bundling is what messes up the Coral8
@@ -809,6 +812,63 @@ foreach my $row (@rowset) {
 		What if <pre>setMark()</pre> is called when there is only one frame on
 		the stack? Then there is no second frame outer to it. The mark will
 		simply be left unset.
+		</para>
+
+		<para>
+		But overall pausing and then restarting a loop like this is not such
+		a good idea. The caller of the loop normally expects that it can wait
+		for the loop to complete, and that when the loop returns, it's all done.
+		If a loop may decide to bail out now and continue later, the caller
+		has to be prepared for it.
+		</para>
+
+		<indexterm>
+			<primary>schedule</primary>
+			<secondary>loop interleaving</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>batch</primary>
+		</indexterm>
+		<indexterm>
+			<primary>bundling</primary>
+		</indexterm>
+		<indexterm>
+			<primary>fork</primary>
+		</indexterm>
+		<para>
+		And the sequence of execution when the loop continues might not
+		be direct. In the normal execution one iteration of the loop
+		follows directly after the previous one because of the orchestration
+		by the label at the head of the loop (X in this example). 
+		When C calls <pre>loopAt()</pre>, the rowop gets pushed onto
+		the stack frame of X. It would execute immediately only if X
+		is draining its frame, and only if there are no other rowops
+		queued on that frame in front of this one. I've been seeing it
+		as a feature: X can easily be careful and make sure that the
+		whole loop executes in one go without any interruptions.
+		<pre>makeLoopHead()</pre> and <pre>makeLoopAround()</pre>
+		create such careful labels. But it may also decide to
+		run multiple loops interleaved, with each one making one
+		iteration at a time. To do that, all it needs is fork the
+		rowops to start all these loops and then drain the frame
+		(directly or by returning from its own code). This way
+		you can for example make a batch of records run through the
+		loop (or even through the different loops) with the whole
+		batch going throgh one iteration before the another iteration
+		starts, achieving a kind of bundling. Though, if fork
+		gets removed, this would not be possible any more. Maybe
+		is's a reason for fork to stay, maybe it's a useless feature.
+		</para>
+
+		<para>
+		However if a loop decides to pause and then continues on
+		some other event, its following <pre>loopAt()</pre> pushing the rowop
+		onto the outermost frame, there is no caring parent to do the
+		careful orchestration. There is no way to tell, which other
+		rowops have been pushed onto the outermust frame by this time.
+		The loop won't continue until these rowops execute. They may
+		change the state of the model, so if the loop code expects it
+		to stay the same, it will be mightily surprised.
 		</para>
 	</sect1>
 
@@ -1858,7 +1918,7 @@ exit(0);
 	</sect1>
 
 	<sect1 id="sc_sched_loop_ex">
-		<title>Example of a looped model</title>
+		<title>Example of a topological loop</title>
 
 		<para>
 		How to build the models with the topological loop is much easier to understand 
@@ -1928,7 +1988,9 @@ sub fib1 # ($n)
 		number is calculated anyway for the (<i>n</i>-1)&emdash;th number.
 		Why calculate it separately the second time? We could as well have saved
 		and reused it. The Lisp people have figured this
-		out a long time ago, and the Lisp books are full of examples that
+		out a long time ago, and the Lisp books (if you can read Finnish or
+		Russian, <biblioref linkend="Hyvonen86"/> is a classical one)
+		are full of examples that
 		do exactly that. However I'm too lazy to explain how they work, so we're
 		going to skip it together with the conversion of a tail recursion
 		into a loop and get directly to the loop version. I find the loop
@@ -2262,6 +2324,9 @@ drainFrame()
 	<sect1 id="sc_sched_tray">
 		<title>Trays, or yes bundling</title>
 
+		<indexterm>
+			<primary>bundling</primary>
+		</indexterm>
 		<para>
 		Even though Triceps does no bundling in scheduling, there still is a
 		need to store the sequences of row operations. This is an important
