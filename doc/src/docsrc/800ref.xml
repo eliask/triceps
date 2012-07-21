@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_ref" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Triceps Perl API Reference</title>
+
+		<para>
+		There are two distinct ways to descibe something, a <quote>guide</quote> and
+		a <quote>reference</quote>. Most of this manual is a guide: it goes
+		by describing things by examples, together with the idioms of their
+		usage, and with the explanation of the internal structure and
+		underlying reasons. However if you already know how things work
+		and need to look up the trivia, a reference with its short
+		and dry descriptions comes handy. Besides, some methods of the classes
+		essentially are the trivia, and there is no point in making
+		elaborate examples about them. The reference for the whole
+		Perl API is collected here, organized by classes.
+		Eventually it should be placed into the man pages as well, but
+		so far I haven't got around to do it.
+		</para>
+
+		<para>
+		Some of the classes are so fundamental that the guide sections
+		about them were essentially of the reference type, with the
+		use being shown in all the examples of the manual. In such cases
+		I'm not copying them here, instead please refer to the relevant
+		chapters:
+		</para>
+
+		<para>
+		XXX fill in xrefs
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<xi:include href="file:///DOCS/810tabtype.xml"/>
+
+</chapter>
