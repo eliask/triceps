@@ -59,5 +59,55 @@ See the file COPYRIGHT for the copyright notice and license information
 			</subtitle>
 		</biblioentry>
 
+		<biblioentry id="StreamBase">
+			<authorgroup>
+				<author><surname>StreamBase Inc.</surname></author>
+			</authorgroup>
+			<title>StreamBase Documentation</title>
+			<subtitle>
+				<ulink url="http://docs.streambase.com/"/>
+			</subtitle>
+		</biblioentry>
+
+		<biblioentry id="Aleri">
+			<authorgroup>
+				<author><surname>Sybase Inc.</surname></author>
+			</authorgroup>
+			<title>Sybase Aleri Streaming Platform 3.2</title>
+			<subtitle>
+				<ulink url="http://infocenter.sybase.com/help/index.jsp?docset=/com.sybase.infocenter.help.aleri.3.2/title.htm&amp;docSetID=1733"/>
+			</subtitle>
+		</biblioentry>
+
+		<biblioentry id="Coral8">
+			<authorgroup>
+				<author><surname>Sybase Inc.</surname></author>
+			</authorgroup>
+			<title>Sybase CEP Option R4</title>
+			<subtitle>
+				<ulink url="http://infocenter.sybase.com/help/index.jsp?docset=/com.sybase.infocenter.help.cep.4.0/doc/html/title.html&amp;docSetID=1659"/>
+			</subtitle>
+		</biblioentry>
+
+		<biblioentry id="SybaseR5">
+			<authorgroup>
+				<author><surname>Sybase Inc.</surname></author>
+			</authorgroup>
+			<title>Sybase Event Stream Processor 5.0</title>
+			<subtitle>
+				<ulink url="http://infocenter.sybase.com/help/index.jsp?docset=/com.sybase.infocenter.help.esp.5.0/doc/html/title.html&amp;docSetID=1788"/>
+			</subtitle>
+		</biblioentry>
+
+		<biblioentry id="Esper">
+			<authorgroup>
+				<author><surname>EsperTech Inc.</surname></author>
+			</authorgroup>
+			<title>Esper Tutorials</title>
+			<subtitle>
+				<ulink url="http://esper.codehaus.org/tutorials/tutorials.html"/>
+			</subtitle>
+		</biblioentry>
+
 		</bibliodiv>
 	</bibliography>

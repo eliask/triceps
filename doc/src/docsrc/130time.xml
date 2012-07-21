@@ -891,6 +891,9 @@ day="20120306" bytes="0"
 		<indexterm>
 			<primary>StreamBase</primary>
 		</indexterm>
+		<indexterm>
+			<primary>Esper</primary>
+		</indexterm>
 		<para>
 		The problem with the fast replay is that those time based-statements
 		use the real time and not the timestamps from the incoming rows. Sure,
@@ -906,7 +909,8 @@ day="20120306" bytes="0"
 		simply can't feed the data precisely enough to reproduce the exact
 		timing. And 10 times faster is not the same thing as just as fast as
 		possible. I don't know for sure what the StreamBase does, it seems to
-		have the time acceleration by a fixed rate too.
+		have the time acceleration by a fixed rate too. Esper apparently
+		allows the full control over timing, but I don't know much about it.
 		</para>
 
 		<para>
