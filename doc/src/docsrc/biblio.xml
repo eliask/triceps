@@ -28,5 +28,36 @@ See the file COPYRIGHT for the copyright notice and license information
 			<title>The practice of parallel programming</title>
 		</biblioentry>
 
+		<biblioentry id="Stayton07">
+			<authorgroup>
+				<author><firstname>Bob</firstname><surname>Stayton</surname></author>
+			</authorgroup>
+			<copyright> <year>2007</year> </copyright>
+			<isbn>0-974-15213-7</isbn>
+			<publisher>
+				<publishername>Sagehill Enterprises</publishername>
+			</publisher>
+			<title>DocBook XSL: The Complete Guide (4th Edition)</title>
+			<subtitle>
+				<ulink url="http://www.sagehill.net/docbookxsl/"/>
+			</subtitle>
+		</biblioentry>
+
+		<biblioentry id="Walsh99">
+			<authorgroup>
+				<author><firstname>Norman</firstname><surname>Walsh</surname></author>
+				<author><firstname>Leonard</firstname><surname>Muellner</surname></author>
+			</authorgroup>
+			<copyright> <year>1999</year> </copyright>
+			<isbn>156592-580-7</isbn>
+			<publisher>
+				<publishername>O'Reilly Media</publishername>
+			</publisher>
+			<title>DocBook: The Definitive Guide</title>
+			<subtitle>
+				<ulink url="http://www.oasis-open.org/docbook/documentation/reference/html/"/>
+			</subtitle>
+		</biblioentry>
+
 		</bibliodiv>
 	</bibliography>

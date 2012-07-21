@@ -200,18 +200,98 @@ make test
 			<secondary>documentation</secondary>
 		</indexterm>
 		<para>
-		XXXXXXXXXXXX
+		If you have downloaded the release package of Triceps, the documentation
+		is already included it in the built form. The PDF and HTML versions are
+		available in <pre>doc/pdf</pre> and <pre>doc/html</pre>. It is also available online from
+		<ulink url="http://triceps.sf.net"/>.
+		</para>
+
+		<indexterm>
+			<primary>DocBook</primary>
+		</indexterm>
+		<para>
+		The documentation is formatted in DocBook, that produces the PDF
+		and HTML outputs.
+		If you check out the source from SVN and want to build the documentation,
+		you need to download the DocBook tools needed to build it. 
+		I hate the dependency situations, when to build something you need
+		to locate, build and download dozens of other packages firsti,
+		and then the versions turn out to be updated, and don't want
+		to work together, and all kinds of hell break loose.
+		To make things easier, I've collected the set of packages that
+		I've used for the build and that are known to work.
+		They've collected in <ulink url="http://downloads.sourceforge.net/project/triceps/docbook-for-1.0/"/>.
+		The DocBook packages come originally from <ulink url="http://docbook.sf.net"/>,
+		plus a few extra packages that by now I forgot where I've got from.
+		An excellent book on the DocBook tools and their configuration is
+		<biblioref linkend="Stayton07"/>. And if you're interested, the
+		text formatting in Docbook is described in
+		<biblioref linkend="Walsh99"/>.
 		</para>
 
 		<para>
+		DocBook is great in the way it takes cary of great many things
+		automatically but configuring it is plainly a bitch. Fortunately,
+		it's all already taken care of. I've reused the infrastructure I've
+		built for my book <biblioref linkend="Babkin10"/> for Triceps.
+		Though some elements got dropped and some added.
 		</para>
 
 		<para>
+		Downloading and extraction of the DocBook tools gets taken care of
+		by running
+		</para>
+
+<pre>
+make -C doc/dbtools
+</pre>
+
+		<para>
+		These tools are written in Java, and the packages are already the
+		compiled binaries, so they don't need to be built. As long as
+		you have the Java runtime environment, they just run. However
+		like many Java packages, they are sloppy and often don't return
+		the correct return codes on errors. So the results of the build
+		have to be checked visually afterwards.
 		</para>
 
 		<para>
+		The build also uses Ghostscript for converting the figues
+		from the EPS format. The luck with Ghostscript versions
+		also varies. The version 8.70 works for me.
+		I've seen some versions crash on this conversion.
+		Fortunately, it was crashing after the conversion actually
+		succeeded, so a workaround was to ignore the exit code
+		from Ghostscript.
 		</para>
 
+		<para>
+		After the tools have been extracted, the build is done by
+		</para>
+
+<pre>
+make -C doc/src
+</pre>
+
+		<para>
+		The temporary files are cleaned with
+		</para>
+
+<pre>
+make -C doc/src cleanwork
+</pre>
+
+		<para>
+		The results will be in <pre>doc/pdf</pre> and <pre>doc/html</pre>. 
+		</para>
+
+		<para>
+		If like me you plan to use the DocBook tools repeatedly
+		to build the docs for different versions of Triceps,
+		you can download and extract them once in some other
+		directory and then set the exported variable 
+		<pre>TRICEPS_TOOLS_BASE</pre> to point to it.
+		</para>
 	</sect1>
 
 	<sect1 id="sc_build_run_simple">
@@ -275,6 +355,143 @@ perl t/xWindow.t
 		<para>
 		The parent directory is the only choice, since <pre>ExtUtils::testlib</pre>
 		can not set up the include paths properly from the other directories.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_build_install_perl">
+		<title>Installation of the Perl library</title>
+
+		<indexterm>
+			<primary>installation</primary>
+		</indexterm>
+		<para>
+		If you have the root permissions on the machine and want to install
+		Triceps in the central location, just run
+		</para>
+
+<pre>
+make -C perl/Triceps install
+</pre>
+
+		<para>
+		If you don't, there are multiple options. One is to create your
+		private Perl hierarchy in the home directory. If you decide to
+		put it into <pre>$HOME/inst</pre>, the installation there becomes
+		</para>
+
+<pre>
+mkdir -p $HOME/inst
+cp -Rf perl/Triceps/blib/* $HOME/inst/
+</pre>
+
+		<para>
+		You can then set the environment variable
+		</para>
+
+<pre>
+export PERL5LIB=$HOME/inst/lib:$HOME/inst/arch
+</pre>
+
+		<para>
+		to have your private hierarchy prepended to the Perl's standard
+		library path. You can then insert <quote>use Triceps;</quote>
+		and the Triceps module will be found. If you want to have the man
+		pages from that directory working too, set
+		</para>
+
+<pre>
+export MANPATH=$HOME/inst:$MANPATH
+</pre>
+
+		<para>
+		Not that Triceps has any usable man pages at the moment.
+		</para>
+
+		<para>
+		However if you're building a package that uses Triceps and
+		will be shipped to the customer and/or deployed to a production
+		machine, placing the libraries into the
+		home directory is still not the best idea. Not only you don't
+		want to pollute the random home directories, you also want to
+		make sure that your libraries get picked up, and not the ones
+		that might happen to be installed on the machine from
+		some other sources (because they may be of different versions,
+		or completely different libraries that accidentaly have the
+		same name).
+		</para>
+
+		<para>
+		The best idea then is to copy Triceps and all the other
+		libraries into your distribution package, and have the binaries
+		(including the scripts) find them by a relative path.
+		</para>
+
+		<para>
+		Suppose you build the package prototype in the <pre>$PKGDIR</pre>,
+		with the binaries and scripts located in the subdirectory <pre>bin</pre>, and the
+		Triceps library located in the subdirectory <pre>blib</pre>.
+		When you build your package, you install the Triceps library in that
+		prototype by
+		</para>
+
+<pre>
+cp -Rf perl/Triceps/blib $PKGDIR/
+</pre>
+
+		<para>
+		Then this package gets archived, sent to the destination machine and
+		unarchived. Whatever the package type, <pre>tar</pre>, <pre>cpio</pre> 
+		or <pre>rpm</pre>, doesn't matter.
+		The relative paths under it stay the same. For example,
+		if it gets installed under <pre>/opt/my_package</pre>, the directory
+		hierarchy would look like this:
+		</para>
+
+<pre>
+/opt/my_package
+     +- bin
+     |  +- my_program.pl
+     +- blib
+        +- ... Triceps stuff ...
+</pre>
+
+		<para>
+		The script <pre>my_program.pl</pre> can then use the following code at the
+		top to load the Triceps package:
+		</para>
+
+<!-- t/xRunAnywhere.t -->
+<pre>
+#!/usr/bin/perl
+
+use File::Basename;
+
+# This is the magic sequence that adds the relative include paths.
+BEGIN {
+	my $mypath = dirname($0);
+	unshift @INC, "${mypath}/../blib/lib", "${mypath}/../blib/arch";
+}
+
+use Triceps;
+</pre>
+
+		<para>
+		It finds its own path from <pre>$0</pre>, by taking its directory name. Then it
+		adds the relative directories for the Perl modules and XS shared libraries
+		to the include path. And finally loads Triceps using the modified
+		include path. Of course, more paths for more packages can be added
+		as well. The script can also use that own directory (if saved into a global
+		instead of <pre>my</pre> variable) to run the other programs later,
+		find the configuration files and so on.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
 		</para>
 
 		<para>
