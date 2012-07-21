@@ -86,7 +86,7 @@ svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
 
 		<para>
 		Currently you must use the GNU Linux toolchain: GNU make, GNU C++ 
-		compiler (version 4.4.1 has been tested), valgrind. You can build
+		compiler (version 4.4.1 has been tested), glibc, valgrind. You can build
 		without valgrind by running only the non-valgrind tests.
 		</para>
 
@@ -104,7 +104,9 @@ svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
 		<para>
 		The normal build expectation is for the 64-bit machines. The 32-bit
 		machines should work (and the code even includes the special cases for
-		them) but have been untested at the moment.
+		them) but have been untested at the moment. Some of the tests might fail
+		of the 32-bit and/or big-endian machines due to the different computation
+		of the hash values, and thus producing a different row order in the result.
 		</para>
 	</sect1>
 
@@ -140,7 +142,8 @@ make test
 		<para>
 		If your system differs substantially, you may need to adjust the
 		configurable settings manually, since there is no <pre>./configure</pre> script
-		in the Triceps build yet. More about them later XXXXX.
+		in the Triceps build yet. More information about them is in the
+		<xref linkend="sc_build_config" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -394,7 +397,7 @@ export PERL5LIB=$HOME/inst/lib:$HOME/inst/arch
 
 		<para>
 		to have your private hierarchy prepended to the Perl's standard
-		library path. You can then insert <quote>use Triceps;</quote>
+		library path. You can then insert <quote><pre>use Triceps;</pre></quote>
 		and the Triceps module will be found. If you want to have the man
 		pages from that directory working too, set
 		</para>
@@ -503,13 +506,31 @@ use Triceps;
 
 <pre>
 TRICEPSBASE=$(HOME)/srcs/triceps-1.0.0
-CFLAGS += -I$(TRICEPSBASE)/cpp
-LDFLAGS += -L$(TRICEPSBASE)/cpp/build -ltriceps
+CFLAGS += -I$(TRICEPSBASE)/cpp -DTRICEPS_NSPR4
+LDFLAGS += -L$(TRICEPSBASE)/cpp/build -ltriceps -lnspr4 -pthread
 </pre>
 
 		<para>
 		The Triceps include files expect that the Triceps &Cpp; subdirectory
 		is directly in the include path as shown.
+		</para>
+
+		<para>
+		The exact set of <pre>-D</pre> flags and extra <pre>-l</pre> libraries may vary with the Triceps
+		configuration. To get the exact ones used in the configuration, run the special
+		configuration <pre>make</pre> targets:
+		</para>
+
+<pre>
+make --quiet -f cpp/Makefile.inc getconf
+make --quiet -f cpp/Makefile.inc getxlib
+</pre>
+
+		<para>
+		The additions to <pre>CFLAGS</pre> are returned by <pre>getconf</pre>. The additional external
+		libraries for <pre>LDFLAGS</pre> are returned by <pre>getxlib</pre>. It's important
+		to use the same settings in the build of Triceps itself and of the user programs.
+		The differing settings may cause the program to crash.
 		</para>
 
 		<para>
@@ -526,7 +547,7 @@ LDFLAGS += "-Wl,-rpath='$$ORIGIN/.'"
 		<para>
 		Or any relative path would do. For example, if your binary package contains
 		the binaries in the subdirectory <pre>bin</pre> and the libraries in the subdirectory
-		<pre>lib</pre>, the setting for teh path of the libraries relative
+		<pre>lib</pre>, the setting for the path of the libraries relative
 		to the binaries will be:
 		</para>
 
@@ -598,6 +619,15 @@ LIBRARY := triceps_my_corp_my_project_v_123
 		</para>
 
 		<para>
+		There is also a special <pre>make</pre> target to get back the base name
+		of the Triceps library:
+		</para>
+
+<pre>
+make --quiet -f cpp/Makefile.inc getlib
+</pre>
+
+		<para>
 		The other potential naming conflict could happen with both shared and
 		dynamic libraries. It appears when you want to link two different versions
 		of the library into the same binary. This is needed rarely, but still needed.
@@ -605,13 +635,11 @@ LIBRARY := triceps_my_corp_my_project_v_123
 		Triceps provides a way around it by having an opportunity to rename the
 		&Cpp; namespaces, instead of the default namespace <quote><pre>Triceps</pre></quote>. 
 		It can be done again by editing <pre>cpp/Makefile.inc</pre>
-		and modifying the setting <pre>TRICEPS_CONF</pre> but a better way is to
-		edit the file <pre>cpp/common/Conf.h</pre> and near its top (after the 
-		<pre>#ifdef</pre> part) add
+		and modifying the setting <pre>TRICEPS_CONF</pre>:
 		</para>
 
 <pre>
-#define TRICEPS_NS TricepsMyVersion
+TRICEPS_CONF += -DTRICEPS_NS=TricepsMyVersion
 </pre>
 
 		<para>
@@ -621,20 +649,20 @@ LIBRARY := triceps_my_corp_my_project_v_123
 		</para>
 
 		<para>
-		Then you edit <pre>$(HOME)/srcs/triceps-1.0.0/cpp/common/Conf.h</pre> and
+		Then you edit <pre>$(HOME)/srcs/triceps-1.0.0/cpp/Makefile.inc</pre> and
 		put in there
 		</para>
 
 <pre>
-#define TRICEPS_NS Triceps1
+TRICEPS_CONF += -DTRICEPS_NS=Triceps1
 </pre>
 
 		<para>
-		And in <pre>$(HOME)/srcs/triceps-2.0.0/cpp/common/Conf.h</pre> put
+		And in <pre>$(HOME)/srcs/triceps-2.0.0/cpp/Makefile.inc</pre> put
 		</para>
 
 <pre>
-#define TRICEPS_NS Triceps2
+TRICEPS_CONF += -DTRICEPS_NS=Triceps2
 </pre>
 
 		<para>
@@ -669,32 +697,54 @@ LIBRARY := triceps_my_corp_my_project_v_123
 		</para>
 	</sect1>
 
-	<sect1 id="sc_build_settings_cpp">
-		<title>Disambiguation of the &Cpp; library</title>
+	<sect1 id="sc_build_config">
+		<title>Build configuration settings</title>
 
 		<para>
-		Such configuration settings can also be found by your build scripts
-		using the special <pre>make</pre> targets:
+		Since Triceps has no autoconfiguration yet, it may need to be configured
+		manually for the target operating system. The same method is used for the
+		build options.
 		</para>
+
+		<para>
+		The configuration options are set in the file <pre>cpp/Makefile.inc</pre>.
+		The extra defines are added in <pre>TRICEPS_CONF</pre>, the extra library dependencies
+		in <pre>TRICEPS_XLIB</pre>.
+		</para>
+
+		<para>
+		So far the only such configurable library dependency is the NSPR4 library.
+		It's used for its implementation of the atomic integers and pointers.
+		Without it the code still works but uses a less efficient implementation
+		of an integer or pointer protected by a mutex. It is enabled by
+		</para>
+
 <pre>
-make --quiet -f cpp/Makefile.inc getconf
-make --quiet -f cpp/Makefile.inc getxlib
-make --quiet -f cpp/Makefile.inc getconf
+TRICEPS_CONF += -DTRICEPS_NSPR4
+TRICEPS_XLIB += -lnspr4
 </pre>
 
 		<para>
+		The other build options require only the <pre>-D</pre> settings.
 		</para>
 
-		<para>
-		</para>
+<pre>
+TRICEPS_CONF += -DTRICEPS_NS=TricepsMyVersion
+</pre>
 
 		<para>
+		Changes the namespace of Triceps.
 		</para>
 
-		<para>
-		</para>
+<pre>
+TRICEPS_CONF += -DTRICEPS_BACKTRACE=false
+</pre>
 
 		<para>
+		Disables the use of the glibc stack backtrace library (it's a standard
+		part of glibc nowadays but if you use a non-GNU libc, you might have
+		to disable it). This library is used to make the messages on fatal
+		errors more readable, and let you find the location of the error easier.
 		</para>
 
 	</sect1>
