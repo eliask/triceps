@@ -140,7 +140,7 @@ make test
 		<para>
 		If your system differs substantially, you may need to adjust the
 		configurable settings manually, since there is no <pre>./configure</pre> script
-		in the Triceps build yet. More about them later.
+		in the Triceps build yet. More about them later XXXXX.
 		</para>
 
 		<para>
@@ -484,15 +484,203 @@ use Triceps;
 		instead of <pre>my</pre> variable) to run the other programs later,
 		find the configuration files and so on.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_build_install_cpp">
+		<title>Installation of the &Cpp; library</title>
+
+		<indexterm>
+			<primary>installation</primary>
+		</indexterm>
 
 		<para>
+		There are no special install scripts for the &Cpp; libraries and includes.
+		To build your &Cpp; code with Triceps, simply specify the location of Triceps
+		sources and built libraries with options <pre>-I</pre> and <pre>-L</pre>. For example, if
+		you have built Triceps in <pre>$HOME/srcs/triceps-1.0.0</pre>, you can add
+		the following to your Makefile:
+		</para>
+
+<pre>
+TRICEPSBASE=$(HOME)/srcs/triceps-1.0.0
+CFLAGS += -I$(TRICEPSBASE)/cpp
+LDFLAGS += -L$(TRICEPSBASE)/cpp/build -ltriceps
+</pre>
+
+		<para>
+		The Triceps include files expect that the Triceps &Cpp; subdirectory
+		is directly in the include path as shown.
 		</para>
 
 		<para>
+		If you build your code with the dynamic library, the best packaging practice is to
+		copy the <pre>libtriceps.so</pre> to the same directory where your binary is
+		located and specify its location with the build flags (for GCC, the flags of other
+		compilers may vary):
+		</para>
+
+<pre>
+LDFLAGS += "-Wl,-rpath='$$ORIGIN/.'"
+</pre>
+
+		<para>
+		Or any relative path would do. For example, if your binary package contains
+		the binaries in the subdirectory <pre>bin</pre> and the libraries in the subdirectory
+		<pre>lib</pre>, the setting for teh path of the libraries relative
+		to the binaries will be:
+		</para>
+
+<pre>
+LDFLAGS += "-Wl,-rpath='$$ORIGIN/../lib'"
+</pre>
+
+		<para>
+		But locating the binaries and the shared libraries won't work if Triceps and your
+		program get ever ported to Windows. Windows searches for the DLLs only in the
+		same directory.
 		</para>
 
 		<para>
+		Or it might be easier to build your code with the static library: just
+		instead of <pre>-ltriceps</pre>, link explicitly with
+		<pre>$(TRICEPSBASE)/cpp/build/libtriceps.a</pre> and the libraries it
+		requires:
 		</para>
+
+<pre>
+LDFLAGS += $(TRICEPSBASE)/cpp/build/libtriceps.a -lpthread -lnspr4
+</pre>
+	</sect1>
+
+	<sect1 id="sc_build_disambig_cpp">
+		<title>Disambiguation of the &Cpp; library</title>
+
+		<para>
+		A problem with the shared libraries is that you never know, which
+		exact library will end up linked at run time. The system library
+		path takes priority over the one specified in <pre>-rpath</pre>.
+		So if somene has installed a Triceps shared library system-wide,
+		it would be found and used instead of your one. And it might be
+		of a completely different version. Or some other package might
+		have messed with <pre>LD_LIBRARY_PATH</pre> in the user's <pre>.profile</pre>, and
+		inserted its path with its own version of Triceps.
+		</para>
+
+		<para>
+		Messing with <pre>LD_LIBRARY_PATH</pre> is bad. The good solution
+		is to give your libraries some unique name, so that it would
+		not get confused. Instead of <pre>libtriceps.so</pre>, name it
+		something like <pre>libtriceps_my_corp_my_project_v_123.so</pre>.
+		</para>
+
+		<para>
+		Triceps can build the libraries with such names directly.
+		To change the name, edit <pre>cpp/Makefile.inc</pre> and change
+		</para>
+
+<pre>
+LIBRARY := triceps
+</pre>
+
+		<para>
+		to
+		</para>
+
+<pre>
+LIBRARY := triceps_my_corp_my_project_v_123
+</pre>
+
+		<para>
+		and it will produce the custom-named library. The Perl part of the build
+		detects this name change automatically and still works (though for the
+		Perl build it doesn't change much, the static &Cpp; Triceps library gets
+		linked into the XS-produced shared library).
+		</para>
+
+		<para>
+		The other potential naming conflict could happen with both shared and
+		dynamic libraries. It appears when you want to link two different versions
+		of the library into the same binary. This is needed rarely, but still needed.
+		If nothing special is done, the symbol names in two libraries clash and nothing works.
+		Triceps provides a way around it by having an opportunity to rename the
+		&Cpp; namespaces, instead of the default namespace <quote><pre>Triceps</pre></quote>. 
+		It can be done again by editing <pre>cpp/Makefile.inc</pre>
+		and modifying the setting <pre>TRICEPS_CONF</pre> but a better way is to
+		edit the file <pre>cpp/common/Conf.h</pre> and near its top (after the 
+		<pre>#ifdef</pre> part) add
+		</para>
+
+<pre>
+#define TRICEPS_NS TricepsMyVersion
+</pre>
+
+		<para>
+		Suppose that you have two Triceps versions that you want both to
+		use in the same binary. Suppose that you are building them in
+		<pre>$(HOME)/srcs/triceps-1.0.0</pre> and <pre>$(HOME)/srcs/triceps-2.0.0</pre>.
+		</para>
+
+		<para>
+		Then you edit <pre>$(HOME)/srcs/triceps-1.0.0/cpp/common/Conf.h</pre> and
+		put in there
+		</para>
+
+<pre>
+#define TRICEPS_NS Triceps1
+</pre>
+
+		<para>
+		And in <pre>$(HOME)/srcs/triceps-2.0.0/cpp/common/Conf.h</pre> put
+		</para>
+
+<pre>
+#define TRICEPS_NS Triceps2
+</pre>
+
+		<para>
+		If you use the shared libraries, you need to disambiguate their names too,
+		as described above, but for the static libraries you don't have to.
+		</para>
+
+		<para>
+		Almost there, but you need to have your code use the different namespaces
+		for different versions too. The good practice is to include in your files
+		</para>
+
+<pre>
+#include <common/Conf.h>
+</pre>
+
+		<para>
+		and then use everywhere the Triceps namespace <pre>TRICEPS_NS</pre> instead of <pre>Triceps</pre>.
+		Then as long as one source file deals with only one version of Triceps,
+		it can be easily manipulated to which version to use by providing that
+		version in the include path. And you get your program to work with two
+		versions of Triceps by linking the object files produces from these
+		source files together into one binary.
+		Then you just build some of your files
+		with <pre>-I$(HOME)/srcs/triceps-1.0.0/cpp</pre> and some with 
+		<pre>-I$(HOME)/srcs/triceps-2.0.0/cpp</pre> and avoid any conflicts
+		or code changes.
+		</para>
+
+		<para>
+		At the link time, you will need to link with the libraries from both versions.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_build_settings_cpp">
+		<title>Disambiguation of the &Cpp; library</title>
+
+		<para>
+		Such configuration settings can also be found by your build scripts
+		using the special <pre>make</pre> targets:
+		</para>
+<pre>
+make --quiet -f cpp/Makefile.inc getconf
+make --quiet -f cpp/Makefile.inc getxlib
+make --quiet -f cpp/Makefile.inc getconf
+</pre>
 
 		<para>
 		</para>
