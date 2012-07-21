@@ -309,6 +309,9 @@ Received 'table' 2 times
 			<primary>schedule</primary>
 			<secondary>loop</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>bundling</primary>
+		</indexterm>
 		<para>
 		In the <quote>no bundling</quote> spirit, a rowop is sent to the pre-modification
 		label right before it's applied to the table, and to the output label
@@ -641,9 +644,27 @@ address="table" count="2"
 		</para>
 
 		<para>
-		A RowHandle keeps a table's service information (including the index
+		A row handle keeps a table's service information (including the index
 		data) for a single data row, including of course a reference to the row
-		itself. Each row is stored in the table through its handle. A RowHandle
+		itself. Each row is stored in the table through its handle. 
+		The row handle is also an iterator in the table, and a special one:
+		it's an iterator for <i>all</i> the table's indexes at once.
+		For you SQLy people, an iterator is essentially a cursor on an index.
+		For you Java people, an iterator can be used to do more than step
+		sequentially through rows.
+		So far only the table types with one index have been shown, but
+		in reality multiple indexes are supported, potentially with quite
+		complicated arrangements. More on the indexes later, for now just keep
+		it in mind.  A row handle can be found through one index and then used
+		to iterate through another one. Or you can iterate through one index,
+		find a certain row handle and continue iterating through another index
+		starting from that handle. If you remember a reference on a particular
+		row handle, you can always continue iteration from that point later.
+		(unless the row handle gets removed from the table).
+		</para>
+
+		<para>
+		A RowHandle
 		always belongs to a particular table, the RowHandles can not be shared
 		nor moved between two tables, even if the tables are of the same type.
 		Since the tables are single-threaded, obviously the RowHandles may not
@@ -653,7 +674,8 @@ address="table" count="2"
 		<para>
 		However a RowHandle may exist without being inserted into a table. In
 		this case it still has a spiritual connection to that table but is not
-		included in the index, and will be destroyed as soon as all the
+		included in the index (the iteration attempts with it would just return 
+		<quote>end of the index</quote>), and will be destroyed as soon as all the
 		references to it disappear.
 		</para>
 
@@ -3151,7 +3173,7 @@ foreach my $rop ($ctr->toArray()) {
 		class is the cornerstone of Triceps, and everything is connected
 		to it.  The aggregators
 		work with the tables and are a whole separate big subject with their
-		own chapter. There also are many more options and methods that
+		own chapter. There also are many more options and small methods that
 		haven't been touched upon yet. They are enumerated in the reference
 		chapter, please refer there.
 		</para>

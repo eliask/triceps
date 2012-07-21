@@ -309,15 +309,40 @@ make -C doc/src cleanwork
 		from the manual are the Perl examples located in
 		<pre>perl/Triceps/t</pre>. The files with names starting with <quote><pre>x</pre></quote> contain
 		the examples as such, like <pre>xWindow.t</pre>. 
-		Usually there are multiple related
-		examples in the same file. And they are not quite exactly the same as
-		the ones in the manual, because they are plugged into the unit test
-		infrastructure: rather than reading and writing to the stdin and
-		stdout, they take the inputs from variables, put the results into
-		variables, and have the results checked for correctness. This way the
-		examples stay working and do not experience the bit rot when something
-		changes.
+		Usually there are multiple related examples in the same file. 
 		</para>
+
+		<para>
+		The examples as shown in the manual usually read the inputs from stdin
+		and print their results on stdout.
+		The actual examples in <pre>perl/Triceps/t</pre> are not quite exactly the same
+		because they are plugged into the unit test infrastructure. 
+		The difference is limited to the input/output functions: 
+		rather than reading and writing on the stdin and
+		stdout, they take the inputs from variables, put the results into
+		variables, and have the results checked for correctness.
+		This way the examples stay working and do not experience the 
+		bit rot when something changes.
+		</para>
+
+		<para>
+		Speaking of the examples outputs, the common convention in this manual
+		is to show the lines entered from stdin as bold and the lines printed
+		on stdout as regular font. This way they can be easily told apart,
+		and the effects can be connected to their causes. Like this:
+		</para>
+
+<exdump>
+> OP_INSERT,1,AAA,10,10
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+lbAverage OP_INSERT symbol="AAA" id="1" price="10" 
+> OP_INSERT,3,AAA,20,20
+Contents:
+  id="1" symbol="AAA" price="10" size="10" 
+  id="3" symbol="AAA" price="20" size="20" 
+lbAverage OP_INSERT symbol="AAA" id="3" price="15" 
+</exdump>
 
 		<para>
 		The other unit tests in the <pre>.t</pre> files are interesting too, since they
@@ -359,6 +384,7 @@ perl t/xWindow.t
 		The parent directory is the only choice, since <pre>ExtUtils::testlib</pre>
 		can not set up the include paths properly from the other directories.
 		</para>
+
 	</sect1>
 
 	<sect1 id="sc_build_install_perl">

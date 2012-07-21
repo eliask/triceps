@@ -1,15 +1,13 @@
 Things that need to be done:
 * redo the errors to confess
-* go through the docs and add all the issues mentioned there to here
 * more features for the SimpleAggregator
 * in RowHandle add getTable()
 * add the row contents access methods directly on a row handle?
-* in Row add the array index argument in get()
+* in Row add the array index argument in get(), a version of get by index
 * add get() and friends directly on Rowop
-* identify a group for iteration by the pair (parent index type, leaf index type)
-* groupSize() outside of the aggregator context
 * iteration backwards
-* an encapsulation of iteration range: begin, end, direction, maybe level of the step
+* identify a group for iteration by the pair (parent index type, leaf index type)
+* an encapsulation of iteration range: begin, end, direction, maybe level of the step, group
 * add $unit->makeLabelFrom() - a computational block with input and output labels,
   input chained from another label
 * add option fromLabel throughout templates
@@ -37,13 +35,8 @@ Things that need to be done:
 * when printing table types and such, make sure to \-escape the funny characters
 * change the XS type checking to confess instead of plain dying
 
-* doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
-* doc: Triceps::clearArgs, empty row type, clearing label
-
-* doc: describe the convention for the example input/results dump
-* doc: put somewhere that a row handle is an iterator on all the table's indexes
-* doc: for tables say that more will be coming, and the reference
-* doc: TableType::getRowType()
+* doc: Triceps::clearArgs, empty row type, clearing label - in reference
+* doc: TableType::getRowType() - in refrence
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 App ideas:
