@@ -108,7 +108,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			<primary>error handling</primary>
 		</indexterm>
 		<para>
-		When a Triceps method detects an error, it has two ways of reporting it:
+		In Perl, when a Triceps method detects an error, it has two ways of reporting it:
 		</para>
 
 		<orderedlist>
@@ -242,10 +242,17 @@ $self->{unit}->call(
 		both in Perl and in &Cpp; XS.
 		With some exceptions though: the errors
 		detected by the code auto-generated in XS, such as bad call arguments,
-		still report through the plain <pre>die</pre>. I haven't figured out yet if there
-		is a way to make all the cases of <pre>die</pre> work like <pre>confess</pre>. Maybe there
-		is, maybe by intercepting the <pre>SIGDIE</pre> <quote>signal</quote>. Or maybe there isn't any.
-		At least the custom type checking for XS will eventually be changed to use <pre>confess</pre>.
+		still report through the plain <pre>die</pre>. 
+		</para>
+
+		<para>
+		There are modules to make all the cases of <pre>die</pre> work like <pre>confess</pre>,
+		<pre>Devel::SimpleTrace</pre> and <pre>Carp::Always</pre>. They work by intercepting
+		the pseudo-signals <pre>__WARN__</pre> and <pre>__DIE__</pre>. The logic of
+		<pre>Carp::Always</pre> is pretty simple, see
+		<ulink url="http://cpansearch.perl.org/src/FERREIRA/Carp-Always-0.11/lib/Carp/Always.pm"/>,
+		so if you're not feeling like installing the module, you can easily do the same directly
+		in your code.
 		</para>
 
 		<para>

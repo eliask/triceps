@@ -35,12 +35,9 @@ Things that need to be done:
 * in the C++-underlying-Perl objects have a place to keep $self,
   with $obj->getSelf()->{CLASS} containing the blessing.
 * when printing table types and such, make sure to \-escape the funny characters
+* change the XS type checking to confess instead of plain dying
 
-* doc: describe the option to make die() work as confess()
 * doc: the aggregation with helper tables has an issue: how to tell that it's the last DELETE?
-* doc: update the examples from xTrafficAgg in the final docs
-  (aggregator "before" is now called before the mods)
-* doc: building apps with a private copy of Triceps
 * doc: Triceps::clearArgs, empty row type, clearing label
 
 * doc: describe the convention for the example input/results dump
