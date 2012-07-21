@@ -5,12 +5,12 @@
 #
 # An example of a script that finds the libraries by a relative path.
 
+use File::Basename;
+
 # This is the magic sequence that adds the relative include paths.
 BEGIN {
-	my $mypath = $0;
-	$mypath =~ s/[^\/]*$//;
-	$mypath =~ s/^$/.\//;
-	unshift @INC, "${mypath}../blib/lib", "${mypath}../blib/arch";
+	my $mypath = dirname($0);
+	unshift @INC, "${mypath}/../blib/lib", "${mypath}/../blib/arch";
 }
 
 use Triceps;
