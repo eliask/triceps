@@ -289,6 +289,25 @@ $result = $it->print();
 		The usual sameness comparisons and print methods.
 		</para>
 
+		<para>
+		Two index types are considered equal when they are of the same kind
+		(type id), their type-specific parameters are equal, they have the
+		same number of sub-indexes, with the same names, and equal pair-wise.
+		They must also have the equal aggregators.
+		</para>
+
+		<para>
+		Two index types are considered matching when they are of the same kind,
+		have matching type-specific parameters, they have the same number of
+		sub-indexes, which are matching pair-wise, and the matching aggregators.
+		The names of the sub-indexes may differ.
+		As far as the type-specific parameters are concerned, it depends on the
+		kind of the index type. The FIFO type considers any parameters matching.
+		For a Hashed index the key fields must be the same. For a Sorted index
+		the sorted condition must also be the same, and by extension this
+		means the same condition for the Ordered index.
+		</para>
+
 <pre>
 $result = $it->isLeaf();
 </pre>
@@ -309,7 +328,7 @@ $result = $it->isLeaf();
 		</para>
 
 <pre>
-$it->setComparator($compareFunc, @args...) or confess "$!";
+$it->setComparator(\&compareFunc, @args...) or confess "$!";
 </pre>
 
 		<para>
@@ -318,21 +337,6 @@ $it->setComparator($compareFunc, @args...) or confess "$!";
 		arguments from an initializer function at the table initialization
 		time. On success it returns 1. For all other index types this method
 		returns an error.
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
 		</para>
 
 	</sect1>

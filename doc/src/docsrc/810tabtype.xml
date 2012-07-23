@@ -182,6 +182,17 @@ $result = $tt1->match($tt2);
 		The usual reference comparison methods.
 		</para>
 
+		<para>
+		Two table types are considered equal when they have the equal row types,
+		and exactly the same set of index types, with the same names.
+		</para>
+
+		<para>
+		Two table types are considered matching when they have the matching row types,
+		and matching set of index types, although the names of the index types
+		may be different.
+		</para>
+
 <pre>
 $res = $tt->print();
 </pre>

@@ -3089,7 +3089,26 @@ $result = $idxType1->match($idxType2);
 </pre>
 
 		<indexterm>
-			<primary>index</primary>
+			<primary>TableType</primary>
+			<secondary>equals</secondary>
+		</indexterm>
+		<para>
+		Two table types are considered equal when they have the equal row types,
+		and exactly the same set of index types, with the same names.
+		</para>
+
+		<indexterm>
+			<primary>TableType</primary>
+			<secondary>match</secondary>
+		</indexterm>
+		<para>
+		Two table types are considered matching when they have the matching row types,
+		and matching set of index types, although the names of the index types
+		may be different.
+		</para>
+
+		<indexterm>
+			<primary>IndexType</primary>
 			<secondary>equals</secondary>
 		</indexterm>
 		<para>
@@ -3102,13 +3121,14 @@ $result = $idxType1->match($idxType2);
 		</para>
 
 		<indexterm>
-			<primary>index</primary>
+			<primary>IndexType</primary>
 			<secondary>match</secondary>
 		</indexterm>
 		<para>
 		Two index types are considered matching when they are of the same kind,
 		have matching type-specific parameters, they have the same number of
 		sub-indexes, which are matching pair-wise, and the matching aggregators.
+		The names of the sub-indexes may differ.
 		As far as the type-specific parameters are concerned, it depends on the
 		kind of the index type. The FIFO type considers any parameters matching.
 		For a Hashed index the key fields must be the same. For a Sorted index
