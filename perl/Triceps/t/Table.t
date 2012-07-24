@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 201 };
+BEGIN { plan tests => 207 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -421,50 +421,49 @@ ok(!eval {
 ok($@ =~ /Triceps::Table::insert: copyTray is from a wrong unit u2, table in unit u1/);
 
 # bad args iteration
-$res = $t2->beginIdx($itrev);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::beginIdx: indexType argument does not belong to table's type");
+ok(! eval { $t2->beginIdx($itrev); });
+ok($@ =~ /^Triceps::Table::beginIdx: indexType argument does not belong to table's type/);
 
-$res = $t1->next($rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::next: row argument is a RowHandle in a wrong table tab2");
+ok(! eval { $t1->next($rh2); });
+ok($@ =~ /^Triceps::Table::next: row argument is a RowHandle in a wrong table tab2/);
 
-$res = $t1->nextIdx($itrev, $rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::nextIdx: row argument is a RowHandle in a wrong table tab2");
+ok(! eval { $t1->nextIdx($itrev, $rh2); });
+ok($@ =~ /^Triceps::Table::nextIdx: row argument is a RowHandle in a wrong table tab2/);
 
-$res = $t2->nextIdx($itrev, $rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::nextIdx: indexType argument does not belong to table's type");
+ok(! eval { $t2->nextIdx($itrev, $rh2); });
+ok($@ =~ /^Triceps::Table::nextIdx: indexType argument does not belong to table's type/);
 
-$res = $t1->firstOfGroupIdx($itrev, $rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::firstOfGroupIdx: row argument is a RowHandle in a wrong table tab2");
+ok(! eval { $t1->firstOfGroupIdx($itrev, $rh2); });
+ok($@ =~ /^Triceps::Table::firstOfGroupIdx: row argument is a RowHandle in a wrong table tab2/);
 
-$res = $t2->firstOfGroupIdx($itrev, $rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::firstOfGroupIdx: indexType argument does not belong to table's type");
+ok(! eval { $t2->firstOfGroupIdx($itrev, $rh2); });
+ok($@ =~ /^Triceps::Table::firstOfGroupIdx: indexType argument does not belong to table's type/);
 
-$res = $t1->nextGroupIdx($itrev, $rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::nextGroupIdx: row argument is a RowHandle in a wrong table tab2");
+ok(! eval { $t1->nextGroupIdx($itrev, $rh2); });
+ok($@ =~ /^Triceps::Table::nextGroupIdx: row argument is a RowHandle in a wrong table tab2/);
 
-$res = $t2->nextGroupIdx($itrev, $rh2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::nextGroupIdx: indexType argument does not belong to table's type");
+ok(! eval { $t2->nextGroupIdx($itrev, $rh2); });
+ok($@ =~ /^Triceps::Table::nextGroupIdx: indexType argument does not belong to table's type/);
 
 # bad args find: shares the parse function with index, so just touch-test
-$res = $t1->find($t2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::find: row argument has an incorrect magic for Row or RowHandle");
+ok(! eval { $t1->find($t2); });
+ok($@ =~ /^Triceps::Table::find: row argument has an incorrect magic for Row or RowHandle/);
 
-$res = $t1->findIdx($itrev, $t2);
-ok(!defined $res);
-ok($! . "", "Triceps::Table::findIdx: row argument has an incorrect magic for Row or RowHandle");
+ok(! eval { $t1->findIdx($itrev, $t2); });
+ok($@ =~ /^Triceps::Table::findIdx: row argument has an incorrect magic for Row or RowHandle/);
 
-$res = $t2->findIdx($itrev, $rh2); # this one is different from insert()
-ok(!defined $res);
-ok($! . "", "Triceps::Table::findIdx: indexType argument does not belong to table's type");
+ok(! eval { $t2->findIdx($itrev, $rh2); }); # this one is different from insert()
+ok($@ =~ /^Triceps::Table::findIdx: indexType argument does not belong to table's type/);
+
+# bad args iteration and finds directly on RowHandle
+ok(! eval { $rh2->nextIdx($itrev); });
+ok($@ =~ /^Triceps::RowHandle::nextIdx: indexType argument does not belong to table's type/);
+
+ok(! eval { $rh2->firstOfGroupIdx($itrev); });
+ok($@ =~ /^Triceps::RowHandle::firstOfGroupIdx: indexType argument does not belong to table's type/);
+
+ok(! eval { $rh2->nextGroupIdx($itrev); });
+ok($@ =~ /^Triceps::RowHandle::nextGroupIdx: indexType argument does not belong to table's type/);
 
 # remove
 $res = $t1->remove($rh1);
