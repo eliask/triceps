@@ -117,7 +117,7 @@ while(&readLine) {
 	# symbol. Use one way for the symbol AAA and the other for the rest.
 	my $rhFirst;
 	if ($rTrade->get("symbol") eq "AAA") {
-		$rhFirst = $tWindow->findIdx($itSymbol, $rTrade) or confess "$!";
+		$rhFirst = $tWindow->findIdx($itSymbol, $rTrade);
 	} else  {
 		# $rhTrade is now in the table but it's the last record
 		$rhFirst = $rhTrade->firstOfGroupIdx($itLast2) or confess "$!";
@@ -224,7 +224,7 @@ $tWindow->getOutputLabel()->chain($lbRememberLastMod) or confess "$!";
 sub printAverage # (row)
 {
 	return unless defined $rLastMod;
-	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
 	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
 	&send("Contents:\n");
 	my $avg;
@@ -366,7 +366,7 @@ our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 sub computeAverage # (row)
 {
 	return unless defined $rLastMod;
-	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
 	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
 	&send("Contents:\n");
 	my $avg = 0;
@@ -506,7 +506,7 @@ our $lbAverage = makePrintLabel("lbAverage", $tAvgPrice->getOutputLabel());
 sub computeAverage2 # (row)
 {
 	return unless defined $rLastMod;
-	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
 	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
 	&send("Contents:\n");
 	my $avg = 0;
