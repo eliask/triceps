@@ -39,7 +39,6 @@ Things that need to be done:
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: look at the manual Index
 * doc: describe the match() for every object type
-* doc: in build describe the expect messages in Perl unit tests
 
 App ideas:
 * queries on CSV files

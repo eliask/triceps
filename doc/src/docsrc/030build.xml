@@ -147,6 +147,26 @@ make test
 		</para>
 
 		<para>
+		In some circumstances the Per unit test print the error messages as a normal part
+		of running the test. Such messages are prepended with a message that they are
+		expected, for example:
+		</para>
+
+<pre>
+Expect message(s) like: Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator
+Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator
+Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator
+</pre>
+
+		<para>
+		These messages come from the tests of the &Cpp; code catching of the
+		fatal errors in the Perl code. In the future all such catching
+		will be converted to the stack unwind and confession back to the
+		surrounding Perl code. However for now there still are the old-style handlers
+		that simply print the error message.
+		</para>
+
+		<para>
 		The other interesting <pre>make</pre> targets are:
 		</para>
 
