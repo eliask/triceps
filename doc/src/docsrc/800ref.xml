@@ -60,4 +60,6 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/820rowhand.xml"/>
 
+		<xi:include href="file:///DOCS/822aggcontext.xml"/>
+
 </chapter>
