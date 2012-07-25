@@ -352,21 +352,5 @@ $size = $table->groupSizeIdx($idxType, $row_or_rh);
 		it for a row handle that is in the table is more efficient because the
 		group would not need to be found first). 
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 
