@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+	<sect1 id="sc_ref_opt"  xmlns:xi="http://www.w3.org/2001/XInclude">
+		<title>Opt reference</title>
+
+		<indexterm>
+			<primary>Opt</primary>
+		</indexterm>
+
+		<para>
+		Triceps::Opt is not a class but a package with a set of functions that
+		help with processing the arguments to the class constructors and other
+		functions when these arguments are represented as options.
+		</para>
+
+<pre>
+Triceps::Opt::parse($class, \%instance, \%optdescr, @opts);
+</pre>
+
+		<para>
+		Checks the options and copies their values into a class instance (or generally
+		into a hash). Usually used with the class constructors, so the semantics of
+		the arguments is oriented towards this usage. Confesses on errors.
+		<pre>$class</pre> is the calling class name, for the error messages. <pre>\%instance</pre>
+		is the reference to the object instance where to copy the options to.
+		<pre>\%optdescr</pre> is the reference to a hash describing the valid options.
+		<pre>@opts</pre> (all the remaining arguments) are the option name-value pairs passed through
+		from the class constructor.
+		</para>
+
+		<para>
+		The entries in <pre>\%optdescr</pre> are references to arrays, each of them describing
+		an option. They are usually written in the form:
+		</para>
+
+<pre>
+optionName => [ $defaultValue, \&checkFunc ],
+</pre>
+
+		<para>
+		If there is no default value, it can be set to <pre>undef</pre>. <pre>\&checkFunc</pre>
+		is a reference to a function that is used to check the option value. If the value is
+		correct, the function returns, if incorrect, it confesses with a descriptive message.
+		The default value is filled in for the missing options before the check function
+		is called.  If no checking is needed, the function reference may be <pre>undef</pre>.
+		The check function is called as:
+		</para>
+
+<pre>
+&$checkFunc($optionValue, $optionName, $class, $instance);
+</pre>
+
+		<para>
+		The class and instance are passed through from the arguments of <pre>parse()</pre>.
+		</para>
+
+		<para>
+		A user-defined anonymous function can be used to combine multiple checking functions,
+		for example:
+		</para>
+
+<pre>
+table => [ undef, sub { 
+	&Triceps::Opt::ck_mandatory(@_); 
+	&Triceps::Opt::ck_ref(@_, "Triceps::Table");
+} ],
+</pre>
+
+		<para>
+		A number of ready checking function is provided. When these functions require extra
+		arguments, by convention they go after the common arguments, as shown for
+		<pre>ck_ref()</pre> above.
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		<pre>Triceps::Opt::ck_mandatory</pre> checks that the value is defined.
+		</listitem>
+		<listitem>
+		<pre>Triceps::Opt::ck_ref</pre> checks that the value is a reference to a
+		particular class, or a class derived from it. Just give the class name as the extra argument. Or,
+		to check that the reference is to array or hash, make the argument
+		<pre>"ARRAY"</pre> or <pre>"HASH"</pre>. Or an empty string <pre>""</pre> to check that it's not a
+		reference at all. For the arrays and hashes it can also check the
+		values contained in them for being references to the correct types: give that
+		type as the second extra argument. But it doesn't go deeper than that,
+		just one nesting level. It might be extended later, but for now one nesting
+		level has been enough.
+		</listitem>
+		<listitem>
+		<pre>Triceps::Opt::ck_refscalar</pre> checks that the value is a reference to a
+		scalar. This is designed to check the arguments which are used to
+		return data back to the caller, and it would accept any previous value
+		in that scalar: an actual scalar value, an <pre>undef</pre> or a reference,
+		since it's about to be overwritten anyway.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The <pre>ck_ref()</pre> and <pre>ck_refscalar()</pre> allow the value to be undefined, so they
+		can safely be used on the truly optional options. When I come up with more of
+		the useful check functions, I'll add them.
+		</para>
+
+<pre>
+Triceps::Opt::handleUnitTypeLabel($caller, 
+	$nameUnit, \$refUnit, 
+	$nameRowType, \$refRowType, 
+	$nameLabel, \$refLabel);
+</pre>
+
+		<para>
+		A special post-processing that takes care of sorting out the compatibility of the
+		options for the unit, input row type and the input label. Usually called after
+		<pre>parse()</pre>. Confesses on errors. 
+		</para>
+
+		<para>
+		<pre>$caller</pre> is the description of the caller,
+		for the error messages. The rest are the pairs of the option names and the references
+		to the option values in the instance hash. 
+		</para>
+
+		<para>
+		Treats the options for input row type and 
+		input label as mutually exclusive but with exactly one of them required. If the
+		input row type is used then the unit option is also required. If the input label
+		is used, the unit is optional, but if it's specified anyway, the unit in the
+		option must match the unit of the input label. If the input label is used, the
+		values for the input row type and the unit are extracted from the input label
+		and set into the references.
+		</para>
+
+<pre>
+$which = Triceps::Opt::checkMutuallyExclusive(
+	$caller, $mandatory, $optName1, optValue1, ...);
+</pre>
+
+		<para>
+		Checks a set of mutually exclusive options. Usually called after
+		<pre>parse()</pre>. Confesses on errors, returns the name of the only
+		defined option on success. If no options are defined, returns
+		<pre>undef</pre>.  
+		</para>
+
+		<para>
+		<pre>$caller</pre> is the
+		description of the caller, for the error messages.
+		<pre>$mandatory</pre> is a flag telling that exactly one of the
+		options must be defined; or the check will confess. The rest are the
+		option name-value pairs (unlike <pre>handleUnitTypeLabel()</pre>, these
+		are values, not references to them).
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+	</sect1>
+
