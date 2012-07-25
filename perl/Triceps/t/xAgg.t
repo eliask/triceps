@@ -124,7 +124,7 @@ sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or confess "$!";
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -269,7 +269,7 @@ sub computeAverage2 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or confess "$!";
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -384,7 +384,7 @@ sub computeAverage3 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or confess "$!";
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -485,7 +485,7 @@ sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 	if ($opcode == &Triceps::OP_DELETE) {
-		$context->send($opcode, $$state) or confess "$!";
+		$context->send($opcode, $$state);
 		return;
 	}
 
@@ -505,7 +505,7 @@ sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
 		price => $avg
 	) or confess "$!";
 	${$state} = $res;
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 sub initRememberLast #  (@args)
@@ -612,7 +612,7 @@ sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 	if ($opcode == &Triceps::OP_DELETE) {
-		$context->send($opcode, $state) or confess "$!";
+		$context->send($opcode, $state);
 		return;
 	}
 
@@ -632,7 +632,7 @@ sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
 		price => $avg
 	) or confess "$!";
 	$_[5] = $res;
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 sub initRememberLast5 #  (@args)
@@ -737,7 +737,7 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	my $rowchg;
 	
 	if ($aggop == &Triceps::AO_BEFORE_MOD) { 
-		$context->send($opcode, $state->{lastrow}) or confess "$!";
+		$context->send($opcode, $state->{lastrow});
 		return;
 	} elsif ($aggop == &Triceps::AO_AFTER_DELETE) { 
 		$rowchg = -1;
@@ -762,7 +762,7 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	) or confess "$!";
 	$state->{lastrow} = $res;
 
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 sub initAverage7 #  (@args)
@@ -1147,7 +1147,7 @@ sub computeAverage10 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or confess "$!";
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -1235,7 +1235,7 @@ sub computeAverage11 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or confess "$!";
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
@@ -1389,7 +1389,7 @@ sub computeAverage12 # (table, context, aggop, opcode, rh, state, args...)
 		id => $rLast->get("id"), 
 		price => $avg
 	) or confess "$!";
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
