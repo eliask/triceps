@@ -26,7 +26,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-Triceps::Opt::parse($class, \%instance, \%optdescr, @opts);
+&Triceps::Opt::parse($class, \%instance, \%optdescr, @opts);
 </pre>
 
 		<para>
@@ -115,7 +115,7 @@ table => [ undef, sub {
 		</para>
 
 <pre>
-Triceps::Opt::handleUnitTypeLabel($caller, 
+&Triceps::Opt::handleUnitTypeLabel($caller, 
 	$nameUnit, \$refUnit, 
 	$nameRowType, \$refRowType, 
 	$nameLabel, \$refLabel);
@@ -144,7 +144,7 @@ Triceps::Opt::handleUnitTypeLabel($caller,
 		</para>
 
 <pre>
-$which = Triceps::Opt::checkMutuallyExclusive(
+$which = &Triceps::Opt::checkMutuallyExclusive(
 	$caller, $mandatory, $optName1, optValue1, ...);
 </pre>
 
@@ -163,24 +163,5 @@ $which = Triceps::Opt::checkMutuallyExclusive(
 		option name-value pairs (unlike <pre>handleUnitTypeLabel()</pre>, these
 		are values, not references to them).
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 

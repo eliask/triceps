@@ -64,4 +64,6 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/830opt.xml"/>
 
+		<xi:include href="file:///DOCS/832field.xml"/>
+
 </chapter>
