@@ -272,7 +272,7 @@ $rt = $joiner->getResultRowType();
 </pre>
 
 		<para>
-		Gets the row type of the join result.
+		Returns the row type of the join result.
 		</para>
 
 <pre>
@@ -280,7 +280,7 @@ $lb = $joiner->getInputLabel();
 </pre>
 
 		<para>
-		Gets the input label of the joiner. The rowops sent there will be
+		Returns the input label of the joiner. The rowops sent there will be
 		processed as coming on the left side of the join. The result will be
 		produced on the output label.
 		</para>
@@ -290,7 +290,7 @@ $lb = $joiner->getOutputLabel();
 </pre>
 
 		<para>
-		Gets the output label of the joiner. The results from processing of the
+		Returns the output label of the joiner. The results from processing of the
 		input rowops come out here. Note that the results of the <pre>lookup()</pre> calls
 		do not come out at the output label, they are only returned to the
 		caller.
@@ -316,20 +316,12 @@ $res = $joiner->getGroupSizeCode();
 </pre>
 
 		<para>
-		Get back the values of the options. If such an option was not set,
+		Get back the values of the options use to construct the object. 
+		If such an option was not set,
 		returns the default value, or the automatically calculated value.
 		Sometimes an automatically calculated value may even override the
 		user-specified value. There is no way to get back <quote>leftFromLabel</quote>, it
 		is discarded after the LookupJoin is constructed and chained.
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
 		</para>
 
 	</sect1>

@@ -68,4 +68,6 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/840lookupjoin.xml"/>
 
+		<xi:include href="file:///DOCS/842jointwo.xml"/>
+
 </chapter>
