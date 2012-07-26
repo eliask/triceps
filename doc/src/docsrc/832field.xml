@@ -125,36 +125,5 @@ $result = &Triceps::Fields::isStringType($typeName);
 		<pre>string</pre>, <pre>uint8</pre> and <pre>uint8[]</pre> 
 		will return 1.
 		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
 	</sect1>
 
