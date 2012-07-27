@@ -487,7 +487,7 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		<title>Loop scheduling</title>
 
 		<indexterm>
-			<primary>schedule</primary>
+			<primary>scheduling</primary>
 			<secondary>loop</secondary>
 		</indexterm>
 		<para>
@@ -823,7 +823,7 @@ foreach my $row (@rowset) {
 		</para>
 
 		<indexterm>
-			<primary>schedule</primary>
+			<primary>scheduling</primary>
 			<secondary>loop interleaving</secondary>
 		</indexterm>
 		<indexterm>
@@ -834,6 +834,9 @@ foreach my $row (@rowset) {
 		</indexterm>
 		<indexterm>
 			<primary>fork</primary>
+		</indexterm>
+		<indexterm>
+			<primary>schedule</primary>
 		</indexterm>
 		<para>
 		And the sequence of execution when the loop continues might not
@@ -1155,7 +1158,7 @@ $tray = $unit->makeTray(@rowops) or confess "$!";
 		</para>
 
 		<indexterm>
-			<primary>schedule</primary>
+			<primary>scheduling</primary>
 			<secondary>loop</secondary>
 		</indexterm>
 <pre>
@@ -1933,7 +1936,7 @@ exit(0);
 			<primary>topological loop</primary>
 		</indexterm>
 		<indexterm>
-			<primary>schedule</primary>
+			<primary>scheduling</primary>
 			<secondary>loop</secondary>
 		</indexterm>
 		<para>
@@ -2294,7 +2297,7 @@ drainFrame()
 		</para>
 
 		<indexterm>
-			<primary>schedule</primary>
+			<primary>scheduling</primary>
 			<secondary>loop</secondary>
 		</indexterm>
 		<para>

@@ -753,6 +753,9 @@ $aggLabel = $table->getAggregatorLabel("aggName") or confess "$!";
 			<primary>aggregation</primary>
 			<secondary>context</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>AggregatorContext</primary>
+		</indexterm>
 		<para>
 		The aggregator type is exactly that: a type. It doesn't know, on which
 		table or index, or even index type it will be used. And indeed, it

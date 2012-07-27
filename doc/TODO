@@ -37,15 +37,9 @@ Things that need to be done:
 * in Triceps::Fields::makeTranslation take the filter specs as arguments, and the caller's name
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
-* doc: look at the manual Index
 
 App ideas:
 * queries on CSV files
 * distributed cron
 * data cache
 
-Docbook stuff:
-
-Used blog entries:
-000-108
-110
