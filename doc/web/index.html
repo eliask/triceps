@@ -1,0 +1,265 @@
+<html>
+<head>
+<title>Triceps</title>
+</head>
+<body>
+
+<table>
+	<tr>
+		<td><a href="#releases">Releases</a></td>
+		<td><a href="#intro">Introduction</a></td>
+	</tr>
+</table>
+<hr>
+
+<br>
+<p>
+<h1>
+Triceps
+</h1>
+<h3>
+<i>an innovative CEP (Complex Event Processing) engine</i>
+</h3>
+
+The most recent information about the status of the project is available in the <b>blog</b>
+<a href="http://babkin-cep.blogspot.com/">http://babkin-cep.blogspot.com/</a>.
+<p>
+
+<hr>
+<a name="releases"></a>
+<table>
+	<tr>
+		<td colspan="2"><h2>Releases</h2></td>
+	</tr>
+	<tr>
+		<th>Download<hr></th>
+		<th>Documentation<hr></th>
+	</tr>
+	<tr>
+		<td valign="top"><a href="http://downloads.sourceforge.net/project/triceps/triceps-1.0.0/triceps-1.0.0.tgz">1.0.0</a></td>
+		<td valign="top">
+			Developer's Guide:<br>
+			<a href="http://triceps.sf.net/docs-1.0.0/guide.pdf">PDF</a>
+			<a href="http://triceps.sf.net/docs-1.0.0/guide.html">HTML</a>
+		</td>
+	</tr>
+</table>
+
+<p>
+<hr>
+<a name="intro"></a>
+<h2>Introduction</h2>
+
+<!-- these fragments are copy-pasted from the Developer's Guide -->
+
+<h3>What is the CEP?</h3>
+
+		<p>
+		CEP stands for the Complex Event Processing.  If you look at Wikipedia,
+		it has separate articles for the Event Stream Processing and the
+		Complex Event Processing. In reality it's all the same thing, with the
+		naming driven by the marketing. I would not be surprised if someone
+		invents yet another name, and everyone will start jumping on that
+		bandwagon too.
+		</p><a class="indexterm" name="id519409"></a><a class="indexterm" name="id503020"></a><p>
+		In general a CEP system can be thought of as a black box, where the
+		input events come in, propagate in some way through that black box, and
+		come out as the processed output events. There is also an idea that the
+		processing should happen fast, though the definitions of <span class="quote">&#8220;<span class="quote">fast</span>&#8221;</span> vary
+		widely.
+		</p><p>
+		If we open the lid on the box, there are at least three ways to think
+		of its contents:
+		</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+		a spreadsheet on steroids
+		</li><li class="listitem">
+		a data flow machine
+		</li><li class="listitem">
+		a database driven by triggers
+		</li></ul></div><a class="indexterm" name="id506263"></a><a class="indexterm" name="id520211"></a><a class="indexterm" name="id518524"></a><a class="indexterm" name="id521085"></a><p>
+		Hopefully you've seen a spreadsheet before. The cells in it are tied
+		together by formulas. You change one cell, and the machine goes and
+		recalculates everything that depends on it. So does a CEP system. If we
+		look closer, we can discern the CEP engine (which is like the
+		spreadsheet software), the CEP model (like the formulas in the
+		spreadheet) and the state (like the current values in the
+		spreadsheet). An incoming event is like a change in an input
+		cell, and the outgoing events are the updates of the values in the
+		spreadsheet. 
+		</p><p>
+		Only a typical CEP system is bigger: it can handle some very complicated
+		formulas and many millions of records. There actually are products that
+		connect the Excel spreadsheets with the behind-the-curtain computations
+		in a CEP system, with the results coming back to the spreadsheet
+		cells. Pretty much every commercial CEP provider has a product
+		that does that through the Excel RT interface. The way these models are
+		written are not exactly pretty, but the results are, combining the nice
+		presentation of spreadsheets and the speed and power of CEP.
+		</p><p>
+		A data flow machine, where the processing elements are exchanging
+		messages, is your typical academical look at CEP. The events
+		represented as data rows are the messages, and the CEP model describes
+		the connections between the processing elements and their internal
+		logic. This approach naturally maps to the multiprocessing, with each
+		processing element becoming a separate thread. The hiccup is that the
+		research in the dataflow machines tends to prefer the non-looped
+		topologies. The loops in the connections complicate the things.
+		</p><p>
+		And many real-world relational databases already work very similarly to
+		the CEP systems. They have the constraints and triggers propagating these
+		constraints. A trigger propagates an update on one table to an update
+		on another table. It's like a formula in a spreasheet or a logical
+		connection in a dataflow graph.  Yet the databases usually miss two
+		things: the propagation of the output events and the notion of being
+		<span class="quote">&#8220;<span class="quote">fast</span>&#8221;</span>.
+		</p><p>
+		The lack of propagation of the output events is totally baffling to me:
+		the RDBMS engines already write the output event stream as the redo
+		log. Why not send them also in some generalized format, XML or
+		something? Then people realize that yes, they do want to get the output
+		events and start writing some strange add-ons and aftermarket solutions
+		like the log scrubbers. This has been a mystery to me for some 15
+		years. I mean, how more obvious can it be? But nobody budges. Well,
+		with the CEP systems gaining popularity and the need to connect them to
+		the databases, I think it will eventually grow on the database vendors
+		that a decent event feed is a competitive advantage, and I think it
+		will happen somewhere soon. 
+		</p><p>
+		The feeling of <span class="quote">&#8220;<span class="quote">fast</span>&#8221;</span> or lack thereof has
+		to do with the databases being stored on disks. The growth of CEP has
+		coincided with the growth in RAM sizes, and the data is usually kept
+		completely in memory. People who deploy CEP tend to want the
+		performance not of hundreds or thousands but hundreds of thousands
+		events per second. The second part of <span class="quote">&#8220;<span class="quote">fast</span>&#8221;</span> is connected with the
+		transactions. In a traditional RDBMS a single event with all its
+		downstream effects is one transaction. Which is safe but may cause lots
+		of conflicts. The CEP systems usually allow to break up the logic into
+		multiple loosely-dependent layers, thus cutting on the overhead.
+		</p>
+
+<h3>What led to Triceps</h3>
+
+		<p>
+		It had happened that I've worked for a while on and with the Complex Event
+		Processing (CEP) systems. I've worked for a few years on the internals
+		of the Aleri CEP engine, then after Aleri acquired Coral8, some on the
+		Coral8 engine, then after Sybase gobbled up them both, I've designed
+		and did the early implementation of a fair bit of the Sybase CEP R5.
+		After that I've moved on to Deutsche Bank and got the experience from
+		the other side: using the CEP systems, primarily the former Coral8,
+		now known as Sybase CEP R4.
+		</p><p>
+		This made me feel that writing the CEP models is unnecessarily
+		difficult. Even the essentially simple things take too much effort.
+		I've had this feeling before as well, but one thing is to have it in
+		abstract, and another is to grind against it every day. 
+		</p><p>
+		Which in turn led me to thinking about making my own Open Source CEP
+		system, where I could try out the ideas I get, and make the streaming
+		models easier to write. I aim to do better than the 1950's style, to
+		bring the advances of the structured programming into the CEP world.
+		</p><p>
+		Thus the Triceps project was born. For a while
+		it was called Biceps, until I've learned of the existence of a recearch
+		project called BiCEP. It's spelled differently, and is in a
+		substantially differnt area of CEP work, but it's easier to avoid
+		confusion, so I went one better and renamed mine Triceps.
+		</p><p>
+		Since then I've moved on from DB, and I'm currently not using any CEP
+		at work (though you never know what would happen), but Triceps has
+		already gained momentum by itself.
+		</p><p>
+		The Triceps development has been largely shaped by two considerations:
+		</p><div class="itemizedlist"><ul class="itemizedlist" type="disc"><li class="listitem">
+		It has to be different from the Sybase products on which I worked.
+		This is helpful from both legal standpoint and from marketing
+		standpoint: Sybase and StreamBase already have similar products that
+		compete head to head. There is no use getting into the same fray
+		without some major resources.
+		</li><li class="listitem">
+		It has to be small. I can't spend the same amount of effort on Triceps
+		as a large company, or even as a small one. Not only this saves time
+		but also allows the modifications to be easy and fast. The point of
+		Triceps is to experiment with the CEP language to make it easy to use:
+		try out the ideas, make sure that they work well, or replace them with
+		other ideas. The companies with a large established product can't
+		really afford the radical changes: they have invested much effort into
+		the product, and are stuck with supporting it and providing
+		compatibility into the future.
+		</li></ul></div><a class="indexterm" name="id495781"></a><p>
+		Both of these considerations point into the same direction: an
+		embeddable CEP system. Adapting an integrated system for an embedded
+		usage is not easy, so it's a good open niche. Yeah, this niche
+		is not empty either.  There already is Esper.  But from a cursory look, it
+		seems to have the same issues as Coral8/StreamBase. It's also
+		Java-centric, and Triceps is aimed for embeddability into different 
+		languages.
+		</p><p>
+		And an embeddable system saves on a lot of components.
+		</p><p>
+		For starters, no IDE. Anyway, I find the IDEs pretty useless for
+		development in general, and especially for the CEP development. Though
+		it comes handy once in a while for the analysis of the code and
+		debugging.
+		</p><p>
+		No new language, no need to develop compilers, virtual machines,
+		function libraries, external callout APIs. Well, the major goal of
+		Triceps actually is the development of a new and better language. But
+		it's one of these paradoxes: Aleri does the relational logic looking
+		like procedural, Coral8 and StreamBase do the procedural logic looking
+		like relational, and Triceps is a design of a language without a
+		language. Eventually there probably will be a language, to be mixed
+		with the parent one. But for now a lot can be done by simply using the
+		Triceps library in an existing scripting language. The existing
+		scripting languages are already powerful, fast, and also support the
+		dynamic compilation.
+		</p><p>
+		No separate server executable, no need to control it, and no custom
+		network protocols: the users can put the code directly into their
+		executables and devise any protocols they please. Well, it's not a
+		real good answer for the protocols, since it means that everyone who
+		wants to communicate the streaming data for Triceps over the network
+		has to implement these protocols from scratch. So eventually Triceps
+		will provide a default implementation. But it doesn't have to be done
+		right away.
+		</p><p>
+		No data persistence for now either. It's a nice feature, and I have
+		some ideas about it too, but it requires a large amount of work, and
+		doesn't really affect the API. 
+		</p><p>
+		The language used to implement Triceps is C++, and the scripting
+		language is Perl. Nothing really prevents embedding Triceps into other
+		languages but it's not going to happen anywhere soon. The reason being
+		that extra code adds weight and makes the changes more difficult.
+		</p><p>
+		The multithreading support has been a major consideration from the
+		start. All the C++ code has been written with the multithreading in
+		mind. However for the first release the multithreading did not
+		propagate into the Perl API yet.
+		</p><p>
+		Even though Triceps is a system aimed for quick experimentation, that does not imply
+		that it's of a toy quality. The code is written in production quality
+		to start with, with a full array of unit tests. In fact, the only way
+		you can do the quick experimentation is by setting up the proper
+		testing from the scratch. The idea of <span class="quote">&#8220;<span class="quote">move fast and break
+		things</span>&#8221;</span> is complete rubbish.
+		</p>
+
+<h4>
+Read more in the <a href="http://triceps.sf.net/docs-latest/guide.html">Developer's Guide</a>
+and the <a href="http://babkin-cep.blogspot.com/">blog</a>.
+</h4>
+
+<p>
+<hr>
+<p class="copyright">Copyright (C) 2011, 2012 Sergey A. Babkin</p>
+<hr>
+
+Also, read my 
+<a href="http://www.amazon.com/gp/product/1451536615?ie=UTF8&tag=thepracofpara-20&linkCode=as2&camp=1789&creative=390957&creativeASIN=1451536615">book on parallel programming</a>:
+<br>
+<iframe src="http://rcm.amazon.com/e/cm?lt1=_blank&bc1=000000&IS2=1&bg1=FFFFFF&fc1=000000&lc1=0000FF&t=thepracofpara-20&o=1&p=8&l=as1&m=amazon&f=ifr&md=10FE9736YVPPT7A0FBG2&asins=1451536615" style="width:120px;height:240px;" scrolling="no" marginwidth="0" marginheight="0" frameborder="0"></iframe>
+<p>
+
+</body>
+</html>
