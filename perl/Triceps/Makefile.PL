@@ -2,6 +2,8 @@ use 5.008000;
 use ExtUtils::MakeMaker;
 
 # Read the parameters from Triceps Makefiles
+delete $ENV{MAKEFLAGS}; # these cause spurious messages from make
+delete $ENV{MAKELEVEL};
 my $TRICEPS_CONF = `make --quiet -f ../../cpp/Makefile.inc getconf`;
 die "Failed to read the configuration: $!" if ($! != 0);
 die "Failed to read the configuration: error code $?" if ($? != 0);
