@@ -41,7 +41,6 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</para>
 
 		<variablelist>
-
 		<varlistentry>
 			<term><pre>name</pre></term>
 			<listitem>
