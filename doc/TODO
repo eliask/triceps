@@ -36,10 +36,8 @@ Things that need to be done:
 * change the XS type checking to confess instead of plain dying
 * in Triceps::Fields::makeTranslation take the filter specs as arguments, and the caller's name
 
-* doc: Triceps::clearArgs, empty row type, clearing label - in reference
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: look at the manual Index
-* doc: describe the match() for every object type
 
 App ideas:
 * queries on CSV files

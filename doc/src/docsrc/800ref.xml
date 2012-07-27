@@ -39,13 +39,33 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<para>
-		XXX fill in xrefs
+		Simple field types in
+		<xref linkend="sc_SimpleTypes" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
+		RowType in 
+		<xref linkend="sc_RowTypes" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
+		Row in 
+		<xref linkend="sc_Rows" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		Label in 
+		<xref linkend="ch_LabelsRowops" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		Rowop in 
+		<xref linkend="sc_Rowop" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		Unit in 
+		<xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<xi:include href="file:///DOCS/810tabtype.xml"/>
