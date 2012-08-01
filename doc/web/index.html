@@ -137,6 +137,42 @@ The most recent information about the status of the project is available in the 
 		multiple loosely-dependent layers, thus cutting on the overhead.
 		</p>
 
+<h3>The uses of CEP</h3>
+
+		<p>
+		Despite what Wikipedia says (and honestly, the Wikipedia articles on
+		CEP and ESP are not exactly connected with reality), the pattern detection is <span class="bold"><strong>not</strong></span> your
+		typical usage, by a wide, wide margin. The typical usage is for the
+		data aggregation: lots and lots of individual events come in, and you
+		want to aggregate them to keep a concise and consistent picture for the
+		decision-making. The actual decision making can be done by humans
+		or again by the CEP systems. It may involve some pattern recognition
+		but usually even when it does, it doesn't look like patterns, it looks
+		like conditions and joins on the historical chains of events.
+		</p><p>
+		The usage in the cases I know of includes the
+		ad-click aggregation, the decisions to make a market trade, the
+		watching whether the bank's end-of-day balance falls within the
+		regulations, the choosing the APR for lending.
+		</p><p>
+		A related use would be for the general alert consoles. The data
+		aggregation is what they do too. The last time I worked with it up close
+		(around 2006), the processing in the BMC Patrol and Nagios was just
+		plain inadequate for anything useful, and I had to hand-code the data
+		collection and console logic. I've been touching this issue recently
+		again at Google, and apparently nothing has changed much since then.
+		All the real monitoring is done with the systems developed in-house.
+		</p><a class="indexterm" name="id443049"></a><p>
+		But the CEP would have been just the
+		ticket. I think, the only reason why it has not been widespread yet is
+		that the commercial CEP licenses had cost a lot. But with the
+		all-you-can-eat pricing of Sybase, and with the Open Source systems,
+		this is gradually changing.
+		</p><p>
+		Well, and there is also the pattern matching. It has been lagging
+		behind the aggregation but growing too.
+		</p>
+
 <h3>What led to Triceps</h3>
 
 		<p>
