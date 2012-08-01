@@ -52,7 +52,8 @@ public:
 	// @param variable - actual size in bytes for data_[]
 	static void *operator new(size_t basic, intptr_t variable)
 	{
-		return calloc(1, (intptr_t)basic + variable - sizeof(data_)); 
+		// GCC 4.1 doesn't like sizeof(data_) here
+		return calloc(1, (intptr_t)basic + variable - sizeof(AlignType)); 
 	}
 	static void operator delete(void *ptr)
 	{
