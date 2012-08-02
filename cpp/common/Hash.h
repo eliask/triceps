@@ -23,15 +23,15 @@ public:
 	typedef uint32_t Value;
 	typedef int32_t SValue; // signed version
 
-	static const Value basis_ = 2166136261; // to initialize before calculating the hash
-	static const Value prime_ = 16777619; // for multiplication
+	static const Value basis_ = (Value)2166136261; // to initialize before calculating the hash
+	static const Value prime_ = (Value)16777619; // for multiplication
 #else
 	// 64-bit constants, just in case
 	typedef uint64_t Value;
 	typedef int64_t SValue; // signed version
 
-	static const Value basis_ = 14695981039346656037; // to initialize before calculating the hash
-	static const Value prime_ = 1099511628211; // for multiplication
+	static const Value basis_ = (Value)14695981039346656037; // to initialize before calculating the hash
+	static const Value prime_ = (Value)1099511628211; // for multiplication
 #endif
 
 	// Append one byte to the hash value.
@@ -43,9 +43,10 @@ public:
 		return (prev ^ b) * prime_;
 	}
 
-	// Append one byte to the hash value.
+	// Append a byte sequence to the hash value.
 	// @param prev - previous hash value
-	// @param byte - byte to append
+	// @param v - bytes to append
+	// @param len - number of bytes to append
 	// @return - the new hash value
 	static Value append(Value prev, const char *v, size_t len)
 	{
