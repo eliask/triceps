@@ -11,13 +11,19 @@
 #define __Triceps_Atomic_h__
 
 #include <pw/ptwrap.h>
-#ifdef TRICEPS_NSPR4 // {
-#include <nspr4/pratom.h>
-#endif // } TRICEPS_NSPR4
+#ifdef TRICEPS_NSPR // {
+#  if TRICEPS_NSPR == 4
+#    include <nspr4/pratom.h>
+#  elif TRICEPS_NSPR == 0
+#    include <nspr/pratom.h>
+#  else
+#    error "Unsupported value of TRICEPS_NSPR"
+#  endif 
+#endif // } TRICEPS_NSPR
 
 namespace TRICEPS_NS {
 
-#ifdef TRICEPS_NSPR4 // {
+#ifdef TRICEPS_NSPR // {
 
 // the implementation around the NSPR4 atomics
 class AtomicInt
@@ -58,7 +64,7 @@ private:
 	AtomicInt(const AtomicInt &);
 };
 
-#else  // } { TRICEPS_NSPR4
+#else  // } { TRICEPS_NSPR
 
 // the baseline implementation when nothing better is available
 class AtomicInt
@@ -108,7 +114,7 @@ private:
 	AtomicInt(const AtomicInt &);
 };
 
-#endif // } TRICEPS_NSPR4
+#endif // } TRICEPS_NSPR
 
 }; // TRICEPS_NS
 
