@@ -37,6 +37,7 @@ public:
 		TT_TABLE, // data store of rows (AKA "window")
 		TT_INDEX, // a table contains one or more indexes for its rows
 		TT_AGGREGATOR, // user piece of code that does aggregation on the indexes
+		TT_ROWSET, // an ordered set of rows
 		// add the new types here
 		TT_LAST_MARKER // for range checks, goes after all the real types
 	};

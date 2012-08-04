@@ -4,7 +4,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of a MtBuffer allocation and destruction.
+// Test of a CompactRow type.
 
 #include <utest/Utest.h>
 #include <string.h>
