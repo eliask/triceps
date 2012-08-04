@@ -49,15 +49,15 @@ UTESTCASE rowset(Utest *utest)
 	Autoref<RowSetType> set1 = RowSetType::make()
 		->addRow("one", rt1)
 		->addRow("two", rt2)
-		->fixate();
+		->freeze();
 	UT_ASSERT(set1->getErrors().isNull());
-	UT_ASSERT(set1->isFixed());
-	// an equal one but not fixed
+	UT_ASSERT(set1->isFrozen());
+	// an equal one but not frozen
 	Autoref<RowSetType> set2 = RowSetType::make()
 		->addRow("one", rt1)
 		->addRow("two", rt2);
 	UT_ASSERT(set2->getErrors().isNull());
-	UT_ASSERT(!set2->isFixed());
+	UT_ASSERT(!set2->isFrozen());
 	// a matching one
 	Autoref<RowSetType> set3 = RowSetType::make()
 		->addRow("one", rt1)
@@ -109,7 +109,7 @@ UTESTCASE rowset(Utest *utest)
 	UT_ASSERT(set1->match(set4));
 	UT_ASSERT(!set1->match(set5));
 
-	// try to add to a fixed set
+	// try to add to a frozen set
 	{
 		msg.clear();
 		try {
@@ -117,7 +117,7 @@ UTESTCASE rowset(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempt to add row 'three' to a fixed row set type.\n");
+		UT_IS(msg, "Triceps API violation: attempt to add row 'three' to a frozen row set type.\n");
 	}
 
 	// getters

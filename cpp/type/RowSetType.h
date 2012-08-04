@@ -23,7 +23,7 @@ public:
 	typedef vector<Autoref<RowType> > RowTypeVec; 
 
 	// It's created empty and then the row types are added one by one.
-	// After the last one you may call fixate() to prevent more types
+	// After the last one you may call freeze() to prevent more types
 	// added accidentally in the future.
 	// Check getErrors() after you've added the last one.
 	// The typical use is:
@@ -31,7 +31,7 @@ public:
 	// Autoref<RowSetType> rst = RowSetType()
 	//     ->addRow("name1", rt1)
 	//     ->addRow("name2", rt2)
-	//     ->fixate();
+	//     ->freeze();
 	RowSetType();
 
 	// A convenience wrapper for the constructor
@@ -44,7 +44,7 @@ public:
 	// If there are any errors (duplicate names etc), they will be returned 
 	// later in getErrors().
 	//
-	// May throw an exception if the type is already fixed.
+	// May throw an exception if the type is already frozen.
 	//
 	// @param rname - name of this element
 	// @param rtype - row type for this element
@@ -53,16 +53,16 @@ public:
 	
 	// After this call any attempts to add a row will cause an abort.
 	// Pretty much, a diagnostic tool.
-	RowSetType *fixate()
+	RowSetType *freeze()
 	{
-		fixed_ = true;
+		frozen_ = true;
 		return this;
 	}
 
 	// A way to find out if this type is still changeable.
-	bool isFixed() const
+	bool isFrozen() const
 	{
-		return fixed_;
+		return frozen_;
 	}
 
 	// get the contents info
@@ -104,7 +104,7 @@ protected:
 	NameVec names_; // names in sequence
 	RowTypeVec types_; // row types in sequence
 	Erref errors_; // errors collected during build
-	bool fixed_; // flag: fields can not be added any more
+	bool frozen_; // flag: fields can not be added any more
 
 	// XXX a copy constructor should be fine if errors_ is NULL
 };
