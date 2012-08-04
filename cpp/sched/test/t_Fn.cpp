@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include <sched/FnReturn.h>
+#include <sched/FnBinding.h>
 #include <sched/Unit.h>
 #include <type/CompactRowType.h>
 
@@ -193,3 +194,101 @@ UTESTCASE fn_return(Utest *utest)
 	UT_IS(fret1->getLabel(2), NULL);
 }
 
+UTESTCASE fn_binding(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit1 = new Unit("u");
+	Autoref<Unit> unit2 = new Unit("u2");
+
+	// make the components
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+	
+	fld[2].type_ = Type::r_int32;
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
+
+	fld[0].name_ = "A";
+	Autoref<RowType> rt3 = new CompactRowType(fld);
+	UT_ASSERT(rt3->getErrors().isNull()); // matches rt2
+
+	Autoref<Label> lb1 = new DummyLabel(unit1, rt1, "lb1");
+	Autoref<Label> lb1x = new DummyLabel(unit2, rt1, "lb1x");
+	Autoref<Label> lb1a = new DummyLabel(unit1, rt1, "lb1a");
+	Autoref<Label> lb2 = new DummyLabel(unit1, rt2, "lb2");
+	Autoref<Label> lb2a = new DummyLabel(unit1, rt2, "lb2a");
+	Autoref<Label> lb3 = new DummyLabel(unit1, rt3, "lb3");
+	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
+
+	// make the returns
+
+	// a good one
+	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+		->addDummyLabel("one", rt1)
+		->addDummyLabel("two", rt2)
+		->initialize();
+	UT_ASSERT(fret1->getErrors().isNull());
+	UT_ASSERT(fret1->isInitialized());
+	// an equal one but not initialized
+	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
+		->addDummyLabel("one", rt1)
+		->addDummyLabel("two", rt2);
+	UT_ASSERT(fret2->getErrors().isNull());
+	UT_ASSERT(!fret2->isInitialized());
+
+	// make the bindings
+	Autoref<FnBinding> bind1 = FnBinding::make(fret1)
+		->addLabel("one", lb1a)
+		->addLabel("two", lb3a); // matching
+	UT_ASSERT(bind1->getErrors().isNull());
+
+	// Bad bindings
+	{
+		Autoref<FnBinding> bindbad = FnBinding::make(fret2)
+			->addLabel("one", lb1a)
+			->addLabel("two", lb3a); // matching
+		UT_ASSERT(!bindbad->getErrors().isNull());
+		UT_IS(bindbad->getErrors()->print(), "Can not create a binding to an uninitialized FnReturn.\n");
+	}
+	{
+		Autoref<FnBinding> bindbad = FnBinding::make(fret1)
+			->addLabel("zzz", lb1a)
+			->addLabel("two", lb3a)
+			->addLabel("two", lb2a)
+			->addLabel("one", lb2a);
+		UT_ASSERT(!bindbad->getErrors().isNull());
+		UT_IS(bindbad->getErrors()->print(), 
+			"Unknown return label name 'zzz'.\n"
+			"Attempted to add twice a label to name 'two' (first 'lb3a', second 'lb2a').\n"
+			"Attempted to add a mismatching label 'lb2a' to name 'one'.\n"
+			"  The expected row type:\n"
+			"  row {\n"
+			"      uint8[10] a,\n"
+			"      int32[] b,\n"
+			"      int64 c,\n"
+			"      float64 d,\n"
+			"      string e,\n"
+			"    }\n"
+			"  The row type of actual label 'lb2a':\n"
+			"  row {\n"
+			"      uint8[10] a,\n"
+			"      int32[] b,\n"
+			"      int32 c,\n"
+			"      float64 d,\n"
+			"      string e,\n"
+			"    }\n"
+		);
+	}
+
+	// getters
+	UT_IS(bind1->getLabel(0), lb1a);
+	UT_IS(bind1->getLabel(1), lb3a);
+	UT_IS(bind1->getLabel(-1), NULL);
+	UT_IS(bind1->getLabel(2), NULL);
+}
