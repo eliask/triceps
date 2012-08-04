@@ -28,7 +28,7 @@ public:
 	// Check getErrors() after you've added the last one.
 	// The typical use is:
 	// 
-	// Autoref<RowSetType> rst = RowSetType()
+	// Autoref<RowSetType> rst = RowSetType::make()
 	//     ->addRow("name1", rt1)
 	//     ->addRow("name2", rt2)
 	//     ->freeze();
@@ -49,7 +49,7 @@ public:
 	// @param rname - name of this element
 	// @param rtype - row type for this element
 	// @return - the same RowSetType object, for chained calls
-	RowSetType *addRow(const string &rname, Autoref<RowType>rtype);
+	RowSetType *addRow(const string &rname, const_Autoref<RowType>rtype);
 	
 	// After this call any attempts to add a row will cause an abort.
 	// Pretty much, a diagnostic tool.
@@ -74,6 +74,10 @@ public:
 	{
 		return types_;
 	}
+	int size() const
+	{
+		return names_.size();
+	}
 
 	// Translate the row name to its index in the internal array. This index
 	// can later be used to get the row type quickly.
@@ -91,6 +95,21 @@ public:
 	// @return - the row type, or NULL if not found
 	RowType *getRowType(int idx) const;
 
+	// Get a row type name its index in the internal array.
+	// (The opposide of findName()).
+	// @param idx - the index, as might be returned by findName()
+	// @return - the name pointer, or NULL if not found
+	const string *getRowTypeName(int idx) const;
+
+	// Add an error message. Can be used both internally and by the
+	// wrapping objects to add their errors. After the type is frozen,
+	// throws the Exception.
+	void addError(const string &msg);
+	// Returns the errors object for appending to it. Makes sure that
+	// the object exists first, and instantiates it if it doesn't.
+	// After the type is frozen, throws the Exception.
+	Erref appendErrors();
+
 	// from Type
 	virtual Erref getErrors() const;
 	virtual bool equals(const Type *t) const;
@@ -105,6 +124,8 @@ protected:
 	RowTypeVec types_; // row types in sequence
 	Erref errors_; // errors collected during build
 	bool frozen_; // flag: fields can not be added any more
+
+	
 
 	// XXX a copy constructor should be fine if errors_ is NULL
 };

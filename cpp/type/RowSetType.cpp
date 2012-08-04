@@ -17,27 +17,21 @@ RowSetType::RowSetType() :
 	frozen_(false)
 { }
 
-RowSetType *RowSetType::addRow(const string &rname, Autoref<RowType>rtype)
+RowSetType *RowSetType::addRow(const string &rname, const_Autoref<RowType>rtype)
 {
 	if (frozen_)
 		throw Exception("Triceps API violation: attempt to add row '" + rname + "' to a frozen row set type.", true);
 
 	int idx = names_.size();
 	if (rname.empty()) {
-		if (errors_.isNull())
-			errors_ = new Errors;
-		errors_->appendMsg(true, strprintf("row name at position %d must not be empty", idx+1));
+		addError(strprintf("row name at position %d must not be empty", idx+1));
 	} else if (nameMap_.find(rname) != nameMap_.end()) {
-		if (errors_.isNull())
-			errors_ = new Errors;
-		errors_->appendMsg(true, "duplicate row name '" + rname + "'");
+		addError("duplicate row name '" + rname + "'");
 	} else if (rtype.isNull()) {
-		if (errors_.isNull())
-			errors_ = new Errors;
-		errors_->appendMsg(true, "null row type with name '" + rname + "'");
+		addError("null row type with name '" + rname + "'");
 	} else {
 		names_.push_back(rname);
-		types_.push_back(rtype);
+		types_.push_back(const_cast<RowType *>(rtype.get()));
 		nameMap_[rname] = idx;
 	}
 	return this;
@@ -67,6 +61,28 @@ RowType *RowSetType::getRowType(int idx) const
 		return types_[idx];
 	else
 		return NULL;
+}
+
+const string *RowSetType::getRowTypeName(int idx) const
+{
+	if (idx >= 0 && idx < names_.size())
+		return &names_[idx];
+	else
+		return NULL;
+}
+
+void RowSetType::addError(const string &msg)
+{
+	appendErrors()->appendMsg(true, msg);
+}
+
+Erref RowSetType::appendErrors()
+{
+	if (frozen_)
+		throw Exception("Triceps API violation: attempt to add an error to a frozen row set type.", true);
+	if (errors_.isNull())
+		errors_ = new Errors;
+	return errors_;
 }
 
 Erref RowSetType::getErrors() const

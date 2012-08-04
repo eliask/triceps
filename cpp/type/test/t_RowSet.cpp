@@ -92,7 +92,7 @@ UTESTCASE rowset(Utest *utest)
 	}
 	{
 		Autoref<RowSetType> badset = RowSetType::make()
-			->addRow("one", NULL)
+			->addRow("one", (RowType *)NULL)
 			->addRow("two", rt2);
 		UT_ASSERT(!badset->getErrors().isNull());
 		UT_IS(badset->getErrors()->print(), "null row type with name 'one'\n");
@@ -133,6 +133,10 @@ UTESTCASE rowset(Utest *utest)
 		UT_IS(types[0].get(), rt1.get());
 		UT_IS(types[1].get(), rt2.get());
 	}
+
+	UT_IS(set1->size(), 2);
+	UT_IS(set5->size(), 3);
+
 	UT_IS(set1->findName("one"), 0);
 	UT_IS(set1->findName("two"), 1);
 	UT_IS(set1->findName("zzz"), -1);
@@ -146,6 +150,12 @@ UTESTCASE rowset(Utest *utest)
 	UT_IS(set1->getRowType(-1), NULL);
 	UT_IS(set1->getRowType(2), NULL);
 
+	UT_IS(*(set1->getRowTypeName(0)), "one");
+	UT_IS(*(set1->getRowTypeName(1)), "two");
+	UT_IS(set1->getRowTypeName(-1), NULL);
+	UT_IS(set1->getRowTypeName(2), NULL);
+
+	// print
 	UT_IS(set1->print("  ", "  "), 
 		"rowset {\n"
 		"    row {\n"
