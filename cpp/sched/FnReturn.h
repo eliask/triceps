@@ -179,6 +179,12 @@ public:
 	// @param bind - the expected binding.
 	void popBinding(Onceref<FnBinding> bind);
 
+	// Mostly for diagnostics: get the binding stack size.
+	int bindingStackSize() const
+	{
+		return stack_.size();
+	}
+
 protected:
 	// The class of labels created inside FnReturn, that forward the rowops
 	// to the final destination.
@@ -210,6 +216,21 @@ protected:
 	ReturnVec labels_; // the return labels, same size as the type
 	BindingVec stack_; // the top of call stack is the end of vector
 	bool initialized_; // flag: has already been initialized, no more changes allowed
+};
+
+// Bind and unbind a return as a scope:
+// push on object creation, pop on object deletion.
+class AutoFnBind
+{
+public:
+	// Pushes the binding on construction.
+	AutoFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding);
+	// Pops the binding on destruction.
+	~AutoFnBind();
+
+protected:
+	Autoref<FnReturn> ret_;
+	Autoref<FnBinding> binding_;
 };
 
 }; // TRICEPS_NS

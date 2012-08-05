@@ -147,4 +147,19 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 	u->call(adrop);
 }
 
+///////////////////////////////////////////////////////////////////////////
+// AutoFnBind
+
+AutoFnBind::AutoFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding) :
+	ret_(ret),
+	binding_(binding)
+{
+	ret_->pushBinding(binding_);
+}
+
+AutoFnBind::~AutoFnBind()
+{
+	ret_->popBinding(binding_);
+}
+
 }; // TRICEPS_NS

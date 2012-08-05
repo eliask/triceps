@@ -507,4 +507,12 @@ UTESTCASE call_bindings(Utest *utest)
 		}
 		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
 	}
+
+	// do the scoped binding
+	UT_IS(fret1->bindingStackSize(), 0);
+	{
+		AutoFnBind ab(fret1, bind1);
+		UT_IS(fret1->bindingStackSize(), 1);
+	}
+	UT_IS(fret1->bindingStackSize(), 0);
 }
