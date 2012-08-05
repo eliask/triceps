@@ -32,6 +32,7 @@ XS(boot_Triceps__Table);
 XS(boot_Triceps__AggregatorType); 
 XS(boot_Triceps__AggregatorContext); 
 XS(boot_Triceps__FrameMark); 
+XS(boot_Triceps__FnReturn); 
 #ifdef __cplusplus
 };
 #endif
@@ -102,6 +103,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__FrameMark(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__FnReturn(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Triceps items=%d sp=%p mark=%p\n", items, sp, mark);
