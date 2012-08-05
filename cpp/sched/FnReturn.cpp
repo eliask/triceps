@@ -58,6 +58,17 @@ FnReturn *FnReturn::addLabel(const string &lname, const_Autoref<RowType>rtype)
 	return this;
 }
 
+FnReturn *FnReturn::initializeOrThrow()
+{
+	initialize();
+	Erref err = getErrors();
+	if (err->hasError()) {
+		Autoref<FnReturn> r(this); // makes sure that a newly allocated "this" will get freed
+		throw Exception(err, true);
+	}
+	return this;
+}
+
 RowSetType *FnReturn::getType() const
 {
 	if (!initialized_)

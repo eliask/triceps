@@ -73,7 +73,7 @@ UTESTCASE fn_return(Utest *utest)
 	Autoref<FnReturn> fret3 = FnReturn::make(unit1, "fret3")
 		->addLabel("one", rt1)
 		->addLabel("xxx", rt2)
-		->initialize();
+		->initializeOrThrow();
 	UT_ASSERT(fret3->getErrors().isNull());
 	
 	// bad ones
@@ -108,6 +108,19 @@ UTESTCASE fn_return(Utest *utest)
 			->initialize();
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "Can not include the label 'lb1x' into the FnReturn as 'one': it has a different unit, 'u2' vs 'u'.\n");
+	}
+	{
+		// with throwing
+		msg.clear();
+		try {
+			Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+				->addLabel("one", rt1)
+				->addLabel("", rt2)
+				->initializeOrThrow();
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "row name at position 2 must not be empty\n");
 	}
 
 	UT_ASSERT(fret1->equals(fret2));
