@@ -44,6 +44,9 @@ public:
 	// attempt to create the tight loops, or they will be caught at
 	// run time.
 	//
+	// It is OK for the labels in the FnBinding be from a different
+	// Unit than in FnReturn.
+	//
 	// @param name - name of the element in the return to bind to
 	// @param lb - label to bind. Must have a matching row type.
 	//        The binding will keep a reference to that label.

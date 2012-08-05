@@ -68,6 +68,8 @@ public:
 	Rowop(const Label *label, Opcode op, const Rowref &row, int enqMode);
 
 	Rowop(const Rowop &orig);
+	// Adoption: use the same opcode etc. with another label
+	Rowop(const Label *label, const Rowop *orig);
 
 	~Rowop();
 

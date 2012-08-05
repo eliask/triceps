@@ -225,7 +225,7 @@ adopt(WrapLabel *self, WrapRowop *wrop)
 			XSRETURN_UNDEF;
 		}
 
-		Autoref<Rowop> rop = new Rowop(lab, orop->getOpcode(), orop->getRow());
+		Autoref<Rowop> rop = new Rowop(lab, orop);
 
 		RETVAL = new WrapRowop(rop);
 	OUTPUT:

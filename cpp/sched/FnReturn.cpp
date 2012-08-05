@@ -34,7 +34,7 @@ FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 		type_->addRow(lname, rtype);
 		if (type_->size() != szpre) {
 			// type detected no error
-			Autoref<Label> lb = new DummyLabel(unit_, rtype, name_ + "." + lname);
+			Autoref<RetLabel> lb = new RetLabel(unit_, rtype, name_ + "." + lname, this, szpre);
 			labels_.push_back(lb);
 			Erref cherr = from->chain(lb);
 			if (cherr->hasError())
@@ -44,7 +44,7 @@ FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 	return this;
 }
 
-FnReturn *FnReturn::addDummyLabel(const string &lname, const_Autoref<RowType>rtype)
+FnReturn *FnReturn::addLabel(const string &lname, const_Autoref<RowType>rtype)
 {
 	if (initialized_)
 		throw Exception("Triceps API violation: attempt to add label '" + lname + "' to an initialized FnReturn.", true);
@@ -52,7 +52,7 @@ FnReturn *FnReturn::addDummyLabel(const string &lname, const_Autoref<RowType>rty
 	type_->addRow(lname, rtype);
 	if (type_->size() != szpre) {
 		// type detected no error
-		Autoref<Label> lb = new DummyLabel(unit_, rtype, name_ + "." + lname);
+		Autoref<RetLabel> lb = new RetLabel(unit_, rtype, name_ + "." + lname, this, szpre);
 		labels_.push_back(lb);
 	}
 	return this;
@@ -91,6 +91,60 @@ Label *FnReturn::getLabel(int idx) const
 		return labels_[idx];
 	else
 		return NULL;
+}
+
+void FnReturn::pushBinding(Onceref<FnBinding> bind)
+{
+	if (!initialized_)
+		throw Exception("Triceps API violation: attempted to push a binding on an uninitialized FnReturn.", true);
+	stack_.push_back(bind);
+}
+
+void FnReturn::popBinding()
+{
+	if (stack_.empty())
+		throw Exception("Triceps API violation: attempted to pop from an empty FnReturn.", true);
+	stack_.pop_back();
+}
+
+void FnReturn::popBinding(Onceref<FnBinding> bind)
+{
+	if (stack_.empty())
+		throw Exception("Triceps API violation: attempted to pop from an empty FnReturn.", true);
+	FnBinding *top = stack_.back();
+	if (top != bind)
+		throw Exception("Triceps API violation: popping an unexpected binding.", true);
+		// XXX should give some better diagnostics, helping to find the root cause.
+	stack_.pop_back();
+}
+
+///////////////////////////////////////////////////////////////////////////
+// RetLabel
+
+FnReturn::RetLabel::RetLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name,
+	FnReturn *fnret, int idx
+) :
+	Label(unit, rtype, name),
+	fnret_(fnret),
+	idx_(idx)
+{ }
+
+void FnReturn::RetLabel::execute(Rowop *arg) const
+{
+	if (fnret_->stack_.empty())
+		return; // no binding yet
+	FnBinding *top = fnret_->stack_.back();
+	Label *lab = top->getLabel(idx_);
+	if (lab == NULL)
+		return; // not bound here
+
+	Unit *u = lab->getUnitPtr();
+	if (u == NULL)
+		return; // a cleared label, do not call
+
+	// This can safely call another unit.
+	Autoref<Rowop> adrop = new Rowop(lab, arg);
+	u->call(adrop);
 }
 
 }; // TRICEPS_NS

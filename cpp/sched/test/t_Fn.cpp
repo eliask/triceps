@@ -59,44 +59,44 @@ UTESTCASE fn_return(Utest *utest)
 	// a good one
 	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
 		->addFromLabel("one", lb1)
-		->addDummyLabel("two", rt2)
+		->addLabel("two", rt2)
 		->initialize();
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 	// an equal one but not initialized
 	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
-		->addDummyLabel("one", rt1)
-		->addDummyLabel("two", rt2);
+		->addLabel("one", rt1)
+		->addLabel("two", rt2);
 	UT_ASSERT(fret2->getErrors().isNull());
 	UT_ASSERT(!fret2->isInitialized());
 	// a matching one
 	Autoref<FnReturn> fret3 = FnReturn::make(unit1, "fret3")
-		->addDummyLabel("one", rt1)
-		->addDummyLabel("xxx", rt2)
+		->addLabel("one", rt1)
+		->addLabel("xxx", rt2)
 		->initialize();
 	UT_ASSERT(fret3->getErrors().isNull());
 	
 	// bad ones
 	{
 		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
-			->addDummyLabel("one", rt1)
-			->addDummyLabel("", rt2)
+			->addLabel("one", rt1)
+			->addLabel("", rt2)
 			->initialize();
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "row name at position 2 must not be empty\n");
 	}
 	{
 		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
-			->addDummyLabel("one", rt1)
-			->addDummyLabel("one", rt2)
+			->addLabel("one", rt1)
+			->addLabel("one", rt2)
 			->initialize();
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "duplicate row name 'one'\n");
 	}
 	{
 		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
-			->addDummyLabel("one", (RowType *)NULL)
-			->addDummyLabel("two", rt2)
+			->addLabel("one", (RowType *)NULL)
+			->addLabel("two", rt2)
 			->initialize();
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "null row type with name 'one'\n");
@@ -104,7 +104,7 @@ UTESTCASE fn_return(Utest *utest)
 	{
 		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
 			->addFromLabel("one", lb1x)
-			->addDummyLabel("two", rt2)
+			->addLabel("two", rt2)
 			->initialize();
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "Can not include the label 'lb1x' into the FnReturn as 'one': it has a different unit, 'u2' vs 'u'.\n");
@@ -120,7 +120,7 @@ UTESTCASE fn_return(Utest *utest)
 	{
 		msg.clear();
 		try {
-			fret1->addDummyLabel("three", rt3);
+			fret1->addLabel("three", rt3);
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -230,15 +230,15 @@ UTESTCASE fn_binding(Utest *utest)
 
 	// a good one
 	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
-		->addDummyLabel("one", rt1)
-		->addDummyLabel("two", rt2)
+		->addLabel("one", rt1)
+		->addLabel("two", rt2)
 		->initialize();
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 	// an equal one but not initialized
 	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
-		->addDummyLabel("one", rt1)
-		->addDummyLabel("two", rt2);
+		->addLabel("one", rt1)
+		->addLabel("two", rt2);
 	UT_ASSERT(fret2->getErrors().isNull());
 	UT_ASSERT(!fret2->isInitialized());
 
@@ -247,6 +247,11 @@ UTESTCASE fn_binding(Utest *utest)
 		->addLabel("one", lb1a)
 		->addLabel("two", lb3a); // matching
 	UT_ASSERT(bind1->getErrors().isNull());
+	// labels from another unit are OK
+	Autoref<FnBinding> bind2 = FnBinding::make(fret1)
+		->addLabel("one", lb1x)
+		->addLabel("two", lb3a); // matching
+	UT_ASSERT(bind2->getErrors().isNull());
 
 	// Bad bindings
 	{
@@ -291,4 +296,215 @@ UTESTCASE fn_binding(Utest *utest)
 	UT_IS(bind1->getLabel(1), lb3a);
 	UT_IS(bind1->getLabel(-1), NULL);
 	UT_IS(bind1->getLabel(2), NULL);
+}
+
+UTESTCASE call_bindings(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit1 = new Unit("u");
+	Autoref<Unit> unit2 = new Unit("u2");
+
+	Autoref<Unit::StringNameTracer> trace1 = new Unit::StringNameTracer(true);
+	unit1->setTracer(trace1);
+
+	Autoref<Unit::StringNameTracer> trace2 = new Unit::StringNameTracer(true);
+	unit2->setTracer(trace2);
+
+	// make the components
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+	
+	fld[2].type_ = Type::r_int32;
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
+
+	fld[0].name_ = "A";
+	Autoref<RowType> rt3 = new CompactRowType(fld);
+	UT_ASSERT(rt3->getErrors().isNull()); // matches rt2
+
+	Autoref<Label> lb1 = new DummyLabel(unit1, rt1, "lb1");
+	Autoref<Label> lb1x = new DummyLabel(unit2, rt1, "lb1x");
+	Autoref<Label> lb1a = new DummyLabel(unit1, rt1, "lb1a");
+	Autoref<Label> lb2 = new DummyLabel(unit1, rt2, "lb2");
+	Autoref<Label> lb2a = new DummyLabel(unit1, rt2, "lb2a");
+	Autoref<Label> lb3 = new DummyLabel(unit1, rt3, "lb3");
+	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
+
+	// make the return
+	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+		->addFromLabel("one", lb1)
+		->addFromLabel("two", lb2)
+		->initialize();
+	UT_ASSERT(fret1->getErrors().isNull());
+	UT_ASSERT(fret1->isInitialized());
+
+	// make the bindings
+	Autoref<FnBinding> bind1 = FnBinding::make(fret1)
+		->addLabel("one", lb1a)
+		->addLabel("two", lb3a); // matching
+	UT_ASSERT(bind1->getErrors().isNull());
+	// labels from another unit are OK
+	Autoref<FnBinding> bind2 = FnBinding::make(fret1)
+		->addLabel("one", lb1x) // in unit2
+		->addLabel("two", lb2a);
+	UT_ASSERT(bind2->getErrors().isNull());
+	// missing bindings for some labels are OK
+	Autoref<FnBinding> bind3 = FnBinding::make(fret1);
+	UT_ASSERT(bind3->getErrors().isNull());
+
+	// make the rows to send
+	FdataVec dv; // just leave the contents all NULL
+	Autoref<Rowop> op1 = new Rowop(lb1, Rowop::OP_INSERT, rt1->makeRow(dv));
+	Autoref<Rowop> op2 = new Rowop(lb2, Rowop::OP_INSERT, rt2->makeRow(dv));
+
+	// call with no binding
+	unit1->call(op1);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb1' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after label 'lb1' op OP_INSERT }\n"
+	);
+
+	// call with binding
+	fret1->pushBinding(bind1);
+	unit1->call(op2);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb2' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+
+		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb3a' op OP_INSERT\n"
+		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
+
+		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after label 'lb2' op OP_INSERT }\n"
+	);
+	// no popBinding yet!
+
+	// nest a binding and call to another unit
+	fret1->pushBinding(bind2);
+	unit1->call(op1);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb1' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after label 'lb1' op OP_INSERT }\n"
+	);
+	msg = trace2->getBuffer()->print();
+	trace2->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u2' before label 'lb1x' op OP_INSERT {\n"
+		"unit 'u2' drain label 'lb1x' op OP_INSERT\n"
+		"unit 'u2' after label 'lb1x' op OP_INSERT }\n"
+	);
+
+	// detection of popping the wrong binding
+	{
+		msg.clear();
+		try {
+			fret1->popBinding(bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: popping an unexpected binding.\n");
+	}
+	// pop the right binding
+	fret1->popBinding(bind2);
+	
+	// call with binding that has no labels
+	fret1->pushBinding(bind3);
+	unit1->call(op1);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb1' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after label 'lb1' op OP_INSERT }\n"
+	);
+
+	// pop any binding
+	fret1->popBinding(); // bind3
+
+	// repeat a call with bind1, just to be sure
+	unit1->call(op2);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb2' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+
+		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb3a' op OP_INSERT\n"
+		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
+
+		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after label 'lb2' op OP_INSERT }\n"
+	);
+
+	// clear the label and have it called again
+	lb3a->clear();
+	unit1->call(op2);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb2' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after label 'lb2' op OP_INSERT }\n"
+	);
+	
+	// pop any binding
+	fret1->popBinding(); // bind1
+
+	// detection of popping past the end of the stack
+	{
+		msg.clear();
+		try {
+			fret1->popBinding();
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
+	}
+	{
+		msg.clear();
+		try {
+			fret1->popBinding(bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
+	}
 }

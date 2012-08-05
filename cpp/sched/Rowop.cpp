@@ -67,6 +67,16 @@ Rowop::Rowop(const Rowop &orig) :
 		row_->incref(); // manual reference keeping
 }
 
+Rowop::Rowop(const Label *label, const Rowop *orig) :
+	label_(label),
+	row_(orig->getRow()),
+	opcode_(orig->getOpcode()),
+	enqMode_(orig->getEnqMode())
+{
+	if (row_)
+		row_->incref(); // manual reference keeping
+}
+
 Rowop::~Rowop()
 {
 	if (row_) {
