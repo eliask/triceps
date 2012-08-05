@@ -263,7 +263,8 @@ UTESTCASE fn_binding(Utest *utest)
 	// labels from another unit are OK
 	Autoref<FnBinding> bind2 = FnBinding::make(fret1)
 		->addLabel("one", lb1x)
-		->addLabel("two", lb3a); // matching
+		->addLabel("two", lb3a)
+		->checkOrThrow(); // matching
 	UT_ASSERT(bind2->getErrors().isNull());
 
 	// Bad bindings
@@ -302,6 +303,19 @@ UTESTCASE fn_binding(Utest *utest)
 			"      string e,\n"
 			"    }\n"
 		);
+	}
+	{
+		// with throwing
+		msg.clear();
+		try {
+			Autoref<FnBinding> bindbad = FnBinding::make(fret2)
+				->addLabel("one", lb1a)
+				->addLabel("two", lb3a)
+				->checkOrThrow();
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Can not create a binding to an uninitialized FnReturn.\n");
 	}
 
 	// getters

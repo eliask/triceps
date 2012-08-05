@@ -71,6 +71,16 @@ FnBinding *FnBinding::addLabel(const string &name, Autoref<Label> lb)
 	return this;
 }
 
+FnBinding *FnBinding::checkOrThrow()
+{
+	Erref err = getErrors();
+	if (err->hasError()) {
+		Autoref<FnBinding> r(this); // makes sure that a newly allocated "this" will get freed
+		throw Exception(err, true);
+	}
+	return this;
+}
+
 Label *FnBinding::getLabel(int idx) const
 {
 	if (idx < 0 || idx >= labels_.size())

@@ -12,6 +12,7 @@
 #include <type/AllTypes.h>
 #include <sched/AggregatorGadget.h>
 #include <common/StringUtil.h>
+#include <common/Exception.h>
 
 // Make fields of all simple types
 void mkfields(RowType::FieldVec &fields)
@@ -225,6 +226,33 @@ UTESTCASE dupIndexName(Utest *utest)
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 2 name 'primary' is used more than once\n");
 }
 
+UTESTCASE throwOnBad(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	fld[1].name_ = "a"; // duplicate field name
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors()->hasError());
+
+
+	try {
+		Autoref<TableType> tt = (new TableType(rt1))
+			->addSubIndex("primary", new HashedIndexType(
+				(new NameSet())->add("a")->add("e"))
+			)
+			->initializeOrThrow();
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+
+	UT_IS(msg, "row type error:\n  duplicate field name 'a' for fields 2 and 1\n");
+}
+
 UTESTCASE hashedNested(Utest *utest)
 {
 	RowType::FieldVec fld;
@@ -240,10 +268,10 @@ UTESTCASE hashedNested(Utest *utest)
 				(new NameSet())->add("a")->add("e"))
 			)
 		)
+		->initializeOrThrow()
 		;
 
 	UT_ASSERT(tt);
-	tt->initialize();
 	if (UT_ASSERT(tt->getErrors().isNull()))
 		return;
 	

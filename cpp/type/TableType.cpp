@@ -10,6 +10,7 @@
 #include <type/RootIndexType.h>
 #include <type/AggregatorType.h>
 #include <table/Table.h>
+#include <common/Exception.h>
 
 namespace TRICEPS_NS {
 
@@ -131,6 +132,16 @@ void TableType::initialize()
 
 	if (!errors_->hasError() && errors_->isEmpty())
 		errors_ = NULL;
+}
+
+TableType *TableType::initializeOrThrow()
+{
+	initialize();
+	if (errors_->hasError()) {
+		Autoref<TableType> r(this); // makes sure that a newly allocated "this" will get freed
+		throw Exception(errors_, true);
+	}
+	return this;
 }
 
 Onceref<Table> TableType::makeTable(Unit *unit, Gadget::EnqMode emode, const string &name) const

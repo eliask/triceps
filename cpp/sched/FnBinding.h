@@ -26,6 +26,13 @@ public:
 	// ret = FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1)
 	//     ->addLabel("lb2", lb2);
+	//
+	// Or to throw on errors:
+	// ret = FnBinding::make(fn)
+	//     ->addLabel("lb1", lb1)
+	//     ->addLabel("lb2", lb2)
+	//     ->checkOrThrow();
+	//
 	// @param fn - the return of the function to bind to. Must be initialized.
 	FnBinding(FnReturn *fn);
 	
@@ -50,6 +57,7 @@ public:
 	// @param name - name of the element in the return to bind to
 	// @param lb - label to bind. Must have a matching row type.
 	//        The binding will keep a reference to that label.
+	// @return - the same FnBinding object, for chained calls.
 	FnBinding *addLabel(const string &name, Autoref<Label> lb);
 
 	// Get the collected error info. A binding with errors should
@@ -58,6 +66,13 @@ public:
 	{
 		return errors_;
 	}
+
+	// Checks for errors and throws an Exception if any are found.
+	// Takes care of the memory consistency on throwing by increasing
+	// and decreasing the ref count on this object, so that if it hasn't
+	// been stored in an Autoref yet, it will get destroyed.
+	// @return - the same FnBinding object, for chained calls.
+	FnBinding *checkOrThrow();
 
 	// Get back the label by index. Mostly for the benefit of FnReturn.
 	// @param idx - index of the label
