@@ -25,16 +25,17 @@ public:
 	// The typical construction is done as a chain:
 	// ret = FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1)
-	//     ->addLabel("lb2", lb2);
+	//     ->addLabel("lb2", lb2, false);
 	//
 	// Or to throw on errors:
 	// ret = FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1)
-	//     ->addLabel("lb2", lb2)
+	//     ->addLabel("lb2", lb2, false)
 	//     ->checkOrThrow();
 	//
 	// @param fn - the return of the function to bind to. Must be initialized.
 	FnBinding(FnReturn *fn);
+	~FnBinding();
 	
 	// The convenience wharpper for the constructor
 	static FnBinding *make(FnReturn *fn)
@@ -57,8 +58,11 @@ public:
 	// @param name - name of the element in the return to bind to
 	// @param lb - label to bind. Must have a matching row type.
 	//        The binding will keep a reference to that label.
+	// @param autoclear - flag: when the binding gets destroyed, automatically
+	//        clear the label and forget it in the Unit, thus getting it
+	//        destroyed when all the other references go.
 	// @return - the same FnBinding object, for chained calls.
-	FnBinding *addLabel(const string &name, Autoref<Label> lb);
+	FnBinding *addLabel(const string &name, Autoref<Label> lb, bool autoclear);
 
 	// Get the collected error info. A binding with errors should
 	// not be used for calls.
@@ -81,9 +85,11 @@ public:
 
 protected:
 	typedef vector<Autoref<Label> > LabelVec; 
+	typedef vector<bool> BoolVec; 
 
 	Autoref<RowSetType> type_; // type of FnReturn
-	LabelVec labels_; // reached by index
+	LabelVec labels_; // looked up by index
+	BoolVec autoclear_; // of the same size as labels_
 	Erref errors_; // the accumulated errors
 };
 

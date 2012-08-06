@@ -9,6 +9,7 @@
 
 #include <sched/FnBinding.h>
 #include <sched/FnReturn.h>
+#include <sched/Unit.h>
 
 namespace TRICEPS_NS {
 
@@ -21,10 +22,25 @@ FnBinding::FnBinding(FnReturn *fn)
 	} else {
 		type_ = fn->getType();
 		labels_.resize(type_->size());
+		autoclear_.resize(type_->size());
 	}
 }
 
-FnBinding *FnBinding::addLabel(const string &name, Autoref<Label> lb)
+FnBinding::~FnBinding()
+{
+	for (size_t i = 0; i < labels_.size(); i++) {
+		if (!autoclear_[i])
+			continue;
+		Label *lb = labels_[i];
+		Unit *u = lb->getUnitPtr();
+		if (u) {
+			u->forgetLabel(lb);
+			lb->clear();
+		}
+	}
+}
+
+FnBinding *FnBinding::addLabel(const string &name, Autoref<Label> lb, bool autoclear)
 {
 	if (type_.isNull()) // type would be NULL if the FnReturn was uninitialized
 		return this; // then ignore all the following errors
@@ -39,6 +55,7 @@ FnBinding *FnBinding::addLabel(const string &name, Autoref<Label> lb)
 
 	if (labels_.size() < idx+1) // should never happen but just in case
 		labels_.resize(idx+1);
+		autoclear_.resize(idx+1);
 
 	if (!labels_[idx].isNull()) {
 		if (errors_.isNull())
@@ -68,6 +85,7 @@ FnBinding *FnBinding::addLabel(const string &name, Autoref<Label> lb)
 	}
 
 	labels_[idx] = lb;
+	autoclear_[idx] = autoclear;
 	return this;
 }
 
