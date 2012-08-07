@@ -218,6 +218,6 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' 
 	]
 );
 # XXX should have a better way to prepend the high-level description
-ok($@ =~ /^duplicate row name 'one'/);
+ok($@ =~ /^Triceps::FnReturn::new: invalid arguments:\n  duplicate row name 'one'/);
 #print "$@";
 

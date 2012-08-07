@@ -164,7 +164,11 @@ new(char *CLASS, ...)
 				}
 			}
 
-			fret->initializeOrThrow(); // XXX could prepend a better error message
+			try {
+				fret->initializeOrThrow(); // XXX could prepend a better error message
+			} catch (Exception e) {
+				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
+			}
 		} TRICEPS_CATCH_CROAK;
 
 		RETVAL = new WrapFnReturn(fret);
