@@ -53,6 +53,19 @@ public:
 	// @param err - the error message, may be multiline
 	// @param trace - flag: if true, add a stack backtrace as nested Errors
 	explicit Exception(const string &err, bool trace);
+	// A new Errors object will be constructed from the message and nested error.
+	// Since the backtrace from the nested error would be already embedded
+	// in it, there is no point in adding one more copy here, so the
+	// trace argument in this version is always assumed to be false.
+	//
+	// The message will go _before_ the error buffer, however
+	// it goes after in the call order to avoid the ambiguation of the calls.
+	//
+	// @param msg - the error message, may be multiline
+	// @param err - the nested Errors reference
+	explicit Exception(Onceref<Errors> err, const string &msg);
+	// needed to prevent the auto-casting of char* to bool
+	explicit Exception(Onceref<Errors> err, const char *msg);
 
 	// Would not compile without an explicit destructor with throw().
 	virtual ~Exception()

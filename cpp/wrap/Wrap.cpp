@@ -23,6 +23,8 @@ WrapMagic magicWrapLabel = { "Label" };
 WrapMagic magicWrapGadget = { "Gadget" };
 WrapMagic magicWrapRowop = { "Rowop" };
 WrapMagic magicWrapFrameMark = { "FrMark" };
+WrapMagic magicWrapFnReturn = { "FnRet" };
+WrapMagic magicWrapFnBinding = { "FnBind" };
 
 WrapMagic magicWrapTable = { "Table" };
 WrapMagic magicWrapIndex = { "Index" };

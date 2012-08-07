@@ -42,9 +42,17 @@ public:
 
 	// A quick way to create an object with a ready error message.
 	// This always sets the error flag.
-	// @param msg - the error message
+	// @param msg - the error message (may be multi-line)
 	Errors(const char *msg);
 	Errors(const string &msg);
+
+	// A quick way to create an object with a ready error message
+	// and a child error. Convenient for re-throwing an Exception
+	// with extra high-level information.
+	// This always sets the error flag.
+	// @param msg - the error message (may be multi-line)
+	// @param clde - errors returned by child (or NULL)
+	Errors(const string &msg, Autoref<Errors> clde);
 
 	// XXX there should be a way to give headers to the child errors
 

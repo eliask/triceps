@@ -38,6 +38,28 @@ UTESTCASE throw_catch(Utest *utest)
 		UT_IS(what, "message\n");
 	}
 
+	try {
+		Erref err = new Errors;
+		err->appendMsg(true, "message");
+		throw Exception(err, "wrapper");
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what, "wrapper\n  message\n");
+	}
+
+	try {
+		Erref err = new Errors;
+		err->appendMsg(true, "message");
+		throw Exception(err, string("wrapper"));
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what, "wrapper\n  message\n");
+	}
+
 	// same with a stack trace
 	try {
 		throw Exception("message", true);
@@ -79,6 +101,7 @@ UTESTCASE abort(Utest *utest)
 
 	UT_IS(Exception::abort_, true); // the default
 
+	fprintf(stderr, "Expect an abort message:\n");
 	aborted = false;
 	try {
 		throw Exception("test of an abort message", false);
@@ -86,6 +109,7 @@ UTESTCASE abort(Utest *utest)
 	}
 	UT_ASSERT(aborted);
 
+	fprintf(stderr, "Expect an abort message:\n");
 	aborted = false;
 	try {
 		Erref err = new Errors;

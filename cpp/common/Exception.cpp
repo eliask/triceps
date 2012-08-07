@@ -34,6 +34,20 @@ Exception::Exception(const string &err, bool trace) :
 	checkAbort();
 }
 
+Exception::Exception(Onceref<Errors> err, const string &msg) :
+	error_(new Errors(msg, err))
+{
+	checkTrace(false); // really does nothing
+	checkAbort();
+}
+
+Exception::Exception(Onceref<Errors> err, const char *msg) :
+	error_(new Errors(msg, err))
+{
+	checkTrace(false); // really does nothing
+	checkAbort();
+}
+
 Exception::~Exception()
 	throw()
 { }

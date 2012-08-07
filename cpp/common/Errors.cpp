@@ -35,6 +35,14 @@ Errors::Errors(const char *msg) :
 	appendMultiline(true, msg);
 }
 
+Errors::Errors(const string &msg, Autoref<Errors> clde) :
+	error_(true)
+{
+	appendMultiline(true, msg);
+	if (!clde.isNull())
+		elist_.push_back(Epair(string(), clde));
+}
+
 bool Errors::append(const string &msg, Autoref<Errors> clde)
 {
 	if (clde.isNull())

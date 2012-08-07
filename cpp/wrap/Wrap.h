@@ -11,6 +11,7 @@
 
 #include <type/AllTypes.h>
 #include <sched/Unit.h>
+#include <sched/FnReturn.h>
 #include <table/Table.h>
 #include <mem/Rhref.h>
 
@@ -189,6 +190,8 @@ DEFINE_WRAP(Label);
 DEFINE_WRAP(Gadget);
 DEFINE_WRAP(Rowop);
 DEFINE_WRAP(FrameMark);
+DEFINE_WRAP(FnReturn);
+DEFINE_WRAP(FnBinding);
 
 DEFINE_WRAP(Table);
 DEFINE_WRAP(Index);
