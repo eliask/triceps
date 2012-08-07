@@ -60,6 +60,19 @@ UTESTCASE throw_catch(Utest *utest)
 		UT_IS(what, "wrapper\n  message\n");
 	}
 
+	try {
+		try {
+			throw Exception("message", false);
+		} catch (Exception e) {
+			throw Exception(e, "wrapper");
+		}
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what, "wrapper\n  message\n");
+	}
+
 	// same with a stack trace
 	try {
 		throw Exception("message", true);

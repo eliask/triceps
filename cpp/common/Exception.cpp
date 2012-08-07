@@ -48,6 +48,13 @@ Exception::Exception(Onceref<Errors> err, const char *msg) :
 	checkAbort();
 }
 
+Exception::Exception(const Exception &exc, const string &msg) :
+	error_(new Errors(msg, exc.getErrors()))
+{
+	checkTrace(false); // really does nothing
+	checkAbort();
+}
+
 Exception::~Exception()
 	throw()
 { }
@@ -58,7 +65,7 @@ const char *Exception::what()
 	return what_.c_str();
 }
 
-Errors *Exception::getErrors()
+Errors *Exception::getErrors() const
 {
 	return error_.get();
 }

@@ -66,6 +66,9 @@ public:
 	explicit Exception(Onceref<Errors> err, const string &msg);
 	// needed to prevent the auto-casting of char* to bool
 	explicit Exception(Onceref<Errors> err, const char *msg);
+	// Similar but the nested errors will be taken from
+	// another exception.
+	explicit Exception(const Exception &exc, const string &msg);
 
 	// Would not compile without an explicit destructor with throw().
 	virtual ~Exception()
@@ -75,7 +78,7 @@ public:
 	virtual const char *what();
 
 	// Get the error message in the original structured form.
-	virtual Errors *getErrors();
+	virtual Errors *getErrors() const;
 
 	// Flag: when attempting to create an exception, instead print
 	// the message and abort. This behavior is more convenient for
