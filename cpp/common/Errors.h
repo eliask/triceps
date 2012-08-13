@@ -54,8 +54,6 @@ public:
 	// @param clde - errors returned by child (or NULL)
 	Errors(const string &msg, Autoref<Errors> clde);
 
-	// XXX there should be a way to give headers to the child errors
-
 	// Append a direct error message.
 	// @param e - flag: true if error, false if warning
 	// @param msg - the error message

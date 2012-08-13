@@ -9,6 +9,7 @@
 #ifndef __Triceps_StringTools_h__
 #define __Triceps_StringTools_h__
 
+#include <stdarg.h>
 #include <string>
 #include <common/Conf.h>
 
@@ -20,6 +21,9 @@ using namespace std;
 string strprintf(const char *fmt, ...)
 	__attribute__((format(printf, 1, 2)));
 
+// like vsprintf() but returns a C++ string
+string vstrprintf(const char *fmt, va_list ap)
+	__attribute__((format(printf, 1, 0)));
 
 }; // TRICEPS_NS
 
