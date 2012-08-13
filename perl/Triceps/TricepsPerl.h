@@ -5,17 +5,17 @@
 //
 // Helper functions for Perl wrapper.
 
+// ###################################################################################
+
+#ifndef __TricepsPerl_TricepsPerl_h__
+#define __TricepsPerl_TricepsPerl_h__
+
 #include <string.h>
 #include <wrap/Wrap.h>
 #include <common/Conf.h>
 #include <common/Strprintf.h>
 #include <common/Exception.h>
 #include <mem/EasyBuffer.h>
-
-// ###################################################################################
-
-#ifndef __TricepsPerl_TricepsPerl_h__
-#define __TricepsPerl_TricepsPerl_h__
 
 using namespace TRICEPS_NS;
 

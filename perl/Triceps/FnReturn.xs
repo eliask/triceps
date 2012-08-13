@@ -12,6 +12,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "TricepsOpt.h"
 
 MODULE = Triceps::FnReturn		PACKAGE = Triceps::FnReturn
 ###################################################################################
@@ -76,12 +77,7 @@ new(char *CLASS, ...)
 				const char *optname = (const char *)SvPV_nolen(ST(i));
 				SV *arg = ST(i+1);
 				if (!strcmp(optname, "unit")) {
-					if (!sv_isobject(arg) || !(SvTYPE(SvRV(arg)) == SVt_PVMG))
-						throw Exception(strprintf("%s: option '%s' value is not a blessed SV reference to Triceps::Unit", funcName, optname), false);
-					WrapUnit *wunit = (WrapUnit *)SvIV((SV*)SvRV( arg ));
-					if (wunit == NULL || wunit->badMagic())
-						throw Exception(strprintf("%s: option '%s' value has an incorrect magic for Triceps::Unit", funcName, optname), false);
-					u = wunit->get();
+					TRICEPS_GET_OBJECT(Unit, u, arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "name")) {
 					if (!SvPOK(arg))
 						throw Exception(strprintf("%s: option '%s' value must be a string", funcName, optname), false);
