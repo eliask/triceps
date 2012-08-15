@@ -80,7 +80,7 @@ void croakIfSet()
 			// Try to cut the stack trace at this call:
 			// the C call gets shown as "\teval {...}", and the first of them is us.
 			// So skip the message received, then stop after the first "eval {...}".
-			int mlen = strlen(msg);
+			STRLEN mlen = strlen(msg);
 			if (mlen < tlen) {
 				char *p = t + mlen;
 				p = strstr(p, "\teval {...} called");
@@ -469,6 +469,32 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr)
 	} catch(...) {
 		abort();
 	}
+}
+
+void GetSvString(string &res, SV *svptr, const char *fmt, ...)
+{
+	if (!SvPOK(svptr)) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value must be a string", s.c_str()), false);
+	}
+	STRLEN slen;
+	char *nn = SvPV(svptr, slen);
+	res.assign(nn, slen);
+}
+
+AV *GetSvArray(SV *svptr, const char *fmt, ...)
+{
+	if (!SvROK(svptr) || !(SvTYPE(SvRV(svptr)) == SVt_PVAV)) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value must be a reference to array", s.c_str()), false);
+	}
+	return (AV*)SvRV(svptr);
 }
 
 }; // Triceps::TricepsPerl

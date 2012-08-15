@@ -147,7 +147,7 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value has an incorrect magic fo
 		two => $rt2,
 	}
 );
-ok($@ =~ /^Triceps::FnReturn::new: option 'labels' value is not a reference to array/);
+ok($@ =~ /^Triceps::FnReturn::new: option 'labels' value must be a reference to array/);
 
 &badFnReturn(labels => undef);
 ok($@ =~ /^Triceps::FnReturn::new: missing mandatory option 'labels'/);
@@ -166,7 +166,7 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'labels' must contain elements in pair
 		$lb2 => "two",
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 \(counted from 0\) must be a string/);
+ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 name must be a string/);
 
 &badFnReturn(
 	labels => [

@@ -64,7 +64,6 @@ new(char *CLASS, ...)
 		Autoref<FnReturn> fret;
 		try {
 			clearErrMsg();
-			STRLEN slen;
 			int len, i;
 			Unit *u = NULL;
 			AV *labels = NULL;
@@ -79,14 +78,9 @@ new(char *CLASS, ...)
 				if (!strcmp(optname, "unit")) {
 					u = TRICEPS_GET_WRAP(Unit, arg, "%s: option '%s'", funcName, optname)->get();
 				} else if (!strcmp(optname, "name")) {
-					if (!SvPOK(arg))
-						throw Exception(strprintf("%s: option '%s' value must be a string", funcName, optname), false);
-					char *nn = SvPV(arg, slen);
-					name.assign(nn, slen);
+					GetSvString(name, arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "labels")) {
-					if (!SvROK(arg) || !(SvTYPE(SvRV(arg)) == SVt_PVAV))
-						throw Exception(strprintf("%s: option '%s' value is not a reference to array", funcName, optname), false);
-					labels = (AV*)SvRV(arg);
+					labels = GetSvArray(arg, "%s: option '%s'", funcName, optname);
 				} else {
 					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
 				}
@@ -105,10 +99,10 @@ new(char *CLASS, ...)
 				svval = *av_fetch(labels, i+1, 0);
 
 				if (!SvPOK(svname))
-					throw Exception(strprintf("%s: in option 'labels' element %d (counted from 0) must be a string", funcName, i), false);
+					throw Exception(strprintf("%s: in option 'labels' element %d name must be a string", funcName, i/2+1), false);
 				if (!sv_isobject(svval) || !(SvTYPE(SvRV(svval)) == SVt_PVMG))
 					throw Exception(strprintf("%s: in option 'labels' element %d with name '%s' must be a blessed SV reference", 
-						funcName, i, SvPV_nolen(svname)), false);
+						funcName, i/2+1, SvPV_nolen(svname)), false);
 
 				wl = (WrapLabel *)SvIV((SV*)SvRV( svval ));
 				if (!wl->badMagic()) {
@@ -117,14 +111,14 @@ new(char *CLASS, ...)
 
 					if (lbu == NULL)
 						throw Exception(strprintf("%s: a cleared label in option 'labels' element %d with name '%s' can not be used", 
-							funcName, i, SvPV_nolen(svname)), false);
+							funcName, i/2+1, SvPV_nolen(svname)), false);
 
 					if (u == NULL)
 						u = lbu;
 					else if (u != lbu)
 						throw Exception(strprintf(
 							"%s: label in option 'labels' element %d with name '%s' has a mismatching unit '%s', previously seen unit '%s'", 
-							funcName, i, SvPV_nolen(svname), lbu->getName().c_str(), u->getName().c_str()), false);
+							funcName, i/2+1, SvPV_nolen(svname), lbu->getName().c_str(), u->getName().c_str()), false);
 				}
 			}
 
@@ -144,8 +138,8 @@ new(char *CLASS, ...)
 				svname = *av_fetch(labels, i, 0);
 				svval = *av_fetch(labels, i+1, 0);
 
-				char *nn = SvPV(svname, slen);
-				string lbname(nn, slen);
+				string lbname;
+				GetSvString(lbname, svname, "%s: option 'label' element %d name", funcName, i+1);
 
 				wrt = (WrapRowType *) (wl = (WrapLabel *)SvIV((SV*)SvRV( svval )));
 				if (!wl->badMagic()) {
