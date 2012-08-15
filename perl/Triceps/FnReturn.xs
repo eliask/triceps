@@ -77,7 +77,7 @@ new(char *CLASS, ...)
 				const char *optname = (const char *)SvPV_nolen(ST(i));
 				SV *arg = ST(i+1);
 				if (!strcmp(optname, "unit")) {
-					TRICEPS_GET_OBJECT(Unit, u, arg, "%s: option '%s'", funcName, optname);
+					u = TRICEPS_GET_WRAP(Unit, arg, "%s: option '%s'", funcName, optname)->get();
 				} else if (!strcmp(optname, "name")) {
 					if (!SvPOK(arg))
 						throw Exception(strprintf("%s: option '%s' value must be a string", funcName, optname), false);
