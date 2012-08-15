@@ -58,7 +58,7 @@ WrapClass *GetSvWrap(SV *svptr, const char *className, const char *fmt, ...)
 		va_start(ap, fmt);
 		string s = vstrprintf(fmt, ap);
 		va_end(ap);
-		throw Exception(strprintf("%s value is not a blessed SV reference to Triceps::%s", 
+		throw Exception(strprintf("%s value must be a blessed SV reference to Triceps::%s", 
 			s.c_str(), className), false);
 	}
 	WrapClass *wvar = (WrapClass *)SvIV((SV*)SvRV( svptr ));
@@ -70,6 +70,78 @@ WrapClass *GetSvWrap(SV *svptr, const char *className, const char *fmt, ...)
 		throw Exception(strprintf("%s value has an incorrect magic for Triceps::%s", s.c_str(), className), false);
 	}
 	return wvar;
+}
+
+// Get the pointer to a Triceps class wrap object from a Perl SV value
+// that may be one of 2 types. One of the result pointers will be
+// populated, the other will be NULL.
+// Throws a Triceps::Exception if the value is neither.
+//
+// It is structured as two parts:
+// * the macro that manipulates the class names, so that multiple versions
+//   of them don't have to be specified explicitly
+// * the template that does the actual work
+//
+// An example of use (different from TRICEPS_GET_WRAP):
+//   TRICEPS_GET_WRAP2(Label, wlb, RowType, wrt, ST(i), "%s: option '%s'", funcName, optName);
+//
+// @param TClass1 - type 1 of object, whose wrapper is to be extracted from SV
+// @param wrap1 - reference to return the value of type 1
+// @param TClass2 - type 2 of object, whose wrapper is to be extracted from SV
+// @param wrap2 - reference to return the value of type 2
+// @param svptr - the Perl SV* from which the value will be extracted
+// @param fmt, ...  - the custom initial part for the error messages in the exception
+// @return - the Triceps wrapper class for which the value is being extracted;
+//           guaranteed to be not NULL, so get() can be called on it right away
+//           (the reason for not returning the value from the wrapper is that
+//           for some wrappers there is also a type to get from it)
+#define TRICEPS_GET_WRAP2(TClass1, wrap1, TClass2, wrap2, svptr, fmt, ...) GetSvWrap2<TRICEPS_NS::Wrap##TClass1, TRICEPS_NS::Wrap##TClass2>(wrap1, wrap2, svptr, #TClass1, #TClass2, fmt, __VA_ARGS__)
+
+// @param WrapClass1 - wrap type 1 of object, that is to be extracted from SV
+// @param WrapClass2 - wrap type 2 of object, that is to be extracted from SV
+// @param wrap1 - reference to return the value of type 1
+// @param wrap2 - reference to return the value of type 2
+// @param svptr - Perl value to get the object from
+// @param className1 - name of the TClass1 as a string, for error messages
+// @param className2 - name of the TClass2 as a string, for error messages
+// @param fmt, ... - the prefix for the error message
+// @return - the Triceps wrapper class for which the value is being extracted
+template<class WrapClass1, class WrapClass2>
+void GetSvWrap2(WrapClass1 *&wrap1, WrapClass2 *&wrap2, SV *svptr, const char *className1, const char *className2, const char *fmt, ...)
+	__attribute__((format(printf, 6, 7)));
+
+template<class WrapClass1, class WrapClass2>
+void GetSvWrap2(WrapClass1 *&wrap1, WrapClass2 *&wrap2, SV *svptr, const char *className1, const char *className2, const char *fmt, ...)
+{
+	if (!sv_isobject(svptr) || SvTYPE(SvRV(svptr)) != SVt_PVMG) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value must be a blessed SV reference to Triceps::%s nor Triceps::%s", 
+			s.c_str(), className1, className2), false);
+	}
+
+	IV ref = SvIV((SV*)SvRV( svptr ));
+	wrap1 = (WrapClass1 *)ref;
+	wrap2 = (WrapClass2 *)ref;
+	if (ref) {
+		if (!wrap1->badMagic()) {
+			wrap2 = NULL;
+		} else if (!wrap2->badMagic()) {
+			wrap1 = NULL;
+		} else {
+			ref = 0;
+		}
+	}
+	if (ref == 0) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value has an incorrect magic for either Triceps::%s or Triceps::%s", 
+			s.c_str(), className1, className2), false);
+	}
 }
 
 // Extract a string from a Perl SV value.

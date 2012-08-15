@@ -95,17 +95,17 @@ new(char *CLASS, ...)
 			for (i = 0; i < len; i+=2) {
 				SV *svname, *svval;
 				WrapLabel *wl;
+				WrapRowType *wrt;
 				svname = *av_fetch(labels, i, 0);
 				svval = *av_fetch(labels, i+1, 0);
 
 				if (!SvPOK(svname))
 					throw Exception(strprintf("%s: in option 'labels' element %d name must be a string", funcName, i/2+1), false);
-				if (!sv_isobject(svval) || !(SvTYPE(SvRV(svval)) == SVt_PVMG))
-					throw Exception(strprintf("%s: in option 'labels' element %d with name '%s' must be a blessed SV reference", 
-						funcName, i/2+1, SvPV_nolen(svname)), false);
 
-				wl = (WrapLabel *)SvIV((SV*)SvRV( svval ));
-				if (!wl->badMagic()) {
+				TRICEPS_GET_WRAP2(Label, wl, RowType, wrt, svval, "%s: in option 'labels' element %d with name '%s'", 
+					funcName, i/2+1, SvPV_nolen(svname));
+
+				if (wl != NULL) {
 					Label *lb = wl->get();
 					Unit *lbu = lb->getUnitPtr();
 
@@ -141,16 +141,15 @@ new(char *CLASS, ...)
 				string lbname;
 				GetSvString(lbname, svname, "%s: option 'label' element %d name", funcName, i+1);
 
-				wrt = (WrapRowType *) (wl = (WrapLabel *)SvIV((SV*)SvRV( svval )));
-				if (!wl->badMagic()) {
+				TRICEPS_GET_WRAP2(Label, wl, RowType, wrt, svval, "%s: in option 'labels' element %d with name '%s'", 
+					funcName, i/2+1, SvPV_nolen(svname));
+
+				if (wl != NULL) {
 					Label *lb = wl->get();
 					fret->addFromLabel(lbname, lb);
-				} else if (!wrt->badMagic()) {
+				} else {
 					RowType *rt = wrt->get();
 					fret->addLabel(lbname, rt);
-				} else {
-					throw Exception(strprintf("%s: in option 'labels' element %d with name '%s' must be a label or row type", 
-						funcName, i+1, lbname.c_str()), false);
 				}
 			}
 

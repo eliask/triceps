@@ -136,7 +136,7 @@ ok($@ =~ /^Triceps::FnReturn::new: unknown option 'xxx'/);
 ok($@ =~ /^Triceps::FnReturn::new: option 'name' value must be a string/);
 
 &badFnReturn(unit => "u1");
-ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value is not a blessed SV reference to Triceps::Unit/);
+ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
 
 &badFnReturn(unit => $rt1);
 ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value has an incorrect magic for Triceps::Unit/);
@@ -174,7 +174,7 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 name must be a s
 		two => 1,
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' must be a blessed SV reference/);
+ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' value must be a blessed SV reference to Triceps::Label nor Triceps::RowType/);
 
 {
 	my $lbc = $u1->makeDummyLabel($rt1, "lbc");
@@ -209,7 +209,7 @@ ok($@ =~ /^Triceps::FnReturn::new: the unit can not be auto-deduced, must use an
 ok($@ =~ /^Triceps::FnReturn::new: must specify a non-empty name with option 'name'/);
 
 &badFnReturn(labels => [ one => $u1, two => $lb2, ]);
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' must be a label or row type/);
+ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' value has an incorrect magic for either Triceps::Label or Triceps::RowType/);
 
 &badFnReturn(
 	labels => [
