@@ -1,0 +1,5 @@
+Building with GCC 4.1
+
+Some first reports: I've thought that my compiler from 2009 is as old as it gets, but it turns out that people have some older ones. The build on GCC 4.1 requires two changes. First, it doesn't have the option "-Wno-sign-conversion", so remove that from Makefile.inc. Second, in cpp/table/RowHandle.h on line 56 replace sizeof(data_) with sizeof(AlignType). 
+
+The future versions will instead have the definition -DTRICEPS_NSPR=4 to include from , and -DTRICEPS_NSPR=0 to include from . So editing the Makefile.inc sould be enough, without changing the source code.

@@ -1,0 +1,12 @@
+The const-ness in C++
+
+I've been using the const keyword for two purposes:
+
+    To let the compiler optimize a little better the methods that do not change the state of the objects.
+
+    To mark the fragments of the read-only object internal state returned by the methods. This is much more efficient than making copies of them.
+
+
+So if you get a const vector<> & returned from a method, this is a gentle reminder that you should not be modifying this vector. Of course, nothing can stop a determined programmer from doing a type cast and modifying it anyway, but be aware that such inconsistent modifications will likely cause the program to crash in the future. And if the vector contains references to other objects, these objects usually should not be modified either, even they might not be marked with const.
+
+However all this const stuff is not all rainbows and unicorns but also produces a sizable amount of suffering. One consequence is that you can not use the normal iterators on the const vectors, you have to use the const_iterators. Another is that once in a while you get something like a (const RowType *) from one method and need to pass it as an argument to another method that takes a (RowType *). In this case make sure that you know what you are doing and then proceed boldly with using a const_cast. There is just no way to get all the const-ness self-consistent without ripping it out altogether. 

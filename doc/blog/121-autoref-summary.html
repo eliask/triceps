@@ -1,0 +1,44 @@
+Autoref summary
+
+Autoref can be constructed with or assigned from another Autoref or a pointer:
+
+T *ptr;
+Autoref<T> ref1(ptr);
+Autoref<T> ref2(ref1);
+ref1 = ref2;
+ref1 = ptr;
+
+The assignments work for exactly the same type and also for assignment to any parent in the class hierarchy:
+
+Autoref<Label> = new DummyLabel(...);
+
+The automatic conversion to pointers works too:
+
+ptr = ref1;
+
+Or a pointer can get extracted from an Autoref explicitly too:
+
+ptr = ref1.get();
+
+The dereferencing and arrow operations work like on a pointer too:
+
+T val = *ref1;
+ref1->method();
+
+The Autorefs can also be compared for equality and inequality:
+
+ref1 == ref2
+ref1 != ref2
+
+To compare them to pointers, use get(). Except for one special case: the comparison to NULL happens so often that a special method is provided for it:
+
+ref1.isNull()
+
+And yes, NULL can be assigned to the Autorefs too.
+
+A little about how Autoref works: it can work transparently on both Starget and Mtarget because Autoref doesn't modify the reference counters by itself. Instead the target class is expected to provide the methods 
+
+void incref() const;
+int decref() const;
+
+They are defined as const to allow the reference counting of even the const objects, but of course the reference counter must be mutable. decref() returns the resulting counter value. When it goes down to 0, Autoref calls the destructor. 

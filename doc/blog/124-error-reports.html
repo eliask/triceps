@@ -1,0 +1,93 @@
+Error reports
+
+When building some kind of a language, the complicated errors often need to be reported. Often there are many errors at a time, or an error that needs to be tracked through multiple nested layers. And then these error messages need to be nicely printed, with the indentation by nested layers. Think of the errors from a C++ compiler. Triceps is a kind of a language, so it has a class to represent such errors. It hasn't propagated to the Perl layer yet and is available only in the C++ API.
+
+The class is Errors, defined in common/Errors.h, and inheriting from Starget (for single-threaded reference counting). The references to it are used so often, that Autoref<Errors> is typedefed to have its own name Erref (yes, that's 2 "r"s, not 3).
+
+In general it contains messages, not all of which have to be errors. Some might be warnings. But in practice is has turned out that without a special dedicated compile stage it's hard to report the warnings. Even when there is a special compile stage, and the code gets compiled before it runs, as in Aleri, with the warnings written to a log file, still people rarely pay attention to the warnings. You would not believe, how may people would be calling support while the source of their problem is clearly described in the warnings in the log file. Even in C/C++ it's difficult to pay attention to the warnings. I better like the approach of a separate lint tool for this purpose: at least when you run it, you're definitely looking for warnings.
+
+Because of this, the current Triceps approach is to not have warnings. If something looks possibly right but suspicious, report it as an error but provide an option to override that error (and tell about that option in the error message).
+
+In general, the Errors are built of two kinds of information:
+
+    the error messages
+
+    the nested Errors reports
+
+
+More exactly, an Errors contains a sequence of elements, each of which may contain a string, a nested Errors object, or both. When both, the idea is that the string gives a high-level description and the location of the error in the high-level object while the nested Errors dig into the further detail. The string gets printed before the nested Errors. The nested Errors get printed with an indentation. The indentation gets added only when the errors get "printed", i.e. the top-level Errors object gets converted to a string. Until then the elements may be nested every which way without incurring any extra overhead.
+
+Obviously, you must not try to nest an Errors object inside itself, directly or indirectly. Not only will it create a memory reference cycle, but also an endless recursion when printing.
+
+The basic way to create an Errors is:
+
+ Errors(bool e = false);
+
+Where "e" is an indicator than it contains an actual error. It will also be set when an error message is added, or whan a nested Errors with an error in it is added.
+
+There also are a number of convenience constructors that make one-off Errors from one element:
+
+Errors(const char *msg);
+Errors(const string &msg);
+Errors(const string &msg, Autoref<Errors> clde);
+
+In all of them the error flag is always set, and the message is checked for being multi-line (that is, containing '\n' in the middle of it), and if so, it gets broken up into multiple messages, one per line.
+
+When an Errors object is constructed, more elements can be added to it:
+
+void appendMsg(bool e, const string &msg);
+void appendMultiline(bool e, const string &msg);
+bool append(const string &msg, Autoref<Errors> clde);
+
+The "e" shows whether the message is an error message. In append() the indication of the error presence is take from the child element clde. The appendMsg() expects a single-liner message, don't use a '\n' in it! The appendMultiline() will safely break a multi-line message into multiple single-liners and will ignore the '\n' at the end.
+
+In all the cases of adding a nested child element, it's safe to pass a NULL. If it's a NULL or contains no data in it, the parent will ignore it, except for the error indication that would be processed anyway. Moreover, if the clde is empty, append() will also ignore the string part, and will add nothing. The return value of append() will be true if the child element contained any data in it or an error indication flag. This can be used together with another method
+
+void replaceMsg(const string &msg);
+
+to add a complex high-level description if a child element has reported an error:
+
+Erref clde = someThing(...);
+if (e.append("", clde)) {
+    string msg;
+    // ... generate msg in some complicated way
+    e.replaceMsg(msg);
+}
+
+The replaceMsg() replaces the string portion of the last element, which owns the last added child error.
+
+The typical way to create the messages is with strprintf(), which is like sprintf() but returns a C++ std::string. It's defined in common/Strprintf.h, or as a part of the typical collection in common/Common.h.
+
+It's also possible to append the contents of another Errors directly, without nesting it:
+
+bool absorb(Autoref<Errors> clde);
+
+The return value has the same meaning as with append(). Finally, an Errors object can be cleared to its empty state:
+
+void clear();
+
+To get the number of elements in Errors, use
+
+size_t size() const;
+
+However the more typical methods are:
+
+bool isEmpty();
+bool hasError();
+
+They check whether there is nothing at all or whether there is an error. The special convenience of these methods is that they can be called on NULL pointers. Quite a few Triceps methods return a NULL Erref if there was no error.Even if er is NULL, calling
+
+er->isEmpty()
+er->hasError()
+parent_er->append(msg, er)
+parent_er->absorb(er)
+
+
+is still safe and officially supported. But NOT er->size().
+
+The data gets extracted from Erref by converting it to a string, either appending to an existing string, or adding a new one.
+
+void printTo(string &res, const string &indent = "", const string &subindent = "  ");
+string print(const string &indent = "", const string &subindent = "  ");
+
+The indent argument specifies the initial indentation, subindent the additional indentation for each level. 

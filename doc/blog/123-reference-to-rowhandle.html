@@ -1,0 +1,30 @@
+Reference to a RowHandle
+
+The row handles have the requirements very similar to the rows. They get created by the million, so the efficiency is important. They contain data that has to be properly destroyed. For example, when an additive Perl aggregator stores its last state, it 's stored in a row handle.
+
+So they are handled similarly to the rows. they don't have a virtual destructor but rely on the Table that owns them to destroy them right. The special reference type for them is Rhref, defined in mem/Rhref.h (the RowHandle itself is defined in table/Table.h).
+
+It follows in the exact same mold as Rowref, only uses the Table instead of a RowType:
+
+Rhref(Table *t, RowHandle *r = NULL);
+void assign(Table *t, RowHandle *r);
+
+The rest of comparisons, assignments etc. work the same.
+
+An important point is that a Rhref contains an Autoref to the table, safely holding the table in place while the Rhref is alive. So does the Rowref with the RowType as well, I just forgot to mention it before.
+
+To find out the table of a Rhref, use:
+
+Table *t = rhr.getTable();
+
+Why is the value returned a simple pointer to the table and not an Autoref or Onceref? Basically, because it's the cheapest way and because the row handle is not likely to go anywhere. Nobody is likely to construct a RowHandle only to get the table from it and have it immediately destroyed. And even if someone does something of the sort
+
+Autoref<table> t = RowHandle(t_orig, rh).getTable();
+
+then the table itself is likely to not go anywhere, there is still likely to be another reference to the table that will still hold it in place. If there isn't then of course all bets are off, and t will end up with a dead reference to corrupted memory. Just exercise a little care, and everything will be fine. The same reasoning was used for the argument of the RowHandle constructor being also a table pointer, not an Autoref or Onceref.
+
+An Rhref may also be conveniently used to construct a RowHandle for a Row:
+
+Rhref(Table *t, Row *row);
+
+In fact, this is the official way to construct a RowHandle. The Rowref has a similar method to construct the rows from raw data but the data is much more complex, so I've left its description until later. 

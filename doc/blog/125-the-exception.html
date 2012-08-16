@@ -1,0 +1,52 @@
+The Exception
+There are different ways to report the errors. Sometimes a function would return a false value. Sometime it would return an Erref with an error in it. And there is also a way to throw the exceptions.
+
+In general I don't particularly like the exceptions. They tend to break the logic in the unexpected ways, and if not handled properly, mess up the multithreading. The safe way of working with exceptions is with the scope-based variables. This guarantees that all the allocated memory will be freed and all the locked data will be unlocked when the block exits, naturally or on an exception. However not everything can be done with the scopes, and this results in a whole mess of try-catch blocks, and a missed catch can mess up the program in horrible ways.
+
+However sometimes the exceptions come handy. They have been a late addition to version 1.0. They are definitely here to stay for the communication in the XS code and for the user-defined handlers in C++ but other than that I'm not so sure about whether and how they would be used internally by Triceps.  Not all the Triceps code works correctly with the exceptions yet, and the experience of converting it for the exception handling has not been entirely positive.  So far the only part that can deal with the exceptions nicely is the scheduler and the user-defined labels. Not the aggregators nor user-defined indexes.
+
+But for the user C++ code for the most part it doesn't matter. In Triceps the approach is that the exceptions are used for the substantially fatal events. If the user attempts to do something that can't be executed, this qualifies for an exception. Essentially, use the exceptions for the things that qualify for the classic C abort() or assert(). The idea is that at this point we want to print an error message, print the call stack the best we can, and dump the core for the future analysis.
+
+Why not just use an abort() then? In the C++ code you certainly can if you're not interested in the extra niceties provided by the exceptions. In fact, that's what the Triceps exceptions do by default: when you construct an exception, they print a log message and the stack trace (using a nice feature of glibc) then abort. The error output gives the basic idea of what went wrong and the rest can be found from the core file created by abort().
+
+However remember that Triceps is designed to be embedded into the interpreted (or compiled too) languages. When something goes wrong inside the Triceps program in Perl, you don't want to get a core dump of the Perl interpreter. An interpreted program must never ever crash the interpreter. You want to get the error reported in the Perl die() or its nicer cousin confess(), and possibly get intercepted in eval{}. So the Perl wrapper of Triceps changes the mode of Triceps exceptions to actually throw the C++ exceptions instead of aborting. Since  the Perl code is not really interested in the details at the C++ level, the C++ stack trace is in this case configured to not be included into the text of the exception. However another interesting thing happens: if the exception happened in a label handler, the Triceps scheduler stack gets unwound and the information about it gets included. Eventually the XS interface does an analog of confess(), including the Perl stack trace. When the code goes through multiple layers of Perl and C++ code (Perl code calling the Triceps scheduler, calling the label handlers in Perl, calling the Triceps scheduler again etc.), the whole layered sequence gets nicely unwound and reported. However the state of the scheduler suffers along the way: all the scheduled rowops get freed when their stack frame is unwound, so prepare to repair the state of your model if you catch the exception.
+
+If you are willing to handle the exceptions (for example, if you add elements dynamically by user description and don't want the whole program to abort because of one faulty description), you can do the same in C++. Just disable the abort mode for the exceptions and catch them. Of course, it's even better to catch your exceptions before they reach the Triceps scheduler, since then you won't have to repair the state.
+
+The same feature comes handy in the unit test: when you test for the detection of a fatal error, you don't want you test to abort, you want it to throw a nice catchable exception.
+
+After all this introductory talk, to the gritty details. The class is Exception (as usual, in the namespace Triceps or whatever custom namespace you define as TRICEPS_NS), defined in common/Exception.h. Inside it is an Erref with the errors. An Exception can be constructed in multiple ways:
+
+explicit Exception(Onceref<Errors> err, bool trace);
+
+The basic constructor. if trace==true, the C++ stack trace will be added to the messages, if it is otherwise permitted by the exception modes. If trace==false, the stack trace definitely won't be added. Why would you want to not add the stack trace? Generally, if you catch an exception, add some information to it and re-throw a new exception. The information from the original exception will contain the full stack trace, so there is no need to include the partial stack trace again. Also, if you throw an exception with high-level information (in Perl or such), you don't need to put any C++ stack info into it.
+
+The Errors are remembered by reference, so changing them later will change the contents of the exception.
+
+explicit Exception(const string &err, bool trace);
+
+A convenience constructor to make  a simple string with the error. Internally creates an Errors object with the string in it. The string gets usually created with strprintf().
+
+explicit Exception(Onceref<Errors> err, const string &msg);
+explicit Exception(Onceref<Errors> err, const char *msg);
+explicit Exception(const Exception &exc, const string &msg);
+
+Wrapping a nested error with a descriptive message and re-throwing it.
+
+virtual const char *what();
+
+The usual, returns the text of the error messages in the exception.
+
+virtual Errors *getErrors() const;
+
+Returns the Errors object from the exception.
+
+The modes I've mentioned before are set with the class static variables:
+
+static bool abort_;
+
+Flag: when attempting to create an exception, instead print the message and abort. This behavior is more convenient for debugging of the C++ programs, and is the default one. Also forces the stack trace in the error reports. The interpreted language wrappers should reset it to get the proper exceptions. Default: true.
+
+static bool enableBacktrace_;
+
+Flag: enable the backtrace if the constructor requests it. The interpreted language wrappers should reset it to remove the confusion of the C stack traces in the error reports. Default: true. 

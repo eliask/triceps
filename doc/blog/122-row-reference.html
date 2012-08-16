@@ -1,0 +1,31 @@
+Row reference
+
+The Row objects are reference-counted too but Autoref can't be used with them. The reason is about the destructors.
+
+It isn't used anywhere yet, but the rows in Triceps are designed to be able to contain references to the other rows and in general other objects.  So they can't be destroyed by just freeing the memory. The destructor must know, how to release the references to these nested objects first. And knowing where these references are depends on the type of the row. And rows may be of different types. This calls for a virtual destructor.
+
+But having a virtual destructor requires that every object has a pointer to the table of virtual functions. That adds the overhead of 8 bytes per row, and the rows are likely to be kapt by the million, and that overhead adds up. So I've made the decision to save these 8 bytes and split that knowledge. It might turn out a premature optimization, but since it's something that would be difficult to change later, I've got it in early.
+
+The knowledge of how to destroy a row (and also how to copy the row and to access the elements in it) is kept in the row type object. So the reference to a row needs to know two things: the  row and the row's type. It's still an extra 8 bytes of a pointer, but there are only a few row references active at a time (the tables don't use the common row references to keep the rows, instead they are implemented as a special case and have one single row type for all the rows they store).
+
+The special reference class for the rows is Rowref, defined in type/RowType.h.  It gets constructed as:
+
+Rowref(const RowType *t, Row *r = NULL);
+Rowref(const Rowref &ar);
+
+It can be then assigned from rowref or from a row (keeping the row type the same):
+
+Rowref &operator=(const Rowref &ar);
+Rowref &operator=(Row *r);
+
+Also both a new row type and a row can be assigned at the same time:
+
+void assign(const RowType *t, Row *r);
+
+There is also the ways to copy a row and assign a copy to this reference:
+
+Rowref &copyRow(const RowType *rtype, const Row *row);
+Rowref &copyRow(const Rowref &ar);
+
+The other functionality is similar to Autoref(): isNull(), get(), comparisons, calling the Row methods through ->, and conversion to a Row pointer.
+
