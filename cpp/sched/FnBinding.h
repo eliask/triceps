@@ -24,12 +24,12 @@ class FnBinding : public Starget
 public:
 	// The typical construction is done as a chain:
 	// ret = FnBinding::make(fn)
-	//     ->addLabel("lb1", lb1)
+	//     ->addLabel("lb1", lb1, true)
 	//     ->addLabel("lb2", lb2, false);
 	//
 	// Or to throw on errors:
 	// ret = FnBinding::make(fn)
-	//     ->addLabel("lb1", lb1)
+	//     ->addLabel("lb1", lb1, true)
 	//     ->addLabel("lb2", lb2, false)
 	//     ->checkOrThrow();
 	//
