@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 51 };
+BEGIN { plan tests => 56 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -239,19 +239,75 @@ my $fbind1 = Triceps::FnBinding->new(
 );
 ok(ref $fbind1, "Triceps::FnBinding");
 
+my @called;
+
 # with labels made from code snippets
 my $fbind2 = Triceps::FnBinding->new(
 	on => $fret1,
 	name => "fbind2",
 	unit => $u2,
 	labels => [
-		one => $lb1,
-		two => $lb2,
+		one => sub { $called[0]++; },
+		two => sub { $called[1]++; },
 	]
 );
 ok(ref $fbind2, "Triceps::FnBinding");
 
+# labels don't have to be set at all (but the option must be present)
+my $fbind3 = Triceps::FnBinding->new(
+	on => $fret1,
+	labels => [
+	]
+);
+ok(ref $fbind3, "Triceps::FnBinding");
+
+
 # sameness
 ok($fbind1->same($fbind1));
 ok(!$fbind1->same($fbind2));
+
+######################### 
+# FnBinding construction errors
+
+sub badFnBinding # (optName, optValue, ...)
+{
+	my %opt = (
+		name => "fbind1",
+		labels => [
+			one => $lbind1,
+			two => sub { $called[1]++; },
+		]
+	);
+	while ($#_ >= 1) {
+		if (defined $_[1]) {
+			$opt{$_[0]} = $_[1];
+		} else {
+			delete $opt{$_[0]};
+		}
+		shift; shift;
+	}
+	my $res = eval {
+		Triceps::FnBinding->new(%opt);
+	};
+	ok(!defined $res);
+}
+
+{
+	# do this one manually, since badFnBinding can't handle unpaired args
+	my $res = eval {
+		my $fbind2 = Triceps::FnBinding->new(
+			name => "fbind1",
+			[
+				one => $lbind1,
+				two => sub { $called[1]++; },
+			]
+		);
+	};
+	ok(!defined $res);
+	ok($@ =~ /^Usage: Triceps::FnBinding::new\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs/);
+	#print "$@"
+}
+
+&badFnBinding(xxx => "fbind1");
+ok($@ =~ /^Triceps::FnBinding::new: unknown option 'xxx'/);
 

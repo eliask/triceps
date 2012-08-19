@@ -117,7 +117,7 @@ new(char *CLASS, ...)
 
 			// parse labels, and create labels around the code snippets
 			len = av_len(labels)+1; // av_len returns the index of last element
-			if (len % 2 != 0 || len == 0)
+			if (len % 2 != 0) // 0 elements is OK
 				throw Exception(strprintf("%s: option 'labels' must contain elements in pairs, has %d elements", funcName, len), false);
 			for (i = 0; i < len; i+=2) {
 				SV *svname, *svval;
