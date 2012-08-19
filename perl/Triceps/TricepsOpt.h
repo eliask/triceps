@@ -118,7 +118,7 @@ void GetSvWrap2(WrapClass1 *&wrap1, WrapClass2 *&wrap2, SV *svptr, const char *c
 		va_start(ap, fmt);
 		string s = vstrprintf(fmt, ap);
 		va_end(ap);
-		throw Exception(strprintf("%s value must be a blessed SV reference to Triceps::%s nor Triceps::%s", 
+		throw Exception(strprintf("%s value must be a blessed SV reference to Triceps::%s or Triceps::%s", 
 			s.c_str(), className1, className2), false);
 	}
 
@@ -150,7 +150,8 @@ void GetSvWrap2(WrapClass1 *&wrap1, WrapClass2 *&wrap2, SV *svptr, const char *c
 // @param res - variable to return the string into
 // @param svptr - the Perl SV* from which the value will be extracted
 // @param fmt, ... - the prefix for the error message
-void GetSvString(string &res, SV *svptr, const char *fmt, ...);
+void GetSvString(string &res, SV *svptr, const char *fmt, ...)
+	__attribute__((format(printf, 3, 4)));
 
 // Extract an array reference from a Perl SV value.
 // Throws a Triceps::Exception if the value is not an array reference.
@@ -158,7 +159,22 @@ void GetSvString(string &res, SV *svptr, const char *fmt, ...);
 // @param svptr - the Perl SV* from which the value will be extracted
 // @param fmt, ... - the prefix for the error message
 // @return - the array pointer
-AV *GetSvArray(SV *svptr, const char *fmt, ...);
+AV *GetSvArray(SV *svptr, const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)));
+
+// The typical argument for binding or function returns: either a
+// ready label or a Perl code reference (for which a label will be
+// created automatically).
+// Throws a Triceps::Exception if the value is not correct.
+//
+// @param svptr - the Perl SV* from which the value will be extracted
+// @param fmt, ... - the prefix for the error message
+// @return - the label pointer (not WrapLabel!); since the code reference
+//     SV doesn't need any transformations to be used in a label, the case
+//     when NULL is returned but no exception thrown means that the svptr
+//     is a code reference.
+Label *GetSvLabelOrCode(SV *svptr, const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)));
 
 }; // Triceps::TricepsPerl
 }; // Triceps

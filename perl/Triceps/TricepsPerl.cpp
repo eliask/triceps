@@ -497,6 +497,31 @@ AV *GetSvArray(SV *svptr, const char *fmt, ...)
 	return (AV*)SvRV(svptr);
 }
 
+Label *GetSvLabelOrCode(SV *svptr, const char *fmt, ...)
+{
+	if (SvROK(svptr) && SvTYPE(SvRV(svptr)) == SVt_PVCV)
+		// this is a code reference
+		return NULL;
+
+	if (!sv_isobject(svptr) || SvTYPE(SvRV(svptr)) != SVt_PVMG) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value must be a reference to Triceps::Label or a function", 
+			s.c_str()), false);
+	}
+	WrapLabel *wvar = (WrapLabel *)SvIV((SV*)SvRV( svptr ));
+	if (wvar == NULL || wvar->badMagic()) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value has an incorrect magic for Triceps::Label", s.c_str()), false);
+	}
+	return wvar->get();
+}
+
 }; // Triceps::TricepsPerl
 }; // Triceps
 

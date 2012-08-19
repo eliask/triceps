@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 45 };
+BEGIN { plan tests => 51 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -174,7 +174,7 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 name must be a s
 		two => 1,
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' value must be a blessed SV reference to Triceps::Label nor Triceps::RowType/);
+ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' value must be a blessed SV reference to Triceps::Label or Triceps::RowType/);
 
 {
 	my $lbc = $u1->makeDummyLabel($rt1, "lbc");
@@ -220,4 +220,38 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' 
 # XXX should have a better way to prepend the high-level description
 ok($@ =~ /^Triceps::FnReturn::new: invalid arguments:\n  duplicate row name 'one'/);
 #print "$@";
+
+######################### 
+# FnBinding
+
+my $lbind1 = $u2->makeDummyLabel($rt1, "lbind1");
+ok(ref $lbind1, "Triceps::Label");
+my $lbind2 = $u2->makeDummyLabel($rt2, "lbind2");
+ok(ref $lbind2, "Triceps::Label");
+
+# with labels only, no name, no unit
+my $fbind1 = Triceps::FnBinding->new(
+	on => $fret1,
+	labels => [
+		one => $lbind1,
+		two => $lbind2,
+	]
+);
+ok(ref $fbind1, "Triceps::FnBinding");
+
+# with labels made from code snippets
+my $fbind2 = Triceps::FnBinding->new(
+	on => $fret1,
+	name => "fbind2",
+	unit => $u2,
+	labels => [
+		one => $lb1,
+		two => $lb2,
+	]
+);
+ok(ref $fbind2, "Triceps::FnBinding");
+
+# sameness
+ok($fbind1->same($fbind1));
+ok(!$fbind1->same($fbind2));
 

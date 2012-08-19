@@ -78,6 +78,8 @@ AggregatorContext.o: WrapAggregatorContext.h
 # XXX lots of other files will depend on TricepsOpt.h
 FnReturn.o: TricepsOpt.h
 
+FnBinding.o: TricepsOpt.h PerlCallback.h
+
 ";
 }
 

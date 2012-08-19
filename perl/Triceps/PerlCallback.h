@@ -182,6 +182,22 @@ public:
 		Onceref<PerlCallback> clr, Onceref<PerlCallback> cb);
 	~PerlLabel();
 
+	// Create a simple Perl label with the default clearing callback
+	// and the code reference snippet for the body, no arguments.
+	// A factory method used in the FnBinding abd such.
+	// It could be a common constructor, excapt that it throws an
+	// Exception if it finds any error.
+	//
+	// @param unit - the unit where this label belongs
+	// @param rtype - type of row to be handled by this label
+	// @param name - a human-readable name of this label, for tracing
+	// @param code - a function reference (if not, will throw an error)
+	// @param fmt, ... - the prefix for the error message
+	// @return - the newly constructed label
+	static Onceref<PerlLabel> makeSimple(Unit *unit, const_Onceref<RowType> rtype,
+		const string &name, SV *code, const char *fmt, ...)
+		__attribute__((format(printf, 5, 6)));
+
 	// Get back the code reference (don't give it directly to random Perl code,
 	// make a copy!)
 	SV *getCode() const

@@ -147,6 +147,35 @@ PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &nam
 PerlLabel::~PerlLabel()
 { }
 
+Onceref<PerlLabel> PerlLabel::makeSimple(Unit *unit, const_Onceref<RowType> rtype,
+	const string &name, SV *code, const char *fmt, ...)
+{
+	Onceref<PerlCallback> clr = new PerlCallback();
+	if (!clr->setCode(get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0), "")) {
+		// should really never fail, but just in case
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s: internal error, bad value in $Triceps::_DEFAULT_CLEAR_LABEL", s.c_str()), false);
+	}
+
+	Onceref<PerlCallback> cb = new PerlCallback();
+	if (!cb->setCode(code, "")) {
+		// should really never fail, but just in case
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		const char *errtxt = ": unknown error in creating a Perl label";
+		SV *errmsg = get_sv("!", 0);
+		if (SvPOK(errmsg))
+			errtxt = SvPV_nolen(errmsg);
+		throw Exception(strprintf("%s%s", s.c_str(), errtxt), false);
+	}
+	return new PerlLabel(unit, rtype, name, clr, cb);
+}
+
 void PerlLabel::execute(Rowop *arg) const
 {
 	dSP;
