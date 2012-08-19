@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 56 };
+BEGIN { plan tests => 82 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -272,7 +272,9 @@ ok(!$fbind1->same($fbind2));
 sub badFnBinding # (optName, optValue, ...)
 {
 	my %opt = (
-		name => "fbind1",
+		name => "fbindx",
+		unit => $u2,
+		on => $fret1,
 		labels => [
 			one => $lbind1,
 			two => sub { $called[1]++; },
@@ -296,7 +298,7 @@ sub badFnBinding # (optName, optValue, ...)
 	# do this one manually, since badFnBinding can't handle unpaired args
 	my $res = eval {
 		my $fbind2 = Triceps::FnBinding->new(
-			name => "fbind1",
+			name => "fbindx",
 			[
 				one => $lbind1,
 				two => sub { $called[1]++; },
@@ -310,4 +312,44 @@ sub badFnBinding # (optName, optValue, ...)
 
 &badFnBinding(xxx => "fbind1");
 ok($@ =~ /^Triceps::FnBinding::new: unknown option 'xxx'/);
+
+&badFnBinding(on => undef);
+ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'on'/);
+
+&badFnBinding(labels => undef);
+ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'labels'/);
+
+&badFnBinding(unit => 'x');
+ok($@ =~ /^Triceps::FnBinding::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
+
+&badFnBinding(on => $u1);
+ok($@ =~ /^Triceps::FnBinding::new: option 'on' value has an incorrect magic for Triceps::FnReturn/);
+
+&badFnBinding(labels => {});
+ok($@ =~ /^Triceps::FnBinding::new: option 'labels' value must be a reference to array/);
+
+&badFnBinding(name => {});
+ok($@ =~ /^Triceps::FnBinding::new: option 'name' value must be a string/);
+
+&badFnBinding(labels => [ "x" ]);
+ok($@ =~ /^Triceps::FnBinding::new: option 'labels' must contain elements in pairs, has 1 elements/);
+
+&badFnBinding(labels => [ $fret1 => $lbind1, ]);
+ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 name value must be a string/);
+
+&badFnBinding(labels => [ one => "zzz", ]);
+ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 with name 'one' value must be a reference to Triceps::Label or a function/);
+
+&badFnBinding(name => undef);
+ok($@ =~ /^Triceps::FnBinding::new: option 'name' must be set to handle the code reference in option 'labels' element 2 with name 'two'/);
+
+&badFnBinding(unit => undef);
+ok($@ =~ /^Triceps::FnBinding::new: option 'unit' must be set to handle the code reference in option 'labels' element 2 with name 'two'/);
+
+&badFnBinding(labels => [ zzz => sub { }, ]);
+ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 has an unknown return label name 'zzz'/);
+
+&badFnBinding(labels => [ zzz => $lbind1, ]);
+ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:\n  Unknown return label name 'zzz'/);
+#print "$@";
 

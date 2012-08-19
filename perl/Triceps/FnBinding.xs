@@ -129,7 +129,6 @@ new(char *CLASS, ...)
 
 				Autoref<Label> lb = GetSvLabelOrCode(svval, "%s: in option 'labels' element %d with name '%s'", 
 					funcName, i/2+1, SvPV_nolen(svname));
-				bool autoclear = false;
 				if (lb.isNull()) {
 					// it's a code snippet, make a label
 					if (name.empty()) {
@@ -148,9 +147,8 @@ new(char *CLASS, ...)
 					}
 					lb = PerlLabel::makeSimple(u, rt, lbname, svval, "%s: in option 'labels' element %d with name '%s'",
 						funcName, i/2+1, SvPV_nolen(svname));
-					autoclear = true;
 				}
-				fbind->addLabel(entryname, lb, autoclear);
+				fbind->addLabel(entryname, lb, true);
 			}
 			try {
 				fbind->checkOrThrow();
