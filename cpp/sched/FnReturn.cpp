@@ -108,6 +108,9 @@ void FnReturn::pushBinding(Onceref<FnBinding> bind)
 {
 	if (!initialized_)
 		throw Exception("Triceps API violation: attempted to push a binding on an uninitialized FnReturn.", true);
+	if (!type_->match(bind->getType())) {
+		throw Exception("Attempted to push a mismatching binding on the FnReturn '" + name_ + "'.", true);
+	}
 	stack_.push_back(bind);
 }
 

@@ -83,6 +83,12 @@ public:
 	// @return - the label pointer or NULL if that label is not defined
 	Label *getLabel(int idx) const;
 
+	// Get the type.
+	RowSetType *getType() const
+	{
+		return type_;
+	}
+
 protected:
 	typedef vector<Autoref<Label> > LabelVec; 
 	typedef vector<bool> BoolVec; 

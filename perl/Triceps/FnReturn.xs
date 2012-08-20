@@ -164,3 +164,43 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
+
+# Push the binding onto a return.
+void 
+push(WrapFnReturn *self, WrapFnBinding *arg)
+	CODE:
+		clearErrMsg();
+		try {
+			try {
+				self->get()->pushBinding(arg->get());
+			} catch (Exception e) {
+				throw Exception(e, "Triceps::FnReturn::push: invalid arguments:");
+			}
+		} TRICEPS_CATCH_CROAK;
+
+# Pop the binding from a return. If the binding argument is specfied,
+# this will assert that it's the binding being popped.
+void 
+pop(WrapFnReturn *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::FnReturn::pop";
+		clearErrMsg();
+		try {
+			if (items != 1 && items != 2)
+				throw Exception(strprintf("Usage: %s(self, [binding]) does not allow more arguments", funcName), false);
+
+			FnBinding *fbind;
+
+			if (items == 2)
+				fbind = TRICEPS_GET_WRAP(FnBinding, ST(1), "%s: argument", funcName)->get();
+
+			try {
+				if (items == 1) {
+					self->get()->popBinding();
+				} else {
+					self->get()->popBinding(fbind);
+				}
+			} catch (Exception e) {
+				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
+			}
+		} TRICEPS_CATCH_CROAK;

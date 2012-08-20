@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 82 };
+BEGIN { plan tests => 106 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -82,6 +82,16 @@ my $fret2 = Triceps::FnReturn->new(
 	]
 );
 ok(ref $fret2, "Triceps::FnReturn");
+
+# one of a different type
+my $fret3 = Triceps::FnReturn->new(
+	name => "fret3",
+	labels => [
+		one => $lb2, # labels flipped
+		two => $lb1,
+	]
+);
+ok(ref $fret3, "Triceps::FnReturn");
 
 # sameness
 ok($fret1->same($fret1));
@@ -255,12 +265,19 @@ ok(ref $fbind2, "Triceps::FnBinding");
 
 # labels don't have to be set at all (but the option must be present)
 my $fbind3 = Triceps::FnBinding->new(
-	on => $fret1,
+	on => $fret2, # has the same row set as fret1
 	labels => [
 	]
 );
 ok(ref $fbind3, "Triceps::FnBinding");
 
+# one for a different FnReturn type
+my $fbind4 = Triceps::FnBinding->new(
+	on => $fret3,
+	labels => [
+	]
+);
+ok(ref $fbind4, "Triceps::FnBinding");
 
 # sameness
 ok($fbind1->same($fbind1));
@@ -351,5 +368,217 @@ ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 has an unknown 
 
 &badFnBinding(labels => [ zzz => $lbind1, ]);
 ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:\n  Unknown return label name 'zzz'/);
+
+&badFnBinding(labels => [ two => $lbind1, ]);
+ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:
+  Attempted to add a mismatching label 'lbind1' to name 'two'.
+    The expected row type:
+    row {
+        uint8 a,
+        int32 b,
+        int64 c,
+        float64 d,
+        string e,
+        int32 f,
+      }
+    The row type of actual label 'lbind1':
+    row {
+        uint8 a,
+        int32 b,
+        int64 c,
+        float64 d,
+        string e,
+      }/);
 #print "$@";
 
+######################### 
+# Run the code.
+
+# create new labels and returns, to avoid the mess with all the labels
+my $lbz1 = $u1->makeDummyLabel($rt1, "lbz1");
+ok(ref $lbz1, "Triceps::Label");
+my $lbz2 = $u1->makeDummyLabel($rt2, "lbz2");
+ok(ref $lbz2, "Triceps::Label");
+
+my $fretz1 = Triceps::FnReturn->new(
+	name => "fretz1",
+	unit => $u1,
+	labels => [
+		one => $lbz1,
+		two => $lbz2,
+	]
+);
+ok(ref $fretz1, "Triceps::FnReturn");
+
+# a cross-unit binding
+my $fbindz1 = Triceps::FnBinding->new(
+	on => $fretz1,
+	name => "fbindz1",
+	unit => $u2,
+	labels => [
+		one => sub { $called[0]++; },
+		two => sub { $called[1]++; },
+	]
+);
+ok(ref $fbindz1, "Triceps::FnBinding");
+
+# an empty binding
+my $fbindz2 = Triceps::FnBinding->new(
+	on => $fretz1,
+	labels => [ ]
+);
+ok(ref $fbindz2, "Triceps::FnBinding");
+
+my $ts1 = Triceps::UnitTracerStringName->new(verbose => 1);
+$u1->setTracer($ts1);
+my $ts2 = Triceps::UnitTracerStringName->new(verbose => 1);
+$u2->setTracer($ts2);
+
+my $rop1 = $lbz1->makeRowopHash("OP_INSERT");
+ok(ref $rop1, "Triceps::Rowop");
+
+# Run with no bindings.
+{
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+");
+	#print "$v1";
+	my $v2 = $ts2->print();
+	ok($v2, "");
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# Run with a binding pushed on.
+{
+	$fretz1->push($fbindz1);
+
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+");
+	my $v2 = $ts2->print();
+	ok($v2, 
+"unit 'u2' before label 'fbindz1.one' op OP_INSERT {
+unit 'u2' drain label 'fbindz1.one' op OP_INSERT
+unit 'u2' after label 'fbindz1.one' op OP_INSERT }
+");
+	#print "$v2";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# Run with an empty binding pushed on
+{
+	$fretz1->push($fbindz2);
+
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+");
+	#print "$v1";
+	my $v2 = $ts2->print();
+	ok($v2, "");
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# pop the empty binding, back to the previous one
+{
+	$fretz1->pop($fbindz2);
+
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+");
+	my $v2 = $ts2->print();
+	ok($v2, 
+"unit 'u2' before label 'fbindz1.one' op OP_INSERT {
+unit 'u2' drain label 'fbindz1.one' op OP_INSERT
+unit 'u2' after label 'fbindz1.one' op OP_INSERT }
+");
+	#print "$v2";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# Pop the last binding, run again with no bindings.
+{
+	$fretz1->pop();
+
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+");
+	#print "$v1";
+	my $v2 = $ts2->print();
+	ok($v2, "");
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+######################### 
+# Push/pop error handling.
+
+# XXX this actually returns an undef - change the typemap to confess()
+#eval { $fret1->push($u1); };
+#ok($@ =~ /^PLACEHOLDER/);
+
+eval { $fret1->push($fbind4); };
+ok($@ =~ /^Triceps::FnReturn::push: invalid arguments:
+  Attempted to push a mismatching binding on the FnReturn 'fret1'./);
+
+eval { $fret1->pop($fbind4); };
+ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
+  Triceps API violation: attempted to pop from an empty FnReturn/);
+#print "$@";
+
+eval { $fret1->pop(); };
+ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
+  Triceps API violation: attempted to pop from an empty FnReturn/);
+#print "$@";
+
+$fret1->push($fbind3); # this is of the same row set type, so it's OK
+
+eval { $fret1->pop($fbind4); };
+ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
+  Triceps API violation: popping an unexpected binding./);
+#print "$@";
+
+$fret1->pop(); # restore the balance
