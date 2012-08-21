@@ -347,6 +347,11 @@ UTESTCASE call_bindings(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 	
+	// matching
+	fld[0].name_ = "x";
+	Autoref<RowType> rt1a = new CompactRowType(fld);
+	UT_ASSERT(rt1a->getErrors().isNull());
+
 	fld[2].type_ = Type::r_int32;
 	Autoref<RowType> rt2 = new CompactRowType(fld);
 	UT_ASSERT(rt2->getErrors().isNull());
@@ -371,10 +376,31 @@ UTESTCASE call_bindings(Utest *utest)
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 
+	// a return of a matching type
+	Autoref<FnReturn> fret1a = FnReturn::make(unit1, "fret1a")
+		->addLabel("a", rt1)
+		->addLabel("b", rt2)
+		->initialize();
+	UT_ASSERT(fret1a->getErrors().isNull());
+	UT_ASSERT(fret1a->isInitialized());
+
+	// a return of a non-matching type
+	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
+		->addLabel("one", rt2)
+		->addLabel("two", rt1)
+		->initialize();
+	UT_ASSERT(fret2->getErrors().isNull());
+	UT_ASSERT(fret2->isInitialized());
+
 	// make the bindings
 	Autoref<FnBinding> bind1 = FnBinding::make(fret1)
 		->addLabel("one", lb1a, true)
 		->addLabel("two", lb3a, true); // matching
+	UT_ASSERT(bind1->getErrors().isNull());
+	// binding of a matching type
+	Autoref<FnBinding> bind1a = FnBinding::make(fret1a)
+		->addLabel("a", lb1a, true)
+		->addLabel("b", lb3a, true); // matching
 	UT_ASSERT(bind1->getErrors().isNull());
 	// labels from another unit are OK
 	Autoref<FnBinding> bind2 = FnBinding::make(fret1)
@@ -404,8 +430,8 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
 
-	// call with binding
-	fret1->pushBinding(bind1);
+	// call with binding, of matching type
+	fret1->pushBinding(bind1a);
 	unit1->call(op2);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -478,7 +504,7 @@ UTESTCASE call_bindings(Utest *utest)
 	// pop any binding
 	fret1->popBinding(); // bind3
 
-	// repeat a call with bind1, just to be sure
+	// repeat a call with bind1a, just to be sure
 	unit1->call(op2);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -513,8 +539,18 @@ UTESTCASE call_bindings(Utest *utest)
 	);
 	
 	// pop any binding
-	fret1->popBinding(); // bind1
+	fret1->popBinding(); // bind1a
 
+	// detection of pushing an un-matching binding
+	{
+		msg.clear();
+		try {
+			fret2->pushBinding(bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to push a mismatching binding on the FnReturn 'fret2'.\n");
+	}
 	// detection of popping past the end of the stack
 	{
 		msg.clear();
