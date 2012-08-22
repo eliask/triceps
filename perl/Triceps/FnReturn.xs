@@ -172,7 +172,7 @@ push(WrapFnReturn *self, WrapFnBinding *arg)
 		clearErrMsg();
 		try {
 			try {
-				self->get()->pushBinding(arg->get());
+				self->get()->push(arg->get());
 			} catch (Exception e) {
 				throw Exception(e, "Triceps::FnReturn::push: invalid arguments:");
 			}
@@ -196,9 +196,9 @@ pop(WrapFnReturn *self, ...)
 
 			try {
 				if (items == 1) {
-					self->get()->popBinding();
+					self->get()->pop();
 				} else {
-					self->get()->popBinding(fbind);
+					self->get()->pop(fbind);
 				}
 			} catch (Exception e) {
 				throw Exception(e, strprintf("%s: invalid arguments:", funcName));

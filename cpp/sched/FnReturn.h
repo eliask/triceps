@@ -184,15 +184,15 @@ public:
 	//
 	// @param bind - the binding. Must be of a matching type or may
 	//        crash if it's not.
-	void pushBinding(Onceref<FnBinding> bind);
+	void push(Onceref<FnBinding> bind);
 	// Pop a binding from the top of the stack.
 	// Throws an Exception if the stack is empty.
-	void popBinding();
+	void pop();
 	// Pop a binding from the top of the stack and check that it
 	// matches the expected ones. If it doesn't match, will throw
 	// an Exception. Useful for diagnostics of incorrect push-pop sequences.
 	// @param bind - the expected binding.
-	void popBinding(Onceref<FnBinding> bind);
+	void pop(Onceref<FnBinding> bind);
 
 	// Mostly for diagnostics: get the binding stack size.
 	int bindingStackSize() const

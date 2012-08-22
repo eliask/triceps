@@ -104,7 +104,7 @@ Label *FnReturn::getLabel(int idx) const
 		return NULL;
 }
 
-void FnReturn::pushBinding(Onceref<FnBinding> bind)
+void FnReturn::push(Onceref<FnBinding> bind)
 {
 	if (!initialized_)
 		throw Exception("Triceps API violation: attempted to push a binding on an uninitialized FnReturn.", true);
@@ -114,14 +114,14 @@ void FnReturn::pushBinding(Onceref<FnBinding> bind)
 	stack_.push_back(bind);
 }
 
-void FnReturn::popBinding()
+void FnReturn::pop()
 {
 	if (stack_.empty())
 		throw Exception("Triceps API violation: attempted to pop from an empty FnReturn.", true);
 	stack_.pop_back();
 }
 
-void FnReturn::popBinding(Onceref<FnBinding> bind)
+void FnReturn::pop(Onceref<FnBinding> bind)
 {
 	if (stack_.empty())
 		throw Exception("Triceps API violation: attempted to pop from an empty FnReturn.", true);
@@ -168,12 +168,12 @@ AutoFnBind::AutoFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding) :
 	ret_(ret),
 	binding_(binding)
 {
-	ret_->pushBinding(binding_);
+	ret_->push(binding_);
 }
 
 AutoFnBind::~AutoFnBind()
 {
-	ret_->popBinding(binding_);
+	ret_->pop(binding_);
 }
 
 }; // TRICEPS_NS

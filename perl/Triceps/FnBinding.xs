@@ -30,10 +30,10 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #         "name" => sub { ... }, # will directly create a Perl label
 #     ]
 # );
-# ---
 # $fnr->push($bind);
 # $fnr->pop($bind);
 # $fnr->pop();
+# ---
 # FnBinding->call( # create and push/call/pop right away
 #     name => "bind1", # used for the names of direct Perl labels
 #     on => $fnr, # determines the type of return
@@ -50,7 +50,7 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     rowArray => [ ... ], # or an array of values
 # );
 # $unit->callBound( # pushes all the bindings, does the call, pops
-#     $rowop,
+#     $rowop, # or $tray
 #     $fnr => $bind, ...
 # );
 #     

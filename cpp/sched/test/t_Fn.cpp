@@ -431,7 +431,7 @@ UTESTCASE call_bindings(Utest *utest)
 	);
 
 	// call with binding, of matching type
-	fret1->pushBinding(bind1a);
+	fret1->push(bind1a);
 	unit1->call(op2);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -449,10 +449,10 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
 		"unit 'u' after label 'lb2' op OP_INSERT }\n"
 	);
-	// no popBinding yet!
+	// no pop yet!
 
 	// nest a binding and call to another unit
-	fret1->pushBinding(bind2);
+	fret1->push(bind2);
 	unit1->call(op1);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -477,17 +477,17 @@ UTESTCASE call_bindings(Utest *utest)
 	{
 		msg.clear();
 		try {
-			fret1->popBinding(bind1);
+			fret1->pop(bind1);
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, "Triceps API violation: popping an unexpected binding.\n");
 	}
 	// pop the right binding
-	fret1->popBinding(bind2);
+	fret1->pop(bind2);
 	
 	// call with binding that has no labels
-	fret1->pushBinding(bind3);
+	fret1->push(bind3);
 	unit1->call(op1);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -502,7 +502,7 @@ UTESTCASE call_bindings(Utest *utest)
 	);
 
 	// pop any binding
-	fret1->popBinding(); // bind3
+	fret1->pop(); // bind3
 
 	// repeat a call with bind1a, just to be sure
 	unit1->call(op2);
@@ -539,13 +539,13 @@ UTESTCASE call_bindings(Utest *utest)
 	);
 	
 	// pop any binding
-	fret1->popBinding(); // bind1a
+	fret1->pop(); // bind1a
 
 	// detection of pushing an un-matching binding
 	{
 		msg.clear();
 		try {
-			fret2->pushBinding(bind1);
+			fret2->push(bind1);
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -555,7 +555,7 @@ UTESTCASE call_bindings(Utest *utest)
 	{
 		msg.clear();
 		try {
-			fret1->popBinding();
+			fret1->pop();
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -564,7 +564,7 @@ UTESTCASE call_bindings(Utest *utest)
 	{
 		msg.clear();
 		try {
-			fret1->popBinding(bind1);
+			fret1->pop(bind1);
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
