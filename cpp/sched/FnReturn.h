@@ -35,7 +35,33 @@ namespace TRICEPS_NS {
 // threaded too.
 class FnReturn: public Starget
 {
+protected:
+	// The class of labels created inside FnReturn, that forward the rowops
+	// to the final destination.
+	class RetLabel : public Label
+	{
+	public:
+		// @param unit - the unit where this label belongs
+		// @param rtype - type of row to be handled by this label
+		// @param name - a human-readable name of this label, for tracing
+		// @param fnret - FnReturn where this label belongs
+		// @param idx - index of this label in FnReturn
+		RetLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name,
+			FnReturn *fnret, int idx);
+
+	protected:
+		// from Label
+		virtual void execute(Rowop *arg) const;
+
+		FnReturn *fnret_; // not a ref, to avoid cyclic refs
+		int idx_; // index in fnret_ to which to forward
+	};
+
 public:
+	// representation of the labels in this return
+	typedef vector<Autoref<RetLabel> > ReturnVec;
+	// representation of the call stack
+	typedef vector<Autoref<FnBinding> > BindingVec;
 
 	// The typical construction is done as a chain:
 	// ret = FnReturn::make(unit, name)
@@ -178,6 +204,12 @@ public:
 	// @return - the label, or NULL if not found
 	Label *getLabel(int idx) const;
 
+	// Get back the set of labels.
+	const ReturnVec &getLabels() const
+	{
+		return labels_;
+	}
+
 	// Push a binding onto the "call stack". The binding on the top
 	// of the stack will be used to forward the rowops.
 	// Throws an Exception if not initialized.
@@ -200,31 +232,13 @@ public:
 		return stack_.size();
 	}
 
-protected:
-	// The class of labels created inside FnReturn, that forward the rowops
-	// to the final destination.
-	class RetLabel : public Label
+	// mostly for diagnostics: get the binding stack
+	const BindingVec &bindingStack() const
 	{
-	public:
-		// @param unit - the unit where this label belongs
-		// @param rtype - type of row to be handled by this label
-		// @param name - a human-readable name of this label, for tracing
-		// @param fnret - FnReturn where this label belongs
-		// @param idx - index of this label in FnReturn
-		RetLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name,
-			FnReturn *fnret, int idx);
+		return stack_;
+	}
 
-	protected:
-		// from Label
-		virtual void execute(Rowop *arg) const;
-
-		FnReturn *fnret_; // not a ref, to avoid cyclic refs
-		int idx_; // index in fnret_ to which to forward
-	};
-
-	typedef vector<Autoref<RetLabel> > ReturnVec; 
-	typedef vector<Autoref<FnBinding> > BindingVec; 
-
+protected:
 	Unit *unit_; // not a reference, used only to create the labels
 	string name_; // human-readable name, and base for the label names
 	Autoref<RowSetType> type_;
@@ -235,6 +249,10 @@ protected:
 
 // Bind and unbind a return as a scope:
 // push on object creation, pop on object deletion.
+// {
+//     AutoFnBind autobind(ret, binding);
+//     ...
+// }
 class AutoFnBind
 {
 public:
@@ -246,6 +264,51 @@ public:
 protected:
 	Autoref<FnReturn> ret_;
 	Autoref<FnBinding> binding_;
+};
+
+// Bind and unbind multiple returns as a group, and maintain the set
+// by reference (this allows it to be used from Perl).
+// The typical use (provided that all the calls are correct):
+// {
+//     Autoref<MultiFnBind> bind = MultiFnBind::make()
+//         ->add(ret1, binding1)
+//         ->add(ret2, binding2);
+//     ...
+// }
+// But if add() might throw, that would leave a memory leak of the
+// MultiFnBind object. Then assign it to an Autoref first, and call
+// add() later:
+// {
+//     Autoref<MultiFnBind> bind = new MultiFnBind;
+//     bind
+//         ->add(ret1, binding1)
+//         ->add(ret2, binding2);
+//     ...
+// }
+class MultiFnBind: public Starget
+{
+public:
+	// The default constructor works good enough.
+	
+	// Pops the binding on destruction.
+	~MultiFnBind();
+
+	// a convenience factory, more convenient to use than parenthesis
+	// around the new statement
+	static MultiFnBind *make()
+	{
+		return new MultiFnBind;
+	}
+
+	// push a binding, and remember it for popping
+	// @param ret - return to push onto
+	// @param binding - binding to push
+	// @return - the same MultiFnBind object, for chained calls
+	MultiFnBind *add(Onceref<FnReturn> ret, Autoref<FnBinding> binding);
+
+protected:
+	vector<Autoref<FnReturn> > rets_;
+	vector<Autoref<FnBinding> > bindings_;
 };
 
 }; // TRICEPS_NS

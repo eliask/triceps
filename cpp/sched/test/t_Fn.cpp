@@ -205,6 +205,11 @@ UTESTCASE fn_return(Utest *utest)
 	UT_IS(fret1->getLabel(1)->getType(), rt2.get());
 	UT_IS(fret1->getLabel(-1), NULL);
 	UT_IS(fret1->getLabel(2), NULL);
+
+	const FnReturn::ReturnVec &labels = fret1->getLabels();
+	UT_IS(labels.size(), 2);
+	UT_IS(labels[0]->getName(), "fret1.one");
+	UT_IS(labels[1]->getName(), "fret1.two");
 }
 
 UTESTCASE fn_binding(Utest *utest)
@@ -578,6 +583,25 @@ UTESTCASE call_bindings(Utest *utest)
 		UT_IS(fret1->bindingStackSize(), 1);
 	}
 	UT_IS(fret1->bindingStackSize(), 0);
+
+	// the other scoped binding
+	UT_IS(fret1->bindingStackSize(), 0);
+	UT_IS(fret1a->bindingStackSize(), 0);
+	{
+		Autoref<MultiFnBind> mb= new MultiFnBind;
+
+		// use fret1 twice, to test the pop order
+		mb->add(fret1, bind1)->add(fret1, bind1a)->add(fret1a, bind1);
+		UT_IS(fret1->bindingStackSize(), 2);
+		UT_IS(fret1a->bindingStackSize(), 1);
+
+		const FnReturn::BindingVec &stack = fret1->bindingStack();
+		UT_IS(stack.size(), 2);
+		UT_IS(stack[0], bind1);
+		UT_IS(stack[1], bind1a);
+	}
+	UT_IS(fret1->bindingStackSize(), 0);
+	UT_IS(fret1a->bindingStackSize(), 0);
 }
 
 int cleared;

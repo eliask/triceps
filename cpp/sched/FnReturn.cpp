@@ -176,4 +176,24 @@ AutoFnBind::~AutoFnBind()
 	ret_->pop(binding_);
 }
 
+///////////////////////////////////////////////////////////////////////////
+// MultiFnBind
+
+MultiFnBind *MultiFnBind::add(Onceref<FnReturn> ret, Autoref<FnBinding> binding)
+{
+	ret->push(binding);
+	rets_.push_back(ret);
+	bindings_.push_back(binding);
+	return this;
+}
+
+MultiFnBind::~MultiFnBind()
+{
+	// Pop in the opposite order. This is not a must, since presumably all the
+	// FnReturns should be different. But just in case.
+	for (int i = rets_.size()-1; i >= 0; i--) {
+		rets_[i]->pop(bindings_[i]);
+	}
+}
+
 }; // TRICEPS_NS
