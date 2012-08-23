@@ -250,16 +250,17 @@ protected:
 // Bind and unbind a return as a scope:
 // push on object creation, pop on object deletion.
 // {
-//     AutoFnBind autobind(ret, binding);
+//     ScopeFnBind autobind(ret, binding);
 //     ...
 // }
-class AutoFnBind
+class ScopeFnBind
 {
 public:
 	// Pushes the binding on construction.
-	AutoFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding);
+	ScopeFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding);
 	// Pops the binding on destruction.
-	~AutoFnBind();
+	// May throw an Exception if the binding stack got messed up.
+	~ScopeFnBind();
 
 protected:
 	Autoref<FnReturn> ret_;

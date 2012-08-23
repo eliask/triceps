@@ -569,10 +569,22 @@ UTESTCASE call_bindings(Utest *utest)
 	// do the scoped binding
 	UT_IS(fret1->bindingStackSize(), 0);
 	{
-		AutoFnBind ab(fret1, bind1);
+		ScopeFnBind ab(fret1, bind1);
 		UT_IS(fret1->bindingStackSize(), 1);
 	}
 	UT_IS(fret1->bindingStackSize(), 0);
+
+	// exceptions in a scoped binding
+	{
+		msg.clear();
+		try {
+			ScopeFnBind ab(fret1, bind1);
+			fret1->pop(); // disrupt the stack
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
+	}
 
 	// the other scoped binding
 	UT_IS(fret1->bindingStackSize(), 0);

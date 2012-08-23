@@ -159,18 +159,28 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// AutoFnBind
+// ScopeFnBind
 
-AutoFnBind::AutoFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding) :
-	ret_(ret),
-	binding_(binding)
+ScopeFnBind::ScopeFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding)
 {
-	ret_->push(binding_);
+	ret->push(binding); // this might throw
+	// Set the elements only after the dangers of throwing are over.
+	ret_= ret;
+	binding_ = binding;
 }
 
-AutoFnBind::~AutoFnBind()
+ScopeFnBind::~ScopeFnBind()
 {
-	ret_->pop(binding_);
+	try {
+		ret_->pop(binding_);
+	} catch (Exception e) {
+		// Make sure that the references get cleaned. Since this object
+		// itself is allocated on the stack, there should be no memory
+		// leak by throwing in the destructor, even when it doesn't abort.
+		ret_ = NULL;
+		binding_ = NULL;
+		throw;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////
