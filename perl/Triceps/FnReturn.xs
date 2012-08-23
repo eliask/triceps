@@ -62,6 +62,7 @@ new(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::FnReturn::new";
 		Autoref<FnReturn> fret;
+		clearErrMsg();
 		try {
 			clearErrMsg();
 			int len, i;
@@ -169,10 +170,17 @@ new(char *CLASS, ...)
 void 
 push(WrapFnReturn *self, WrapFnBinding *arg)
 	CODE:
+		static char funcName[] =  "Triceps::FnReturn::push";
 		clearErrMsg();
 		try {
+			FnReturn *ret = self->get();
+			FnBinding *bind = arg->get();
+			if (!ret->getType()->match(bind->getType())) {
+				throw Exception(strprintf("%s: Attempted to push a mismatching binding on the FnReturn '%s'.", 
+					funcName, ret->getName().c_str()), true);
+			}
 			try {
-				self->get()->push(arg->get());
+				ret->push(bind);
 			} catch (Exception e) {
 				throw Exception(e, "Triceps::FnReturn::push: invalid arguments:");
 			}

@@ -80,6 +80,8 @@ FnReturn.o: TricepsOpt.h
 
 FnBinding.o: TricepsOpt.h PerlCallback.h
 
+AutoFnBind.o: TricepsOpt.h
+
 ";
 }
 

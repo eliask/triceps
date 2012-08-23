@@ -1,5 +1,6 @@
 Things that need to be done:
 * redo the errors to confess
+* change the typemap to confess
 * more features for the SimpleAggregator
 * in RowHandle add getTable()
 * add the row contents access methods directly on a row handle?

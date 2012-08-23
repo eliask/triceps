@@ -291,7 +291,21 @@ public:
 	// The default constructor works good enough.
 	
 	// Pops the binding on destruction.
+	// If the stack order got disrupted, this may throw an Exception.
+	// Which is OK for the C++ programs with the default exception handling
+	// by abort(). If not aborting, an exception from a destructor is
+	// a Bad Thing. In this case (such as in the scripting language wrappers)
+	// should call clear() first, process the exceptions if any, and only
+	// then destroy.
 	~MultiFnBind();
+
+	// Pop the bindings and forget about them.
+	// If the stack order got disrupted, this may throw an Exception.
+	// It will go through all the elements, doing pop() for each of them,
+	// and catching the exceptions. Then all the bindings information
+	// will be cleared. Then if any exceptions were caught,
+	// a new exception will be thrown with all the collected info.
+	void clear();
 
 	// a convenience factory, more convenient to use than parenthesis
 	// around the new statement

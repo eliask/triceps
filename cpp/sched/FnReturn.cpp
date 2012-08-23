@@ -108,9 +108,6 @@ void FnReturn::push(Onceref<FnBinding> bind)
 {
 	if (!initialized_)
 		throw Exception("Triceps API violation: attempted to push a binding on an uninitialized FnReturn.", true);
-	if (!type_->match(bind->getType())) {
-		throw Exception("Attempted to push a mismatching binding on the FnReturn '" + name_ + "'.", true);
-	}
 	stack_.push_back(bind);
 }
 
@@ -187,13 +184,23 @@ MultiFnBind *MultiFnBind::add(Onceref<FnReturn> ret, Autoref<FnBinding> binding)
 	return this;
 }
 
-MultiFnBind::~MultiFnBind()
+void MultiFnBind::clear()
 {
 	// Pop in the opposite order. This is not a must, since presumably all the
 	// FnReturns should be different. But just in case.
 	for (int i = rets_.size()-1; i >= 0; i--) {
-		rets_[i]->pop(bindings_[i]);
+		try {
+			rets_[i]->pop(bindings_[i]);
+		} catch (Exception e) {
+			fprintf(stderr, "MultiFnBind::~MultiFnBind caught exception at position %d\n", i);
+			throw;
+		}
 	}
+}
+
+MultiFnBind::~MultiFnBind()
+{
+	clear();
 }
 
 }; // TRICEPS_NS

@@ -192,6 +192,7 @@ DEFINE_WRAP(Rowop);
 DEFINE_WRAP(FrameMark);
 DEFINE_WRAP(FnReturn);
 DEFINE_WRAP(FnBinding);
+DEFINE_WRAP(MultiFnBind);
 
 DEFINE_WRAP(Table);
 DEFINE_WRAP(Index);

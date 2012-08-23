@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 106 };
+BEGIN { plan tests => 115 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -399,6 +399,10 @@ my $lbz1 = $u1->makeDummyLabel($rt1, "lbz1");
 ok(ref $lbz1, "Triceps::Label");
 my $lbz2 = $u1->makeDummyLabel($rt2, "lbz2");
 ok(ref $lbz2, "Triceps::Label");
+my $lbz3 = $u1->makeDummyLabel($rt1, "lbz3");
+ok(ref $lbz3, "Triceps::Label");
+my $lbz4 = $u1->makeDummyLabel($rt2, "lbz4");
+ok(ref $lbz4, "Triceps::Label");
 
 my $fretz1 = Triceps::FnReturn->new(
 	name => "fretz1",
@@ -409,6 +413,16 @@ my $fretz1 = Triceps::FnReturn->new(
 	]
 );
 ok(ref $fretz1, "Triceps::FnReturn");
+
+my $fretz2 = Triceps::FnReturn->new(
+	name => "fretz2",
+	unit => $u1,
+	labels => [
+		one => $lbz4,
+		two => $lbz3,
+	]
+);
+ok(ref $fretz2, "Triceps::FnReturn");
 
 # a cross-unit binding
 my $fbindz1 = Triceps::FnBinding->new(
@@ -429,6 +443,18 @@ my $fbindz2 = Triceps::FnBinding->new(
 );
 ok(ref $fbindz2, "Triceps::FnBinding");
 
+# a binding for fretz2
+my $fbindz3 = Triceps::FnBinding->new(
+	on => $fretz2,
+	name => "fbindz3",
+	unit => $u2,
+	labels => [
+		one => sub { $called[0]++; },
+		two => sub { $called[1]++; },
+	]
+);
+ok(ref $fbindz3, "Triceps::FnBinding");
+
 my $ts1 = Triceps::UnitTracerStringName->new(verbose => 1);
 $u1->setTracer($ts1);
 my $ts2 = Triceps::UnitTracerStringName->new(verbose => 1);
@@ -436,6 +462,8 @@ $u2->setTracer($ts2);
 
 my $rop1 = $lbz1->makeRowopHash("OP_INSERT");
 ok(ref $rop1, "Triceps::Rowop");
+my $rop3 = $lbz3->makeRowopHash("OP_INSERT");
+ok(ref $rop3, "Triceps::Rowop");
 
 # Run with no bindings.
 {
@@ -561,8 +589,7 @@ unit 'u1' after label 'lbz1' op OP_INSERT }
 #ok($@ =~ /^PLACEHOLDER/);
 
 eval { $fret1->push($fbind4); };
-ok($@ =~ /^Triceps::FnReturn::push: invalid arguments:
-  Attempted to push a mismatching binding on the FnReturn 'fret1'./);
+ok($@ =~ /^Triceps::FnReturn::push: Attempted to push a mismatching binding on the FnReturn 'fret1'./);
 
 eval { $fret1->pop($fbind4); };
 ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
@@ -582,3 +609,88 @@ ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
 #print "$@";
 
 $fret1->pop(); # restore the balance
+
+######################### 
+# AutoFnBind
+
+{
+	my $ab = Triceps::AutoFnBind->new(
+		$fretz1 => $fbindz1,
+		$fretz2 => $fbindz3,
+	);
+
+	$u1->call($rop1);
+	$u1->call($rop3);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+unit 'u1' before label 'lbz3' op OP_INSERT {
+unit 'u1' drain label 'lbz3' op OP_INSERT
+unit 'u1' before-chained label 'lbz3' op OP_INSERT
+unit 'u1' before label 'fretz2.two' (chain 'lbz3') op OP_INSERT {
+unit 'u1' drain label 'fretz2.two' (chain 'lbz3') op OP_INSERT
+unit 'u1' after label 'fretz2.two' (chain 'lbz3') op OP_INSERT }
+unit 'u1' after label 'lbz3' op OP_INSERT }
+");
+	#print "$v1";
+	my $v2 = $ts2->print();
+	ok($v2, 
+"unit 'u2' before label 'fbindz1.one' op OP_INSERT {
+unit 'u2' drain label 'fbindz1.one' op OP_INSERT
+unit 'u2' after label 'fbindz1.one' op OP_INSERT }
+unit 'u2' before label 'fbindz3.two' op OP_INSERT {
+unit 'u2' drain label 'fbindz3.two' op OP_INSERT
+unit 'u2' after label 'fbindz3.two' op OP_INSERT }
+");
+	#print "$v2";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# check that the auto bindings are gone
+{
+	$u1->call($rop1);
+	$u1->call($rop3);
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+unit 'u1' before label 'lbz3' op OP_INSERT {
+unit 'u1' drain label 'lbz3' op OP_INSERT
+unit 'u1' before-chained label 'lbz3' op OP_INSERT
+unit 'u1' before label 'fretz2.two' (chain 'lbz3') op OP_INSERT {
+unit 'u1' drain label 'fretz2.two' (chain 'lbz3') op OP_INSERT
+unit 'u1' after label 'fretz2.two' (chain 'lbz3') op OP_INSERT }
+unit 'u1' after label 'lbz3' op OP_INSERT }
+");
+	#print "$v1";
+	my $v2 = $ts2->print();
+	ok($v2, "");
+	#print "$v2";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+######################### 
+# AutoFnBind error handling.
+
+{
+	my $ab = Triceps::AutoFnBind->new(
+		$fretz1 => $fbindz1,
+		$fretz2 => $fbindz3,
+	);
+	# XXX TODO - broken now
+	# $fretz1->push($fbindz2);
+
+}

@@ -34,6 +34,7 @@ XS(boot_Triceps__AggregatorContext);
 XS(boot_Triceps__FrameMark); 
 XS(boot_Triceps__FnReturn); 
 XS(boot_Triceps__FnBinding); 
+XS(boot_Triceps__AutoFnBind); 
 #ifdef __cplusplus
 };
 #endif
@@ -112,6 +113,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__FnBinding(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__AutoFnBind(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Triceps items=%d sp=%p mark=%p\n", items, sp, mark);

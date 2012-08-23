@@ -33,6 +33,10 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 # $fnr->push($bind);
 # $fnr->pop($bind);
 # $fnr->pop();
+# {
+#     $auto = AutoFnBind->new($fnr => $bind, ...);
+#     $unit->call(...);
+# }
 # ---
 # FnBinding->call( # create and push/call/pop right away
 #     name => "bind1", # used for the names of direct Perl labels
@@ -50,7 +54,7 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     rowArray => [ ... ], # or an array of values
 # );
 # $unit->callBound( # pushes all the bindings, does the call, pops
-#     $rowop, # or $tray
+#     $rowop, # or $tray, or [ @rowops ]
 #     $fnr => $bind, ...
 # );
 #     
@@ -81,6 +85,7 @@ new(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::FnBinding::new";
 		Autoref<FnBinding> fbind;
+		clearErrMsg();
 		try {
 			clearErrMsg();
 			int len, i;

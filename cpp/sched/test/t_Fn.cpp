@@ -546,16 +546,6 @@ UTESTCASE call_bindings(Utest *utest)
 	// pop any binding
 	fret1->pop(); // bind1a
 
-	// detection of pushing an un-matching binding
-	{
-		msg.clear();
-		try {
-			fret2->push(bind1);
-		} catch (Exception e) {
-			msg = e.getErrors()->print();
-		}
-		UT_IS(msg, "Attempted to push a mismatching binding on the FnReturn 'fret2'.\n");
-	}
 	// detection of popping past the end of the stack
 	{
 		msg.clear();

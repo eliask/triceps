@@ -25,6 +25,7 @@ WrapMagic magicWrapRowop = { "Rowop" };
 WrapMagic magicWrapFrameMark = { "FrMark" };
 WrapMagic magicWrapFnReturn = { "FnRet" };
 WrapMagic magicWrapFnBinding = { "FnBind" };
+WrapMagic magicWrapMultiFnBind = { "MFnBnd" };
 
 WrapMagic magicWrapTable = { "Table" };
 WrapMagic magicWrapIndex = { "Index" };
