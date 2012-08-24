@@ -137,7 +137,7 @@ UTESTCASE fn_return(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempt to add label 'three' to an initialized FnReturn.\n");
+		UT_IS(msg, "Attempted to add label 'three' to an initialized FnReturn 'fret1'.\n");
 	}
 	{
 		msg.clear();
@@ -146,7 +146,7 @@ UTESTCASE fn_return(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempt to add label 'three' to an initialized FnReturn.\n");
+		UT_IS(msg, "Attempted to add label 'three' to an initialized FnReturn 'fret1'.\n");
 	}
 	// try go get the type of uninitialized return
 	{
@@ -156,7 +156,7 @@ UTESTCASE fn_return(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempt to get the type from an uninitialized FnReturn.\n");
+		UT_IS(msg, "Attempted to get the type from an uninitialized FnReturn 'fret2'.\n");
 	}
 
 	// getters
@@ -389,6 +389,12 @@ UTESTCASE call_bindings(Utest *utest)
 	UT_ASSERT(fret1a->getErrors().isNull());
 	UT_ASSERT(fret1a->isInitialized());
 
+	// an uninitialized return
+	Autoref<FnReturn> fret1b = FnReturn::make(unit1, "fret1b")
+		->addLabel("one", rt1)
+		->addLabel("two", rt2);
+	UT_ASSERT(!fret1b->isInitialized());
+
 	// a return of a non-matching type
 	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
 		->addLabel("one", rt2)
@@ -457,7 +463,7 @@ UTESTCASE call_bindings(Utest *utest)
 	// no pop yet!
 
 	// nest a binding and call to another unit
-	fret1->push(bind2);
+	fret1->pushUnchecked(bind2);
 	unit1->call(op1);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -486,7 +492,7 @@ UTESTCASE call_bindings(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: popping an unexpected binding.\n");
+		UT_IS(msg, "Attempted to pop an unexpected binding from FnReturn 'fret1'.\n");
 	}
 	// pop the right binding
 	fret1->pop(bind2);
@@ -546,6 +552,35 @@ UTESTCASE call_bindings(Utest *utest)
 	// pop any binding
 	fret1->pop(); // bind1a
 
+	// detection of pushing a wrong binding
+	{
+		msg.clear();
+		try {
+			fret2->push(bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to push a mismatching binding on the FnReturn 'fret2'.\n");
+	}
+	// detection of pushing on an uninitialized return
+	{
+		msg.clear();
+		try {
+			fret1b->push(bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to push a binding on an uninitialized FnReturn 'fret1b'.\n");
+	}
+	{
+		msg.clear();
+		try {
+			fret1b->pushUnchecked(bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to push a binding on an uninitialized FnReturn 'fret1b'.\n");
+	}
 	// detection of popping past the end of the stack
 	{
 		msg.clear();
@@ -554,7 +589,7 @@ UTESTCASE call_bindings(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
+		UT_IS(msg, "Attempted to pop from an empty FnReturn 'fret1'.\n");
 	}
 	{
 		msg.clear();
@@ -563,7 +598,7 @@ UTESTCASE call_bindings(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
+		UT_IS(msg, "Attempted to pop from an empty FnReturn 'fret1'.\n");
 	}
 
 	// do the scoped binding
@@ -578,22 +613,31 @@ UTESTCASE call_bindings(Utest *utest)
 	{
 		msg.clear();
 		try {
+			ScopeFnBind ab(fret1b, bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to push a binding on an uninitialized FnReturn 'fret1b'.\n");
+	}
+	{
+		msg.clear();
+		try {
 			ScopeFnBind ab(fret1, bind1);
 			fret1->pop(); // disrupt the stack
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to pop from an empty FnReturn.\n");
+		UT_IS(msg, "Attempted to pop from an empty FnReturn 'fret1'.\n");
 	}
 
 	// the other scoped binding
 	UT_IS(fret1->bindingStackSize(), 0);
 	UT_IS(fret1a->bindingStackSize(), 0);
 	{
-		Autoref<MultiFnBind> mb= new MultiFnBind;
+		Autoref<AutoFnBind> ab = new AutoFnBind;
 
 		// use fret1 twice, to test the pop order
-		mb->add(fret1, bind1)->add(fret1, bind1a)->add(fret1a, bind1);
+		ab->add(fret1, bind1)->add(fret1, bind1a)->add(fret1a, bind1);
 		UT_IS(fret1->bindingStackSize(), 2);
 		UT_IS(fret1a->bindingStackSize(), 1);
 
@@ -604,6 +648,48 @@ UTESTCASE call_bindings(Utest *utest)
 	}
 	UT_IS(fret1->bindingStackSize(), 0);
 	UT_IS(fret1a->bindingStackSize(), 0);
+	{
+		Autoref<AutoFnBind> ab = new AutoFnBind;
+
+		ab->add(fret1, bind1)->add(fret1a, bind1a);
+		UT_IS(fret1->bindingStackSize(), 1);
+		UT_IS(fret1a->bindingStackSize(), 1);
+
+		ab->clear(); // clear before destruction
+		UT_IS(fret1->bindingStackSize(), 0);
+		UT_IS(fret1a->bindingStackSize(), 0);
+	}
+
+	// exceptions in the other scoped binding
+	{
+		msg.clear();
+		try {
+			Autoref<AutoFnBind> ab = new AutoFnBind;
+			ab->add(fret1b, bind1);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to push a binding on an uninitialized FnReturn 'fret1b'.\n");
+	}
+	{
+		msg.clear();
+		try {
+			Autoref<AutoFnBind> ab = new AutoFnBind;
+			ab->add(fret1, bind1)->add(fret1a, bind1a);
+			// disrupt the order
+			fret1->push(bind2);
+			fret1a->push(bind2);
+
+			ab->clear(); // a plain destructor would lose memory when throwing
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "AutoFnBind::clear: caught an exception at position 1\n"
+			"  Attempted to pop an unexpected binding from FnReturn 'fret1a'.\n"
+			"AutoFnBind::clear: caught an exception at position 0\n"
+			"  Attempted to pop an unexpected binding from FnReturn 'fret1'.\n"
+		);
+	}
 }
 
 int cleared;

@@ -38,7 +38,7 @@ namespace TricepsPerl
 //           guaranteed to be not NULL, so get() can be called on it right away
 //           (the reason for not returning the value from the wrapper is that
 //           for some wrappers there is also a type to get from it)
-#define TRICEPS_GET_WRAP(TClass, svptr, fmt, ...) GetSvWrap<TRICEPS_NS::Wrap##TClass>(svptr, #TClass, fmt, __VA_ARGS__)
+#define TRICEPS_GET_WRAP(TClass, svptr, ...) GetSvWrap<TRICEPS_NS::Wrap##TClass>(svptr, #TClass, __VA_ARGS__)
 
 // @param WrapClass - the perl wrapper class around the Triceps class
 // @param var - variable to return the pointer to the object
@@ -95,7 +95,7 @@ WrapClass *GetSvWrap(SV *svptr, const char *className, const char *fmt, ...)
 //           guaranteed to be not NULL, so get() can be called on it right away
 //           (the reason for not returning the value from the wrapper is that
 //           for some wrappers there is also a type to get from it)
-#define TRICEPS_GET_WRAP2(TClass1, wrap1, TClass2, wrap2, svptr, fmt, ...) GetSvWrap2<TRICEPS_NS::Wrap##TClass1, TRICEPS_NS::Wrap##TClass2>(wrap1, wrap2, svptr, #TClass1, #TClass2, fmt, __VA_ARGS__)
+#define TRICEPS_GET_WRAP2(TClass1, wrap1, TClass2, wrap2, svptr, ...) GetSvWrap2<TRICEPS_NS::Wrap##TClass1, TRICEPS_NS::Wrap##TClass2>(wrap1, wrap2, svptr, #TClass1, #TClass2, __VA_ARGS__)
 
 // @param WrapClass1 - wrap type 1 of object, that is to be extracted from SV
 // @param WrapClass2 - wrap type 2 of object, that is to be extracted from SV

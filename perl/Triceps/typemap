@@ -15,7 +15,7 @@ WrapRowop *	O_WRAP_OBJECT
 WrapFrameMark *	O_WRAP_OBJECT
 WrapFnReturn *	O_WRAP_OBJECT
 WrapFnBinding *	O_WRAP_OBJECT
-WrapMultiFnBind *	O_WRAP_OBJECT
+WrapAutoFnBind *	O_WRAP_OBJECT
 
 WrapTable *	O_WRAP_OBJECT
 WrapIndex *	O_WRAP_OBJECT

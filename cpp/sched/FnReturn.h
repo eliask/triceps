@@ -212,11 +212,22 @@ public:
 
 	// Push a binding onto the "call stack". The binding on the top
 	// of the stack will be used to forward the rowops.
+	//
+	// Throws an Exception if not initialized or if a binding is of
+	// not a matching type.
+	//
+	// @param bind - the binding. Must be of a matching type or may
+	void push(Onceref<FnBinding> bind);
+
+	// Similar to push(), only doesn't check that the types of the
+	// return and binding match (assuming that the caller knows what
+	// it's duing).
 	// Throws an Exception if not initialized.
 	//
 	// @param bind - the binding. Must be of a matching type or may
 	//        crash if it's not.
-	void push(Onceref<FnBinding> bind);
+	void pushUnchecked(Onceref<FnBinding> bind);
+
 	// Pop a binding from the top of the stack.
 	// Throws an Exception if the stack is empty.
 	void pop();
@@ -271,38 +282,38 @@ protected:
 // by reference (this allows it to be used from Perl).
 // The typical use (provided that all the calls are correct):
 // {
-//     Autoref<MultiFnBind> bind = MultiFnBind::make()
+//     Autoref<AutoFnBind> bind = AutoFnBind::make()
 //         ->add(ret1, binding1)
 //         ->add(ret2, binding2);
 //     ...
 // }
 // But if add() might throw, that would leave a memory leak of the
-// MultiFnBind object. Then assign it to an Autoref first, and call
+// AutoFnBind object. Then assign it to an Autoref first, and call
 // add() later:
 // {
-//     Autoref<MultiFnBind> bind = new MultiFnBind;
+//     Autoref<AutoFnBind> bind = new AutoFnBind;
 //     bind
 //         ->add(ret1, binding1)
 //         ->add(ret2, binding2);
 //     ...
 // }
-class MultiFnBind: public Starget
+class AutoFnBind: public Starget
 {
 public:
 	// The default constructor works good enough.
 	
-	// Pops the binding on destruction.
+	// Pops the binding on destruction (calls clear() internally).
 	// If the stack order got disrupted, this may throw an Exception.
 	// Which is OK for the C++ programs with the default exception handling
 	// by abort(). If not aborting, an exception from a destructor is
 	// a Bad Thing. In this case (such as in the scripting language wrappers)
 	// should call clear() first, process the exceptions if any, and only
 	// then destroy.
-	~MultiFnBind();
+	~AutoFnBind();
 
 	// Pop the bindings and forget about them.
 	// If the stack order got disrupted, this may throw an Exception.
-	// It will go through all the elements, doing pop() for each of them,
+	// It will go through all the elements backwards, doing pop() for each of them,
 	// and catching the exceptions. Then all the bindings information
 	// will be cleared. Then if any exceptions were caught,
 	// a new exception will be thrown with all the collected info.
@@ -310,16 +321,16 @@ public:
 
 	// a convenience factory, more convenient to use than parenthesis
 	// around the new statement
-	static MultiFnBind *make()
+	static AutoFnBind *make()
 	{
-		return new MultiFnBind;
+		return new AutoFnBind;
 	}
 
 	// push a binding, and remember it for popping
 	// @param ret - return to push onto
 	// @param binding - binding to push
-	// @return - the same MultiFnBind object, for chained calls
-	MultiFnBind *add(Onceref<FnReturn> ret, Autoref<FnBinding> binding);
+	// @return - the same AutoFnBind object, for chained calls
+	AutoFnBind *add(Onceref<FnReturn> ret, Autoref<FnBinding> binding);
 
 protected:
 	vector<Autoref<FnReturn> > rets_;

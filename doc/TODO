@@ -39,6 +39,9 @@ Things that need to be done:
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
+* doc: the Exception::f, ::fTrace
+* doc: errefAppend()
+
 App ideas:
 * queries on CSV files
 * distributed cron

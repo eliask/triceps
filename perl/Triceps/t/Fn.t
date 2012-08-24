@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 115 };
+BEGIN { plan tests => 124 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -589,23 +589,24 @@ unit 'u1' after label 'lbz1' op OP_INSERT }
 #ok($@ =~ /^PLACEHOLDER/);
 
 eval { $fret1->push($fbind4); };
-ok($@ =~ /^Triceps::FnReturn::push: Attempted to push a mismatching binding on the FnReturn 'fret1'./);
+ok($@ =~ /^Triceps::FnReturn::push: invalid arguments:\n  Attempted to push a mismatching binding on the FnReturn 'fret1'./);
+#print "$@";
 
 eval { $fret1->pop($fbind4); };
 ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
-  Triceps API violation: attempted to pop from an empty FnReturn/);
+  Attempted to pop from an empty FnReturn 'fret1'./);
 #print "$@";
 
 eval { $fret1->pop(); };
 ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
-  Triceps API violation: attempted to pop from an empty FnReturn/);
+  Attempted to pop from an empty FnReturn 'fret1'./);
 #print "$@";
 
 $fret1->push($fbind3); # this is of the same row set type, so it's OK
 
 eval { $fret1->pop($fbind4); };
 ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
-  Triceps API violation: popping an unexpected binding./);
+  Attempted to pop an unexpected binding from FnReturn 'fret1'./);
 #print "$@";
 
 $fret1->pop(); # restore the balance
@@ -613,11 +614,16 @@ $fret1->pop(); # restore the balance
 ######################### 
 # AutoFnBind
 
+ok($fretz1->bindingStackSize(), 0);
+ok($fretz2->bindingStackSize(), 0);
 {
 	my $ab = Triceps::AutoFnBind->new(
 		$fretz1 => $fbindz1,
 		$fretz2 => $fbindz3,
 	);
+
+	ok($fretz1->bindingStackSize(), 1);
+	ok($fretz2->bindingStackSize(), 1);
 
 	$u1->call($rop1);
 	$u1->call($rop3);
@@ -652,6 +658,8 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }
+ok($fretz1->bindingStackSize(), 0);
+ok($fretz2->bindingStackSize(), 0);
 
 # check that the auto bindings are gone
 {
@@ -685,12 +693,25 @@ unit 'u1' after label 'lbz3' op OP_INSERT }
 ######################### 
 # AutoFnBind error handling.
 
-{
+eval {
 	my $ab = Triceps::AutoFnBind->new(
 		$fretz1 => $fbindz1,
 		$fretz2 => $fbindz3,
 	);
-	# XXX TODO - broken now
-	# $fretz1->push($fbindz2);
-
-}
+	$fretz1->pop();
+	ok($fretz1->bindingStackSize(), 0);
+	$ab->clear();
+};
+ok($@ =~ /^Triceps::AutoFnBind::clear: encountered an FnReturn corruption
+  AutoFnBind::clear: caught an exception at position 0
+    Attempted to pop from an empty FnReturn 'fretz1'./);
+#print "$@";
+eval {
+	my $ab = Triceps::AutoFnBind->new(
+		$fretz1 => $fbindz1,
+		$fretz2 => $fbindz1,
+	);
+};
+ok($@ =~ /^Triceps::AutoFnBind::new: invalid arguments:
+  Attempted to push a mismatching binding on the FnReturn 'fretz2'./);
+#print "$@";

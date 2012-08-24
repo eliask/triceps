@@ -3,7 +3,7 @@
 // This file is a part of Triceps.
 // See the file COPYRIGHT for the copyright notice and license information
 //
-// The wrapper for MultiFnBind (yes, a different name in Perl!).
+// The wrapper for AutoFnBind.
 
 #include "EXTERN.h"
 #include "perl.h"
@@ -17,22 +17,34 @@
 MODULE = Triceps::AutoFnBind		PACKAGE = Triceps::AutoFnBind
 ###################################################################################
 
+# This one is tricky because croaking in a DESTROY doesn't work, 
+# so have to do something more horrible.
 void
-DESTROY(WrapMultiFnBind *self)
+DESTROY(WrapAutoFnBind *self)
 	CODE:
 		// warn("AutoFnBind destroyed!");
+		clearErrMsg();
+		try {
+			self->get()->clear();
+		} catch(Exception e) {
+			Erref err;
+			errefAppend(err, "Triceps::AutoFnBind::DESTROY: encountered an FnReturn corruption", e.getErrors());
+			err->appendMsg(true, "Perl does not allow to die properly in a destructor, so will just exit.");
+			warn("%sTo see a full call stack, add an explicit clear() of the AutoFnBind before the end of block starting", err->print().c_str());
+			exit(1);
+		}
 		delete self;
 
 # A scoped binding for multiple FnReturns.
 # The FnReturns and FnBindings go in pairs.
 #
 # $ab = AutoFnBind->new($ret1 => $binding1, ...)
-WrapMultiFnBind *
+WrapAutoFnBind *
 new(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::AutoFnBind::new";
 		clearErrMsg();
-		Autoref<MultiFnBind> mb = new MultiFnBind;
+		Autoref<AutoFnBind> mb = new AutoFnBind;
 		try {
 			if (items % 2 != 1) {
 				throw Exception("Usage: Triceps::AutoFnBind::new(CLASS, ret1 => binding1, ...), FnReturn and FnBinding objects must go in pairs", false);
@@ -41,11 +53,6 @@ new(char *CLASS, ...)
 				FnReturn *ret = TRICEPS_GET_WRAP(FnReturn, ST(i), "%s: argument %d", funcName, i)->get();
 				FnBinding *bind = TRICEPS_GET_WRAP(FnBinding, ST(i+1), "%s: argument %d", funcName, i+1)->get();
 				
-				if (!ret->getType()->match(bind->getType())) {
-					throw Exception(strprintf("%s: Attempted to push a mismatching binding on the FnReturn '%s'.", 
-						funcName, ret->getName().c_str()), true);
-				}
-
 				try {
 					mb->add(ret, bind);
 				} catch (Exception e) {
@@ -54,7 +61,26 @@ new(char *CLASS, ...)
 			}
 		} TRICEPS_CATCH_CROAK;
 
-		RETVAL = new WrapMultiFnBind(mb);
+		RETVAL = new WrapAutoFnBind(mb);
 	OUTPUT:
 		RETVAL
 
+# An explicit clearing of the auto-scope, without waiting for it to
+# be destroyed. Thos allows to confess properly, since Perl ignores
+# any attempts to die in DESTROY().
+void
+clear(WrapAutoFnBind *self)
+	CODE:
+		clearErrMsg();
+		try {
+			Erref err;
+			try {
+				self->get()->clear();
+			} catch(Exception e) {
+				errefAppend(err, "Triceps::AutoFnBind::clear: encountered an FnReturn corruption", e.getErrors());
+			}
+			delete self;
+			if (err->hasError()) {
+				throw Exception(err, false);
+			}
+		} TRICEPS_CATCH_CROAK;

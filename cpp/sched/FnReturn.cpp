@@ -21,7 +21,7 @@ FnReturn::FnReturn(Unit *unit, const string &name) :
 FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 {
 	if (initialized_)
-		throw Exception("Triceps API violation: attempt to add label '" + lname + "' to an initialized FnReturn.", true);
+		throw Exception::fTrace("Attempted to add label '%s' to an initialized FnReturn '%s'.", lname.c_str(), name_.c_str());
 
 	if (from->getUnitPtr() != unit_) {
 		// if the unit in the from label is NULL, this will crash
@@ -47,7 +47,7 @@ FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 FnReturn *FnReturn::addLabel(const string &lname, const_Autoref<RowType>rtype)
 {
 	if (initialized_)
-		throw Exception("Triceps API violation: attempt to add label '" + lname + "' to an initialized FnReturn.", true);
+		throw Exception::fTrace("Attempted to add label '%s' to an initialized FnReturn '%s'.", lname.c_str(), name_.c_str());
 	int szpre = type_->size();
 	type_->addRow(lname, rtype);
 	if (type_->size() != szpre) {
@@ -72,7 +72,7 @@ FnReturn *FnReturn::initializeOrThrow()
 RowSetType *FnReturn::getType() const
 {
 	if (!initialized_)
-		throw Exception("Triceps API violation: attempt to get the type from an uninitialized FnReturn.", true);
+		throw Exception::fTrace("Attempted to get the type from an uninitialized FnReturn '%s'.", name_.c_str());
 	return type_;
 }
 
@@ -106,25 +106,34 @@ Label *FnReturn::getLabel(int idx) const
 
 void FnReturn::push(Onceref<FnBinding> bind)
 {
+	if (!type_->match(bind->getType())) 
+		throw Exception::fTrace("Attempted to push a mismatching binding on the FnReturn '%s'.", name_.c_str());
 	if (!initialized_)
-		throw Exception("Triceps API violation: attempted to push a binding on an uninitialized FnReturn.", true);
+		throw Exception::fTrace("Attempted to push a binding on an uninitialized FnReturn '%s'.", name_.c_str());
+	stack_.push_back(bind);
+}
+
+void FnReturn::pushUnchecked(Onceref<FnBinding> bind)
+{
+	if (!initialized_)
+		throw Exception::fTrace("Attempted to push a binding on an uninitialized FnReturn '%s'.", name_.c_str());
 	stack_.push_back(bind);
 }
 
 void FnReturn::pop()
 {
 	if (stack_.empty())
-		throw Exception("Triceps API violation: attempted to pop from an empty FnReturn.", true);
+		throw Exception::fTrace("Attempted to pop from an empty FnReturn '%s'.", name_.c_str());
 	stack_.pop_back();
 }
 
 void FnReturn::pop(Onceref<FnBinding> bind)
 {
 	if (stack_.empty())
-		throw Exception("Triceps API violation: attempted to pop from an empty FnReturn.", true);
+		throw Exception::fTrace("Attempted to pop from an empty FnReturn '%s'.", name_.c_str());
 	FnBinding *top = stack_.back();
 	if (top != bind)
-		throw Exception("Triceps API violation: popping an unexpected binding.", true);
+		throw Exception::fTrace("Attempted to pop an unexpected binding from FnReturn '%s'.", name_.c_str());
 		// XXX should give some better diagnostics, helping to find the root cause.
 	stack_.pop_back();
 }
@@ -184,9 +193,9 @@ ScopeFnBind::~ScopeFnBind()
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// MultiFnBind
+// AutoFnBind
 
-MultiFnBind *MultiFnBind::add(Onceref<FnReturn> ret, Autoref<FnBinding> binding)
+AutoFnBind *AutoFnBind::add(Onceref<FnReturn> ret, Autoref<FnBinding> binding)
 {
 	ret->push(binding);
 	rets_.push_back(ret);
@@ -194,21 +203,28 @@ MultiFnBind *MultiFnBind::add(Onceref<FnReturn> ret, Autoref<FnBinding> binding)
 	return this;
 }
 
-void MultiFnBind::clear()
+void AutoFnBind::clear()
 {
 	// Pop in the opposite order. This is not a must, since presumably all the
 	// FnReturns should be different. But just in case.
+	Erref err;
 	for (int i = rets_.size()-1; i >= 0; i--) {
 		try {
+			// fprintf(stderr, "DEBUG popping FnReturn '%s'\n", rets_[i]->getName().c_str());
 			rets_[i]->pop(bindings_[i]);
 		} catch (Exception e) {
-			fprintf(stderr, "MultiFnBind::~MultiFnBind caught exception at position %d\n", i);
-			throw;
+			// fprintf(stderr, "DEBUG caught\n");
+			errefAppend(err, strprintf("AutoFnBind::clear: caught an exception at position %d", i), e.getErrors());
 		}
+	}
+	rets_.clear(); bindings_.clear();
+	if (err->hasError()) {
+		// fprintf(stderr, "DEBUG AutoFnBind::clear throwing\n");
+		throw Exception(err, false); // no need to add stack, already in the messages
 	}
 }
 
-MultiFnBind::~MultiFnBind()
+AutoFnBind::~AutoFnBind()
 {
 	clear();
 }

@@ -175,10 +175,6 @@ push(WrapFnReturn *self, WrapFnBinding *arg)
 		try {
 			FnReturn *ret = self->get();
 			FnBinding *bind = arg->get();
-			if (!ret->getType()->match(bind->getType())) {
-				throw Exception(strprintf("%s: Attempted to push a mismatching binding on the FnReturn '%s'.", 
-					funcName, ret->getName().c_str()), true);
-			}
 			try {
 				ret->push(bind);
 			} catch (Exception e) {
@@ -212,3 +208,13 @@ pop(WrapFnReturn *self, ...)
 				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
 			}
 		} TRICEPS_CATCH_CROAK;
+
+# Get the stack size.
+int 
+bindingStackSize(WrapFnReturn *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->bindingStackSize();
+	OUTPUT:
+		RETVAL
+
