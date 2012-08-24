@@ -74,6 +74,25 @@ public:
 	virtual ~Exception()
 		throw();
 
+	// Convenience factory methods that include strprintf
+	// ("f" starts for "formatting").
+	
+	// Build with an error message.
+	static Exception f(const char *fmt, ...)
+		__attribute__((format(printf, 1, 2)));
+	static Exception fTrace(const char *fmt, ...)
+		__attribute__((format(printf, 1, 2)));
+
+	// Build from an error buffer and a message.
+	// The message will go _before_ the error buffer.
+	static Exception f(Onceref<Errors> err, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
+
+	// Build from an error buffer from an exception and a message.
+	// The message will go _before_ the error buffer.
+	static Exception f(const Exception &exc, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
+
 	// from std::exception
 	virtual const char *what();
 
@@ -107,6 +126,9 @@ protected:
 	void checkTrace(bool trace);
 	// Check the abort_ flag and abort if it says so.
 	void checkAbort();
+
+	// For use by subclasses.
+	explicit Exception();
 
 	Erref error_; // the error message
 	string what_; // used to keep the return value of what()

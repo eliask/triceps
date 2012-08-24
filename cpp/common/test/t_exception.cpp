@@ -28,6 +28,13 @@ UTESTCASE throw_catch(Utest *utest)
 	}
 
 	try {
+		throw Exception::f("message %d", 99);
+	} catch (Exception e) {
+		string what = e.what();
+		UT_IS(what, "message 99\n");
+	}
+
+	try {
 		Erref err = new Errors;
 		err->appendMsg(true, "message");
 		throw Exception(err, false);
@@ -61,6 +68,17 @@ UTESTCASE throw_catch(Utest *utest)
 	}
 
 	try {
+		Erref err = new Errors;
+		err->appendMsg(true, "message");
+		throw Exception::f(err, "wrapper %d", 99);
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what, "wrapper 99\n  message\n");
+	}
+
+	try {
 		try {
 			throw Exception("message", false);
 		} catch (Exception e) {
@@ -73,12 +91,32 @@ UTESTCASE throw_catch(Utest *utest)
 		UT_IS(what, "wrapper\n  message\n");
 	}
 
+	try {
+		try {
+			throw Exception("message", false);
+		} catch (Exception e) {
+			throw Exception::f(e, "wrapper %d", 99);
+		}
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what, "wrapper 99\n  message\n");
+	}
+
 	// same with a stack trace
 	try {
 		throw Exception("message", true);
 	} catch (Exception e) {
 		string what = e.what();
 		UT_IS(what.find("message\nStack trace:\n  "), 0);
+	}
+
+	try {
+		throw Exception::fTrace("message %d", 99);
+	} catch (Exception e) {
+		string what = e.what();
+		UT_IS(what.find("message 99\nStack trace:\n  "), 0);
 	}
 
 	try {
