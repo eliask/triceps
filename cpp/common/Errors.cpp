@@ -140,4 +140,17 @@ void Errors::clear()
 	error_ = false;
 }
 
+bool errefAppend(Erref &ref, const string &msg, Autoref<Errors> clde)
+{
+	if (!clde->hasError())
+		return false;
+
+	if (ref.isNull())
+		ref = new Errors(msg, clde);
+	else
+		ref->append(msg, clde);
+
+	return true;
+}
+
 }; // TRICEPS_NS
