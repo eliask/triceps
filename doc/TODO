@@ -36,11 +36,14 @@ Things that need to be done:
 * when printing table types and such, make sure to \-escape the funny characters
 * change the XS type checking to confess instead of plain dying
 * in Triceps::Fields::makeTranslation take the filter specs as arguments, and the caller's name
+* in Type add a generic checkOrThrow(), maybe a template for initializeOrThrow()?
+* in Type::Fields add parsing of the type names including the array indicators
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 * doc: the Exception::f, ::fTrace
 * doc: errefAppend()
+* doc: streaming functions
 
 App ideas:
 * queries on CSV files

@@ -73,6 +73,8 @@ public:
 	// @return - errors reference, may be NULL
 	virtual Erref getErrors() const = 0;
 
+	// XXX add checkOrThrow() to throw on errors
+
 	// The types can be equal in one of 3 ways, in order or decreasting exactness:
 	// 1. Exactly the same Type object.
 	//    Compary the pointers.

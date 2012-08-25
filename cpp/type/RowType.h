@@ -39,6 +39,9 @@ public:
 
 		// the default copy and assignment are good enough
 		
+		// XXX add constructor and assign() from the type name, including
+		// the array type recognition like in RowType.xs
+		
 		Field(const string &name, Autoref<const Type> t, int arsz = -1) :
 			name_(name),
 			type_(t),

@@ -93,6 +93,25 @@ UTESTCASE rowtype(Utest *utest)
 		" }");
 }
 
+// examples of field setting
+UTESTCASE x_fields(Utest *utest)
+{
+	RowType::FieldVec fields1;
+	fields1.push_back(RowType::Field("a", Type::r_int64)); // scalar by default
+	fields1.push_back(RowType::Field("b", Type::r_int32, RowType::Field::AR_SCALAR));
+	fields1.push_back(RowType::Field("c", Type::r_uint8, RowType::Field::AR_VARIABLE));
+
+	RowType::FieldVec fields2(2);
+	fields2[0].assign("a", Type::r_int64); // scalar by default
+	fields2[1].assign("b", Type::r_int32, RowType::Field::AR_VARIABLE);
+
+	fields1.push_back(RowType::Field("d", Type::findSimpleType("uint8"), RowType::Field::AR_VARIABLE));
+
+	Autoref<RowType> rt1 = new CompactRowType(fields1);
+	if (rt1->getErrors()->hasError())
+		throw Exception(rt1->getErrors(), true);
+}
+
 UTESTCASE parse_err(Utest *utest)
 {
 	RowType::FieldVec fld;
