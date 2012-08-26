@@ -63,6 +63,7 @@ UTESTCASE fn_return(Utest *utest)
 		->initialize();
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
+	UT_IS(fret1->getName(), "fret1");
 	// an equal one but not initialized
 	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
 		->addLabel("one", rt1)
@@ -265,6 +266,7 @@ UTESTCASE fn_binding(Utest *utest)
 		->addLabel("one", lb1a, true)
 		->addLabel("two", lb3a, true); // matching
 	UT_ASSERT(bind1->getErrors().isNull());
+	UT_IS(bind1->getName(), "bind1");
 	// labels from another unit are OK
 	Autoref<FnBinding> bind2 = FnBinding::make("bind2", fret1)
 		->addLabel("one", lb1x, true)

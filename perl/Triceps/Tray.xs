@@ -73,7 +73,7 @@ toArray(WrapTray *self)
 		int nf = tray->size();
 		for (int i = 0; i < nf; i++) {
 			SV *ropv = sv_newmortal();
-			sv_setref_pv( ropv, "Triceps::Rowop", (void*)(new WrapRowop((*tray)[i])) );
+			sv_setref_pv( ropv, CLASS, (void*)(new WrapRowop((*tray)[i])) );
 			XPUSHs(ropv);
 		}
 

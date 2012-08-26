@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 124 };
+BEGIN { plan tests => 131 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -72,6 +72,7 @@ my $fret1 = Triceps::FnReturn->new(
 	]
 );
 ok(ref $fret1, "Triceps::FnReturn");
+ok($fret1->getName(), "fret1");
 
 # without explict unit, two labels
 my $fret2 = Triceps::FnReturn->new(
@@ -249,6 +250,7 @@ my $fbind1 = Triceps::FnBinding->new(
 	]
 );
 ok(ref $fbind1, "Triceps::FnBinding");
+ok($fbind1->getName(), "fbind1");
 
 my @called;
 
@@ -615,7 +617,21 @@ ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
     fbind3/);
 #print "$@";
 
-$fret1->pop(); # restore the balance
+# push some more, to test the stack examination
+$fret1->push($fbind1);
+$fret1->push($fbind2);
+ok($fret1->bindingStackSize(), 3);
+{
+	my @stack = $fret1->bindingStack();
+	ok($#stack, 2);
+	ok($stack[0]->same($fbind3));
+	ok($stack[1]->same($fbind1));
+	ok($stack[2]->same($fbind2));
+}
+
+$fret1->pop($fbind2); # restore the balance
+$fret1->pop($fbind1);
+$fret1->pop($fbind3);
 
 ######################### 
 # AutoFnBind

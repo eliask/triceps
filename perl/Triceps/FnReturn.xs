@@ -209,6 +209,14 @@ pop(WrapFnReturn *self, ...)
 			}
 		} TRICEPS_CATCH_CROAK;
 
+char *
+getName(WrapFnReturn *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = (char *)self->get()->getName().c_str();
+	OUTPUT:
+		RETVAL
+
 # Get the stack size.
 int 
 bindingStackSize(WrapFnReturn *self)
@@ -218,3 +226,20 @@ bindingStackSize(WrapFnReturn *self)
 	OUTPUT:
 		RETVAL
 
+# Get the stack contents. Used mostly for diagnostics.
+# Returns an array of FnBindings with the top of stack on the right.
+SV *
+bindingStack(WrapFnReturn *self)
+	PPCODE:
+		clearErrMsg();
+		const FnReturn::BindingVec &stack = self->get()->bindingStack();
+		
+		// for casting of return value
+		static char CLASS[] = "Triceps::FnBinding";
+
+		int nf = stack.size();
+		for (int i = 0;  i < nf; i++) {
+			SV *bindv = sv_newmortal();
+			sv_setref_pv( bindv, CLASS, (void*)(new WrapFnBinding(stack[i])) );
+			XPUSHs(bindv);
+		}

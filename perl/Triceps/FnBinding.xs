@@ -164,4 +164,12 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
+char *
+getName(WrapFnBinding *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = (char *)self->get()->getName().c_str();
+	OUTPUT:
+		RETVAL
+
 
