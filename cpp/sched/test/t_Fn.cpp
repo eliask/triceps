@@ -261,12 +261,12 @@ UTESTCASE fn_binding(Utest *utest)
 	UT_ASSERT(!fret2->isInitialized());
 
 	// make the bindings
-	Autoref<FnBinding> bind1 = FnBinding::make(fret1)
+	Autoref<FnBinding> bind1 = FnBinding::make("bind1", fret1)
 		->addLabel("one", lb1a, true)
 		->addLabel("two", lb3a, true); // matching
 	UT_ASSERT(bind1->getErrors().isNull());
 	// labels from another unit are OK
-	Autoref<FnBinding> bind2 = FnBinding::make(fret1)
+	Autoref<FnBinding> bind2 = FnBinding::make("bind2", fret1)
 		->addLabel("one", lb1x, true)
 		->addLabel("two", lb3a, true)
 		->checkOrThrow(); // matching
@@ -274,14 +274,14 @@ UTESTCASE fn_binding(Utest *utest)
 
 	// Bad bindings
 	{
-		Autoref<FnBinding> bindbad = FnBinding::make(fret2)
+		Autoref<FnBinding> bindbad = FnBinding::make("bindbad", fret2)
 			->addLabel("one", lb1a, true)
 			->addLabel("two", lb3a, true); // matching
 		UT_ASSERT(!bindbad->getErrors().isNull());
 		UT_IS(bindbad->getErrors()->print(), "Can not create a binding to an uninitialized FnReturn.\n");
 	}
 	{
-		Autoref<FnBinding> bindbad = FnBinding::make(fret1)
+		Autoref<FnBinding> bindbad = FnBinding::make("bindbad", fret1)
 			->addLabel("zzz", lb1a, true)
 			->addLabel("two", lb3a, true)
 			->addLabel("two", lb2a, true)
@@ -313,7 +313,7 @@ UTESTCASE fn_binding(Utest *utest)
 		// with throwing
 		msg.clear();
 		try {
-			Autoref<FnBinding> bindbad = FnBinding::make(fret2)
+			Autoref<FnBinding> bindbad = FnBinding::make("bindbad", fret2)
 				->addLabel("one", lb1a, true)
 				->addLabel("two", lb3a, true)
 				->checkOrThrow();
@@ -404,22 +404,22 @@ UTESTCASE call_bindings(Utest *utest)
 	UT_ASSERT(fret2->isInitialized());
 
 	// make the bindings
-	Autoref<FnBinding> bind1 = FnBinding::make(fret1)
+	Autoref<FnBinding> bind1 = FnBinding::make("bind1", fret1)
 		->addLabel("one", lb1a, true)
 		->addLabel("two", lb3a, true); // matching
 	UT_ASSERT(bind1->getErrors().isNull());
 	// binding of a matching type
-	Autoref<FnBinding> bind1a = FnBinding::make(fret1a)
+	Autoref<FnBinding> bind1a = FnBinding::make("bind1a", fret1a)
 		->addLabel("a", lb1a, true)
 		->addLabel("b", lb3a, true); // matching
 	UT_ASSERT(bind1->getErrors().isNull());
 	// labels from another unit are OK
-	Autoref<FnBinding> bind2 = FnBinding::make(fret1)
+	Autoref<FnBinding> bind2 = FnBinding::make("bind2", fret1)
 		->addLabel("one", lb1x, true) // in unit2
 		->addLabel("two", lb2a, true);
 	UT_ASSERT(bind2->getErrors().isNull());
 	// missing bindings for some labels are OK
-	Autoref<FnBinding> bind3 = FnBinding::make(fret1);
+	Autoref<FnBinding> bind3 = FnBinding::make("bind3", fret1);
 	UT_ASSERT(bind3->getErrors().isNull());
 
 	// make the rows to send
@@ -750,7 +750,7 @@ UTESTCASE fn_binding_memory(Utest *utest)
 		Autoref<Label> lb2 = new MyDummyLabel(unit1, rt2, "lb2");
 
 		// make the binding
-		Autoref<FnBinding> bind1 = FnBinding::make(fret1)
+		Autoref<FnBinding> bind1 = FnBinding::make("bind1", fret1)
 			->addLabel("one", lb1, true)
 			->addLabel("two", lb2, true); // matching
 		UT_ASSERT(bind1->getErrors().isNull());
@@ -766,7 +766,7 @@ UTESTCASE fn_binding_memory(Utest *utest)
 		Autoref<Label> lb2 = new MyDummyLabel(unit1, rt2, "lb2");
 
 		// make the binding
-		Autoref<FnBinding> bind1 = FnBinding::make(fret1)
+		Autoref<FnBinding> bind1 = FnBinding::make("bind1", fret1)
 			->addLabel("one", lb1, false)
 			->addLabel("two", lb2, false); // matching
 		UT_ASSERT(bind1->getErrors().isNull());

@@ -33,14 +33,16 @@ public:
 	//     ->addLabel("lb2", lb2, false)
 	//     ->checkOrThrow();
 	//
+	// @param name - name of the binding (not strictly necessary but convenient
+	//        for diagnostics.
 	// @param fn - the return of the function to bind to. Must be initialized.
-	FnBinding(FnReturn *fn);
+	FnBinding(const string &name, FnReturn *fn);
 	~FnBinding();
 	
 	// The convenience wharpper for the constructor
-	static FnBinding *make(FnReturn *fn)
+	static FnBinding *make(const string &name, FnReturn *fn)
 	{
-		return new FnBinding(fn);
+		return new FnBinding(name, fn);
 	}
 
 	// Add a label to the binding. Any errors found can be read
@@ -71,6 +73,12 @@ public:
 		return errors_;
 	}
 
+	// Get back the name.
+	const string &getName() const
+	{
+		return name_;
+	}
+
 	// Checks for errors and throws an Exception if any are found.
 	// Takes care of the memory consistency on throwing by increasing
 	// and decreasing the ref count on this object, so that if it hasn't
@@ -93,6 +101,7 @@ protected:
 	typedef vector<Autoref<Label> > LabelVec; 
 	typedef vector<bool> BoolVec; 
 
+	string name_;
 	Autoref<RowSetType> type_; // type of FnReturn
 	LabelVec labels_; // looked up by index
 	BoolVec autoclear_; // of the same size as labels_

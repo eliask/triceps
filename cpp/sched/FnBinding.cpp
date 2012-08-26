@@ -13,7 +13,8 @@
 
 namespace TRICEPS_NS {
 
-FnBinding::FnBinding(FnReturn *fn)
+FnBinding::FnBinding(const string &name, FnReturn *fn) :
+	name_(name)
 {
 	if (!fn->isInitialized()) {
 		// avoid throwing an exception from constructor

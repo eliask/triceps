@@ -239,9 +239,10 @@ ok(ref $lbind1, "Triceps::Label");
 my $lbind2 = $u2->makeDummyLabel($rt2, "lbind2");
 ok(ref $lbind2, "Triceps::Label");
 
-# with labels only, no name, no unit
+# with labels only, no unit
 my $fbind1 = Triceps::FnBinding->new(
 	on => $fret1,
+	name => "fbind1",
 	labels => [
 		one => $lbind1,
 		two => $lbind2,
@@ -266,6 +267,7 @@ ok(ref $fbind2, "Triceps::FnBinding");
 # labels don't have to be set at all (but the option must be present)
 my $fbind3 = Triceps::FnBinding->new(
 	on => $fret2, # has the same row set as fret1
+	name => "fbind3",
 	labels => [
 	]
 );
@@ -274,6 +276,7 @@ ok(ref $fbind3, "Triceps::FnBinding");
 # one for a different FnReturn type
 my $fbind4 = Triceps::FnBinding->new(
 	on => $fret3,
+	name => "fbind4",
 	labels => [
 	]
 );
@@ -336,6 +339,9 @@ ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'on'/);
 &badFnBinding(labels => undef);
 ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'labels'/);
 
+&badFnBinding(name => undef);
+ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'name'/);
+
 &badFnBinding(unit => 'x');
 ok($@ =~ /^Triceps::FnBinding::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
 
@@ -356,9 +362,6 @@ ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 name value must
 
 &badFnBinding(labels => [ one => "zzz", ]);
 ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 with name 'one' value must be a reference to Triceps::Label or a function/);
-
-&badFnBinding(name => undef);
-ok($@ =~ /^Triceps::FnBinding::new: option 'name' must be set to handle the code reference in option 'labels' element 2 with name 'two'/);
 
 &badFnBinding(unit => undef);
 ok($@ =~ /^Triceps::FnBinding::new: option 'unit' must be set to handle the code reference in option 'labels' element 2 with name 'two'/);
@@ -439,6 +442,7 @@ ok(ref $fbindz1, "Triceps::FnBinding");
 # an empty binding
 my $fbindz2 = Triceps::FnBinding->new(
 	on => $fretz1,
+	name => "fbindz2",
 	labels => [ ]
 );
 ok(ref $fbindz2, "Triceps::FnBinding");

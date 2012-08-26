@@ -113,12 +113,14 @@ new(char *CLASS, ...)
 				}
 			}
 
+			if (name.empty())
+				throw Exception(strprintf("%s: missing mandatory option 'name'", funcName), false);
 			if (fnr == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'on'", funcName), false);
 			if (labels == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'labels'", funcName), false);
 
-			fbind = new FnBinding(fnr);
+			fbind = new FnBinding(name, fnr);
 
 			// parse labels, and create labels around the code snippets
 			len = av_len(labels)+1; // av_len returns the index of last element
@@ -136,10 +138,6 @@ new(char *CLASS, ...)
 					funcName, i/2+1, SvPV_nolen(svname));
 				if (lb.isNull()) {
 					// it's a code snippet, make a label
-					if (name.empty()) {
-						throw Exception(strprintf("%s: option 'name' must be set to handle the code reference in option 'labels' element %d with name '%s'", 
-							funcName, i/2+1, SvPV_nolen(svname)), false);
-					}
 					if (u == NULL) {
 						throw Exception(strprintf("%s: option 'unit' must be set to handle the code reference in option 'labels' element %d with name '%s'", 
 							funcName, i/2+1, SvPV_nolen(svname)), false);
