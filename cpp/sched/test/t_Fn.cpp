@@ -492,7 +492,11 @@ UTESTCASE call_bindings(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Attempted to pop an unexpected binding from FnReturn 'fret1'.\n");
+		UT_IS(msg, 
+			"Attempted to pop an unexpected binding 'bind1' from FnReturn 'fret1'.\n"
+			"The bindings on the stack (top to bottom) are:\n"
+			"  bind2\n"
+			"  bind1a\n");
 	}
 	// pop the right binding
 	fret1->pop(bind2);
@@ -685,9 +689,15 @@ UTESTCASE call_bindings(Utest *utest)
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, "AutoFnBind::clear: caught an exception at position 1\n"
-			"  Attempted to pop an unexpected binding from FnReturn 'fret1a'.\n"
+			"  Attempted to pop an unexpected binding 'bind1a' from FnReturn 'fret1a'.\n"
+			"  The bindings on the stack (top to bottom) are:\n"
+			"    bind2\n"
+			"    bind1a\n"
 			"AutoFnBind::clear: caught an exception at position 0\n"
-			"  Attempted to pop an unexpected binding from FnReturn 'fret1'.\n"
+			"  Attempted to pop an unexpected binding 'bind1' from FnReturn 'fret1'.\n"
+			"  The bindings on the stack (top to bottom) are:\n"
+			"    bind2\n"
+			"    bind1\n"
 		);
 	}
 }

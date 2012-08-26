@@ -610,7 +610,9 @@ $fret1->push($fbind3); # this is of the same row set type, so it's OK
 
 eval { $fret1->pop($fbind4); };
 ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
-  Attempted to pop an unexpected binding from FnReturn 'fret1'./);
+  Attempted to pop an unexpected binding 'fbind4' from FnReturn 'fret1'.
+  The bindings on the stack \(top to bottom\) are:
+    fbind3/);
 #print "$@";
 
 $fret1->pop(); # restore the balance

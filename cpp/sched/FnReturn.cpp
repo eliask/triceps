@@ -132,8 +132,16 @@ void FnReturn::pop(Onceref<FnBinding> bind)
 	if (stack_.empty())
 		throw Exception::fTrace("Attempted to pop from an empty FnReturn '%s'.", name_.c_str());
 	FnBinding *top = stack_.back();
-	if (top != bind)
-		throw Exception::fTrace("Attempted to pop an unexpected binding from FnReturn '%s'.", name_.c_str());
+	if (top != bind) {
+		Erref stkerr = new Errors;
+		for (int i = stack_.size()-1; i >= 0; i--)
+			stkerr->appendMsg(true, stack_[i]->getName());
+		Erref err = new Errors;
+		err->appendMsg(true, strprintf("Attempted to pop an unexpected binding '%s' from FnReturn '%s'.", 
+			bind->getName().c_str(), name_.c_str()));
+		err->append("The bindings on the stack (top to bottom) are:", stkerr);
+		throw Exception(err, true);
+	}
 		// XXX should give some better diagnostics, helping to find the root cause.
 	stack_.pop_back();
 }
