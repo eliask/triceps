@@ -243,3 +243,38 @@ bindingStack(WrapFnReturn *self)
 			sv_setref_pv( bindv, CLASS, (void*)(new WrapFnBinding(stack[i])) );
 			XPUSHs(bindv);
 		}
+
+# Comparison of the underlying RowSetTypes.
+int
+equals(WrapFnReturn *self, SV *other)
+	CODE:
+		static char funcName[] =  "Triceps::FnReturn::equals";
+		clearErrMsg();
+		WrapFnReturn *wret;
+		WrapFnBinding *wbind;
+		try {
+			TRICEPS_GET_WRAP2(FnReturn, wret, FnBinding, wbind, other, "%s: argument", funcName);
+		} TRICEPS_CATCH_CROAK;
+		if (wret)
+			RETVAL = self->get()->equals(wret->get());
+		else
+			RETVAL = self->get()->equals(wbind->get());
+	OUTPUT:
+		RETVAL
+
+int
+match(WrapFnReturn *self, SV *other)
+	CODE:
+		static char funcName[] =  "Triceps::FnReturn::match";
+		clearErrMsg();
+		WrapFnReturn *wret;
+		WrapFnBinding *wbind;
+		try {
+			TRICEPS_GET_WRAP2(FnReturn, wret, FnBinding, wbind, other, "%s: argument", funcName);
+		} TRICEPS_CATCH_CROAK;
+		if (wret)
+			RETVAL = self->get()->match(wret->get());
+		else
+			RETVAL = self->get()->match(wbind->get());
+	OUTPUT:
+		RETVAL

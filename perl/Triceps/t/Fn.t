@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 131 };
+BEGIN { plan tests => 151 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -94,9 +94,27 @@ my $fret3 = Triceps::FnReturn->new(
 );
 ok(ref $fret3, "Triceps::FnReturn");
 
+# a matching one
+my $fret4 = Triceps::FnReturn->new(
+	name => "fret4",
+	labels => [
+		a => $lb1,
+		b => $lb2,
+	]
+);
+ok(ref $fret4, "Triceps::FnReturn");
+
 # sameness
 ok($fret1->same($fret1));
 ok(!$fret1->same($fret2));
+
+ok($fret1->equals($fret2));
+ok(!$fret1->equals($fret3));
+ok(!$fret1->equals($fret4));
+
+ok($fret1->match($fret2));
+ok(!$fret1->match($fret3));
+ok($fret1->match($fret4));
 
 ######################### 
 # FnReturn construction errors
@@ -287,6 +305,24 @@ ok(ref $fbind4, "Triceps::FnBinding");
 # sameness
 ok($fbind1->same($fbind1));
 ok(!$fbind1->same($fbind2));
+
+ok($fbind1->equals($fbind1));
+ok($fbind1->equals($fbind2));
+ok(!$fbind1->equals($fbind4));
+
+ok($fret1->equals($fbind1));
+ok($fbind1->equals($fret1));
+ok(!$fret4->equals($fbind1));
+ok(!$fbind1->equals($fret4));
+
+ok($fbind1->match($fbind2));
+ok(!$fbind1->match($fbind4));
+
+ok($fret4->match($fbind1));
+ok($fbind1->match($fret4));
+
+ok(!$fret1->match($fbind4));
+ok(!$fbind4->match($fret1));
 
 ######################### 
 # FnBinding construction errors
