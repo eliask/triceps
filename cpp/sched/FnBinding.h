@@ -97,6 +97,13 @@ public:
 		return type_;
 	}
 
+	// This is technically not a type but these are convenient wrappers to
+	// compare the equality of the underlying row set types.
+	bool equals(const FnReturn *t) const;
+	bool match(const FnReturn *t) const;
+	bool equals(const FnBinding *t) const;
+	bool match(const FnBinding *t) const;
+
 protected:
 	typedef vector<Autoref<Label> > LabelVec; 
 	typedef vector<bool> BoolVec; 

@@ -86,6 +86,16 @@ bool FnReturn::match(const FnReturn *t) const
 	return type_->match(t->type_);
 }
 
+bool FnReturn::equals(const FnBinding *t) const
+{
+	return type_->equals(t->getType());
+}
+
+bool FnReturn::match(const FnBinding *t) const
+{
+	return type_->match(t->getType());
+}
+
 Label *FnReturn::getLabel(const string &name) const
 {
 	return getLabel(type_->findName(name));

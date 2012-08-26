@@ -187,6 +187,8 @@ public:
 	// compare the equality of the underlying row set types.
 	bool equals(const FnReturn *t) const;
 	bool match(const FnReturn *t) const;
+	bool equals(const FnBinding *t) const;
+	bool match(const FnBinding *t) const;
 
 	// Get a label by name.
 	// @param name - the name of the label, as was specified in addLabel()

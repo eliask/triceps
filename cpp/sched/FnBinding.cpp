@@ -107,4 +107,24 @@ Label *FnBinding::getLabel(int idx) const
 	return labels_[idx];
 }
 
+bool FnBinding::equals(const FnBinding *t) const
+{
+	return type_->equals(t->type_);
+}
+
+bool FnBinding::match(const FnBinding *t) const
+{
+	return type_->match(t->type_);
+}
+
+bool FnBinding::equals(const FnReturn *t) const
+{
+	return type_->equals(t->getType());
+}
+
+bool FnBinding::match(const FnReturn *t) const
+{
+	return type_->match(t->getType());
+}
+
 }; // TRICEPS_NS

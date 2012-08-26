@@ -260,6 +260,19 @@ UTESTCASE fn_binding(Utest *utest)
 		->addLabel("two", rt2);
 	UT_ASSERT(fret2->getErrors().isNull());
 	UT_ASSERT(!fret2->isInitialized());
+	// a matching one
+	Autoref<FnReturn> fret3 = FnReturn::make(unit1, "fret3")
+		->addLabel("one", rt1)
+		->addLabel("xxx", rt2)
+		->initializeOrThrow();
+	UT_ASSERT(fret3->getErrors().isNull());
+	// an unmatching one
+	Autoref<FnReturn> fret4 = FnReturn::make(unit1, "fret4")
+		->addLabel("one", rt2)
+		->addLabel("two", rt1)
+		->initialize();
+	UT_ASSERT(fret4->getErrors().isNull());
+	UT_ASSERT(fret4->isInitialized());
 
 	// make the bindings
 	Autoref<FnBinding> bind1 = FnBinding::make("bind1", fret1)
@@ -273,6 +286,15 @@ UTESTCASE fn_binding(Utest *utest)
 		->addLabel("two", lb3a, true)
 		->checkOrThrow(); // matching
 	UT_ASSERT(bind2->getErrors().isNull());
+
+	UT_ASSERT(fret1->equals(bind1));
+	UT_ASSERT(bind1->equals(fret1));
+	UT_ASSERT(fret1->match(bind1));
+	UT_ASSERT(bind1->match(fret1));
+	UT_ASSERT(fret3->match(bind1));
+	UT_ASSERT(bind1->match(fret3));
+	UT_ASSERT(!fret4->match(bind1));
+	UT_ASSERT(!bind1->match(fret4));
 
 	// Bad bindings
 	{
