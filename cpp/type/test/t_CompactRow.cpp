@@ -110,6 +110,65 @@ UTESTCASE x_fields(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fields1);
 	if (rt1->getErrors()->hasError())
 		throw Exception(rt1->getErrors(), true);
+
+	const RowType::FieldVec &f = rt1->fields();
+	UT_ASSERT(&f != &fields1); // mostly to fool the "unused variable" warning
+
+	RowType::FieldVec fields3 = rt1->fields();
+	fields3.push_back(RowType::Field("z", Type::r_string));
+	Autoref<RowType> rt3 = new CompactRowType(fields3);
+	if (rt3->getErrors()->hasError())
+		throw Exception(rt3->getErrors(), true);
+}
+
+// examples of field data setting
+UTESTCASE x_data(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	FdataVec fd1;
+	fd1.push_back(Fdata(true, &v_uint8, sizeof(v_uint8)-1)); // exclude \0
+	fd1.push_back(Fdata(true, &v_int32, sizeof(v_int32)));
+	fd1.push_back(Fdata(false, NULL, 0)); // a NULL field
+	fd1.push_back(Fdata(true, &v_float64, sizeof(v_float64)));
+	fd1.push_back(Fdata(true, &v_string, sizeof(v_string)));
+
+	Rowref r1(rt1,  rt1->makeRow(fd1));
+
+	Rowref r2(rt1,  fd1);
+
+	FdataVec fd2(3);
+	fd2[0].setPtr(true, &v_uint8, sizeof(v_uint8)-1); // exclude \0
+	fd2[1].setNull();
+	fd2[2].setFrom(r1.getType(), r1.get(), 2); // copy from r1 field 2
+
+	Rowref r3(rt1,  fd2);
+
+	RowType::FieldVec fields4;
+	fields4.push_back(RowType::Field("a", Type::r_int64, RowType::Field::AR_VARIABLE));
+
+	Autoref<RowType> rt4 = new CompactRowType(fields4);
+	if (rt4->getErrors()->hasError())
+		throw Exception(rt4->getErrors(), true);
+
+	FdataVec fd4;
+	Fdata fdtmp;
+	fd4.push_back(Fdata(true, NULL, sizeof(v_float64)*10)); // allocate space
+	fd4.push_back(Fdata(0, sizeof(v_int64)*2, &v_int64, sizeof(v_int64)));
+	// fill a temporary element with setOverride and then insert it
+	fdtmp.setOverride(0, sizeof(v_int64)*4, &v_int64, sizeof(v_int64));
+	fd4.push_back(fdtmp);
+	// manually copy an element from r1
+	fdtmp.nf_ = 0;
+	fdtmp.off_ = sizeof(v_int64)*5;
+	r1.getType()->getField(r1.get(), 2, fdtmp.data_, fdtmp.len_);
+	fd4.push_back(fdtmp);
+
+	Rowref r4(rt4,  fd4);
 }
 
 UTESTCASE parse_err(Utest *utest)

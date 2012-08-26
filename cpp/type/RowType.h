@@ -377,7 +377,8 @@ protected:
 class Fdata 
 {
 public:
-	Fdata()
+	Fdata() :
+		notNull_(false)
 	{ }
 
 	// set the field to null
