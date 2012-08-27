@@ -497,6 +497,28 @@ AV *GetSvArray(SV *svptr, const char *fmt, ...)
 	return (AV*)SvRV(svptr);
 }
 
+void GetSvArrayOrHash(AV *&array, HV *&hash, SV *svptr, const char *fmt, ...)
+{
+	if (SvROK(svptr)) {
+		if (SvTYPE(SvRV(svptr)) == SVt_PVAV) {
+			array = (AV*)SvRV(svptr);
+			hash = NULL;
+			return;
+		}
+		if (SvTYPE(SvRV(svptr)) == SVt_PVHV) {
+			array = NULL;
+			hash = (HV*)SvRV(svptr);
+			return;
+		}
+	}
+
+	va_list ap;
+	va_start(ap, fmt);
+	string s = vstrprintf(fmt, ap);
+	va_end(ap);
+	throw Exception(strprintf("%s value must be a reference to array or hash", s.c_str()), false);
+}
+
 Label *GetSvLabelOrCode(SV *svptr, const char *fmt, ...)
 {
 	if (SvROK(svptr) && SvTYPE(SvRV(svptr)) == SVt_PVCV)

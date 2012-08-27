@@ -15,6 +15,61 @@
 #include "TricepsOpt.h"
 #include "PerlCallback.h"
 
+
+// Build a binding from components.
+// Throws an Exception on errors.
+//
+// @param funcName - name of the calling function, for error messages.
+// @param name - name of the FnBinding object to create.
+// @param u - unit for creation of labels in the FnBinding.
+// @param fnr - function return to bind to.
+// @param labels - definition of labels in the bindings (a Perl array of elements that are
+//        either label objects or code snippets)
+// @return - the creaed binding.
+static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, Unit *u, FnReturn *fnr, AV *labels)
+{
+	Autoref<FnBinding> fbind = new FnBinding(name, fnr);
+
+	// parse labels, and create labels around the code snippets
+	int len = av_len(labels)+1; // av_len returns the index of last element
+	if (len % 2 != 0) // 0 elements is OK
+		throw Exception(strprintf("%s: option 'labels' must contain elements in pairs, has %d elements", funcName, len), false);
+	for (int i = 0; i < len; i+=2) {
+		SV *svname, *svval;
+		svname = *av_fetch(labels, i, 0);
+		svval = *av_fetch(labels, i+1, 0);
+		string entryname;
+
+		GetSvString(entryname, svname, "%s: in option 'labels' element %d name", funcName, i/2+1);
+
+		Autoref<Label> lb = GetSvLabelOrCode(svval, "%s: in option 'labels' element %d with name '%s'", 
+			funcName, i/2+1, SvPV_nolen(svname));
+		if (lb.isNull()) {
+			// it's a code snippet, make a label
+			if (u == NULL) {
+				throw Exception(strprintf("%s: option 'unit' must be set to handle the code reference in option 'labels' element %d with name '%s'", 
+					funcName, i/2+1, SvPV_nolen(svname)), false);
+			}
+			string lbname = name + "." + entryname;
+			RowType *rt = fnr->getRowType(entryname);
+			if (rt == NULL) {
+				throw Exception(strprintf("%s: in option 'labels' element %d has an unknown return label name '%s'", 
+					funcName, i/2+1, SvPV_nolen(svname)), false);
+			}
+			lb = PerlLabel::makeSimple(u, rt, lbname, svval, "%s: in option 'labels' element %d with name '%s'",
+				funcName, i/2+1, SvPV_nolen(svname));
+		}
+		fbind->addLabel(entryname, lb, true);
+	}
+	try {
+		fbind->checkOrThrow();
+	} catch (Exception e) {
+		throw Exception(e, strprintf("%s: invalid arguments:", funcName));
+	}
+
+	return fbind;
+}
+
 MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 ###################################################################################
 
@@ -22,7 +77,7 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #
 # $fnr = FnReturn->new(...);
 # $bind = FnBinding->new(
-#     name => "bind1", # used for the names of direct Perl labels
+#     name => "bind1", # used for diagnostics and the names of direct Perl labels
 #     on => $fnr, # determines the type of return
 #     unit => $unit, # needed only for the direct Perl code
 #     labels => [
@@ -37,12 +92,16 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     $auto = AutoFnBind->new($fnr => $bind, ...);
 #     $unit->call(...);
 # }
+# $unit->callBound( # pushes all the bindings, does the call, pops
+#     $rowop, # or $tray, or [ @rowops ]
+#     $fnr => $bind, ...
+# );
 # ---
 # Create a binding on the fly and call with it:
 # FnBinding::call( # create and push/call/pop right away
-#     name => "bind1", # used for the names of direct Perl labels
+#     name => "bind1", # used for diagnostics and the names of direct Perl labels
 #     on => $fnr, # determines the type of return
-#     unit => $unit, # needed only for the direct Perl code
+#     unit => $unit, # needed only for the direct Perl code in labels or for auto-creation of rowops
 #     labels => [
 #         "name" => $label,
 #         "name" => sub { ... }, # will directly create a Perl label
@@ -50,15 +109,11 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     rowop => $rowop, # what to call can be a rowop
 #     tray => $tray, # or a tray
 #     rowops => \@rowops, # or an array of rowops
-#     label => $label, # or a label and a row
+#     callLabel => $label, # or a label and a row
 #     row => $row, # a row may be an actual row
 #     rowHash => { ... }, # or a hash
 #     rowHash => [ ... ], # either an actual hash or its array form
 #     rowArray => [ ... ], # or an array of values
-# );
-# $unit->callBound( # pushes all the bindings, does the call, pops
-#     $rowop, # or $tray, or [ @rowops ]
-#     $fnr => $bind, ...
 # );
 #     
 # 
@@ -91,7 +146,6 @@ new(char *CLASS, ...)
 		clearErrMsg();
 		try {
 			clearErrMsg();
-			int len, i;
 			Unit *u = NULL;
 			AV *labels = NULL;
 			string name;
@@ -123,47 +177,116 @@ new(char *CLASS, ...)
 			if (labels == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'labels'", funcName), false);
 
-			fbind = new FnBinding(name, fnr);
-
-			// parse labels, and create labels around the code snippets
-			len = av_len(labels)+1; // av_len returns the index of last element
-			if (len % 2 != 0) // 0 elements is OK
-				throw Exception(strprintf("%s: option 'labels' must contain elements in pairs, has %d elements", funcName, len), false);
-			for (i = 0; i < len; i+=2) {
-				SV *svname, *svval;
-				svname = *av_fetch(labels, i, 0);
-				svval = *av_fetch(labels, i+1, 0);
-				string entryname;
-
-				GetSvString(entryname, svname, "%s: in option 'labels' element %d name", funcName, i/2+1);
-
-				Autoref<Label> lb = GetSvLabelOrCode(svval, "%s: in option 'labels' element %d with name '%s'", 
-					funcName, i/2+1, SvPV_nolen(svname));
-				if (lb.isNull()) {
-					// it's a code snippet, make a label
-					if (u == NULL) {
-						throw Exception(strprintf("%s: option 'unit' must be set to handle the code reference in option 'labels' element %d with name '%s'", 
-							funcName, i/2+1, SvPV_nolen(svname)), false);
-					}
-					string lbname = name + "." + entryname;
-					RowType *rt = fnr->getRowType(entryname);
-					if (rt == NULL) {
-						throw Exception(strprintf("%s: in option 'labels' element %d has an unknown return label name '%s'", 
-							funcName, i/2+1, SvPV_nolen(svname)), false);
-					}
-					lb = PerlLabel::makeSimple(u, rt, lbname, svval, "%s: in option 'labels' element %d with name '%s'",
-						funcName, i/2+1, SvPV_nolen(svname));
-				}
-				fbind->addLabel(entryname, lb, true);
-			}
-			try {
-				fbind->checkOrThrow();
-			} catch (Exception e) {
-				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
-			}
+			fbind = makeBinding(funcName, name, u, fnr, labels);
 		} TRICEPS_CATCH_CROAK;
 
 		RETVAL = new WrapFnBinding(fbind);
+	OUTPUT:
+		RETVAL
+
+# Args are the option pairs. The options are:
+#
+# XXX describe options, from the sample above
+# Always returns 1.
+int
+call(...)
+	CODE:
+		static char funcName[] =  "Triceps::FnBinding::call";
+		Autoref<FnBinding> fbind;
+		clearErrMsg();
+		try {
+			clearErrMsg();
+			int len, i;
+			Unit *u = NULL;
+			AV *labels = NULL;
+			string name;
+			FnReturn *fnr = NULL;
+			Rowop *rop = NULL;
+			Tray *tray = NULL;
+			AV *roparray = NULL; // array of rowops
+			Label *clabel = NULL;
+			WrapRow *wcrow = NULL;
+			AV *hash_array = NULL;
+			HV *hash_hash = NULL;
+			AV *data_array = NULL;
+			Autoref<Rowop> made_rop; // a rowop made from the raw data
+
+			if (items % 2 != 0) {
+				throw Exception::f("Usage: %s(optionName, optionValue, ...), option names and values must go in pairs", funcName);
+			}
+			for (int i = 1; i < items; i += 2) {
+				const char *optname = (const char *)SvPV_nolen(ST(i));
+				SV *arg = ST(i+1);
+				if (!strcmp(optname, "unit")) {
+					u = TRICEPS_GET_WRAP(Unit, arg, "%s: option '%s'", funcName, optname)->get();
+				} else if (!strcmp(optname, "name")) {
+					GetSvString(name, arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "on")) {
+					fnr = TRICEPS_GET_WRAP(FnReturn, arg, "%s: option '%s'", funcName, optname)->get();
+				} else if (!strcmp(optname, "labels")) {
+					labels = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "rowop")) {
+					rop = TRICEPS_GET_WRAP(Rowop, arg, "%s: option '%s'", funcName, optname)->get();
+				} else if (!strcmp(optname, "tray")) {
+					tray = TRICEPS_GET_WRAP(Tray, arg, "%s: option '%s'", funcName, optname)->get();
+				} else if (!strcmp(optname, "rowops")) {
+					roparray = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "callLabel")) {
+					clabel = TRICEPS_GET_WRAP(Label, arg, "%s: option '%s'", funcName, optname)->get();
+				} else if (!strcmp(optname, "row")) {
+					wcrow = TRICEPS_GET_WRAP(Row, arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "rowHash")) {
+					GetSvArrayOrHash(hash_array, hash_hash, arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "rowArray")) {
+					data_array = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else {
+					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
+				}
+			}
+
+			if (name.empty())
+				throw Exception(strprintf("%s: missing mandatory option 'name'", funcName), false);
+			if (fnr == NULL)
+				throw Exception(strprintf("%s: missing mandatory option 'on'", funcName), false);
+			if (labels == NULL)
+				throw Exception(strprintf("%s: missing mandatory option 'labels'", funcName), false);
+
+			// the mutually exclusive ways to specify a rowop
+			int rowop_spec = 0;
+			if (rop != NULL) rowop_spec++;
+			if (tray != NULL) rowop_spec++;
+			if (roparray != NULL) rowop_spec++;
+			if (clabel != NULL) rowop_spec++;
+
+			if (rowop_spec != 1)
+				throw Exception::f("%s: exactly 1 of options 'rowop', 'tray', 'rowops', 'callLabel' must be specified, got %d of them.",
+					funcName, rowop_spec);
+
+			// the mutually exclusive ways to specify the row data
+			int data_spec = 0;
+			if (wcrow != NULL) data_spec++;
+			if (hash_array != NULL) data_spec++;
+			if (hash_hash != NULL) data_spec++;
+			if (data_array != NULL) data_spec++;
+
+			if (data_spec != 0 && clabel == NULL)
+				throw Exception::f("%s: the data in options 'row', 'rowHash', 'rowArray' requires the option 'callLabel'.",
+					funcName);
+			if (clabel != NULL && data_spec == 0)
+				throw Exception::f("%s: the option 'callLabel' requires the data in one of options 'row', 'rowHash', 'rowArray'.",
+					funcName);
+
+			if (data_spec != 0 && data_spec != 1)
+				throw Exception::f("%s: only one of options 'row', 'rowHash', 'rowArray' may be used at a time.",
+					funcName);
+
+			// make the rowop to call if needed
+
+			// XXXXXXXXX
+			fbind = makeBinding(funcName, name, u, fnr, labels);
+		} TRICEPS_CATCH_CROAK;
+
+		RETVAL = 1;
 	OUTPUT:
 		RETVAL
 

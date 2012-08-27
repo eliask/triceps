@@ -322,6 +322,18 @@ void GetSvString(string &res, SV *svptr, const char *fmt, ...)
 AV *GetSvArray(SV *svptr, const char *fmt, ...)
 	__attribute__((format(printf, 2, 3)));
 
+// Extract an array or hash reference from a Perl SV value.
+// Throws a Triceps::Exception if the value is not an array nor hash reference.
+// On success, one of array ro hash will contain the value, the other will be NULL.
+//
+// @param array - place to return the value if the svptr is an array reference
+// @param hash - place to return the value if the svptr is a hash reference
+// @param svptr - the Perl SV* from which the value will be extracted
+// @param fmt, ... - the prefix for the error message
+// @return - the array pointer
+void GetSvArrayOrHash(AV *&array, HV *&hash, SV *svptr, const char *fmt, ...)
+	__attribute__((format(printf, 4, 5)));
+
 // The typical argument for binding or function returns: either a
 // ready label or a Perl code reference (for which a label will be
 // created automatically).
