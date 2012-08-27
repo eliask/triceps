@@ -38,7 +38,8 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     $unit->call(...);
 # }
 # ---
-# FnBinding->call( # create and push/call/pop right away
+# Create a binding on the fly and call with it:
+# FnBinding::call( # create and push/call/pop right away
 #     name => "bind1", # used for the names of direct Perl labels
 #     on => $fnr, # determines the type of return
 #     unit => $unit, # needed only for the direct Perl code
@@ -47,6 +48,8 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #         "name" => sub { ... }, # will directly create a Perl label
 #     ]
 #     rowop => $rowop, # what to call can be a rowop
+#     tray => $tray, # or a tray
+#     rowops => \@rowops, # or an array of rowops
 #     label => $label, # or a label and a row
 #     row => $row, # a row may be an actual row
 #     rowHash => { ... }, # or a hash

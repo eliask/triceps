@@ -842,6 +842,9 @@ ok(join("\n", @history), $c_expect_rows);
 # and makeLoopAround()
 
 #############################################################
+# callBound() is tested in Fn.t
+
+#############################################################
 # MUST BE LAST
 # test the unit clearing
 

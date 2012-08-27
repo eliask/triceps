@@ -117,7 +117,8 @@ Label *FnReturn::getLabel(int idx) const
 void FnReturn::push(Onceref<FnBinding> bind)
 {
 	if (!type_->match(bind->getType())) 
-		throw Exception::fTrace("Attempted to push a mismatching binding on the FnReturn '%s'.", name_.c_str());
+		throw Exception::fTrace("Attempted to push a mismatching binding '%s' on the FnReturn '%s'.", 
+			bind->getName().c_str(), name_.c_str());
 	if (!initialized_)
 		throw Exception::fTrace("Attempted to push a binding on an uninitialized FnReturn '%s'.", name_.c_str());
 	stack_.push_back(bind);

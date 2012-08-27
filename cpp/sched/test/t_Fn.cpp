@@ -588,7 +588,7 @@ UTESTCASE call_bindings(Utest *utest)
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Attempted to push a mismatching binding on the FnReturn 'fret2'.\n");
+		UT_IS(msg, "Attempted to push a mismatching binding 'bind1' on the FnReturn 'fret2'.\n");
 	}
 	// detection of pushing on an uninitialized return
 	{
