@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 175 };
+BEGIN { plan tests => 193 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -515,6 +515,8 @@ $u2->setTracer($ts2);
 
 my $rop1 = $lbz1->makeRowopHash("OP_INSERT");
 ok(ref $rop1, "Triceps::Rowop");
+my $rop2 = $lbz2->makeRowopHash("OP_INSERT");
+ok(ref $rop2, "Triceps::Rowop");
 my $rop3 = $lbz3->makeRowopHash("OP_INSERT");
 ok(ref $rop3, "Triceps::Rowop");
 
@@ -857,3 +859,119 @@ ok($fretz1->bindingStackSize(), 2);
 $fretz1->pop();
 $fretz1->pop();
 ok($fretz1->bindingStackSize(), 0);
+
+######################### 
+# FnBinding::call()
+
+ok($fretz1->bindingStackSize(), 0);
+ok($fretz2->bindingStackSize(), 0);
+$ts1->clearBuffer();
+$ts2->clearBuffer();
+
+$exp_call_one =
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' before label 'callb.one' op OP_INSERT {
+unit 'u1' drain label 'callb.one' op OP_INSERT
+unit 'u1' after label 'callb.one' op OP_INSERT }
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+";
+$exp_call_two =
+"unit 'u1' before label 'lbz2' op OP_INSERT {
+unit 'u1' drain label 'lbz2' op OP_INSERT
+unit 'u1' before-chained label 'lbz2' op OP_INSERT
+unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
+unit 'u1' before label 'callb.two' op OP_INSERT {
+unit 'u1' drain label 'callb.two' op OP_INSERT
+unit 'u1' after label 'callb.two' op OP_INSERT }
+unit 'u1' drain label 'fretz1.two' (chain 'lbz2') op OP_INSERT
+unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
+unit 'u1' after label 'lbz2' op OP_INSERT }
+";
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		rowop => $rop1,
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 0);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		rowops => [$rop1, $rop2],
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 1);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one . $exp_call_two);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		tray => $u1->makeTray($rop1, $rop2),
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 1);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one . $exp_call_two);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+######################### 
+# FnBinding::call() errors.
+
+# XXX

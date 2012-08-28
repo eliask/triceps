@@ -109,11 +109,6 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     rowop => $rowop, # what to call can be a rowop
 #     tray => $tray, # or a tray
 #     rowops => \@rowops, # or an array of rowops
-#     callLabel => $label, # or a label and a row
-#     row => $row, # a row may be an actual row
-#     rowHash => { ... }, # or a hash
-#     rowHash => [ ... ], # either an actual hash or its array form
-#     rowArray => [ ... ], # or an array of values
 # );
 #     
 # 
@@ -192,7 +187,6 @@ int
 call(...)
 	CODE:
 		static char funcName[] =  "Triceps::FnBinding::call";
-		Autoref<FnBinding> fbind;
 		clearErrMsg();
 		try {
 			clearErrMsg();
@@ -204,17 +198,11 @@ call(...)
 			Rowop *rop = NULL;
 			Tray *tray = NULL;
 			AV *roparray = NULL; // array of rowops
-			Label *clabel = NULL;
-			WrapRow *wcrow = NULL;
-			AV *hash_array = NULL;
-			HV *hash_hash = NULL;
-			AV *data_array = NULL;
-			Autoref<Rowop> made_rop; // a rowop made from the raw data
 
 			if (items % 2 != 0) {
 				throw Exception::f("Usage: %s(optionName, optionValue, ...), option names and values must go in pairs", funcName);
 			}
-			for (int i = 1; i < items; i += 2) {
+			for (int i = 0; i < items; i += 2) {
 				const char *optname = (const char *)SvPV_nolen(ST(i));
 				SV *arg = ST(i+1);
 				if (!strcmp(optname, "unit")) {
@@ -231,19 +219,13 @@ call(...)
 					tray = TRICEPS_GET_WRAP(Tray, arg, "%s: option '%s'", funcName, optname)->get();
 				} else if (!strcmp(optname, "rowops")) {
 					roparray = GetSvArray(arg, "%s: option '%s'", funcName, optname);
-				} else if (!strcmp(optname, "callLabel")) {
-					clabel = TRICEPS_GET_WRAP(Label, arg, "%s: option '%s'", funcName, optname)->get();
-				} else if (!strcmp(optname, "row")) {
-					wcrow = TRICEPS_GET_WRAP(Row, arg, "%s: option '%s'", funcName, optname);
-				} else if (!strcmp(optname, "rowHash")) {
-					GetSvArrayOrHash(hash_array, hash_hash, arg, "%s: option '%s'", funcName, optname);
-				} else if (!strcmp(optname, "rowArray")) {
-					data_array = GetSvArray(arg, "%s: option '%s'", funcName, optname);
 				} else {
 					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
 				}
 			}
 
+			if (u == NULL)
+				throw Exception(strprintf("%s: missing mandatory option 'unit'", funcName), false);
 			if (name.empty())
 				throw Exception(strprintf("%s: missing mandatory option 'name'", funcName), false);
 			if (fnr == NULL)
@@ -256,34 +238,35 @@ call(...)
 			if (rop != NULL) rowop_spec++;
 			if (tray != NULL) rowop_spec++;
 			if (roparray != NULL) rowop_spec++;
-			if (clabel != NULL) rowop_spec++;
 
 			if (rowop_spec != 1)
-				throw Exception::f("%s: exactly 1 of options 'rowop', 'tray', 'rowops', 'callLabel' must be specified, got %d of them.",
+				throw Exception::f("%s: exactly 1 of options 'rowop', 'tray', 'rowops' must be specified, got %d of them.",
 					funcName, rowop_spec);
 
-			// the mutually exclusive ways to specify the row data
-			int data_spec = 0;
-			if (wcrow != NULL) data_spec++;
-			if (hash_array != NULL) data_spec++;
-			if (hash_hash != NULL) data_spec++;
-			if (data_array != NULL) data_spec++;
+			// create and set up the binding
+			Autoref<FnBinding> fbind = makeBinding(funcName, name, u, fnr, labels);
+			Autoref<AutoFnBind> ab = new AutoFnBind;
+			ab->add(fnr, fbind);
 
-			if (data_spec != 0 && clabel == NULL)
-				throw Exception::f("%s: the data in options 'row', 'rowHash', 'rowArray' requires the option 'callLabel'.",
-					funcName);
-			if (clabel != NULL && data_spec == 0)
-				throw Exception::f("%s: the option 'callLabel' requires the data in one of options 'row', 'rowHash', 'rowArray'.",
-					funcName);
+			// call the labels
+			if (roparray != NULL) {
+				int len = av_len(roparray)+1; // av_len returns the index of last element
+				for (int i = 0; i < len; i++) {
+					SV *svop = *av_fetch(roparray, i, 0);
+					u->call(TRICEPS_GET_WRAP(Rowop, svop, "%s: element %d of the option 'rowops' array", funcName, i)->get()); // not i+1 by design
+				}
+			} else if (rop) {
+				u->call(rop);
+			} else {
+				u->callTray(tray);
+			}
 
-			if (data_spec != 0 && data_spec != 1)
-				throw Exception::f("%s: only one of options 'row', 'rowHash', 'rowArray' may be used at a time.",
-					funcName);
-
-			// make the rowop to call if needed
-
-			// XXXXXXXXX
-			fbind = makeBinding(funcName, name, u, fnr, labels);
+			// the bindings get popped
+			try {
+				ab->clear();
+			} catch(Exception e) {
+				throw Exception::f(e, "%s: error on popping the bindings:", funcName);
+			}
 		} TRICEPS_CATCH_CROAK;
 
 		RETVAL = 1;
