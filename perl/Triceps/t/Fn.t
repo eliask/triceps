@@ -378,7 +378,7 @@ ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'on'/);
 ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'labels'/);
 
 &badFnBinding(name => undef);
-ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'name'/);
+ok($@ =~ /^Triceps::FnBinding::new: missing or empty mandatory option 'name'/);
 
 &badFnBinding(unit => 'x');
 ok($@ =~ /^Triceps::FnBinding::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
@@ -974,4 +974,102 @@ unit 'u1' after label 'lbz2' op OP_INSERT }
 ######################### 
 # FnBinding::call() errors.
 
-# XXX
+my $rop001 = $lb1->makeRowopHash("OP_INSERT");
+ok(ref $rop001, "Triceps::Rowop");
+
+sub badCall # (optName, optValue, ...)
+{
+	my %opt = (
+		name => "fbindx",
+		unit => $u1,
+		on => $fret1,
+		labels => [
+			one => $lbind1,
+			two => sub { },
+		],
+	);
+	while ($#_ >= 1) {
+		if (defined $_[1]) {
+			$opt{$_[0]} = $_[1];
+		} else {
+			delete $opt{$_[0]};
+		}
+		shift; shift;
+	}
+	my $res = eval {
+		Triceps::FnBinding::call(%opt);
+	};
+	ok(!defined $res);
+}
+
+{
+	# do this one manually, since badCall can't handle unpaired args
+	my $res = eval {
+		Triceps::FnBinding::call(
+			name => "fbindx",
+			[
+				one => $lbind1,
+				two => sub { },
+			]
+		);
+	};
+	ok(!defined $res);
+	ok($@ =~ /^Usage: Triceps::FnBinding::call\(optionName, optionValue, ...\), option names and values must go in pairs/);
+	#print "$@";
+}
+
+&badCall(xxx => "fbind1");
+ok($@ =~ /^Triceps::FnBinding::call: unknown option 'xxx'/);
+#print "$@";
+
+&badCall(name => "");
+ok($@ =~ /^Triceps::FnBinding::call: missing or empty mandatory option 'name'/);
+#print "$@";
+
+&badCall(unit => undef);
+ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'unit'/);
+#print "$@";
+
+&badCall(on => undef);
+ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'on'/);
+#print "$@";
+
+&badCall(labels => undef);
+ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'labels'/);
+#print "$@";
+
+&badCall();
+ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops' must be specified, got 0 of them./);
+#print "$@";
+
+&badCall(rowop => $rop1, rowops => [$rop1, $rop2], tray => $u1->makeTray($rop1, $rop2));
+ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops' must be specified, got 3 of them./);
+#print "$@";
+
+&badCall(rowops => [$u1]);
+ok($@ =~ /^Triceps::FnBinding::call: element 0 of the option 'rowops' array value has an incorrect magic for Triceps::Rowop/);
+#print "$@";
+
+&badCall(rowop => $rop1, labels => [zzz => $lbind1]);
+ok($@ =~ /^Triceps::FnBinding::call: invalid arguments:\n  Unknown return label name 'zzz'./);
+#print "$@";
+
+&badCall(rowop => $rop001, labels => [one => sub { die "test die\n"; }]);
+ok($@ =~ /^test die
+Detected in the unit 'u1' label 'fbindx.one' execution handler.
+Called through the label 'fbindx.one'.
+Called through the label 'fret1.one'.
+Called chained from the label 'lb1'./);
+#print "$@";
+
+&badCall(rowop => $rop001, labels => [one => sub { $fret1->push($fbind1); }]);
+ok($@ =~ /^Triceps::FnBinding::call: error on popping the bindings:
+  AutoFnBind::clear: caught an exception at position 0
+    Attempted to pop an unexpected binding 'fbindx' from FnReturn 'fret1'.
+    The bindings on the stack \(top to bottom\) are:
+      fbind1
+      fbindx/);
+#print "$@";
+# clean up
+$fret1->pop();
+$fret1->pop();

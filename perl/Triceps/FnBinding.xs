@@ -166,7 +166,7 @@ new(char *CLASS, ...)
 			}
 
 			if (name.empty())
-				throw Exception(strprintf("%s: missing mandatory option 'name'", funcName), false);
+				throw Exception(strprintf("%s: missing or empty mandatory option 'name'", funcName), false);
 			if (fnr == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'on'", funcName), false);
 			if (labels == NULL)
@@ -227,7 +227,7 @@ call(...)
 			if (u == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'unit'", funcName), false);
 			if (name.empty())
-				throw Exception(strprintf("%s: missing mandatory option 'name'", funcName), false);
+				throw Exception(strprintf("%s: missing or empty mandatory option 'name'", funcName), false);
 			if (fnr == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'on'", funcName), false);
 			if (labels == NULL)
