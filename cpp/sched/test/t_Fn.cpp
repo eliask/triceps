@@ -788,6 +788,7 @@ UTESTCASE tray_bindings(Utest *utest)
 
 	bind1->withTray(false);
 	UT_ASSERT(bind1->getTray() == NULL);
+	bind1->callTray(); // does nothing
 	bind1->withTray(true);
 	UT_ASSERT(bind1->getTray() != NULL);
 	t = bind1->getTray();
