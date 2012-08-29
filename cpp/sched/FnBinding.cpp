@@ -90,6 +90,41 @@ FnBinding *FnBinding::addLabel(const string &name, Autoref<Label> lb, bool autoc
 	return this;
 }
 
+FnBinding *FnBinding::withTray(bool on)
+{
+	if (on) {
+		if (tray_.isNull())
+			tray_ = new Tray;
+	} else {
+		tray_ = NULL;
+	}
+	return this;
+}
+
+Onceref<Tray> FnBinding::swapTray()
+{
+	Onceref<Tray> t = tray_;
+	if (!tray_.isNull())
+		tray_ = new Tray;
+	return t;
+}
+
+void FnBinding::callTray()
+{
+	if (tray_.isNull() || tray_->empty())
+		return;
+	Autoref<Tray> t = tray_;
+	tray_ = new Tray;
+	for (Tray::iterator it = t->begin(); it != t->end(); ++it) {
+		Rowop *rop = *it;
+		Unit *u = rop->getLabel()->getUnitPtr();
+		if (u == NULL) {
+			throw Exception::f("FnBinding::callTray: attempted to call a cleared label '%s'.", rop->getLabel()->getName().c_str());
+		}
+		u->call(rop);
+	}
+}
+
 FnBinding *FnBinding::checkOrThrow()
 {
 	Erref err = getErrors();

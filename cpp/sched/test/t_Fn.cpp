@@ -726,6 +726,252 @@ UTESTCASE call_bindings(Utest *utest)
 	}
 }
 
+UTESTCASE tray_bindings(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+	Autoref<Tray> t;
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit1 = new Unit("u");
+	Autoref<Unit> unit2 = new Unit("u2");
+
+	Autoref<Unit::StringNameTracer> trace1 = new Unit::StringNameTracer(true);
+	unit1->setTracer(trace1);
+
+	Autoref<Unit::StringNameTracer> trace2 = new Unit::StringNameTracer(true);
+	unit2->setTracer(trace2);
+
+	// make the components
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+	
+	// matching
+	fld[0].name_ = "x";
+	Autoref<RowType> rt1a = new CompactRowType(fld);
+	UT_ASSERT(rt1a->getErrors().isNull());
+
+	fld[2].type_ = Type::r_int32;
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
+
+	fld[0].name_ = "A";
+	Autoref<RowType> rt3 = new CompactRowType(fld);
+	UT_ASSERT(rt3->getErrors().isNull()); // matches rt2
+
+	Autoref<Label> lb1 = new DummyLabel(unit1, rt1, "lb1");
+	Autoref<Label> lb1x = new DummyLabel(unit2, rt1, "lb1x");
+	Autoref<Label> lb1a = new DummyLabel(unit1, rt1, "lb1a");
+	Autoref<Label> lb2 = new DummyLabel(unit1, rt2, "lb2");
+	Autoref<Label> lb2a = new DummyLabel(unit1, rt2, "lb2a");
+	Autoref<Label> lb3 = new DummyLabel(unit1, rt3, "lb3");
+	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
+
+	// make the return
+	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+		->addFromLabel("one", lb1)
+		->addFromLabel("two", lb2)
+		->initialize();
+	UT_ASSERT(fret1->getErrors().isNull());
+	UT_ASSERT(fret1->isInitialized());
+
+	// make the bindings
+	Autoref<FnBinding> bind1 = FnBinding::make("bind1", fret1)
+		->addLabel("one", lb1a, true)
+		->addLabel("two", lb3a, true) // matching
+		->withTray(true);
+	UT_ASSERT(bind1->getErrors().isNull());
+	UT_ASSERT(bind1->getTray() != NULL);
+
+	bind1->withTray(false);
+	UT_ASSERT(bind1->getTray() == NULL);
+	bind1->withTray(true);
+	UT_ASSERT(bind1->getTray() != NULL);
+	t = bind1->getTray();
+	bind1->withTray(true);
+	UT_IS(bind1->getTray(), t);
+
+	// labels from another unit are OK
+	Autoref<FnBinding> bind2 = FnBinding::make("bind2", fret1)
+		->addLabel("one", lb1x, true) // in unit2
+		->addLabel("two", lb2a, true);
+	UT_ASSERT(bind2->getErrors().isNull());
+	UT_ASSERT(bind2->getTray() == NULL);
+
+	bind2->withTray(true);
+	UT_ASSERT(bind2->getTray() != NULL);
+
+	// missing bindings for some labels are OK
+	Autoref<FnBinding> bind3 = FnBinding::make("bind3", fret1)
+		->withTray(true);
+	UT_ASSERT(bind3->getErrors().isNull());
+
+	// make the rows to send
+	FdataVec dv; // just leave the contents all NULL
+	Autoref<Rowop> op1 = new Rowop(lb1, Rowop::OP_INSERT, rt1->makeRow(dv));
+	Autoref<Rowop> op2 = new Rowop(lb2, Rowop::OP_INSERT, rt2->makeRow(dv));
+
+	// call with binding
+	fret1->push(bind1);
+	unit1->call(op2);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	// the bindings are collected and not executed
+	UT_IS(msg, 
+		"unit 'u' before label 'lb2' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+
+		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after label 'lb2' op OP_INSERT }\n"
+	);
+
+	t = bind1->getTray();
+	UT_IS(t->size(), 1);
+	UT_IS(bind1->swapTray(), t);
+	UT_ASSERT(bind1->getTray() != NULL);
+	UT_ASSERT(bind1->getTray() != t);
+
+	unit1->callTray(t);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb3a' op OP_INSERT\n"
+		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
+	);
+
+	fret1->pop(bind1);
+
+	// nest a binding and call to another unit
+	fret1->pushUnchecked(bind2);
+	unit1->call(op1);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb1' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after label 'lb1' op OP_INSERT }\n"
+	);
+
+	t = bind2->getTray();
+	UT_IS(t->size(), 1);
+
+	msg = trace2->getBuffer()->print();
+	trace2->clearBuffer();
+	UT_IS(msg, "");
+
+	// now call the tray
+	bind2->callTray();
+	UT_ASSERT(bind2->getTray() != NULL);
+	UT_ASSERT(bind2->getTray() != t);
+	msg = trace2->getBuffer()->print();
+	trace2->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u2' before label 'lb1x' op OP_INSERT {\n"
+		"unit 'u2' drain label 'lb1x' op OP_INSERT\n"
+		"unit 'u2' after label 'lb1x' op OP_INSERT }\n"
+	);
+
+	fret1->pop(bind2);
+	
+	// call with binding that has no labels
+	fret1->push(bind3);
+	unit1->call(op1);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	UT_IS(msg, 
+		"unit 'u' before label 'lb1' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after label 'lb1' op OP_INSERT }\n"
+	);
+
+	t = bind3->getTray();
+	UT_IS(t->size(), 0);
+
+	bind3->callTray(); // calling an empty tray does nothing
+	UT_ASSERT(bind3->getTray() != NULL);
+	UT_IS(bind3->getTray(), t);
+
+	UT_IS(bind3->swapTray(), t); // swapping does swap even an epmty tray
+	UT_ASSERT(bind3->getTray() != t);
+
+	fret1->pop(bind3);
+
+	// call a cleared label
+	fret1->push(bind1);
+	unit1->call(op2);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	// the bindings are collected and not executed
+	UT_IS(msg, 
+		"unit 'u' before label 'lb2' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+
+		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after label 'lb2' op OP_INSERT }\n"
+	);
+
+	t = bind1->getTray();
+	UT_IS(t->size(), 1);
+
+	lb3a->clear();
+
+	{
+		msg.clear();
+		try {
+			bind1->callTray();
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "FnBinding::callTray: attempted to call a cleared label 'lb3a'.\n");
+	}
+
+	UT_ASSERT(bind1->getTray() != NULL);
+	UT_ASSERT(bind1->getTray() != t);
+
+	// keep the same bind1
+
+	// a label that is already cleared won't even have rows scheduled
+	fret1->push(bind1);
+	unit1->call(op2);
+	msg = trace1->getBuffer()->print();
+	trace1->clearBuffer();
+	// the bindings are collected and not executed
+	UT_IS(msg, 
+		"unit 'u' before label 'lb2' op OP_INSERT {\n"
+		"unit 'u' drain label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+
+		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after label 'lb2' op OP_INSERT }\n"
+	);
+
+	t = bind1->getTray();
+	UT_IS(t->size(), 0);
+
+	fret1->pop(bind1);
+	
+}
+
 int cleared;
 int destroyed;
 

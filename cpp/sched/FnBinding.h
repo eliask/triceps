@@ -11,6 +11,7 @@
 
 #include <type/RowSetType.h>
 #include <sched/Label.h>
+#include <sched/Tray.h>
 
 namespace TRICEPS_NS {
 
@@ -66,6 +67,41 @@ public:
 	// @return - the same FnBinding object, for chained calls.
 	FnBinding *addLabel(const string &name, Autoref<Label> lb, bool autoclear);
 
+	// Set the tray collection more: if enabled, instead of calling the
+	// rowops immediately, they will be collected on a tray and can
+	// be called later.
+	//
+	// @param on - trye to enable the tray collection, false to disable.
+	// @return - the same FnBinding object, for chained calls.
+	FnBinding *withTray(bool on);
+
+	// Get the current tray and replace it in the binding with a new
+	// clean tray. If the tray mode is disabled, has no effect and returns NULL.
+	// @return - the tray with collected data, or NULL is disabled.
+	Onceref<Tray> swapTray();
+
+	// Get the current tray.
+	// @return - the current tray, or NULL is disabled.
+	Tray *getTray() const
+	{
+		return tray_;
+	}
+
+	// Swap the tray and call all the collected rowops.
+	// The swapping is done before calling anything, so if the calls cause
+	// more data to be sent to the binding, it will be collected on the
+	// fresh tray.
+	// If the tray collection is not enabled, does nothing.
+	//
+	// Each rowop is called with its label's unit. Mixing units within one
+	// binding and one tray is still generally not a good idea, but in
+	// this particular case it happens to work correctly.
+	//
+	// May propagate the Exception from calling, or throw an Exception
+	// if some label has been cleared. On exception, the rest of the
+	// tray contents is thrown away.
+	void callTray();
+
 	// Get the collected error info. A binding with errors should
 	// not be used for calls.
 	Erref getErrors() const
@@ -113,6 +149,7 @@ protected:
 	LabelVec labels_; // looked up by index
 	BoolVec autoclear_; // of the same size as labels_
 	Erref errors_; // the accumulated errors
+	Autoref<Tray> tray_; // the collection tray, if enabled
 };
 
 }; // TRICEPS_NS

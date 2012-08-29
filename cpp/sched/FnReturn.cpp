@@ -183,7 +183,11 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 
 	// This can safely call another unit.
 	Autoref<Rowop> adrop = new Rowop(lab, arg);
-	u->call(adrop);
+	Tray *tray = top->getTray();
+	if (tray)
+		tray->push_back(adrop);
+	else
+		u->call(adrop);
 }
 
 ///////////////////////////////////////////////////////////////////////////
