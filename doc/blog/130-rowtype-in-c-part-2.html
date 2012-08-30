@@ -1,0 +1,60 @@
+RowType in C++, part 2
+
+Let's get to constructing the row types. To reiterate the last post, you don't construct the objects of RowType class itself, it's an abstract class. You construct the objects of the concrete subclass(es), specifically CompactRowType. Make a vector describing the fields and do the construction.
+
+You can make the vector by either starting with an empty one and adding the fields to it or allocating a vector of the right size in advance and  setting the fields to it.
+
+RowType::FieldVec fields1;
+fields1.push_back(RowType::Field("a", Type::r_int64)); // scalar by default
+fields1.push_back(RowType::Field("b", Type::r_int32, RowType::Field::AR_SCALAR));
+fields1.push_back(RowType::Field("c", Type::r_uint8, RowType::Field::AR_VARIABLE));
+
+RowType::FieldVec fields2(2);
+fields2[0].assign("a", Type::r_int64); // scalar by default
+fields2[1].assign("b", Type::r_int32, RowType::Field::AR_VARIABLE);
+
+You can also reuse the same vector and clean/resize is as needed to create more types.
+
+If you're used to laying out the C structures placing the larger elements first for the more efficient alignment, know that this is not needed for the Triceps rows. The CompactRowType stores the row data unaligned, so any field order will result in the same size of the rows. And it can't make use of some fields happening to be aligned either.
+
+You can also find the simple types by their string names:
+
+fields1.push_back(RowType::Field("d", Type::findSimpleType("uint8"), RowType::Field::AR_VARIABLE));
+
+If the type name is incorrect and the type is not found, findSimpleType() will return NULL, which NULL will be caught later at the row type creation times. Note that there is no automatic look-up of the array types. You can't simply pass "uint8[]" to findSimpleType(). You have to break it up into the simple type name as such an the array indication, like is done in perl/Triceps/RowType.xs. This would probably a good thing to add to RowType::Field in the future.
+
+You can't use the type Type::r_void for the fields, it will be reported as an error.
+
+After the fields array is created, create the row type:
+
+Autoref<RowType> rt1 = new CompactRowType(fields1);
+if (rt1->getErrors()->hasError())
+    throw Exception(rt1->getErrors(), true);
+
+
+You could also use Autoref<CompactRowType> but there isn't any point to it, since all the methods of CompactRowType are virtuals inherited from RowType.
+
+Don't forget to check that the constructed type has no errors, and bail out if so. Throwing an Exception is a convenient way to abort with a nice error message. I have plans to add a function checkOrThrow() that will replace this "if", but the details are to be worked out yet. A type with errors can't be used for anything, or it will cause the program to crash.
+
+The RowType and its subclasses are immutable after construction, so they can be shared all you want. If you really need to create a copy, you can do it:
+
+Autoref<RowType> rt2 = new CompactRowType(rt1);
+if (rt2->getErrors()->hasError())
+    throw Exception(rt2->getErrors(), true);
+
+
+Checking the errors after the copy creation is kind of optional if the original type was correct, but it's better to be safe than sorry.
+
+You can get back the information about the fields:
+
+const RowType::FieldVec &f = rt1->fields();
+
+It's a reference to the vector directly inside the RowType, so const reminds you not to change it (that vector is a copy of the vector used during the construction, so the original vector can be changed afterwards). If you want to extend a type with more fields, make a copy of its fields and extend it:
+
+RowType::FieldVec fields3 = rt1->fields();
+fields3.push_back(RowType::Field("z", Type::r_string));
+Autoref<RowType> rt3 = new CompactRowType(fields3);
+if (rt3->getErrors()->hasError())
+    throw Exception(rt3->getErrors(), true);
+
+That's about it for the RowType construction. 

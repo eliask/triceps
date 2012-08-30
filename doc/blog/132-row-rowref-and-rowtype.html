@@ -1,0 +1,122 @@
+Row, Rowref and RowType
+
+A row is defined naturally with the class Row. Which is fundamentally an opaque buffer. You can't do anything with it directly other than having a pointer to it. You can't even delete a Row object using that pointer. To do anything with a Row, you have to go through that row's RowType. There are some helper classes, like CompactRow, but you don't need to concern yourself with them: they are helpers for the appropriate row types and are never used directly.
+
+That opaque buffer is internally wired for the reference counting, of the Mtarget multithreaded variety. The rows can be passed and shared freely between the threads. No locks are needed for that (other than in the reference counter), the thread-safety is achieved by the rows being immutable. Once a row is created, it stays the same. If you need to change a row, just create a new row with the new contents. Basically, it's the same rules as in the Perl API.
+
+The tricky part in the C++ API is that you can't simply use an Autoref<Row> for rows. As mentioned before, it won't know, how to destroy the Row when its reference counter goes to zero. Instead you use a special variety of it called Rowref, defined in type/RowType.h, and described in a previous post. To summarize, it holds a reference both to the Row (that keeps the data) and to the RowType (that knows how to work with the Row). The RowType must be correct for the Row. It's possible to combine the completely unrelated Row and RowType, and the result will be at least some garbage data, or at most a program crash. The Perl wrapper goes to great lengths to make sure that this doesn't happen. In the C++ API you're on your own. You gain the efficiency at the price of higher responsibility.
+
+The general rule is that it's safe to combine a Row and RowType if this RowType matches the RowType used to create that row. The matching RowTypes may have different names of the fields but the same substance.
+
+A Row is created similarly to a RowType: build a vector describing the values in the row, call the constructor, you get the row. The vector type is FdataVec, and its element type is Fdata. Both of them are top-level (i.e. Triceps::FdataVec and Triceps::Fdata), not inside some other class, and both are defined in type/RowType.h.
+
+An Fdata describes the data for one field. It tells whether the field is not null, and if so, where to find the data to place into that field. It doesn't know anything about the field types or such. It deals with the raw bytes: the pointer to the first byte of the value, and the number of bytes. As a special case, if you want the field to be filled with zeroes, set the data pointer to NULL. It is possible to specify an incorrect number of bytes, for example create an int64 field of 3 bytes. This data will be garbage, and if it happens to be at the end of the row, might cause a crash. It's your responsibility to store the correct data. The same goes for the string fields: it's your responsibility to make sure that the data is terminated with an '\0', and that '\0' is included into the length of the data. On the other hand, the unit8[] fields don't need a '\0' at the end, all the bytes included into them are a part of the value.
+
+The data vector gets constructed similarly to the field vector: either start with an empty vector and push pack the elements, or allocate one of the right size and set the elements. The relevant Fdata constructors and methods are:
+
+Fdata(bool notNull, const void *data, intptr_t len);
+void setPtr(bool notNull, const void *data, intptr_t len);
+void setNull();
+
+The setNull() is a shortcut of setPtr() that sets the notNull to false and ignores the other fields. In version 1.0 the default Fdata constructor leaves all the fields uninitialized. I've changed this now for version 1.1 to set notNull to false by default.
+
+For example:
+
+uint8_t v_uint8[10] = "123456789"; // just a convenient representation
+int32_t v_int32 = 1234;
+int64_t v_int64 = 0xdeadbeefc00c;
+double v_float64 = 9.99e99;
+char v_string[] = "hello world";
+
+FdataVec fd1;
+fd1.push_back(Fdata(true, &v_uint8, sizeof(v_uint8)-1)); // exclude \0
+fd1.push_back(Fdata(true, &v_int32, sizeof(v_int32)));
+fd1.push_back(Fdata(false, NULL, 0)); // a NULL field
+fd1.push_back(Fdata(true, &v_float64, sizeof(v_float64)));
+fd1.push_back(Fdata(true, &v_string, sizeof(v_string)));
+
+Rowref r1(rt1,  rt1->makeRow(fd1));
+Rowref r2(rt1,  fd1);
+
+
+
+
+
+The Rowref constructor from Fdata vector calls the makeRow() implicitly, for convenience, so both forms provide the same result. For another example that allocates a vector and then fills it:
+
+Rowref r2(rt1,  fd1);
+
+FdataVec fd2(3);
+fd2[0].setPtr(true, &v_uint8, sizeof(v_uint8)-1); // exclude \0
+fd2[1].setNull();
+fd2[2].setFrom(r1.getType(), r1.get(), 2); // copy from r1 field 2
+
+Rowref r3(rt1,  fd2);
+
+The field 2 is set by copying it from a field of another row. It sets the data pointer to the location inside the original row, and the data will be copied when the new row gets created. So make sure to not release the reference to the original row until the new row is created. The prototype is:
+
+void setFrom(const RowType *rtype, const Row *row, int nf);
+
+In fd2 the vector is smaller than the number of fields in the row. The rest of fields are filled with NULLs. They actually are literally filled with NULLs in fd2: if the size of the argument vector for makeRow() is smaller than the number of fields in the row type, the vector gets extended with the NULL values before anything is done with it. It's no accident that the argument of the RowType::makeRow() is not const:
+
+class RowType {
+    virtual Row *makeRow(FdataVec &data) const;
+};
+
+class Rowref {
+    Rowref(const RowType *t, FdataVec &data);
+    Rowref &operator=(FdataVec &data);
+};
+
+It's also possible to have more elements in the FdataVec than in the row type. In this case the extra arguments are considered the "overlays": the "main" elements set the size of the fields while the "overlays" copy the data fragments over that. It's a convenient way to assemble the array fields from the fragments, for example:
+
+RowType::FieldVec fields4;
+fields4.push_back(RowType::Field("a", Type::r_int64, RowType::Field::AR_VARIABLE));
+
+Autoref<RowType> rt4 = new CompactRowType(fields4);
+if (rt4->getErrors()->hasError())
+    throw Exception(rt4->getErrors(), true);
+
+FdataVec fd4;
+Fdata fdtmp;
+fd4.push_back(Fdata(true, NULL, sizeof(v_float64)*10)); // allocate space
+fd4.push_back(Fdata(0, sizeof(v_int64)*2, &v_int64, sizeof(v_int64)));
+// fill a temporary element with setOverride and then insert it
+fdtmp.setOverride(0, sizeof(v_int64)*4, &v_int64, sizeof(v_int64));
+fd4.push_back(fdtmp);
+// manually copy an element from r1
+fdtmp.nf_ = 0;
+fdtmp.off_ = sizeof(v_int64)*5;
+r1.getType()->getField(r1.get(), 2, fdtmp.data_, fdtmp.len_);
+fd4.push_back(fdtmp);
+
+Rowref r4(rt4,  fd4);
+
+This creates a row type from a single field "a" at index 0, an array of int64. The data vector  fd4 has the 0th element define the space for 10 elements in the array, filled by default with zeroes. It doesn't have to zero them, it could copy the data from some location in memory. I've just done the zeroing here to show how it can be done.
+
+The rest of elements are the "overrides" constructed in different ways.
+
+The first one uses the override constructor:
+
+Fdata(int nf, intptr_t off, const void *data, intptr_t len);
+
+Here nf is the number of the field whose contents to overried, off is the byte offset in it, and data and len point to the location to copy from as usual. In this case the 2nd element (counting from 0) of the array gets set with the value from v_int64.
+
+The second override uses the method setOverride() for the same purpose:
+
+void setOverride(int nf, intptr_t off, const void *data, intptr_t len);
+
+It sets a temporary Fdata which then gets appended (copied) to the vector. It sets the element of the vector at index 4 to the same value of v_int64.
+
+The third override copies the value from the row r1. Since there is no ready method for this purpose (perhaps there should be?), it goes about its way manually, setting the fields explicitly. nf_ if the same as nf in the methods, the field number to override. off_ is the offset. And the location and length gets filled into data_ and len_ by getField(), which takes the data from the row r1, field 2.
+
+But wait, the field 2 of r1 has been set to NULL! Should not the NULL indication be set in the copy as well? As it turns out, no. The NULL indication (the field notNull_ being set to false) is ignoredby makeRow()  in the override elements. However getField() will set the length to 0, so nothing will get copied. The value at index 5 will be left as it was initially set, which happens to be 0.
+
+So in the end the values in the field "a" array at indexes 2 and 4 will be set to the same as v_int64, and the other indexes 0..10 to 0.
+
+If multiple overrides specify the overlapping ranges, they will just sequentially overwrite each other, and the last one will win.
+
+If an override attempts to specify writing past the end of the originally reserved area of the field, it will be quietly ignored. Just don't do this. If the field was originally set to NULL, its reserved area will be zero bytes, so any overrides attempting to write into it will be silently ignored.
+
+The summary is: the overrides allow to build the array values efficiently from the disjointed areas of memory, but if they are used, they have to be used with care.
+

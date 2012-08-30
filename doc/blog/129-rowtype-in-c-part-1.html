@@ -1,0 +1,57 @@
+RowType in C++, part 1
+
+In the Perl API a row type is a collection of fields. Under the hood the things are more complicated. In the C++ API Triceps allows for more flexibility, more ways to represent a row. The row type is represented by the abstract base class RowType that tells the logical structure of a row and by its concrete subclasses that define the concrete layout of data in a row. To create, read or manipulate a row, all you need to know is a reference to RowType. It would refer to a concrete row type object, and the concrete row operations are accessed by the virtual methods. But when you create a row type, you need to know, to which concrete row type it will belong.
+
+Currently the choice is easy: there is only one such concrete subclass CompactRowType. The "compact" means that the data is stored in the rows in a compact form, one field value after another, without alignment. Perhaps some day there will be an AlignedRowType, allowing to read the values more efficiently. Or perhaps some day there will be a ZippedRowType that would store the data in the compressed format.
+
+You would never use the RowType constructor directly, it's called from the subclasses. But every subclass is expected to define a similar constructor:
+
+RowType(const FieldVec &fields);
+CompactRowType(const FieldVec &fields);
+
+The FieldVec is the definition of fields in the row type. It's defined as simple as:
+
+typedef vector<Field> FieldVec;
+
+An important side note is that the field is defined within the RowType, so it's really RowType::FieldVec and RowType::Field, and you need to refer to them in your code by this qualified name. So, to create a row type, you create a vector of field definitions first and then construct the row type from it. You can throw away or modify that vector afterwards.
+
+As usual, the constructor arguments might not be correct, and any errors will be remembered and returned with getErrors(). Don't use a type with errors (other than to read the error messages from it, and to destroy it), it might cause your program to crash.
+
+A Field consists of the basic information about it: the name, the type, and the array indication (remember, a Triceps field may contain an array). The array indication is either RowType::Field::AR_SCALAR for a scalar value or RowType::Field::AR_VARIABLE for a variable-sized array. The original plan was also to use the integer values for the fixed-sized array fields, but in reality the variable-sized array fields have turned out to be easier to implement and that was it. So don't use the integer values. Most probably they would work like the same variable-sized arrays but they haven't been tested, and something somewhere might crash. Use the symbolic enum AR_*.
+
+The normal Field constructor provides all this information:
+
+ Field(const string &name, Autoref<const Type> t, int arsz = AR_SCALAR);
+
+Or you can use the default constructor and later change the fields in the Field (or of course read them) as you please:
+
+string name_;
+Autoref <const Type> type_;
+int arsz_;
+
+Or you can assign them in one fell swoop:
+
+void assign(const string &name, Autoref<const Type> t, int arsz = -1);
+
+Note that even though theoretically you can define a field of any Type, in practice it has to be of a SimpleType, or the RowType constructor will return an error later. Why isn't it defined as an Autoref<SimpleType> then? The grand plan is to allow some more interesting data structures in the rows, and this keeps the door open. In particular, the rows will be able to hold references to the other rows, just I haven't got to implementing it yet.
+
+Once again, a RowType constructor makes a copy of the FieldVec for its use, so you can modify or destroy the original FieldVec right away. You can get back the information about the fields in RowType:
+
+const vector<Field> &fields() const;
+
+It returns a reference directly to the FieldVec contained in the row type, so you must never modify it! The const-ness gives a reminder about it.
+
+There are more row type constructors (but no default one). First, each subclass variety is supposed to be able to construct its variety by copying any RowType:
+
+CompactRowType(const RowType &proto);
+CompactRowType(const RowType *proto);
+
+The version with the pointer argument also works for passing the Autoref<RowType> as the argument which gets automatically converted to a pointer. And it's really the more typically used one than the reference version.
+
+The resulting type will have the same logical structure but possibly a different representation than the original. By the way, if you care only about the logical structure but not representation, you still can't directly construct a RowType because it's an abstract class. But just construct any concrete subclass, say CompactRowType (since it's the only one available at the moment anyway), and then use its logical structure.
+
+The other constructor variety is a factory method:
+
+virtual RowType *newSameFormat(const FieldVec &fields) const;
+
+It combines the representation format from one row type and the arbitrary logical structure (the fields vector), possibly from another row type. Or course, until more concrete type representations become available, its use is purely theoretical. 

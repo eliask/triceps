@@ -1,0 +1,18 @@
+Simple types
+
+The simple types are defined as instances of the abstract class SimpleType, and have one method in addition to the base Type:
+
+int getSize() const
+
+It returns the size of the value of this type. For void it's 0, for string 1 (the minimal string size), for the rest of them it's a sizeof. This size is used to extract the values from and copy the values to the compact row format.
+
+For now this is the absolute minimum of information that makes the data usable. The list of methods will be extended over time. For example, the methods for value comparisons will eventually go here. And if the rows will ever hold the aligned values, the alignment information too.
+
+The SimpleType is defined in type/SimpleType.h, and all the actual simple types are defined in type/AllSimpleTypes.h:
+
+VoidType
+Uint8Type
+Int32Type
+Int64Type
+Float64Type
+StringType 

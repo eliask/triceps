@@ -1,0 +1,74 @@
+RowType operations on Rows
+
+As has been mentioned before, a RowType acts as a virtual call table for the rows of that type. The operations are:
+
+bool isFieldNull(const Row *row, int nf) const;
+
+Checks if the field nf in a Row is NULL.
+
+bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const;
+
+Returns, where to find a field in a row. nf is as usual the field number, with the data returned in ptr (pointer to the start of the field) and len (length of the field data). The function return value shows whether the field is not NULL. Also, for a NULL field the len will be 0. The returned data pointer type is constant, to remind that the rows are immutable and the data in them must not be changed.
+
+However for the most types you can't refer by this pointer and get the desired value directly, because the data might not be aligned right for that data type. Because of this the returned pointer is a char* and not void *. If you have an int64 field, you can't just do
+
+int64_t *data;
+intptr_t len;
+if (getField(myrow, myfield, data, len)) {
+    int64_t val = *data; // WRONG!
+}
+
+Fortunately, the type checks will catch this usage attempt right at the call of getField(). But there also are the convenience functions that return the values of particular types. They are implemented on top of getField() and take care of the alignment issue.
+
+uint8_t getUint8(const Row *row, int nf, int pos = 0) const;
+int32_t getInt32(const Row *row, int nf, int pos = 0) const;
+int64_t getInt64(const Row *row, int nf, int pos = 0) const;
+double getFloat64(const Row *row, int nf, int pos = 0) const;
+const char *getString(const Row *row, int nf) const;
+
+The extra argument pos is the position of the value in an array field. It's an array index, not a byte offset. For the scalar fields it must be 0. If the field is NULL or pos points beyond the end of the array, the returned value will be 0, which matches the Perl idiom of treating the undefined values as zeroes. If you care whether the field is NULL or not, check it first:
+
+if (!rt1->isFieldNull(r1, nf)) {
+    int64_t val = rt1->getInt64(r1, nf);
+    ...
+}
+
+Since the strings are normally stored 0-terminated (but it's your responsibility to store them 0-terminated!), getString() just returns the pointer directly to a value in the field. If the string field is NULL, a not a NULL pointer but a pointer to an empty string is returned, in the same spirit of treating the undefined values as zeroes or empty strings. If you want to explicitlcy check for NULLs or get the string field length (including \0 at the end), use getField(). Since there are no string arrays, there is no position argument for getString().
+
+For a side note, the arguments of these calls are Row*, not Rowref. It's cheaper, and OK for memory management because it's expected that the row would be held in a Rowref variable anyway while the data is extracted form it. Don't construct an anonymous rowref object and immediately try to extract a value from it!
+
+int64_t val = rt1->getInt64(Rowref(rt1, datavec), nf); // WRONG!
+
+However if you have a data vector, there is no point in constructing a row to extract back the same data in the first place.
+
+Right now when I was writing this, it has impressed me, how ugly are these calls on a Rowref:
+
+Rowref r1(...);
+...
+int64_t val = r1.getType()->getInt64(r1, 3);
+
+So I've added the matching convenience methods on Rowref, like:
+
+int64_t val = r1.getInt64(3);
+
+They will be available in the version 1.1. Note that they are called with ".", not "->". The "." makes them called directly on the Rowref object, while "->" would have meant that the Rowref is dereferenced to a Row pointer, and then a method be called on the Row object at that pointer.
+
+Continuing with the type methods, the constructor and destructor for the rows are also here:
+
+Row *makeRow(FdataVec &data_) const;
+void destroyRow(Row *row) const;
+
+The makeRow() has been already discussed, and normally you never need to call destroyRow() manually, Rowref takes care of that. If you ever do the destruction manually, remember to honor the reference counts and call the destructor only after the reference count went to 0.
+
+Another method compares the rows for absolute equality:
+
+
+bool equalRows(const Row *row1, const Row *row2) const;
+
+Right now it's defined to work only on the rows of the same type, including the same representation (but since only one CompactRowType representation is available, this is not a problem). When more representations become available, it will likely be extended. The FIFO index uses this method to find the rows by value.
+
+The final method is provided for debugging:
+
+void hexdumpRow(string &dest, const Row *row, const string &indent="") const;
+
+It makes a hex dump of the internal representation of the row and appends it to the dest string. It's a very low-level method that requires the knowledge of the internal layout of a row and useful for investigation of the memory corruptions. 

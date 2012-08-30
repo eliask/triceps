@@ -1,0 +1,12 @@
+RowType in C++, part 3
+
+The information about the contents of a RowType can be read back:
+
+int fieldCount() const;
+const vector<Field> &fields() const;
+int findIdx(const string &fname) const;
+const Field *find(const string &fname) const;
+
+fields() has already been shown. fieldCount() returns the count of fields. findIdx() finds the index of the field by name, so that it can then be looked up in the result of fields(). (Or -1 if there is no such field). find() directly returns the pointer to the field by name, combining these two actions. (Or it returns NULL if there is no such field).
+
+The rest of the RowType methods have to do with the manipulation of the rows. Remember, the rows are not virtual, in a micro-optimization to save a little bit of space, so the RowType methods act as virtuals for the rows. They will be described momentarily, after an introduction to the rows. 
