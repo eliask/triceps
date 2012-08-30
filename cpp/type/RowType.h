@@ -105,7 +105,7 @@ public:
 
 	// {
 	// Operations on a row of this format.
-	// Since they take prow ointers, the row must be held in some
+	// Since they take row pointers, the row must be held in some
 	// other Autoptr to avoid it being destroyed.
 
 	// Check whether a field is NULL
@@ -117,7 +117,7 @@ public:
 	// @param row - row to operate on
 	// @param nf - field number, starting from 0
 	// @param ptr - returned pointer to field data
-	// @param len - returned field data length
+	// @param len - returned field data length; for a NULL field will be 0
 	// @return - true if field is NOT null
 	virtual bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const = 0;
 
@@ -346,6 +346,27 @@ public:
 	bool operator!=(const Rowref &ar)
 	{
 		return (row_ != ar.row_);
+	}
+
+	uint8_t getUint8(int nf, int pos = 0) const
+	{
+		return type_->getUint8(row_, nf, pos);
+	}
+	int32_t getInt32(int nf, int pos = 0) const
+	{
+		return type_->getInt32(row_, nf, pos);
+	}
+	int64_t getInt64(int nf, int pos = 0) const
+	{
+		return type_->getInt64(row_, nf, pos);
+	}
+	double getFloat64(int nf, int pos = 0) const
+	{
+		return type_->getFloat64(row_, nf, pos);
+	}
+	const char *getString(int nf) const
+	{
+		return type_->getString(row_, nf);
 	}
 
 protected:
