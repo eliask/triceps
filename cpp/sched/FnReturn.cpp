@@ -179,15 +179,17 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 
 	Unit *u = lab->getUnitPtr();
 	if (u == NULL)
-		return; // a cleared label, do not call
+		throw Exception::f("FnReturn '%s' attempted to call a cleared label '%s' in FnBinding '%s'.",
+			fnret_->getName().c_str(), lab->getName().c_str(), top->getName().c_str());
 
 	// This can safely call another unit.
 	Autoref<Rowop> adrop = new Rowop(lab, arg);
 	Tray *tray = top->getTray();
-	if (tray)
+	if (tray) {
 		tray->push_back(adrop);
-	else
+	} else {
 		u->call(adrop);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////

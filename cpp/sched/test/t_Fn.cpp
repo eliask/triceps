@@ -563,19 +563,20 @@ UTESTCASE call_bindings(Utest *utest)
 	);
 
 	// clear the label and have it called again
-	lb3a->clear();
-	unit1->call(op2);
-	msg = trace1->getBuffer()->print();
-	trace1->clearBuffer();
-	UT_IS(msg, 
-		"unit 'u' before label 'lb2' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb2' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
-		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
-		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
-		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
-		"unit 'u' after label 'lb2' op OP_INSERT }\n"
-	);
+	{
+		lb3a->clear();
+		msg.clear();
+		try {
+			unit1->call(op2);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
+			"FnReturn 'fret1' attempted to call a cleared label 'lb3a' in FnBinding 'bind1a'.\n"
+			"Called through the label 'fret1.two'.\n"
+			"Called chained from the label 'lb2'.\n"
+		);
+	}
 	
 	// pop any binding
 	fret1->pop(); // bind1a
@@ -949,22 +950,21 @@ UTESTCASE tray_bindings(Utest *utest)
 
 	// keep the same bind1
 
-	// a label that is already cleared won't even have rows scheduled
-	fret1->push(bind1);
-	unit1->call(op2);
-	msg = trace1->getBuffer()->print();
-	trace1->clearBuffer();
-	// the bindings are collected and not executed
-	UT_IS(msg, 
-		"unit 'u' before label 'lb2' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb2' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
-		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
-
-		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
-		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
-		"unit 'u' after label 'lb2' op OP_INSERT }\n"
-	);
+	// a label that is already cleared will throw right away
+	{
+		fret1->push(bind1);
+		msg.clear();
+		try {
+			unit1->call(op2);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
+			"FnReturn 'fret1' attempted to call a cleared label 'lb3a' in FnBinding 'bind1'.\n"
+			"Called through the label 'fret1.two'.\n"
+			"Called chained from the label 'lb2'.\n"
+		);
+	}
 
 	t = bind1->getTray();
 	UT_IS(t->size(), 0);

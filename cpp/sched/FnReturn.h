@@ -51,6 +51,7 @@ protected:
 
 	protected:
 		// from Label
+		// Throws an Exception if the label in the binding is cleared.
 		virtual void execute(Rowop *arg) const;
 
 		FnReturn *fnret_; // not a ref, to avoid cyclic refs
