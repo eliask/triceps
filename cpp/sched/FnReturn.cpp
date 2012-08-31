@@ -18,6 +18,18 @@ FnReturn::FnReturn(Unit *unit, const string &name) :
 	initialized_(false)
 { }
 
+FnReturn::~FnReturn()
+{
+	for (size_t i = 0; i < labels_.size(); i++) {
+		Label *lb = labels_[i];
+		Unit *u = lb->getUnitPtr();
+		if (u) {
+			u->forgetLabel(lb);
+			lb->clear();
+		}
+	}
+}
+
 FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 {
 	if (initialized_)

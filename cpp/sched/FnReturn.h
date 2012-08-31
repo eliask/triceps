@@ -86,6 +86,9 @@ public:
 		return new FnReturn(unit, name);
 	}
 
+	// The destructor clears and unregisters all its labels.
+	~FnReturn();
+
 	// Get back the name.
 	const string &getName() const
 	{

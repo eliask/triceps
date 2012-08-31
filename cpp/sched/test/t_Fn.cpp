@@ -1055,3 +1055,38 @@ UTESTCASE fn_binding_memory(Utest *utest)
 	UT_IS(cleared, 0);
 	UT_IS(destroyed, 0);
 }
+
+// Check that the labels get cleared when the return goes away.
+UTESTCASE fn_retutn_memory(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit1 = new Unit("u");
+
+	// make the components
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+	
+	fld[2].type_ = Type::r_int32;
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
+
+	// make the return
+	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+		->addLabel("one", rt1)
+		->addLabel("two", rt2)
+		->initialize();
+	UT_ASSERT(fret1->getErrors().isNull());
+	UT_ASSERT(fret1->isInitialized());
+
+	Autoref<Label> lb1 = fret1->getLabel(0);
+	UT_ASSERT(lb1->getUnitPtr() != NULL);
+
+	fret1 = NULL; // trigger the destruction
+	UT_ASSERT(lb1->getUnitPtr() == NULL);
+}
