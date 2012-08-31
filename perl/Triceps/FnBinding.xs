@@ -25,8 +25,11 @@
 // @param fnr - function return to bind to.
 // @param labels - definition of labels in the bindings (a Perl array of elements that are
 //        either label objects or code snippets)
+// @param clearLabels - flag: on binding destruction automatically clear the labels that
+//        have been passed as ready labels (the ones created from code snippets are always
+//        cleared)
 // @return - the creaed binding.
-static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, Unit *u, FnReturn *fnr, AV *labels)
+static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, Unit *u, FnReturn *fnr, AV *labels, bool clearLabels)
 {
 	Autoref<FnBinding> fbind = new FnBinding(name, fnr);
 
@@ -39,6 +42,7 @@ static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, 
 		svname = *av_fetch(labels, i, 0);
 		svval = *av_fetch(labels, i+1, 0);
 		string entryname;
+		bool cl = clearLabels;
 
 		GetSvString(entryname, svname, "%s: in option 'labels' element %d name", funcName, i/2+1);
 
@@ -58,8 +62,9 @@ static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, 
 			}
 			lb = PerlLabel::makeSimple(u, rt, lbname, svval, "%s: in option 'labels' element %d with name '%s'",
 				funcName, i/2+1, SvPV_nolen(svname));
+			cl = true; // always clear these
 		}
-		fbind->addLabel(entryname, lb, true);
+		fbind->addLabel(entryname, lb, cl);
 	}
 	try {
 		fbind->checkOrThrow();
@@ -80,11 +85,19 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     name => "bind1", # used for diagnostics and the names of direct Perl labels
 #     on => $fnr, # determines the type of return
 #     unit => $unit, # needed only for the direct Perl code
+#     withTray => 1, # default is 0
+#     clearLabels => 1, # default is 0, affects only $labels, the ones created from subs are always cleared
 #     labels => [
 #         "name" => $label,
 #         "name" => sub { ... }, # will directly create a Perl label
 #     ]
 # );
+#
+# $bind->withTray($on); # can change later
+# $sz = $bind->getTraySize(); # 0 if  either no tray or tray is empty
+# $tray = $bind->swapTray(); # undef if no tray or empty, error if a mix of units in the tray
+# $bind->callTray(); # can handle a mix of units in the tray
+#
 # $fnr->push($bind);
 # $fnr->pop($bind);
 # $fnr->pop();
@@ -96,12 +109,13 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     $rowop, # or $tray, or [ @rowops ]
 #     $fnr => $bind, ...
 # );
-# ---
 # Create a binding on the fly and call with it:
 # FnBinding::call( # create and push/call/pop right away
 #     name => "bind1", # used for diagnostics and the names of direct Perl labels
 #     on => $fnr, # determines the type of return
 #     unit => $unit, # needed only for the direct Perl code in labels or for auto-creation of rowops
+#     clearLabels => 1, # default is 0, affects only $labels, the ones created from subs are always cleared
+#     delayed => 1, # default is 0, causes the data to be collected in a tray and then executed
 #     labels => [
 #         "name" => $label,
 #         "name" => sub { ... }, # will directly create a Perl label
@@ -145,6 +159,8 @@ new(char *CLASS, ...)
 			AV *labels = NULL;
 			string name;
 			FnReturn *fnr = NULL;
+			bool wtray = false;
+			bool clearLabels = false;
 
 			if (items % 2 != 1) {
 				throw Exception("Usage: Triceps::FnBinding::new(CLASS, optionName, optionValue, ...), option names and values must go in pairs", false);
@@ -160,6 +176,10 @@ new(char *CLASS, ...)
 					fnr = TRICEPS_GET_WRAP(FnReturn, arg, "%s: option '%s'", funcName, optname)->get();
 				} else if (!strcmp(optname, "labels")) {
 					labels = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "withTray")) {
+					wtray = (SvIV(arg) != 0);
+				} else if (!strcmp(optname, "clearLabels")) {
+					clearLabels = (SvIV(arg) != 0);
 				} else {
 					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
 				}
@@ -172,7 +192,8 @@ new(char *CLASS, ...)
 			if (labels == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'labels'", funcName), false);
 
-			fbind = makeBinding(funcName, name, u, fnr, labels);
+			fbind = makeBinding(funcName, name, u, fnr, labels, clearLabels);
+			fbind->withTray(wtray);
 		} TRICEPS_CATCH_CROAK;
 
 		RETVAL = new WrapFnBinding(fbind);
@@ -198,6 +219,8 @@ call(...)
 			Rowop *rop = NULL;
 			Tray *tray = NULL;
 			AV *roparray = NULL; // array of rowops
+			bool clearLabels = false;
+			bool delayed = false;
 
 			if (items % 2 != 0) {
 				throw Exception::f("Usage: %s(optionName, optionValue, ...), option names and values must go in pairs", funcName);
@@ -219,6 +242,10 @@ call(...)
 					tray = TRICEPS_GET_WRAP(Tray, arg, "%s: option '%s'", funcName, optname)->get();
 				} else if (!strcmp(optname, "rowops")) {
 					roparray = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "clearLabels")) {
+					clearLabels = (SvIV(arg) != 0);
+				} else if (!strcmp(optname, "delayed")) {
+					delayed = (SvIV(arg) != 0);
 				} else {
 					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
 				}
@@ -244,7 +271,8 @@ call(...)
 					funcName, rowop_spec);
 
 			// create and set up the binding
-			Autoref<FnBinding> fbind = makeBinding(funcName, name, u, fnr, labels);
+			Autoref<FnBinding> fbind = makeBinding(funcName, name, u, fnr, labels, clearLabels);
+			fbind->withTray(delayed);
 			Autoref<AutoFnBind> ab = new AutoFnBind;
 			ab->add(fnr, fbind);
 
@@ -267,6 +295,9 @@ call(...)
 			} catch(Exception e) {
 				throw Exception::f(e, "%s: error on popping the bindings:", funcName);
 			}
+
+			if (delayed)
+				fbind->callTray(); // after the bindings are popped, to avoid the possible loops
 		} TRICEPS_CATCH_CROAK;
 
 		RETVAL = 1;
@@ -281,6 +312,85 @@ getName(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
+# returns whether previously was with tray
+# The optional argument: 
+#    int on - enables or disables the tray
+int
+withTray(WrapFnBinding *self, ...)
+	CODE:
+		clearErrMsg();
+		if (items != 1 && items != 2)
+		   Perl_croak(aTHX_ "Usage: Triceps::FnBinding::withTray(self, [on])");
+		FnBinding *bind = self->get();
+		RETVAL = (bind->getTray() != NULL);
+		if (items == 2) {
+			IV on = SvIV(ST(1));
+			bind->withTray((on != 0));
+		}
+	OUTPUT:
+		RETVAL
+
+# always returns 1;
+# handles properly a mix of units
+int
+callTray(WrapFnBinding *self)
+	CODE:
+		clearErrMsg();
+		try {
+			self->get()->callTray();
+		} TRICEPS_CATCH_CROAK;
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
+# with no tray, returns 0
+IV
+getTraySize(WrapFnBinding *self)
+	CODE:
+		clearErrMsg();
+		Tray *tray = self->get()->getTray();
+		RETVAL = (tray == NULL)? 0 : tray->size();
+	OUTPUT:
+		RETVAL
+
+# no tray or an empty tray returns an undef;
+# a mix of units in the labels in the tray is an error
+WrapTray *
+swapTray(WrapFnBinding *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Tray";
+		static char funcName[] =  "Triceps::FnReturn::swapTray";
+		clearErrMsg();
+		Unit *u;
+
+		{ // first check the cheap way
+			Tray *t = self->get()->getTray();
+			if (t == NULL || t->empty())
+				XSRETURN_UNDEF; // not a croak!
+		}
+
+		Autoref<Tray> tt = self->get()->swapTray();
+		try {
+			const Label *lb;
+			lb = (*tt)[0]->getLabel();
+			u = lb->getUnitPtr();
+			if (u == NULL)
+				throw Exception::f("%s: tray contains a rowop for cleared label '%s'.", funcName, lb->getName().c_str());
+			int n = tt->size();
+			for (int i = 1; i < n; i++) {
+				lb = (*tt)[i]->getLabel();
+				Unit *u2 = lb->getUnitPtr();
+				if (u2 == NULL)
+					throw Exception::f("%s: tray contains a rowop for cleared label '%s'.", funcName, lb->getName().c_str());
+				if (u2 != u)
+					throw Exception::f("%s: tray contains a mix of rowops for units '%s' and '%s'.", 
+						funcName, u->getName().c_str(), u2->getName().c_str());
+			}
+		} TRICEPS_CATCH_CROAK;
+		RETVAL = new WrapTray(u, tt);
+	OUTPUT:
+		RETVAL
 
 # Comparison of the underlying RowSetTypes.
 int
@@ -316,3 +426,5 @@ match(WrapFnBinding *self, SV *other)
 			RETVAL = self->get()->match(wbind->get());
 	OUTPUT:
 		RETVAL
+
+# XXX add introspection

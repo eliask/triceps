@@ -145,8 +145,8 @@ sub badFnReturn # (optName, optValue, ...)
 {
 	# do this one manually, since badFnReturn can't handle unpaired args
 	my $res = eval {
-		my $fret2 = Triceps::FnReturn->new(
-			name => "fret1",
+		my $fretbad = Triceps::FnReturn->new(
+			name => "fretbad",
 			[
 				one => $lb1,
 				two => $rt2,
@@ -257,6 +257,8 @@ my $lbind1 = $u2->makeDummyLabel($rt1, "lbind1");
 ok(ref $lbind1, "Triceps::Label");
 my $lbind2 = $u2->makeDummyLabel($rt2, "lbind2");
 ok(ref $lbind2, "Triceps::Label");
+my $lbind12 = $u1->makeDummyLabel($rt2, "lbind12"); # on unit 1
+ok(ref $lbind12, "Triceps::Label");
 
 # with labels only, no unit
 my $fbind1 = Triceps::FnBinding->new(
@@ -269,20 +271,32 @@ my $fbind1 = Triceps::FnBinding->new(
 );
 ok(ref $fbind1, "Triceps::FnBinding");
 ok($fbind1->getName(), "fbind1");
+ok($fbind1->withTray(), 0);
+ok($fbind1->getTraySize(), 0);
+ok($fbind1->withTray(1), 0);
+ok($fbind1->withTray(), 1);
+ok($fbind1->getTraySize(), 0);
+ok($fbind1->withTray(0), 1);
+ok($fbind1->withTray(), 0);
+
+ok($fbind1->callTray(), 1); # calling with no tray does nothing
+ok(!defined($fbind1->swapTray())); # swapping with no tray does nothing
 
 my @called;
 
-# with labels made from code snippets
+# with labels made from code snippets, and with tray
 my $fbind2 = Triceps::FnBinding->new(
 	on => $fret1,
 	name => "fbind2",
 	unit => $u2,
+	withTray => 1,
 	labels => [
 		one => sub { $called[0]++; },
 		two => sub { $called[1]++; },
 	]
 );
 ok(ref $fbind2, "Triceps::FnBinding");
+ok($fbind2->withTray(), 1);
 
 # labels don't have to be set at all (but the option must be present)
 my $fbind3 = Triceps::FnBinding->new(
@@ -301,6 +315,18 @@ my $fbind4 = Triceps::FnBinding->new(
 	]
 );
 ok(ref $fbind4, "Triceps::FnBinding");
+
+# mixing the units in the labels is OK
+my $fbind5 = Triceps::FnBinding->new(
+	on => $fret2,
+	name => "fbind5",
+	withTray => 1, # will be used for testing
+	labels => [
+		one => $lbind1,
+		two => $lbind12,
+	]
+);
+ok(ref $fbind5, "Triceps::FnBinding");
 
 # sameness
 ok($fbind1->same($fbind1));
@@ -614,6 +640,95 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	#print "$v1";
 	my $v2 = $ts2->print();
 	ok($v2, "");
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# Run with a tray-ed binding pushed on.
+{
+	$fbindz1->withTray(1);
+	$fretz1->push($fbindz1);
+
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, $exp_fretz1_origin);
+	my $v2 = $ts2->print();
+	ok($v2, ""); # nothing called yet
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+
+	ok($fbindz1->getTraySize(), 1);
+	# $fbindz1->callTray(); # gets actually called
+	my $t = $fbindz1->swapTray();
+	ok(ref $t, "Triceps::Tray");
+	ok($t->size(), 1);
+	ok($fbindz1->getTraySize(), 0); # now replaced with an empty tray
+	$u2->call($t);
+	my $v2 = $ts2->print();
+	ok($v2, $exp_fretz1_target);
+	#print "$v2";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+
+	ok(!defined($fbindz1->swapTray())); # when the tray is empty, get back an undef
+
+	# repeat, now call directly
+	
+	$u1->call($rop1);
+	my $v1 = $ts1->print();
+	ok($v1, $exp_fretz1_origin);
+	my $v2 = $ts2->print();
+	ok($v2, ""); # nothing called yet
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+
+	ok($fbindz1->getTraySize(), 1);
+	$fbindz1->callTray(); # gets actually called
+	ok($fbindz1->getTraySize(), 0); # now replaced with an empty tray
+	my $v2 = $ts2->print();
+	ok($v2, $exp_fretz1_target);
+	#print "$v2";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+
+	$fbindz1->withTray(0);
+
+	$fretz1->pop($fbindz1);
+}
+
+######################### 
+# Tray error handling.
+
+{
+	my $fretx2 = Triceps::FnReturn->new(
+		name => "fretx2",
+		labels => [
+			one => $lb1,
+			two => $lb2,
+		]
+	);
+	ok(ref $fretx2, "Triceps::FnReturn");
+
+	$fretx2->push($fbind5);
+
+	$u1->call($lb1->makeRowopHash("OP_INSERT"));
+	ok($fbind5->getTraySize(), 1);
+	$u1->call($lb2->makeRowopHash("OP_INSERT"));
+	ok($fbind5->getTraySize(), 2);
+	my $v1 = $ts1->print();
+	#print "$v1";
+	my $v2 = $ts2->print();
+	#print "$v2";
+
+	my $v = eval {
+		$fbind5->swapTray();
+	};
+	ok($@ =~ /^Triceps::FnReturn::swapTray: tray contains a mix of rowops for units 'u2' and 'u1'./);
+	#print "$@";
+	
+	ok($fbind5->getTraySize(), 0); # the tray gets consumed in the failed attempt
+
+	$fretx2->pop($fbind5);
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }
