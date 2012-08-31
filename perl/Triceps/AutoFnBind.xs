@@ -66,21 +66,16 @@ new(char *CLASS, ...)
 		RETVAL
 
 # An explicit clearing of the auto-scope, without waiting for it to
-# be destroyed. Thos allows to confess properly, since Perl ignores
+# be destroyed. This allows to confess properly, since Perl ignores
 # any attempts to die in DESTROY().
 void
 clear(WrapAutoFnBind *self)
 	CODE:
 		clearErrMsg();
 		try {
-			Erref err;
 			try {
 				self->get()->clear();
 			} catch(Exception e) {
-				errefAppend(err, "Triceps::AutoFnBind::clear: encountered an FnReturn corruption", e.getErrors());
-			}
-			delete self;
-			if (err->hasError()) {
-				throw Exception(err, false);
+				throw Exception(e, "Triceps::AutoFnBind::clear: encountered an FnReturn corruption");
 			}
 		} TRICEPS_CATCH_CROAK;
