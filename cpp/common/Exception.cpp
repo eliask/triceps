@@ -102,7 +102,7 @@ Exception::~Exception()
 	throw()
 { }
 
-const char *Exception::what()
+const char *Exception::what() const throw()
 {
 	error_->printTo(what_);
 	return what_.c_str();

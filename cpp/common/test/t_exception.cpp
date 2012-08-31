@@ -20,6 +20,11 @@ UTESTCASE throw_catch(Utest *utest)
 	Exception::abort_ = false;
 	UT_IS(Exception::abort_, false);
 
+	// test the what() inheritance
+	std::exception *exc = new Exception("msg", false);
+	UT_IS(string(exc->what()), "msg\n");
+	delete exc;
+
 	try {
 		throw Exception("message", false);
 	} catch (Exception e) {

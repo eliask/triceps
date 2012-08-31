@@ -94,7 +94,7 @@ public:
 		__attribute__((format(printf, 2, 3)));
 
 	// from std::exception
-	virtual const char *what();
+	virtual const char *what() const throw();
 
 	// Get the error message in the original structured form.
 	virtual Errors *getErrors() const;
@@ -131,7 +131,7 @@ protected:
 	explicit Exception();
 
 	Erref error_; // the error message
-	string what_; // used to keep the return value of what()
+	mutable string what_; // used to keep the return value of what()
 };
 
 }; // TRICEPS_NS
