@@ -725,7 +725,7 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	my $v = eval {
 		$fbind5->swapTray();
 	};
-	ok($@ =~ /^Triceps::FnReturn::swapTray: tray contains a mix of rowops for units 'u2' and 'u1'./);
+	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a mix of rowops for units 'u2' and 'u1'./);
 	#print "$@";
 	
 	ok($fbind5->getTraySize(), 0); # the tray gets consumed in the failed attempt

@@ -361,7 +361,7 @@ swapTray(WrapFnBinding *self)
 	CODE:
 		// for casting of return value
 		static char CLASS[] = "Triceps::Tray";
-		static char funcName[] =  "Triceps::FnReturn::swapTray";
+		static char funcName[] =  "Triceps::FnBinding::swapTray";
 		clearErrMsg();
 		Unit *u = NULL;
 
@@ -399,7 +399,7 @@ swapTray(WrapFnBinding *self)
 int
 equals(WrapFnBinding *self, SV *other)
 	CODE:
-		static char funcName[] =  "Triceps::FnReturn::equals";
+		static char funcName[] =  "Triceps::FnBinding::equals";
 		clearErrMsg();
 		WrapFnReturn *wret;
 		WrapFnBinding *wbind;
@@ -416,7 +416,7 @@ equals(WrapFnBinding *self, SV *other)
 int
 match(WrapFnBinding *self, SV *other)
 	CODE:
-		static char funcName[] =  "Triceps::FnReturn::match";
+		static char funcName[] =  "Triceps::FnBinding::match";
 		clearErrMsg();
 		WrapFnReturn *wret;
 		WrapFnBinding *wbind;
