@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 248 };
+BEGIN { plan tests => 277 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -660,7 +660,6 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	$ts2->clearBuffer();
 
 	ok($fbindz1->getTraySize(), 1);
-	# $fbindz1->callTray(); # gets actually called
 	my $t = $fbindz1->swapTray();
 	ok(ref $t, "Triceps::Tray");
 	ok($t->size(), 1);
@@ -698,6 +697,50 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	$fretz1->pop($fbindz1);
 }
 
+# a cleared label in binding
+{
+	my $fretw1 = Triceps::FnReturn->new(
+		name => "fretw2",
+		labels => [
+			one => $lb1,
+			two => $lb2,
+		]
+	);
+	ok(ref $fretw1, "Triceps::FnReturn");
+
+	my $lbindw1 = $u2->makeDummyLabel($rt1, "lbindw1");
+	ok(ref $lbindw1, "Triceps::Label");
+	my $lbindw2 = $u2->makeDummyLabel($rt2, "lbindw2");
+	ok(ref $lbindw2, "Triceps::Label");
+
+	my $fbindw1 = Triceps::FnBinding->new(
+		on => $fretw1,
+		name => "fbindw1",
+		withTray => 1, # will be used for testing
+		labels => [
+			one => $lbindw1,
+			two => $lbindw2,
+		]
+	);
+	ok(ref $fbindw1, "Triceps::FnBinding");
+
+	$fretw1->push($fbindw1);
+
+	$lbindw1->clear();
+
+	eval {
+		$u1->call($lb1->makeRowopHash("OP_INSERT"));
+	};
+
+	ok($@ =~ /^FnReturn 'fretw2' attempted to call a cleared label 'lbindw1' in FnBinding 'fbindw1'.
+Called through the label 'fretw2.one'.
+Called chained from the label 'lb1'./);
+	#print "$@";
+	
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
 ######################### 
 # Tray error handling.
 
@@ -717,9 +760,9 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	ok($fbind5->getTraySize(), 1);
 	$u1->call($lb2->makeRowopHash("OP_INSERT"));
 	ok($fbind5->getTraySize(), 2);
-	my $v1 = $ts1->print();
+	#my $v1 = $ts1->print();
 	#print "$v1";
-	my $v2 = $ts2->print();
+	#my $v2 = $ts2->print();
 	#print "$v2";
 
 	my $v = eval {
@@ -731,6 +774,152 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	ok($fbind5->getTraySize(), 0); # the tray gets consumed in the failed attempt
 
 	$fretx2->pop($fbind5);
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+{
+	my $fretw1 = Triceps::FnReturn->new(
+		name => "fretw2",
+		labels => [
+			one => $lb1,
+			two => $lb2,
+		]
+	);
+	ok(ref $fretw1, "Triceps::FnReturn");
+
+	my $lbindw1 = $u2->makeDummyLabel($rt1, "lbindw1");
+	ok(ref $lbindw1, "Triceps::Label");
+	my $lbindw2 = $u2->makeDummyLabel($rt2, "lbindw2");
+	ok(ref $lbindw2, "Triceps::Label");
+
+	my $fbindw1 = Triceps::FnBinding->new(
+		on => $fretw1,
+		name => "fbindw1",
+		withTray => 1, # will be used for testing
+		labels => [
+			one => $lbindw1,
+			two => $lbindw2,
+		]
+	);
+	ok(ref $fbindw1, "Triceps::FnBinding");
+
+	$fretw1->push($fbindw1);
+
+	$u1->call($lb1->makeRowopHash("OP_INSERT"));
+	ok($fbindw1->getTraySize(), 1);
+	$u1->call($lb2->makeRowopHash("OP_INSERT"));
+	ok($fbindw1->getTraySize(), 2);
+
+	# rowop for the cleared label in the 0th position
+	$lbindw1->clear();
+
+	my $v = eval {
+		$fbindw1->swapTray();
+	};
+	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
+	#print "$@";
+	
+	ok($fbindw1->getTraySize(), 0); # the tray gets consumed in the failed attempt
+
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# same as previous, only the cleared label in non-0th position
+{ 
+	
+	my $fretw1 = Triceps::FnReturn->new(
+		name => "fretw2",
+		labels => [
+			one => $lb1,
+			two => $lb2,
+		]
+	);
+	ok(ref $fretw1, "Triceps::FnReturn");
+
+	my $lbindw1 = $u2->makeDummyLabel($rt1, "lbindw1");
+	ok(ref $lbindw1, "Triceps::Label");
+	my $lbindw2 = $u2->makeDummyLabel($rt2, "lbindw2");
+	ok(ref $lbindw2, "Triceps::Label");
+
+	my $fbindw1 = Triceps::FnBinding->new(
+		on => $fretw1,
+		name => "fbindw1",
+		withTray => 1, # will be used for testing
+		labels => [
+			one => $lbindw1,
+			two => $lbindw2,
+		]
+	);
+	ok(ref $fbindw1, "Triceps::FnBinding");
+
+	$fretw1->push($fbindw1);
+
+	$u1->call($lb2->makeRowopHash("OP_INSERT"));
+	ok($fbindw1->getTraySize(), 1);
+	$u1->call($lb1->makeRowopHash("OP_INSERT"));
+	ok($fbindw1->getTraySize(), 2);
+
+	# rowop for the cleared label in the 1st position
+	$lbindw1->clear();
+
+	my $v = eval {
+		$fbindw1->swapTray();
+	};
+	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
+	#print "$@";
+	
+	ok($fbindw1->getTraySize(), 0); # the tray gets consumed in the failed attempt
+
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+
+# similar to previous, a callTray with cleared label
+{
+	my $fretw1 = Triceps::FnReturn->new(
+		name => "fretw2",
+		labels => [
+			one => $lb1,
+			two => $lb2,
+		]
+	);
+	ok(ref $fretw1, "Triceps::FnReturn");
+
+	my $lbindw1 = $u2->makeDummyLabel($rt1, "lbindw1");
+	ok(ref $lbindw1, "Triceps::Label");
+	my $lbindw2 = $u2->makeDummyLabel($rt2, "lbindw2");
+	ok(ref $lbindw2, "Triceps::Label");
+
+	my $fbindw1 = Triceps::FnBinding->new(
+		on => $fretw1,
+		name => "fbindw1",
+		withTray => 1, # will be used for testing
+		labels => [
+			one => $lbindw1,
+			two => $lbindw2,
+		]
+	);
+	ok(ref $fbindw1, "Triceps::FnBinding");
+
+	$fretw1->push($fbindw1);
+
+	$u1->call($lb1->makeRowopHash("OP_INSERT"));
+	ok($fbindw1->getTraySize(), 1);
+	$u1->call($lb2->makeRowopHash("OP_INSERT"));
+	ok($fbindw1->getTraySize(), 2);
+
+	$lbindw1->clear();
+
+	my $v = eval {
+		$fbindw1->callTray();
+	};
+	ok($@ =~ /^FnBinding::callTray: attempted to call a cleared label 'lbindw1'./);
+	#print "$@";
+	
+	ok($fbindw1->getTraySize(), 0); # the tray gets consumed in the failed attempt
+
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }
