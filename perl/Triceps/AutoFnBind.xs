@@ -44,11 +44,12 @@ new(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::AutoFnBind::new";
 		clearErrMsg();
-		Autoref<AutoFnBind> mb = new AutoFnBind;
+		Autoref<AutoFnBind> mbret;
 		try {
 			if (items % 2 != 1) {
 				throw Exception("Usage: Triceps::AutoFnBind::new(CLASS, ret1 => binding1, ...), FnReturn and FnBinding objects must go in pairs", false);
 			}
+			Autoref<AutoFnBind> mb = new AutoFnBind;
 			for (int i = 1; i < items; i += 2) {
 				FnReturn *ret = TRICEPS_GET_WRAP(FnReturn, ST(i), "%s: argument %d", funcName, i)->get();
 				FnBinding *bind = TRICEPS_GET_WRAP(FnBinding, ST(i+1), "%s: argument %d", funcName, i+1)->get();
@@ -59,9 +60,10 @@ new(char *CLASS, ...)
 					throw Exception(e, strprintf("%s: invalid arguments:", funcName));
 				}
 			}
+			mbret = mb; // no exceptions may happen after this
 		} TRICEPS_CATCH_CROAK;
 
-		RETVAL = new WrapAutoFnBind(mb);
+		RETVAL = new WrapAutoFnBind(mbret);
 	OUTPUT:
 		RETVAL
 

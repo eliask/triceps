@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 193 };
+BEGIN { plan tests => 248 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -646,13 +646,15 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 
 # Run with a tray-ed binding pushed on.
 {
+	my($v1, $v2);
+
 	$fbindz1->withTray(1);
 	$fretz1->push($fbindz1);
 
 	$u1->call($rop1);
-	my $v1 = $ts1->print();
+	$v1 = $ts1->print();
 	ok($v1, $exp_fretz1_origin);
-	my $v2 = $ts2->print();
+	$v2 = $ts2->print();
 	ok($v2, ""); # nothing called yet
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
@@ -664,7 +666,7 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	ok($t->size(), 1);
 	ok($fbindz1->getTraySize(), 0); # now replaced with an empty tray
 	$u2->call($t);
-	my $v2 = $ts2->print();
+	$v2 = $ts2->print();
 	ok($v2, $exp_fretz1_target);
 	#print "$v2";
 	$ts1->clearBuffer();
@@ -675,9 +677,9 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	# repeat, now call directly
 	
 	$u1->call($rop1);
-	my $v1 = $ts1->print();
+	$v1 = $ts1->print();
 	ok($v1, $exp_fretz1_origin);
-	my $v2 = $ts2->print();
+	$v2 = $ts2->print();
 	ok($v2, ""); # nothing called yet
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
@@ -685,7 +687,7 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	ok($fbindz1->getTraySize(), 1);
 	$fbindz1->callTray(); # gets actually called
 	ok($fbindz1->getTraySize(), 0); # now replaced with an empty tray
-	my $v2 = $ts2->print();
+	$v2 = $ts2->print();
 	ok($v2, $exp_fretz1_target);
 	#print "$v2";
 	$ts1->clearBuffer();
@@ -846,7 +848,7 @@ eval {
 ok($@ =~ /^Triceps::AutoFnBind::new: invalid arguments:
   Attempted to push a mismatching binding 'fbindz1' on the FnReturn 'fretz2'./);
 #print "$@";
-$fretz1->pop(); # clean up the leftover from the error
+# The pushed binding on fretz1 gets automatically cleared, no need to pop.
 
 ######################### 
 # Unit::calBound()

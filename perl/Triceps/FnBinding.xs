@@ -192,6 +192,7 @@ new(char *CLASS, ...)
 			if (labels == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'labels'", funcName), false);
 
+			// no exception may happen after makeBinding()
 			fbind = makeBinding(funcName, name, u, fnr, labels, clearLabels);
 			fbind->withTray(wtray);
 		} TRICEPS_CATCH_CROAK;
@@ -362,7 +363,7 @@ swapTray(WrapFnBinding *self)
 		static char CLASS[] = "Triceps::Tray";
 		static char funcName[] =  "Triceps::FnReturn::swapTray";
 		clearErrMsg();
-		Unit *u;
+		Unit *u = NULL;
 
 		{ // first check the cheap way
 			Tray *t = self->get()->getTray();
@@ -370,8 +371,9 @@ swapTray(WrapFnBinding *self)
 				XSRETURN_UNDEF; // not a croak!
 		}
 
-		Autoref<Tray> tt = self->get()->swapTray();
+		Autoref<Tray> ttret;
 		try {
+			Autoref<Tray> tt = self->get()->swapTray();
 			const Label *lb;
 			lb = (*tt)[0]->getLabel();
 			u = lb->getUnitPtr();
@@ -387,8 +389,9 @@ swapTray(WrapFnBinding *self)
 					throw Exception::f("%s: tray contains a mix of rowops for units '%s' and '%s'.", 
 						funcName, u->getName().c_str(), u2->getName().c_str());
 			}
+			ttret = tt; // no exceptions after this
 		} TRICEPS_CATCH_CROAK;
-		RETVAL = new WrapTray(u, tt);
+		RETVAL = new WrapTray(u, ttret);
 	OUTPUT:
 		RETVAL
 

@@ -61,7 +61,7 @@ WrapFnReturn *
 new(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::FnReturn::new";
-		Autoref<FnReturn> fret;
+		Autoref<FnReturn> fretret;
 		clearErrMsg();
 		try {
 			clearErrMsg();
@@ -129,7 +129,7 @@ new(char *CLASS, ...)
 				throw Exception(strprintf("%s: must specify a non-empty name with option 'name'", funcName), false);
 
 			// now finally start building the object
-			fret = new FnReturn(u, name);
+			Autoref<FnReturn> fret = new FnReturn(u, name);
 
 			len = av_len(labels)+1; // av_len returns the index of last element
 			for (i = 0; i < len; i+=2) {
@@ -159,9 +159,11 @@ new(char *CLASS, ...)
 			} catch (Exception e) {
 				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
 			}
+
+			fretret = fret; // no exceptions after this
 		} TRICEPS_CATCH_CROAK;
 
-		RETVAL = new WrapFnReturn(fret);
+		RETVAL = new WrapFnReturn(fretret);
 	OUTPUT:
 		RETVAL
 
