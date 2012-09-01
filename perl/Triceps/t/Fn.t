@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 277 };
+BEGIN { plan tests => 291 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -327,6 +327,29 @@ my $fbind5 = Triceps::FnBinding->new(
 	]
 );
 ok(ref $fbind5, "Triceps::FnBinding");
+
+# clearing of labels on destruction
+{
+	my $lbinda1 = $u2->makeDummyLabel($rt1, "lbinda1");
+	ok(ref $lbinda1, "Triceps::Label");
+	my $lbinda2 = $u2->makeDummyLabel($rt2, "lbinda2");
+	ok(ref $lbinda2, "Triceps::Label");
+
+	{
+		my $fbind6 = Triceps::FnBinding->new(
+			on => $fret2,
+			name => "fbind6",
+			clearLabels => 1,
+			labels => [
+				one => $lbinda1,
+				two => $lbinda2,
+			]
+		);
+		ok(ref $fbind6, "Triceps::FnBinding");
+	}
+	ok($lbinda1->isCleared());
+	ok($lbinda2->isCleared());
+}
 
 # sameness
 ok($fbind1->same($fbind1));
@@ -1273,6 +1296,85 @@ unit 'u1' after label 'lbz2' op OP_INSERT }
 	my $v1 = $ts1->print();
 	ok($v1, $exp_call_one . $exp_call_two);
 	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+# with delayed call in the binding
+{
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		delayed => 1,
+		labels => [
+			# this forms a loop, which would fail without the delayed call
+			one => $lbz1,
+			two => $lbz2,
+		],
+		rowops => [$rop1, $rop2],
+	);
+	ok(!$lbz1->isCleared());
+	ok(!$lbz2->isCleared());
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	my $v1 = $ts1->print();
+	ok($v1, 
+"unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+unit 'u1' before label 'lbz2' op OP_INSERT {
+unit 'u1' drain label 'lbz2' op OP_INSERT
+unit 'u1' before-chained label 'lbz2' op OP_INSERT
+unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
+unit 'u1' drain label 'fretz1.two' (chain 'lbz2') op OP_INSERT
+unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
+unit 'u1' after label 'lbz2' op OP_INSERT }
+unit 'u1' before label 'lbz1' op OP_INSERT {
+unit 'u1' drain label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
+unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
+unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after label 'lbz1' op OP_INSERT }
+unit 'u1' before label 'lbz2' op OP_INSERT {
+unit 'u1' drain label 'lbz2' op OP_INSERT
+unit 'u1' before-chained label 'lbz2' op OP_INSERT
+unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
+unit 'u1' drain label 'fretz1.two' (chain 'lbz2') op OP_INSERT
+unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
+unit 'u1' after label 'lbz2' op OP_INSERT }
+");
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+# with clearing of labels
+{
+	my $lbindww1 = $u2->makeDummyLabel($rt1, "lbindww1");
+	ok(ref $lbindww1, "Triceps::Label");
+	my $lbindww2 = $u2->makeDummyLabel($rt2, "lbindww2");
+	ok(ref $lbindww2, "Triceps::Label");
+
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		clearLabels => 1,
+		labels => [
+			one => $lbindww1,
+			two => $lbindww2,
+		],
+		rowop => $rop1,
+	);
+	ok($lbindww1->isCleared());
+	ok($lbindww2->isCleared());
+	
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }

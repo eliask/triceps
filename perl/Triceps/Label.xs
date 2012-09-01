@@ -261,3 +261,13 @@ clear(WrapLabel *self)
 		Label *lab = self->get();
 		lab->clear();
 
+# check if the label is cleared
+int
+isCleared(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		RETVAL = lab->isCleared();
+	OUTPUT:
+		RETVAL
+

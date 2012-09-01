@@ -44,6 +44,7 @@ Things that need to be done:
 * doc: the Exception::f, ::fTrace
 * doc: errefAppend()
 * doc: streaming functions
+* doc: perl Label::isCleared()
 
 App ideas:
 * queries on CSV files

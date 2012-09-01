@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 49 };
+BEGIN { plan tests => 51 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -150,8 +150,10 @@ ok($res, "plab");
 $res = $plab->getCode();
 ok($res, \&plab_exec);
 
+ok(!$plab->isCleared());
 $plab->clear();
 ok($! . "", "");
+ok($plab->isCleared());
 
 $res = $lb->getCode();
 ok(! defined $res);
