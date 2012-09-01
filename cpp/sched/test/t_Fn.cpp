@@ -348,10 +348,23 @@ UTESTCASE fn_binding(Utest *utest)
 	}
 
 	// getters
+	UT_IS(bind1->findLabel("one"), 0);
+	UT_IS(bind1->findLabel("two"), 1);
+	UT_IS(bind1->findLabel("zzz"), -1);
+
 	UT_IS(bind1->getLabel(0), lb1a);
 	UT_IS(bind1->getLabel(1), lb3a);
 	UT_IS(bind1->getLabel(-1), NULL);
 	UT_IS(bind1->getLabel(2), NULL);
+
+	UT_IS(bind1->getLabel("one"), lb1a);
+	UT_IS(bind1->getLabel("two"), lb3a);
+	UT_IS(bind1->getLabel("zzz"), NULL);
+
+	const FnBinding::LabelVec &labels = bind1->getLabels();
+	UT_IS(labels.size(), 2);
+	UT_IS(labels[0], lb1a);
+	UT_IS(labels[1], lb3a);
 }
 
 UTESTCASE call_bindings(Utest *utest)
@@ -1076,17 +1089,24 @@ UTESTCASE fn_retutn_memory(Utest *utest)
 	Autoref<RowType> rt2 = new CompactRowType(fld);
 	UT_ASSERT(rt2->getErrors().isNull());
 
+	Autoref<Label> lb1 = new MyDummyLabel(unit1, rt1, "lb1");
+
 	// make the return
 	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
-		->addLabel("one", rt1)
+		->addFromLabel("one", lb1)
 		->addLabel("two", rt2)
 		->initialize();
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 
-	Autoref<Label> lb1 = fret1->getLabel(0);
-	UT_ASSERT(lb1->getUnitPtr() != NULL);
+	Autoref<Label> lbret1 = fret1->getLabel(0);
+	UT_ASSERT(!lbret1->isCleared());
 
 	fret1 = NULL; // trigger the destruction
-	UT_ASSERT(lb1->getUnitPtr() == NULL);
+	UT_ASSERT(lbret1->isCleared());
+
+	// send a row through it, just in case
+	FdataVec dv; // just leave the contents all NULL
+	Autoref<Rowop> op1 = new Rowop(lb1, Rowop::OP_INSERT, rt1->makeRow(dv));
+	unit1->call(op1);
 }

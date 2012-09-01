@@ -23,6 +23,9 @@ class FnReturn;
 class FnBinding : public Starget
 {
 public:
+	typedef vector<Autoref<Label> > LabelVec; 
+	typedef vector<bool> BoolVec; 
+
 	// The typical construction is done as a chain:
 	// ret = FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1, true)
@@ -122,6 +125,17 @@ public:
 	// @return - the same FnBinding object, for chained calls.
 	FnBinding *checkOrThrow();
 
+	// Get a label by name.
+	// @param name - the name of the label, as was specified in addLabel()
+	// @return - the label, or NULL if not found
+	Label *getLabel(const string &name) const;
+	
+	// Translate the label name to its index in the internal array. This index
+	// can later be used to get the label quickly.
+	// @param name - the name of the label, as was specified in addLabel()
+	// @return - the index, or -1 if not found
+	int findLabel(const string &name) const;
+
 	// Get back the label by index. Mostly for the benefit of FnReturn.
 	// @param idx - index of the label
 	// @return - the label pointer or NULL if that label is not defined
@@ -133,6 +147,22 @@ public:
 		return type_;
 	}
 
+	// Get back the set of labels.
+	// The elements that are not defined will be NULL.
+	const LabelVec &getLabels() const
+	{
+		return labels_;
+	}
+
+	// Get back the clear flags
+	const BoolVec &getAutoclear() const
+	{
+		return autoclear_;
+	}
+
+	// Check if the named label has the 
+	bool isAutoclear(const string &name) const;
+
 	// This is technically not a type but these are convenient wrappers to
 	// compare the equality of the underlying row set types.
 	bool equals(const FnReturn *t) const;
@@ -141,9 +171,6 @@ public:
 	bool match(const FnBinding *t) const;
 
 protected:
-	typedef vector<Autoref<Label> > LabelVec; 
-	typedef vector<bool> BoolVec; 
-
 	string name_;
 	Autoref<RowSetType> type_; // type of FnReturn
 	LabelVec labels_; // looked up by index

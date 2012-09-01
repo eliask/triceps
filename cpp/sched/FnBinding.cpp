@@ -135,6 +135,16 @@ FnBinding *FnBinding::checkOrThrow()
 	return this;
 }
 
+Label *FnBinding::getLabel(const string &name) const
+{
+	return getLabel(type_->findName(name));
+}
+
+int FnBinding::findLabel(const string &name) const
+{
+	return type_->findName(name);
+}
+
 Label *FnBinding::getLabel(int idx) const
 {
 	if (idx < 0 || idx >= labels_.size())
