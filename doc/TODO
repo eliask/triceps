@@ -2,6 +2,11 @@ Things that need to be done:
 * redo the errors to confess
 * change the typemap to confess
 * more features for the SimpleAggregator
+ ** standard deviation can be done in one pass
+ ** median and percentiles on sorted indexes
+ ** multi-stage functions
+* keys() in ordered indexes
+* index introspection: getOrder() (for each field A or D, or maybe 1 and -1, and 0 for un-ordered)
 * in RowHandle add getTable()
 * add the row contents access methods directly on a row handle?
 * in Row add the array index argument in get(), a version of get by index
@@ -38,6 +43,7 @@ Things that need to be done:
 * in Triceps::Fields::makeTranslation take the filter specs as arguments, and the caller's name
 * in Type add a generic checkOrThrow(), maybe a template for initializeOrThrow()?
 * in Type::Fields add parsing of the type names including the array indicators
+* add the "distclean" to include the cleaning of docs
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
