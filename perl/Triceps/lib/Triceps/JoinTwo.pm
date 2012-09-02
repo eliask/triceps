@@ -6,6 +6,9 @@
 # A join of two tables.
 
 package Triceps::JoinTwo;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 use strict;

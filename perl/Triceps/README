@@ -1,5 +1,5 @@
-Triceps version 0.99
-====================
+Triceps
+=======
 
 Triceps is a Complex Event Processing engine, embeddable into the
 scripting language. At the moment the only language supported is Perl
@@ -24,6 +24,6 @@ This module requires these other modules and libraries:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2011 by Sergey Babkin
+(C) Copyright 2011-2012 Sergey A. Babkin.
 
 See the COPYRIGHT file for the full licensing information.

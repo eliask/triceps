@@ -6,6 +6,9 @@
 # A simple reusable class to parse options.
 
 package Triceps::Opt;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 use Scalar::Util;
 

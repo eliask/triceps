@@ -6,6 +6,9 @@
 # Perl methods for the Table class.
 
 package Triceps::Table;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 # create a row with specified fields and find it, thus 

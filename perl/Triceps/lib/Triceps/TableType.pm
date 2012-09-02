@@ -6,6 +6,9 @@
 # Perl methods for the TableType class.
 
 package Triceps::TableType;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 use strict;

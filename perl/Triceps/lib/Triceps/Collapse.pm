@@ -6,6 +6,9 @@
 # Template to collapse multiple sequential updates into one.
 
 package Triceps::Collapse;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 use strict;
 

@@ -6,6 +6,9 @@
 # Helper methods for processing the field specifications.
 
 package Triceps::Fields;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 use strict;

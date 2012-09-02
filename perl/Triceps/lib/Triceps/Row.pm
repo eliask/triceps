@@ -7,6 +7,8 @@
 
 package Triceps::Row;
 
+our $VERSION = 'v1.0.1';
+
 # convert a row to a printable string, with name-value pairs
 # (printP stands for "print in Perl")
 sub printP # ($self)

@@ -6,6 +6,9 @@
 # A simple way to generate the aggregators like in SQL.
 
 package Triceps::SimpleAggregator;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 use strict;

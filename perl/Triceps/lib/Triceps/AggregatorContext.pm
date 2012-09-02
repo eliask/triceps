@@ -6,6 +6,9 @@
 # Perl methods for the AggregatorContext class.
 
 package Triceps::AggregatorContext;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 # A convenience wrapper that creates the Row/Rowop from

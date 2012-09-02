@@ -6,6 +6,9 @@
 # A simple index with ordering by fields.
 
 package Triceps::SimpleOrderedIndex;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 our @ISA = qw(Triceps::IndexType);

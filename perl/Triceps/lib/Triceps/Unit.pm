@@ -6,6 +6,9 @@
 # Perl methods for the Unit class.
 
 package Triceps::Unit;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 # A convenience wrapper that creates the Rowop from

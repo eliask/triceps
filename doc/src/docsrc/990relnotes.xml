@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2012 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_relnotes" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Release Notes</title>
+
+<!--
+	<sect1 id="sc_notes_N">
+		<title>Release N</title>
+
+		<itemizedlist>
+			<listitem>
+			</listitem>
+		</itemizedlist>
+	</sect1>
+
+-->
+
+	<sect1 id="sc_notes_1_0_1">
+		<title>Release 1.0.1</title>
+
+		<itemizedlist>
+			<listitem>
+			Fixed the version information that was left incorrect, as 0.99.
+			</listitem>
+
+			<listitem>
+			Added the scripts to check the version and Perl MANIFEST before
+			doing a release, script to set the version (ckversion, setversion),
+			explicit version option -v to mkrelease.
+			</listitem>
+
+			<listitem>
+			Added the Release Notes.
+			</listitem>
+		</itemizedlist>
+	</sect1>
+
+	<sect1 id="sc_notes_1_0_0">
+		<title>Release 1.0.0</title>
+
+		<itemizedlist>
+			<listitem>
+			The first official release with full documentation.
+			</listitem>
+
+			<listitem>
+			Many additional examples, code clean-ups and small features
+			resulting from the experience of writing the documentation.
+			</listitem>
+		</itemizedlist>
+	</sect1>
+
+	<sect1 id="sc_notes_0.99">
+		<title>Release 0.99</title>
+
+		<itemizedlist>
+			<listitem>
+			The first published pre-release. Basic functionality, no documentation.
+			</listitem>
+		</itemizedlist>
+	</sect1>
+
+</chapter>

@@ -6,6 +6,9 @@
 # A join by performing a look-up in a table (like "stream-to-window" in CCL).
 
 package Triceps::LookupJoin;
+
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 use strict;
