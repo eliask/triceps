@@ -280,3 +280,147 @@ match(WrapFnReturn *self, SV *other)
 			RETVAL = self->get()->match(wbind->get());
 	OUTPUT:
 		RETVAL
+
+# number of labels in the return
+int 
+size(WrapFnReturn *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->size();
+	OUTPUT:
+		RETVAL
+
+# get the names of the labels (not of labels themselves but if logical name sin return)
+SV *
+getLabelNames(WrapFnReturn *self)
+	PPCODE:
+		clearErrMsg();
+		FnReturn *obj = self->get();
+
+		const RowSetType::NameVec &names = obj->getLabelNames();
+		int nf = names.size();
+		for (int i = 0; i < nf; i++) {
+			XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
+		}
+
+# get the actual labels (NOT the ones used as the constructor
+# arguments, these are used for chaining from)
+SV *
+getLabels(WrapFnReturn *self)
+	PPCODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		FnReturn *obj = self->get();
+
+		const FnReturn::ReturnVec &labels = obj->getLabels();
+		int nf = labels.size();
+		for (int i = 0; i < nf; i++) {
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapLabel(labels[i])) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+# get the pairs of (name1, label1, ..., nameN, labelN) in the correct order,
+# and also suitable for the assignment to a hash
+SV *
+getLabelHash(WrapFnReturn *self)
+	PPCODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		FnReturn *obj = self->get();
+
+		const FnReturn::ReturnVec &labels = obj->getLabels();
+		int nf = labels.size();
+		for (int i = 0; i < nf; i++) {
+			const string &name = *obj->getLabelName(i);
+			XPUSHs(sv_2mortal(newSVpvn(name.c_str(), name.size())));
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapLabel(labels[i])) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+# get the pairs of (name1, rt1, ..., nameN, rtN) in the correct order,
+# and also suitable for the assignment to a hash
+SV *
+getRowTypeHash(WrapFnReturn *self)
+	PPCODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::RowType";
+		clearErrMsg();
+		FnReturn *obj = self->get();
+
+		const RowSetType::RowTypeVec &rts = obj->getRowTypes();
+		int nf = rts.size();
+		for (int i = 0; i < nf; i++) {
+			const string &name = *obj->getLabelName(i);
+			XPUSHs(sv_2mortal(newSVpvn(name.c_str(), name.size())));
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapRowType(rts[i])) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+# get the mapping of the label names to indexes
+SV *
+getLabelMapping(WrapFnReturn *self)
+	PPCODE:
+		clearErrMsg();
+		FnReturn *obj = self->get();
+
+		const RowSetType::NameVec &names = obj->getLabelNames();
+		int nf = names.size();
+		for (int i = 0; i < nf; i++) {
+			XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
+			XPUSHs(sv_2mortal(newSViv(i)));
+		}
+
+# Get a label by name. Confesses on the unknown names.
+WrapLabel *
+getLabel(WrapFnReturn *self, char *name)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		RETVAL = NULL;
+		try {
+			FnReturn *obj = self->get();
+			Label *lb = obj->getLabel(name);
+			if (lb == NULL)
+				throw Exception::f("Triceps::FnReturn::getLabel: unknown label name '%s'.", name);
+			RETVAL = new WrapLabel(lb);
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+# Get a label by index. Confesses on the indexes out of range.
+WrapLabel *
+getLabelAt(WrapFnReturn *self, int idx)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		RETVAL = NULL;
+		try {
+			FnReturn *obj = self->get();
+			Label *lb = obj->getLabel(idx);
+			if (lb == NULL)
+				throw Exception::f("Triceps::FnReturn::getLabelAt: bad index %d, valid range is 0..%d.", idx, obj->size()-1);
+			RETVAL = new WrapLabel(lb);
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+# Translate a label name to index. Confesses on the unknown names
+int
+findLabel(WrapFnReturn *self, char *name)
+	CODE:
+		clearErrMsg();
+		FnReturn *obj = self->get();
+		RETVAL = obj->findLabel(name);
+		try {
+			if (RETVAL < 0)
+				throw Exception::f("Triceps::FnReturn::findLabel: unknown label name '%s'.", name);
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL

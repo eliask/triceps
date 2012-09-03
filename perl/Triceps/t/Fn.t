@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 291 };
+BEGIN { plan tests => 312 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -249,6 +249,73 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' 
 # XXX should have a better way to prepend the high-level description
 ok($@ =~ /^Triceps::FnReturn::new: invalid arguments:\n  duplicate row name 'one'/);
 #print "$@";
+
+######################### 
+# FnReturn getters
+
+{
+	my @v = $fret1->getLabelNames();
+	ok(join(",", @v), "one,two");
+}
+{
+	my @v = $fret1->getLabels();
+	ok($v[0]->getName(), "fret1.one");
+	ok($v[1]->getName(), "fret1.two");
+}
+{
+	my @v = $fret1->getLabelHash();
+	ok($v[0], "one");
+	ok($v[1]->getName(), "fret1.one");
+	ok($v[2], "two");
+	ok($v[3]->getName(), "fret1.two");
+}
+{
+	my @v = $fret1->getRowTypeHash();
+	ok($v[0], "one");
+	ok($rt1->same($v[1]));
+	ok($v[2], "two");
+	ok($rt2->same($v[3]));
+}
+{
+	my @v = $fret1->getLabelMapping();
+	ok(join(",", @v), "one,0,two,1");
+}
+{
+	my $lb = $fret1->getLabel("one");
+	ok($lb->getName(), "fret1.one");
+}
+{
+	my $lb = eval {
+		$fret1->getLabel("zzz");
+	};
+	ok(!defined($lb));
+	ok($@ =~ /^Triceps::FnReturn::getLabel: unknown label name 'zzz'./);
+	#print "$@";
+}
+{
+	my $lb = $fret1->getLabelAt(0);
+	ok($lb->getName(), "fret1.one");
+}
+{
+	my $lb = eval {
+		$fret1->getLabelAt(-1);
+	};
+	ok(!defined($lb));
+	ok($@ =~ /^Triceps::FnReturn::getLabelAt: bad index -1, valid range is 0..1./);
+	#print "$@";
+}
+{
+	my $v = $fret1->findLabel("one");
+	ok($v, 0);
+}
+{
+	my $v = eval {
+		$fret1->findLabel("zzz");
+	};
+	ok(!defined($v));
+	ok($@ =~ /^Triceps::FnReturn::findLabel: unknown label name 'zzz'./);
+	#print "$@";
+}
 
 ######################### 
 # FnBinding
