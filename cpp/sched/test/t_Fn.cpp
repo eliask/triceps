@@ -348,6 +348,35 @@ UTESTCASE fn_binding(Utest *utest)
 	}
 
 	// getters
+	{
+		const RowSetType::NameVec &names = bind1->getLabelNames();
+		UT_IS(names.size(), 2);
+		UT_IS(names[0], "one");
+		UT_IS(names[1], "two");
+	}
+	{
+		const RowSetType::RowTypeVec &types = bind1->getRowTypes();
+		UT_IS(types.size(), 2);
+		UT_IS(types[0].get(), rt1.get());
+		UT_IS(types[1].get(), rt2.get());
+	}
+
+	UT_IS(bind1->size(), 2);
+
+	UT_IS(bind1->getRowType("one"), rt1.get());
+	UT_IS(bind1->getRowType("two"), rt2.get());
+	UT_IS(bind1->getRowType("zzz"), NULL);
+
+	UT_IS(bind1->getRowType(0), rt1.get());
+	UT_IS(bind1->getRowType(1), rt2.get());
+	UT_IS(bind1->getRowType(-1), NULL);
+	UT_IS(bind1->getRowType(2), NULL);
+
+	UT_IS(*(bind1->getLabelName(0)), "one");
+	UT_IS(*(bind1->getLabelName(1)), "two");
+	UT_IS(bind1->getLabelName(-1), NULL);
+	UT_IS(bind1->getLabelName(2), NULL);
+
 	UT_IS(bind1->findLabel("one"), 0);
 	UT_IS(bind1->findLabel("two"), 1);
 	UT_IS(bind1->findLabel("zzz"), -1);

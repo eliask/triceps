@@ -125,6 +125,34 @@ public:
 	// @return - the same FnBinding object, for chained calls.
 	FnBinding *checkOrThrow();
 
+	// Get the number of labels in the type.
+	int size() const
+	{
+		return labels_.size();
+	}
+
+	// Propagation from type_.
+	const RowSetType::NameVec &getLabelNames() const
+	{
+		return type_->getRowNames();
+	}
+	const RowSetType::RowTypeVec &getRowTypes() const
+	{
+		return type_->getRowTypes();
+	}
+	const string *getLabelName(int idx) const
+	{
+		return type_->getRowTypeName(idx);
+	}
+	RowType *getRowType(const string &name) const
+	{
+		return type_->getRowType(name);
+	}
+	RowType *getRowType(int idx) const
+	{
+		return type_->getRowType(idx);
+	}
+
 	// Get a label by name.
 	// @param name - the name of the label, as was specified in addLabel()
 	// @return - the label, or NULL if not found
@@ -172,7 +200,7 @@ public:
 
 protected:
 	string name_;
-	Autoref<RowSetType> type_; // type of FnReturn
+	Autoref<RowSetType> type_; // type of FnReturn/FnBinding
 	LabelVec labels_; // looked up by index
 	BoolVec autoclear_; // of the same size as labels_
 	Erref errors_; // the accumulated errors

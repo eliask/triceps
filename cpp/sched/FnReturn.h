@@ -185,7 +185,6 @@ public:
 	{
 		return type_->getRowType(idx);
 	}
-	// XXX is there any use in returning the array of labels?
 
 	// This is technically not a type but these are convenient wrappers to
 	// compare the equality of the underlying row set types.
