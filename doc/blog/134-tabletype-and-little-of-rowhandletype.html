@@ -1,0 +1,79 @@
+TableType, and a little of RowHandleType
+
+The TableType describes the type of a table, defined in type/TableType.h. In the C++ API it's built very similar to the current Perl API, by constructing a bare object, then adding information to it, and finally initializing it. The Perl API will eventually change to something more Perl-like, the C++ API will stay this way.
+
+The creation goes like this:
+
+Autoref<TableType> tt = (new TableType(rt1))
+    ->addSubIndex("primary", it
+    )->addSubIndex("secondary", itcopy
+    );
+tt->initialize();
+if (tt->getErrors()->hasError())
+    throw Exception(tt->getErrors());
+
+In reality the index types would also be constructed as a part of this long statement but here for clarity they are assumed to be pre-created as it and itcopy.
+
+After a table type has been initialized, nothing can be added to it any more. Just as in the Perl API, the addSubIndex() adds not its argument index type object but its deep copy. When the table type gets initialized, these index types get tied to it.
+
+Note that the operator new has to be in parenthesis to get the priorities right. It's kind of annoying, so the better-looking equivalent way to do it is to use the static method make():
+
+Autoref<TableType> tt = TableType::make(rt1)
+    ->addSubIndex("primary", it
+    )->addSubIndex("secondary", itcopy
+    );
+
+The methods involved are:
+
+TableType(Onceref<RowType> rt);
+static TableType *make(Onceref<RowType> rt);
+TableType *addSubIndex(const string &name, IndexType *index);
+void initialize();
+
+The working of the addSubIndex() is such that it doesn't put the argument object into any kind of Autoref. Because of that it's able to pass that pointer right through to its result for chaining. It doesn't check anything and can't throw any exceptions. So the TableType object created by the constructor gets through the chain of addSubIndex() without having any counted references to it created, its reference count stays at 0. Only when the result of the chain is assigned to an Autoref, the first reference gets created. Obviously, this chain must not be interrupted by any exceptions or the memory will leak. Any detected errors must be collected in the embedded error objects, that will be read after initialization.
+
+The result of initialization is void for a good reason too: you can't include it into this chain. Before the initialization is called, the TableType object must be properly held by a counted reference.
+
+Though this whole thing was written before I've added exceptions to Triceps, and it was one of the earliest things written. Now I'm contemplating that there might be some ways to improve on it.
+
+It's safe to call initialize() multiple times, the repeated calls will simply have no effect.
+
+The ways to look at the contents of the table type are:
+
+bool isInitialized() const;
+
+Checks whether the table type has been initialized.
+
+const RowType *rowType() const;
+
+Returns the row type of the table type. Since the table type is not expected to be destroyed immediately, it's OK to return a plain pointer.
+
+IndexType *findSubIndex(const string &name) const;
+
+Find the index by name. Returns NULL is not found.  This looks only for the top-level indexes, to find the nested indexes, a the similar calls have to be continued on the further levels. At the moment there is no call to resolve a whole index path.
+
+IndexType *findSubIndexById(IndexType::IndexId it) const;
+
+Finds the first index type of a particular kind (or NULL if none found). The ids are like IndexType::IT_HASHED, IndexType::IT_FIFO, IndexType::IT_SORTED.
+
+IndexType *getFirstLeaf() const;
+
+Finds the first leaf index type. This call does search through the whole depth of the index tree for the first leaf index.
+
+const IndexTypeVec &getSubIndexes() const;
+
+Returns the vector with all the top-level index type references. The vector is read-only, you must not change it. Before the table type is initialized, you can actually modify the indexes in it, after initialization they are not modifiable any more.
+
+Ultimately, the TableType is used to construct the tables. The factory method is:
+
+Onceref<Table> makeTable(Unit *unit, Gadget::EnqMode emode, const string &name) const;
+
+This creates a table with the given name in a given unit. The enqueuing mode controls how the rowops get enqueued to the table's output label. The best practice is to always use Table::EM_CALL, because this configuration element didn't prove itself particualrly useful, and will be going away in the future versions, becoming hardcoded to EM_CALL.
+
+Obviously, if the initialization of a TableType has returned errors, that type can not be used to create tables, or everything will crash.
+
+Finally, there is a call that you don't need to use:
+
+RowHandleType *rhType() const;
+
+Like everything else, the RowHandles have a type. But this type is very much internal, and it know very little about the row handles. All it knows is how much memory to allocate when constructing a new RowHandle. The rest of the knowledge about the RowHandles is placed inside the Table. So, a Table acts among the other things as a type for its RowHandles. 
