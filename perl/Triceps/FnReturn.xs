@@ -290,7 +290,7 @@ size(WrapFnReturn *self)
 	OUTPUT:
 		RETVAL
 
-# get the names of the labels (not of labels themselves but if logical name sin return)
+# get the names of the labels (not of labels themselves but if logical names in return)
 SV *
 getLabelNames(WrapFnReturn *self)
 	PPCODE:

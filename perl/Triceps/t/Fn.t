@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 312 };
+BEGIN { plan tests => 345 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -547,6 +547,107 @@ ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:
         string e,
       }/);
 #print "$@";
+
+######################### 
+# FnBinding getters
+
+{
+	my @v = $fbind1->getLabelNames();
+	ok(join(",", @v), "one,two");
+}
+{
+	my @v = $fbind3->getLabelNames();
+	ok(join(",", @v), "one,two");
+}
+{
+	my @v = $fbind1->getDefinedLabelNames();
+	ok(join(",", @v), "one,two");
+}
+{
+	my @v = $fbind3->getDefinedLabelNames();
+	ok($#v, -1);
+}
+{
+	my @v = $fbind1->getLabels();
+	ok($lbind1->same($v[0]));
+	ok($lbind2->same($v[1]));
+}
+{
+	my @v = $fbind3->getLabels();
+	ok($#v, 1);
+	ok(!defined($v[0]));
+	ok(!defined($v[1]));
+}
+{
+	my @v = $fbind1->getLabelHash();
+	ok($v[0], "one");
+	ok($lbind1->same($v[1]));
+	ok($v[2], "two");
+	ok($lbind2->same($v[3]));
+}
+{
+	my @v = $fbind3->getLabelHash();
+	ok($v[0], "one");
+	ok(!defined($v[1]));
+	ok($v[2], "two");
+	ok(!defined($v[3]));
+}
+{
+	# even if the labels are not defined, the row types are
+	my @v = $fbind3->getRowTypeHash();
+	ok($v[0], "one");
+	ok($rt1->same($v[1]));
+	ok($v[2], "two");
+	ok($rt2->same($v[3]));
+}
+{
+	my @v = $fbind1->getLabelMapping();
+	ok(join(",", @v), "one,0,two,1");
+}
+{
+	my $lb = $fbind1->getLabel("one");
+	ok($lbind1->same($lb));
+}
+{
+	my $lb = eval {
+		$fbind1->getLabel("zzz");
+	};
+	ok(!defined($lb));
+	ok($@ =~ /^Triceps::FnBinding::getLabel: unknown label name 'zzz'./);
+	#print "$@";
+}
+{
+	my $lb = $fbind3->getLabel("one");
+	ok(!defined($lb));
+}
+{
+	my $lb = $fbind1->getLabelAt(0);
+	ok($lbind1->same($lb));
+}
+{
+	my $lb = eval {
+		$fbind1->getLabelAt(-1);
+	};
+	ok(!defined($lb));
+	ok($@ =~ /^Triceps::FnBinding::getLabelAt: bad index -1, valid range is 0..1./);
+	#print "$@";
+}
+{
+	my $lb = $fbind3->getLabelAt(0);
+	ok(!defined($lb));
+}
+{
+	my $v = $fbind3->findLabel("one");
+	ok($v, 0);
+}
+{
+	my $v = eval {
+		$fbind1->findLabel("zzz");
+	};
+	ok(!defined($v));
+	ok($@ =~ /^Triceps::FnBinding::findLabel: unknown label name 'zzz'./);
+	#print "$@";
+}
 
 ######################### 
 # Run the code.

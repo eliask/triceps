@@ -430,4 +430,181 @@ match(WrapFnBinding *self, SV *other)
 	OUTPUT:
 		RETVAL
 
-# XXX add introspection
+# number of labels in the binding type (that can be defined, not that are actually
+# defined in this binding)
+int 
+size(WrapFnBinding *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->size();
+	OUTPUT:
+		RETVAL
+
+# get the names of the labels (not of labels themselves but if logical names in binding);
+# all thos that could be defined
+SV *
+getLabelNames(WrapFnBinding *self)
+	PPCODE:
+		clearErrMsg();
+		FnBinding *obj = self->get();
+
+		const RowSetType::NameVec &names = obj->getLabelNames();
+		int nf = names.size();
+		for (int i = 0; i < nf; i++) {
+			XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
+		}
+
+# like getLabelNames() but skip those that are not define din the binding
+SV *
+getDefinedLabelNames(WrapFnBinding *self)
+	PPCODE:
+		clearErrMsg();
+		FnBinding *obj = self->get();
+
+		const RowSetType::NameVec &names = obj->getLabelNames();
+		int nf = names.size();
+		for (int i = 0; i < nf; i++) {
+			if (obj->getLabel(i) != NULL)
+				XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
+		}
+
+# get the actual labels (NOT the ones used as the constructor
+# arguments, these are used for chaining from);
+# when some label is not defined, its value will be undef
+SV *
+getLabels(WrapFnBinding *self)
+	PPCODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		FnBinding *obj = self->get();
+
+		const FnBinding::LabelVec &labels = obj->getLabels();
+		int nf = labels.size();
+		for (int i = 0; i < nf; i++) {
+			Label *lb = labels[i];
+			if (lb == NULL) {
+				XPUSHs(&PL_sv_undef);
+			} else {
+				SV *sub = newSV(0);
+				sv_setref_pv( sub, CLASS, (void*)(new WrapLabel(lb)) );
+				XPUSHs(sv_2mortal(sub));
+			}
+		}
+
+# get the pairs of (name1, label1, ..., nameN, labelN) in the correct order,
+# and also suitable for the assignment to a hash;
+# when some label is not defined, its value will be undef
+SV *
+getLabelHash(WrapFnBinding *self)
+	PPCODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		FnBinding *obj = self->get();
+
+		const FnBinding::LabelVec &labels = obj->getLabels();
+		int nf = labels.size();
+		for (int i = 0; i < nf; i++) {
+			const string &name = *obj->getLabelName(i);
+			XPUSHs(sv_2mortal(newSVpvn(name.c_str(), name.size())));
+			Label *lb = labels[i];
+			if (lb == NULL) {
+				XPUSHs(&PL_sv_undef);
+			} else {
+				SV *sub = newSV(0);
+				sv_setref_pv( sub, CLASS, (void*)(new WrapLabel(lb)) );
+				XPUSHs(sv_2mortal(sub));
+			}
+		}
+
+# get the pairs of (name1, rt1, ..., nameN, rtN) in the correct order,
+# and also suitable for the assignment to a hash
+SV *
+getRowTypeHash(WrapFnBinding *self)
+	PPCODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::RowType";
+		clearErrMsg();
+		FnBinding *obj = self->get();
+
+		const RowSetType::RowTypeVec &rts = obj->getRowTypes();
+		int nf = rts.size();
+		for (int i = 0; i < nf; i++) {
+			const string &name = *obj->getLabelName(i);
+			XPUSHs(sv_2mortal(newSVpvn(name.c_str(), name.size())));
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapRowType(rts[i])) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+# get the mapping of the label names to indexes
+SV *
+getLabelMapping(WrapFnBinding *self)
+	PPCODE:
+		clearErrMsg();
+		FnBinding *obj = self->get();
+
+		const RowSetType::NameVec &names = obj->getLabelNames();
+		int nf = names.size();
+		for (int i = 0; i < nf; i++) {
+			XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
+			XPUSHs(sv_2mortal(newSViv(i)));
+		}
+
+# Get a label by name. Confesses on the unknown names.
+# Returns undef on undefined labels for known names.
+# Would it be better to confess on undefined labels too?
+WrapLabel *
+getLabel(WrapFnBinding *self, char *name)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		FnBinding *obj = self->get();
+		int idx = obj->findLabel(name);
+		try {
+			if (idx < 0)
+				throw Exception::f("Triceps::FnBinding::getLabel: unknown label name '%s'.", name);
+		} TRICEPS_CATCH_CROAK;
+		Label *lb = obj->getLabel(idx);
+		if (lb == NULL)
+			XSRETURN_UNDEF; // properly return an undef
+		RETVAL = new WrapLabel(lb);
+	OUTPUT:
+		RETVAL
+
+# Get a label by index. Confesses on the indexes out of range.
+# Returns undef on undefined labels for known names.
+# Would it be better to confess on undefined labels too?
+WrapLabel *
+getLabelAt(WrapFnBinding *self, int idx)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		FnBinding *obj = self->get();
+		try {
+			if (idx < 0 || idx >= obj->size())
+				throw Exception::f("Triceps::FnBinding::getLabelAt: bad index %d, valid range is 0..%d.", idx, obj->size()-1);
+		} TRICEPS_CATCH_CROAK;
+		Label *lb = obj->getLabel(idx);
+		if (lb == NULL)
+			XSRETURN_UNDEF; // properly return an undef
+		RETVAL = new WrapLabel(lb);
+	OUTPUT:
+		RETVAL
+
+# Translate a label name to index. Confesses on the unknown names
+int
+findLabel(WrapFnBinding *self, char *name)
+	CODE:
+		clearErrMsg();
+		FnBinding *obj = self->get();
+		RETVAL = obj->findLabel(name);
+		try {
+			if (RETVAL < 0)
+				throw Exception::f("Triceps::FnBinding::findLabel: unknown label name '%s'.", name);
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
