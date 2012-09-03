@@ -246,6 +246,23 @@ bindingStack(WrapFnReturn *self)
 			XPUSHs(bindv);
 		}
 
+# Get the names of bindings in the contents. Useful for printing the contents.
+# Returns an array of strings with the top of stack on the right.
+SV *
+bindingStackNames(WrapFnReturn *self)
+	PPCODE:
+		clearErrMsg();
+		const FnReturn::BindingVec &stack = self->get()->bindingStack();
+		
+		// for casting of return value
+		static char CLASS[] = "Triceps::FnBinding";
+
+		int nf = stack.size();
+		for (int i = 0;  i < nf; i++) {
+			const string &name = stack[i]->getName();
+			XPUSHs(sv_2mortal(newSVpvn(name.c_str(), name.size())));
+		}
+
 # Comparison of the underlying RowSetTypes.
 int
 equals(WrapFnReturn *self, SV *other)

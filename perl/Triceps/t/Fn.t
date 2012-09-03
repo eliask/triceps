@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 345 };
+BEGIN { plan tests => 347 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1155,6 +1155,11 @@ ok($fret1->bindingStackSize(), 3);
 	ok($stack[0]->same($fbind3));
 	ok($stack[1]->same($fbind1));
 	ok($stack[2]->same($fbind2));
+}
+{
+	my @stack = $fret1->bindingStackNames();
+	ok($#stack, 2);
+	ok(join(",", @stack), "fbind3,fbind1,fbind2");
 }
 
 $fret1->pop($fbind2); # restore the balance
