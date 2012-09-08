@@ -42,6 +42,24 @@ void mkfdata(FdataVec &fd)
 	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
 }
 
+UTESTCASE nameSet(Utest *utest)
+{
+	Autoref<NameSet> ns1 = (new NameSet())->add("a")->add("e");
+	Autoref<NameSet> ns2 = NameSet::make()->add("b")->add("c");
+	vector<string> vv;
+	vv.push_back("a");
+	vv.push_back("e");
+	Autoref<NameSet> ns3 = new NameSet(ns1);
+	Autoref<NameSet> ns4 = new NameSet(*ns1);
+	Autoref<NameSet> ns5 = new NameSet(vv);
+	UT_ASSERT(ns1->equals(ns3));
+	UT_ASSERT(ns1->equals(ns5));
+	UT_ASSERT(!ns1->equals(ns2));
+	Autoref<NameSet> ns6 = NameSet::make(ns2)->add("x");
+	Autoref<NameSet> ns7 = NameSet::make(vv)->add("x");
+	UT_IS(ns6->size(), 3);
+}
+
 UTESTCASE emptyTable(Utest *utest)
 {
 	RowType::FieldVec fld;
