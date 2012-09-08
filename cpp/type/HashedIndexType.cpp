@@ -94,8 +94,7 @@ HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
 HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to set the key on an initialized Hashed index type");
 	}
 	key_ = key;
 	return this;

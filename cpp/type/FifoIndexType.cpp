@@ -32,8 +32,7 @@ FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
 FifoIndexType *FifoIndexType::setLimit(size_t limit)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to set the limit value on an initialized Fifo index type");
 	}
 	limit_ = limit;
 	return this;
@@ -42,8 +41,7 @@ FifoIndexType *FifoIndexType::setLimit(size_t limit)
 FifoIndexType *FifoIndexType::setJumping(bool jumping)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to set the jumping mode on an initialized Fifo index type");
 	}
 	jumping_ = jumping;
 	return this;
@@ -52,8 +50,7 @@ FifoIndexType *FifoIndexType::setJumping(bool jumping)
 FifoIndexType *FifoIndexType::setReverse(bool reverse)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to set the reverse mode on an initialized Fifo index type");
 	}
 	reverse_ = reverse;
 	return this;

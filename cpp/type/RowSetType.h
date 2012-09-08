@@ -51,7 +51,7 @@ public:
 	// @return - the same RowSetType object, for chained calls
 	RowSetType *addRow(const string &rname, const_Autoref<RowType>rtype);
 	
-	// After this call any attempts to add a row will cause an abort.
+	// After this call any attempts to add a row will cause an Exception.
 	// Pretty much, a diagnostic tool.
 	RowSetType *freeze()
 	{

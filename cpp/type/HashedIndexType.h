@@ -28,10 +28,8 @@ public:
 		return new HashedIndexType(key);
 	}
 	
-
-	// Set tke key later (until initialized).
-	// Keeps a reference of key. Calling setKey() after the key has
-	// been already set is wrong and will cause a memory leak.
+	// Set tke key later (until initialized, afterwards will throw an Exception).
+	// Keeps a reference of key.
 	HashedIndexType *setKey(NameSet *key);
 
 	// from Type

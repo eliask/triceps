@@ -283,9 +283,11 @@ UTESTCASE throwModInitalized(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(!rt1->getErrors()->hasError());
 
-	Autoref<TableType> tt = (new TableType(rt1))
-		->addSubIndex("primary", new HashedIndexType(
-			(new NameSet())->add("a")->add("e"))
+	Autoref<TableType> tt = TableType::make(rt1
+		)->addSubIndex("primary", HashedIndexType::make(
+				NameSet::make()->add("a")->add("e")
+			)->addSubIndex("secondary", new FifoIndexType()
+			)
 		);
 
 	tt->initialize();
@@ -299,9 +301,12 @@ UTESTCASE throwModInitalized(Utest *utest)
 	}
 	UT_IS(msg, "Attempted to add a sub-index 'zzz' to an initialized table type\n");
 
+	HashedIndexType *primary = dynamic_cast<HashedIndexType *>(tt->findSubIndex("primary"));
+	UT_ASSERT(primary != NULL);
+
 	msg.clear();
 	try {
-		tt->findSubIndex("primary")->addSubIndex("zzz", NULL);
+		primary->addSubIndex("zzz", NULL);
 	} catch (Exception e) {
 		msg = e.getErrors()->print();
 	}
@@ -309,11 +314,47 @@ UTESTCASE throwModInitalized(Utest *utest)
 
 	msg.clear();
 	try {
-		tt->findSubIndex("primary")->setAggregator(NULL);
+		primary->setAggregator(NULL);
 	} catch (Exception e) {
 		msg = e.getErrors()->print();
 	}
 	UT_IS(msg, "Attempted to set an aggregator on an initialized index type\n");
+
+	msg.clear();
+	try {
+		primary->setKey(NULL);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to set the key on an initialized Hashed index type\n");
+
+	FifoIndexType *secondary = dynamic_cast<FifoIndexType *>(primary->findSubIndex("secondary"));
+	UT_ASSERT(secondary != NULL);
+
+	msg.clear();
+	try {
+		secondary->setLimit(1);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to set the limit value on an initialized Fifo index type\n");
+
+	msg.clear();
+	try {
+		secondary->setJumping(true);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to set the jumping mode on an initialized Fifo index type\n");
+
+	msg.clear();
+	try {
+		secondary->setReverse(false);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to set the reverse mode on an initialized Fifo index type\n");
+
 }
 
 UTESTCASE hashedNested(Utest *utest)
