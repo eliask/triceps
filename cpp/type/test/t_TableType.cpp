@@ -271,6 +271,51 @@ UTESTCASE throwOnBad(Utest *utest)
 	UT_IS(msg, "row type error:\n  duplicate field name 'a' for fields 2 and 1\n");
 }
 
+UTESTCASE throwModInitalized(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(!rt1->getErrors()->hasError());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", new HashedIndexType(
+			(new NameSet())->add("a")->add("e"))
+		);
+
+	tt->initialize();
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	msg.clear();
+	try {
+		tt->addSubIndex("zzz", NULL);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to add a sub-index 'zzz' to an initialized table type\n");
+
+	msg.clear();
+	try {
+		tt->findSubIndex("primary")->addSubIndex("zzz", NULL);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to add a sub-index 'zzz' to an initialized index type\n");
+
+	msg.clear();
+	try {
+		tt->findSubIndex("primary")->setAggregator(NULL);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Attempted to set an aggregator on an initialized index type\n");
+}
+
 UTESTCASE hashedNested(Utest *utest)
 {
 	RowType::FieldVec fld;

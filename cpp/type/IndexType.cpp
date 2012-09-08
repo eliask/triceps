@@ -14,6 +14,7 @@
 #include <table/Table.h>
 #include <table/Aggregator.h>
 #include <common/StringUtil.h>
+#include <common/Exception.h>
 
 namespace TRICEPS_NS {
 
@@ -172,8 +173,7 @@ IndexType::~IndexType()
 IndexType *IndexType::addSubIndex(const string &name, Onceref<IndexType> index)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to add a sub-index '%s' to an initialized index type", name.c_str());
 	}
 	if (index.isNull())
 		nested_.push_back(IndexTypeRef(name, NULL));
@@ -185,8 +185,7 @@ IndexType *IndexType::addSubIndex(const string &name, Onceref<IndexType> index)
 IndexType *IndexType::setAggregator(Onceref<AggregatorType> agg)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: index type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to set an aggregator on an initialized index type");
 	}
 	if (agg.isNull())
 		agg_ = NULL;

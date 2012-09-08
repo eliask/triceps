@@ -44,7 +44,8 @@ public:
 
 	// Add a top-level index.
 	//
-	// May be used only until initialized.
+	// May be used only until initialized. Afterwards will throw an Exception.
+	//
 	// The index remembered is actually a copy of original, so all the settings
 	// need to be done before calling here. This also means that to access indexes
 	// in a table, their types need to be obtained from TableType after it is initialized,

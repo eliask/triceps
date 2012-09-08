@@ -54,6 +54,7 @@ Things that need to be done:
 * doc: errefAppend()
 * doc: streaming functions
 * doc: perl Label::isCleared()
+* doc: in types construction throw instead of abort()
 
 App ideas:
 * queries on CSV files

@@ -27,8 +27,7 @@ TableType::~TableType()
 TableType *TableType::addSubIndex(const string &name, IndexType *index)
 {
 	if (initialized_) {
-		fprintf(stderr, "Triceps API violation: table type %p has been already iniitialized and can not be changed\n", this);
-		abort();
+		throw Exception::f("Attempted to add a sub-index '%s' to an initialized table type", name.c_str());
 	}
 	root_->addSubIndex(name, index);
 	return this;
