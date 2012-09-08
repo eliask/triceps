@@ -94,7 +94,7 @@ HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
 HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
 	if (initialized_) {
-		throw Exception::f("Attempted to set the key on an initialized Hashed index type");
+		throw Exception::fTrace("Attempted to set the key on an initialized Hashed index type");
 	}
 	key_ = key;
 	return this;

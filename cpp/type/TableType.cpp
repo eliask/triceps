@@ -27,7 +27,7 @@ TableType::~TableType()
 TableType *TableType::addSubIndex(const string &name, IndexType *index)
 {
 	if (initialized_) {
-		throw Exception::f("Attempted to add a sub-index '%s' to an initialized table type", name.c_str());
+		throw Exception::fTrace("Attempted to add a sub-index '%s' to an initialized table type", name.c_str());
 	}
 	root_->addSubIndex(name, index);
 	return this;
