@@ -27,6 +27,23 @@ See the file COPYRIGHT for the copyright notice and license information
 
 -->
 
+	<sect1 id="sc_notes_1_1_0">
+		<title>Release 1.1.0</title>
+
+		<itemizedlist>
+			<listitem>
+			Documentation for the &Cpp; API.
+			</listitem>
+
+			<listitem>
+			Better &Cpp; NameSet constructors.
+			</listitem>
+
+			<listitem>
+			</listitem>
+		</itemizedlist>
+	</sect1>
+
 	<sect1 id="sc_notes_1_0_1">
 		<title>Release 1.0.1</title>
 

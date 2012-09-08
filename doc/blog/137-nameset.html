@@ -1,0 +1,45 @@
+NameSet
+
+NameSet is fundamentally a reference-counted vector of strings that allows to construct them from a sequence of calls. It's used to construct such things as field list for the index key. Previously I've said that the names in the set must be different, and that should normally be the use case, but NameSet itself doesn't check for that. The order of values in it usually matters. So its name is slightly misleading: it's not really a set, it's a vector, but the name has been applied historically. And in the future it might include the set functionality too, by adding a quick look up of index by name.
+
+It's defined in type/NameSet.h as
+
+class NameSet : public Starget, public vector<string> { ... }
+
+All the vector methods are also directly accessible.
+
+NameSet();
+NameSet(const NameSet *other);
+static NameSet *make();
+static NameSet *make(const NameSet &other);
+
+The constructors are also duplicated as make(), for the more convenient operator priority than with new().
+
+NameSet *add(const string &s);
+
+The method for the chained construction, such as:
+
+Autoref<NameSet> ns1 = (new NameSet())->add("b")->add("c");
+Autoref<NameSet> ns2 = NameSet::make()->add("b")->add("c");
+
+It's possible to combine the copy constructor and the addition of extra fields:
+
+Autoref<NameSet> ns3 = NameSet::make(*ns2)->add("x");
+
+One more feature of the NameSet is the comparison for equality:
+
+bool equals(const NameSet *other) const;
+
+As I've been writing this, it has struck me that the constructors are not particularly conveniend, so for the version 1.1.0, I've changed the copy constructors:
+
+NameSet(const NameSet *other);
+NameSet(const vector<string> &other);
+static NameSet *make(const NameSet *other);
+static NameSet *make(const vector<string> &other);
+
+Now you can construct from a plain vector too, and since NameSet is its subclass, that replaces the old copy constructor. The constructor from a pointer makes the use of Autorefs more convenient, now you can do:
+
+Autoref<NameSet> ns3 = NameSet::make(ns2)->add("x");
+
+
+without dereferencing ns2.
