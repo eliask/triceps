@@ -198,12 +198,6 @@ public:
 	// The subclasses must define the actual copying.
 	virtual IndexType *copy() const = 0;
 
-	// Make a new instance of the index.
-	// @param tabtype - table type where this index belongs
-	// @param table - the actuall table instance where this index belongs
-	// @return - the new instance, or NULL if not initialized or had an error.
-	virtual Index *makeIndex(const TableType *tabtype, Table *table) const = 0;
-
 	// @return - true if there are no nested indexes
 	bool isLeaf() const
 	{
@@ -457,6 +451,12 @@ protected:
 public:
 	// this should become protected when the call wrappers get added to Index
 	
+	// Make a new instance of the index.
+	// @param tabtype - table type where this index belongs
+	// @param table - the actuall table instance where this index belongs
+	// @return - the new instance, or NULL if not initialized or had an error.
+	virtual Index *makeIndex(const TableType *tabtype, Table *table) const = 0;
+
 	// GroupHandle operations. Used to control the nested indexes.
 	// These operations bring together two parts: this class provides the
 	// logic while the group handle provides the set of index instances to
