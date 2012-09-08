@@ -1,0 +1,84 @@
+IndexType
+
+Very much like the Perl API, the IndexType is an abstract class, in which you can't create the objects directly, you have to create the objects with its concrete sub-classes. It has the methods common for all the index types, and is defined in type/IndexType.h.
+
+The index type id is defined here, as enum IndexType::IndexId. The supported index types are still IT_HASHED, IT_FIFO, IT_SORTED. There is also the semi-hidden type IT_ROOT: you can't create it directly but every table type creates one implicitly, as the root of its index tree. There is also IT_LAST defined past the last actual type, so if you ever need to iterate through the types, you can do it as
+
+for (int i = 0; i < IndexType::IT_LAST; i++) { ... }
+
+The conversion between the index type id and name can be done with the methods:
+
+static const char *indexIdString(int enval, const char *def = "???");
+static int stringIndexId(const char *str);
+
+As usual with the contant-and-name conversions, the numeric id is invalid, the string def is returned, by default "???". If the string name is unknown, -1 is returned.
+
+IndexId getIndexId() const;
+
+Returns the id of an index type object. It can't be changed, it gets hardcoded in the subclass constructor.
+
+IndexType *addSubIndex(const string &name, Onceref<IndexType> index);
+
+Adds a sub-index, in exactly the same way as adding an index type to the TableType. It also adds a copy of the argument, not the argument itself. It's also designed for chaining, like:
+
+Autoref<TableType> tt = (new TableType(rt1)
+    )->addSubIndex("primary", new HashedIndexType(
+        (new NameSet())->add("b")->add("c"))
+    )->addSubIndex("limit", (new FifoIndexType())
+        ->setLimit(2) // will policy-delete 2 rows
+    ); 
+
+The getting of the key back is done with:
+
+const_Onceref<NameSet> getKey() const;
+
+It will work with any kind of index, but will return a NULL if the index doesn't support the key. The NameSet is an ordered list of unique names, and will be described in detail soon.
+
+IndexType *setAggregator(Onceref<AggregatorType> agg);
+const AggregatorType *getAggregator() const;
+
+Sets or gets an aggregator type for this index type. As usual, any setting can be done only until the index type is initialized.
+
+IndexType *copy() const;
+
+Creates an un-initialized deep copy (with all the sub-index and aggregator types also copied) of this index. This method is used by addSubIndex(). By the way, the usual copy constructor could theoretically be used on the index types but usually doesn't make a whole lot of a sense because the sub-types and such will end up shared by reference.
+
+bool isLeaf() const;
+
+Returns true if this index type has no sub-indexes. Of course, if this type is not initialized yet, more sub-types can be added to it to make it non-leaf later.
+
+IndexType *findSubIndex(const string &name) const;
+IndexType *findSubIndexById(IndexId it) const;
+
+Find the sub-index by name or id, works in the same way as for TableType. A special feature is that it can be applied on a NULL object reference, like this:
+
+Autoref<IndexType> it; // NULL by default
+Autoref<IndexType> itsub = it->findSubIndex("xxx"); // doesn't crash, returns NULL
+
+The idea here is to allow the safe chaining of findSubIndex() for the look-ups of the nested types:
+
+Autoref<IndexType> it = tt->findSubIndex("level1")->findSubIndex("level2");
+if (it.isNull()) {
+    // not found
+}
+
+If any of the elements in the path are missing, the end result will be NULL, conveniently. But it won't tell you, which one was missing, inconveniently.
+
+const IndexTypeVec &getSubIndexes() const;
+
+Returns back the whole set of sub-indexes.
+
+IndexType *getFirstLeaf() const;
+
+Returns the first leaf index type (if a leaf itself, will return itself).
+
+bool isInitialized() const;
+
+Checks whether the index type has been initialized.
+
+TableType *getTabtype() const;
+
+Returns the table type, to which this index type is tied. The tying-together happens at the initialization time, so for an initialized index type this method will return NULL.
+
+There are great many more methods on the IndexType, that are used to maintain the index trees, but you don't need to look at them unless you are interested in the inner workings of the Triceps tables.
+
