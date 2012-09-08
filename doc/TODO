@@ -39,11 +39,14 @@ Things that need to be done:
 * in the C++-underlying-Perl objects have a place to keep $self,
   with $obj->getSelf()->{CLASS} containing the blessing.
 * when printing table types and such, make sure to \-escape the funny characters
-* change the XS type checking to confess instead of plain dying
 * in Triceps::Fields::makeTranslation take the filter specs as arguments, and the caller's name
 * in Type add a generic checkOrThrow(), maybe a template for initializeOrThrow()?
 * in Type::Fields add parsing of the type names including the array indicators
 * add the "distclean" to include the cleaning of docs
+* in Types: make initialize() return an Onceref, make initializeOrThrow() and
+  checkOrThrow() templates. In RowSetType change freeze() to initialize().
+* examples for streaming functions: a loop/fibonacci, RIC/SEDOL/ISIN lookup,
+  a TCP implementation?, queries from multiple sources, then filtering
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
