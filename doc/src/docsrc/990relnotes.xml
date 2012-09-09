@@ -36,10 +36,18 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			When a hashed index type is initialized, its match() method 
+			takes the field name-to-index translation into account, and matches
+			even if the key field names are different but translating to the
+			same indexes.
+			</listitem>
+
+			<listitem>
 			Better &Cpp; NameSet constructors.
 			</listitem>
 
 			<listitem>
+			The &Cpp; API always throws Exceptions instead of direct abort().
 			</listitem>
 		</itemizedlist>
 	</sect1>

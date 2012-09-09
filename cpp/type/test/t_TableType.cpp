@@ -78,6 +78,8 @@ UTESTCASE emptyTable(Utest *utest)
 	UT_IS(tt->getErrors()->print(), "no indexes are defined\n");
 }
 
+// the equals() and match() on table and index types are checked in Perl
+
 UTESTCASE hashedIndex(Utest *utest)
 {
 	RowType::FieldVec fld;

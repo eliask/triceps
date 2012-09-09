@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 98 };
+BEGIN { plan tests => 121 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -135,6 +135,62 @@ $res = $it1->match($it4);
 ok($res, 0);
 $res = $it1->match($it5);
 ok($res, 0);
+
+# hashed index checks the match with the rowtype translation
+# if initialized
+{
+	my $xrt1 = Triceps::RowType->new(
+		a => int32,
+		b => int64,
+	);
+	ok(ref $xrt1, "Triceps::RowType");
+	my $xrt2 = Triceps::RowType->new(
+		d => int32,
+		c => int64,
+	);
+	ok(ref $xrt2, "Triceps::RowType");
+	# fits the difference between $it1 and $it3
+	my $xrt3 = Triceps::RowType->new(
+		c => int32,
+		d => int64,
+	);
+	ok(ref $xrt3, "Triceps::RowType");
+
+	my $xtt1 = Triceps::TableType->new($xrt1)->addSubIndex("primary", $it1);
+	ok(ref $xtt1, "Triceps::TableType");
+	ok($xtt1->initialize());
+	my $xit1 = $xtt1->findSubIndex("primary");
+	# $it3 ends up having the fields in an opposite order in $xtt2
+	my $xtt2 = Triceps::TableType->new($xrt2)->addSubIndex("secondary", $it3);
+	ok(ref $xtt2, "Triceps::TableType");
+	ok($xtt2->initialize());
+	my $xit2 = $xtt2->findSubIndex("secondary");
+	# here the row type and index key result in the same order
+	my $xtt3 = Triceps::TableType->new($xrt3)->addSubIndex("tertiary", $it3);
+	ok(ref $xtt3, "Triceps::TableType");
+	ok($xtt3->initialize());
+	my $xit3 = $xtt3->findSubIndex("tertiary");
+
+	ok($it1->equals($xit1));
+	ok($it1->match($xit1));
+
+	ok($it3->equals($xit2));
+	ok($it3->match($xit2));
+	ok($it3->equals($xit3));
+	ok($it3->match($xit3));
+
+	ok(!$xit1->equals($xit3));
+	ok($xit1->match($xit3)); # after initialization the translation matches
+
+	ok(!$xit1->equals($xit2));
+	ok(!$xit1->match($xit2));
+
+	ok(!$xit3->equals($xit2));
+	ok(!$xit3->match($xit2));
+
+	ok(!$xtt1->match($xtt2));
+	ok($xtt1->match($xtt3));
+}
 
 ###################### nested #################################
 

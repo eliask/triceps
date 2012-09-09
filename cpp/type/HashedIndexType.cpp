@@ -118,7 +118,29 @@ bool HashedIndexType::equals(const Type *t) const
 	|| (key_.isNull() && !pit->key_.isNull()) )
 		return false;
 
-	return key_->equals(pit->key_);
+	if (!key_->equals(pit->key_))
+		return false;
+
+	// if initialized, check the translation of key to field indexes
+	const TableType *tt1 = getTabtype();
+	const TableType *tt2 = pit->getTabtype();
+	if (tt1 == NULL || tt2 == NULL)
+		return true; // good enough
+
+	const RowType *rt1 = tt1->rowType();
+	const RowType *rt2 = tt2->rowType();
+	if (rt1 == NULL || rt2 == NULL)
+		return true; // good enough
+
+	// check that the key matches the same fields by index
+	int nf = key_->size();
+	for (int i = 0; i < nf; i++) {
+		int trans1 = rt1->findIdx((*key_)[i]);
+		int trans2 = rt2->findIdx((*pit->key_)[i]);
+		if (trans1 != trans2 || trans1 < 0)
+			return false;
+	}
+	return true;
 }
 
 bool HashedIndexType::match(const Type *t) const
@@ -134,10 +156,34 @@ bool HashedIndexType::match(const Type *t) const
 	|| (key_.isNull() && !pit->key_.isNull()) )
 		return false;
 
-	// XXX This is not quite right, it should look up the fields in the
-	// row type and see if they match, but there is no row type known yet
-	// Does it matter?
-	return key_->equals(pit->key_);
+	if (key_->size() != pit->key_->size())
+		return false;
+
+	const TableType *tt1 = getTabtype();
+	const TableType *tt2 = pit->getTabtype();
+
+	if (tt1 == NULL || tt2 == NULL)
+		// without the table type, the row type is not known, so use an exact match
+		return key_->equals(pit->key_);
+
+	// the following works only for the initialized types, since the table types
+	// become connected during initialization
+	
+	const RowType *rt1 = tt1->rowType();
+	const RowType *rt2 = tt2->rowType();
+	if (rt1 == NULL || rt2 == NULL)
+		// without the row type use an exact match
+		return key_->equals(pit->key_);
+
+	// check that the key matches the same fields by index
+	int nf = key_->size();
+	for (int i = 0; i < nf; i++) {
+		int trans1 = rt1->findIdx((*key_)[i]);
+		int trans2 = rt2->findIdx((*pit->key_)[i]);
+		if (trans1 != trans2 || trans1 < 0)
+			return false;
+	}
+	return true;
 }
 
 void HashedIndexType::printTo(string &res, const string &indent, const string &subindent) const
