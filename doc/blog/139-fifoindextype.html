@@ -1,0 +1,30 @@
+FifoIndexType
+
+The FifoIndexType works the same way as in Perl, except that it provides two ways to set the configuration values: either as the constructor arguments or as chainable methods:
+
+FifoIndexType(size_t limit = 0, bool jumping = false, bool reverse = false);
+static FifoIndexType *make(size_t limit = 0, bool jumping = false, bool reverse = false);
+
+FifoIndexType *setLimit(size_t limit);
+FifoIndexType *setJumping(bool jumping);
+FifoIndexType *setReverse(bool reverse);
+
+So the following are equivalent:
+
+Autoref<IndexType> it1 = new FifoIndexType(100, true, true);
+Autoref<IndexType> it2 = FifoIndexType::make()
+    ->setLimt(100)
+    ->setJumping(true)
+    ->setReverse(true);
+
+As usual, the settings can be changed only until the initialization. The settings can be read back at any time with
+
+size_t getLimit() const;
+bool isJumping() const;
+bool isReverse() const;
+
+Note that the limit is unsigned, and setting it to negative values results in it being set to very large positive values. The limit of 0 means "unlimited".
+
+All the common methods inherited from IndexType and Type work as usual.
+
+The equals() and match() are equivalent for the FifoIndexType, and are true when all the parameters are set to the same values. 

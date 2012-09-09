@@ -1,0 +1,19 @@
+HashedIndexType
+
+The HashedIndexType is defined in type/HashedIndexType.h. It also allows to specify its only argument, the selection of the key fields, in the constructor, or set it later with a chainable call:
+
+HashedIndexType(NameSet *key = NULL);
+static HashedIndexType *make(NameSet *key = NULL);
+HashedIndexType *setKey(NameSet *key);
+
+One way or the other, the key has to be set, or a missing key will be detected as an error at the initialization time. Obviously, all the conditions described in the Perl API apply: the key fields must be present in the table's row type, and so on.
+
+The key can be get back using the parent class method IndexType::getKey(). The value returned there is a const_Onceref<NameSet>, telling you that the key NameSet must not be changed afterward.
+
+The check for equals() and match() of HashedIndexType are the same in 1.0: the list of key fields must be the same (not the exact same NameSet object, but its contents being the same).
+
+However this has a tricky effect: if two table types have matching row types with different field names, and the same Hashed indexes differing only in the key field names (following the difference in the row types), these table types will be considered non-matching because their hashed indexes are non-matching.
+
+So for version 1.1 I've updated the semantics. If the index types have been initialized, they can find their table types, and from there the row types. And then compare if the keys refer to the matching fields or not, even if their names are different. If the index types are not initialized, everything works the old way. This may lead to slightly surprising effects when the two indexes match inside the initialized table types but their uninitialized copies don't. However the comparison of the uninitialized index types is probably not that usable anyway.
+
+And of course this semantics change in 1.1 propagates to Perl as well. 

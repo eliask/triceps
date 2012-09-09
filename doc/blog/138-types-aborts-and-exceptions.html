@@ -1,0 +1,5 @@
+Types, aborts and exceptions
+
+And by the way,  in version 1.0 the attempts to modify a TableType or IndexType after initialization caused an error message and abort(). For 1.1 I've changed them to throw an Exception instead. There is no more direct abort() anywhere in the code.
+
+Though of course unless you set the Triceps Exception to be interceptable, it will amount to the same error message and abort(). 
