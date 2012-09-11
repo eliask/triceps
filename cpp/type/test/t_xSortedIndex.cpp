@@ -211,7 +211,7 @@ UTESTCASE sortedIndexInt32(Utest *utest)
 class MultiInt32SortCondition : public SortedIndexCondition
 {
 public:
-	// @param idx - index of field to use for comparison (starting from 0)
+	// @param key - the key fields specification
 	MultiInt32SortCondition(NameSet *key):
 		key_(key)
 	{ }
@@ -263,6 +263,7 @@ public:
 
 		return true;
 	}
+
 	virtual bool match(const SortedIndexCondition *sc) const
 	{
 		MultiInt32SortCondition *other = (MultiInt32SortCondition *)sc;
@@ -281,6 +282,7 @@ public:
 			return true;
 		}
 	}
+
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
 	{
 		res.append("MultiInt32Sort(");
@@ -290,6 +292,7 @@ public:
 		}
 		res.append(")");
 	}
+
 	virtual SortedIndexCondition *copy() const
 	{
 		return new MultiInt32SortCondition(*this);
