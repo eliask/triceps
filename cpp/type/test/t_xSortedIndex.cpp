@@ -450,3 +450,193 @@ UTESTCASE sortedIndexMultiInt32(Utest *utest)
 	UT_IS(rt1->getInt32(iter->getRow(), 1), 5); 
 }
 
+// Sort by a generated sequence value.
+class SeqSortCondition : public SortedIndexCondition
+{
+protected:
+	class SeqRhSection : public TreeIndexType::BasicRhSection
+	{
+	public:
+		SeqRhSection(int64_t val) :
+			seq_(val)
+		{ }
+
+		int64_t seq_; // the sequence number of this row handle
+	};
+
+public:
+	SeqSortCondition() :
+		seq_(0)
+	{ }
+
+	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
+	{
+		SortedIndexCondition::initialize(errors, tabtype, indtype);
+		seq_ = 0;
+	}
+
+	virtual bool equals(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+
+	virtual bool match(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+	{
+		res.append("Sequenced");
+	}
+
+	virtual SortedIndexCondition *copy() const
+	{
+		return new SeqSortCondition(*this);
+	}
+
+	virtual size_t sizeOfRhSection() const
+	{
+		return sizeof(SeqRhSection);
+	}
+
+	virtual void initRowHandleSection(RowHandle *rh) const
+	{
+		// initialize the Seq part, the general Sorted index
+		// will initialize the iterator
+	    SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+	    new(rs) SeqRhSection(seq_++);
+	}
+	
+	virtual void clearRowHandleSection(RowHandle *rh) const
+	{ 
+	    // clear the iterator by calling its destructor
+	    SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+	    rs->~SeqRhSection();
+	}
+	
+	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
+	{
+	    SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+	    SeqRhSection *fromrs = fromrh->get<SeqRhSection>(rhOffset_);
+	    
+	    // initialize the iterator by calling its copy constructor inside the placement,
+		// the sequence number gets copied too
+	    new(rs) SeqRhSection(*fromrs);
+	}
+	
+	// Helper method to read the sequence from the row handle,
+	// can also be used by the end-user. The row handle must as usual
+	// belong to this table.
+	int64_t getSeq(const RowHandle *rh) const
+	{
+	    return rh->get<SeqRhSection>(rhOffset_)->seq_;
+	}
+
+	virtual bool operator() (const RowHandle *rh1, const RowHandle *rh2) const
+	{
+		return getSeq(rh1) < getSeq(rh2);
+	}
+
+	mutable int64_t seq_; // the next sequence number to assign
+};
+
+UTESTCASE sortedIndexSeq(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<IndexType> it = new SortedIndexType(new SeqSortCondition());
+	UT_ASSERT(it);
+	Autoref<IndexType> itcopy = it->copy();
+	UT_ASSERT(itcopy);
+	UT_ASSERT(it != itcopy);
+	UT_ASSERT(it->equals(itcopy));
+	UT_ASSERT(it->match(itcopy));
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", it
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	if (UT_ASSERT(tt->getErrors().isNull())) {
+		printf("errors: %s\n", tt->getErrors()->print().c_str());
+		fflush(stdout);
+	}
+
+	const char *expect =
+		"table (\n"
+		"  row {\n"
+		"    uint8[10] a,\n"
+		"    int32 b,\n"
+		"    int64 c,\n"
+		"    float64 d,\n"
+		"    string e,\n"
+		"  }\n"
+		") {\n"
+		"  index Sequenced primary,\n"
+		"}"
+	;
+	if (UT_ASSERT(tt->print() == expect)) {
+		printf("---Expected:---\n%s\n", expect);
+		printf("---Received:---\n%s\n", tt->print().c_str());
+		printf("---\n");
+		fflush(stdout);
+	}
+
+	const_Autoref<NameSet> key = it->getKey();
+	UT_ASSERT(key.isNull());
+
+	// make a table, some rows, and check the order
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+
+	FdataVec dv;
+	mkfdata(dv);
+	
+	int32_t data32;
+
+	{
+		data32 = 5;
+		dv[1].data_ = (char *)&data32;
+		Rowref r1(rt1,  dv);
+		t->insertRow(r1);
+	}
+	{
+		data32 = 0;
+		dv[1].data_ = (char *)&data32;
+		Rowref r1(rt1,  dv);
+		t->insertRow(r1);
+	}
+	{
+		data32 = -5;
+		dv[1].data_ = (char *)&data32;
+		Rowref r1(rt1,  dv);
+		t->insertRow(r1);
+	}
+	{
+		dv[1].notNull_ = false;
+		Rowref r1(rt1,  dv);
+		t->insertRow(r1);
+	}
+
+	UT_IS(t->size(), 4);
+	RowHandle *iter = t->begin();
+
+	UT_IS(rt1->getInt32(iter->getRow(), 1), 5); 
+
+	iter = t->next(iter);
+	UT_ASSERT(!rt1->isFieldNull(iter->getRow(), 1));
+	UT_IS(rt1->getInt32(iter->getRow(), 1), 0); 
+
+	iter = t->next(iter);
+	UT_IS(rt1->getInt32(iter->getRow(), 1), -5); 
+
+	iter = t->next(iter);
+	UT_ASSERT(rt1->isFieldNull(iter->getRow(), 1));
+}
+
