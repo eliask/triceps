@@ -568,6 +568,11 @@ UTESTCASE sortedIndexSeq(Utest *utest)
 		fflush(stdout);
 	}
 
+	Autoref<SortedIndexType> ixt = dynamic_cast<SortedIndexType *>(tt->findSubIndex("primary"));
+	UT_ASSERT(ixt);
+	Autoref<SeqSortCondition> sc = dynamic_cast<SeqSortCondition *>(ixt->getCondition());
+	UT_ASSERT(sc);
+
 	const char *expect =
 		"table (\n"
 		"  row {\n"
@@ -628,15 +633,19 @@ UTESTCASE sortedIndexSeq(Utest *utest)
 	RowHandle *iter = t->begin();
 
 	UT_IS(rt1->getInt32(iter->getRow(), 1), 5); 
+	UT_IS(sc->getSeq(iter), 0); 
 
 	iter = t->next(iter);
 	UT_ASSERT(!rt1->isFieldNull(iter->getRow(), 1));
 	UT_IS(rt1->getInt32(iter->getRow(), 1), 0); 
+	UT_IS(sc->getSeq(iter), 1); 
 
 	iter = t->next(iter);
 	UT_IS(rt1->getInt32(iter->getRow(), 1), -5); 
+	UT_IS(sc->getSeq(iter), 2); 
 
 	iter = t->next(iter);
 	UT_ASSERT(rt1->isFieldNull(iter->getRow(), 1));
+	UT_IS(sc->getSeq(iter), 3); 
 }
 
