@@ -14,6 +14,7 @@
 #include <common/StringUtil.h>
 #include <common/Exception.h>
 #include <table/Table.h>
+#include <mem/Rhref.h>
 
 // Make fields of all simple types
 void mkfields(RowType::FieldVec &fields)
@@ -533,6 +534,16 @@ public:
 	    return rh->get<SeqRhSection>(rhOffset_)->seq_;
 	}
 
+	// Helper method to set the sequence in the row handle.
+	// May be used only on the rows that are not in table.
+	void setSeq(const RowHandle *rh, int64_t val) const
+	{
+		if (rh->isInTable()) {
+			throw Exception("Attempted to change the sequence on a row in table.", true);
+		}
+	    rh->get<SeqRhSection>(rhOffset_)->seq_ = val;
+	}
+
 	virtual bool operator() (const RowHandle *rh1, const RowHandle *rh2) const
 	{
 		return getSeq(rh1) < getSeq(rh2);
@@ -621,7 +632,13 @@ UTESTCASE sortedIndexSeq(Utest *utest)
 		data32 = -5;
 		dv[1].data_ = (char *)&data32;
 		Rowref r1(rt1,  dv);
-		t->insertRow(r1);
+		Rhref rh1(t, r1);
+		// In reality should never set the sequence number for insert;
+		// that would risk the duplication. This is intended for
+		// searching or deleting the pre-existing records with 
+		// pre-existing sequence numbers.
+		sc->setSeq(rh1, 99);
+		t->insert(rh1);
 	}
 	{
 		dv[1].notNull_ = false;
@@ -641,11 +658,11 @@ UTESTCASE sortedIndexSeq(Utest *utest)
 	UT_IS(sc->getSeq(iter), 1); 
 
 	iter = t->next(iter);
-	UT_IS(rt1->getInt32(iter->getRow(), 1), -5); 
-	UT_IS(sc->getSeq(iter), 2); 
-
-	iter = t->next(iter);
 	UT_ASSERT(rt1->isFieldNull(iter->getRow(), 1));
 	UT_IS(sc->getSeq(iter), 3); 
+
+	iter = t->next(iter);
+	UT_IS(rt1->getInt32(iter->getRow(), 1), -5); 
+	UT_IS(sc->getSeq(iter), 99); 
 }
 
