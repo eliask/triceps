@@ -346,11 +346,21 @@ callTray(WrapFnBinding *self)
 
 # with no tray, returns 0
 IV
-getTraySize(WrapFnBinding *self)
+traySize(WrapFnBinding *self)
 	CODE:
 		clearErrMsg();
 		Tray *tray = self->get()->getTray();
 		RETVAL = (tray == NULL)? 0 : tray->size();
+	OUTPUT:
+		RETVAL
+
+# returns 1 if tre tray is empty or not present, 0 if not
+IV
+trayEmpty(WrapFnBinding *self)
+	CODE:
+		clearErrMsg();
+		Tray *tray = self->get()->getTray();
+		RETVAL = (tray == NULL || tray->size() == 0)? 1 : 0;
 	OUTPUT:
 		RETVAL
 

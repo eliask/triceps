@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 347 };
+BEGIN { plan tests => 351 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -339,10 +339,12 @@ my $fbind1 = Triceps::FnBinding->new(
 ok(ref $fbind1, "Triceps::FnBinding");
 ok($fbind1->getName(), "fbind1");
 ok($fbind1->withTray(), 0);
-ok($fbind1->getTraySize(), 0);
+ok($fbind1->traySize(), 0);
+ok($fbind1->trayEmpty(), 1);
 ok($fbind1->withTray(1), 0);
 ok($fbind1->withTray(), 1);
-ok($fbind1->getTraySize(), 0);
+ok($fbind1->traySize(), 0);
+ok($fbind1->trayEmpty(), 1);
 ok($fbind1->withTray(0), 1);
 ok($fbind1->withTray(), 0);
 
@@ -850,11 +852,13 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 
-	ok($fbindz1->getTraySize(), 1);
+	ok($fbindz1->traySize(), 1);
+	ok($fbindz1->trayEmpty(), 0);
 	my $t = $fbindz1->swapTray();
 	ok(ref $t, "Triceps::Tray");
 	ok($t->size(), 1);
-	ok($fbindz1->getTraySize(), 0); # now replaced with an empty tray
+	ok($fbindz1->traySize(), 0); # now replaced with an empty tray
+	ok($fbindz1->trayEmpty(), 1);
 	$u2->call($t);
 	$v2 = $ts2->print();
 	ok($v2, $exp_fretz1_target);
@@ -874,9 +878,9 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 
-	ok($fbindz1->getTraySize(), 1);
+	ok($fbindz1->traySize(), 1);
 	$fbindz1->callTray(); # gets actually called
-	ok($fbindz1->getTraySize(), 0); # now replaced with an empty tray
+	ok($fbindz1->traySize(), 0); # now replaced with an empty tray
 	$v2 = $ts2->print();
 	ok($v2, $exp_fretz1_target);
 	#print "$v2";
@@ -948,9 +952,9 @@ Called chained from the label 'lb1'./);
 	$fretx2->push($fbind5);
 
 	$u1->call($lb1->makeRowopHash("OP_INSERT"));
-	ok($fbind5->getTraySize(), 1);
+	ok($fbind5->traySize(), 1);
 	$u1->call($lb2->makeRowopHash("OP_INSERT"));
-	ok($fbind5->getTraySize(), 2);
+	ok($fbind5->traySize(), 2);
 	#my $v1 = $ts1->print();
 	#print "$v1";
 	#my $v2 = $ts2->print();
@@ -962,7 +966,7 @@ Called chained from the label 'lb1'./);
 	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a mix of rowops for units 'u2' and 'u1'./);
 	#print "$@";
 	
-	ok($fbind5->getTraySize(), 0); # the tray gets consumed in the failed attempt
+	ok($fbind5->traySize(), 0); # the tray gets consumed in the failed attempt
 
 	$fretx2->pop($fbind5);
 	$ts1->clearBuffer();
@@ -998,9 +1002,9 @@ Called chained from the label 'lb1'./);
 	$fretw1->push($fbindw1);
 
 	$u1->call($lb1->makeRowopHash("OP_INSERT"));
-	ok($fbindw1->getTraySize(), 1);
+	ok($fbindw1->traySize(), 1);
 	$u1->call($lb2->makeRowopHash("OP_INSERT"));
-	ok($fbindw1->getTraySize(), 2);
+	ok($fbindw1->traySize(), 2);
 
 	# rowop for the cleared label in the 0th position
 	$lbindw1->clear();
@@ -1011,7 +1015,7 @@ Called chained from the label 'lb1'./);
 	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
 	#print "$@";
 	
-	ok($fbindw1->getTraySize(), 0); # the tray gets consumed in the failed attempt
+	ok($fbindw1->traySize(), 0); # the tray gets consumed in the failed attempt
 
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
@@ -1048,9 +1052,9 @@ Called chained from the label 'lb1'./);
 	$fretw1->push($fbindw1);
 
 	$u1->call($lb2->makeRowopHash("OP_INSERT"));
-	ok($fbindw1->getTraySize(), 1);
+	ok($fbindw1->traySize(), 1);
 	$u1->call($lb1->makeRowopHash("OP_INSERT"));
-	ok($fbindw1->getTraySize(), 2);
+	ok($fbindw1->traySize(), 2);
 
 	# rowop for the cleared label in the 1st position
 	$lbindw1->clear();
@@ -1061,7 +1065,7 @@ Called chained from the label 'lb1'./);
 	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
 	#print "$@";
 	
-	ok($fbindw1->getTraySize(), 0); # the tray gets consumed in the failed attempt
+	ok($fbindw1->traySize(), 0); # the tray gets consumed in the failed attempt
 
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
@@ -1097,9 +1101,9 @@ Called chained from the label 'lb1'./);
 	$fretw1->push($fbindw1);
 
 	$u1->call($lb1->makeRowopHash("OP_INSERT"));
-	ok($fbindw1->getTraySize(), 1);
+	ok($fbindw1->traySize(), 1);
 	$u1->call($lb2->makeRowopHash("OP_INSERT"));
-	ok($fbindw1->getTraySize(), 2);
+	ok($fbindw1->traySize(), 2);
 
 	$lbindw1->clear();
 
@@ -1109,7 +1113,7 @@ Called chained from the label 'lb1'./);
 	ok($@ =~ /^FnBinding::callTray: attempted to call a cleared label 'lbindw1'./);
 	#print "$@";
 	
-	ok($fbindw1->getTraySize(), 0); # the tray gets consumed in the failed attempt
+	ok($fbindw1->traySize(), 0); # the tray gets consumed in the failed attempt
 
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
