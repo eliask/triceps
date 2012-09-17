@@ -297,6 +297,9 @@ void IndexType::initializeNested()
 		agg_->initialize(tabtype_, this);
 		Erref se = agg_->getErrors();
 		errors_->append(strprintf("aggregator '%s':", agg_->getName().c_str()), se);
+		if (agg_->getRowType() == NULL)
+			errors_->appendMsg(true, strprintf("aggregator '%s' internal error: the result row type is not initialized",
+				agg_->getName().c_str()));
 	}
 
 	// optimize by nullifying the empty error set

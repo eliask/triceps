@@ -49,6 +49,11 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			The &Cpp; API always throws Exceptions instead of direct abort().
 			</listitem>
+
+			<listitem>
+			In the &Cpp; API AggregatorType accept the NULL result row type until
+			the initialization is completed.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 

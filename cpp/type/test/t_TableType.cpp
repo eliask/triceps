@@ -999,6 +999,18 @@ UTESTCASE aggregator(Utest *utest)
 		UT_ASSERT(!agt1->equals(agt2));
 		UT_ASSERT(!agt1->match(agt2));
 	}
+	{
+		Autoref<AggregatorType> agt2 = new MyAggregatorType("onPrimary", NULL);
+		UT_ASSERT(!agt1->equals(agt2));
+		UT_ASSERT(!agt1->match(agt2));
+		UT_ASSERT(!agt2->equals(agt1));
+		UT_ASSERT(!agt2->match(agt1));
+
+		// another one with NULL that is equal
+		Autoref<AggregatorType> agt3 = new MyAggregatorType("onPrimary", NULL);
+		UT_ASSERT(agt2->equals(agt3));
+		UT_ASSERT(agt2->match(agt3));
+	}
 
 	// check the comparisons of types with aggregators
 	Autoref<IndexType> it1 = HashedIndexType::make(
@@ -1050,6 +1062,22 @@ UTESTCASE aggregator(Utest *utest)
 	tt->initialize();
 	if (UT_ASSERT(tt->getErrors().isNull()))
 		return;
+
+	
+	// catch a NULL row type in aggregator
+	{
+		Autoref<TableType> ttbad = (new TableType(rt1))
+			->addSubIndex("primary", (new HashedIndexType(
+				(new NameSet())->add("a")->add("e")))
+				->setAggregator(new MyAggregatorType("onPrimary", NULL))
+			)
+			;
+		UT_ASSERT(ttbad);
+		ttbad->initialize();
+		UT_ASSERT(ttbad->getErrors()->hasError());
+		string s = ttbad->getErrors()->print();
+		UT_IS(s, "index error:\n  nested index 1 'primary':\n    aggregator 'onPrimary' internal error: the result row type is not initialized\n");
+	}
 	
 	IndexType *prim = tt->findSubIndex("primary");
 	UT_ASSERT(prim != NULL);
