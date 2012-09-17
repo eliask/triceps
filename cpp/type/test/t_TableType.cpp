@@ -999,6 +999,7 @@ UTESTCASE aggregator(Utest *utest)
 		UT_ASSERT(!agt1->equals(agt2));
 		UT_ASSERT(!agt1->match(agt2));
 	}
+	// NULL aggregators
 	{
 		Autoref<AggregatorType> agt2 = new MyAggregatorType("onPrimary", NULL);
 		UT_ASSERT(!agt1->equals(agt2));
@@ -1010,6 +1011,9 @@ UTESTCASE aggregator(Utest *utest)
 		Autoref<AggregatorType> agt3 = new MyAggregatorType("onPrimary", NULL);
 		UT_ASSERT(agt2->equals(agt3));
 		UT_ASSERT(agt2->match(agt3));
+
+		string s = agt3->print();
+		UT_IS(s, "aggregator (\n) onPrimary");
 	}
 
 	// check the comparisons of types with aggregators
