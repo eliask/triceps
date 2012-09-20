@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 4 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -315,3 +315,172 @@ ok($result,
 8 is Fibonacci number 6
 ');
 
+############################################################
+# A version of Collapse that uses the binding in flushing.
+
+package FnCollapse;
+
+our @ISA=qw(Triceps::Collapse);
+
+sub new # ($class, $optName => $optValue, ...)
+{
+	my $class = shift;
+	my $self = $class->SUPER::new(@_);
+	# Now add an FnReturn to the output of the dataset's tables.
+	# One return is enough for both.
+	# Also create the bindings for sending the data.
+	foreach my $dataset (values %{$self->{datasets}}) {
+		my $fret = Triceps::FnReturn->new(
+			name => $self->{name} . "." . $dataset->{name} . ".retTbl",
+			labels => [
+				del => $dataset->{tbDelete}->getOutputLabel(),
+				ins => $dataset->{tbInsert}->getOutputLabel(),
+			],
+		);
+		$dataset->{fret} = $fret;
+
+		# these variables will be compiled into the binding snippets
+		my $lbOut = $dataset->{lbOut};
+		my $unit = $self->{unit};
+		my $OP_INSERT = &Triceps::OP_INSERT;
+		my $OP_DELETE = &Triceps::OP_DELETE;
+
+		my $fbind = Triceps::FnBinding->new(
+			name => $self->{name} . "." . $dataset->{name} . ".bndTbl",
+			on => $fret,
+			unit => $unit,
+			labels => [
+				del => sub {
+					if ($_[1]->isDelete()) {
+						$unit->call($lbOut->makeRowop($OP_DELETE, $_[1]->getRow()));
+					}
+				},
+				ins => sub {
+					if ($_[1]->isDelete()) {
+						$unit->call($lbOut->makeRowop($OP_INSERT, $_[1]->getRow()));
+					}
+				},
+			],
+		);
+		$dataset->{fbind} = $fbind;
+	}
+	bless $self, $class;
+	return $self;
+}
+
+# A function that clears a table (not a method, no $self).
+sub _clearTable # ($table)
+{
+	my $table = shift;
+	my $next;
+	for (my $rh = $table->begin(); !$rh->isNull(); $rh = $next) {
+		$next = $rh->next(); # advance the irerator before removing
+		$table->remove($rh);
+	}
+}
+
+# Override the base-class flush with a different implementation.
+sub flush # ($self)
+{
+	my $self = shift;
+	foreach my $dataset (values %{$self->{datasets}}) {
+		# The binding takes care of producing and directing
+		# the output. AutoFnBind will unbind when the block ends.
+		my $ab = Triceps::AutoFnBind->new(
+			$dataset->{fret} => $dataset->{fbind}
+		);
+		_clearTable($dataset->{tbDelete});
+		_clearTable($dataset->{tbInsert});
+	}
+}
+
+package main;
+
+############################################################
+# A touch-test of FnCollapse, copied and adapted from xCollapse.t.
+
+sub doCollapse1 {
+
+my $unit = Triceps::Unit->new("unit") or confess "$!";
+
+our $rtData = Triceps::RowType->new(
+	# mostly copied from the traffic aggregation example
+	local_ip => "string",
+	remote_ip => "string",
+	bytes => "int64",
+) or confess "$!";
+
+my $collapse = FnCollapse->new(
+	unit => $unit,
+	name => "collapse",
+	data => [
+		name => "idata",
+		rowType => $rtData,
+		key => [ "local_ip", "remote_ip" ],
+	],
+);
+
+my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
+
+my $lbInput = $collapse->getInputLabel("idata");
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "data") {
+		my $rowop = $lbInput->makeRowopArray(@data);
+		$unit->call($rowop);
+		$unit->drainFrame(); # just in case, for completeness
+	} elsif ($type eq "flush") {
+		$collapse->flush();
+	}
+}
+
+} # doCollapse1
+
+# data and result copied from xCollapse.t
+my @inputData = (
+	"data,OP_INSERT,1.2.3.4,5.6.7.8,100\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,1000\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,1000\n",
+	"flush\n",
+	"data,OP_DELETE,1.2.3.4,5.6.7.8,100\n",
+	"data,OP_INSERT,1.2.3.4,5.6.7.8,200\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,2000\n",
+	"flush\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,2000\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,3000\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,3000\n",
+	"data,OP_INSERT,1.2.3.4,6.7.8.9,4000\n",
+	"data,OP_DELETE,1.2.3.4,6.7.8.9,4000\n",
+	"flush\n",
+);
+
+my $expectResult = 
+'> data,OP_INSERT,1.2.3.4,5.6.7.8,100
+> data,OP_INSERT,1.2.3.4,6.7.8.9,1000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,1000
+> flush
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+> data,OP_DELETE,1.2.3.4,5.6.7.8,100
+> data,OP_INSERT,1.2.3.4,5.6.7.8,200
+> data,OP_INSERT,1.2.3.4,6.7.8.9,2000
+> flush
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
+collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+> data,OP_DELETE,1.2.3.4,6.7.8.9,2000
+> data,OP_INSERT,1.2.3.4,6.7.8.9,3000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,3000
+> data,OP_INSERT,1.2.3.4,6.7.8.9,4000
+> data,OP_DELETE,1.2.3.4,6.7.8.9,4000
+> flush
+collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+';
+
+@input = @inputData;
+$result = undef;
+&doCollapse1();
+#print $result;
+ok($result, $expectResult);
