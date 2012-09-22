@@ -1,0 +1,19 @@
+AggregatorType and BasicAggregatorType, part 3
+
+The purpose of the Aggregator object created by makeAggregator is to keep the state of the group. If you're doing an additive aggregation, it allows you to keep the previous results. If you're doing the optimization of the deletes, it allows you to keep the previous sent row.
+
+What if your aggregator keeps no state? You still have to make an Aggregator for every group, and no, you can't just return NULL, and no, they are not reference-countable, so you have to make a new copy of it for every group (i.e. for every call of makeAggergator()). This looks decidedly sub-optimal, and eventually I'll get around to straighten it out. The good new though is that most of the real aggerators keep the state anyway, so it doesn't matter much.
+
+More of the AggregatorType working can't be explained without going into the working of the aggregators, which requires looking at the tables first, so it all will be discussed later.
+
+The class BasicAggregatorType (defined in type/BasicAggregatorType.h) provides for a simple case: the stateless aggregation, where the aggregation is done by a single simple C function. This C function has all the arguments of Aggregator::handle forwarded to it:
+
+typedef void Callback(Table *table, AggregatorGadget *gadget, Index *index,
+    const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+    Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray);
+
+If you have a function like this, you just give it to the BasicAggregatorType constructor, and you don't need to worry about the rest of it:
+
+BasicAggregatorType(const string &name, const RowType *rt, Callback *cb);
+
+BasicAggregatorType takes care of the rest of the infrastructure: gadgets, aggregators etc. 

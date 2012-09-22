@@ -1,0 +1,152 @@
+SortedIndexType example with getKey
+
+The method getKey() is just a little optional addition to the sort condition. If you leave it unimplemented in your subclass, the basic implementation will just return NULL. I wanted to show a bit more techniques, so I've done a fairly big extension of the previous example. Now it can compare multiple fields, and the fields are specified by names. The only part missing from it being a general OrderedIndexType is the support of all the field types, not just int32.
+
+Here it goes, method by method, with commentary.
+
+class MultiInt32SortCondition : public SortedIndexCondition
+{  
+public:   
+    // @param key - the key fields specification
+    MultiInt32SortCondition(NameSet *key):
+        key_(key)
+    { }
+   
+The key is specified as a name set. Unlike the HashedIndexType, there is no changing the key later, it must be specified in the constructor, and must not be NULL. The same as with HashedIndexType, the original name set becomes referenced by this sort condition and all its copies. So don't change and don't even use the original condition any more after you've passed it to the sort condition.
+
+
+
+    virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
+    {  
+        SortedIndexCondition::initialize(errors, tabtype, indtype);
+        idxs_.clear();
+   
+        for (int i = 0; i < key_->size(); i++) {
+            const string &s = (*key_)[i];
+            int n = rt_->findIdx(s);
+            if (n < 0) {
+                errors->appendMsg(true, strprintf("No such field '%s'.", s.c_str()));
+                continue;
+            }
+            const RowType::Field &fld = rt_->fields()[n];
+            if (fld.type_->getTypeId() != Type::TT_INT32) {
+                errors->appendMsg(true, strprintf("The field '%s' must be an int32.", s.c_str()));
+                continue;
+            }
+            if (fld.arsz_ != RowType::Field::AR_SCALAR) {
+                errors->appendMsg(true, strprintf("The field '%s' must not be an array.", s.c_str()));
+                continue;
+            }
+            idxs_.push_back(n);
+        }
+    }
+
+The initialization translates the field names to indexes (um, that's a confusing double usage of the word "index", here it's like "array indexes") in the row type, and checks that the fields are as expected.
+
+    virtual bool equals(const SortedIndexCondition *sc) const
+    {
+        // the cast is safe to do because the caller has checked the typeid
+        MultiInt32SortCondition *other = (MultiInt32SortCondition *)sc;
+
+        // names must be the same
+        if (!key_->equals(other->key_))
+            return false;
+
+        // and if initialized, the indexs must be the same too
+        if (!rt_.isNull()) {
+            if (idxs_.size() != other->idxs_.size())
+                return false;
+
+            for (int i = 0; i < idxs_.size(); i++) {
+                if (idxs_[i] != other->idxs_[i])
+                    return false;
+            }
+        }
+
+        return true;
+    }
+
+    virtual bool match(const SortedIndexCondition *sc) const
+    {
+        MultiInt32SortCondition *other = (MultiInt32SortCondition *)sc;
+        if (rt_.isNull()) {
+            // not initialized, check by names
+            return key_->equals(other->key_);
+        } else {
+            // initialized, check by indexes
+            if (idxs_.size() != other->idxs_.size())
+                return false;
+
+            for (int i = 0; i < idxs_.size(); i++) {
+                if (idxs_[i] != other->idxs_[i])
+                    return false;
+            }
+            return true;
+        }
+    }
+
+The equality and match checks follow the fashion of HashedIndexType in 1.1: if not initialized, they rely on field names, if initialized, they take the field indexes into the consideration (for equality both the names and indexes must be equal, for matching, only the indexes need to be equal).
+
+    virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+    {
+        res.append("MultiInt32Sort(");
+        for (NameSet::iterator i = key_->begin(); i != key_->end(); ++i) {
+            res.append(*i);
+            res.append(", "); // extra comma after last field doesn't hurt
+        }
+        res.append(")");
+    }
+
+    virtual SortedIndexCondition *copy() const
+    {
+        return new MultiInt32SortCondition(*this);
+    }
+
+    virtual const_Onceref<NameSet> getKey() const
+    {
+        return key_;
+    }
+
+The printing and copying is nothing particularly new and fancy. getKey() simply returns back the key. This feels a bit like an anti-climax, a whole big example for this little one-liner, but again, that's not the only thing that this example shows.
+
+     virtual bool operator() (const RowHandle *rh1, const RowHandle *rh2) const
+    {
+        const Row *row1 = rh1->getRow();
+        const Row *row2 = rh2->getRow();
+
+        int sz = idxs_.size();
+        for (int i = 0; i < sz; i++) {
+            int idx = idxs_[i];
+            {
+                bool v1 = rt_->isFieldNull(row1, idx);
+                bool v2 = rt_->isFieldNull(row2, idx);
+                if (v1 > v2) // isNull at true goes first, so the direction is opposite
+                    return true;
+                if (v1 < v2)
+                    return false;
+            }
+            {
+                int32_t v1 = rt_->getInt32(row1, idx);
+                int32_t v2 = rt_->getInt32(row2, idx);
+                if (v1 < v2)
+                    return true;
+                if (v1 > v2)
+                    return false;
+            }
+        }
+        return false; // falls through on equality, which is not less
+    }
+
+    vector<int> idxs_;
+    Autoref<NameSet> key_;
+};
+
+The "less" comparison function now loops through all the fields in the key. It can't do the shortcuts in the int32 comparison part any more, so that has been expanded to the full condition. If the whole loop falls through without returning, it means that the key fields in both rows are equal, so it returns false.
+
+    ...
+    Autoref<IndexType> it = new SortedIndexType(new MultiInt32SortCondition(
+        NameSet::make()->add("b")->add("c")
+    ));
+    ...
+
+The key argument is created very much like to the hashed index.

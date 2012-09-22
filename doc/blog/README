@@ -1,0 +1,9 @@
+A copy of posts from the blog.
+
+It started by collecting them in the HTML source format, but then
+the HTML stuff has proved itself useless for the final Docbook formatting
+and also the reason for text corruption: I would edit some fragment
+in raw HTML, make a small error somewhere, and when saving, the blog
+software would just throw away the piece of text with the error.
+So I gave up on HTML, but historically the files here are still named
+with the .html suffix.

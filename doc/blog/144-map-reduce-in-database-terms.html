@@ -1,0 +1,17 @@
+Map-Reduce in database terms
+
+Taking a break from the regular Triceps documentation writing, I want to talk a little about the generalities. I kind of started thinking of this subject for the next edition of my book on parallel programming, but then it seemed to make sense for this blog too.
+
+Map-Reduce is a fashionable word popularized by Google, but what does it really mean? Fundamentally, it's an aggregation. The data gets split into groups, and then an aggregation is performed on each group. The "map" is just a different word for "group by", and "reduce" is just an aggregation on a group. Really nothing new, same old stuff.
+
+The interesting part starts when the processing gets parallelized. Mind you, map-reduce doesn't have to be parallelized, it can work within a single machine, but the parallel execution is really the interesting part of it. So when people say "map-reduce", they usually mean the parallel aggregation.
+
+Each group is completely independent from the others. So the aggregation of all of them can be computed in parallel. In reality though you usually don't have as many machines (nor CPUs) as groups, so each CPU handles a subset of groups. That's your Reduce step: take the data collected into groups, give a subset of groups to each individual reducer threads, and have them send the results.
+
+The splitting of the original rows into the groups is the Map step: take the row, compute the aggregation key ("group by" clause), and put it into the appropriate group. There may be multiple mappers working in parallel: just split the input data arbitrarily into chunks, each containing an approximately the same number of records.
+
+Between Map and Reduce there is an intermediate unnamed step: the collation. After you've decided that this row goes into this groups, something has to collect all the rows in the group before they can be aggregated. The collation is usually done in the reducers: The mapper determines the key, takes the hash of it, modulo the number of reducer threads, and thus computes the identity of the reducer handling this key. Then it sends the record to that reducer. The reducer then groups the records by the full keys and holds them until all the mappers tell it that they are done. Then it can proceed to the aggregation ("reduction") and output of the result.
+
+Of course, if the aggregation performed is additive, the reducer needs to keep only the running sum for each group, not the whole group contents.
+
+Now, with this knowledge, implementing map-reduce on CEP looks straightforward, doesn't it? 

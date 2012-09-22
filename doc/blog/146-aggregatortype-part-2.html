@@ -1,0 +1,28 @@
+AggregatorType, part 2
+
+The other method that you can re-define or leave alone is printTo():
+
+virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
+
+The default one prints "aggregator (<result row type>) <name>". If you want to print more information, such as the name of the aggregator class and its arguments, you can define your own.
+
+Finally, there are methods that will produce objects that do the actual work:
+
+virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const;
+virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget);
+
+This exposes quite a bit of the inherent complexity of the aggregators. For the simpler cases you can use the subclass BasicAggregatorType that handles most of this complexity for you and just skip these "make" methods. By the way, the IndexType has a "make" method of this kind too but it was not discussed because unless you define a completely new IndexType, you don't need to worry about it: it just happen under the hood. The SortedIndexType just asks you to define a condition and takes care of the rest, like the BasicAggregatorType for aggregators.
+
+Gadget is a concept that has not been mentioned yet. It's not present in the Perl API, only in C++. Fundamentally it's a general base class that means  "something with an output label". It doesn't have to be limited to one label, it just has one "default" output label and then the subclasses can add anything they want. A table is a gadget. Each aggregator type in a table is a gadget too. So whenever a table is created from a table type, each aggregator type in that table type is called to produce its gadget, and these gadgets are collected in the table. When you call table->getAggregatorLabel("name"), you get the output label from the appropriate gadget.
+
+The gadget construction gets the pointers to the concrete table and concrete index type to which it will be connected. It can store these pointers in the gadget, but it must not make them into references: that would create cyclic references, because the table already references all its aggregator gadgets. There is normally no need to worry that the table will disappear: when the table is destroyed, it will never call the aggregator gadget again, and the dereferencing of the aggregator gadget will likely cause it to be destroyed too (unless you hold another reference to it, which you normally should not).
+
+Once again, short version: one AggregatorGadget per table per aggregator type.
+
+On the other hand, an Aggergator represents a concrete aggregation on a concrete index (not on an index type, on an index!). Whenever an index of some type is created, an aggregator of its connected type is created with it. A table with a complicated tree structure of indexes can have lots of aggregators of a single type. The difference between an index type and an index is explained in http://triceps.sourceforge.net/docs-latest/guide.html#sc_table_indextree. In short, it's one index per group.
+
+The way it works, whenever some row in the table gets deleted or inserted, the table determines for each index type, which actual index in the tree (i.e. which group) got changed. Then for aggregation purposes, if that index has an aggegator on it, that aggregator is called to do its work on the group. It produces an output row or two (or maybe none) for that group and sends it to the aggregator gadget of the same type.
+
+Once again, short version: one Aggregator object per group, produces the updates when asked, sends them to the single common gadget.
+
+The pointers to the Table and Gadget are given for convenience, the Aggergator doesn't need to remember it. Whenever it will be called, it will also be given these pointers as arguments. This is done in the attempt to reduce the amount of data stored per aggregator. 

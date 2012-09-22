@@ -1,0 +1,60 @@
+AggregatorType, part 1
+
+The AggregatorType is a base class in which you define the concrete aggregator types, very much like the sorted index type. It has a chunk of functionality common for all the aggregator types and a bunch of virtual functions that compute the actual aggregation in the subclasses.
+
+AggregatorType(const string &name, const RowType *rt);
+
+The constructor provides a name and the result row type. Remember, that AggregatorType is an abstract class,  and will never be instantiated directly. Instead your subclass that performs a concrete aggregation will invoke this constructor as a part of its constructor.
+
+As has been described in the Perl part of the manual, the aggregator type is unique in the fact that it has a name.  And it's a bit weird name: each aggregator type is kind of by itself and can be reused in multiple table types, but all the aggregator types in a table type must have different names. This is the name that is used to generate the name of the aggregator's output label in a table: '<table_name>.<aggregator_type_name>'. Fundamentally, the aggregator type itself should not have a name, it should be given a name when connected to an index in the table type. But at the time the current idea looked good enough, it's easy, convenient for error messages, and doesn't get much in the way.
+
+The result row type might not be known at the time of the aggregator type creation. All the constructor does with it is place the value into a field, so if the right type is not known, just make up some (as long as it's not NULL!) and use it, then change later at the initialization time.
+
+For 1.1 I've changed this code to accept a NULL result row type until the initialization is completed. If it's still NULL after initialization, this will be reported as an error.
+
+AggregatorType(const AggregatorType &agg);
+virtual AggregatorType *copy() const;
+
+An aggregator type must provide a copy constructor that does the deep copy and the virtual  method copy() that invokes it. It's the same as with the index types: when an agggregator type gets connected into a table type, it gets actually copied, and the must always be uninitialized.
+
+Speaking of the fields, the fields in the AggregatorType and available to the subclasses are:
+
+    const_Autoref<RowType> rowType_; // row type of result
+    Erref errors_; // errors from initialization
+    string name_; // name inside the table's dotted namespace
+    int pos_; // a table has a flat vector of AggregatorGadgets in it, this is the index for this one (-1 if not set)
+    bool initialized_; // flag: already initialized, no future changes
+
+rowType_ is the row type of the result. The constructor puts the argument value there but it can be changed at any time (until the initialization is completed) later.
+
+errors_ is a place to put the errors during initialization. It comes set to NULL, so if you want to report any errors, you have to create an Errors object first.
+
+name_ is where the name is kept. Generally, don't change it, treat it as read-only.
+
+pos_ has to do with management of the aggregator types in a table type. Before initialization it's -1, after initialization each aggregator type (that becomes tied to its table type) will be assigned a sequential number. Again, treat it as read-only, and you probably would never need to even read it.
+
+initialized_ shows that the initialization has already happened. Your initialization should call the initialization of the base class, which would set this flag. No matter if the initialization succeesed or failed, this flag gets set. It never gets reset in the original AggregatorType object, it gets reset only in the copies.
+
+const string &getName() const;
+const RowType *getRowType() const;
+bool isInitialized() const;
+virtual Erref getErrors() const;
+
+The convenience getter functions that return the data from the fields. You can override getErrors() but there probably is no point to it.
+
+
+
+virtual bool equals(const Type *t) const;
+virtual bool match(const Type *t) const;
+
+The equality and match comparisons are as usual. The defaults provided in the base AggregatorType check that the result row type is equal or matching (or, in version 1.1, that both result row types are NULL), and that the typeid of both are the same. So if your aggregator type has no parameters, this is good enough and you don't need to redefine these methods. If you do have parameters, you call the base class method first, if it returns false, you return false, otherwise you check the parameters. Like this:
+
+bool MyAggregatorType::equals(const Type *t) const
+{
+     if (!AggregatorType::equals(t))
+        return false;
+
+    // the typeid matched, so safe to cast
+    const MyAggregatorType *at = static_cast<const MyAggregatorType *>(t);
+    // ... check the type-specific parameters ...
+}

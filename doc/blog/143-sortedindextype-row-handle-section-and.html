@@ -1,0 +1,152 @@
+SortedIndexType, row handle section and sequences
+
+Now we get to an advanced feature that has been mentioned before in the description of the row handles but is not accessible from Perl. A row handle contains a chunk of memory for every index type in the table. It is called a "row handle section". At the very least this chunk of memory contains the iterator in an index of that type, which allows to navigate through the table and to delete the row handles from the table efficiently.
+
+But an index may request more memory (the same fixed amount for each row handle) to store some row-specific information. For example, the Hashed index stores the value of the hash in its section, and uses this value for the efficient comparisons.
+
+A sort condition may request and use memory in this section of a SortedIndexType. It is done by defining a few more virtual methods that handle the row section.
+
+I could have showed an example of the Hashed index re-implementation through the Sorted interface, but it's kind of boring, since you could as well look directly at the source code of the HashedIndexType. Instead I want to show a different kind of index that doesn't use the data in the rows for comparison at all but keeps the rows in the order they were inserted. Like a more expensive variety of FIFO index type. It's also a bit of a preview of a future feature. It assigns a new auto-generated sequence number to each row handle, and uses that sequence number for ordering. Later you can find the row handle quickly if you know its sequence number. If a table may contain multiple copies of a row, the sequence numbers allow you to tell, which copy you are dealing with. It comes handy for such things as results of joins without a natural primary key. Of course, the usefulness of this preview is limited by the fact that there is no place for the sequence numbers in the rowops, and thus there is no way to propagate the sequence numbers in the model. That would have to be addressed before it becomes a full feature.
+
+Now, you might ask, why not just add an extra field and put the sequence number in there? Sure, that would work too, and also solve the issue with the propagation in the rowops. However this means that as a row goes through a table, it gets copied to set the sequence number in it, which is less efficient. So ultimately keeping the sequence numbers "on the side" is more beneficial.
+
+Now, to the implementation:
+
+class SeqSortCondition : public SortedIndexCondition
+{
+protected:
+    class SeqRhSection : public TreeIndexType::BasicRhSection
+    {
+    public:
+        SeqRhSection(int64_t val) :
+            seq_(val)
+        { }
+
+        int64_t seq_; // the sequence number of this row handle
+    };
+
+public:
+    SeqSortCondition() :
+        seq_(0)
+    { }
+
+    virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
+    {
+        SortedIndexCondition::initialize(errors, tabtype, indtype);
+        seq_ = 0;
+    }
+
+    virtual bool equals(const SortedIndexCondition *sc) const
+    {
+        return true;
+    }
+
+    virtual bool match(const SortedIndexCondition *sc) const
+    {
+        return true;
+    }
+
+    virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+    {
+        res.append("Sequenced");
+    }
+
+    virtual SortedIndexCondition *copy() const
+    {
+        return new SeqSortCondition(*this);
+    }
+
+    virtual size_t sizeOfRhSection() const
+    {
+        return sizeof(SeqRhSection);
+    }
+
+    virtual void initRowHandleSection(RowHandle *rh) const
+    {
+        // initialize the Seq part, the general Sorted index
+        // will initialize the iterator
+        SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+        new(rs) SeqRhSection(seq_++);
+    }
+
+    virtual void clearRowHandleSection(RowHandle *rh) const
+    {
+        // clear the iterator by calling its destructor
+        SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+        rs->~SeqRhSection();
+    }
+
+    virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const
+    {
+        SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+        SeqRhSection *fromrs = fromrh->get<SeqRhSection>(rhOffset_);
+
+        // initialize the iterator by calling its copy constructor inside the placement,
+        // the sequence number gets copied too
+        new(rs) SeqRhSection(*fromrs);
+    }
+
+    // Helper method to read the sequence from the row handle,
+    // can also be used by the end-user. The row handle must as usual
+    // belong to this table.
+    int64_t getSeq(const RowHandle *rh) const
+    {
+        return rh->get<SeqRhSection>(rhOffset_)->seq_;
+    }
+    // Helper method to set the sequence in the row handle.
+    // May be used only on the rows that are not in table.
+    void setSeq(const RowHandle *rh, int64_t val) const
+    {
+        if (rh->isInTable()) {
+            throw Exception("Attempted to change the sequence on a row in table.", true);
+        }
+        rh->get<SeqRhSection>(rhOffset_)->seq_ = val;
+    }
+
+    virtual bool operator() (const RowHandle *rh1, const RowHandle *rh2) const
+    {
+        return getSeq(rh1) < getSeq(rh2);
+    }
+
+    mutable int64_t seq_; // the next sequence number to assign
+};
+
+    ...
+     Autoref<IndexType> it = new SortedIndexType(new SeqSortCondition());
+    ...
+
+The nested class SeqRhSection defines the structure of this index's section. For the sort condition it must always inherit from TreeIndexType::BasicRhSection, to get the iterator part from it. Any extra fields are owned by the sort condition.
+
+The SeqSortCondition contains the sequence number generator seq_ (not to be confused with the same-named field seq_ in SeqRhSection), that gets initialized to 0, and will be incremented from there. Since each sorted index type has its own copy of the condition, and each table type gets its own sorted index type, each of them will be counting independently. However there is a bit of a catch when multiple tables get created from the same table type: they will all share the same copy of the sort condition, and thus the same sequence number generator. In practice it should not be a problem, as long as all of the tables are in the same thread. If they are in different threads, a synchronization would be needed around the sequence generator increment. Or better, make a copy of the table type for each thread and avoid the synchronization issues.
+
+The equals() and match() always return true because there is nothing configurable in this sort condition.
+
+The new features start at sizeOfRhSection(). The size of each row handle in a table type is the same, and is computed by asking every index type in it at initialization time and adding up the totals (plus alignment and some fixed amount of basic data). sizeOfRhSection() does its part by telling the caller the size of SeqRhSection.
+
+Then each row handle section must provide the ways to construct and destruct it. Naturally, to save space, a section must have no virtual table, so like for the rows, a separate method in the index type acts as its virtual destructor. And there is no such thing as a virtual constructor in C++, which gets simulater through more methods in the index type. The SortedIndexType delegates most of this work to the sort condition in it. The basic constructor is initRowHandleSection(), the copy constructor is copyRowHandleSection(), and the destructor is clearRowHandleSection().
+
+Each of them gets the location of this index type's section in the row handle with
+
+SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
+
+The field rhOffset_ gets initialized by the SortedIndexType machinery before either of these methods gets ever called. Here rs points to the raw bytes, on which the placement constructors and the explicit destructor are called.
+
+The methods getSeq() and setSeq() are not virtual, they are unique to this SeqSortCondition. They allow to read the sequence from a row handle or set the sequence in it. Naturally, the sequence number may be changed only when the row handle is not in the table yet, or it would mess up the indexing horribly. It's OK to throw the exceptions from setSeq() and getSeq() since they are called directly from the used code and won't confuse any Triceps code along the way.
+
+If you want to find a row handle in the table by its sequence number, you start with creating a new row handle (which can even use an empty row). That new row handle will have a new sequence number assigned to it, but it doesn't matter, because next you call setSeq() and overwrite it with your desired number. Then you use this row handle to call find() or delete() on the table as usual. Like this:
+
+Rhref rh1(table, r1);
+sc->setSeq(rh1, desired_number);
+
+Or to read the number, you do:
+
+int64_t seq = sc->getSeq(rh);
+
+Here sc is the exact initialized sort condition from the actual table type. If you use a wrong or uninitialized one, the rhOffset_ in it will likely be wrong, and will cause all kinds of memory corruption. You can get the sort condition from a table type like this:
+
+    Autoref<SortedIndexType> ixt = dynamic_cast<SortedIndexType *>(tt->findSubIndex("primary"));
+    Autoref<SeqSortCondition> sc = dynamic_cast<SeqSortCondition *>(ixt->getCondition());
+
+You don't have to use the dynamic cast but it's safer, and since you'd normally do it once at the model setup time and then just keep using the value, there is no noticeable performance penalty for it.
+
+The full example can be found in svn in cpp/type/test/t_xSortedIndex.cpp, and will be also included in version 1.1. 
