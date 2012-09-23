@@ -226,7 +226,7 @@ ok($result, $expect);
 sub doFibHead {
 # compute some Fibonacci numbers in a perverse way
 
-$uFib = Triceps::Unit->new("uFib") or confess "$!";
+$uFib = Triceps::Unit->new("uFib");
 
 my $rtFib = Triceps::RowType->new(
 	iter => "int32", # iteration number
@@ -306,7 +306,7 @@ ok($result,
 sub doFibAround {
 # compute some Fibonacci numbers in a perverse way
 
-$uFib = Triceps::Unit->new("uFib") or confess "$!";
+$uFib = Triceps::Unit->new("uFib");
 
 my $rtFib = Triceps::RowType->new(
 	iter => "int32", # iteration number

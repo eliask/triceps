@@ -123,6 +123,7 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     rowop => $rowop, # what to call can be a rowop
 #     tray => $tray, # or a tray
 #     rowops => \@rowops, # or an array of rowops
+#     func => [\$code, @args], # XXX TODO or a procedural function to call
 # );
 #     
 # 

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 6 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -87,7 +87,7 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 sub doFibFn1 {
 # compute some Fibonacci numbers in a perverse way
 
-my $uFib = Triceps::Unit->new("uFib") or confess "$!";
+my $uFib = Triceps::Unit->new("uFib");
 
 ###
 # A streaming function that computes one step of a
@@ -205,7 +205,7 @@ ok($result,
 sub doFibFn2 {
 # compute some Fibonacci numbers in a perverse way
 
-my $uFib = Triceps::Unit->new("uFib") or confess "$!";
+my $uFib = Triceps::Unit->new("uFib");
 
 # Type the data going through the loop.
 my $rtFib = Triceps::RowType->new(
@@ -401,7 +401,7 @@ package main;
 
 sub doCollapse1 {
 
-my $unit = Triceps::Unit->new("unit") or confess "$!";
+my $unit = Triceps::Unit->new("unit");
 
 our $rtData = Triceps::RowType->new(
 	# mostly copied from the traffic aggregation example
@@ -611,7 +611,7 @@ package main;
 
 sub doCollapse2 {
 
-my $unit = Triceps::Unit->new("unit") or confess "$!";
+my $unit = Triceps::Unit->new("unit");
 
 our $rtData = Triceps::RowType->new(
 	# mostly copied from the traffic aggregation example
@@ -754,4 +754,143 @@ $result = undef;
 #print $result;
 ok($result, $expectResult);
 }
+
+############################################################
+# Symbology look-up.
+# Provides the ISIN codes for RIC in various records.
+# It's not the easiest way to do things but for the sake
+# of demonstration it works in the SQLy fashion.
+
+sub doSymbology {
+
+my $unit = Triceps::Unit->new("unit");
+
+# Data for the ISIN enrichment.
+my $rtIsin = Triceps::RowType->new(
+	ric => "string",
+	isin => "string",
+) or confess "$!";
+
+my $ttIsin = Triceps::TableType->new($rtIsin)
+	->addSubIndex("byRic", Triceps::IndexType->newHashed(key => [ "ric" ])
+) or confess "$!"; 
+$ttIsin->initialize() or confess "$!";
+
+my $tIsin = $unit->makeTable($ttIsin, "EM_CALL", "tIsin") or confess "$!";
+
+###########
+# The streaming function that looks up the ISIN.
+my $rtLookupIsin = Triceps::RowType->new(
+	ric => "string",
+) or confess "$!";
+
+my $jIsin = Triceps::LookupJoin->new(
+	unit => $unit,
+	name => "jIsin",
+	leftRowType => $rtLookupIsin,
+	rightTable => $tIsin,
+	rightIdxPath => ["byRic"],
+	rightFields => [ "isin" ],
+	by => [ "ric" => "ric" ],
+	isLeft => 1,
+	limitOne => 1,
+) or confess "$!";
+
+# the input data will be sent here
+my $lbLookupIsin = $jIsin->getInputLabel();
+
+# the results will come from here
+my $fretLookupIsin = Triceps::FnReturn->new(
+	name => "fretLookupIsin",
+	labels => [
+		result => $jIsin->getOutputLabel(),
+	],
+) or confess "$!";
+
+###########
+
+# The data will be coming in multiple varieties, each doing its own call.
+# This example shows only one variety, the rest are similar.
+
+my $rtTrade = Triceps::RowType->new(
+	ric => "string",
+	size => "float64",
+	price => "float64",
+) or confess "$!";
+
+my $rtTradeIsin = Triceps::RowType->new(
+	$rtTrade->getdef(),
+	isin => "string",
+) or confess "$!";
+
+my $lbTradeIsin = $unit->makeDummyLabel($rtTradeIsin, "lbTradeIsin");
+my $lbTrade = $unit->makeLabel($rtTrade, "lbTrade", undef, sub {
+	my $rowop = $_[1];
+	Triceps::FnBinding::call(
+		name => "callTradeLookupIsin",
+		on => $fretLookupIsin,
+		unit => $unit,
+		labels => [
+			result => sub { # a label will be created from this sub
+				$unit->makeHashCall($lbTradeIsin, $rowop->getOpcode(),
+					$rowop->getRow()->toHash(),
+					isin => $_[1]->getRow()->get("isin")
+				);
+			},
+		],
+		rowop => $lbLookupIsin->makeRowopHash("OP_INSERT", 
+			ric => $rowop->getRow()->get("ric")
+		),
+	);
+});
+
+###########
+
+# print what is going on
+my $lbPrintIsin = makePrintLabel("printIsin", $tIsin->getOutputLabel());
+my $lbPrintTrade = makePrintLabel("printTrade", $lbTradeIsin);
+my $lbPrintJoinIsin = makePrintLabel("printJoinIsin", $jIsin->getOutputLabel());
+
+# the main loop
+my %dispatch = (
+	isin => $tIsin->getInputLabel(),
+	trade => $lbTrade,
+);
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	my $lb = $dispatch{$type};
+	my $rowop = $lb->makeRowopArray(@data);
+	$unit->call($rowop);
+	$unit->drainFrame(); # just in case, for completeness
+}
+
+}; # doSymbology
+
+@input = (
+	"isin,OP_INSERT,ABC.L,US0000012345\n",
+	"isin,OP_INSERT,ABC.N,US0000012345\n",
+	"isin,OP_INSERT,DEF.N,US0000054321\n",
+	"trade,OP_INSERT,ABC.L,100,10.5\n",
+	"trade,OP_DELETE,ABC.N,200,10.5\n",
+);
+$result = undef;
+&doSymbology();
+#print $result;
+ok($result, 
+'> isin,OP_INSERT,ABC.L,US0000012345
+tIsin.out OP_INSERT ric="ABC.L" isin="US0000012345" 
+> isin,OP_INSERT,ABC.N,US0000012345
+tIsin.out OP_INSERT ric="ABC.N" isin="US0000012345" 
+> isin,OP_INSERT,DEF.N,US0000054321
+tIsin.out OP_INSERT ric="DEF.N" isin="US0000054321" 
+> trade,OP_INSERT,ABC.L,100,10.5
+lbTradeIsin OP_INSERT ric="ABC.L" size="100" price="10.5" isin="US0000012345" 
+jIsin.out OP_INSERT ric="ABC.L" isin="US0000012345" 
+> trade,OP_DELETE,ABC.N,200,10.5
+lbTradeIsin OP_DELETE ric="ABC.N" size="200" price="10.5" isin="US0000012345" 
+jIsin.out OP_INSERT ric="ABC.N" isin="US0000012345" 
+');
 
