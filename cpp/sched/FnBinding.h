@@ -32,10 +32,10 @@ public:
 	//     ->addLabel("lb2", lb2, false);
 	//
 	// Or to throw on errors:
-	// ret = FnBinding::make(fn)
+	// ret = checkOrThrow(FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1, true)
 	//     ->addLabel("lb2", lb2, false)
-	//     ->checkOrThrow();
+	// );
 	//
 	// @param name - name of the binding (not strictly necessary but convenient
 	//        for diagnostics.
@@ -117,13 +117,6 @@ public:
 	{
 		return name_;
 	}
-
-	// Checks for errors and throws an Exception if any are found.
-	// Takes care of the memory consistency on throwing by increasing
-	// and decreasing the ref count on this object, so that if it hasn't
-	// been stored in an Autoref yet, it will get destroyed.
-	// @return - the same FnBinding object, for chained calls.
-	FnBinding *checkOrThrow();
 
 	// Get the number of labels in the type.
 	int size() const

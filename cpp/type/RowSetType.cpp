@@ -14,13 +14,13 @@ namespace TRICEPS_NS {
 RowSetType::RowSetType() :
 	Type(false, TT_ROWSET),
 	errors_(NULL),
-	frozen_(false)
+	initialized_(false)
 { }
 
 RowSetType *RowSetType::addRow(const string &rname, const_Autoref<RowType>rtype)
 {
-	if (frozen_)
-		throw Exception("Triceps API violation: attempt to add row '" + rname + "' to a frozen row set type.", true);
+	if (initialized_)
+		throw Exception("Triceps API violation: attempt to add row '" + rname + "' to an initialized row set type.", true);
 
 	int idx = names_.size();
 	if (rname.empty()) {
@@ -78,8 +78,8 @@ void RowSetType::addError(const string &msg)
 
 Erref RowSetType::appendErrors()
 {
-	if (frozen_)
-		throw Exception("Triceps API violation: attempt to add an error to a frozen row set type.", true);
+	if (initialized_)
+		throw Exception("Triceps API violation: attempt to add an error to an initialized row set type.", true);
 	if (errors_.isNull())
 		errors_ = new Errors;
 	return errors_;

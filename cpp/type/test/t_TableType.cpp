@@ -167,13 +167,13 @@ UTESTCASE badRow(Utest *utest)
 
 UTESTCASE nullRow(Utest *utest)
 {
-	Autoref<TableType> tt = (new TableType(NULL))
+	// Also test the initialize() template.
+	Autoref<TableType> tt = initialize((new TableType(NULL))
 		->addSubIndex("primary", new HashedIndexType(
 			(new NameSet())->add("a")->add("e"))
-		);
+		));
 
 	UT_ASSERT(tt);
-	tt->initialize();
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
 	UT_ASSERT(tt->getErrors()->hasError());
@@ -223,6 +223,10 @@ UTESTCASE nullIndex(Utest *utest)
 
 UTESTCASE dupIndexName(Utest *utest)
 {
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
 	RowType::FieldVec fld;
 	mkfields(fld);
 
@@ -242,8 +246,15 @@ UTESTCASE dupIndexName(Utest *utest)
 	tt->initialize();
 	if (UT_ASSERT(!tt->getErrors().isNull()))
 		return;
+
+	// also test checkOrThrow()
 	UT_ASSERT(tt->getErrors()->hasError());
-	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 2 name 'primary' is used more than once\n");
+	try {
+		checkOrThrow(tt);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "index error:\n  nested index 2 name 'primary' is used more than once\n");
 }
 
 UTESTCASE throwOnBad(Utest *utest)
@@ -259,13 +270,12 @@ UTESTCASE throwOnBad(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors()->hasError());
 
-
 	try {
-		Autoref<TableType> tt = (new TableType(rt1))
+		Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
 			->addSubIndex("primary", new HashedIndexType(
 				(new NameSet())->add("a")->add("e"))
 			)
-			->initializeOrThrow();
+		);
 	} catch (Exception e) {
 		msg = e.getErrors()->print();
 	}
@@ -367,15 +377,14 @@ UTESTCASE hashedNested(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
 
-	Autoref<TableType> tt = (new TableType(rt1))
+	Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
 		->addSubIndex("primary", (new HashedIndexType(
 			(new NameSet())->add("a")->add("e")))
 			->addSubIndex("level2", new HashedIndexType(
 				(new NameSet())->add("a")->add("e"))
 			)
 		)
-		->initializeOrThrow()
-		;
+	);
 
 	UT_ASSERT(tt);
 	if (UT_ASSERT(tt->getErrors().isNull()))

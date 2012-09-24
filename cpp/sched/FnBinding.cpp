@@ -125,16 +125,6 @@ void FnBinding::callTray()
 	}
 }
 
-FnBinding *FnBinding::checkOrThrow()
-{
-	Erref err = getErrors();
-	if (err->hasError()) {
-		Autoref<FnBinding> r(this); // makes sure that a newly allocated "this" will get freed
-		throw Exception(err, true);
-	}
-	return this;
-}
-
 Label *FnBinding::getLabel(const string &name) const
 {
 	return getLabel(type_->findName(name));

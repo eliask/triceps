@@ -60,21 +60,6 @@ public:
 	// structures. The result gets returned by getErrors().
 	void initialize();
 
-	// Do the initialization, and then if any errors are detected,
-	// throw then in an Exception. If throwing, would intermittenly
-	// reference and de-reference this object, so that in case if it
-	// was not yet referenced, it will be destroyed.
-	//
-	// A typical usage would be:
-	// Autoref<TableType> tt = TableType::new(rt)
-	//     ->addSubIndex(...)
-	//     ...
-	//     ->addSubIndex(...)
-	//     ->initializeOrThrow();
-	//
-	// @return - this
-	TableType *initializeOrThrow();
-
 	// Whether it was already initialized
 	bool isInitialized() const
 	{

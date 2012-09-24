@@ -65,16 +65,16 @@ public:
 	typedef vector<Autoref<FnBinding> > BindingVec;
 
 	// The typical construction is done as a chain:
-	// ret = FnReturn::make(unit, name)
+	// ret = initialize(FnReturn::make(unit, name)
 	//     ->addLabel("lb1", rt1)
 	//     ->addFromLabel("lb2", lbX)
-	//     ->initialize();
+	// );
 	//
 	// Or with throwing on errors:
-	// ret = FnReturn::make(unit, name)
+	// ret = initializeOrThrow(FnReturn::make(unit, name)
 	//     ->addLabel("lb1", rt1)
 	//     ->addFromLabel("lb2", lbX)
-	//     ->initializeOrThrow();
+	// );
 	//
 	// @param unit - the unit where this return belongs
 	// @param name - a human-readable name of this return set
@@ -128,20 +128,11 @@ public:
 	// structures. The result gets returned by getErrors().
 	// May be called repeatedly with no ill effects.
 	// @return - the same FnReturn object, for chained calls.
-	FnReturn *initialize()
+	void initialize()
 	{
-		type_->freeze();
+		type_->initialize();
 		initialized_ = true;
-		return this;
 	}
-
-	// Just like initialize() but any errors found get thrown
-	// in an Exception.
-	// Takes care of the memory consistency on throwing by increasing
-	// and decreasing the ref count on this object, so that if it hasn't
-	// been stored in an Autoref yet, it will get destroyed.
-	// May be called repeatedly with no ill effects.
-	FnReturn *initializeOrThrow();
 
 	// Whether it was already initialized
 	bool isInitialized() const

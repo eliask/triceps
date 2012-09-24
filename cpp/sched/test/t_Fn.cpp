@@ -57,10 +57,10 @@ UTESTCASE fn_return(Utest *utest)
 	// make the returns
 
 	// a good one
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->addFromLabel("one", lb1)
 		->addLabel("two", rt2)
-		->initialize();
+	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 	UT_IS(fret1->getName(), "fret1");
@@ -71,42 +71,42 @@ UTESTCASE fn_return(Utest *utest)
 	UT_ASSERT(fret2->getErrors().isNull());
 	UT_ASSERT(!fret2->isInitialized());
 	// a matching one
-	Autoref<FnReturn> fret3 = FnReturn::make(unit1, "fret3")
+	Autoref<FnReturn> fret3 = initializeOrThrow(FnReturn::make(unit1, "fret3")
 		->addLabel("one", rt1)
 		->addLabel("xxx", rt2)
-		->initializeOrThrow();
+	);
 	UT_ASSERT(fret3->getErrors().isNull());
 	
 	// bad ones
 	{
-		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+		Autoref<FnReturn> fretbad = initialize(FnReturn::make(unit1, "fretbad")
 			->addLabel("one", rt1)
 			->addLabel("", rt2)
-			->initialize();
+		);
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "row name at position 2 must not be empty\n");
 	}
 	{
-		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+		Autoref<FnReturn> fretbad = initialize(FnReturn::make(unit1, "fretbad")
 			->addLabel("one", rt1)
 			->addLabel("one", rt2)
-			->initialize();
+		);
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "duplicate row name 'one'\n");
 	}
 	{
-		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+		Autoref<FnReturn> fretbad = initialize(FnReturn::make(unit1, "fretbad")
 			->addLabel("one", (RowType *)NULL)
 			->addLabel("two", rt2)
-			->initialize();
+		);
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "null row type with name 'one'\n");
 	}
 	{
-		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+		Autoref<FnReturn> fretbad = initialize(FnReturn::make(unit1, "fretbad")
 			->addFromLabel("one", lb1x)
 			->addLabel("two", rt2)
-			->initialize();
+		);
 		UT_ASSERT(!fretbad->getErrors().isNull());
 		UT_IS(fretbad->getErrors()->print(), "Can not include the label 'lb1x' into the FnReturn as 'one': it has a different unit, 'u2' vs 'u'.\n");
 	}
@@ -114,10 +114,10 @@ UTESTCASE fn_return(Utest *utest)
 		// with throwing
 		msg.clear();
 		try {
-			Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			Autoref<FnReturn> fretbad = initializeOrThrow(FnReturn::make(unit1, "fretbad")
 				->addLabel("one", rt1)
 				->addLabel("", rt2)
-				->initializeOrThrow();
+			);
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -248,10 +248,10 @@ UTESTCASE fn_binding(Utest *utest)
 	// make the returns
 
 	// a good one
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->addLabel("one", rt1)
 		->addLabel("two", rt2)
-		->initialize();
+	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 	// an equal one but not initialized
@@ -261,16 +261,16 @@ UTESTCASE fn_binding(Utest *utest)
 	UT_ASSERT(fret2->getErrors().isNull());
 	UT_ASSERT(!fret2->isInitialized());
 	// a matching one
-	Autoref<FnReturn> fret3 = FnReturn::make(unit1, "fret3")
+	Autoref<FnReturn> fret3 = initializeOrThrow(FnReturn::make(unit1, "fret3")
 		->addLabel("one", rt1)
 		->addLabel("xxx", rt2)
-		->initializeOrThrow();
+	);
 	UT_ASSERT(fret3->getErrors().isNull());
 	// an unmatching one
-	Autoref<FnReturn> fret4 = FnReturn::make(unit1, "fret4")
+	Autoref<FnReturn> fret4 = initialize(FnReturn::make(unit1, "fret4")
 		->addLabel("one", rt2)
 		->addLabel("two", rt1)
-		->initialize();
+	);
 	UT_ASSERT(fret4->getErrors().isNull());
 	UT_ASSERT(fret4->isInitialized());
 
@@ -281,10 +281,10 @@ UTESTCASE fn_binding(Utest *utest)
 	UT_ASSERT(bind1->getErrors().isNull());
 	UT_IS(bind1->getName(), "bind1");
 	// labels from another unit are OK
-	Autoref<FnBinding> bind2 = FnBinding::make("bind2", fret1)
+	Autoref<FnBinding> bind2 = checkOrThrow(FnBinding::make("bind2", fret1)
 		->addLabel("one", lb1x, true)
 		->addLabel("two", lb3a, true)
-		->checkOrThrow(); // matching
+	); // matching
 	UT_ASSERT(bind2->getErrors().isNull());
 
 	UT_ASSERT(fret1->equals(bind1));
@@ -337,10 +337,10 @@ UTESTCASE fn_binding(Utest *utest)
 		// with throwing
 		msg.clear();
 		try {
-			Autoref<FnBinding> bindbad = FnBinding::make("bindbad", fret2)
+			Autoref<FnBinding> bindbad = checkOrThrow(FnBinding::make("bindbad", fret2)
 				->addLabel("one", lb1a, true)
 				->addLabel("two", lb3a, true)
-				->checkOrThrow();
+			);
 		} catch (Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -440,18 +440,18 @@ UTESTCASE call_bindings(Utest *utest)
 	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
 
 	// make the return
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->addFromLabel("one", lb1)
 		->addFromLabel("two", lb2)
-		->initialize();
+	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 
 	// a return of a matching type
-	Autoref<FnReturn> fret1a = FnReturn::make(unit1, "fret1a")
+	Autoref<FnReturn> fret1a = initialize(FnReturn::make(unit1, "fret1a")
 		->addLabel("a", rt1)
 		->addLabel("b", rt2)
-		->initialize();
+	);
 	UT_ASSERT(fret1a->getErrors().isNull());
 	UT_ASSERT(fret1a->isInitialized());
 
@@ -462,10 +462,10 @@ UTESTCASE call_bindings(Utest *utest)
 	UT_ASSERT(!fret1b->isInitialized());
 
 	// a return of a non-matching type
-	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
+	Autoref<FnReturn> fret2 = initialize(FnReturn::make(unit1, "fret2")
 		->addLabel("one", rt2)
 		->addLabel("two", rt1)
-		->initialize();
+	);
 	UT_ASSERT(fret2->getErrors().isNull());
 	UT_ASSERT(fret2->isInitialized());
 
@@ -814,10 +814,10 @@ UTESTCASE tray_bindings(Utest *utest)
 	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
 
 	// make the return
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->addFromLabel("one", lb1)
 		->addFromLabel("two", lb2)
-		->initialize();
+	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 
@@ -1058,10 +1058,10 @@ UTESTCASE fn_binding_memory(Utest *utest)
 	UT_ASSERT(rt2->getErrors().isNull());
 
 	// make the return
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->addLabel("one", rt1)
 		->addLabel("two", rt2)
-		->initialize();
+	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 
@@ -1121,10 +1121,10 @@ UTESTCASE fn_retutn_memory(Utest *utest)
 	Autoref<Label> lb1 = new MyDummyLabel(unit1, rt1, "lb1");
 
 	// make the return
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->addFromLabel("one", lb1)
 		->addLabel("two", rt2)
-		->initialize();
+	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 

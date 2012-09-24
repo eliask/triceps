@@ -20,6 +20,7 @@
 #include <common/Errors.h>
 #include <common/Exception.h>
 #include <common/Strprintf.h>
+#include <common/Initialize.h>
 
 namespace TRICEPS_NS {
 

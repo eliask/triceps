@@ -23,15 +23,15 @@ public:
 	typedef vector<Autoref<RowType> > RowTypeVec; 
 
 	// It's created empty and then the row types are added one by one.
-	// After the last one you may call freeze() to prevent more types
+	// After the last one you may call initialize() to prevent more types
 	// added accidentally in the future.
 	// Check getErrors() after you've added the last one.
 	// The typical use is:
 	// 
-	// Autoref<RowSetType> rst = RowSetType::make()
+	// Autoref<RowSetType> rst = initialize(RowSetType::make()
 	//     ->addRow("name1", rt1)
 	//     ->addRow("name2", rt2)
-	//     ->freeze();
+	// );
 	RowSetType();
 
 	// A convenience wrapper for the constructor
@@ -44,7 +44,7 @@ public:
 	// If there are any errors (duplicate names etc), they will be returned 
 	// later in getErrors().
 	//
-	// May throw an exception if the type is already frozen.
+	// May throw an exception if the type is already initialized.
 	//
 	// @param rname - name of this element
 	// @param rtype - row type for this element
@@ -53,16 +53,15 @@ public:
 	
 	// After this call any attempts to add a row will cause an Exception.
 	// Pretty much, a diagnostic tool.
-	RowSetType *freeze()
+	void initialize()
 	{
-		frozen_ = true;
-		return this;
+		initialized_ = true;
 	}
 
 	// A way to find out if this type is still changeable.
-	bool isFrozen() const
+	bool isInitialized() const
 	{
-		return frozen_;
+		return initialized_;
 	}
 
 	// get the contents info
@@ -102,12 +101,12 @@ public:
 	const string *getRowTypeName(int idx) const;
 
 	// Add an error message. Can be used both internally and by the
-	// wrapping objects to add their errors. After the type is frozen,
+	// wrapping objects to add their errors. After the type is initialized,
 	// throws the Exception.
 	void addError(const string &msg);
 	// Returns the errors object for appending to it. Makes sure that
 	// the object exists first, and instantiates it if it doesn't.
-	// After the type is frozen, throws the Exception.
+	// After the type is initialized, throws the Exception.
 	Erref appendErrors();
 
 	// from Type
@@ -123,9 +122,7 @@ protected:
 	NameVec names_; // names in sequence
 	RowTypeVec types_; // row types in sequence
 	Erref errors_; // errors collected during build
-	bool frozen_; // flag: fields can not be added any more
-
-	
+	bool initialized_; // flag: fields can not be added any more
 
 	// XXX a copy constructor should be fine if errors_ is NULL
 };

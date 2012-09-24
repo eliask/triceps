@@ -69,11 +69,11 @@ public:
 	// @return - the type reference (one of r_*) or NULL if not found
 	static Onceref<const SimpleType> findSimpleType(const char *name);
 
-	// Get the errors collected when parsing this type
+	// Get the errors collected when parsing this type.
+	// The checkOrThrow() from common/Initialize.h can be used to throw on errors.
 	// @return - errors reference, may be NULL
 	virtual Erref getErrors() const = 0;
 
-	// XXX add checkOrThrow() to throw on errors
 
 	// The types can be equal in one of 3 ways, in order or decreasting exactness:
 	// 1. Exactly the same Type object.

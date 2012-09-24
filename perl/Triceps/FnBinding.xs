@@ -67,7 +67,7 @@ static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, 
 		fbind->addLabel(entryname, lb, cl);
 	}
 	try {
-		fbind->checkOrThrow();
+		checkOrThrow(fbind);
 	} catch (Exception e) {
 		throw Exception(e, strprintf("%s: invalid arguments:", funcName));
 	}

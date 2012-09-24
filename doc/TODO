@@ -47,8 +47,27 @@ Things that need to be done:
   checkOrThrow() templates. In RowSetType change freeze() to initialize().
 * instead of giving names to aggregator types themselves, give them names
   inside a table (like to indexes)
-* examples for streaming functions: a loop/fibonacci, RIC/SEDOL/ISIN lookup,
-  a TCP implementation?, queries from multiple sources, then filtering
+* initialize aggregators after all the indexes have been initialized
+* examples for streaming functions: RIC/SEDOL/ISIN lookup,
+  a TCP implementation?, queries from multiple sources, then filtering,
+  join results (iterating over results of LookupJoin),
+  queue with multiple readers; in Collapse group the deletes with inserts
+  by forking a delete row to an insert table on flush
+* Expand pattern: when the result of a join contains everything from the left
+  side plus some from the right side, there is no need to keep the original
+  pre-join left side (and the join result table can be used to generate the
+  correct updates to send into the left side of the joib)
+* for rows containing token-value pairs (array of token names, array of values),
+  an index on tokens.
+* make the Aggregator object optional, with NULL used in case if it's
+  not needed (and could save an spot in GroupHandle too). Call the method
+  handle() in the AggregatorType. BasicAggregator doesn't need gadget_.
+* Table helper methods: clear() (with an optional limit), 
+  dump() (through a separate label)
+* in joins require that only the input labels are of the same unit,
+  tables may be different unit
+* aggregation: add an option for mandatory keeping of the last row,
+  and a way to find and iterate them (thus avoiding a separate table)
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -57,6 +76,7 @@ Things that need to be done:
 * doc: streaming functions
 * doc: perl Label::isCleared()
 * doc: in types construction throw instead of abort()
+* doc: the templates for initialize(), initializeOrThrow(), checkOrThrow()
 
 App ideas:
 * queries on CSV files

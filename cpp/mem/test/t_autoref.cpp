@@ -145,5 +145,45 @@ UTESTCASE onceref(Utest *utest)
 	p = NULL;
 	p2 = NULL;
 	UT_ASSERT(tg::outstanding == 0);
+} 
+
+Onceref<tg> once_arg(Onceref<tg> arg)
+{
+	return arg;
+}
+
+Autoref<tg> auto_arg(Autoref<tg> arg)
+{
+	return arg;
+}
+
+template <class T>
+Onceref<T> tmpl_once_arg(Onceref<T> arg)
+{
+	return arg;
+}
+
+template <class T>
+Autoref<T> tmpl_auto_arg(Autoref<T> arg)
+{
+	return arg;
+}
+
+UTESTCASE onceref_casts(Utest *utest)
+{
+	Onceref<tg> o;
+	o = tg::factory();
+
+	Autoref<tg> a;
+	a = o;
+	o = a;
+
+	o = once_arg(a);
+	a = auto_arg(o);
+
+#if 0 // in templates the auto-casting doesn't work
+	o = tmpl_once_arg(a);
+	a = tmpl_auto_arg(o);
+#endif
 }
 

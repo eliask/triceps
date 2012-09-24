@@ -155,7 +155,7 @@ new(char *CLASS, ...)
 			}
 
 			try {
-				fret->initializeOrThrow();
+				initializeOrThrow(fret);
 			} catch (Exception e) {
 				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
 			}
