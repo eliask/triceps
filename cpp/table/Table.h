@@ -220,6 +220,15 @@ public:
 	// finding the group.
 	size_t groupSizeRowIdx(IndexType *ixt, const Row *what) const;
 
+	// Clear the table. The delete rowops will be send out of the "pre" and
+	// "out" labels as usual.
+	// In the future it might be optimized, the initial implementation
+	// works in a simple way.
+	// May throw an Exception.
+	// @param limit - maximal number of the rows to delete. 0 means
+	//        "delete all".
+	void clear(size_t limit = 0);
+
 protected:
 	friend class TableType;
 	// A Table is normally created by a TableType as a factory.

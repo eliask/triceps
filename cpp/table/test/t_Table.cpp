@@ -476,3 +476,61 @@ UTESTCASE groupSize(Utest *utest)
 	UT_IS(t->groupSizeRowIdx(bcixt, r12), 3);
 }
 
+// check the deteles from clear()
+class LabelDelete : public Label
+{
+public:
+	LabelDelete(Unit *unit, Onceref<RowType> rtype, const string &name,
+			int32_t initial, Utest *ut) :
+		Label(unit, rtype, name),
+		nextval_(initial),
+		utest(ut)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		UT_IS(arg->getOpcode(), Rowop::OP_DELETE);
+		UT_IS(getType()->getInt32(arg->getRow(), 1), nextval_);
+		++nextval_;
+	}
+
+	mutable int32_t nextval_;
+	Utest *utest; // must be without _ for the UT_* macros to work
+};
+
+UTESTCASE clear(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
+		->addSubIndex("fifo", new FifoIndexType())
+	);
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	FdataVec dv;
+	mkfdata(dv);
+	
+	int32_t v32 = 0;
+
+	dv[1].data_ = (char *)&v32;
+	for (v32 = 0; v32 < 10; v32++) {
+		Rhref rh1(t, dv);
+		t->insert(rh1);
+	}
+
+	Autoref<LabelDelete> ldel = new LabelDelete(unit, rt1, "ldel", 0, utest);
+	t->getLabel()->chain(ldel);
+
+	t->clear();
+	UT_IS(ldel->nextval_, 10);
+}

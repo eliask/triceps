@@ -48,6 +48,17 @@ public:
 			rh_->incref();
 	}
 
+	// Constructor that creates a row from field values and then a row
+	// handle from it.
+	// @param t - the table where the row handle belongs (must not be NULL)
+	// @param data - data to put into the row (not const because of possible nulls extension)
+	Rhref(Table *t, FdataVec &data) :
+		table_(t), 
+		rh_(t->makeRowHandle(t->getRowType()->makeRow(data)))
+	{
+		rh_->incref(); // known to be not NULL
+	}
+
 	// Constructor from another Rhref
 	Rhref(const Rhref &ar) :
 		table_(ar.table_),

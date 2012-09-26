@@ -412,5 +412,15 @@ size_t Table::groupSizeRowIdx(IndexType *ixt, const Row *row) const
 	return res;
 }
 
+void Table::clear(size_t limit)
+{
+	RowHandle *rh;
+	while ((rh = begin()) != NULL) {
+		remove(rh);
+		if (limit != 0 && --limit == 0)
+			break;
+	}
+}
+
 }; // TRICEPS_NS
 
