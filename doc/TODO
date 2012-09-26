@@ -62,8 +62,7 @@ Things that need to be done:
 * make the Aggregator object optional, with NULL used in case if it's
   not needed (and could save an spot in GroupHandle too). Call the method
   handle() in the AggregatorType. BasicAggregator doesn't need gadget_.
-* Table helper methods: clear() (with an optional limit), 
-  dump() (through a separate label)
+* Table helper methods: dump() (through a separate label)
 * in joins require that only the input labels are of the same unit,
   tables may be different unit
 * aggregation: add an option for mandatory keeping of the last row,

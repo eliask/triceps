@@ -36,6 +36,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			Added <pre>Table::clear()</pre>.
+			</listitem>
+
+			<listitem>
 			When a hashed index type is initialized, its match() method 
 			takes the field name-to-index translation into account, and matches
 			even if the key field names are different but translating to the
@@ -53,6 +57,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			In the &Cpp; API AggregatorType accept the NULL result row type until
 			the initialization is completed.
+			</listitem>
+
+			<listitem>
+			In &Cpp; added a Rhref constructor directly from FdataVec.
 			</listitem>
 		</itemizedlist>
 	</sect1>
