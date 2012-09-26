@@ -368,17 +368,6 @@ sub new # ($class, $optName => $optValue, ...)
 	return $self;
 }
 
-# A function that clears a table (not a method, no $self).
-sub _clearTable # ($table)
-{
-	my $table = shift;
-	my $next;
-	for (my $rh = $table->begin(); !$rh->isNull(); $rh = $next) {
-		$next = $rh->next(); # advance the irerator before removing
-		$table->remove($rh);
-	}
-}
-
 # Override the base-class flush with a different implementation.
 sub flush # ($self)
 {
@@ -389,8 +378,8 @@ sub flush # ($self)
 		my $ab = Triceps::AutoFnBind->new(
 			$dataset->{fret} => $dataset->{fbind}
 		);
-		_clearTable($dataset->{tbDelete});
-		_clearTable($dataset->{tbInsert});
+		$dataset->{tbDelete}->clear();
+		$dataset->{tbInsert}->clear();
 	}
 }
 

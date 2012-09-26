@@ -576,3 +576,30 @@ groupSizeIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 	OUTPUT:
 		RETVAL
 
+# Clear the table. If the limit is specified, will clear no more than
+# this many rows. The rows are removed in the order of the first leaf index.
+# @param limit - (int, optional) maximal number of rows to delete.
+void
+clear(WrapTable *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::Table::clear";
+
+		try { do {
+			clearErrMsg();
+			Table *t = self->get();
+			size_t arg;
+			
+			if (items == 1) {
+				arg = 0;
+			} else if (items == 2) {
+				IV iarg = SvIV(ST(1));
+				if (iarg < 0)
+					throw TRICEPS_NS::Exception::f("%s: the limit argument must be >=0, got %lld", 
+						funcName, (long long)iarg);
+				arg = (size_t)iarg;
+			} else {
+				throw TRICEPS_NS::Exception::f("Usage: %s(self, [, limit])", funcName);
+			}
+
+			t->clear(arg);
+		} while(0); } TRICEPS_CATCH_CROAK;

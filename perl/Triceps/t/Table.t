@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 207 };
+BEGIN { plan tests => 227 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -555,3 +555,40 @@ ok(!eval {
 	$res = $t1->deleteRow($r1, 1);
 });
 ok($@ =~ /Triceps::Table::deleteRow: copyTray is not a blessed SV reference to WrapTray/);
+
+# table clearing (repeats the logic of C++ test)
+{
+	my $ttc1 = Triceps::TableType->new($rt1)
+		->addSubIndex("fifo", Triceps::IndexType->newFifo())
+		;
+	ok(ref $ttc1, "Triceps::TableType");
+	$ttc1->initialize();
+	my $tc1 = $u1->makeTable($ttc1, "EM_CALL", "tc1");
+	ok(ref $tc1, "Triceps::Table");
+	
+	for (my $i = 0; $i < 10; $i++) {
+		my $r = $rt1->makeRowHash(b => $i);
+		$tc1->insert($r);
+	}
+
+	my $next = 0;
+	my $lbc = $u1->makeLabel($rt1, "lbc", undef, sub {
+		ok($_[1]->getRow()->get("b"), $next);
+		++$next;
+	});
+	ok(ref $lbc, "Triceps::Label");
+	$tc1->getOutputLabel()->chain($lbc);
+
+	$tc1->clear(3);
+	ok($next, 3);
+	$tc1->clear();
+	ok($next, 10);
+	$tc1->clear(99);
+	ok($next, 10);
+
+	# bad args
+	ok(!eval { $tc1->clear(1, 2) });
+	ok($@ =~ /^Usage: Triceps::Table::clear\(self, \[, limit\]\) at/) or print STDERR "got: $@\n";
+	ok(!eval { $tc1->clear(-1) });
+	ok($@ =~ /^Triceps::Table::clear: the limit argument must be >=0, got -1/) or print STDERR "got: $@\n";
+}
