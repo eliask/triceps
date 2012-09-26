@@ -352,7 +352,7 @@ sub new # ($class, $optName => $optValue, ...)
 			labels => [
 				del => sub {
 					if ($_[1]->isDelete()) {
-						$unit->call($lbOut->makeRowop($OP_DELETE, $_[1]->getRow()));
+						$unit->call($lbOut->adopt($_[1]));
 					}
 				},
 				ins => sub {
@@ -573,7 +573,7 @@ sub new # ($class, $optName => $optValue, ...)
 			labels => [
 				del => sub {
 					if ($_[1]->isDelete()) {
-						$unit->call($lbOut->makeRowop($OP_DELETE, $_[1]->getRow()));
+						$unit->call($lbOut->adopt($_[1]));
 						# If the INSERT is available after this DELETE, this
 						# will produce it.
 						$unit->call($lbInsInput->adopt($_[1]));
