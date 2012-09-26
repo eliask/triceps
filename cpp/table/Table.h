@@ -221,7 +221,8 @@ public:
 	size_t groupSizeRowIdx(IndexType *ixt, const Row *what) const;
 
 	// Clear the table. The delete rowops will be send out of the "pre" and
-	// "out" labels as usual.
+	// "out" labels as usual. The rows are sent in the order of the
+	// first leaf index.
 	// In the future it might be optimized, the initial implementation
 	// works in a simple way.
 	// May throw an Exception.

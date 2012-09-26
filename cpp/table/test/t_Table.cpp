@@ -534,5 +534,7 @@ UTESTCASE clear(Utest *utest)
 	t->clear(3);
 	UT_IS(ldel->nextval_, 3);
 	t->clear();
+	t->clear(99);
+	UT_IS(ldel->nextval_, 10);
 	UT_IS(ldel->nextval_, 10);
 }
