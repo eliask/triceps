@@ -531,6 +531,8 @@ UTESTCASE clear(Utest *utest)
 	Autoref<LabelDelete> ldel = new LabelDelete(unit, rt1, "ldel", 0, utest);
 	t->getLabel()->chain(ldel);
 
+	t->clear(3);
+	UT_IS(ldel->nextval_, 3);
 	t->clear();
 	UT_IS(ldel->nextval_, 10);
 }
