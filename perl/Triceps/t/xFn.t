@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 6 };
+BEGIN { plan tests => 7 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -428,9 +428,7 @@ while(&readLine) {
 
 } # doCollapse1
 
-{
-# data and result copied from xCollapse.t
-my @inputData = (
+my @collapseInputData = (
 	"data,OP_INSERT,1.2.3.4,5.6.7.8,100\n",
 	"data,OP_INSERT,1.2.3.4,6.7.8.9,1000\n",
 	"data,OP_DELETE,1.2.3.4,6.7.8.9,1000\n",
@@ -470,8 +468,7 @@ my @inputData = (
 	"flush\n",
 );
 
-# XXX here the result order depends on the hash order
-my $expectResult = 
+my $collapseResultBase = 
 '> data,OP_INSERT,1.2.3.4,5.6.7.8,100
 > data,OP_INSERT,1.2.3.4,6.7.8.9,1000
 > data,OP_DELETE,1.2.3.4,6.7.8.9,1000
@@ -517,7 +514,15 @@ collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100"
 > data,OP_INSERT,3.3.3.3,7.7.7.7,300
 > data,OP_INSERT,4.4.4.4,8.8.8.8,300
 > flush
-collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100" 
+';
+
+{
+# data and result copied from xCollapse.t
+my @inputData = @collapseInputData;
+
+# XXX here the result order depends on the hash order
+my $expectResult = $collapseResultBase .
+'collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100" 
 collapse.idata.out OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100" 
 collapse.idata.out OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100" 
 collapse.idata.out OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100" 
@@ -638,49 +643,143 @@ while(&readLine) {
 
 } # doCollapse2
 
+my $collapseResultInterleaved = $collapseResultBase .
+'collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="300" 
+collapse.idata.out OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="300" 
+collapse.idata.out OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="300" 
+collapse.idata.out OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100" 
+collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300" 
+';
+
 {
 # data and result copied from xCollapse.t
-my @inputData = (
-	"data,OP_INSERT,1.2.3.4,5.6.7.8,100\n",
-	"data,OP_INSERT,1.2.3.4,6.7.8.9,1000\n",
-	"data,OP_DELETE,1.2.3.4,6.7.8.9,1000\n",
-	"flush\n",
-	"data,OP_DELETE,1.2.3.4,5.6.7.8,100\n",
-	"data,OP_INSERT,1.2.3.4,5.6.7.8,200\n",
-	"data,OP_INSERT,1.2.3.4,6.7.8.9,2000\n",
-	"flush\n",
-	"data,OP_DELETE,1.2.3.4,6.7.8.9,2000\n",
-	"data,OP_INSERT,1.2.3.4,6.7.8.9,3000\n",
-	"data,OP_DELETE,1.2.3.4,6.7.8.9,3000\n",
-	"data,OP_INSERT,1.2.3.4,6.7.8.9,4000\n",
-	"data,OP_DELETE,1.2.3.4,6.7.8.9,4000\n",
-	"flush\n",
-	# from this point, show the ordering of multiple delete-inserts
-	"data,OP_INSERT,1.1.1.1,5.5.5.5,100\n",
-	"data,OP_INSERT,2.2.2.2,6.6.6.6,100\n",
-	"data,OP_INSERT,3.3.3.3,7.7.7.7,100\n",
-	"data,OP_INSERT,4.4.4.4,8.8.8.8,100\n",
-	"flush\n",
-	"data,OP_DELETE,1.1.1.1,5.5.5.5,100\n",
-	"data,OP_DELETE,2.2.2.2,6.6.6.6,100\n",
-	"data,OP_DELETE,3.3.3.3,7.7.7.7,100\n",
-	"data,OP_DELETE,4.4.4.4,8.8.8.8,100\n",
-	"data,OP_INSERT,1.1.1.1,5.5.5.5,200\n",
-	"data,OP_INSERT,2.2.2.2,6.6.6.6,200\n",
-	"data,OP_INSERT,3.3.3.3,7.7.7.7,200\n",
-	"data,OP_INSERT,4.4.4.4,8.8.8.8,200\n",
-	"data,OP_DELETE,1.1.1.1,5.5.5.5,200\n",
-	"data,OP_DELETE,2.2.2.2,6.6.6.6,200\n",
-	"data,OP_DELETE,3.3.3.3,7.7.7.7,200\n",
-	"data,OP_DELETE,4.4.4.4,8.8.8.8,200\n",
-	"data,OP_INSERT,1.1.1.1,5.5.5.5,300\n",
-	"data,OP_INSERT,2.2.2.2,6.6.6.6,300\n",
-	"data,OP_INSERT,3.3.3.3,7.7.7.7,300\n",
-	"data,OP_INSERT,4.4.4.4,8.8.8.8,300\n",
-	"flush\n",
-);
+my @inputData = @collapseInputData;
 
 # XXX here the result order depends on the hash order
+my $expectResult = $collapseResultInterleaved;
+
+@input = @inputData;
+$result = undef;
+&doCollapse2();
+#print $result;
+ok($result, $expectResult);
+}
+
+############################################################
+# A version of Collapse that uses the binding in flushing
+# and keeps the deletes and inserts close in its output.
+# In this version the propagation of Delete table flush
+# is done by chaining.
+
+package FnCollapseClose3;
+
+our @ISA=qw(FnCollapse);
+
+sub new # ($class, $optName => $optValue, ...)
+{
+	my $class = shift;
+	my $self = $class->SUPER::new(@_);
+	# Now add an FnReturn to the output of the dataset's tables.
+	# One return is enough for both.
+	# Also create the bindings for sending the data.
+	foreach my $dataset (values %{$self->{datasets}}) {
+		my $fret = Triceps::FnReturn->new(
+			name => $self->{name} . "." . $dataset->{name} . ".retTbl",
+			labels => [
+				del => $dataset->{tbDelete}->getOutputLabel(),
+				ins => $dataset->{tbInsert}->getOutputLabel(),
+			],
+		);
+		$dataset->{fret} = $fret;
+
+		# these variables will be compiled into the binding snippets
+		my $lbInsInput = $dataset->{tbInsert}->getInputLabel();
+		my $lbOut = $dataset->{lbOut};
+		my $unit = $self->{unit};
+		my $OP_INSERT = &Triceps::OP_INSERT;
+		my $OP_DELETE = &Triceps::OP_DELETE;
+
+		# The clearing of Delete table on flush propagates
+		# to the output and to the Insert table.
+		my $lbDel = $unit->makeDummyLabel(
+			$dataset->{tbDelete}->getOutputLabel()->getRowType(), 
+			$self->{name} . "." . $dataset->{name} . ".lbDel");
+		$lbDel->chain($lbOut);
+		$lbDel->chain($lbInsInput);
+
+		my $fbind = Triceps::FnBinding->new(
+			name => $self->{name} . "." . $dataset->{name} . ".bndTbl",
+			on => $fret,
+			unit => $unit,
+			labels => [
+				del => $lbDel,
+				ins => sub {
+					$unit->call($lbOut->makeRowop($OP_INSERT, $_[1]->getRow()));
+				},
+			],
+		);
+		$dataset->{fbind} = $fbind;
+	}
+	bless $self, $class;
+	return $self;
+}
+
+package main;
+
+############################################################
+# A touch-test of FnCollapseClose3, exactly the same as doCollapse1
+# only using a different collapse class.
+
+sub doCollapse3 {
+
+my $unit = Triceps::Unit->new("unit");
+
+our $rtData = Triceps::RowType->new(
+	# mostly copied from the traffic aggregation example
+	local_ip => "string",
+	remote_ip => "string",
+	bytes => "int64",
+) or confess "$!";
+
+my $collapse = FnCollapseClose3->new(
+	unit => $unit,
+	name => "collapse",
+	data => [
+		name => "idata",
+		rowType => $rtData,
+		key => [ "local_ip", "remote_ip" ],
+	],
+);
+
+my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
+
+my $lbInput = $collapse->getInputLabel("idata");
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "data") {
+		my $rowop = $lbInput->makeRowopArray(@data);
+		$unit->call($rowop);
+		$unit->drainFrame(); # just in case, for completeness
+	} elsif ($type eq "flush") {
+		$collapse->flush();
+	}
+}
+
+} # doCollapse3
+
+{
+# data and result copied from xCollapse.t
+my @inputData = @collapseInputData;
+
+# XXX here the result order depends on the hash order
+# The data is the same as before, except for the delete's label name
+# on output.
 my $expectResult = 
 '> data,OP_INSERT,1.2.3.4,5.6.7.8,100
 > data,OP_INSERT,1.2.3.4,6.7.8.9,1000
@@ -691,7 +790,7 @@ collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100"
 > data,OP_INSERT,1.2.3.4,5.6.7.8,200
 > data,OP_INSERT,1.2.3.4,6.7.8.9,2000
 > flush
-collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+collapse.idata.lbDel OP_DELETE local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="200" 
 collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 > data,OP_DELETE,1.2.3.4,6.7.8.9,2000
@@ -700,7 +799,7 @@ collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000"
 > data,OP_INSERT,1.2.3.4,6.7.8.9,4000
 > data,OP_DELETE,1.2.3.4,6.7.8.9,4000
 > flush
-collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
+collapse.idata.lbDel OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 > data,OP_INSERT,1.1.1.1,5.5.5.5,100
 > data,OP_INSERT,2.2.2.2,6.6.6.6,100
 > data,OP_INSERT,3.3.3.3,7.7.7.7,100
@@ -727,19 +826,19 @@ collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100"
 > data,OP_INSERT,3.3.3.3,7.7.7.7,300
 > data,OP_INSERT,4.4.4.4,8.8.8.8,300
 > flush
-collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100" 
+collapse.idata.lbDel OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100" 
 collapse.idata.out OP_INSERT local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="300" 
-collapse.idata.out OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100" 
+collapse.idata.lbDel OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100" 
 collapse.idata.out OP_INSERT local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="300" 
-collapse.idata.out OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100" 
+collapse.idata.lbDel OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100" 
 collapse.idata.out OP_INSERT local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="300" 
-collapse.idata.out OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100" 
+collapse.idata.lbDel OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100" 
 collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300" 
 ';
 
 @input = @inputData;
 $result = undef;
-&doCollapse2();
+&doCollapse3();
 #print $result;
 ok($result, $expectResult);
 }
