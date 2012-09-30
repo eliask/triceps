@@ -853,7 +853,19 @@ sub doSymbology {
 
 my $unit = Triceps::Unit->new("unit");
 
-# Data for the ISIN enrichment.
+###########
+# The streaming function that looks up the ISIN if needed and enriches
+# its knowledge of ISINs if possible.
+#
+# The input data is a pair of (RIC, ISIN), either of which can be empty.
+# If the input has both RIC and ISIN, and the table doesn't have this
+# match, it's inserted into the table for the future.
+# If the input has only RIC, the ISIN is looked up from the table
+# (if the table has it), and both ar returned.
+# If the input has no RIC, it's passed as-is to the output.
+
+# Data for the ISIN enrichment. It will be populated both directly
+# into the table, and during the function calls.
 my $rtIsin = Triceps::RowType->new(
 	ric => "string",
 	isin => "string",
@@ -866,34 +878,31 @@ $ttIsin->initialize() or confess "$!";
 
 my $tIsin = $unit->makeTable($ttIsin, "EM_CALL", "tIsin") or confess "$!";
 
-###########
-# The streaming function that looks up the ISIN.
-my $rtLookupIsin = Triceps::RowType->new(
-	ric => "string",
-) or confess "$!";
-
-my $jIsin = Triceps::LookupJoin->new(
-	unit => $unit,
-	name => "jIsin",
-	leftRowType => $rtLookupIsin,
-	rightTable => $tIsin,
-	rightIdxPath => ["byRic"],
-	rightFields => [ "isin" ],
-	by => [ "ric" => "ric" ],
-	isLeft => 1,
-	limitOne => 1,
-) or confess "$!";
-
-# the input data will be sent here
-my $lbLookupIsin = $jIsin->getInputLabel();
-
 # the results will come from here
 my $fretLookupIsin = Triceps::FnReturn->new(
 	name => "fretLookupIsin",
+	unit => $unit,
 	labels => [
-		result => $jIsin->getOutputLabel(),
+		result => $rtIsin,
 	],
-) or confess "$!";
+);
+
+# The function argument: the input data will be sent here.
+my $lbLookupIsin = $unit->makeLabel($rtIsin, "lbLookupIsin", undef, sub {
+	my $row = $_[1]->getRow();
+	if ($row->get("ric")) {
+		my $argrh = $tIsin->makeRowHandle($row);
+		my $rh = $tIsin->find($argrh);
+		if ($rh->isNull()) {
+			if ($row->get("isin")) {
+				$tIsin->insert($argrh);
+			}
+		} else {
+			$row = $rh->getRow();
+		}
+	}
+	$unit->call($fretLookupIsin->getLabel("result")->makeRowop("OP_INSERT", $row));
+}) or confess "$!";
 
 ###########
 
@@ -902,31 +911,30 @@ my $fretLookupIsin = Triceps::FnReturn->new(
 
 my $rtTrade = Triceps::RowType->new(
 	ric => "string",
+	isin => "string",
 	size => "float64",
 	price => "float64",
 ) or confess "$!";
 
-my $rtTradeIsin = Triceps::RowType->new(
-	$rtTrade->getdef(),
-	isin => "string",
-) or confess "$!";
-
-my $lbTradeIsin = $unit->makeDummyLabel($rtTradeIsin, "lbTradeIsin");
+my $lbTradeEnriched = $unit->makeDummyLabel($rtTrade, "lbTradeEnriched");
 my $lbTrade = $unit->makeLabel($rtTrade, "lbTrade", undef, sub {
 	my $rowop = $_[1];
+	my $row = $rowop->getRow();
 	Triceps::FnBinding::call(
 		name => "callTradeLookupIsin",
 		on => $fretLookupIsin,
 		unit => $unit,
 		rowop => $lbLookupIsin->makeRowopHash("OP_INSERT", 
-			ric => $rowop->getRow()->get("ric")
+			ric => $row->get("ric"),
+			isin => $row->get("isin"),
 		),
 		labels => [
 			result => sub { # a label will be created from this sub
-				$unit->makeHashCall($lbTradeIsin, $rowop->getOpcode(),
-					$rowop->getRow()->toHash(),
-					isin => $_[1]->getRow()->get("isin")
-				);
+				$unit->call($lbTradeEnriched->makeRowop($rowop->getOpcode(),
+					$row->copymod(
+						isin => $_[1]->getRow()->get("isin")
+					)
+				));
 			},
 		],
 	);
@@ -936,8 +944,7 @@ my $lbTrade = $unit->makeLabel($rtTrade, "lbTrade", undef, sub {
 
 # print what is going on
 my $lbPrintIsin = makePrintLabel("printIsin", $tIsin->getOutputLabel());
-my $lbPrintTrade = makePrintLabel("printTrade", $lbTradeIsin);
-my $lbPrintJoinIsin = makePrintLabel("printJoinIsin", $jIsin->getOutputLabel());
+my $lbPrintTrade = makePrintLabel("printTrade", $lbTradeEnriched);
 
 # the main loop
 my %dispatch = (
@@ -961,8 +968,12 @@ while(&readLine) {
 	"isin,OP_INSERT,ABC.L,US0000012345\n",
 	"isin,OP_INSERT,ABC.N,US0000012345\n",
 	"isin,OP_INSERT,DEF.N,US0000054321\n",
-	"trade,OP_INSERT,ABC.L,100,10.5\n",
-	"trade,OP_DELETE,ABC.N,200,10.5\n",
+	"trade,OP_INSERT,ABC.L,,100,10.5\n",
+	"trade,OP_DELETE,ABC.N,,200,10.5\n",
+	"trade,OP_INSERT,GHI.N,,300,10.5\n",
+	"trade,OP_INSERT,,XX0000012345,400,10.5\n",
+	"trade,OP_INSERT,GHI.N,XX0000012345,500,10.5\n",
+	"trade,OP_INSERT,GHI.N,,600,10.5\n",
 );
 $result = undef;
 &doSymbology();
@@ -974,11 +985,18 @@ tIsin.out OP_INSERT ric="ABC.L" isin="US0000012345"
 tIsin.out OP_INSERT ric="ABC.N" isin="US0000012345" 
 > isin,OP_INSERT,DEF.N,US0000054321
 tIsin.out OP_INSERT ric="DEF.N" isin="US0000054321" 
-> trade,OP_INSERT,ABC.L,100,10.5
-lbTradeIsin OP_INSERT ric="ABC.L" size="100" price="10.5" isin="US0000012345" 
-jIsin.out OP_INSERT ric="ABC.L" isin="US0000012345" 
-> trade,OP_DELETE,ABC.N,200,10.5
-lbTradeIsin OP_DELETE ric="ABC.N" size="200" price="10.5" isin="US0000012345" 
-jIsin.out OP_INSERT ric="ABC.N" isin="US0000012345" 
+> trade,OP_INSERT,ABC.L,,100,10.5
+lbTradeEnriched OP_INSERT ric="ABC.L" isin="US0000012345" size="100" price="10.5" 
+> trade,OP_DELETE,ABC.N,,200,10.5
+lbTradeEnriched OP_DELETE ric="ABC.N" isin="US0000012345" size="200" price="10.5" 
+> trade,OP_INSERT,GHI.N,,300,10.5
+lbTradeEnriched OP_INSERT ric="GHI.N" isin="" size="300" price="10.5" 
+> trade,OP_INSERT,,XX0000012345,400,10.5
+lbTradeEnriched OP_INSERT ric="" isin="XX0000012345" size="400" price="10.5" 
+> trade,OP_INSERT,GHI.N,XX0000012345,500,10.5
+tIsin.out OP_INSERT ric="GHI.N" isin="XX0000012345" 
+lbTradeEnriched OP_INSERT ric="GHI.N" isin="XX0000012345" size="500" price="10.5" 
+> trade,OP_INSERT,GHI.N,,600,10.5
+lbTradeEnriched OP_INSERT ric="GHI.N" isin="XX0000012345" size="600" price="10.5" 
 ');
 
