@@ -123,7 +123,7 @@ MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 #     rowop => $rowop, # what to call can be a rowop
 #     tray => $tray, # or a tray
 #     rowops => \@rowops, # or an array of rowops
-#     func => [\$code, @args], # XXX TODO or a procedural function to call
+#     code => \$code, # or a procedural function to call
 # );
 #     
 # 
@@ -221,6 +221,7 @@ call(...)
 			Rowop *rop = NULL;
 			Tray *tray = NULL;
 			AV *roparray = NULL; // array of rowops
+			Autoref<PerlCallback> code = NULL;
 			bool clearLabels = false;
 			bool delayed = false;
 
@@ -244,6 +245,8 @@ call(...)
 					tray = TRICEPS_GET_WRAP(Tray, arg, "%s: option '%s'", funcName, optname)->get();
 				} else if (!strcmp(optname, "rowops")) {
 					roparray = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "code")) {
+					code = GetSvCall(arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "clearLabels")) {
 					clearLabels = (SvIV(arg) != 0);
 				} else if (!strcmp(optname, "delayed")) {
@@ -267,9 +270,10 @@ call(...)
 			if (rop != NULL) rowop_spec++;
 			if (tray != NULL) rowop_spec++;
 			if (roparray != NULL) rowop_spec++;
+			if (!code.isNull()) rowop_spec++;
 
 			if (rowop_spec != 1)
-				throw Exception::f("%s: exactly 1 of options 'rowop', 'tray', 'rowops' must be specified, got %d of them.",
+				throw Exception::f("%s: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got %d of them.",
 					funcName, rowop_spec);
 
 			// create and set up the binding
@@ -287,11 +291,20 @@ call(...)
 				}
 			} else if (rop) {
 				u->call(rop);
-			} else {
+			} else if (tray) {
 				u->callTray(tray);
+			} else if (!code.isNull()) {
+				PerlCallbackStartCall(code);
+				PerlCallbackDoCall(code);
+				callbackSuccessOrThrow("Error detected in %s option 'code'", funcName);
 			}
 
-			// the bindings get popped
+			// The bindings get popped. If the call above throws an exception, the
+			// execution won't get here but it's not a problem: ab will be cleared
+			// on leaving the block anyway. The only thing this code does is a nicer
+			// reporting of popping order errors. But if there was another error
+			// that caused a throw, the popping order errors become unimportant
+			// and will be ignored.
 			try {
 				ab->clear();
 			} catch(Exception e) {

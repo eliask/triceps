@@ -334,6 +334,9 @@ AV *GetSvArray(SV *svptr, const char *fmt, ...)
 void GetSvArrayOrHash(AV *&array, HV *&hash, SV *svptr, const char *fmt, ...)
 	__attribute__((format(printf, 4, 5)));
 
+// Also see GetSvCode in PerlCallback.h. It's placed there to avoid
+// introducing extra dependencies between the header files.
+
 // The typical argument for binding or function returns: either a
 // ready label or a Perl code reference (for which a label will be
 // created automatically).

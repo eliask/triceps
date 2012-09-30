@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 351 };
+BEGIN { plan tests => 367 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1476,6 +1476,66 @@ unit 'u1' after label 'lbz2' op OP_INSERT }
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		code => sub {
+			$u1->call($rop1);
+			$u1->call($rop2);
+		},
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 1);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one . $exp_call_two);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	my $callem = sub {
+		for my $rop (@_) {
+			$u1->call($rop);
+		}
+	};
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		code => [$callem, $rop1, $rop2],
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 1);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one . $exp_call_two);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
 # with delayed call in the binding
 {
 	Triceps::FnBinding::call(
@@ -1624,11 +1684,11 @@ ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'labels'/);
 #print "$@";
 
 &badCall();
-ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops' must be specified, got 0 of them./);
+ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got 0 of them./);
 #print "$@";
 
-&badCall(rowop => $rop1, rowops => [$rop1, $rop2], tray => $u1->makeTray($rop1, $rop2));
-ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops' must be specified, got 3 of them./);
+&badCall(rowop => $rop1, rowops => [$rop1, $rop2], tray => $u1->makeTray($rop1, $rop2), code => sub {});
+ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got 4 of them./);
 #print "$@";
 
 &badCall(rowops => [$u1]);
@@ -1658,3 +1718,17 @@ ok($@ =~ /^Triceps::FnBinding::call: error on popping the bindings:
 # clean up
 $fret1->pop();
 $fret1->pop();
+
+&badCall(code => 10);
+ok($@ =~ /^Triceps::FnBinding::call: option 'code' value must be a reference to a function or an array starting with a reference to function/);
+#print "$@";
+
+&badCall(code => [10]);
+ok($@ =~ /^Triceps::FnBinding::call: option 'code' value must be a reference to a function or an array starting with a reference to function/);
+#print "$@";
+
+&badCall(code => sub {die "test error"});
+ok($@ =~ /^test error at .*\nError detected in Triceps::FnBinding::call option 'code' at/);
+#print "$@";
+
+

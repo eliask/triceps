@@ -135,6 +135,23 @@ bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2)
 	}
 }
 
+void callbackSuccessOrThrow(const char *fmt, ...)
+{
+	if (SvTRUE(ERRSV)) {
+		clearErrMsg(); // in case if it was thrown by Triceps, clean up
+		// propagate to the caller
+		Erref err = new Errors(SvPV_nolen(ERRSV));
+
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		err->appendMsg(true, s);
+
+		throw TRICEPS_NS::Exception(err, false);
+	}
+}
+
 ///////////////////////// PerlLabel ///////////////////////////////////////////////
 
 PerlLabel::PerlLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, 
@@ -204,13 +221,7 @@ void PerlLabel::execute(Rowop *arg) const
 	SvREFCNT_dec(svrop);
 	SvREFCNT_dec(svlab);
 
-	if (SvTRUE(ERRSV)) {
-		clearErrMsg(); // in case if it was thrown by Triceps, clean up
-		// propagate to the caller
-		Erref err = new Errors(SvPV_nolen(ERRSV));
-		err->appendMsg(true, strprintf("Detected in the unit '%s' label '%s' execution handler.", getUnitName().c_str(), getName().c_str()));
-		throw TRICEPS_NS::Exception(err, false);
-	}
+	callbackSuccessOrThrow("Detected in the unit '%s' label '%s' execution handler.", getUnitName().c_str(), getName().c_str());
 }
 
 void PerlLabel::clearSubclass()
@@ -237,13 +248,7 @@ void PerlLabel::clearSubclass()
 
 	clear_ = NULL; // eventually drop the callback, before any chance of throwing!
 
-	if (SvTRUE(ERRSV)) {
-		clearErrMsg(); // in case if it was thrown by Triceps, clean up
-		// propagate to the caller
-		Erref err = new Errors(SvPV_nolen(ERRSV));
-		err->appendMsg(true, strprintf("Detected in the unit '%s' label '%s' clearing handler.", getUnitName().c_str(), getName().c_str()));
-		throw TRICEPS_NS::Exception(err, false);
-	}
+	callbackSuccessOrThrow("Detected in the unit '%s' label '%s' clearing handler.", getUnitName().c_str(), getName().c_str());
 }
 
 ///////////////////////// UnitTracerPerl ///////////////////////////////////////////////
@@ -301,6 +306,37 @@ void UnitTracerPerl::execute(Unit *unit, const Label *label, const Label *fromLa
 			unit->getName().c_str(), SvPV_nolen(ERRSV));
 
 	}
+}
+
+Onceref<PerlCallback> GetSvCall(SV *svptr, const char *fmt, ...)
+{
+	Autoref<PerlCallback> cb = new PerlCallback();
+
+	if (SvROK(svptr)) {
+		if (SvTYPE(SvRV(svptr)) == SVt_PVAV) {
+			AV *array = (AV*)SvRV(svptr);
+			int len = av_len(array)+1; // av_len returns the index of last element
+			if (len > 0) {
+				SV *code = *av_fetch(array, 0, 0);
+				if (SvROK(code) && SvTYPE(SvRV(code)) == SVt_PVCV) {
+					cb->setCode(code, ""); // can't fail
+					for (int i = 1; i < len; i++) { // pick up the args
+						cb->appendArg(*av_fetch(array, i, 0));
+					}
+					return cb;
+				}
+			}
+		} else if (SvTYPE(SvRV(svptr)) == SVt_PVCV) {
+			cb->setCode(svptr, ""); // can't fail
+			return cb;
+		}
+	}
+
+	va_list ap;
+	va_start(ap, fmt);
+	string s = vstrprintf(fmt, ap);
+	va_end(ap);
+	throw TRICEPS_NS::Exception::f("%s value must be a reference to a function or an array starting with a reference to function", s.c_str());
 }
 
 }; // Triceps::TricepsPerl

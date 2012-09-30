@@ -487,7 +487,7 @@ void GetSvString(string &res, SV *svptr, const char *fmt, ...)
 
 AV *GetSvArray(SV *svptr, const char *fmt, ...)
 {
-	if (!SvROK(svptr) || !(SvTYPE(SvRV(svptr)) == SVt_PVAV)) {
+	if (!SvROK(svptr) || SvTYPE(SvRV(svptr)) != SVt_PVAV) {
 		va_list ap;
 		va_start(ap, fmt);
 		string s = vstrprintf(fmt, ap);
