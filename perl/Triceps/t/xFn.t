@@ -918,6 +918,9 @@ my $lbTrade = $unit->makeLabel($rtTrade, "lbTrade", undef, sub {
 		name => "callTradeLookupIsin",
 		on => $fretLookupIsin,
 		unit => $unit,
+		rowop => $lbLookupIsin->makeRowopHash("OP_INSERT", 
+			ric => $rowop->getRow()->get("ric")
+		),
 		labels => [
 			result => sub { # a label will be created from this sub
 				$unit->makeHashCall($lbTradeIsin, $rowop->getOpcode(),
@@ -926,9 +929,6 @@ my $lbTrade = $unit->makeLabel($rtTrade, "lbTrade", undef, sub {
 				);
 			},
 		],
-		rowop => $lbLookupIsin->makeRowopHash("OP_INSERT", 
-			ric => $rowop->getRow()->get("ric")
-		),
 	);
 });
 
