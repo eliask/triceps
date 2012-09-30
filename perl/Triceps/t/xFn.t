@@ -864,8 +864,8 @@ my $unit = Triceps::Unit->new("unit");
 # (if the table has it), and both ar returned.
 # If the input has no RIC, it's passed as-is to the output.
 
-# Data for the ISIN enrichment. It will be populated both directly
-# into the table, and during the function calls.
+# Data for the ISIN enrichment. It will be both stored in the
+# reference table, and passed around during the function calls.
 my $rtIsin = Triceps::RowType->new(
 	ric => "string",
 	isin => "string",
