@@ -1,0 +1,11 @@
+Rhref constructor directly from fields
+
+I've been writing more C++ unit tests, and I've come up with one more convenience constructor for Rhref:
+
+Rhref(Table *t, FdataVec &data);
+
+It takes directly the field values, constructs a row out of them, then constructs a handle for that row.
+
+The usage is pretty easy:
+
+Rhref rh1(t, dv); 

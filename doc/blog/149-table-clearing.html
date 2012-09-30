@@ -1,0 +1,12 @@
+Table clearing
+
+The table clearing has been coming up repeatedly, so I've made a convenience method for it. In Perl it's called as:
+
+$table->clear();
+$table->clear($limit);
+
+If $limit is absent or 0, the whole table gets cleared. If it's greater than 0, no more than this number of records will be deleted. A negative limit is an error. The deletion happens in the usual order of the first leaf index, and the rowops are sent to the table's output label as usual. It's really the same thing as running a loop over all the row handles and removing them, only in C++ it's more efficient than in Perl. There is no return value, the errors cause a confess().
+
+The C++ API has this method in the Table as well:
+
+void clear(size_t limit = 0); 
