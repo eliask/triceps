@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 7 };
+BEGIN { plan tests => 8 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1000,3 +1000,191 @@ lbTradeEnriched OP_INSERT ric="GHI.N" isin="XX0000012345" size="500" price="10.5
 lbTradeEnriched OP_INSERT ric="GHI.N" isin="XX0000012345" size="600" price="10.5" 
 ');
 
+############################################################
+# A pipeline example, performing the encryption.
+
+# A template to make a label that prints the data passing through the
+# parent label into strings that are sent to the output label.
+sub makePipePrintLabel($$$) # ($print_label_name, $parent_label, $out_label)
+{
+	my $name = shift;
+	my $lbParent = shift;
+	my $lbOutput = shift;
+	my $unit = $lbOutput->getUnit();
+	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
+		undef, sub { # (label, rowop)
+			$unit->makeArrayCall(
+				$lbOutput, "OP_INSERT", $_[1]->printP());
+		}) or confess "$!";
+	$lbParent->chain($lb) or confess "$!";
+	return $lb;
+}
+
+sub doEncPipeline {
+
+my $unit = Triceps::Unit->new("unit");
+
+# All the input and output gets converted through an intermediate
+# format of a row with one string field.
+my $rtString = Triceps::RowType->new(
+	s => "string"
+) or confess "$!";
+
+# All the output gets converted to rtString and sent here.
+my $lbOutput = $unit->makeDummyLabel($rtString, "lbOutput");
+my $retOutput = Triceps::FnReturn->new(
+	name => "retOutput",
+	labels => [
+		data => $lbOutput,
+	],
+);
+
+# The binding that actually prints the output.
+my $bindPrint = Triceps::FnBinding->new(
+	name => "bindPrint",
+	on => $retOutput, # any matching return will do
+	unit => $unit,
+	labels => [
+		data => sub {
+			&send($_[1]->getRow()->get("s"), "\n");
+		},
+	],
+);
+
+# All the input gets sent here.
+my $lbInput = $unit->makeDummyLabel($rtString, "lbInput");
+my $retInput = Triceps::FnReturn->new(
+	name => "retInput",
+	labels => [
+		data => $lbInput,
+	],
+);
+
+my %dispatch; # the dispatch table will be set here
+
+# The binding that dispatches the input data
+my $bindDispatch = Triceps::FnBinding->new(
+	name => "bindDispatch",
+	on => $retInput,
+	unit => $unit,
+	labels => [
+		data => sub {
+			my @data = split(/,/, $_[1]->getRow()->get("s")); # starts with a command, then string opcode
+			my $type = shift @data;
+			my $lb = $dispatch{$type};
+			my $rowop = $lb->makeRowopArray(@data);
+			$unit->call($rowop);
+		},
+	],
+);
+
+# The encryption pipeline element.
+my $retEncrypt = Triceps::FnReturn->new(
+	name => "retEncrypt",
+	unit => $unit,
+	labels => [
+		data => $rtString,
+	],
+);
+my $lbEncrypt = $retEncrypt->getLabel("data") or confess "$!";
+my $bindEncrypt = Triceps::FnBinding->new(
+	name => "bindEncrypt",
+	on => $retInput,
+	unit => $unit,
+	labels => [
+		data => sub {
+			my $s = $_[1]->getRow()->get("s");
+			$unit->makeArrayCall($lbEncrypt, "OP_INSERT", unpack("H*", $s));
+		},
+	],
+);
+
+# The decryption pipeline element.
+my $retDecrypt = Triceps::FnReturn->new(
+	name => "retDecrypt",
+	unit => $unit,
+	labels => [
+		data => $rtString,
+	],
+);
+my $lbDecrypt = $retDecrypt->getLabel("data") or confess "$!";
+my $bindDecrypt = Triceps::FnBinding->new(
+	name => "bindDecrypt",
+	on => $retInput,
+	unit => $unit,
+	labels => [
+		data => sub {
+			my $s = $_[1]->getRow()->get("s");
+			$unit->makeArrayCall($lbDecrypt, "OP_INSERT", pack("H*", $s));
+		},
+	],
+);
+
+# The body of the model: pass through the name, increase the count.
+my $rtData = Triceps::RowType->new(
+	name => "string",
+	count => "int32",
+) or confess "$!";
+
+my $lbIncResult = $unit->makeDummyLabel($rtData, "result");
+my $lbInc = $unit->makeLabel($rtData, "inc", undef, sub {
+	my $row = $_[1]->getRow();
+	$unit->makeHashCall($lbIncResult, $_[1]->getOpcode(),
+		name  => $row->get("name"),
+		count => $row->get("count") + 1,
+	);
+}) or confess ("$!");
+makePipePrintLabel("printResult", $lbIncResult, $lbOutput);
+
+%dispatch = (
+	inc => $lbInc,
+);
+
+# The main loop.
+while(&readLine) {
+	my $ab;
+	chomp;
+	if (/^\+/) {
+		$ab = Triceps::AutoFnBind->new(
+			$retInput => $bindDecrypt,
+			$retDecrypt => $bindDispatch,
+			$retOutput => $bindEncrypt,
+			$retEncrypt => $bindPrint,
+		);
+		$_ = substr($_, 1);
+	} else {
+		$ab = Triceps::AutoFnBind->new(
+			$retInput => $bindDispatch,
+			$retOutput => $bindPrint,
+		);
+	};
+	$unit->makeArrayCall($lbInput, "OP_INSERT", $_);
+	$unit->drainFrame();
+}
+
+}; # doEncPipeline
+
+@input = (
+	"inc,OP_INSERT,abc,1\n",
+	"inc,OP_DELETE,def,100\n",
+	# perl -e 'print((unpack "H*", "inc,OP_INSERT,abc,2"), "\n");'
+	"+696e632c4f505f494e534552542c6162632c32\n",
+	# perl -e 'print((unpack "H*", "inc,OP_DELETE,def,101"), "\n");'
+	"+696e632c4f505f44454c4554452c6465662c313031\n",
+);
+$result = undef;
+&doEncPipeline();
+#print $result;
+# perl -e 'print((pack "H*", "726573756c74204f505f494e53455254206e616d653d226162632220636f756e743d22332220"), "\n");'
+# result OP_INSERT name="abc" count="3" 
+# perl -e 'print((pack "H*", "726573756c74204f505f44454c455445206e616d653d226465662220636f756e743d223130322220"), "\n");'
+# result OP_DELETE name="def" count="102" 
+ok($result, '> inc,OP_INSERT,abc,1
+result OP_INSERT name="abc" count="2" 
+> inc,OP_DELETE,def,100
+result OP_DELETE name="def" count="101" 
+> +696e632c4f505f494e534552542c6162632c32
+726573756c74204f505f494e53455254206e616d653d226162632220636f756e743d22332220
+> +696e632c4f505f44454c4554452c6465662c313031
+726573756c74204f505f44454c455445206e616d653d226465662220636f756e743d223130322220
+');
