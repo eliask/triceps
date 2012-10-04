@@ -1030,19 +1030,19 @@ my $rtString = Triceps::RowType->new(
 	s => "string"
 ) or confess "$!";
 
-# All the output gets converted to rtString and sent here.
-my $lbOutput = $unit->makeDummyLabel($rtString, "lbOutput");
-my $retOutput = Triceps::FnReturn->new(
-	name => "retOutput",
+# All the input gets sent here.
+my $lbReceive = $unit->makeDummyLabel($rtString, "lbReceive");
+my $retReceive = Triceps::FnReturn->new(
+	name => "retReceive",
 	labels => [
-		data => $lbOutput,
+		data => $lbReceive,
 	],
 );
 
 # The binding that actually prints the output.
-my $bindPrint = Triceps::FnBinding->new(
-	name => "bindPrint",
-	on => $retOutput, # any matching return will do
+my $bindSend = Triceps::FnBinding->new(
+	name => "bindSend",
+	on => $retReceive, # any matching return will do
 	unit => $unit,
 	labels => [
 		data => sub {
@@ -1051,21 +1051,12 @@ my $bindPrint = Triceps::FnBinding->new(
 	],
 );
 
-# All the input gets sent here.
-my $lbInput = $unit->makeDummyLabel($rtString, "lbInput");
-my $retInput = Triceps::FnReturn->new(
-	name => "retInput",
-	labels => [
-		data => $lbInput,
-	],
-);
-
 my %dispatch; # the dispatch table will be set here
 
 # The binding that dispatches the input data
 my $bindDispatch = Triceps::FnBinding->new(
 	name => "bindDispatch",
-	on => $retInput,
+	on => $retReceive,
 	unit => $unit,
 	labels => [
 		data => sub {
@@ -1075,6 +1066,15 @@ my $bindDispatch = Triceps::FnBinding->new(
 			my $rowop = $lb->makeRowopArray(@data);
 			$unit->call($rowop);
 		},
+	],
+);
+
+# All the output gets converted to rtString and sent here.
+my $lbOutput = $unit->makeDummyLabel($rtString, "lbOutput");
+my $retOutput = Triceps::FnReturn->new(
+	name => "retOutput",
+	labels => [
+		data => $lbOutput,
 	],
 );
 
@@ -1089,7 +1089,7 @@ my $retEncrypt = Triceps::FnReturn->new(
 my $lbEncrypt = $retEncrypt->getLabel("data") or confess "$!";
 my $bindEncrypt = Triceps::FnBinding->new(
 	name => "bindEncrypt",
-	on => $retInput,
+	on => $retReceive,
 	unit => $unit,
 	labels => [
 		data => sub {
@@ -1110,7 +1110,7 @@ my $retDecrypt = Triceps::FnReturn->new(
 my $lbDecrypt = $retDecrypt->getLabel("data") or confess "$!";
 my $bindDecrypt = Triceps::FnBinding->new(
 	name => "bindDecrypt",
-	on => $retInput,
+	on => $retReceive,
 	unit => $unit,
 	labels => [
 		data => sub {
@@ -1146,19 +1146,19 @@ while(&readLine) {
 	chomp;
 	if (/^\+/) {
 		$ab = Triceps::AutoFnBind->new(
-			$retInput => $bindDecrypt,
+			$retReceive => $bindDecrypt,
 			$retDecrypt => $bindDispatch,
 			$retOutput => $bindEncrypt,
-			$retEncrypt => $bindPrint,
+			$retEncrypt => $bindSend,
 		);
 		$_ = substr($_, 1);
 	} else {
 		$ab = Triceps::AutoFnBind->new(
-			$retInput => $bindDispatch,
-			$retOutput => $bindPrint,
+			$retReceive => $bindDispatch,
+			$retOutput => $bindSend,
 		);
 	};
-	$unit->makeArrayCall($lbInput, "OP_INSERT", $_);
+	$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
 	$unit->drainFrame();
 }
 
