@@ -11,6 +11,7 @@
 
 #include <mem/Autoref.h>
 #include <mem/Starget.h>
+#include <sched/Rowop.h>
 
 namespace TRICEPS_NS {
 
@@ -127,6 +128,14 @@ public:
 	bool isCleared() const
 	{
 		return cleared_;
+	}
+
+	// Adopt a rowop (i.e. create a rowop of the same opcode and row
+	// but with this label). The caller is as usual responsible to
+	// provide the correct row.
+	Rowop *adopt(Rowop *from) const
+	{
+		return new Rowop(this, from);
 	}
 
 protected:

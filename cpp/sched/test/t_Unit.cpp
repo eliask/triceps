@@ -564,35 +564,31 @@ UTESTCASE chaining(Utest *utest)
 
 	string expect = 
 		"unit 'u' before label 'lab1' op OP_INSERT {\n"
-		"unit 'u' drain label 'lab1' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lab1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lab1' op OP_INSERT {\n"
 			"unit 'u' before label 'lab2' (chain 'lab1') op OP_INSERT {\n"
-			"unit 'u' drain label 'lab2' (chain 'lab1') op OP_INSERT\n"
-			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_INSERT\n"
+			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_INSERT {\n"
 				"unit 'u' before label 'lab3' (chain 'lab2') op OP_INSERT {\n"
-				"unit 'u' drain label 'lab3' (chain 'lab2') op OP_INSERT\n"
 				"unit 'u' after label 'lab3' (chain 'lab2') op OP_INSERT }\n"
+			"unit 'u' after-chained label 'lab2' (chain 'lab1') op OP_INSERT }\n"
 			"unit 'u' after label 'lab2' (chain 'lab1') op OP_INSERT }\n"
 
 			"unit 'u' before label 'lab3' (chain 'lab1') op OP_INSERT {\n"
-			"unit 'u' drain label 'lab3' (chain 'lab1') op OP_INSERT\n"
 			"unit 'u' after label 'lab3' (chain 'lab1') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lab1' op OP_INSERT }\n"
 		"unit 'u' after label 'lab1' op OP_INSERT }\n"
 
 		"unit 'u' before label 'lab1' op OP_DELETE {\n"
-		"unit 'u' drain label 'lab1' op OP_DELETE\n"
-		"unit 'u' before-chained label 'lab1' op OP_DELETE\n"
+		"unit 'u' before-chained label 'lab1' op OP_DELETE {\n"
 			"unit 'u' before label 'lab2' (chain 'lab1') op OP_DELETE {\n"
-			"unit 'u' drain label 'lab2' (chain 'lab1') op OP_DELETE\n"
-			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_DELETE\n"
+			"unit 'u' before-chained label 'lab2' (chain 'lab1') op OP_DELETE {\n"
 				"unit 'u' before label 'lab3' (chain 'lab2') op OP_DELETE {\n"
-				"unit 'u' drain label 'lab3' (chain 'lab2') op OP_DELETE\n"
 				"unit 'u' after label 'lab3' (chain 'lab2') op OP_DELETE }\n"
+			"unit 'u' after-chained label 'lab2' (chain 'lab1') op OP_DELETE }\n"
 			"unit 'u' after label 'lab2' (chain 'lab1') op OP_DELETE }\n"
 
 			"unit 'u' before label 'lab3' (chain 'lab1') op OP_DELETE {\n"
-			"unit 'u' drain label 'lab3' (chain 'lab1') op OP_DELETE\n"
 			"unit 'u' after label 'lab3' (chain 'lab1') op OP_DELETE }\n"
+		"unit 'u' after-chained label 'lab1' op OP_DELETE }\n"
 		"unit 'u' after label 'lab1' op OP_DELETE }\n"
 	;
 
@@ -607,7 +603,7 @@ UTESTCASE chaining(Utest *utest)
 	unit->schedule(op2);
 	unit->drainFrame();
 	UT_ASSERT(unit->empty());
-	UT_IS(trace2->getBuffer()->size(), 28);
+	UT_IS(trace2->getBuffer()->size(), 24);
 	// uncomment to check visually
 	// printf("StringTracer got:\n%s", trace2->getBuffer()->print().c_str());
 
@@ -1173,11 +1169,30 @@ public:
 
 	virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when)
 	{
+		// printf("trace %s label '%s' %c\n", Unit::tracerWhenHumanString(when), label->getName().c_str(), Unit::tracerWhenIsBefore(when)? '{' : '}');
 		if (when == when_)
 			throw Exception("exception in tracer", true);
 	}
 
 	Unit::TracerWhen when_;
+};
+
+class ForkingLabel : public Label
+{
+public:
+	ForkingLabel(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Onceref<Label> next) :
+		Label(unit, rtype, name),
+		next_(next)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{
+		// printf("forking\n");
+		unit_->fork(next_->adopt(arg));
+	}
+
+	Autoref<Label> next_;
 };
 
 // test the exception propagation through the labels
@@ -1252,6 +1267,25 @@ Called chained from the label 'lab1'.\n");
 	}
 	UT_IS(msg, "Error when tracing before the label 'lab1':\n  exception in tracer\n");
 
+	// tracer throws on AFTER;
+	// also propagation of the exception through chaining
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing after execution of the label 'lab2':\n  exception in tracer\nCalled chained from the label 'lab1'.\n");
+
 	// tracer throws on BEFORE_CHAINED
 	msg.clear();
 	try {
@@ -1288,35 +1322,14 @@ Called chained from the label 'lab1'.\n");
 	}
 	UT_IS(msg, "Error when tracing after the chain of the label 'lab1':\n  exception in tracer\n");
 
-	// tracer throws on AFTER;
-	// also propagation of the exception through chaining
-	msg.clear();
-	try {
-		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER);
-		unit1->setTracer(tracer1);
-
-		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
-		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
-
-		lab1->chain(lab2);
-
-		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
-		unit1->call(oprec);
-	} catch (Exception e) {
-		msg = e.getErrors()->print();
-	}
-	UT_IS(msg, "Error when tracing after execution of the label 'lab2':\n  exception in tracer\nCalled chained from the label 'lab1'.\n");
-
 	// tracer throws on BEFORE_DRAIN
 	msg.clear();
 	try {
 		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_DRAIN);
 		unit1->setTracer(tracer1);
 
-		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
 		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
-
-		lab1->chain(lab2);
+		Autoref<Label> lab1 = new ForkingLabel(unit1, rt1, "lab1", lab2);
 
 		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
 		unit1->call(oprec);
@@ -1331,17 +1344,15 @@ Called chained from the label 'lab1'.\n");
 		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER_DRAIN);
 		unit1->setTracer(tracer1);
 
-		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
 		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
-
-		lab1->chain(lab2);
+		Autoref<Label> lab1 = new ForkingLabel(unit1, rt1, "lab1", lab2);
 
 		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
 		unit1->call(oprec);
 	} catch (Exception e) {
 		msg = e.getErrors()->print();
 	}
-	UT_IS(msg, "Error when tracing before draining the label 'lab1':\n  exception in tracer\n");
+	UT_IS(msg, "Error when tracing after draining the label 'lab1':\n  exception in tracer\n");
 
 	Exception::abort_ = true; // restore back
 	Exception::enableBacktrace_ = true; // restore back

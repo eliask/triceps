@@ -247,6 +247,7 @@ public:
 	// TW_BEFORE_DRAIN - only if had forked/looped rowops
 	// TW_AFTER_DRAIN  /
 	enum TracerWhen {
+		// The values go starting from 0 in before-after pairs
 		TW_BEFORE, // before calling the label's execution as such
 		TW_AFTER, // after all the execution is done
 		TW_BEFORE_CHAINED, // after execution, before calliong the chained labels (if they are present)
@@ -263,6 +264,16 @@ public:
 	// convert the when-code to a more human-readable string (better for debug messages and such)
 	static const char *tracerWhenHumanString(int when, const char *def = "???");
 	static int humanStringTracerWhen(const char *when);
+
+	// Determines if the code is "before" or "after" (or maybe neither).
+	static bool tracerWhenIsBefore(TracerWhen w)
+	{
+		return !(w & 1);
+	}
+	static bool tracerWhenIsAfter(TracerWhen w)
+	{
+		return (w & 1);
+	}
 
 	// The type of tracer callback functor: inherit from it and redefine your own execute()
 	class Tracer : public Mtarget
@@ -341,6 +352,10 @@ protected:
 
 	// Pop the current frame from stack.
 	void popFrame();
+
+	// A common internal implementation for call(). 
+	// @param rop - rowop to call. It must be held by the caller until returned.
+	void callGuts(Rowop *rop);
 
 protected:
 	// the scheduling queue, trays work as stack frames on it

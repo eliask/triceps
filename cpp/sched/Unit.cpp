@@ -88,9 +88,9 @@ void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fr
 	res.append(strprintf("op %p %s", rop, Rowop::opcodeString(rop->getOpcode()) ));
 
 	if (verbose_) {
-		if (when == TW_BEFORE)
+		if (Unit::tracerWhenIsBefore(when))
 			res.append(" {");
-		else if (when == TW_AFTER)
+		else if (Unit::tracerWhenIsAfter(when))
 			res.append(" }");
 	}
 
@@ -121,9 +121,9 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 	res.append(Rowop::opcodeString(rop->getOpcode()));
 
 	if (verbose_) {
-		if (when == TW_BEFORE)
+		if (Unit::tracerWhenIsBefore(when))
 			res.append(" {");
-		else if (when == TW_AFTER)
+		else if (Unit::tracerWhenIsAfter(when))
 			res.append(" }");
 	}
 
@@ -182,11 +182,44 @@ void Unit::forkTray(const_Onceref<Tray> tray)
 
 void Unit::call(Onceref<Rowop> rop)
 {
-	// here a little optimization allows to avoid pushing extra frames
+	callGuts(rop);
+}
+
+void Unit::callGuts(Rowop *rop)
+{
 	pushFrame();
 
 	try {
-		rop->getLabel()->call(this, rop); // also calls drainForkedFrame(); may throw
+		rop->getLabel()->call(this, rop); // may throw
+		if (!innerFrame_->empty()) {
+			try {
+				trace(rop->getLabel(), NULL, rop, Unit::TW_BEFORE_DRAIN);
+			} catch (Exception e) {
+				Erref err = new Errors;
+				err->append(strprintf("Error when tracing before draining the label '%s':",
+					rop->getLabel()->getName().c_str()), e.getErrors());
+				throw Exception(err, false);
+			}
+			try {
+					drainForkedFrame();
+			} catch (Exception e) {
+				Erref err = e.getErrors();
+				// this might not be the exact parent label, since the forking might have
+				// been done by one of the labels chained from it, or by a label that
+				// has been forked itself
+				err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", 
+					rop->getLabel()->getName().c_str()));
+				throw Exception(err, false);
+			}
+			try {
+				trace(rop->getLabel(), NULL, rop, Unit::TW_AFTER_DRAIN);
+			} catch (Exception e) {
+				Erref err = new Errors;
+				err->append(strprintf("Error when tracing after draining the label '%s':",
+					rop->getLabel()->getName().c_str()), e.getErrors());
+				throw Exception(err, false);
+			}
+		}
 	} catch (Exception e) {
 		popFrame();
 		throw;
@@ -310,44 +343,7 @@ void Unit::callNext()
 	if (!innerFrame_->empty()) {
 		Autoref<Rowop> rop = innerFrame_->front();
 		innerFrame_->pop_front();
-
-		pushFrame();
-
-		try {
-			rop->getLabel()->call(this, rop); // may throw
-			if (!innerFrame_->empty()) {
-				try {
-					trace(rop->getLabel(), NULL, rop, Unit::TW_BEFORE_DRAIN);
-				} catch (Exception e) {
-					Erref err = new Errors;
-					err->append(strprintf("Error when tracing before draining the label '%s':", getName().c_str()), e.getErrors());
-					throw Exception(err, false);
-				}
-				try {
-						drainForkedFrame();
-				} catch (Exception e) {
-					Erref err = e.getErrors();
-					// this might not be the exact parent label, since the forking might have
-					// been done by one of the labels chained from it, or by a label that
-					// has been forked itself
-					err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", 
-						rop->getLabel()->getName().c_str()));
-					throw Exception(err, false);
-				}
-				try {
-					trace(rop->getLabel(), NULL, rop, Unit::TW_AFTER_DRAIN);
-				} catch (Exception e) {
-					Erref err = new Errors;
-					err->append(strprintf("Error when tracing after draining the label '%s':", getName().c_str()), e.getErrors());
-					throw Exception(err, false);
-				}
-			}
-		} catch (Exception e) {
-			popFrame();
-			throw;
-		}
-
-		popFrame();
+		callGuts(rop);
 	}
 }
 
@@ -370,6 +366,7 @@ void Unit::callNextForked()
 
 		// Runs in the parent's inherited frame.
 		rop->getLabel()->call(this, rop); // may throw
+		// No frame draining afterwards.
 	}
 }
 

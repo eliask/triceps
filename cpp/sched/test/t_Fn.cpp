@@ -499,11 +499,10 @@ UTESTCASE call_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb1' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb1' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
-		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
 
@@ -514,16 +513,14 @@ UTESTCASE call_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb2' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb2' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 
 		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb3a' op OP_INSERT\n"
 		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
 
-		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb2' op OP_INSERT }\n"
 		"unit 'u' after label 'lb2' op OP_INSERT }\n"
 	);
 	// no pop yet!
@@ -535,18 +532,16 @@ UTESTCASE call_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb1' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb1' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
-		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
 	msg = trace2->getBuffer()->print();
 	trace2->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u2' before label 'lb1x' op OP_INSERT {\n"
-		"unit 'u2' drain label 'lb1x' op OP_INSERT\n"
 		"unit 'u2' after label 'lb1x' op OP_INSERT }\n"
 	);
 
@@ -574,11 +569,10 @@ UTESTCASE call_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb1' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb1' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
-		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
 
@@ -591,16 +585,14 @@ UTESTCASE call_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb2' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb2' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 
 		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb3a' op OP_INSERT\n"
 		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
 
-		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb2' op OP_INSERT }\n"
 		"unit 'u' after label 'lb2' op OP_INSERT }\n"
 	);
 
@@ -866,12 +858,12 @@ UTESTCASE tray_bindings(Utest *utest)
 	// the bindings are collected and not executed
 	UT_IS(msg, 
 		"unit 'u' before label 'lb2' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb2' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
-		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
 
-		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
+		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+
+		"unit 'u' after-chained label 'lb2' op OP_INSERT }\n"
 		"unit 'u' after label 'lb2' op OP_INSERT }\n"
 	);
 
@@ -886,7 +878,6 @@ UTESTCASE tray_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb3a' op OP_INSERT\n"
 		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
 	);
 
@@ -899,11 +890,10 @@ UTESTCASE tray_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb1' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb1' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
-		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
 
@@ -922,7 +912,6 @@ UTESTCASE tray_bindings(Utest *utest)
 	trace2->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u2' before label 'lb1x' op OP_INSERT {\n"
-		"unit 'u2' drain label 'lb1x' op OP_INSERT\n"
 		"unit 'u2' after label 'lb1x' op OP_INSERT }\n"
 	);
 
@@ -935,11 +924,10 @@ UTESTCASE tray_bindings(Utest *utest)
 	trace1->clearBuffer();
 	UT_IS(msg, 
 		"unit 'u' before label 'lb1' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb1' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb1' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
-		"unit 'u' drain label 'fret1.one' (chain 'lb1') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
 
@@ -963,12 +951,10 @@ UTESTCASE tray_bindings(Utest *utest)
 	// the bindings are collected and not executed
 	UT_IS(msg, 
 		"unit 'u' before label 'lb2' op OP_INSERT {\n"
-		"unit 'u' drain label 'lb2' op OP_INSERT\n"
-		"unit 'u' before-chained label 'lb2' op OP_INSERT\n"
+		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
-
-		"unit 'u' drain label 'fret1.two' (chain 'lb2') op OP_INSERT\n"
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
+		"unit 'u' after-chained label 'lb2' op OP_INSERT }\n"
 		"unit 'u' after label 'lb2' op OP_INSERT }\n"
 	);
 
