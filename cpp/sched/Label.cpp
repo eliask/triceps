@@ -123,20 +123,6 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 		err->appendMsg(true, strprintf("Called through the label '%s'.", getName().c_str()));
 		throw Exception(err, false);
 	}
-	try {
-		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_DRAIN);
-	} catch (Exception e) {
-		err = new Errors;
-		err->append(strprintf("Error when tracing before draining the label '%s':", getName().c_str()), e.getErrors());
-		throw Exception(err, false);
-	}
-	try {
-		unit->drainFrame(); // avoid overlapping the row scheduling
-	} catch (Exception e) {
-		err = e.getErrors();
-		err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", getName().c_str()));
-		throw Exception(err, false);
-	}
 	if (!chained_.empty()) {
 		try {
 			unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_CHAINED);
@@ -154,6 +140,13 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 				throw Exception(err, false);
 			}
 		}
+		try {
+			unit->trace(this, chainedFrom, arg, Unit::TW_AFTER_CHAINED);
+		} catch (Exception e) {
+			err = new Errors;
+			err->append(strprintf("Error when tracing after the chain of the label '%s':", getName().c_str()), e.getErrors());
+			throw Exception(err, false);
+		}
 	}
 	try {
 		unit->trace(this, chainedFrom, arg, Unit::TW_AFTER);
@@ -162,6 +155,8 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 		err->append(strprintf("Error when tracing after execution of the label '%s':", getName().c_str()), e.getErrors());
 		throw Exception(err, false);
 	}
+
+	// The tracing for TW_BEFORE_DRAIN and TW_AFTER_DRAIN happens in Unit.cpp.
 }
 
 bool Label::findChained(const Label *target, ChainedVec &path) const

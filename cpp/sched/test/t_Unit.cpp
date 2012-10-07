@@ -867,11 +867,11 @@ public:
 
 		// fprintf(stderr, "DEBUG LabelNextLoop mark at %p val increased to %d\n", mark_->getFrame(), val);
 		if (useTray_) {
-			unit_->loopAt(mark_, new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
-		} else {
 			Autoref<Tray> tray = new Tray;
 			tray->push_back(new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
 			unit_->loopTrayAt(mark_, tray);
+		} else {
+			unit_->loopAt(mark_, new Rowop(next_, Rowop::OP_DELETE, type_->makeRow(dv)));
 		}
 	}
 
@@ -914,7 +914,7 @@ UTESTCASE markLoop(Utest *utest)
 	// send a record to unset mark - same as schedule()
 	UT_ASSERT(unit->empty());
 	unit->schedule(new Rowop(ldummy, Rowop::OP_DELETE, r1)); // to precede the loop
-	unit->loopAt(mark1, new Rowop(lstart, Rowop::OP_NOP, r1));
+	unit->loopAt(mark1, new Rowop(lstart, Rowop::OP_NOP, r1)); // sends to outermost frame
 	unit->schedule(new Rowop(ldummy, Rowop::OP_INSERT, r1)); // to follow after the loop
 	UT_ASSERT(!unit->empty());
 
@@ -929,32 +929,36 @@ UTESTCASE markLoop(Utest *utest)
 		"unit 'u' before label 'ldummy' op OP_DELETE\n"
 		"unit 'u' before label 'lstart' op OP_NOP\n"
 
-		// these have been enqueued with EM_FORK on lnext
+		// LabelStartLoop executes and for the first iteration
+		// forks 3 rowops for lnext.
 		"unit 'u' before label 'lnext' op OP_NOP\n"
 		"unit 'u' before label 'lnext' op OP_NOP\n"
 		"unit 'u' before label 'lnext' op OP_NOP\n"
 
-		// lnext puts things to the outermost frame
+		// LabelStartLoop moves the mark1 to itself,
+		// so the whole loop gets through before the lstart frame
+		// completes and returns.
+		// These go in this order because of the EM_CALL on lnext.
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lnext' op OP_INSERT\n"
+
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+		"unit 'u' before label 'lstart' op OP_DELETE\n"
+
+		// Finally the next item from the outermost frame executes.
 		"unit 'u' before label 'ldummy' op OP_INSERT\n"
-
-		// these go in this order because of the EM_CALL on lnext
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lnext' op OP_INSERT\n"
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lnext' op OP_INSERT\n"
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lnext' op OP_INSERT\n"
-
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lnext' op OP_INSERT\n"
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lnext' op OP_INSERT\n"
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lnext' op OP_INSERT\n"
-
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
-		"unit 'u' before label 'lstart' op OP_DELETE\n"
 	;
 
 	UT_IS(tlog, expect_sched);
@@ -1248,24 +1252,6 @@ Called chained from the label 'lab1'.\n");
 	}
 	UT_IS(msg, "Error when tracing before the label 'lab1':\n  exception in tracer\n");
 
-	// tracer throws on BEFORE_DRAIN
-	msg.clear();
-	try {
-		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_DRAIN);
-		unit1->setTracer(tracer1);
-
-		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
-		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
-
-		lab1->chain(lab2);
-
-		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
-		unit1->call(oprec);
-	} catch (Exception e) {
-		msg = e.getErrors()->print();
-	}
-	UT_IS(msg, "Error when tracing before draining the label 'lab1':\n  exception in tracer\n");
-
 	// tracer throws on BEFORE_CHAINED
 	msg.clear();
 	try {
@@ -1283,6 +1269,24 @@ Called chained from the label 'lab1'.\n");
 		msg = e.getErrors()->print();
 	}
 	UT_IS(msg, "Error when tracing before the chain of the label 'lab1':\n  exception in tracer\n");
+
+	// tracer throws on AFTER_CHAINED
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER_CHAINED);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing after the chain of the label 'lab1':\n  exception in tracer\n");
 
 	// tracer throws on AFTER;
 	// also propagation of the exception through chaining
@@ -1302,6 +1306,42 @@ Called chained from the label 'lab1'.\n");
 		msg = e.getErrors()->print();
 	}
 	UT_IS(msg, "Error when tracing after execution of the label 'lab2':\n  exception in tracer\nCalled chained from the label 'lab1'.\n");
+
+	// tracer throws on BEFORE_DRAIN
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_BEFORE_DRAIN);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing before draining the label 'lab1':\n  exception in tracer\n");
+
+	// tracer throws on AFTER_DRAIN
+	msg.clear();
+	try {
+		Autoref<Unit::Tracer> tracer1 = new ThrowingTracer(Unit::TW_AFTER_DRAIN);
+		unit1->setTracer(tracer1);
+
+		Autoref<Label> lab1 = new DummyLabel(unit1, rt1, "lab1");
+		Autoref<Label> lab2 = new DummyLabel(unit1, rt1, "lab2");
+
+		lab1->chain(lab2);
+
+		Autoref<Rowop> oprec = new Rowop(lab1, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Error when tracing before draining the label 'lab1':\n  exception in tracer\n");
 
 	Exception::abort_ = true; // restore back
 	Exception::enableBacktrace_ = true; // restore back

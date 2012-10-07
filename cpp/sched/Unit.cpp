@@ -186,7 +186,7 @@ void Unit::call(Onceref<Rowop> rop)
 	pushFrame();
 
 	try {
-		rop->getLabel()->call(this, rop); // also drains the frame
+		rop->getLabel()->call(this, rop); // also calls drainForkedFrame(); may throw
 	} catch (Exception e) {
 		popFrame();
 		throw;
@@ -262,14 +262,15 @@ void Unit::enqueueDelayedTray(const_Onceref<Tray> tray)
 void Unit::setMark(Onceref<FrameMark> mark)
 {
 	if (innerFrame_ == outerFrame_) {
-		// at outermost frame: clear the mark
+		// At outermost frame: clear the mark.
+		// This has historic reasons but still works conveniently:
+		// a cleared mark is treated as at the outermost frame.
 		UnitFrame *oldf = mark->getFrame();
 		if (oldf != NULL)
 			oldf->dropFromList(mark);
 	} else {
 		// mark the parent frame
-		FrameList::iterator it = queue_.begin();
-		(*++it)->mark(this, mark);
+		innerFrame_->mark(this, mark);
 	}
 }
 
@@ -313,7 +314,34 @@ void Unit::callNext()
 		pushFrame();
 
 		try {
-			rop->getLabel()->call(this, rop); // also drains the frame; may throw
+			rop->getLabel()->call(this, rop); // may throw
+			if (!innerFrame_->empty()) {
+				try {
+					trace(rop->getLabel(), NULL, rop, Unit::TW_BEFORE_DRAIN);
+				} catch (Exception e) {
+					Erref err = new Errors;
+					err->append(strprintf("Error when tracing before draining the label '%s':", getName().c_str()), e.getErrors());
+					throw Exception(err, false);
+				}
+				try {
+						drainForkedFrame();
+				} catch (Exception e) {
+					Erref err = e.getErrors();
+					// this might not be the exact parent label, since the forking might have
+					// been done by one of the labels chained from it, or by a label that
+					// has been forked itself
+					err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", 
+						rop->getLabel()->getName().c_str()));
+					throw Exception(err, false);
+				}
+				try {
+					trace(rop->getLabel(), NULL, rop, Unit::TW_AFTER_DRAIN);
+				} catch (Exception e) {
+					Erref err = new Errors;
+					err->append(strprintf("Error when tracing after draining the label '%s':", getName().c_str()), e.getErrors());
+					throw Exception(err, false);
+				}
+			}
 		} catch (Exception e) {
 			popFrame();
 			throw;
@@ -328,6 +356,28 @@ void Unit::drainFrame()
 	try {
 		while (!innerFrame_->empty())
 			callNext(); // may throw
+	} catch (Exception e) {
+		innerFrame_->clear(); // the frame gets cleared anyway, by throwing things out
+		throw;
+	}
+}
+
+void Unit::callNextForked()
+{
+	if (!innerFrame_->empty()) {
+		Autoref<Rowop> rop = innerFrame_->front();
+		innerFrame_->pop_front();
+
+		// Runs in the parent's inherited frame.
+		rop->getLabel()->call(this, rop); // may throw
+	}
+}
+
+void Unit::drainForkedFrame()
+{
+	try {
+		while (!innerFrame_->empty())
+			callNextForked(); // may throw
 	} catch (Exception e) {
 		innerFrame_->clear(); // the frame gets cleared anyway, by throwing things out
 		throw;
@@ -371,17 +421,21 @@ void Unit::popFrame()
 
 Valname twhens[] = {
 	{ Unit::TW_BEFORE, "TW_BEFORE" },
-	{ Unit::TW_BEFORE_DRAIN, "TW_BEFORE_DRAIN" },
 	{ Unit::TW_BEFORE_CHAINED, "TW_BEFORE_CHAINED" },
+	{ Unit::TW_AFTER_CHAINED, "TW_AFTER_CHAINED" },
 	{ Unit::TW_AFTER, "TW_AFTER" },
+	{ Unit::TW_BEFORE_DRAIN, "TW_BEFORE_DRAIN" },
+	{ Unit::TW_AFTER_DRAIN, "TW_AFTER_DRAIN" },
 	{ -1, NULL }
 };
 
 Valname humanTwhens[] = {
 	{ Unit::TW_BEFORE, "before" },
-	{ Unit::TW_BEFORE_DRAIN, "drain" },
 	{ Unit::TW_BEFORE_CHAINED, "before-chained" },
+	{ Unit::TW_AFTER_CHAINED, "after-chained" },
 	{ Unit::TW_AFTER, "after" },
+	{ Unit::TW_BEFORE_DRAIN, "before-drain" },
+	{ Unit::TW_AFTER_DRAIN, "after-drain" },
 	{ -1, NULL }
 };
 

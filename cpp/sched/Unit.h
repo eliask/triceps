@@ -159,9 +159,18 @@ public:
 	// Extract and execute the next record from the innermost frame.
 	// May throw an Exception on fatal error.
 	void callNext();
-	// Execute until the current stack frame drains.
+	// Execute callNext() until the current stack frame drains.
+	// Normally used only on the outermost frame.
 	// May throw an Exception on fatal error.
 	void drainFrame();
+	// Extract and execute the next record from the innermost frame.
+	// Does not push a new frame, executes directly in the parent's frame
+	// May throw an Exception on fatal error.
+	void callNextForked();
+	// Execute callNextForked() the current stack frame drains.
+	// Normally used to process the forked records after a label call returns.
+	// May throw an Exception on fatal error.
+	void drainForkedFrame();
 
 	// Check whether the queue is empty.
 	// @return - if no rowops in the whole queue
@@ -228,13 +237,22 @@ public:
 	// This allows the user to trace the whole execution sequence.
 	// {
 
-	// the tracer function is called multiple times during the processing of a rowop,
-	// with the indication of when it's called:
+	// The tracer function is called multiple times during the processing of a rowop,
+	// with the indication of when it's called.
+	// The full sequence is:
+	// TW_BEFORE
+	// TW_BEFORE_CHAINED - only if has chained labels
+	// TW_AFTER_CHAINED  /
+	// TW_AFTER
+	// TW_BEFORE_DRAIN - only if had forked/looped rowops
+	// TW_AFTER_DRAIN  /
 	enum TracerWhen {
 		TW_BEFORE, // before calling the label's execution as such
-		TW_BEFORE_DRAIN, // after execution as such, before draining the frame
-		TW_BEFORE_CHAINED, // after execution and draining, before calliong the chained labels
 		TW_AFTER, // after all the execution is done
+		TW_BEFORE_CHAINED, // after execution, before calliong the chained labels (if they are present)
+		TW_AFTER_CHAINED, // after calliong the chained labels (if they were present)
+		TW_BEFORE_DRAIN, // before draining the label's frame if it's not empty
+		TW_AFTER_DRAIN, // after draining the label's frame if was not empty
 		// XXX should there be events on enqueueing?
 	};
 
