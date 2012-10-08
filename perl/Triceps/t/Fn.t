@@ -742,30 +742,26 @@ ok(ref $rop3, "Triceps::Rowop");
 # the expected strings that get reused all over the place
 our $exp_fretz1_origin =
 "unit 'u1' before label 'lbz1' op OP_INSERT {
-unit 'u1' drain label 'lbz1' op OP_INSERT
-unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT {
 unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
-unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
 unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after-chained label 'lbz1' op OP_INSERT }
 unit 'u1' after label 'lbz1' op OP_INSERT }
 ";
 our $exp_fretz3_origin =
 "unit 'u1' before label 'lbz3' op OP_INSERT {
-unit 'u1' drain label 'lbz3' op OP_INSERT
-unit 'u1' before-chained label 'lbz3' op OP_INSERT
+unit 'u1' before-chained label 'lbz3' op OP_INSERT {
 unit 'u1' before label 'fretz2.two' (chain 'lbz3') op OP_INSERT {
-unit 'u1' drain label 'fretz2.two' (chain 'lbz3') op OP_INSERT
 unit 'u1' after label 'fretz2.two' (chain 'lbz3') op OP_INSERT }
+unit 'u1' after-chained label 'lbz3' op OP_INSERT }
 unit 'u1' after label 'lbz3' op OP_INSERT }
 ";
 our $exp_fretz1_target =
 "unit 'u2' before label 'fbindz1.one' op OP_INSERT {
-unit 'u2' drain label 'fbindz1.one' op OP_INSERT
 unit 'u2' after label 'fbindz1.one' op OP_INSERT }
 ";
 our $exp_fretz3_target =
 "unit 'u2' before label 'fbindz3.two' op OP_INSERT {
-unit 'u2' drain label 'fbindz3.two' op OP_INSERT
 unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 ";
 
@@ -1376,26 +1372,22 @@ $ts2->clearBuffer();
 
 $exp_call_one =
 "unit 'u1' before label 'lbz1' op OP_INSERT {
-unit 'u1' drain label 'lbz1' op OP_INSERT
-unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT {
 unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
 unit 'u1' before label 'callb.one' op OP_INSERT {
-unit 'u1' drain label 'callb.one' op OP_INSERT
 unit 'u1' after label 'callb.one' op OP_INSERT }
-unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
 unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after-chained label 'lbz1' op OP_INSERT }
 unit 'u1' after label 'lbz1' op OP_INSERT }
 ";
 $exp_call_two =
 "unit 'u1' before label 'lbz2' op OP_INSERT {
-unit 'u1' drain label 'lbz2' op OP_INSERT
-unit 'u1' before-chained label 'lbz2' op OP_INSERT
+unit 'u1' before-chained label 'lbz2' op OP_INSERT {
 unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
 unit 'u1' before label 'callb.two' op OP_INSERT {
-unit 'u1' drain label 'callb.two' op OP_INSERT
 unit 'u1' after label 'callb.two' op OP_INSERT }
-unit 'u1' drain label 'fretz1.two' (chain 'lbz2') op OP_INSERT
 unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
+unit 'u1' after-chained label 'lbz2' op OP_INSERT }
 unit 'u1' after label 'lbz2' op OP_INSERT }
 ";
 {
@@ -1559,32 +1551,28 @@ unit 'u1' after label 'lbz2' op OP_INSERT }
 	my $v1 = $ts1->print();
 	ok($v1, 
 "unit 'u1' before label 'lbz1' op OP_INSERT {
-unit 'u1' drain label 'lbz1' op OP_INSERT
-unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT {
 unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
-unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
 unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after-chained label 'lbz1' op OP_INSERT }
 unit 'u1' after label 'lbz1' op OP_INSERT }
 unit 'u1' before label 'lbz2' op OP_INSERT {
-unit 'u1' drain label 'lbz2' op OP_INSERT
-unit 'u1' before-chained label 'lbz2' op OP_INSERT
+unit 'u1' before-chained label 'lbz2' op OP_INSERT {
 unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
-unit 'u1' drain label 'fretz1.two' (chain 'lbz2') op OP_INSERT
 unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
+unit 'u1' after-chained label 'lbz2' op OP_INSERT }
 unit 'u1' after label 'lbz2' op OP_INSERT }
 unit 'u1' before label 'lbz1' op OP_INSERT {
-unit 'u1' drain label 'lbz1' op OP_INSERT
-unit 'u1' before-chained label 'lbz1' op OP_INSERT
+unit 'u1' before-chained label 'lbz1' op OP_INSERT {
 unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
-unit 'u1' drain label 'fretz1.one' (chain 'lbz1') op OP_INSERT
 unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
+unit 'u1' after-chained label 'lbz1' op OP_INSERT }
 unit 'u1' after label 'lbz1' op OP_INSERT }
 unit 'u1' before label 'lbz2' op OP_INSERT {
-unit 'u1' drain label 'lbz2' op OP_INSERT
-unit 'u1' before-chained label 'lbz2' op OP_INSERT
+unit 'u1' before-chained label 'lbz2' op OP_INSERT {
 unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
-unit 'u1' drain label 'fretz1.two' (chain 'lbz2') op OP_INSERT
 unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
+unit 'u1' after-chained label 'lbz2' op OP_INSERT }
 unit 'u1' after label 'lbz2' op OP_INSERT }
 ");
 	#print "$v1";

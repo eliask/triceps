@@ -266,13 +266,13 @@ public:
 	static int humanStringTracerWhen(const char *when);
 
 	// Determines if the code is "before" or "after" (or maybe neither).
-	static bool tracerWhenIsBefore(TracerWhen w)
+	static bool tracerWhenIsBefore(int when)
 	{
-		return !(w & 1);
+		return !(when & 1);
 	}
-	static bool tracerWhenIsAfter(TracerWhen w)
+	static bool tracerWhenIsAfter(int when)
 	{
-		return (w & 1);
+		return (when & 1);
 	}
 
 	// The type of tracer callback functor: inherit from it and redefine your own execute()

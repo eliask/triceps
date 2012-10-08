@@ -1188,3 +1188,151 @@ result OP_DELETE name="def" count="101"
 > +696e632c4f505f44454c4554452c6465662c313031
 726573756c74204f505f44454c455445206e616d653d226465662220636f756e743d223130322220
 ');
+
+############################################################
+# A pipeline with recursion fragment, doesn't really work because
+# the recursive label calls are not allowed.
+
+sub doRecursivePipeline {
+
+my $unit = Triceps::Unit->new("unit");
+
+# All the input and output gets converted through an intermediate
+# format of a row with one string field.
+my $rtString = Triceps::RowType->new(
+	s => "string"
+) or confess "$!";
+
+# All the input gets sent here.
+my $lbReceive = $unit->makeDummyLabel($rtString, "lbReceive");
+my $retReceive = Triceps::FnReturn->new(
+	name => "retReceive",
+	labels => [
+		data => $lbReceive,
+	],
+);
+
+# The binding that actually prints the output.
+my $bindSend = Triceps::FnBinding->new(
+	name => "bindSend",
+	on => $retReceive, # any matching return will do
+	unit => $unit,
+	labels => [
+		data => sub {
+			&send($_[1]->getRow()->get("s"), "\n");
+		},
+	],
+);
+
+my %dispatch; # the dispatch table will be set here
+
+# The binding that dispatches the input data
+my $bindDispatch = Triceps::FnBinding->new(
+	name => "bindDispatch",
+	on => $retReceive,
+	unit => $unit,
+	labels => [
+		data => sub {
+			my @data = split(/,/, $_[1]->getRow()->get("s")); # starts with a command, then string opcode
+			my $type = shift @data;
+			my $lb = $dispatch{$type};
+			my $rowop = $lb->makeRowopArray(@data);
+			$unit->call($rowop);
+		},
+	],
+);
+
+# All the output gets converted to rtString and sent here.
+my $lbOutput = $unit->makeDummyLabel($rtString, "lbOutput");
+my $retOutput = Triceps::FnReturn->new(
+	name => "retOutput",
+	labels => [
+		data => $lbOutput,
+	],
+);
+
+# The encryption pipeline element.
+my $retEncrypt = Triceps::FnReturn->new(
+	name => "retEncrypt",
+	unit => $unit,
+	labels => [
+		data => $rtString,
+	],
+);
+my $lbEncrypt = $retEncrypt->getLabel("data") or confess "$!";
+my $bindEncrypt = Triceps::FnBinding->new(
+	name => "bindEncrypt",
+	on => $retReceive,
+	unit => $unit,
+	labels => [
+		data => sub {
+			my $s = $_[1]->getRow()->get("s");
+			$unit->makeArrayCall($lbEncrypt, "OP_INSERT", unpack("H*", $s));
+		},
+	],
+);
+
+# The decryption pipeline element.
+my $retDecrypt = Triceps::FnReturn->new(
+	name => "retDecrypt",
+	unit => $unit,
+	labels => [
+		data => $rtString,
+	],
+);
+my $lbDecrypt = $retDecrypt->getLabel("data") or confess "$!";
+my $bindDecrypt = Triceps::FnBinding->new(
+	name => "bindDecrypt",
+	on => $retReceive,
+	unit => $unit,
+	labels => [
+		data => sub {
+			my $s = $_[1]->getRow()->get("s");
+			$unit->makeArrayCall($lbDecrypt, "OP_INSERT", pack("H*", $s));
+		},
+	],
+);
+
+# The body of the model: pass through the name, increase the count.
+my $rtData = Triceps::RowType->new(
+	name => "string",
+	count => "int32",
+) or confess "$!";
+
+my $lbIncResult = $unit->makeDummyLabel($rtData, "result");
+my $lbInc = $unit->makeLabel($rtData, "inc", undef, sub {
+	my $row = $_[1]->getRow();
+	$unit->makeHashCall($lbIncResult, $_[1]->getOpcode(),
+		name  => $row->get("name"),
+		count => $row->get("count") + 1,
+	);
+}) or confess ("$!");
+makePipePrintLabel("printResult", $lbIncResult, $lbOutput);
+
+%dispatch = (
+	inc => $lbInc,
+);
+
+# The main loop.
+while(&readLine) {
+	my $ab;
+	chomp;
+	$ab = Triceps::AutoFnBind->new(
+		$retReceive => $bindDecrypt,
+		$retDecrypt => $bindDispatch,
+		$retOutput => $bindEncrypt,
+		$retEncrypt => $bindSend,
+	);
+	$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+	$unit->drainFrame();
+}
+
+}; # doRecursivePipeline
+
+@input = (
+	# perl -e 'print((unpack "H*", "inc,OP_INSERT,abc,2"), "\n");'
+	"696e632c4f505f494e534552542c6162632c32\n",
+);
+$result = undef;
+&doRecursivePipeline();
+#print $result;

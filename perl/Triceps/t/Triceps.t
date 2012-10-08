@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 112 };
+BEGIN { plan tests => 126 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -39,9 +39,11 @@ ok(&Triceps::OCF_INSERT, 1);
 ok(&Triceps::OCF_DELETE, 2);
 
 ok(&Triceps::TW_BEFORE, 0);
-ok(&Triceps::TW_BEFORE_DRAIN, 1);
+ok(&Triceps::TW_AFTER, 1);
 ok(&Triceps::TW_BEFORE_CHAINED, 2);
-ok(&Triceps::TW_AFTER, 3);
+ok(&Triceps::TW_AFTER_CHAINED, 3);
+ok(&Triceps::TW_BEFORE_DRAIN, 4);
+ok(&Triceps::TW_AFTER_DRAIN, 5);
 
 ok(&Triceps::IT_ROOT, 0);
 ok(&Triceps::IT_HASHED, 1);
@@ -72,15 +74,19 @@ ok(&Triceps::stringOcf("OCF_DELETE"), &Triceps::OCF_DELETE);
 ok(&Triceps::stringOcf("xxx"), undef);
 
 ok(&Triceps::stringTracerWhen("TW_BEFORE"), &Triceps::TW_BEFORE);
-ok(&Triceps::stringTracerWhen("TW_BEFORE_DRAIN"), &Triceps::TW_BEFORE_DRAIN);
-ok(&Triceps::stringTracerWhen("TW_BEFORE_CHAINED"), &Triceps::TW_BEFORE_CHAINED);
 ok(&Triceps::stringTracerWhen("TW_AFTER"), &Triceps::TW_AFTER);
+ok(&Triceps::stringTracerWhen("TW_BEFORE_CHAINED"), &Triceps::TW_BEFORE_CHAINED);
+ok(&Triceps::stringTracerWhen("TW_AFTER_CHAINED"), &Triceps::TW_AFTER_CHAINED);
+ok(&Triceps::stringTracerWhen("TW_BEFORE_DRAIN"), &Triceps::TW_BEFORE_DRAIN);
+ok(&Triceps::stringTracerWhen("TW_AFTER_DRAIN"), &Triceps::TW_AFTER_DRAIN);
 ok(&Triceps::stringTracerWhen("xxx"), undef);
 
 ok(&Triceps::humanStringTracerWhen("before"), &Triceps::TW_BEFORE);
-ok(&Triceps::humanStringTracerWhen("drain"), &Triceps::TW_BEFORE_DRAIN);
-ok(&Triceps::humanStringTracerWhen("before-chained"), &Triceps::TW_BEFORE_CHAINED);
 ok(&Triceps::humanStringTracerWhen("after"), &Triceps::TW_AFTER);
+ok(&Triceps::humanStringTracerWhen("before-chained"), &Triceps::TW_BEFORE_CHAINED);
+ok(&Triceps::humanStringTracerWhen("after-chained"), &Triceps::TW_AFTER_CHAINED);
+ok(&Triceps::humanStringTracerWhen("before-drain"), &Triceps::TW_BEFORE_DRAIN);
+ok(&Triceps::humanStringTracerWhen("after-drain"), &Triceps::TW_AFTER_DRAIN);
 ok(&Triceps::humanStringTracerWhen("xxx"), undef);
 
 ok(&Triceps::stringIndexId("IT_ROOT"), &Triceps::IT_ROOT);
@@ -113,15 +119,19 @@ ok(&Triceps::ocfString(&Triceps::OCF_DELETE), "OCF_DELETE");
 ok(&Triceps::ocfString(999), undef);
 
 ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE), "TW_BEFORE");
-ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_DRAIN), "TW_BEFORE_DRAIN");
-ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_CHAINED), "TW_BEFORE_CHAINED");
 ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER), "TW_AFTER");
+ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_CHAINED), "TW_BEFORE_CHAINED");
+ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER_CHAINED), "TW_AFTER_CHAINED");
+ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_DRAIN), "TW_BEFORE_DRAIN");
+ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER_DRAIN), "TW_AFTER_DRAIN");
 ok(&Triceps::tracerWhenString(999), undef);
 
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE), "before");
-ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_DRAIN), "drain");
-ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_CHAINED), "before-chained");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER), "after");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_CHAINED), "before-chained");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER_CHAINED), "after-chained");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_DRAIN), "before-drain");
+ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER_DRAIN), "after-drain");
 ok(&Triceps::tracerWhenHumanString(999), undef);
 
 ok(&Triceps::indexIdString(&Triceps::IT_ROOT), "IT_ROOT");
@@ -150,6 +160,12 @@ ok(!&Triceps::isDelete(&Triceps::OP_NOP));
 ok(!&Triceps::isNop(&Triceps::OP_INSERT));
 ok(!&Triceps::isNop(&Triceps::OP_DELETE));
 ok(&Triceps::isNop(&Triceps::OP_NOP));
+
+# TracerWhen checks
+ok(&Triceps::tracerWhenIsBefore(&Triceps::TW_BEFORE));
+ok(!&Triceps::tracerWhenIsBefore(&Triceps::TW_AFTER));
+ok(!&Triceps::tracerWhenIsAfter(&Triceps::TW_BEFORE));
+ok(&Triceps::tracerWhenIsAfter(&Triceps::TW_AFTER));
 
 #########################
 # clearArgs

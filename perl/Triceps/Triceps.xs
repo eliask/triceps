@@ -309,3 +309,20 @@ aggOpString(int val)
 	OUTPUT:
 		RETVAL
 
+# Works only on the constant, not on the string value.
+int
+tracerWhenIsBefore(int val)
+	CODE:
+		clearErrMsg();
+		RETVAL = Unit::tracerWhenIsBefore(val);
+	OUTPUT:
+		RETVAL
+
+# Works only on the constant, not on the string value.
+int
+tracerWhenIsAfter(int val)
+	CODE:
+		clearErrMsg();
+		RETVAL = Unit::tracerWhenIsAfter(val);
+	OUTPUT:
+		RETVAL

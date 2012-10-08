@@ -240,7 +240,7 @@ my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
 
 my $lbCompute; # will fill in later
 
-my ($lbBegin, $lbNext, $markFib) = $uFib->makeLoopHead(
+my ($lbNext, $markFib) = $uFib->makeLoopHead(
 	$rtFib, "Fib", undef, sub {
 		my $iter = $_[1]->getRow()->get("iter");
 		if ($iter <= 1) {
@@ -263,7 +263,7 @@ $lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
 
 my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 	my $row = $_[1]->getRow();
-	$uFib->makeHashCall($lbBegin, $_[1]->getOpcode(),
+	$uFib->makeHashCall($lbNext, $_[1]->getOpcode(),
 		iter => $row->get("iter"),
 		cur => 1,
 		prev => 0,
@@ -318,7 +318,7 @@ my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
 	&send($_[1]->getRow()->get("cur"));
 });
 
-my ($lbBegin, $lbNext, $markFib); # will fill in later
+my ($lbNext, $markFib); # will fill in later
 
 $lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
 	my $row = $_[1]->getRow();
@@ -335,13 +335,13 @@ $lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
 	}
 }) or confess "$!";
 
-($lbBegin, $lbNext, $markFib) = $uFib->makeLoopAround(
+($lbNext, $markFib) = $uFib->makeLoopAround(
 	"Fib", $lbCompute
 );
 
 my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 	my $row = $_[1]->getRow();
-	$uFib->makeHashCall($lbBegin, $_[1]->getOpcode(),
+	$uFib->makeHashCall($lbNext, $_[1]->getOpcode(),
 		iter => $row->get("iter"),
 		cur => 1,
 		prev => 0,
