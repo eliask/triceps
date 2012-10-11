@@ -33,6 +33,37 @@ namespace TRICEPS_NS {
 //
 // Since all the labels are single-threaded, the return value is single-
 // threaded too.
+//
+
+// The call "context" (the arguments that control the processing
+// of the other streaming data) can be set up either by calling
+// a procedural function or method in the subclass or by sending
+// some rowops through some inputs of the function before the
+// "data" rowops.
+//
+// The FnReturn is very inconvenient su subclass, to the context has
+// its own class that can be attached to a FnReturn.
+// The methods "onPush" and "onPop" can be defined in the subclass
+// of FnContext to save and restore this context for the recursive calls.
+class FnContext: public Starget
+{
+public:
+	// See the discussion of the call context before the class
+	// definition. Methods that allow a subclass to save and restore
+	// the call context in the recursive calls.
+	// May throw an Exception.
+	// onPush() is called before a new binding is pushed.
+	// onPop() is called before a binding is popped. If the pop attempt
+	// encounters an unexpected binding, onPop() won't be called.
+	// Both are called before to provide consistency across all the
+	// possible reasons of exceptions: if anything goes wrong and
+	// an exception is throws, the push or pop won't be completed.
+	//
+	// @param fret - the return on which the stack operation happens.
+	virtual void onPush(const FnReturn *fret) = 0;
+	virtual void onPop(const FnReturn *fret) = 0;
+};
+
 class FnReturn: public Starget
 {
 protected:
@@ -80,7 +111,9 @@ public:
 	// @param name - a human-readable name of this return set
 	FnReturn(Unit *unit, const string &name);
 
-	// The convenience wharpper for the constructor
+	// The convenience wharpper for the constructor.
+	// Obviously, it's good only for the base class; for the
+	// subclasses either call new() or define a make() in them.
 	static FnReturn *make(Unit *unit, const string &name)
 	{
 		return new FnReturn(unit, name);
@@ -97,7 +130,7 @@ public:
 
 	// Add a label to the result. Any errors will be remembered and
 	// reported during initialization.
-	// Maybe used only until initialized.
+	// May be used only until initialized.
 	//
 	// Technically, a RetLabel label gets created in the FnReturn,
 	// having the same type as the argument label, and getting
@@ -116,13 +149,31 @@ public:
 	
 	// Add a RetLabel to the result. Any errors will be remembered and
 	// reported during initialization.
-	// Maybe used only until initialized.
+	// May be used only until initialized.
 	//
 	// @param lname - name, by which this label can be connected later;
 	//   the actual label name will be return-name.label-name
 	// @param rtype - row type for the label
 	// @return - the same FnReturn object, for chained calls.
 	FnReturn *addLabel(const string &lname, const_Autoref<RowType>rtype);
+
+	// Set an FnContext for the result. Only one context may be added.
+	// May be used only until initialized.
+	// @param ctx - the context object; the return creates a reference to it
+	FnReturn *setContext(Onceref<FnContext> ctx);
+
+	// Get back the context. May be NULL.
+	FnContext *context() const
+	{
+		return context_.get();
+	}
+
+	// Get back the context, with the casting to a subclass. May be NULL.
+	template<class C>
+	C *contextIn() const
+	{
+		return static_cast<C *>(context_.get());
+	}
 
 	// Check all the definition and derive the internal
 	// structures. The result gets returned by getErrors().
@@ -249,6 +300,7 @@ protected:
 	Unit *unit_; // not a reference, used only to create the labels
 	string name_; // human-readable name, and base for the label names
 	Autoref<RowSetType> type_;
+	Autoref<FnContext> context_;
 	ReturnVec labels_; // the return labels, same size as the type
 	BindingVec stack_; // the top of call stack is the end of vector
 	bool initialized_; // flag: has already been initialized, no more changes allowed

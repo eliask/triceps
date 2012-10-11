@@ -25,6 +25,36 @@ void mkfields(RowType::FieldVec &fields)
 	fields.push_back(RowType::Field("e", Type::r_string));
 }
 
+class MyFnCtx: public FnContext
+{
+public:
+	MyFnCtx():
+		pushes_(0),
+		pops_(0),
+		throws_(false)
+	{ }
+
+	virtual void onPush(const FnReturn *fret)
+	{
+		fret_ = fret;
+		if (throws_)
+			throw Exception::f("push exception");
+		++pushes_;
+	}
+
+	virtual void onPop(const FnReturn *fret)
+	{
+		fret_ = fret;
+		if (throws_)
+			throw Exception::f("pop exception");
+		++pops_;
+	}
+
+	int pushes_, pops_;
+	bool throws_;
+	const FnReturn *fret_;
+};
+
 UTESTCASE fn_return(Utest *utest)
 {
 	string msg;
@@ -57,7 +87,9 @@ UTESTCASE fn_return(Utest *utest)
 	// make the returns
 
 	// a good one
+	Autoref<MyFnCtx> ctx1 = new MyFnCtx;
 	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
+		->setContext(ctx1)
 		->addFromLabel("one", lb1)
 		->addLabel("two", rt2)
 	);
@@ -440,13 +472,18 @@ UTESTCASE call_bindings(Utest *utest)
 	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
 
 	// make the return
+	Autoref<MyFnCtx> ctx1 = new MyFnCtx;
 	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
+		->setContext(ctx1)
 		->addFromLabel("one", lb1)
 		->addFromLabel("two", lb2)
 	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
 
+	UT_IS(fret1->context(), ctx1);
+	UT_IS(fret1->contextIn<MyFnCtx>(), ctx1);
+	
 	// a return of a matching type
 	Autoref<FnReturn> fret1a = initialize(FnReturn::make(unit1, "fret1a")
 		->addLabel("a", rt1)
@@ -507,7 +544,10 @@ UTESTCASE call_bindings(Utest *utest)
 	);
 
 	// call with binding, of matching type
+	UT_IS(ctx1->pushes_, 0);
 	fret1->push(bind1a);
+	UT_IS(ctx1->pushes_, 1);
+	UT_IS(ctx1->fret_, fret1.get());
 	unit1->call(op2);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -527,6 +567,7 @@ UTESTCASE call_bindings(Utest *utest)
 
 	// nest a binding and call to another unit
 	fret1->pushUnchecked(bind2);
+	UT_IS(ctx1->pushes_, 2);
 	unit1->call(op1);
 	msg = trace1->getBuffer()->print();
 	trace1->clearBuffer();
@@ -560,7 +601,10 @@ UTESTCASE call_bindings(Utest *utest)
 			"  bind1a\n");
 	}
 	// pop the right binding
+	UT_IS(ctx1->pops_, 0);
 	fret1->pop(bind2);
+	UT_IS(ctx1->pops_, 1);
+	UT_IS(ctx1->fret_, fret1.get());
 	
 	// call with binding that has no labels
 	fret1->push(bind3);
@@ -578,6 +622,7 @@ UTESTCASE call_bindings(Utest *utest)
 
 	// pop any binding
 	fret1->pop(); // bind3
+	UT_IS(ctx1->pops_, 2);
 
 	// repeat a call with bind1a, just to be sure
 	unit1->call(op2);
@@ -663,6 +708,52 @@ UTESTCASE call_bindings(Utest *utest)
 		}
 		UT_IS(msg, "Attempted to pop from an empty FnReturn 'fret1'.\n");
 	}
+	// an exception in onPush()
+	{
+		ctx1->throws_ = true;
+		msg.clear();
+		try {
+			fret1->push(bind3);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "push exception\n");
+
+		msg.clear();
+		try {
+			fret1->pushUnchecked(bind3);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "push exception\n");
+
+		ctx1->throws_ = false;
+	}
+	// an exception in onPush()
+	{
+		fret1->push(bind3); // something to pop
+
+		ctx1->throws_ = true;
+		msg.clear();
+		try {
+			fret1->pop(bind3);
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "pop exception\n");
+
+		msg.clear();
+		try {
+			fret1->pop();
+		} catch (Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "pop exception\n");
+
+		ctx1->throws_ = false;
+		fret1->pop(bind3); // restore the stack
+	}
+	
 
 	// do the scoped binding
 	UT_IS(fret1->bindingStackSize(), 0);

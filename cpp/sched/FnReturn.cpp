@@ -70,6 +70,16 @@ FnReturn *FnReturn::addLabel(const string &lname, const_Autoref<RowType>rtype)
 	return this;
 }
 
+FnReturn *FnReturn::setContext(Onceref<FnContext> ctx)
+{
+	if (initialized_)
+		throw Exception::fTrace("Attempted to set FnContext in an initialized FnReturn '%s'.", name_.c_str());
+	if (context_)
+		throw Exception::fTrace("Attempted to replace an existing FnContext in FnReturn '%s'.", name_.c_str());
+	context_ = ctx;
+	return this;
+}
+
 RowSetType *FnReturn::getType() const
 {
 	if (!initialized_)
@@ -122,6 +132,8 @@ void FnReturn::push(Onceref<FnBinding> bind)
 			bind->getName().c_str(), name_.c_str());
 	if (!initialized_)
 		throw Exception::fTrace("Attempted to push a binding on an uninitialized FnReturn '%s'.", name_.c_str());
+	if (!context_.isNull())
+		context_->onPush(this);
 	stack_.push_back(bind);
 }
 
@@ -129,6 +141,8 @@ void FnReturn::pushUnchecked(Onceref<FnBinding> bind)
 {
 	if (!initialized_)
 		throw Exception::fTrace("Attempted to push a binding on an uninitialized FnReturn '%s'.", name_.c_str());
+	if (!context_.isNull())
+		context_->onPush(this);
 	stack_.push_back(bind);
 }
 
@@ -136,6 +150,8 @@ void FnReturn::pop()
 {
 	if (stack_.empty())
 		throw Exception::fTrace("Attempted to pop from an empty FnReturn '%s'.", name_.c_str());
+	if (!context_.isNull())
+		context_->onPop(this);
 	stack_.pop_back();
 }
 
@@ -153,8 +169,10 @@ void FnReturn::pop(Onceref<FnBinding> bind)
 			bind->getName().c_str(), name_.c_str()));
 		err->append("The bindings on the stack (top to bottom) are:", stkerr);
 		throw Exception(err, true);
-	}
 		// XXX should give some better diagnostics, helping to find the root cause.
+	}
+	if (!context_.isNull())
+		context_->onPop(this);
 	stack_.pop_back();
 }
 
