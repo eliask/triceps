@@ -211,6 +211,11 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 	}
 }
 
+void FnReturn::RetLabel::clearSubclass()
+{
+	fnret_->clear();
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // ScopeFnBind
 

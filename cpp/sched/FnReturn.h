@@ -84,6 +84,9 @@ protected:
 		// from Label
 		// Throws an Exception if the label in the binding is cleared.
 		virtual void execute(Rowop *arg) const;
+		// from Label
+		// Clears the FnReturn.
+		virtual void clearSubclass();
 
 		FnReturn *fnret_; // not a ref, to avoid cyclic refs
 		int idx_; // index in fnret_ to which to forward
@@ -159,7 +162,8 @@ public:
 
 	// Set an FnContext for the result. Only one context may be added.
 	// May be used only until initialized.
-	// @param ctx - the context object; the return creates a reference to it
+	// @param ctx - the context object; the return creates a reference to it;
+	//   that reference is removed when any of the FnReturn's labels get cleared.
 	FnReturn *setContext(Onceref<FnContext> ctx);
 
 	// Get back the context. May be NULL.
@@ -297,6 +301,13 @@ public:
 	}
 
 protected:
+	// Called on the clearing of any RetLabel in this return.
+	void clear()
+	{
+		if (!context_.isNull())
+			context_ = NULL;
+	}
+
 	Unit *unit_; // not a reference, used only to create the labels
 	string name_; // human-readable name, and base for the label names
 	Autoref<RowSetType> type_;

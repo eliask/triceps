@@ -243,6 +243,11 @@ UTESTCASE fn_return(Utest *utest)
 	UT_IS(labels.size(), 2);
 	UT_IS(labels[0]->getName(), "fret1.one");
 	UT_IS(labels[1]->getName(), "fret1.two");
+
+	// Clearing any label clears the context.
+	UT_ASSERT(fret1->context() != 0);
+	fret1->getLabel(0)->clear();
+	UT_ASSERT(fret1->context() == 0);
 }
 
 UTESTCASE fn_binding(Utest *utest)
