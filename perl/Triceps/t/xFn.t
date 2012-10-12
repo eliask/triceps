@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 8 };
+BEGIN { plan tests => 11 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1190,10 +1190,10 @@ result OP_DELETE name="def" count="101"
 ');
 
 ############################################################
-# A pipeline with recursion fragment, doesn't really work because
-# the recursive label calls are not allowed.
+# A pipeline with sort-of-recursion.
 
 sub doRecursivePipeline {
+my $variant = shift;
 
 my $unit = Triceps::Unit->new("unit");
 
@@ -1217,6 +1217,7 @@ my $bindSend = Triceps::FnBinding->new(
 	name => "bindSend",
 	on => $retReceive, # any matching return will do
 	unit => $unit,
+	withTray => 1,
 	labels => [
 		data => sub {
 			&send($_[1]->getRow()->get("s"), "\n");
@@ -1231,6 +1232,7 @@ my $bindDispatch = Triceps::FnBinding->new(
 	name => "bindDispatch",
 	on => $retReceive,
 	unit => $unit,
+	withTray => 1,
 	labels => [
 		data => sub {
 			my @data = split(/,/, $_[1]->getRow()->get("s")); # starts with a command, then string opcode
@@ -1264,6 +1266,7 @@ my $bindEncrypt = Triceps::FnBinding->new(
 	name => "bindEncrypt",
 	on => $retReceive,
 	unit => $unit,
+	withTray => 1,
 	labels => [
 		data => sub {
 			my $s = $_[1]->getRow()->get("s");
@@ -1285,6 +1288,7 @@ my $bindDecrypt = Triceps::FnBinding->new(
 	name => "bindDecrypt",
 	on => $retReceive,
 	unit => $unit,
+	withTray => 1,
 	labels => [
 		data => sub {
 			my $s = $_[1]->getRow()->get("s");
@@ -1314,25 +1318,190 @@ makePipePrintLabel("printResult", $lbIncResult, $lbOutput);
 );
 
 # The main loop.
+if ($variant == 1) {
+# as one flat block
 while(&readLine) {
-	my $ab;
 	chomp;
-	$ab = Triceps::AutoFnBind->new(
+
+	# receive
+	my $abReceive = Triceps::AutoFnBind->new(
 		$retReceive => $bindDecrypt,
-		$retDecrypt => $bindDispatch,
-		$retOutput => $bindEncrypt,
-		$retEncrypt => $bindSend,
 	);
 	$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
-	$unit->drainFrame();
+
+	# 1st decrypt
+	my $abDecrypt1 = Triceps::AutoFnBind->new(
+		$retDecrypt => $bindDecrypt,
+	);
+	$bindDecrypt->callTray();
+
+	# 2nd decrypt
+	my $abDecrypt2 = Triceps::AutoFnBind->new(
+		$retDecrypt => $bindDispatch,
+	);
+	$bindDecrypt->callTray();
+
+	# processing
+	my $abProcess = Triceps::AutoFnBind->new(
+		$retOutput => $bindEncrypt,
+	);
+	$bindDispatch->callTray();
+
+	# 1st encrypt
+	my $abEncrypt1 = Triceps::AutoFnBind->new(
+		$retEncrypt => $bindEncrypt,
+	);
+	$bindEncrypt->callTray();
+
+	# 2nd encrypt
+	my $abEncrypt2 = Triceps::AutoFnBind->new(
+		$retEncrypt => $bindSend,
+	);
+	$bindEncrypt->callTray();
+
+	# send
+	$bindSend->callTray();
 }
+} elsif ($variant == 2) {
+# as nested blocks
+while(&readLine) {
+	chomp;
+
+	# receive
+	my $abReceive = Triceps::AutoFnBind->new(
+		$retReceive => $bindDecrypt,
+	);
+	$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+
+	{
+		# 1st decrypt
+		my $abDecrypt1 = Triceps::AutoFnBind->new(
+			$retDecrypt => $bindDecrypt,
+		);
+		$bindDecrypt->callTray();
+
+		{
+			# 2nd decrypt
+			my $abDecrypt1 = Triceps::AutoFnBind->new(
+				$retDecrypt => $bindDispatch,
+			);
+			$bindDecrypt->callTray();
+
+			{
+				# processing
+				my $abProcess = Triceps::AutoFnBind->new(
+					$retOutput => $bindEncrypt,
+				);
+				$bindDispatch->callTray();
+
+				{
+					# 1st encrypt
+					my $abEncrypt1 = Triceps::AutoFnBind->new(
+						$retEncrypt => $bindEncrypt,
+					);
+					$bindEncrypt->callTray();
+
+					{
+						# 2nd encrypt
+						my $abEncrypt1 = Triceps::AutoFnBind->new(
+							$retEncrypt => $bindSend,
+						);
+						$bindEncrypt->callTray();
+
+						# send
+						$bindSend->callTray();
+					}
+				}
+			}
+		}
+	}
+}
+} elsif ($variant == 3) {
+# as sequential blocks
+while(&readLine) {
+	chomp;
+
+	# receive
+	{
+		my $abReceive = Triceps::AutoFnBind->new(
+			$retReceive => $bindDecrypt,
+		);
+		$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+	}
+
+	# 1st decrypt
+	{
+		my $abDecrypt1 = Triceps::AutoFnBind->new(
+			$retDecrypt => $bindDecrypt,
+		);
+		$bindDecrypt->callTray();
+	}
+
+	# 2nd decrypt
+	{
+		my $abDecrypt1 = Triceps::AutoFnBind->new(
+			$retDecrypt => $bindDispatch,
+		);
+		$bindDecrypt->callTray();
+	}
+
+	# processing
+	{
+		my $abProcess = Triceps::AutoFnBind->new(
+			$retOutput => $bindEncrypt,
+		);
+		$bindDispatch->callTray();
+	}
+
+	# 1st encrypt
+	{
+		my $abEncrypt1 = Triceps::AutoFnBind->new(
+			$retEncrypt => $bindEncrypt,
+		);
+		$bindEncrypt->callTray();
+	}
+
+	# 2nd encrypt
+	{
+		my $abEncrypt1 = Triceps::AutoFnBind->new(
+			$retEncrypt => $bindSend,
+		);
+		$bindEncrypt->callTray();
+	}
+
+	# send
+	$bindSend->callTray();
+}
+} # end variant
 
 }; # doRecursivePipeline
 
-@input = (
-	# perl -e 'print((unpack "H*", "inc,OP_INSERT,abc,2"), "\n");'
-	"696e632c4f505f494e534552542c6162632c32\n",
+my @rpInput = (
+	# perl -e 'print(unpack("H*", unpack("H*", "inc,OP_INSERT,abc,2")), "\n");'
+	"3639366536333263346635303566343934653533343535323534326336313632363332633332\n",
 );
+
+# perl -e 'print(pack("H*", pack("H*", "37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230")), "\n");'
+# result OP_INSERT name="abc" count="3"
+my $rpExpect =
+'> 3639366536333263346635303566343934653533343535323534326336313632363332633332
+37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230
+';
+
+@input = @rpInput;
 $result = undef;
-&doRecursivePipeline();
+&doRecursivePipeline(1);
 #print $result;
+ok($result, $rpExpect);
+
+@input = @rpInput;
+$result = undef;
+&doRecursivePipeline(2);
+#print $result;
+ok($result, $rpExpect);
+
+@input = @rpInput;
+$result = undef;
+&doRecursivePipeline(3);
+#print $result;
+ok($result, $rpExpect);
