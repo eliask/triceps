@@ -1,0 +1,49 @@
+Splitting the XS modules into multiple files
+
+When I've started writing Triceps, soon I've encountered a problem: my XS file was growing to a disturbing size and was getting pretty slow to compile.It really needed to be split into multiple files. I didn't even need to split a single package, just separating each sub-package into its own file would be (and still is) quite enough.
+
+Unfortunately, the documentation didn't say anything in this department. I've found a solution on Internet but it didn't work particularly well. It was able to handle two files, and after that it crashed. I've had to look into what is going on and fix it.
+
+So, how does it work? The building of the module itself is not a problem. It's the initialization that describes the available functions to Perl that presents the difficulty.  For each module Modulename, XS defines a function boot_Modulename (with further XS decorations around the name) that contains the initialization of the module. When the module gets loaded, Perl finds and runs this function. If you want to have multiple modules loaded from the same shared library in one go, you have to designate one as the primary module, and then have it call the boot functions of the other modules (one module per XS file).
+
+You can put extra code into the boot function using the section BOOT:
+
+MODULE = ...        PACKAGE = ...
+BOOT:
+    // code to add to the boot function
+
+So the example I've found on the Internet did this (with the Triceps module names used for an example):
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+XS(boot_Triceps__Label); // for Triceps::Label
+XS(boot_Triceps__Row); // for Triceps::Row
+#ifdef __cplusplus
+};
+#endif
+
+MODULE = Triceps        PACKAGE = Triceps
+
+BOOT:
+    boot_Triceps__Label(aTHX_ cv);
+    boot_Triceps__Row(aTHX_ cv);
+
+If you added the 3rd module, it crashed. What went wrong?
+
+As it turns out, the boot function is not just a C function but a whole Perl function, called with the exact same conventions as used for the normal XS functions, with the proper Perl stack frame. It even gets two arguments that it never uses.
+
+When you call a Perl function, you're supposed to put the correct things on the stack, including the stack mark. If you just call it in C way as shown above, you're corrupting the Perl stack. So the limit of two calls and two arguments received by the boot_Triceps is not coincidental. The first time it calls boot_Triceps__Label(), one argument gets abused because the called function takes it as a stack mark. The second time, when boot_Triceps__Row is called, it abuses the second argument. The third time it runs out of arguments to abuse and crashes.
+
+The fix is to do a proper Perl call sequence when you call the boot functions. Like this:
+
+BOOT:
+    PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK;
+    boot_Triceps__Label(aTHX_ cv);
+    SPAGAIN; POPs;
+    //
+    PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK;
+    boot_Triceps__Row(aTHX_ cv);
+    SPAGAIN; POPs;
+
+This way you can include any number of modules. This code even passes through the original 2 arguments. By the way, note that you can not leave empty lines in the BOOT section, instead put at least an empty comment in them. 

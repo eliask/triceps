@@ -1,0 +1,153 @@
+Fork revisited
+
+I've been working on the streaming functions, and that gave me an idea for a change in scheduling. Sorry that this description is a little dense, you'd need to get the context of the old ways from the manual for the description of the changes to make sense.
+
+If you'd want to look up the section on Basic scheduling http://triceps.sourceforge.net/docs-1.0.1/guide.html#sc_sched_basic, and the section on Loop scheduling http://triceps.sourceforge.net/docs-1.0.1/guide.html#sc_sched_loop, I've been saying that the loop logic could use some simplification, and the forking of the rowops is getting deprecated. Now I've come up with a solution for them both.
+
+The loops required a separate label at the beginning of the loop to put a mark on its queue frame. When the loop's body unwinds and the next iteration starts, it has to avoid pushing more frames with each iteration. So it has to put the rowop for the next iteration into that beginning frame (like fork but farther up the stack), and then unwind the whole body before the beginning label picks the next rowop from its frame and runs the loop body for the next iteration.
+
+But now one little change in the execution of the forked rowops from the frame fixes things: rather than doing a proper call and pushing a new frame for each of them, just execute them using the parent's frame. This muddles up the precise forking sequence a little (where the rowops forked by a label were guaranteed to execute before any other rowops forked by its parent). But this precision doesn't matter much: first, forking is not used much anyway, and second, the forked labels can't have an expectation that the model won't change between them being forked and executed. However this little change is very convenient for the loops.
+
+In a loop the first label of the loop can now put the mark directly on its frame. This mark will stay there until the loop completes, executing every iteration from that point.
+
+If we review the example from the section on Loop scheduling, with the topology
+
+X -> A -> B -> C -> Y
+     ^         |
+     +---------+
+
+
+Then the sequence will look like this:
+
+Rowop X1 scheduled  on the outer frame:
+
+[X1]
+
+Rowop X1 executes:
+
+[ ] ~X1
+[ ]
+
+Label X calls the first label of the loop, A, with rowop A1:
+
+[ ] ~A1
+[ ] ~X1
+[ ]
+
+The label A calls setMark() and puts the mark M on itself:
+
+[ ] ~A1, mark M
+[ ] ~X1
+[ ]
+
+
+The label A then calls the rowop B1 with calls the rowop C1:
+
+
+[ ] ~C1
+
+[ ] ~B1
+
+[ ] ~A1, mark M
+
+[ ] ~X1
+[ ]
+
+
+The label C loops the rowop A2 (for the second iteration of the loop) at mark M, thus placing A2 into the A1's frame.
+
+[ ] ~C1
+
+[ ] ~B1
+
+[A2] ~A1, mark M
+
+[ ] ~X1
+[ ]
+
+
+Then the label C returns, label B returns, and label A returns. But A1's frame is not empty yet (* shows that A1 has completed and now it's a frame without a rowop as such).
+
+[A2] *, mark M
+
+[ ] ~X1
+[ ]
+
+
+Then A2 gets taken from the frame and executed with the context of the same frame:
+
+[ ] ~A2, mark M
+
+[ ] ~X1
+[ ]
+
+
+The label A again sets the mark M, which marks the same frame, so it's pretty much a no-op (so A doesn't really have to set the mark the second time, it's just easier this way). And then it proceeds to call B and C again:
+
+
+[ ] ~C2
+
+[ ] ~B2
+
+[ ] ~A2, mark M
+
+[ ] ~X1
+[ ]
+
+
+The label C loops again back to A:
+
+
+[ ] ~C2
+
+[ ] ~B2
+
+[A3] ~A2, mark M
+
+[ ] ~X1
+[ ]
+
+
+The stack then unrolls, finds the A2's frame not empty, takes A3 from it, and continues in the same way until C decides to not loop to A any more, calling Y instead.
+
+This has pulled with it a few more changes. The first consequence is that the frame draining doesn't happen between executing the label itself and executing its chained labels. Now it has moved to the very end. Now the label runs, then calls whatever labels are chained from it, then the frame draining happens after all the other processing has completed. If the frame is found not empty, the first label from it gets removed from the frame and "semi-called" with the same frame. If the frame is not empty again (because either the original rowop had forked/looped rowops onto it, or because the "semi-called" one did), the next label gets removed and "semi-called", and so on.
+
+The second consequence is that this has changed the traces of the unit tracers, and I've had to add one more TracerWhen constant. Remembering the difficulties with the nesting of the traces, this was a good time to fix that too, so I've added the second TracerWhen constant. Now all of them go nicely in pairs:
+
+TW_BEFORE, // before calling the label's execution as such
+TW_AFTER, // after all the execution is done
+TW_BEFORE_CHAINED, // after execution, before calling the chained labels (if they are present)
+TW_AFTER_CHAINED, // after calling the chained labels (if they were present)
+TW_BEFORE_DRAIN, // before draining the label's frame if it's not empty
+TW_AFTER_DRAIN, // after draining the label's frame if was not empty
+
+The TW_BEFORE/AFTER_CHAINED trace points now get called only if there actually were any chained labels to call, and TW_BEFORE/AFTER_DRAIN trace points get called only if there were anything to drain. The DRAIN trace points get always called with the original rowop that pushed this frame onto the stack first (so that matching the "before" and "after" is easy).
+
+The full sequence in the correct order now becomes:
+
+TW_BEFORE
+TW_BEFORE_CHAINED
+TW_AFTER_CHAINED 
+TW_AFTER
+TW_BEFORE_DRAIN
+TW_AFTER_DRAIN 
+
+But since parts of it are optional, the minimal (and most typical) one is only:
+
+TW_BEFORE
+TW_AFTER
+
+There also are new methods to check if a particular constant (in its integer form, not as a string) is a "before" or "after". Their typical usage in a trace function, to print an opening or closing brace, looks like:
+
+     if (Triceps::tracerWhenIsBefore($when)) {
+        $msg .= " {";
+    } elsif (Triceps::tracerWhenIsAfter($when)) {
+        $msg .= " }";
+    }
+
+
+More trace points that are neither "before" or "after" could get added in the future, so a good practice is to use an elsif with both conditions rather than a simple if/else with one condition.
+
+
+
+The third consequence is that the methods Unit::makeLoopHead() and Unit::makeLoopAround() now return only a pair of values, not a triplet. The "begin" label is not needed any more, so it's not created and not returned.
