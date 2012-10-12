@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 11 };
+BEGIN { plan tests => 12 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1472,6 +1472,63 @@ while(&readLine) {
 	# send
 	$bindSend->callTray();
 }
+} elsif ($variant == 4) {
+# as nested blocks, with repeated calls
+while(&readLine) {
+	chomp;
+
+	# receive
+	my $abReceive = Triceps::AutoFnBind->new(
+		$retReceive => $bindDecrypt,
+	);
+
+	for (my $i = 0; $i < 3; $i++) {
+		$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+
+		{
+			# 1st decrypt
+			my $abDecrypt1 = Triceps::AutoFnBind->new(
+				$retDecrypt => $bindDecrypt,
+			);
+			$bindDecrypt->callTray();
+
+			{
+				# 2nd decrypt
+				my $abDecrypt1 = Triceps::AutoFnBind->new(
+					$retDecrypt => $bindDispatch,
+				);
+				$bindDecrypt->callTray();
+
+				{
+					# processing
+					my $abProcess = Triceps::AutoFnBind->new(
+						$retOutput => $bindEncrypt,
+					);
+					$bindDispatch->callTray();
+
+					{
+						# 1st encrypt
+						my $abEncrypt1 = Triceps::AutoFnBind->new(
+							$retEncrypt => $bindEncrypt,
+						);
+						$bindEncrypt->callTray();
+
+						{
+							# 2nd encrypt
+							my $abEncrypt1 = Triceps::AutoFnBind->new(
+								$retEncrypt => $bindSend,
+							);
+							$bindEncrypt->callTray();
+
+							# send
+							$bindSend->callTray();
+						}
+					}
+				}
+			}
+		}
+	}
+}
 } # end variant
 
 }; # doRecursivePipeline
@@ -1505,3 +1562,14 @@ $result = undef;
 &doRecursivePipeline(3);
 #print $result;
 ok($result, $rpExpect);
+
+@input = @rpInput;
+$result = undef;
+&doRecursivePipeline(4);
+#print $result;
+ok($result,
+'> 3639366536333263346635303566343934653533343535323534326336313632363332633332
+37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230
+37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230
+37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230
+');
