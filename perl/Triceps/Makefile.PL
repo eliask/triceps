@@ -75,6 +75,8 @@ PerlAggregator.o: PerlCallback.h PerlAggregator.h WrapAggregatorContext.h
 
 AggregatorContext.o: WrapAggregatorContext.h
 
+FnReturn.o: PerlCallback.h
+
 FnBinding.o: PerlCallback.h
 
 ";

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 367 };
+BEGIN { plan tests => 389 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -248,6 +248,19 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' 
 );
 # XXX should have a better way to prepend the high-level description
 ok($@ =~ /^Triceps::FnReturn::new: invalid arguments:\n  duplicate row name 'one'/);
+#print "$@";
+
+&badFnReturn(onPush => 10);
+ok($@ =~ /^Triceps::FnReturn::new: option 'onPush' value must be a reference to a function or an array starting with a reference to function at/);
+
+&badFnReturn(onPush => [10]);
+ok($@ =~ /^Triceps::FnReturn::new: option 'onPush' value must be a reference to a function or an array starting with a reference to function at/);
+
+&badFnReturn(onPop => 10);
+ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a function or an array starting with a reference to function at/);
+
+&badFnReturn(onPop => [10]);
+ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a function or an array starting with a reference to function at/);
 #print "$@";
 
 ######################### 
@@ -931,6 +944,89 @@ Called chained from the label 'lb1'./);
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }
+
+######################### 
+# onPush/onPop
+
+# no extra args
+{
+	my @args;
+	my $fretp1 = Triceps::FnReturn->new(
+		name => "fretp1",
+		unit => $u1,
+		onPush => sub {
+			@args = @_;
+		},
+		onPop => sub {
+			@args = @_;
+		},
+		labels => [
+			one => $rt1,
+			two => $rt1,
+		]
+	);
+	ok(ref $fretp1, "Triceps::FnReturn");
+
+	my $fbindp1 = Triceps::FnBinding->new(
+		on => $fretp1,
+		name => "fbindp1",
+		unit => $u1,
+		labels => [
+		]
+	);
+	ok(ref $fbindp1, "Triceps::FnBinding");
+
+	undef @args;
+	$fretp1->push($fbindp1);
+	ok($#args, 0);
+	ok($fretp1->same($args[0]));
+
+	undef @args;
+	$fretp1->pop($fbindp1);
+	ok($#args, 0);
+	ok($fretp1->same($args[0]));
+}
+# with extra args
+{
+	my @args;
+	my $fretp1 = Triceps::FnReturn->new(
+		name => "fretp1",
+		unit => $u1,
+		onPush => [sub {
+			@args = @_;
+		}, 1],
+		onPop => [sub {
+			@args = @_;
+		}, 2],
+		labels => [
+			one => $rt1,
+			two => $rt1,
+		]
+	);
+	ok(ref $fretp1, "Triceps::FnReturn");
+
+	my $fbindp1 = Triceps::FnBinding->new(
+		on => $fretp1,
+		name => "fbindp1",
+		unit => $u1,
+		labels => [
+		]
+	);
+	ok(ref $fbindp1, "Triceps::FnBinding");
+
+	undef @args;
+	$fretp1->push($fbindp1);
+	ok($#args, 1);
+	ok($fretp1->same($args[0]));
+	ok($args[1], 1);
+
+	undef @args;
+	$fretp1->pop($fbindp1);
+	ok($#args, 1);
+	ok($fretp1->same($args[0]));
+	ok($args[1], 2);
+}
+
 
 ######################### 
 # Tray error handling.

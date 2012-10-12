@@ -13,6 +13,73 @@
 
 #include "TricepsPerl.h"
 #include "TricepsOpt.h"
+#include "PerlCallback.h"
+
+// A streaming function context that executes Perl code.
+class PerlFnContext: public FnContext
+{
+public:
+	PerlFnContext(Onceref<PerlCallback> cbPush, Onceref<PerlCallback> cbPop) :
+		cbPush_(cbPush),
+		cbPop_(cbPop)
+	{ }
+
+	// the callbacks are public and can be modified later
+	Autoref<PerlCallback> cbPush_, cbPop_;
+
+protected:
+	// from FnContext
+	virtual void onPush(const FnReturn *fret);
+	virtual void onPop(const FnReturn *fret);
+};
+
+void PerlFnContext::onPush(const FnReturn *fret)
+{
+	dSP;
+
+	if (cbPush_.isNull())
+		return;
+
+	WrapFnReturn *wret = new WrapFnReturn(const_cast<FnReturn *>(fret));
+	SV *svret = newSV(0);
+	sv_setref_pv(svret, "Triceps::FnReturn", (void *)wret);
+
+	PerlCallbackStartCall(cbPush_);
+
+	XPUSHs(svret);
+
+	PerlCallbackDoCall(cbPush_);
+
+	// this calls the DELETE methods on wrappers
+	SvREFCNT_dec(svret);
+
+	callbackSuccessOrThrow("Detected in the unit '%s' function return '%s' onPush handler.",
+		fret->getUnitName().c_str(), fret->getName().c_str());
+}
+
+void PerlFnContext::onPop(const FnReturn *fret)
+{
+	dSP;
+
+	if (cbPop_.isNull())
+		return;
+
+	WrapFnReturn *wret = new WrapFnReturn(const_cast<FnReturn *>(fret));
+	SV *svret = newSV(0);
+	sv_setref_pv(svret, "Triceps::FnReturn", (void *)wret);
+
+	PerlCallbackStartCall(cbPop_);
+
+	XPUSHs(svret);
+
+	PerlCallbackDoCall(cbPop_);
+
+	// this calls the DELETE methods on wrappers
+	SvREFCNT_dec(svret);
+
+	callbackSuccessOrThrow("Detected in the unit '%s' function return '%s' onPop handler.",
+		fret->getUnitName().c_str(), fret->getName().c_str());
+}
 
 MODULE = Triceps::FnReturn		PACKAGE = Triceps::FnReturn
 ###################################################################################
@@ -57,6 +124,19 @@ same(WrapFnReturn *self, WrapFnReturn *other)
 # like normal labels, by chaining them or sending rowops to them (but
 # chaining _from_ them is probably not the best idea, although it works anyway).
 # At least one definition pair must be present.
+#
+# onPush => $code
+# onPush => [$code, @args]
+# Defines a function and possibly arguments to be executed when a new 
+# FnBinding is pushed onto this return. The function is called:
+#   &$code($thisFnReturn, @args)
+#
+# onPop => $code
+# onPop => [$code, @args]
+# Defines a function and possibly arguments to be executed when a 
+# FnBinding is popped from this return. The function is called:
+#   &$code($thisFnReturn, @args)
+#
 WrapFnReturn *
 new(char *CLASS, ...)
 	CODE:
@@ -69,6 +149,7 @@ new(char *CLASS, ...)
 			Unit *u = NULL;
 			AV *labels = NULL;
 			string name;
+			Autoref<PerlCallback> onPush, onPop;
 
 			if (items % 2 != 1) {
 				throw Exception("Usage: Triceps::FnReturn::new(CLASS, optionName, optionValue, ...), option names and values must go in pairs", false);
@@ -82,6 +163,10 @@ new(char *CLASS, ...)
 					GetSvString(name, arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "labels")) {
 					labels = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "onPush")) {
+					onPush = GetSvCall(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "onPop")) {
+					onPop = GetSvCall(arg, "%s: option '%s'", funcName, optname);
 				} else {
 					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
 				}
@@ -152,6 +237,10 @@ new(char *CLASS, ...)
 					RowType *rt = wrt->get();
 					fret->addLabel(lbname, rt);
 				}
+			}
+
+			if (!onPush.isNull() || !onPop.isNull()) {
+				fret->setContext(new PerlFnContext(onPush, onPop));
 			}
 
 			try {
