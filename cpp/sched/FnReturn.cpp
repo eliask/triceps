@@ -30,6 +30,13 @@ FnReturn::~FnReturn()
 	}
 }
 
+// not inside the function, or it will be initialized in screwed-up order
+static string placeholderUnitName = "[fn return cleared]";
+const string &FnReturn::getUnitName() const
+{
+	return unit_? unit_->getName() : placeholderUnitName;
+}
+
 FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 {
 	if (initialized_)
@@ -213,7 +220,10 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 
 void FnReturn::RetLabel::clearSubclass()
 {
-	fnret_->clear();
+	if (!cleared_) {
+		fnret_->clear();
+		fnret_ = NULL; // don't be tempted to use it again
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////

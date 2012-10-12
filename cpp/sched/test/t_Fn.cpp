@@ -108,6 +108,9 @@ UTESTCASE fn_return(Utest *utest)
 		->addLabel("xxx", rt2)
 	);
 	UT_ASSERT(fret3->getErrors().isNull());
+
+	UT_IS(fret1->getUnitPtr(), unit1);
+	UT_IS(fret1->getUnitName(), "u");
 	
 	// bad ones
 	{
@@ -248,6 +251,9 @@ UTESTCASE fn_return(Utest *utest)
 	UT_ASSERT(fret1->context() != 0);
 	fret1->getLabel(0)->clear();
 	UT_ASSERT(fret1->context() == 0);
+	// and also clears the unit
+	UT_IS(fret1->getUnitPtr(), NULL);
+	UT_IS(fret1->getUnitName(), "[fn return cleared]");
 }
 
 UTESTCASE fn_binding(Utest *utest)
@@ -1181,7 +1187,7 @@ UTESTCASE fn_binding_memory(Utest *utest)
 }
 
 // Check that the labels get cleared when the return goes away.
-UTESTCASE fn_retutn_memory(Utest *utest)
+UTESTCASE fn_return_memory(Utest *utest)
 {
 	string msg;
 	Exception::abort_ = false; // make them catchable

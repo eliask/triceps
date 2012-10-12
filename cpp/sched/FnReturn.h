@@ -131,6 +131,17 @@ public:
 		return name_;
 	}
 
+	// If any of return's labels has been cleared, returns NULL, so name it
+	// differently, preventing the accidental mistakes.
+	Unit *getUnitPtr() const
+	{
+		return unit_;
+	}
+
+	// Getting the unit name is typical, so handle the situation with being cleared.
+	// by returning a placeholder.
+	const string &getUnitName() const;
+
 	// Add a label to the result. Any errors will be remembered and
 	// reported during initialization.
 	// May be used only until initialized.
@@ -304,8 +315,10 @@ protected:
 	// Called on the clearing of any RetLabel in this return.
 	void clear()
 	{
-		if (!context_.isNull())
+		if (unit_) {
+			unit_ = NULL;
 			context_ = NULL;
+		}
 	}
 
 	Unit *unit_; // not a reference, used only to create the labels
