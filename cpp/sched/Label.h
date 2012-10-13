@@ -100,6 +100,21 @@ public:
 		name_ = name;
 	}
 
+	// Mark the label as non-reentrant. This is essentially setting its
+	// little private recursion depth limit to 1 (i.e. it can occur only
+	// once on the call stack, never nested).
+	// There is no way to unset this flag.
+	void setNonReentrant()
+	{
+		nonReentrant_ = true;
+	}
+
+	// Check whether the label is non-reentrant.
+	bool isNonReentrant() const
+	{
+		return nonReentrant_;
+	}
+
 	// Clear this label's references. 
 	// Once cleared, the label can not be called any more.
 	// The topology of inter-label connections may include loops
@@ -181,8 +196,9 @@ protected:
 	const_Autoref<RowType> type_; // type of the row handled here
 	Unit *unit_; // not a reference, but more of a token
 	string name_; // human-readable name for tracing
+	mutable int recursion_; // the current recursion depth of this label
 	bool cleared_; // flag: clear() was called, and the label should stop working
-	mutable bool busy_; // flag: label is executing, used to detect the recursive calls
+	bool nonReentrant_; // flag: this label is not reentrant
 };
 
 // A label that does nothing: typically used as an endpoint for chaining in the 

@@ -62,14 +62,20 @@ protected:
 // and its frame is found empty, the frame gets popped. The outermost frame
 // is never popped from the stack even when it's completely empty.
 //
-// There are 3 ways to add rowops to the queue:
+// There are 4 ways to add rowops to the queue:
 // 1. To the tail of the outermost frame. It's to schedule some delayed processing
 //    for later, when the whole current queue is consumed.
+//    [schedule]
 // 2. To the tail of the current frame. This delays the processing of that rowop until
-//    all the effects from the rowop being processed now are finished.
-// 3. To push a new frame, add the rowop there, and immediately start executing it.
+//    the processing of the current rowop completes.
+//    [fork]
+// 3. To the tail of another (ancestor) frame, pointed to by the FrameMark. 
+//    This delays the processing of that rowop until that ancestor rowop completes.
+//    [loopAt]
+// 4. To push a new frame, add the rowop there, and immediately start executing it.
 //    This works like a function call, making sure that all the effects from that
 //    rowop are finished before the current processing resumes.
+//    [call]
 //
 // Since the Units in different threads need to communicate, it's an Mtarget.
 //
@@ -230,7 +236,7 @@ public:
 		return emptyRowType_;
 	}
 
-	// }
+	// } Label management
 
 	// Tracing interface.
 	// Often it's hard to figure out, how a certain result got produced.
@@ -345,7 +351,56 @@ public:
 	// May throw an Exception on fatal error.
 	void trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
 
-	// }
+	// } Tracing
+	
+	// In some cases the recursion may be desired.
+	// This allows to enable the recursion.
+	// {
+
+	// Set the maximal allowed Triceps call stack depth for this unit.
+	// When the unit is constructed, the default is unlimited (0).
+	//
+	// In practice there is also always the implicit limit of the C++ thread
+	// stack size, but it's usually difficult to overrun without recursion.
+	// See the comment for setMaxRecursionDepth().
+	//
+	// @param v - the limit; <=0 means "unlimited".
+	void setMaxStackDepth(int v)
+	{
+		maxStackDepth_ = v;
+	}
+
+	int maxStackDepth() const
+	{
+		return maxStackDepth_;
+	}
+
+	// Set the maximal allowed label recursion depth for this unit.
+	// I.e. it's the number of times a label can be present on the call stack.
+	//
+	// 1 means only call once, no recursion. 2 means that the label may call
+	// itself (directly or indirectly) once. And so on.
+	// When the unit is constructed, the default is 1 (no recursion).
+	//
+	// Setting this limit higher than the maximal stack depth makes no sense.
+	//
+	// Be careful with the unlimted and other very high values: 
+	// you still have an implicit limit in the form of the C++ thread stack
+	// size. If you overrun the stack, the process will die and (optionally)
+	// dump core.
+	//
+	// @param v - the limit; <=0 means "unlimited".
+	void setMaxRecursionDepth(int v)
+	{
+		maxRecursionDepth_ = v;
+	}
+
+	int maxRecursionDepth() const
+	{
+		return maxRecursionDepth_;
+	}
+	// } Recursion control
+	
 protected:
 	// Push a new frame onto the stack.
 	void pushFrame();
@@ -372,6 +427,8 @@ protected:
 	// Keeping track of labels
 	typedef map<Label *, Autoref<Label> > LabelMap;
 	LabelMap labelMap_;
+	int maxStackDepth_; // limit on the call stack depth, <= 0 means unlimited
+	int maxRecursionDepth_; // limit on the recursive calls of the same label, <= 0 means unlimited
 
 private:
 	Unit(const Unit &);

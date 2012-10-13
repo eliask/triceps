@@ -1138,7 +1138,11 @@ UTESTCASE exceptions(Utest *utest)
 	UT_IS(msg, "Test throw on call\nCalled through the label 'labt'.\n");
 	UT_ASSERT(unit1->empty()); // the frame must get popped
 
-	// draining of the frame, even if the exception is thrown in a recursive call
+	// draining of the frame, even if the exception is thrown in a recursive call;
+	// and also the max stack depth limit 
+	// (the max recusrion depth limit is tested with the labels)
+	unit1->setMaxStackDepth(3);
+	unit1->setMaxRecursionDepth(10);
 	msg.clear();
 	try {
 		Autoref<Label> labrec = new LabelRecursive(unit1, rt1, "labrec");
@@ -1151,9 +1155,13 @@ UTESTCASE exceptions(Utest *utest)
 	} catch (Exception e) {
 		msg = e.getErrors()->print();
 	}
+	unit1->setMaxStackDepth(0);
+	unit1->setMaxRecursionDepth(1);
 	UT_IS(msg, 
-		"Detected a recursive call of the label 'labrec'.\n"
+		"Unit 'u1' exceeded the stack depth limit 3, current depth 4, when calling the label 'labrec'.\n"
+		"Called through the label 'labrec'.\n"
 		"Called through the label 'labrec'.\n");
+
 	UT_ASSERT(unit1->empty());
 
 	Exception::abort_ = true; // restore back
@@ -1231,10 +1239,28 @@ UTESTCASE label_exceptions(Utest *utest)
 	} catch (Exception e) {
 		msg = e.getErrors()->print();
 	}
-	UT_IS(msg, "Detected a recursive call of the label 'lab1'.\n\
+	UT_IS(msg, "Exceeded the unit recursion depth limit 1 (attempted 2) on the label 'lab1'.\n\
 Called through the label 'labrec'.\n\
 Called chained from the label 'lab2'.\n\
 Called chained from the label 'lab1'.\n");
+
+	// recursive call of a non-reentrant label
+	unit1->setMaxRecursionDepth(3);
+	msg.clear();
+	try {
+		Autoref<Label> labrec = new LabelRecursive(unit1, rt1, "labrec");
+		UT_ASSERT(!labrec->isNonReentrant());
+		labrec->setNonReentrant();
+		UT_ASSERT(labrec->isNonReentrant());
+
+		Autoref<Rowop> oprec = new Rowop(labrec, Rowop::OP_DELETE, r1);
+		unit1->call(oprec);
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	unit1->setMaxRecursionDepth(1);
+	UT_IS(msg, "Detected a recursive call of the non-reentrant label 'labrec'.\n\
+Called through the label 'labrec'.\n");
 
 	// wrong unit
 	msg.clear();

@@ -20,8 +20,9 @@ Label::Label(Unit *unit, const_Onceref<RowType> rtype, const string &name) :
 	type_(rtype),
 	unit_(unit),
 	name_(name),
+	recursion_(0),
 	cleared_(false),
-	busy_(false)
+	nonReentrant_(false)
 {
 	assert(unit);
 	assert(!type_.isNull());
@@ -98,15 +99,23 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 	if (cleared_) // don't try to execute a cleared label
 		return;
 
-	if (busy_) {
-		throw Exception(strprintf("Detected a recursive call of the label '%s'.", getName().c_str()), false);
-	}
 	if (unit != unit_) {
 		throw Exception(strprintf("Triceps API violation: call() attempt with unit '%s' of label '%s' belonging to unit '%s'.\n", 
 			unit->getName().c_str(), getName().c_str(), unit_->getName().c_str()), true);
 	}
 
-	BusyMark bm(busy_);
+	if (nonReentrant_ && recursion_ >= 1)
+		throw Exception::fTrace("Detected a recursive call of the non-reentrant label '%s'.", getName().c_str());
+
+	{
+		int rec = unit->maxRecursionDepth();
+		if (rec > 0 && recursion_ >= rec)
+			throw Exception::fTrace("Exceeded the unit recursion depth limit %d (attempted %d) on the label '%s'.",
+				rec, recursion_ + 1,
+				getName().c_str());
+	}
+
+	BusyCounter bm(recursion_);
 
 	// XXX this code would be cleaner without exceptions...
 	try {

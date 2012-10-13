@@ -13,6 +13,7 @@
 
 namespace TRICEPS_NS {
 
+// Set the mark to true on construction and reset to false on destruction.
 class BusyMark
 {
 public:
@@ -33,6 +34,29 @@ protected:
 
 private:
 	BusyMark(); // no default constructor
+};
+
+// Increase the counter on construction and decrease on destruction.
+class BusyCounter
+{
+public:
+	// @param markp - mark to set now and clear on leaving the scope
+	BusyCounter(int &count) :
+		cp_(&count)
+	{ 
+		++count; // mark busy
+	}
+
+	~BusyCounter()
+	{
+		--*cp_;
+	}
+
+protected:
+	int *cp_;
+
+private:
+	BusyCounter(); // no default constructor
 };
 
 }; // TRICEPS_NS

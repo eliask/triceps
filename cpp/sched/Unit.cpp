@@ -135,7 +135,8 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 ///////////////////////////// Unit //////////////////////////////////
 
 Unit::Unit(const string &name) :
-	name_(name), stackDepth_(1)
+	name_(name), stackDepth_(1),
+	maxStackDepth_(0), maxRecursionDepth_(1)
 {
 	// the outermost frame is always present
 	innerFrame_ = outerFrame_ = new UnitFrame;
@@ -187,6 +188,11 @@ void Unit::call(Onceref<Rowop> rop)
 
 void Unit::callGuts(Rowop *rop)
 {
+	if (maxStackDepth_ > 0 && stackDepth_ >= maxStackDepth_) {
+		throw Exception::fTrace("Unit '%s' exceeded the stack depth limit %d, current depth %d, when calling the label '%s'.",
+			name_.c_str(), maxStackDepth_, stackDepth_+1, rop->getLabel()->getName().c_str());
+	}
+
 	pushFrame();
 
 	try {
@@ -195,29 +201,23 @@ void Unit::callGuts(Rowop *rop)
 			try {
 				trace(rop->getLabel(), NULL, rop, Unit::TW_BEFORE_DRAIN);
 			} catch (Exception e) {
-				Erref err = new Errors;
-				err->append(strprintf("Error when tracing before draining the label '%s':",
-					rop->getLabel()->getName().c_str()), e.getErrors());
-				throw Exception(err, false);
+				throw Exception::f(e, "Error when tracing before draining the label '%s':",
+					rop->getLabel()->getName().c_str());
 			}
 			try {
-					drainForkedFrame();
+				drainForkedFrame();
 			} catch (Exception e) {
-				Erref err = e.getErrors();
 				// this might not be the exact parent label, since the forking might have
 				// been done by one of the labels chained from it, or by a label that
 				// has been forked itself
-				err->appendMsg(true, strprintf("Called when draining the frame of label '%s'.", 
-					rop->getLabel()->getName().c_str()));
-				throw Exception(err, false);
+				throw Exception::f(e, "Called when draining the frame of label '%s'.", 
+					rop->getLabel()->getName().c_str());
 			}
 			try {
 				trace(rop->getLabel(), NULL, rop, Unit::TW_AFTER_DRAIN);
 			} catch (Exception e) {
-				Erref err = new Errors;
-				err->append(strprintf("Error when tracing after draining the label '%s':",
-					rop->getLabel()->getName().c_str()), e.getErrors());
-				throw Exception(err, false);
+				throw Exception::f(e, "Error when tracing after draining the label '%s':",
+					rop->getLabel()->getName().c_str());
 			}
 		}
 	} catch (Exception e) {
