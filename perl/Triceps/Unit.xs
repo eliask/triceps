@@ -276,6 +276,38 @@ getStackDepth(WrapUnit *self)
 	OUTPUT:
 		RETVAL
 
+void
+setMaxStackDepth(WrapUnit *self, int v)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		u->setMaxStackDepth(v);
+
+int
+maxStackDepth(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = u->maxStackDepth();
+	OUTPUT:
+		RETVAL
+
+void
+setMaxRecursionDepth(WrapUnit *self, int v)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		u->setMaxRecursionDepth(v);
+
+int
+maxRecursionDepth(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = u->maxRecursionDepth();
+	OUTPUT:
+		RETVAL
+
 # get the empty row type
 WrapRowType *
 getEmptyRowType(WrapUnit *self)

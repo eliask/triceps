@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 144 };
+BEGIN { plan tests => 151 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -381,15 +381,16 @@ ok(ref $recrop, "Triceps::Rowop");
 eval {
 	$u1->call($recrop);
 };
-ok($@ =~ /^Detected a recursive call of the label 'reclab'. at [^\n]*
+ok($@ =~ /^Exceeded the unit recursion depth limit 1 \(attempted 2\) on the label 'reclab'. at [^\n]*
 \tmain::__ANON__[^\n]*
 \teval[^\n]*
 Detected in the unit 'u1' label 'reclab' execution handler.
 Called through the label 'reclab'. at [^\n]*
 \teval[^\n]*
 /);
+#print "$@";
 
-# a crash in a deeply nexted label
+# a crash in a deeply nested label
 $nlab1 = $u1->makeLabel($rt1, "nlab1", undef, sub { die "Test of a crash"; } );
 ok(ref $nlab1, "Triceps::Label");
 $nlab2 = $u1->makeLabel($rt1, "nlab2", undef, sub { $u1->call($nlab1->adopt($_[1])); } );
@@ -427,6 +428,61 @@ Detected in the unit 'u1' label 'nlab5' execution handler.
 Called through the label 'nlab5'. at [^\n]*
 	eval [^\n]*
 /);
+
+#############################################################
+# Test the call depth limits.
+
+ok($u1->maxStackDepth(), 0);
+ok($u1->maxRecursionDepth(), 1);
+
+$u1->setMaxRecursionDepth(3);
+ok($u1->maxRecursionDepth(), 3);
+
+eval {
+	$u1->call($recrop);
+};
+ok($@ =~ /^Exceeded the unit recursion depth limit 3 \(attempted 4\) on the label 'reclab'. at [^\n]*
+\tmain::__ANON__[^\n]*
+\teval[^\n]*
+Detected in the unit 'u1' label 'reclab' execution handler.
+Called through the label 'reclab'. at [^\n]*
+\tmain::__ANON__[^\n]*
+\teval[^\n]*
+Detected in the unit 'u1' label 'reclab' execution handler.
+Called through the label 'reclab'. at [^\n]*
+\tmain::__ANON__[^\n]*
+\teval[^\n]*
+Detected in the unit 'u1' label 'reclab' execution handler.
+Called through the label 'reclab'. at [^\n]*
+\teval[^\n]*
+/);
+#print "$@";
+
+$u1->setMaxStackDepth(3);
+$u1->setMaxRecursionDepth(0);
+ok($u1->maxStackDepth(), 3);
+ok($u1->maxRecursionDepth(), 0);
+
+eval {
+	$u1->call($recrop);
+};
+# There is always also the outermost frame, so the label recurses one less time.
+ok($@ =~ /^Unit 'u1' exceeded the stack depth limit 3, current depth 4, when calling the label 'reclab'. at [^\n]*
+\tmain::__ANON__[^\n]*
+\teval[^\n]*
+Detected in the unit 'u1' label 'reclab' execution handler.
+Called through the label 'reclab'. at [^\n]*
+\tmain::__ANON__[^\n]*
+\teval[^\n]*
+Detected in the unit 'u1' label 'reclab' execution handler.
+Called through the label 'reclab'. at [^\n]*
+\teval[^\n]*
+/);
+#print "$@";
+
+# restore back to defaults
+$u1->setMaxStackDepth(0);
+$u1->setMaxRecursionDepth(1);
 
 #############################################################
 # tracer ops

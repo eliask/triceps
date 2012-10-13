@@ -142,6 +142,14 @@ setName(WrapLabel *self, char *name)
 		Label *lab = self->get();
 		lab->setName(name);
 
+# Set the non-reentrant flag.
+void
+setNonReentrant(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		lab->setNonReentrant();
+
 # check whether both refs point to the same type object
 int
 same(WrapLabel *self, WrapLabel *other)
@@ -268,6 +276,16 @@ isCleared(WrapLabel *self)
 		clearErrMsg();
 		Label *lab = self->get();
 		RETVAL = lab->isCleared();
+	OUTPUT:
+		RETVAL
+
+# check if the label is non-reentrant
+int
+isNonReentrant(WrapLabel *self)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		RETVAL = lab->isNonReentrant();
 	OUTPUT:
 		RETVAL
 
