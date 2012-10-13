@@ -67,15 +67,9 @@ Things that need to be done:
   tables may be different unit
 * aggregation: add an option for mandatory keeping of the last row,
   and a way to find and iterate them (thus avoiding a separate table)
-* in FnReturn add the push- and pop-handlers. Add also the argument
+* in Perl FnReturn add the argument
   handler, and pass the args directly in push(), like [$fbind, @args...].
-* Make the frame owned not by current label but by parent label; this
-  would solve the ugliness in the loops and allow some interesting
-  recursion with functions. Fork() should run the queued labels
-  in the same frame. (except for the top-level frame? keep it separate
-  altogether? Keep it also separate for the external calls and
-  for calls from inside the model? Have schedule() use the 2nd frame
-  if it's available?)
+* A more strict handling of frame marks?
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -86,9 +80,10 @@ Things that need to be done:
 * doc: in types construction throw instead of abort()
 * doc: the templates for initialize(), initializeOrThrow(), checkOrThrow()
 * doc: the new draining of forked rowops, new mark semantics
-* doc: new tracing, tracerWhenIsBefore, and call order for draining, changed
-  Perl tracer example, changed the makeLoop* to not have the begin label
-* doc: Label::adopt()
+
+* doc: streaming functions and the unit boundaries
+* doc: onPush/onPop in FnReturn
+* doc: streaming functions replace the copy trays in tables
 
 App ideas:
 * queries on CSV files
