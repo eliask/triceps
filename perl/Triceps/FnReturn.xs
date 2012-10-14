@@ -31,54 +31,44 @@ protected:
 	// from FnContext
 	virtual void onPush(const FnReturn *fret);
 	virtual void onPop(const FnReturn *fret);
+
+	// the common underlying implementation
+	void call(const FnReturn *fret, PerlCallback *cb, const char *which);
 };
 
 void PerlFnContext::onPush(const FnReturn *fret)
 {
-	dSP;
-
-	if (cbPush_.isNull())
-		return;
-
-	WrapFnReturn *wret = new WrapFnReturn(const_cast<FnReturn *>(fret));
-	SV *svret = newSV(0);
-	sv_setref_pv(svret, "Triceps::FnReturn", (void *)wret);
-
-	PerlCallbackStartCall(cbPush_);
-
-	XPUSHs(svret);
-
-	PerlCallbackDoCall(cbPush_);
-
-	// this calls the DELETE methods on wrappers
-	SvREFCNT_dec(svret);
-
-	callbackSuccessOrThrow("Detected in the unit '%s' function return '%s' onPush handler.",
-		fret->getUnitName().c_str(), fret->getName().c_str());
+	call(fret, cbPush_, "onPush");
 }
-
+	
 void PerlFnContext::onPop(const FnReturn *fret)
 {
-	dSP;
+	call(fret, cbPop_, "onPop");
+}
+	
 
-	if (cbPop_.isNull())
+void PerlFnContext::call(const FnReturn *fret, PerlCallback *cb, const char *which)
+{
+	if (cb == NULL)
 		return;
+
+	dSP;
 
 	WrapFnReturn *wret = new WrapFnReturn(const_cast<FnReturn *>(fret));
 	SV *svret = newSV(0);
 	sv_setref_pv(svret, "Triceps::FnReturn", (void *)wret);
 
-	PerlCallbackStartCall(cbPop_);
+	PerlCallbackStartCall(cb);
 
 	XPUSHs(svret);
 
-	PerlCallbackDoCall(cbPop_);
+	PerlCallbackDoCall(cb);
 
 	// this calls the DELETE methods on wrappers
 	SvREFCNT_dec(svret);
 
-	callbackSuccessOrThrow("Detected in the unit '%s' function return '%s' onPop handler.",
-		fret->getUnitName().c_str(), fret->getName().c_str());
+	callbackSuccessOrThrow("Detected in the unit '%s' function return '%s' %s handler.",
+		fret->getUnitName().c_str(), fret->getName().c_str(), which);
 }
 
 MODULE = Triceps::FnReturn		PACKAGE = Triceps::FnReturn
