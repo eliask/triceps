@@ -220,7 +220,10 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 	if (tray) {
 		tray->push_back(adrop);
 	} else {
-		u->call(adrop);
+		if (0 && u == unit_) // XXXXX
+			u->fork(adrop); // this prevents the creation of an extra frame
+		else
+			u->call(adrop);
 	}
 }
 

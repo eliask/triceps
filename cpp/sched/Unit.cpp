@@ -198,29 +198,7 @@ void Unit::callGuts(Rowop *rop)
 
 	try {
 		rop->getLabel()->call(this, rop); // may throw
-		if (!innerFrame_->empty()) {
-			try {
-				trace(rop->getLabel(), NULL, rop, Unit::TW_BEFORE_DRAIN);
-			} catch (Exception e) {
-				throw Exception::f(e, "Error when tracing before draining the label '%s':",
-					rop->getLabel()->getName().c_str());
-			}
-			try {
-				drainForkedFrame();
-			} catch (Exception e) {
-				// this might not be the exact parent label, since the forking might have
-				// been done by one of the labels chained from it, or by a label that
-				// has been forked itself
-				throw Exception::f(e, "Called when draining the frame of label '%s'.", 
-					rop->getLabel()->getName().c_str());
-			}
-			try {
-				trace(rop->getLabel(), NULL, rop, Unit::TW_AFTER_DRAIN);
-			} catch (Exception e) {
-				throw Exception::f(e, "Error when tracing after draining the label '%s':",
-					rop->getLabel()->getName().c_str());
-			}
-		}
+		drainForkedFrame(rop->getLabel(), rop);
 	} catch (Exception e) {
 		popFrame();
 		throw;
@@ -371,14 +349,33 @@ void Unit::callNextForked()
 	}
 }
 
-void Unit::drainForkedFrame()
+void Unit::drainForkedFrame(const Label *lab, Rowop *rop)
 {
+	if (innerFrame_->empty())
+		return;
+
+	try {
+		trace(lab, NULL, rop, Unit::TW_BEFORE_DRAIN);
+	} catch (Exception e) {
+		throw Exception::f(e, "Error when tracing before draining the label '%s':",
+			lab->getName().c_str());
+	}
 	try {
 		while (!innerFrame_->empty())
 			callNextForked(); // may throw
 	} catch (Exception e) {
 		innerFrame_->clear(); // the frame gets cleared anyway, by throwing things out
-		throw;
+		// this might not be the exact parent label, since the forking might have
+		// been done by one of the labels chained from it, or by a label that
+		// has been forked itself
+		throw Exception::f(e, "Called when draining the frame of label '%s'.", 
+			lab->getName().c_str());
+	}
+	try {
+		trace(lab, NULL, rop, Unit::TW_AFTER_DRAIN);
+	} catch (Exception e) {
+		throw Exception::f(e, "Error when tracing after draining the label '%s':",
+			lab->getName().c_str());
 	}
 }
 

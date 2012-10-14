@@ -169,14 +169,26 @@ public:
 	// Normally used only on the outermost frame.
 	// May throw an Exception on fatal error.
 	void drainFrame();
+
+	// API for the Label execution machinery. Not intended to be called
+	// directly by the user.
+	// {
+	
 	// Extract and execute the next record from the innermost frame.
 	// Does not push a new frame, executes directly in the parent's frame
 	// May throw an Exception on fatal error.
 	void callNextForked();
 	// Execute callNextForked() the current stack frame drains.
+	// Calls the tracing notifications around it.
 	// Normally used to process the forked records after a label call returns.
 	// May throw an Exception on fatal error.
-	void drainForkedFrame();
+	// @param lab - Label that has created the frame. Used for the tracing
+	//     notification and error messages.
+	// @param rop - Rowop that has created the frame. Used for the tracing
+	//     notification.
+	void drainForkedFrame(const Label *lab, Rowop *rop);
+
+	// } Label execution.
 
 	// Check whether the queue is empty.
 	// @return - if no rowops in the whole queue
