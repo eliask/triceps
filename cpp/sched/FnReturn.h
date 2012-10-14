@@ -48,6 +48,8 @@ namespace TRICEPS_NS {
 class FnContext: public Starget
 {
 public:
+	virtual ~FnContext();
+
 	// See the discussion of the call context before the class
 	// definition. Methods that allow a subclass to save and restore
 	// the call context in the recursive calls.
