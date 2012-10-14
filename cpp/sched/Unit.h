@@ -429,6 +429,7 @@ protected:
 	LabelMap labelMap_;
 	int maxStackDepth_; // limit on the call stack depth, <= 0 means unlimited
 	int maxRecursionDepth_; // limit on the recursive calls of the same label, <= 0 means unlimited
+	bool clearing_; // prevents the recursive calls to clearLabels & friends
 
 private:
 	Unit(const Unit &);

@@ -136,7 +136,8 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 
 Unit::Unit(const string &name) :
 	name_(name), stackDepth_(1),
-	maxStackDepth_(0), maxRecursionDepth_(1)
+	maxStackDepth_(0), maxRecursionDepth_(1),
+	clearing_(false)
 {
 	// the outermost frame is always present
 	innerFrame_ = outerFrame_ = new UnitFrame;
@@ -470,6 +471,9 @@ void Unit::trace(const Label *label, const Label *fromLabel, Rowop *rop, TracerW
 
 void Unit::clearLabels()
 {
+	if (clearing_)
+		return; // avoid the recursive calls
+	clearing_ = true;
 	for(LabelMap::iterator it = labelMap_.begin(); it != labelMap_.end(); ++it) {
 		try {
 			it->first->clear();
@@ -480,15 +484,20 @@ void Unit::clearLabels()
 		}
 	}
 	labelMap_.clear();
+	clearing_ = false;
 }
 
 void Unit::rememberLabel(Label *lab)
 {
+	if (clearing_)
+		return;
 	labelMap_[lab] = lab;
 }
 
 void  Unit::forgetLabel(Label *lab)
 {
+	if (clearing_)
+		return;
 	labelMap_.erase(lab);
 }
 

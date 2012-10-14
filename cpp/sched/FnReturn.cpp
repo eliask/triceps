@@ -220,10 +220,8 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 
 void FnReturn::RetLabel::clearSubclass()
 {
-	if (!cleared_) {
-		fnret_->clear();
-		fnret_ = NULL; // don't be tempted to use it again
-	}
+	fnret_->clear();
+	fnret_ = NULL; // don't be tempted to use it again
 }
 
 ///////////////////////////////////////////////////////////////////////////

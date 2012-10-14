@@ -77,16 +77,18 @@ void Label::clearChained()
 
 void Label::clear()
 {
-	Erref err;
-	try {
-		clearSubclass();
-	} catch (Exception e) {
-		err = e.getErrors();
+	if (!cleared_) {
+		cleared_ = true;
+		Erref err;
+		try {
+			clearSubclass();
+		} catch (Exception e) {
+			err = e.getErrors();
+		}
+		clearChained();
+		if (!err.isNull())
+			throw Exception(err, false);
 	}
-	clearChained();
-	cleared_ = true;
-	if (!err.isNull())
-		throw Exception(err, false);
 }
 
 void Label::clearSubclass()
