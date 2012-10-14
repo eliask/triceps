@@ -1161,7 +1161,7 @@ while(&readLine) {
 	"OP_INSERT,6\n",
 );
 $result = undef;
-&doFibFn6();
+0 && &doFibFn6();
 #print $result;
 0 && ok($result, # XXXXXXXXXX
 '> OP_INSERT,1
