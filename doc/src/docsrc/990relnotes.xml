@@ -68,6 +68,16 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			The Labels are marked as cleared before their subclass clearing function
+			is called, not after it. The repeated calls to clear them are ignored.
+			</listitem>
+
+			<listitem>
+			The Unit ignores the attempts to remember, forget or clear labels while
+			it's already clearing labels.
+			</listitem>
+
+			<listitem>
 			Added <pre>Table::clear()</pre>.
 			</listitem>
 
