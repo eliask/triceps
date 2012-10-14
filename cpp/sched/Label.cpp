@@ -96,8 +96,6 @@ void Label::clearSubclass()
 
 void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 {
-	Erref err;
-
 	if (cleared_) // don't try to execute a cleared label
 		return;
 
@@ -123,48 +121,40 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 	try {
 		unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE);
 	} catch (Exception e) {
-		err = new Errors;
-		err->append(strprintf("Error when tracing before the label '%s':", getName().c_str()), e.getErrors());
-		throw Exception(err, false);
+		throw Exception::f(e, "Error when tracing before the label '%s':", getName().c_str());
 	}
 	try {
 		execute(arg);
 	} catch (Exception e) {
-		err = e.getErrors();
+		Erref err = e.getErrors();
 		err->appendMsg(true, strprintf("Called through the label '%s'.", getName().c_str()));
-		throw Exception(err, false);
+		throw; // the errors buffer got changed in place!
 	}
 	if (!chained_.empty()) {
 		try {
 			unit->trace(this, chainedFrom, arg, Unit::TW_BEFORE_CHAINED);
 		} catch (Exception e) {
-			err = new Errors;
-			err->append(strprintf("Error when tracing before the chain of the label '%s':", getName().c_str()), e.getErrors());
-			throw Exception(err, false);
+			throw Exception::f(e, "Error when tracing before the chain of the label '%s':", getName().c_str());
 		}
 		for (ChainedVec::const_iterator it = chained_.begin(); it != chained_.end(); ++it) {
 			try {
 				(*it)->call(unit, arg, this); // each of them can do their own chaining....
 			} catch (Exception e) {
-				err = e.getErrors();
+				Erref err = e.getErrors();
 				err->appendMsg(true, strprintf("Called chained from the label '%s'.", getName().c_str()));
-				throw Exception(err, false);
+				throw; // the errors buffer got changed in place!
 			}
 		}
 		try {
 			unit->trace(this, chainedFrom, arg, Unit::TW_AFTER_CHAINED);
 		} catch (Exception e) {
-			err = new Errors;
-			err->append(strprintf("Error when tracing after the chain of the label '%s':", getName().c_str()), e.getErrors());
-			throw Exception(err, false);
+			throw Exception::f(e, "Error when tracing after the chain of the label '%s':", getName().c_str());
 		}
 	}
 	try {
 		unit->trace(this, chainedFrom, arg, Unit::TW_AFTER);
 	} catch (Exception e) {
-		err = new Errors;
-		err->append(strprintf("Error when tracing after execution of the label '%s':", getName().c_str()), e.getErrors());
-		throw Exception(err, false);
+		throw Exception::f(e, "Error when tracing after execution of the label '%s':", getName().c_str());
 	}
 
 	// The tracing for TW_BEFORE_DRAIN and TW_AFTER_DRAIN happens in Unit.cpp.
