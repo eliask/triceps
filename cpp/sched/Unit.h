@@ -112,6 +112,28 @@ public:
 	// May throw an Exception on fatal error.
 	void callTray(const_Onceref<Tray> tray);
 
+	// Call a label like as if it were chained: reusing the current frame,
+	// and overriding the label specified in the rowop.
+	//
+	// This methdod is fundamentally dangerous and must be used with
+	// great care, ensuring the correct arguments.
+	//
+	// The caller must keep references to all the arguments for the
+	// duration of the call. So for example you can't just pass a
+	// "new Rowop(...)" as an argument. You have to assign it to an
+	// Autoref<Rowop> and then you can use it as an argument.
+	//
+	// @param label - label to call
+	// @param rop - rowop to execute, the label from it will be ignored
+	//        (however the row type of the label argument and of the label in
+	//        rowop must match, or things will crash)
+	// @param chainedFrom - the label from which the called one has been virtually
+	//        chained; may be NULL
+	void callAsChained(const Label *label, Rowop *rop, const Label *chainedFrom)
+	{
+		label->call(this, rop, chainedFrom);
+	}
+
 	// Enqueue the rowop with the chosen mode. This is mostly for convenience
 	// of Perl code but can be used in other places too, performs a switch
 	// and calls one of the actula methods.

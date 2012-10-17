@@ -567,8 +567,8 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 
-		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
-		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
+		"unit 'u' before label 'lb3a' (chain 'fret1.two') op OP_INSERT {\n"
+		"unit 'u' after label 'lb3a' (chain 'fret1.two') op OP_INSERT }\n"
 
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
 		"unit 'u' after-chained label 'lb2' op OP_INSERT }\n"
@@ -644,8 +644,8 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 
-		"unit 'u' before label 'lb3a' op OP_INSERT {\n"
-		"unit 'u' after label 'lb3a' op OP_INSERT }\n"
+		"unit 'u' before label 'lb3a' (chain 'fret1.two') op OP_INSERT {\n"
+		"unit 'u' after label 'lb3a' (chain 'fret1.two') op OP_INSERT }\n"
 
 		"unit 'u' after label 'fret1.two' (chain 'lb2') op OP_INSERT }\n"
 		"unit 'u' after-chained label 'lb2' op OP_INSERT }\n"

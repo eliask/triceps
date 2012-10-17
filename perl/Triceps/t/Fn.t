@@ -1470,8 +1470,8 @@ $exp_call_one =
 "unit 'u1' before label 'lbz1' op OP_INSERT {
 unit 'u1' before-chained label 'lbz1' op OP_INSERT {
 unit 'u1' before label 'fretz1.one' (chain 'lbz1') op OP_INSERT {
-unit 'u1' before label 'callb.one' op OP_INSERT {
-unit 'u1' after label 'callb.one' op OP_INSERT }
+unit 'u1' before label 'callb.one' (chain 'fretz1.one') op OP_INSERT {
+unit 'u1' after label 'callb.one' (chain 'fretz1.one') op OP_INSERT }
 unit 'u1' after label 'fretz1.one' (chain 'lbz1') op OP_INSERT }
 unit 'u1' after-chained label 'lbz1' op OP_INSERT }
 unit 'u1' after label 'lbz1' op OP_INSERT }
@@ -1480,8 +1480,8 @@ $exp_call_two =
 "unit 'u1' before label 'lbz2' op OP_INSERT {
 unit 'u1' before-chained label 'lbz2' op OP_INSERT {
 unit 'u1' before label 'fretz1.two' (chain 'lbz2') op OP_INSERT {
-unit 'u1' before label 'callb.two' op OP_INSERT {
-unit 'u1' after label 'callb.two' op OP_INSERT }
+unit 'u1' before label 'callb.two' (chain 'fretz1.two') op OP_INSERT {
+unit 'u1' after label 'callb.two' (chain 'fretz1.two') op OP_INSERT }
 unit 'u1' after label 'fretz1.two' (chain 'lbz2') op OP_INSERT }
 unit 'u1' after-chained label 'lbz2' op OP_INSERT }
 unit 'u1' after label 'lbz2' op OP_INSERT }

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 14 };
+BEGIN { plan tests => 15 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1161,9 +1161,9 @@ while(&readLine) {
 	"OP_INSERT,6\n",
 );
 $result = undef;
-0 && &doFibFn6();
+&doFibFn6();
 #print $result;
-0 && ok($result, # XXXXXXXXXX
+ok($result,
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
