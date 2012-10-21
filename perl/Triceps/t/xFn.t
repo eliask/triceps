@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 15 };
+BEGIN { plan tests => 16 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -741,13 +741,13 @@ while(&readLine) {
 $result = undef;
 &doFibFn5();
 #print $result;
-0 && ok($result, # XXXXXXXXXX
+ok($result,
 "> OP_INSERT,1
 1 is Fibonacci number 1
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibCall.result' op OP_INSERT {
-unit 'uFib' after label 'FibCall.result' op OP_INSERT }
+unit 'uFib' before label 'FibCall.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' after label 'FibCall.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 > OP_DELETE,2
@@ -755,18 +755,18 @@ unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' before label 'FibCompute' op OP_DELETE {
 unit 'uFib' before label 'FibCompute' op OP_DELETE {
 unit 'uFib' before label 'Fib.result' op OP_DELETE {
-unit 'uFib' before label 'FibPrev1.result' op OP_DELETE {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_DELETE {
 unit 'uFib' before label 'FibCompute' op OP_DELETE {
 unit 'uFib' before label 'Fib.result' op OP_DELETE {
-unit 'uFib' before label 'FibPrev2.result' op OP_DELETE {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_DELETE {
 unit 'uFib' before label 'Fib.result' op OP_DELETE {
-unit 'uFib' before label 'FibCall.result' op OP_DELETE {
-unit 'uFib' after label 'FibCall.result' op OP_DELETE }
+unit 'uFib' before label 'FibCall.result' (chain 'Fib.result') op OP_DELETE {
+unit 'uFib' after label 'FibCall.result' (chain 'Fib.result') op OP_DELETE }
 unit 'uFib' after label 'Fib.result' op OP_DELETE }
-unit 'uFib' after label 'FibPrev2.result' op OP_DELETE }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_DELETE }
 unit 'uFib' after label 'Fib.result' op OP_DELETE }
 unit 'uFib' after label 'FibCompute' op OP_DELETE }
-unit 'uFib' after label 'FibPrev1.result' op OP_DELETE }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_DELETE }
 unit 'uFib' after label 'Fib.result' op OP_DELETE }
 unit 'uFib' after label 'FibCompute' op OP_DELETE }
 unit 'uFib' after label 'FibCompute' op OP_DELETE }
@@ -778,84 +778,84 @@ unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibCall.result' op OP_INSERT {
-unit 'uFib' after label 'FibCall.result' op OP_INSERT }
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibCall.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' after label 'FibCall.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
@@ -871,142 +871,142 @@ unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
-unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
-unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev1.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibPrev2.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
 unit 'uFib' before label 'Fib.result' op OP_INSERT {
-unit 'uFib' before label 'FibCall.result' op OP_INSERT {
-unit 'uFib' after label 'FibCall.result' op OP_INSERT }
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'FibCompute' op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' before label 'Fib.result' op OP_INSERT {
+unit 'uFib' before label 'FibCall.result' (chain 'Fib.result') op OP_INSERT {
+unit 'uFib' after label 'FibCall.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
-unit 'uFib' after label 'Fib.result' op OP_INSERT }
-unit 'uFib' after label 'FibPrev2.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
-unit 'uFib' after label 'FibPrev1.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_INSERT }
+unit 'uFib' after label 'Fib.result' op OP_INSERT }
+unit 'uFib' after label 'FibCompute' op OP_INSERT }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_INSERT }
 unit 'uFib' after label 'Fib.result' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
 unit 'uFib' after label 'FibCompute' op OP_INSERT }
@@ -1021,7 +1021,7 @@ unit 'uFib' after label 'FibCompute' op OP_INSERT }
 # This version uses the call context stack and forking.
 # It needs no label recursion!
 
-sub doFibFn6 {
+sub doFibFn7 {
 # compute some Fibonacci numbers in a perverse way
 
 my $uFib = Triceps::Unit->new("uFib");
@@ -1152,7 +1152,7 @@ while(&readLine) {
 	$uFib->getTracer()->clearBuffer();
 }
 
-} # doFibFn6
+} # doFibFn7
 
 @input = (
 	"OP_INSERT,1\n",
@@ -1161,7 +1161,7 @@ while(&readLine) {
 	"OP_INSERT,6\n",
 );
 $result = undef;
-&doFibFn6();
+&doFibFn7();
 #print $result;
 ok($result,
 '> OP_INSERT,1
