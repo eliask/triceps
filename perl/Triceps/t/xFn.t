@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 17 };
+BEGIN { plan tests => 18 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1018,8 +1018,7 @@ unit 'uFib' after label 'FibCompute' op OP_INSERT }
 
 ############################################################
 # A simple recursive Fibonacci computation with the streaming functions.
-# This version does not create the binding calls and closures on the fly
-# but uses the call context stack.
+# The version with call context stack, scoping and trays in binding.
 
 sub doFibFn6 {
 # compute some Fibonacci numbers in a perverse way
@@ -1595,6 +1594,175 @@ while(&readLine) {
 );
 $result = undef;
 &doFibFn7();
+#print $result;
+ok($result,
+'> OP_INSERT,1
+1 is Fibonacci number 1
+> OP_DELETE,2
+1 is Fibonacci number 2
+> OP_INSERT,5
+5 is Fibonacci number 5
+> OP_INSERT,6
+8 is Fibonacci number 6
+');
+
+############################################################
+# A simple recursive Fibonacci computation with the streaming functions.
+# Forking and the trays, it has to use the call() for everything,
+# except for the pop labels that get forked. But it gives no
+# beneft compared to the simpler approach without any forks.
+
+sub doFibFn8 {
+# compute some Fibonacci numbers in a perverse way
+
+my $uFib = Triceps::Unit->new("uFib");
+$uFib->setMaxRecursionDepth(100);
+$uFib->setMaxStackDepth(100); # for showing off
+
+$uFib->setTracer(Triceps::UnitTracerStringName->new(verbose => 1));
+
+# Type the data going into the function
+my $rtFibArg = Triceps::RowType->new(
+	idx => "int32", # the index of Fibonacci number to generate
+) or confess "$!";
+
+# Type of the function result
+my $rtFibRes = Triceps::RowType->new(
+	idx => "int32", # the index of Fibonacci number
+	fib => "int64", # the generated Fibonacci number
+) or confess "$!";
+
+###
+# A streaming function that computes a Fibonacci number.
+
+# Input: 
+#   $lbFibCompute: request to compute the number.
+# Output (by FnReturn labels):
+#   "result": the computed value.
+# The opcode is preserved through the computation.
+
+my @stackFib; # stack of the function states
+my $stateFib; # The current state
+
+my $frFib = Triceps::FnReturn->new(
+	name => "Fib",
+	unit => $uFib,
+	labels => [
+		result => $rtFibRes,
+	],
+	onPush => sub { push @stackFib, $stateFib; $stateFib = { }; },
+	onPop => sub { $stateFib = pop @stackFib; },
+);
+
+my $lbFibResult = $frFib->getLabel("result");
+
+# Declare the label & binding variables in advance, to define them sequentially.
+my ($lbFibCompute, $lbFibPop1, $lbFibPop2, $fbFibPrev1, $fbFibPrev2);
+$lbFibCompute = $uFib->makeLabel($rtFibArg, "FibCompute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $op = $_[1]->getOpcode();
+	my $idx = $row->get("idx");
+
+	if ($idx <= 1) {
+		$uFib->call($frFib->getLabel("result")->makeRowopHash($op,
+			idx => $idx,
+			fib => $idx < 1 ? 0 : 1,
+		));
+	} else {
+		$stateFib->{op} = $op;
+		$stateFib->{idx} = $idx;
+
+		$frFib->push($fbFibPrev1);
+		$uFib->call($lbFibCompute->makeRowopHash($op, 
+			idx => $idx - 1,
+		));
+		$uFib->fork($lbFibPop1->makeRowopArray($op));
+	}
+}) or confess "$!";
+$lbFibPop1 = $uFib->makeLabel($uFib->getEmptyRowType(), "FibPop1", undef, sub {
+	$frFib->pop($fbFibPrev1);
+	$fbFibPrev1->callTray();
+}) or confess "$!";
+$fbFibPrev1 = Triceps::FnBinding->new(
+	unit => $uFib,
+	name => "FibPrev1",
+	on => $frFib,
+	withTray => 1,
+	labels => [
+		result => sub {
+			$stateFib->{prev1} = $_[1]->getRow()->get("fib");
+
+			# must prepare before pushing new state and with it new $stateFib
+			my $rop = $lbFibCompute->makeRowopHash($stateFib->{op}, 
+				idx => $stateFib->{idx} - 2,
+			);
+
+			$frFib->push($fbFibPrev2);
+			$uFib->call($rop);
+			$uFib->fork($lbFibPop2->makeRowopArray("OP_INSERT"));
+		},
+	],
+);
+$lbFibPop2 = $uFib->makeLabel($uFib->getEmptyRowType(), "FibPop2", undef, sub {
+	$frFib->pop($fbFibPrev2);
+	$fbFibPrev2->callTray();
+}) or confess "$!";
+$fbFibPrev2 = Triceps::FnBinding->new(
+	unit => $uFib,
+	on => $frFib,
+	name => "FibPrev2",
+	withTray => 1,
+	labels => [
+		result => sub {
+			$stateFib->{prev2} = $_[1]->getRow()->get("fib");
+			$uFib->call($frFib->getLabel("result")->makeRowopHash($stateFib->{op},
+				idx => $stateFib->{idx},
+				fib => $stateFib->{prev1} + $stateFib->{prev2},
+			));
+		},
+	],
+);
+
+# End of streaming function
+###
+
+# binding to call the Fibonacci function and print the result
+my $fbFibCall = Triceps::FnBinding->new(
+	name => "FibCall",
+	on => $frFib,
+	unit => $uFib,
+	labels => [
+		result => sub {
+			my $row = $_[1]->getRow();
+			&send($row->get("fib"), " is Fibonacci number ", $row->get("idx"), "\n");
+		}
+	],
+);
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	{
+		my $ab = Triceps::AutoFnBind->new(
+			$frFib => $fbFibCall,
+		);
+		$uFib->makeArrayCall($lbFibCompute, @data);
+	}
+	$uFib->drainFrame(); # just in case, for completeness
+	#&send($uFib->getTracer()->print()); # print the trace, it's entertaining
+	$uFib->getTracer()->clearBuffer();
+}
+
+} # doFibFn8
+
+@input = (
+	"OP_INSERT,1\n",
+	"OP_DELETE,2\n",
+	"OP_INSERT,5\n",
+	"OP_INSERT,6\n",
+);
+$result = undef;
+&doFibFn8();
 #print $result;
 ok($result,
 '> OP_INSERT,1
