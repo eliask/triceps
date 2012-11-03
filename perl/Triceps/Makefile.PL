@@ -4,15 +4,22 @@ use ExtUtils::MakeMaker;
 # Read the parameters from Triceps Makefiles
 delete $ENV{MAKEFLAGS}; # these cause spurious messages from make
 delete $ENV{MAKELEVEL};
+
+# Some broken Perl builds return the non-0 code, this handles them.
+my $xxx = `echo xxx`;
+die "The shell calling does not seem to work: $!\n(got '$xxx')" unless ($xxx eq "xxx\n");
+my $exp_bang = $!;
+my $exp_err = $?;
+
 my $TRICEPS_CONF = `make --quiet -f ../../cpp/Makefile.inc getconf`;
-die "Failed to read the configuration: $!" if ($! != 0);
-die "Failed to read the configuration: error code $?" if ($? != 0);
+die "Failed to read the configuration: $!" if ($! != $exp_bang);
+die "Failed to read the configuration: error code $?" if ($? != $exp_err);
 my $TRICEPS_XLIB = `make --quiet -f ../../cpp/Makefile.inc getxlib`;
-die "Failed to read the configuration: $!" if ($! != 0);
-die "Failed to read the configuration: error code $?" if ($? != 0);
+die "Failed to read the configuration: $!" if ($! != $exp_bang);
+die "Failed to read the configuration: error code $?" if ($? != $exp_err);
 my $TRICEPS_LIBRARY = `make --quiet -f ../../cpp/Makefile.inc getlib`;
-die "Failed to read the configuration: $!" if ($! != 0);
-die "Failed to read the configuration: error code $?" if ($? != 0);
+die "Failed to read the configuration: $!" if ($! != $exp_bang);
+die "Failed to read the configuration: error code $?" if ($? != $exp_err);
 
 chomp $TRICEPS_CONF;
 chomp $TRICEPS_XLIB;
