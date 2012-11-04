@@ -286,7 +286,7 @@ UTESTCASE tableops(Utest *utest)
 		++i;
 		UT_ASSERT(iter != rh11);
 
-		// remember the record with the macthing key
+		// remember the record with the matching key
 		v1.setFrom(rt1, iter->getRow(), 1);
 		v2.setFrom(rt1, iter->getRow(), 2);
 		if (!memcmp(v1.data_, &one32, sizeof(int32_t)) 
@@ -446,6 +446,144 @@ UTESTCASE tableops(Utest *utest)
 		printf("expected: \"%s\"\n", trace_expect.c_str());
 	}
 
+}
+
+// basic operations with an FnReturn present;
+// the detailed checks of the contents are skipped here
+UTESTCASE tableops_fret(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	// same as mktabtype but adds an aggregator to count collapses
+	Autoref<TableType> tt = ( new TableType(rt1))
+			->addSubIndex("primary", (new HashedIndexType(
+				(new NameSet())->add("b")
+				))->addSubIndex("level2", (new HashedIndexType(
+						(new NameSet())->add("c")
+					))->setAggregator(
+						new BasicAggregatorType("onLevel2", rt1, recordHistory)
+					)
+				)->setAggregator(
+					new BasicAggregatorType("onPrimary", rt1, recordHistory)
+				)
+			);
+
+	aggHistory = new Errors;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	Autoref<FnReturn> fret = t->fnReturn();
+	UT_ASSERT(!fret.isNull());
+
+	IndexType *prim = tt->findSubIndex("primary");
+	UT_ASSERT(prim != NULL);
+
+	IndexType *sec = prim->findSubIndex("level2");
+	UT_ASSERT(sec != NULL);
+
+	// create a matrix of records, across both axes of indexing
+
+	Fdata v1, v2;
+	FdataVec dv;
+	mkfdata(dv);
+
+	int32_t one32 = 1;
+	int64_t one64 = 1;
+
+	dv[1].data_ = (char *)&one32; dv[2].data_ = (char *)&one64;
+	Rowref r11(rt1,  rt1->makeRow(dv));
+	Rhref rh11(t, t->makeRowHandle(r11));
+
+	// basic insertion
+	UT_ASSERT(t->insert(rh11));
+	// check the history collected by tracer
+	unit->drainFrame();
+	UT_ASSERT(unit->empty());
+
+	string tlog = trace->getBuffer()->print();
+
+	string trace_expect = 
+		"unit 'u' before label 't.pre' op OP_INSERT\n"
+		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_INSERT\n"
+		"unit 'u' before label 't.onPrimary' op OP_INSERT\n"
+		"unit 'u' before label 't.fret.onPrimary' (chain 't.onPrimary') op OP_INSERT\n"
+		"unit 'u' before label 't.onLevel2' op OP_INSERT\n"
+		"unit 'u' before label 't.fret.onLevel2' (chain 't.onLevel2') op OP_INSERT\n"
+	;
+	if (UT_IS(tlog, trace_expect)) {
+		printf("expected: \"%s\"\n", trace_expect.c_str());
+	}
+
+}
+
+// Test an error in FnReturn creation due to a naming conflict.
+UTESTCASE bad_fret(Utest *utest)
+{
+	string msg;
+
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	// same as mktabtype but adds an aggregator to count collapses
+	Autoref<TableType> tt = ( new TableType(rt1))
+			->addSubIndex("primary", (new HashedIndexType(
+				(new NameSet())->add("b")
+				))->addSubIndex("level2", (new HashedIndexType(
+						(new NameSet())->add("c")
+					))->setAggregator(
+						new BasicAggregatorType("onLevel2", rt1, recordHistory)
+					)
+				)->setAggregator(
+					new BasicAggregatorType("pre", rt1, recordHistory) // the conflicting name
+				)
+			);
+
+	aggHistory = new Errors;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	msg.clear();
+	try {
+		Autoref<FnReturn> fret = t->fnReturn();
+	} catch (Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, "Failed to create an FnReturn on table 't':\n  duplicate row name 'pre'\n");
+
+	Exception::abort_ = true; // restore back
+	Exception::enableBacktrace_ = true; // restore back
 }
 
 // begin() implementation is common with the iteration on the table,

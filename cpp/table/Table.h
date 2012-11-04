@@ -12,6 +12,7 @@
 #include <type/TableType.h>
 #include <table/RootIndex.h>
 #include <sched/AggregatorGadget.h>
+#include <sched/FnReturn.h>
 
 namespace TRICEPS_NS {
 
@@ -77,6 +78,17 @@ public:
 	{
 		return root_->size();
 	}
+
+	// Get the FnReturn for this table. It will get created on the first
+	// call, so if not used, it will not add overhead.
+	// Its name is "<table_name>.fret".
+	// It contains two fixed labels: "out" and "pre", and a label for every
+	// aggregator.
+	// The table keeps a reference to the FnReturn, so returning a pointer
+	// is always safe.
+	// If something goes very wrong (pretty much the only reason for it is if
+	// you name an aggregator "pre" or "out" or such), it may throw an Exception.
+	FnReturn *fnReturn() const;
 	
 	/////// operations on rows
 
@@ -287,6 +299,7 @@ protected:
 	Autoref<InputLabel> inputLabel_;
 	Autoref<IndexType> firstLeaf_; // the first leaf index type, used for default find
 	Autoref<DummyLabel> preLabel_; // called before modifying a row, if has anything chained
+	mutable Autoref<FnReturn> fnReturn_; // the FnReturn object for table results
 	AggGadgetVec aggs_; // gadgets for all aggregators, matching the order in TableType
 	string name_; // base name of the table
 	bool busy_; // flag: an operation is in progress on the table

@@ -82,6 +82,11 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			Added handling of the broken Perl versions that return spurious errors on
+			the command execution.
+			</listitem>
+
+			<listitem>
 			Better &Cpp; NameSet constructors.
 			</listitem>
 

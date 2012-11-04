@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 227 };
+BEGIN { plan tests => 239 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -592,3 +592,87 @@ ok($@ =~ /Triceps::Table::deleteRow: copyTray is not a blessed SV reference to W
 	ok(!eval { $tc1->clear(-1) });
 	ok($@ =~ /^Triceps::Table::clear: the limit argument must be >=0, got -1/) or print STDERR "got: $@\n";
 }
+
+############################## function return #######################################
+
+{
+	my $u9 = Triceps::Unit->new("u9");
+	ok(ref $u9, "Triceps::Unit");
+
+	my $tt9 = Triceps::TableType->new($rt1)
+		->addSubIndex("grouping", $it1)
+		->addSubIndex("reverse", Triceps::IndexType->newFifo(reverse => 1))
+		;
+	ok(ref $tt9, "Triceps::TableType");
+
+	# with an aggregator
+	Triceps::SimpleAggregator::make(
+		tabType => $tt9,
+		name => "myAggr",
+		idxPath => [ "grouping" ],
+		result => [
+			b => "int32", "first", sub {$_[0]->get("b");},
+			c => "int64", "first", sub {$_[0]->get("c");},
+			d => "float64", "first", sub {$_[0]->get("d");},
+		],
+	);
+
+	ok($tt9->initialize(), 1);
+
+	my $t9 = $u9->makeTable($tt9, "EM_CALL", "t9");
+	ok(ref $t9, "Triceps::Table");
+	my $fret = $t9->fnReturn();
+	ok(ref $fret, "Triceps::FnReturn");
+
+	my $buf;
+	Triceps::FnBinding::call(
+		name => "test",
+		on => $fret,
+		unit => $u9,
+		labels => [
+			pre => sub { $buf .= "on pre\n"; },
+			out => sub { $buf .= "on out\n"; },
+			myAggr => sub { $buf .= "on myAggr\n"; },
+		],
+		code => sub {
+			$t9->insert($r1);
+		},
+	);
+	ok($buf, "on pre\non out\non myAggr\n");
+}
+
+# test the exception handling
+{
+	my $u9 = Triceps::Unit->new("u9");
+	ok(ref $u9, "Triceps::Unit");
+
+	my $tt9 = Triceps::TableType->new($rt1)
+		->addSubIndex("grouping", $it1)
+		->addSubIndex("reverse", Triceps::IndexType->newFifo(reverse => 1))
+		;
+	ok(ref $tt9, "Triceps::TableType");
+
+	# with an aggregator used to trigger the error
+	Triceps::SimpleAggregator::make(
+		tabType => $tt9,
+		name => "pre",
+		idxPath => [ "grouping" ],
+		result => [
+			b => "int32", "first", sub {$_[0]->get("b");},
+			c => "int64", "first", sub {$_[0]->get("c");},
+			d => "float64", "first", sub {$_[0]->get("d");},
+		],
+	);
+
+	ok($tt9->initialize(), 1);
+
+	my $t9 = $u9->makeTable($tt9, "EM_CALL", "t9");
+	ok(ref $t9, "Triceps::Table");
+
+	my $fret = eval { $t9->fnReturn(); };
+	ok(!defined $fret);
+	#print "$@";
+	ok($@ =~ /^Failed to create an FnReturn on table 't9':\n  duplicate row name 'pre' at/);
+}
+
+# XXX test the exception handling in fnReturn

@@ -166,6 +166,35 @@ UTESTCASE preLabel(Utest *utest)
 		"unit 'u' before label 'lsize' (chain 't.out') op OP_INSERT\n"
 		"table size 2\n"
 	);
+
+	// Getting an FnReturn creates it and chains it to the "out" and "pre" labels.
+	FnReturn *fr = t->fnReturn();
+	UT_ASSERT(fr != NULL);
+	UT_IS(t->fnReturn(), fr); // repeated calls return the same object
+	UT_IS(fr->getName(), "t.fret");
+
+	// check that the FnReturn labels get called
+	trace->clearBuffer();
+	UT_ASSERT(t->insertRow(r12)); // this will do a DELETE then INSERT
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, 
+		"unit 'u' before label 't.pre' op OP_DELETE\n"
+		"unit 'u' before label 'lsize' (chain 't.pre') op OP_DELETE\n"
+		"table size 2\n"
+		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_DELETE\n"
+		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 'lsize' (chain 't.out') op OP_DELETE\n"
+		"table size 1\n"
+		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_DELETE\n"
+		"unit 'u' before label 't.pre' op OP_INSERT\n"
+		"unit 'u' before label 'lsize' (chain 't.pre') op OP_INSERT\n"
+		"table size 1\n"
+		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_INSERT\n"
+		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 'lsize' (chain 't.out') op OP_INSERT\n"
+		"table size 2\n"
+		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_INSERT\n"
+	);
 }
 
 class LabelThrowOnCall : public Label

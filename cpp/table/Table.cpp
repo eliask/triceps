@@ -94,6 +94,24 @@ Label *Table::getAggregatorLabel(const string &agname) const
 	return NULL;
 }
 
+FnReturn *Table::fnReturn() const
+{
+	if (fnReturn_.isNull()) {
+		fnReturn_ = FnReturn::make(unit_, name_ + ".fret")
+			->addFromLabel("out", label_)
+			->addFromLabel("pre", preLabel_);
+		for (AggGadgetVec::const_iterator it = aggs_.begin(); it != aggs_.end(); ++it) {
+			fnReturn_->addFromLabel( (*it)->getType()->getName(), (*it)->getLabel() );
+		}
+		try {
+			initializeOrThrow(fnReturn_);
+		} catch (Exception e) {
+			throw Exception::f(e, "Failed to create an FnReturn on table '%s':", name_.c_str());
+		}
+	}
+	return fnReturn_;
+}
+
 RowHandle *Table::makeRowHandle(const Row *row) const
 {
 	if (row == NULL)

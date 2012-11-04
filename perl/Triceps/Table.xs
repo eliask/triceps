@@ -229,6 +229,22 @@ size(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
+WrapFnReturn *
+fnReturn(WrapTable *self)
+	CODE:
+		static char funcName[] =  "Triceps::Table::fnReturn";
+		// for casting of return value
+		static char CLASS[] = "Triceps::FnReturn";
+
+		clearErrMsg();
+		Table *t = self->get();
+
+		try { do {
+			RETVAL = new WrapFnReturn(t->fnReturn());
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
 WrapRowHandle *
 makeRowHandle(WrapTable *self, WrapRow *row)
 	CODE:
