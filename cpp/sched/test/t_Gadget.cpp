@@ -60,9 +60,9 @@ public:
 		GadgetCE::setRowType(rt);
 	}
 
-	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray)
+	void send(const Row *row, Rowop::Opcode opcode)
 	{
-		GadgetCE::send(row, opcode, copyTray);
+		GadgetCE::send(row, opcode);
 	}
 };
 
@@ -103,24 +103,22 @@ class LabelTwoGadgets : public Label
 public:
 	LabelTwoGadgets(Unit *unit, Onceref<RowType> rtype, const string &name,
 			Onceref<TestGadget> sub1, Onceref<TestGadget> sub2, 
-			Onceref<Label> forcall, Onceref<Tray>tray) :
+			Onceref<Label> forcall) :
 		Label(unit, rtype, name),
 		sub1_(sub1),
 		sub2_(sub2),
-		forcall_(forcall),
-		tray_(tray)
+		forcall_(forcall)
 	{ }
 
 	virtual void execute(Rowop *arg) const
 	{
-		sub1_->send(arg->getRow(), arg->getOpcode(), tray_);
-		sub2_->send(arg->getRow(), arg->getOpcode(), tray_);
+		sub1_->send(arg->getRow(), arg->getOpcode());
+		sub2_->send(arg->getRow(), arg->getOpcode());
 		unit_->call(new Rowop(forcall_, Rowop::OP_NOP, (Row *)NULL));
 	}
 
 	Autoref<TestGadget> sub1_, sub2_; // gadgets to trigger
 	Autoref<Label> forcall_; // a label to call immediately
-	Autoref<Tray> tray_; // a tray to collect the copy of gadgets results
 };
 
 // test all 4 kinds of scheduling
@@ -150,7 +148,7 @@ UTESTCASE scheduling(Utest *utest)
 
 	Autoref<Label> lab2 = new DummyLabel(unit, rt1, "lab2");
 
-	Autoref<LabelTwoGadgets> lab1 = new LabelTwoGadgets(unit, rt1, "lab1", g1, g2, lab2, (Tray *)NULL);
+	Autoref<LabelTwoGadgets> lab1 = new LabelTwoGadgets(unit, rt1, "lab1", g1, g2, lab2);
 
 	Autoref<Rowop> op1 = new Rowop(lab1, Rowop::OP_INSERT, r1);
 	Autoref<Rowop> op2 = new Rowop(lab1, Rowop::OP_DELETE, r1);
@@ -254,105 +252,4 @@ UTESTCASE scheduling(Utest *utest)
 	;
 
 	UT_IS(tlog, expect_ignore);
-
-	// Now test how all the same modes work with a copy tray.
-	// The tray will be populated the same with every mode.
-	Autoref<Tray> tray = new Tray;
-	lab1->tray_ = tray;
-
-	// do the schedule mode
-	tray->clear();
-	g1->setEnqMode(Gadget::EM_SCHEDULE);
-	g2->setEnqMode(Gadget::EM_SCHEDULE);
-
-	trace->clearBuffer();
-	unit->schedule(op1);
-	unit->schedule(op2);
-	unit->drainFrame();
-	UT_ASSERT(unit->empty());
-
-	tlog = trace->getBuffer()->print();
-
-	UT_IS(tlog, expect_sched);
-	if (UT_IS(tray->size(), 4)) return;
-	UT_IS(tray->at(0)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(0)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(1)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(1)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(2)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(2)->getOpcode(), Rowop::OP_DELETE);
-	UT_IS(tray->at(3)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(3)->getOpcode(), Rowop::OP_DELETE);
-
-	// do the fork mode
-	tray->clear();
-	g1->setEnqMode(Gadget::EM_FORK);
-	g2->setEnqMode(Gadget::EM_FORK);
-
-	trace->clearBuffer();
-	unit->schedule(op1);
-	unit->schedule(op2);
-	unit->drainFrame();
-	UT_ASSERT(unit->empty());
-
-	tlog = trace->getBuffer()->print();
-
-	UT_IS(tlog, expect_fork);
-	if (UT_IS(tray->size(), 4)) return;
-	UT_IS(tray->at(0)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(0)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(1)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(1)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(2)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(2)->getOpcode(), Rowop::OP_DELETE);
-	UT_IS(tray->at(3)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(3)->getOpcode(), Rowop::OP_DELETE);
-
-	// do the call mode
-	tray->clear();
-	g1->setEnqMode(Gadget::EM_CALL);
-	g2->setEnqMode(Gadget::EM_CALL);
-
-	trace->clearBuffer();
-	unit->schedule(op1);
-	unit->schedule(op2);
-	unit->drainFrame();
-	UT_ASSERT(unit->empty());
-
-	tlog = trace->getBuffer()->print();
-
-	UT_IS(tlog, expect_call);
-	if (UT_IS(tray->size(), 4)) return;
-	UT_IS(tray->at(0)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(0)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(1)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(1)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(2)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(2)->getOpcode(), Rowop::OP_DELETE);
-	UT_IS(tray->at(3)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(3)->getOpcode(), Rowop::OP_DELETE);
-
-	// do the ignore mode
-	tray->clear();
-	g1->setEnqMode(Gadget::EM_IGNORE);
-	g2->setEnqMode(Gadget::EM_IGNORE);
-
-	trace->clearBuffer();
-	unit->schedule(op1);
-	unit->schedule(op2);
-	unit->drainFrame();
-	UT_ASSERT(unit->empty());
-
-	tlog = trace->getBuffer()->print();
-
-	UT_IS(tlog, expect_ignore);
-	if (UT_IS(tray->size(), 4)) return;
-	UT_IS(tray->at(0)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(0)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(1)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(1)->getOpcode(), Rowop::OP_INSERT);
-	UT_IS(tray->at(2)->getLabel(), g1->getLabel());
-	UT_IS(tray->at(2)->getOpcode(), Rowop::OP_DELETE);
-	UT_IS(tray->at(3)->getLabel(), g2->getLabel());
-	UT_IS(tray->at(3)->getOpcode(), Rowop::OP_DELETE);
 }

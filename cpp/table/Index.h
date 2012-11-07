@@ -142,8 +142,7 @@ protected:
 	// @param dest - destination to send the delayed aggregation changes
 	// @param rows - set of rows that will be modified
 	// @param future - set of rows for which aggregateBefore has already been called.
-	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
-	virtual void aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray) = 0;
+	virtual void aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already) = 0;
 
 	// Call aggregator AO_AFTER_DELETE or AO_AFTER_INSERT (as indicated by aggop) 
 	// after the rows have been removed or inserted.
@@ -168,8 +167,7 @@ protected:
 	// @param future - set of rows for which the aggregation notifications will
 	//        be called separtely in the future (usually the sets are separated into
 	//        "remove" and "insert", and the notifications for inserts are done after remove)
-	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
-	virtual void aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray) = 0;
+	virtual void aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future) = 0;
 
 	// Collapse the groups identified by this RowHandle set recursively
 	// if they are found to be empty. "Collapsing" of a group means that the group
@@ -196,12 +194,11 @@ protected:
 	// @param dest - destination to send the delayed aggregation changes
 	// @param replaced - set of rows that have been replaced, identifying the
 	//     groups that may need collapsing.
-	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
 	// @return - true if the index doesn't mind its parent group being collapsed
 	//     (and did its part by collapsing all the sub-groups owned by it),
 	//     false otherwise. For the leaf indexes it's safe to always return
 	//     true, their parents will never collapse the non-empty groups.
-	virtual bool collapse(Tray *dest, const RhSet &replaced, Tray *copyTray) = 0;
+	virtual bool collapse(Tray *dest, const RhSet &replaced) = 0;
 
 	// If this is a non-leaf index, find the nested index
 	// in the group where this row belongs.

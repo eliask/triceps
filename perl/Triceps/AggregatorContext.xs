@@ -236,7 +236,7 @@ send(WrapAggregatorContext *self, SV *opcode, WrapRow *row)
 			if (!parseOpcode(funcName, opcode, op))
 				break;
 
-			self->getGadget()->sendDelayed(self->getDest(), r, op, self->getCopyTray());
+			self->getGadget()->sendDelayed(self->getDest(), r, op);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
 		RETVAL = 1;

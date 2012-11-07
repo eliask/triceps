@@ -216,7 +216,7 @@ void TreeNestedIndex::splitRhSet(const RhSet &rows, SplitMap &dest)
 	}
 }
 
-void TreeNestedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray)
+void TreeNestedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already)
 {
 	SplitMap splitRows, splitAlready;
 	splitRhSet(rows, splitRows);
@@ -226,15 +226,15 @@ void TreeNestedIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet
 	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		if (already.empty()) { // a little optimization
-			type_->groupAggregateBefore(dest, table_, gh, smi->second, already, copyTray);
+			type_->groupAggregateBefore(dest, table_, gh, smi->second, already);
 		} else {
 			// this automatically creates a new entry in splitAlready if it was missing
-			type_->groupAggregateBefore(dest, table_, gh, smi->second, splitAlready[gh], copyTray);
+			type_->groupAggregateBefore(dest, table_, gh, smi->second, splitAlready[gh]);
 		}
 	}
 }
 
-void TreeNestedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
+void TreeNestedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
 {
 	SplitMap splitRows, splitFuture;
 	splitRhSet(rows, splitRows);
@@ -244,15 +244,15 @@ void TreeNestedIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const 
 	for(SplitMap::iterator smi = splitRows.begin(); smi != splitRows.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		if (future.empty()) { // a little optimization
-			type_->groupAggregateAfter(dest, aggop, table_, gh, smi->second, future, copyTray);
+			type_->groupAggregateAfter(dest, aggop, table_, gh, smi->second, future);
 		} else {
 			// this automatically creates a new entry in splitFuture if it was missing
-			type_->groupAggregateAfter(dest, aggop, table_, gh, smi->second, splitFuture[gh], copyTray);
+			type_->groupAggregateAfter(dest, aggop, table_, gh, smi->second, splitFuture[gh]);
 		}
 	}
 }
 
-bool TreeNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray)
+bool TreeNestedIndex::collapse(Tray *dest, const RhSet &replaced)
 {
 	// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	
@@ -266,11 +266,11 @@ bool TreeNestedIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray
 	for(SplitMap::iterator smi = split.begin(); smi != split.end(); ++smi) {
 		GroupHandle *gh = smi->first;
 		// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p) gh=%p\n", this, gh);
-		if (type_->groupCollapse(dest, gh, smi->second, copyTray)) {
+		if (type_->groupCollapse(dest, gh, smi->second)) {
 			// fprintf(stderr, "DEBUG TreeNestedIndex::collapse(this=%p) gh=%p destroying\n", this, gh);
 			// call the aggregators to process collapse
 			if (!type_->groupAggs_.empty()) {
-				type_->aggregateCollapse(dest, table_, gh, copyTray);
+				type_->aggregateCollapse(dest, table_, gh);
 			}
 			// destroy the group
 			data_.erase(type_->getIter(gh)); // after this the iterator in gh is not valid any more

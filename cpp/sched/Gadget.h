@@ -102,9 +102,8 @@ protected:
 	//
 	// @param row - row being sent, may be NULL which will be ignored and produce nothing
 	// @param opcode - opcode for rowop
-	// @param copyTray - tray to insert a copy of the row, or NULL
 	// XXX later will add timestamp and sequence
-	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray) const;
+	void send(const Row *row, Rowop::Opcode opcode) const;
 
 	// Collect a row in the delayed tray, with the right enqueueing mode, to be
 	// sent later. All the caveats from send() apply.
@@ -112,8 +111,7 @@ protected:
 	// @param dest - delayed tray, where the rowops will be appended with the proper EnqMode
 	// @param row - row being sent, may be NULL which will be ignored and produce nothing
 	// @param opcode - opcode for rowop
-	// @param copyTray - tray to insert a copy of the row, or NULL
-	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray *copyTray) const;
+	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const;
 
 protected:
 	Autoref<Unit> unit_; // unit where it belongs (and Unit must not autoref gadgets, to avoid loops)

@@ -71,27 +71,6 @@ RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 	}
 }
 
-// Parse the copyTray argument for table ops.
-Tray *parseCopyTray(Table *tab, const char *funcName, SV *arg)
-{
-	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
-		WrapTray *wt = (WrapTray *)SvIV((SV*)SvRV( arg ));
-		if (wt == 0 || wt->badMagic()) {
-			setErrMsg( string(funcName) + ": copyTray has an incorrect magic for WrapTray" );
-			return NULL;
-		}
-		if (wt->getParent() != tab->getUnit()) {
-			setErrMsg( strprintf("%s: copyTray is from a wrong unit %s, table in unit %s", funcName,
-				wt->getParent()->getName().c_str(), tab->getUnit()->getName().c_str()) );
-			return NULL;
-		}
-		return wt->get();
-	} else{
-		setErrMsg( string(funcName) + ": copyTray is not a blessed SV reference to WrapTray" );
-		return NULL;
-	}
-}
-
 }; // Triceps::TricepsPerl
 }; // Triceps
 
@@ -288,14 +267,11 @@ makeNullRowHandle(WrapTable *self)
 
 # returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
 int
-insert(WrapTable *self, SV *rowarg, ...)
+insert(WrapTable *self, SV *rowarg)
 	CODE:
 		RETVAL = 0; // shut up the warning
 		static char funcName[] =  "Triceps::Table::insert";
 		try { do {
-			if (items != 2 && items != 3)
-				throw TRICEPS_NS::Exception(strprintf("Usage: %s(self, rowarg [, copyTray])", funcName), false);
-
 			clearErrMsg();
 			Table *t = self->get();
 
@@ -303,26 +279,17 @@ insert(WrapTable *self, SV *rowarg, ...)
 			if (rhr.isNull()) // XXX otherwise will croak based on setErrMsg()
 				break;
 
-			Tray *ctr = NULL;
-			if (items == 3) {
-				ctr = parseCopyTray(t, funcName, ST(2));
-				if (ctr ==  NULL) // XXX will croak based on setErrMsg()
-					break;
-			}
-
-			RETVAL = t->insert(rhr.get(), ctr);
+			RETVAL = t->insert(rhr.get());
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
 # returns 1 normally, or undef on incorrect arguments
 int
-remove(WrapTable *self, WrapRowHandle *wrh, ...)
+remove(WrapTable *self, WrapRowHandle *wrh)
 	CODE:
 		try { do {
 			static char funcName[] =  "Triceps::Table::remove";
-			if (items != 2 && items != 3)
-				throw TRICEPS_NS::Exception(strprintf("Usage: %s(self, rowHandle [, copyTray])", funcName), false);
 
 			clearErrMsg();
 			Table *t = self->get();
@@ -337,14 +304,7 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 					funcName, wrh->ref_.getTable()->getName().c_str()), false );
 			}
 
-			Tray *ctr = NULL;
-			if (items == 3) {
-				ctr = parseCopyTray(t, funcName, ST(2));
-				if (ctr ==  NULL) // XXX will croak based on setErrMsg()
-					break;
-			}
-
-			t->remove(rh, ctr);
+			t->remove(rh);
 		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
@@ -353,13 +313,11 @@ remove(WrapTable *self, WrapRowHandle *wrh, ...)
 # version that takes a Row as an argument and acts as a combination of find/remove
 # returns 1 if deleted, 0 if not found, undef on incorrect arguments
 int
-deleteRow(WrapTable *self, WrapRow *wr, ...)
+deleteRow(WrapTable *self, WrapRow *wr)
 	CODE:
 		RETVAL = 0; // shut up the warning
 		try { do {
 			static char funcName[] =  "Triceps::Table::deleteRow";
-			if (items != 2 && items != 3)
-				throw TRICEPS_NS::Exception(strprintf("Usage: %s(self, row [, copyTray])", funcName), false);
 
 			clearErrMsg();
 			Table *t = self->get();
@@ -375,15 +333,8 @@ deleteRow(WrapTable *self, WrapRow *wr, ...)
 				throw TRICEPS_NS::Exception(msg, false);
 			}
 
-			Tray *ctr = NULL;
-			if (items == 3) {
-				ctr = parseCopyTray(t, funcName, ST(2));
-				if (ctr ==  NULL) // XXX will croak based on setErrMsg()
-					break;
-			}
-
 			// pretty much a copy of C++ Table::InputLabel::execute()
-			RETVAL = t->deleteRow(r, ctr)? 1 : 0;
+			RETVAL = t->deleteRow(r)? 1 : 0;
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL

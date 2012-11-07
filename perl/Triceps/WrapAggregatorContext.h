@@ -40,7 +40,7 @@ class WrapAggregatorContext
 {
 public:
 	WrapAggregatorContext(Table *table, AggregatorGadget *gadget, Index *index,
-			const IndexType *parentIndexType, GroupHandle *gh, Tray *dest, Tray *copyTray) :
+			const IndexType *parentIndexType, GroupHandle *gh, Tray *dest) :
 		magic_(magicWrapAggregatorContext),
 		table_(table),
 		gadget_(gadget),
@@ -48,7 +48,6 @@ public:
 		parentIndexType_(parentIndexType),
 		gh_(gh),
 		dest_(dest),
-		copyTray_(copyTray),
 		valid_(true)
 	{ }
 
@@ -98,11 +97,6 @@ public:
 		return dest_;
 	}
 
-	Tray *getCopyTray() const
-	{
-		return copyTray_;
-	}
-
 protected:
 	WrapMagic magic_;
 	Table *table_;
@@ -111,7 +105,6 @@ protected:
 	const IndexType *parentIndexType_;
 	GroupHandle *gh_;
 	Tray *dest_;
-	Tray *copyTray_;
 	bool valid_;
 private:
 	WrapAggregatorContext();

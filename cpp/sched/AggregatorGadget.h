@@ -49,9 +49,9 @@ public:
 	}
 
 	// export the sendDeplayed() interface
-	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode, Tray *copyTray) const
+	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const
 	{
-		Gadget::sendDelayed(dest, row, opcode, copyTray);
+		Gadget::sendDelayed(dest, row, opcode);
 	}
 
 protected:
@@ -61,7 +61,7 @@ protected:
 
 private:
 	// prevent the accidental use of send(), it must not be used with aggregators
-	void send(const Row *row, Rowop::Opcode opcode, Tray *copyTray) const;
+	void send(const Row *row, Rowop::Opcode opcode) const;
 };
 
 }; // TRICEPS_NS

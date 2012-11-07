@@ -65,7 +65,7 @@ public:
 	// from Aggregator
     virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
 		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray);
+		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
 
 	// Set a new value in sv_, increases the refcount if not NULL.
 	void setsv(SV *sv);

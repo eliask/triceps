@@ -60,7 +60,7 @@ Onceref<TableType> mktabtype(Onceref<RowType> rt)
 Erref aggHistory(new Errors);
 void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
         const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
 {
 	aggHistory->appendMsg(false, strprintf("%s ao=%s op=%s count=%d",
 		gadget->getName().c_str(), Aggregator::aggOpString(aggop),
@@ -72,7 +72,7 @@ void recordHistory(Table *table, AggregatorGadget *gadget, Index *index,
 		if (rh != NULL) {
 			// this is an OK approach, sending nothing on empty groups,
 			// it's an easy way to provide consistency
-			gadget->sendDelayed(dest, rh->getRow(), opcode, copyTray);
+			gadget->sendDelayed(dest, rh->getRow(), opcode);
 		}
 	}
 }
@@ -596,7 +596,7 @@ UTESTCASE bad_fret(Utest *utest)
 // sending nothing.
 void recordLast(Table *table, AggregatorGadget *gadget, Index *index,
         const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
 {
 	int val_b = 9999;
 	const char *val_e = "(none)";

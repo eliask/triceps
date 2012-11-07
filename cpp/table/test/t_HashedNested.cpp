@@ -59,7 +59,7 @@ Onceref<TableType> mktabtype(Onceref<RowType> rt)
 int collapses = 0;
 void countCollapses(Table *table, AggregatorGadget *gadget, Index *index,
         const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
 {
 	if (aggop == Aggregator::AO_COLLAPSE)
 		collapses++;

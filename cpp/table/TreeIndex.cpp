@@ -128,17 +128,17 @@ void TreeIndex::remove(RowHandle *rh)
 	data_.erase(type_->getIter(rh));
 }
 
-void TreeIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already, Tray *copyTray)
+void TreeIndex::aggregateBefore(Tray *dest, const RhSet &rows, const RhSet &already)
 { 
 	// nothing to do
 }
 
-void TreeIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future, Tray *copyTray)
+void TreeIndex::aggregateAfter(Tray *dest, Aggregator::AggOp aggop, const RhSet &rows, const RhSet &future)
 { 
 	// nothing to do
 }
 
-bool TreeIndex::collapse(Tray *dest, const RhSet &replaced, Tray *copyTray)
+bool TreeIndex::collapse(Tray *dest, const RhSet &replaced)
 {
 	// fprintf(stderr, "DEBUG TreeIndex::collapse(this=%p, rhset size=%d)\n", this, (int)replaced.size());
 	return true;

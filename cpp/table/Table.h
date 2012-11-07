@@ -100,31 +100,27 @@ public:
 	// Insert a row.
 	// May throw an Exception.
 	// @param row - the row to insert
-	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true on success, false on failure (if the index policies don't allow it)
-	bool insertRow(const Row *row, Tray *copyTray = NULL);
+	bool insertRow(const Row *row);
 	// Insert a pre-initialized row handle.
 	// May throw an Exception.
 	// If the handle is already in table, does nothing and returns false.
 	// @param rh - the row handle to insert (must be held in a Rowref or such at the moment)
-	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true on success, false on failure (if the index policies don't allow it)
-	bool insert(RowHandle *rh, Tray *copyTray = NULL);
+	bool insert(RowHandle *rh);
 
 	// XXX also add a version working on RhSet, for better efficiency?
 	// Remove a row handle from the table. If the row is already not in table, do nothing.
 	// May throw an Exception.
 	// @param rh - row handle to remove
-	// @param copyTray - a tray to put a copy of changes in the table, or NULL
-	void remove(RowHandle *rh, Tray *copyTray = NULL);
+	void remove(RowHandle *rh);
 
 	// Find the matching row in the table (by the default index),
 	// and if found, remove it.
 	// May throw an Exception.
 	// @param row - the row to find matching and remove
-	// @param copyTray - a tray to put a copy of changes in the table, or NULL
 	// @return - true if found and removed, false if not found
-	bool deleteRow(const Row *row, Tray *copyTray = NULL);
+	bool deleteRow(const Row *row);
 
 	// Get the handle of the first record in this table.
 	// A random index will be used for iteration. Usually this will be

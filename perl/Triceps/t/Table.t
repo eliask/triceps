@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 239 };
+BEGIN { plan tests => 229 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -66,7 +66,7 @@ $res = $tt1->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "EM_CALL", "tab1");
 ok(ref $t1, "Triceps::Table");
 
 ### table 2 with a different type
@@ -90,7 +90,7 @@ ok(ref $tt2, "Triceps::TableType");
 $res = $tt2->initialize();
 ok($res, 1);
 
-$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+$t2 = $u1->makeTable($tt2, "EM_CALL", "tab2");
 ok(ref $t2, "Triceps::Table");
 
 ########################## basic functions #################################################
@@ -308,27 +308,47 @@ ok($rhit->same($rh1)); # finds the first watching
 
 # findBy is better to be done on t2, since it has a direct hash index, see below
 
-# insert with copyTray: more interesting if the rows get replaced
+# This portion formerly used a Copy Tray which got replaced by the
+# FnReturn now. The rest of the FnReturn tests are way below.
 
-$ctr = $u1->makeTray();
-ok(ref $ctr, "Triceps::Tray");
+$fret2 = $t2->fnReturn();
+ok(ref $fret2, "Triceps::FnReturn");
+$fbind2 = Triceps::FnBinding->new(
+	unit => $u1,
+	name => "fbind2",
+	on => $fret2,
+	withTray => 1,
+	labels => [
+		out => sub { }, # another way to make a dummy
+	],
+);
+ok(ref $fbind2, "Triceps::FnBinding");
 
-$res = $t2->insert($r2, $ctr);
+$ctr = $fbind2->swapTray(); # just clears the tray
+
+$fret2->push($fbind2);
+$res = $t2->insert($r2);
 ok($res == 1);
+$fret2->pop($fbind2);
+
 $res = $t2->size();
 ok($res, 1);
+ok($fbind2->traySize(), 1);
+$ctr = $fbind2->swapTray(); # get the updates on an insert
 $res = $ctr->size();
 ok($res, 1);
 @arr = $ctr->toArray();
 ok($arr[0]->getOpcode(), &Triceps::OP_INSERT);
 ok($r2->same($arr[0]->getRow()));
 
-$ctr->clear();
-ok($ctr->size(), 0);
-$res = $t2->insert($rh2, $ctr);
+$fret2->push($fbind2);
+$res = $t2->insert($rh2);
 ok($res == 1);
+$fret2->pop($fbind2);
+
 $res = $t2->size();
 ok($res, 1); # old record gets pushed out
+$ctr = $fbind2->swapTray(); # get the updates on an insert
 ok($ctr->size(), 2); # both delete and insert
 @arr = $ctr->toArray();
 ok($arr[0]->getOpcode(), &Triceps::OP_DELETE);
@@ -404,22 +424,6 @@ ok(!eval {
 });
 ok($@ =~ /Triceps::Table::insert: row argument is a RowHandle in a wrong table tab2/);
 
-ok(!eval {
-	$res = $t1->insert($rh1, 0);
-});
-ok($@ =~ /Triceps::Table::insert: copyTray is not a blessed SV reference to WrapTray/);
-
-ok(!eval {
-	$res = $t1->insert($rh1, $t2);
-});
-ok($@ =~ /Triceps::Table::insert: copyTray has an incorrect magic for WrapTray/);
-
-$ctr2 = $u2->makeTray();
-ok(!eval {
-	$res = $t1->insert($rh1, $ctr2);
-});
-ok($@ =~ /Triceps::Table::insert: copyTray is from a wrong unit u2, table in unit u1/);
-
 # bad args iteration
 ok(! eval { $t2->beginIdx($itrev); });
 ok($@ =~ /^Triceps::Table::beginIdx: indexType argument does not belong to table's type/);
@@ -473,14 +477,22 @@ ok($res, 1);
 $res = $rh1->isInTable();
 ok(!$res);
 
-# remove with copyTray
-$ctr->clear();
+# This portion formerly used a Copy Tray which got replaced by the
+# FnReturn now. The rest of the FnReturn tests are way below.
+
+$ctr = $fbind2->swapTray(); # just clears the tray
+
 ok($rh2->isInTable());
-$res = $t2->remove($rh2, $ctr);
+
+$fret2->push($fbind2);
+$res = $t2->remove($rh2);
 ok($res, 1);
+$fret2->pop($fbind2);
+
 ok(!$rh2->isInTable());
 $res = $t2->size();
 ok($res, 0);
+$ctr = $fbind2->swapTray(); # get the updates on a delete
 $res = $ctr->size();
 ok($res, 1);
 @arr = $ctr->toArray();
@@ -488,23 +500,18 @@ ok($arr[0]->getOpcode(), &Triceps::OP_DELETE);
 ok($r2->same($arr[0]->getRow()));
 
 # attempt to remove a row not in table
-$ctr->clear();
-$res = $t2->remove($rh2, $ctr);
+$fret2->push($fbind2);
+$res = $t2->remove($rh2);
 ok($res, 1);
-$res = $ctr->size();
-ok($res, 0);
+$fret2->pop($fbind2);
+
+ok($fbind2->trayEmpty());
 
 # bad args remove
 ok(!eval {
 	$res = $t1->remove($rh2);
 });
 ok($@ =~ /Triceps::Table::remove: row argument is a RowHandle in a wrong table tab2/);
-
-$ctr2 = $u2->makeTray();
-ok(!eval {
-	$res = $t1->remove($rh1, $ctr2);
-});
-ok($@ =~ /Triceps::Table::remove: copyTray is from a wrong unit u2, table in unit u1/);
 
 # clear out the table
 while ( ! ($rhit = $t1->begin())->isNull() ) {
@@ -529,32 +536,22 @@ ok($res, 1);
 $res = $rh1->isInTable(); # $rh1 was first in table, so it would be found and deleted first
 ok(!$res);
 
-# test deleteRow with copyTray
-$ctr->clear();
-$res = $t1->deleteRow($r1, $ctr);
+# test deleteRow for non-existing record
+$res = $t1->deleteRow($r1);
 ok($res == 1);
 $res = $t1->size();
 ok($res, 0); 
-$res = $ctr->size();
-ok($res, 1);
-
-# test deleteRow for non-existing record
 $res = $t1->deleteRow($r1);
 ok(defined $res && $res == 0);
 
 # bad args deleteRow
 ok(!eval { $res = $t1->deleteRow($r1, 1, 2) });
-ok($@ =~ /^Usage: Triceps::Table::deleteRow\(self, row \[, copyTray\]\) at .*/) or print STDERR "got: $@\n";
+ok($@ =~ /^Usage: Triceps::Table::deleteRow\(self, wr\) at/) or print STDERR "got: $@\n";
 
 ok(!eval {
 	$res = $t1->deleteRow($r2);
 });
 ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table: row \{ uint8 a, int32 b, int64 c, float64 d, string e, \}, in row: row \{ uint8\[\] a, int32\[\] b, int64\[\] c, float64\[\] d, string e, \}/);
-
-ok(!eval {
-	$res = $t1->deleteRow($r1, 1);
-});
-ok($@ =~ /Triceps::Table::deleteRow: copyTray is not a blessed SV reference to WrapTray/);
 
 # table clearing (repeats the logic of C++ test)
 {
@@ -641,7 +638,7 @@ ok($@ =~ /Triceps::Table::deleteRow: copyTray is not a blessed SV reference to W
 	ok($buf, "on pre\non out\non myAggr\n");
 }
 
-# test the exception handling
+# test the exception handling in FnReturn creation
 {
 	my $u9 = Triceps::Unit->new("u9");
 	ok(ref $u9, "Triceps::Unit");
@@ -674,5 +671,3 @@ ok($@ =~ /Triceps::Table::deleteRow: copyTray is not a blessed SV reference to W
 	#print "$@";
 	ok($@ =~ /^Failed to create an FnReturn on table 't9':\n  duplicate row name 'pre' at/);
 }
-
-# XXX test the exception handling in fnReturn

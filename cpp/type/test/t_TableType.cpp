@@ -900,13 +900,13 @@ UTESTCASE sortedNested(Utest *utest)
 
 void dummyAggregator(Table *table, AggregatorGadget *gadget, Index *index,
         const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
 {
 }
 
 void dummyAggregator2(Table *table, AggregatorGadget *gadget, Index *index,
         const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
 {
 }
 
@@ -916,7 +916,7 @@ class MyAggregator : public Aggregator
 public:
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
 		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
-		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray)
+		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
 	{ }
 };
 

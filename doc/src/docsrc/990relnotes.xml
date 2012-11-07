@@ -40,6 +40,11 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			No more copy trays in the tables, they got replaced by treating the table
+			as a streaming function (the automatically generated FnReturn).
+			</listitem>
+
+			<listitem>
 			When a hashed index type is initialized, its match() method 
 			takes the field name-to-index translation into account, and matches
 			even if the key field names are different but translating to the

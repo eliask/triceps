@@ -552,8 +552,7 @@ public:
 	// @param rows - set of rows that will be modified (with in them iterators populated)
 	// @param already - set of rows for which this notification has already been done,
 	//        indicates the groups that don't need another notification.
-	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
-	void groupAggregateBefore(Tray *dest, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &already, Tray *copyTray) const;
+	void groupAggregateBefore(Tray *dest, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &already) const;
 
 	// Call aggregator AO_AFTER_DELETE or AO_AFTER_INSERT (as indicated by aggop)
 	// after the rows have been removed or inserted.
@@ -566,18 +565,16 @@ public:
 	// @param rows - set of rows that have been removed
 	// @param future - set of rows for which the aggregation notifications will
 	//        be called separtely in the future, modifies the Rowop::Opcode
-	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
-	void groupAggregateAfter(Tray *dest, Aggregator::AggOp aggop, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &future, Tray *copyTray) const;
+	void groupAggregateAfter(Tray *dest, Aggregator::AggOp aggop, Table *table, GroupHandle *gh, const RhSet &rows, const RhSet &future) const;
 
 	// Attempt to collapse all the sub-indexes of the group
 	// (see the detailed discussion of the semantics in table/Index.h).
 	// @param dest - destination to send the delayed aggregation changes
 	// @param gh - the group instance, may NOT be NULL
 	// @param replaced - set of rows indentifying the groups that might be collapsible
-	// @param copyTray - tray for the aggregator gadget(s) to deposit a row copy
 	// @return - true if the group may be collapsed, i.e. all the sub-indexes agreed 
 	//      on collapsing and the group size is 0
-	bool groupCollapse(Tray *dest, GroupHandle *gh, const RhSet &replaced, Tray *copyTray) const;
+	bool groupCollapse(Tray *dest, GroupHandle *gh, const RhSet &replaced) const;
 
 	// Get the number of rows in the group.
 	// @param gh - the group instance, may be NULL
@@ -591,7 +588,7 @@ public:
 	// @param dest - destination to send the delayed aggregation changes
 	// @param table - table where the group belongs
 	// @param gh - the group instance
-	void aggregateCollapse(Tray *dest, Table *table, GroupHandle *gh, Tray *copyTray) const;
+	void aggregateCollapse(Tray *dest, Table *table, GroupHandle *gh) const;
 	// }
 protected:
 

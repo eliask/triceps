@@ -70,6 +70,7 @@ Things that need to be done:
 * in Perl FnReturn add the argument
   handler, and pass the args directly in push(), like [$fbind, @args...].
 * A more strict handling of frame marks?
+* add callAsChained in Perl
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -82,7 +83,6 @@ Things that need to be done:
 * doc: the new draining of forked rowops, new mark semantics
 
 * doc: streaming functions and the unit boundaries
-* doc: onPush/onPop in FnReturn
 * doc: streaming functions replace the copy trays in tables
 
 App ideas:
