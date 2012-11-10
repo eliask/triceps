@@ -16,7 +16,7 @@ use ExtUtils::testlib;
 use Carp;
 
 use Test;
-BEGIN { plan tests => 20 };
+BEGIN { plan tests => 27 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -215,6 +215,34 @@ $result = undef;
 &testFromLabel();
 #print $result;
 ok($result, $expectResult);
+
+#########
+# fnReturn
+{
+	my $unit = Triceps::Unit->new("unit");
+	my $collapse = Triceps::Collapse->new(
+		unit => $unit,
+		name => "collapse",
+		data => [
+			name => "idata",
+			rowType => $rtData,
+			key => [ "local_ip", "remote_ip" ],
+		],
+	);
+	ok(ref $collapse, "Triceps::Collapse");
+
+	my $out = $collapse->getOutputLabel("idata");
+	ok(!$out->hasChained());
+
+	my $ret = $collapse->fnReturn();
+	ok(ref $ret, "Triceps::FnReturn");
+	ok($ret->getName(), "collapse.fret");
+	ok($out->hasChained());
+	my @chain = $out->getChain();
+	ok($chain[0]->same($ret->getLabel("idata")));
+	# On repeated calls gets the exact same object.
+	ok($ret, $collapse->fnReturn());
+}
 
 #########################
 # errors: bad values in options

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 199 };
+BEGIN { plan tests => 200 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1071,6 +1071,8 @@ join3r.rightLookup.out OP_INSERT source="source1" external="999" internal="4" rt
 	ok($out->hasChained());
 	my @chain = $out->getChain();
 	ok($chain[0]->same($ret->getLabel("out")));
+	# On repeated calls gets the exact same object.
+	ok($ret, $join->fnReturn());
 }
 
 #########
