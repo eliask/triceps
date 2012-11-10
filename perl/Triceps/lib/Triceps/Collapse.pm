@@ -178,6 +178,8 @@ sub getDatasets($) # ($self)
 
 # Similar to Table's fnReturn(), creates the FnReturn on the first call.
 # The resulting FnReturn has one label for each dataset, named after it.
+# The order of the labels is preserved from the definition order of the
+# datasets.
 sub fnReturn # (self)
 {
 	my $self = shift;

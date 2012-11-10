@@ -487,6 +487,10 @@ sub new # (class, optionName => optionValue ...)
 
 # Perofrm the look-up by left row in the right table and return the
 # result rows(s).
+#
+# XXX Since fnReturn() got supported, the manual lookup became kind of
+# redundant, but is still kept, just in case.
+#
 # @param self
 # @param leftRow - left-side row for performing the look-up
 # @return - array of result rows (if not isLeft then may be empty)
@@ -635,6 +639,22 @@ sub getGroupSizeCode # (self)
 {
 	my $self = shift;
 	return $self->{groupSizeCode};
+}
+
+# Similar to Table's fnReturn(), creates the FnReturn on the first call.
+# The resulting FnReturn has one label "out".
+sub fnReturn # (self)
+{
+	my $self = shift;
+	if (!defined $self->{fret}) {
+		$self->{fret} = Triceps::FnReturn->new(
+			name => $self->{name} . ".fret",
+			labels => [
+				out => $self->{outputLabel},
+			],
+		);
+	}
+	return $self->{fret};
 }
 
 1;

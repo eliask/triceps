@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 253 };
+BEGIN { plan tests => 260 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1130,8 +1130,34 @@ ok($result2, $expect2xf);
 }
 
 #########
-# tests for errors
+# fnReturn
+{
+	my $join = Triceps::LookupJoin->new( 
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $tAccounts2,
+		rightIdxPath => ["lookupSrcExt"],
+		rightFields => [ "internal/acct" ],
+		byLeft => [ "acctSrc/source", "acctXtrId/external" ],
+	);
+	ok(ref $join, "Triceps::LookupJoin");
 
+	my $out = $join->getOutputLabel();
+	ok(!$out->hasChained());
+
+	my $ret = $join->fnReturn();
+	ok(ref $ret, "Triceps::FnReturn");
+	ok($ret->getName(), "join.fret");
+	ok($out->hasChained());
+	my @chain = $out->getChain();
+	ok($chain[0]->same($ret->getLabel("out")));
+	# On repeated calls gets the exact same object.
+	ok($ret, $join->fnReturn());
+}
+
+#########
+# tests for errors
 
 sub tryMissingOptValue # (optName)
 {
