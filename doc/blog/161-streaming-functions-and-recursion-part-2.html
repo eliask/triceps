@@ -1,0 +1,115 @@
+Streaming functions and recursion, part 2
+
+Now that the recursion is permitted, let's look at a basic example: the same Fibonacci function as before, only computed in a dumb recursive way. In a real dumb recursive way, with two recursive calls, to show how they are done. The simplest and most straightforward way goes like this:
+
+my $uFib = Triceps::Unit->new("uFib");
+$uFib->setMaxRecursionDepth(100);
+
+# Type the data going into the function
+my $rtFibArg = Triceps::RowType->new(
+    idx => "int32", # the index of Fibonacci number to generate
+) or confess "$!";
+
+# Type of the function result
+my $rtFibRes = Triceps::RowType->new(
+    idx => "int32", # the index of Fibonacci number
+    fib => "int64", # the generated Fibonacci number
+) or confess "$!";
+
+###
+# A streaming function that computes a Fibonacci number.
+
+# Input:
+#   $lbFibCompute: request to compute the number.
+# Output (by FnReturn labels):
+#   "result": the computed value.
+# The opcode is preserved through the computation.
+
+my $frFib = Triceps::FnReturn->new(
+    name => "Fib",
+    unit => $uFib,
+    labels => [
+        result => $rtFibRes,
+    ],
+);
+
+my $lbFibResult = $frFib->getLabel("result");
+
+my $lbFibCompute; # must be defined before assignment, for recursion
+$lbFibCompute = $uFib->makeLabel($rtFibArg, "FibCompute", undef, sub {
+    my $row = $_[1]->getRow();
+    my $op = $_[1]->getOpcode();
+    my $idx = $row->get("idx");
+    my $res;
+
+    if ($idx < 1) {
+        $res = 0;
+    } elsif($idx == 1) {
+        $res = 1;
+    } else {
+        my ($prev1, $prev2);
+        Triceps::FnBinding::call(
+            name => "FibCompute.call1",
+            on => $frFib,
+            unit => $uFib,
+            labels => [
+                result => sub {
+                    $prev1 = $_[1]->getRow()->get("fib");
+                }
+            ],
+            rowop => $lbFibCompute->makeRowopHash($op,
+                idx => $idx - 1,
+            ),
+        );
+        Triceps::FnBinding::call(
+            name => "FibCompute.call2",
+            on => $frFib,
+            unit => $uFib,
+            labels => [
+                result => sub {
+                    $prev2 = $_[1]->getRow()->get("fib");
+                }
+            ],
+            rowop => $lbFibCompute->makeRowopHash($op,
+                idx => $idx - 2,
+            ),
+        );
+        $res = $prev1 + $prev2;
+    }
+    $uFib->makeHashCall($frFib->getLabel("result"), $op,
+        idx => $idx,
+        fib => $res,
+    );
+}) or confess "$!";
+
+# End of streaming function
+###
+
+# binding to call the Fibonacci function and print the result
+my $fbFibCall = Triceps::FnBinding->new(
+    name => "FibCall",
+    on => $frFib,
+    unit => $uFib,
+    labels => [
+        result => sub {
+            my $row = $_[1]->getRow();
+            print($row->get("fib"), " is Fibonacci number ", $row->get("idx"), "\n");
+        }
+    ],
+);
+
+while(<STDIN>) {
+    chomp;
+    my @data = split(/,/);
+    {
+        my $ab = Triceps::AutoFnBind->new(
+            $frFib => $fbFibCall,
+        );
+        $uFib->makeArrayCall($lbFibCompute, @data);
+    }
+    $uFib->drainFrame(); # just in case, for completeness
+}
+
+The calling sequence has became different than in the looping version but the produced result is exactly the same.  The streaming function now receives an argument row and produces a result row. The unit's recursion depth limit had to be adjusted to permit the recursion.
+
+The recursive calls are done through the FnBinding::call(), with a closure for the result handling label. That closure can access the scope of its creator and place the result into its local variable. After both intermediate results are computed, the final result computation takes place and sends out the result row. 

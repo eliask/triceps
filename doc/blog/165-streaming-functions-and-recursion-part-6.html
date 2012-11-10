@@ -1,0 +1,25 @@
+Streaming functions and recursion, part 6
+
+The combination of the two previous examples (the one with the trays and the one with the forks) doesn't work. They could be combined but the combination just doesn't work right.
+
+The problem is that the example with trays relies on the recursive function being executed before the tray gets called. But if both of them are forked, things break.
+
+Well, if there is only one recursive call, it still works because the execution frame looks like this:
+
+arg1
+pop1
+
+The rowop arg1 executes, places the result into the tray (provided that it calls the FnReturn label, not forks to it!). Then the rowop pop1 executes and calls the tray. So far so good.
+
+Now let's do the recursion with depth two. The first level starts the same:
+
+arg1
+pop1
+
+Then arg1 executes and forks the second level of recursion:
+
+pop1
+arg2
+pop2
+
+Do you see what went wrong? The unit execution frames are FIFO. So the second level of recursion got queued after the popping of the first level. That pop1 executes next, doesn't get any return values, and everything goes downhill from there. 

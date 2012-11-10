@@ -1,0 +1,120 @@
+Streaming functions and recursion, part 4
+
+Following up on the previous installment, here is the example that uses the bindings with tray:
+
+###
+# A streaming function that computes a Fibonacci number.
+
+# Input:
+#   $lbFibCompute: request to compute the number.
+# Output (by FnReturn labels):
+#   "result": the computed value.
+# The opcode is preserved through the computation.
+
+my @stackFib; # stack of the function states
+my $stateFib; # The current state
+
+my $frFib = Triceps::FnReturn->new(
+    name => "Fib",
+    unit => $uFib,
+    labels => [
+        result => $rtFibRes,
+    ],
+    onPush => sub { push @stackFib, $stateFib; $stateFib = { }; },
+    onPop => sub { $stateFib = pop @stackFib; },
+);
+
+my $lbFibResult = $frFib->getLabel("result");
+
+# Declare the label & binding variables in advance, to define them sequentially.
+my ($lbFibCompute, $fbFibPrev1, $fbFibPrev2);
+$lbFibCompute = $uFib->makeLabel($rtFibArg, "FibCompute", undef, sub {
+    my $row = $_[1]->getRow();
+    my $op = $_[1]->getOpcode();
+    my $idx = $row->get("idx");
+
+    if ($idx <= 1) {
+        $uFib->makeHashCall($frFib->getLabel("result"), $op,
+            idx => $idx,
+            fib => $idx < 1 ? 0 : 1,
+        );
+    } else {
+        $stateFib->{op} = $op;
+        $stateFib->{idx} = $idx;
+
+        {
+            my $ab = Triceps::AutoFnBind->new(
+                $frFib => $fbFibPrev1
+            );
+            $uFib->makeHashCall($lbFibCompute, $op,
+                idx => $idx - 1,
+            );
+        }
+        $fbFibPrev1->callTray();
+    }
+}) or confess "$!";
+$fbFibPrev1 = Triceps::FnBinding->new(
+    unit => $uFib,
+    name => "FibPrev1",
+    on => $frFib,
+    withTray => 1,
+    labels => [
+        result => sub {
+            $stateFib->{prev1} = $_[1]->getRow()->get("fib");
+
+            # must prepare before pushing new state and with it new $stateFib
+            my $rop = $lbFibCompute->makeRowopHash($stateFib->{op},
+                idx => $stateFib->{idx} - 2,
+            );
+
+            {
+                my $ab = Triceps::AutoFnBind->new(
+                    $frFib => $fbFibPrev2
+                );
+                $uFib->call($rop);
+            }
+            $fbFibPrev2->callTray();
+        },
+    ],
+);
+$fbFibPrev2 = Triceps::FnBinding->new(
+    unit => $uFib,
+    on => $frFib,
+    name => "FibPrev2",
+    withTray => 1,
+    labels => [
+        result => sub {
+            $stateFib->{prev2} = $_[1]->getRow()->get("fib");
+            $uFib->makeHashCall($frFib->getLabel("result"), $stateFib->{op},
+                idx => $stateFib->{idx},
+                fib => $stateFib->{prev1} + $stateFib->{prev2},
+            );
+        },
+    ],
+);
+
+# End of streaming function
+###
+
+The stack depth is now greatly reduced because the unit stack pops the frames before pushing more of them. For the 2nd Fibonacci number the trace is:
+
+unit 'uFib' before label 'FibCompute' op OP_DELETE {
+unit 'uFib' before label 'FibCompute' op OP_DELETE {
+unit 'uFib' before label 'Fib.result' op OP_DELETE {
+unit 'uFib' after label 'Fib.result' op OP_DELETE }
+unit 'uFib' after label 'FibCompute' op OP_DELETE }
+unit 'uFib' before label 'FibPrev1.result' op OP_DELETE {
+unit 'uFib' before label 'FibCompute' op OP_DELETE {
+unit 'uFib' before label 'Fib.result' op OP_DELETE {
+unit 'uFib' after label 'Fib.result' op OP_DELETE }
+unit 'uFib' after label 'FibCompute' op OP_DELETE }
+unit 'uFib' before label 'FibPrev2.result' op OP_DELETE {
+unit 'uFib' before label 'Fib.result' op OP_DELETE {
+unit 'uFib' before label 'FibCall.result' (chain 'Fib.result') op OP_DELETE {
+unit 'uFib' after label 'FibCall.result' (chain 'Fib.result') op OP_DELETE }
+unit 'uFib' after label 'Fib.result' op OP_DELETE }
+unit 'uFib' after label 'FibPrev2.result' op OP_DELETE }
+unit 'uFib' after label 'FibPrev1.result' op OP_DELETE }
+unit 'uFib' after label 'FibCompute' op OP_DELETE }
+
+For the 6th number the maximal required stack depth now gets reduced to only 9 instead of 51. 

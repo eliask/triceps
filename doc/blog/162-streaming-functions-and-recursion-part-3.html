@@ -1,0 +1,134 @@
+Streaming functions and recursion, part 3
+
+FnBinding:call() with closures is easy to use but it creates a closure and an FnBinding object on each run. Can things be rearranged to reuse the same objects? With some effort, they can:
+
+###
+# A streaming function that computes a Fibonacci number.
+
+# Input:
+#   $lbFibCompute: request to compute the number.
+# Output (by FnReturn labels):
+#   "result": the computed value.
+# The opcode is preserved through the computation.
+
+my @stackFib; # stack of the function states
+my $stateFib; # The current state
+
+my $frFib = Triceps::FnReturn->new(
+    name => "Fib",
+    unit => $uFib,
+    labels => [
+        result => $rtFibRes,
+    ],
+    onPush => sub { push @stackFib, $stateFib; $stateFib = { }; },
+    onPop => sub { $stateFib = pop @stackFib; },
+);
+
+my $lbFibResult = $frFib->getLabel("result");
+
+# Declare the label & binding variables in advance, to define them sequentially.
+my ($lbFibCompute, $fbFibPrev1, $fbFibPrev2);
+$lbFibCompute = $uFib->makeLabel($rtFibArg, "FibCompute", undef, sub {
+    my $row = $_[1]->getRow();
+    my $op = $_[1]->getOpcode();
+    my $idx = $row->get("idx");
+
+    if ($idx <= 1) {
+        $uFib->makeHashCall($frFib->getLabel("result"), $op,
+            idx => $idx,
+            fib => $idx < 1 ? 0 : 1,
+        );
+    } else {
+        $stateFib->{op} = $op;
+        $stateFib->{idx} = $idx;
+
+        $frFib->push($fbFibPrev1);
+        $uFib->makeHashCall($lbFibCompute, $op,
+            idx => $idx - 1,
+        );
+    }
+}) or confess "$!";
+$fbFibPrev1 = Triceps::FnBinding->new(
+    unit => $uFib,
+    name => "FibPrev1",
+    on => $frFib,
+    labels => [
+        result => sub {
+            $frFib->pop($fbFibPrev1);
+
+            $stateFib->{prev1} = $_[1]->getRow()->get("fib");
+
+            # must prepare before pushing new state and with it new $stateFib
+            my $rop = $lbFibCompute->makeRowopHash($stateFib->{op},
+                idx => $stateFib->{idx} - 2,
+            );
+
+            $frFib->push($fbFibPrev2);
+            $uFib->call($rop);
+        },
+    ],
+);
+$fbFibPrev2 = Triceps::FnBinding->new(
+    unit => $uFib,
+    on => $frFib,
+    name => "FibPrev2",
+    labels => [
+        result => sub {
+            $frFib->pop($fbFibPrev2);
+
+            $stateFib->{prev2} = $_[1]->getRow()->get("fib");
+            $uFib->makeHashCall($frFib->getLabel("result"), $stateFib->{op},
+                idx => $stateFib->{idx},
+                fib => $stateFib->{prev1} + $stateFib->{prev2},
+            );
+        },
+    ],
+);
+
+# End of streaming function
+###
+
+The rest of the code stays the same, so I won't copy it here.
+
+The computation still needs to keep the intermediate results of two recursive calls. With no closures, these results have to be kept in a global object $stateFib (which is a hash that keeps multiple values).
+
+But it can't just be a single object! The recursive calls would overwrite it. So it has to be built into a stack of objects, a new one pushed for each call and popped after it. This pushing and popping can be tied to the pushing and popping of the bindings on an FnReturn. When the FnReturn is defined, the options onPush and onPop define the custom Perl code to execute, which is used here for the management of the state stack.
+
+The whole logic is then split into the sections around the calls:
+
+    before the first call
+    between the first and second call
+    after the second call
+
+The first section goes as a normal label and the rest are done as bindings.
+
+A tricky moment is that a simple scoped AutoFnBind can't be used here. The pushing of the binding happens in the calling label (such as FibCompute) but then the result is processed in another label (such as FibPrev1.result). The procedural control won't return to FibCompute until after FibPrev1.result has been completed. But FibPrev1.result needs the state popped before it can do its work! So the pushing and popping of the binding is done explicitly in two split steps: push() called in FibCompute() and pop() called in FibPrev1.result. And of course then after FibPrev1.result saves the result, it pushes the binding again, which then gets popped in FibPrev2.result.
+
+The popping can also be done without arguments, as pop(), but if it's given an argument, it will check that the binding popped is the same as its argument. This is helpful for detecting the call stack corruptions.
+
+Now, can you guess, what depth of the unit call stack is required to compute and print the 2nd Fibonacci number? It's 7. If the tracing is enabled, it will produce this trace:
+
+unit 'uFib' before label 'FibCompute' op OP_DELETE {
+unit 'uFib' before label 'FibCompute' op OP_DELETE {
+unit 'uFib' before label 'Fib.result' op OP_DELETE {
+unit 'uFib' before label 'FibPrev1.result' (chain 'Fib.result') op OP_DELETE {
+unit 'uFib' before label 'FibCompute' op OP_DELETE {
+unit 'uFib' before label 'Fib.result' op OP_DELETE {
+unit 'uFib' before label 'FibPrev2.result' (chain 'Fib.result') op OP_DELETE {
+unit 'uFib' before label 'Fib.result' op OP_DELETE {
+unit 'uFib' before label 'FibCall.result' (chain 'Fib.result') op OP_DELETE {
+unit 'uFib' after label 'FibCall.result' (chain 'Fib.result') op OP_DELETE }
+unit 'uFib' after label 'Fib.result' op OP_DELETE }
+unit 'uFib' after label 'FibPrev2.result' (chain 'Fib.result') op OP_DELETE }
+unit 'uFib' after label 'Fib.result' op OP_DELETE }
+unit 'uFib' after label 'FibCompute' op OP_DELETE }
+unit 'uFib' after label 'FibPrev1.result' (chain 'Fib.result') op OP_DELETE }
+unit 'uFib' after label 'Fib.result' op OP_DELETE }
+unit 'uFib' after label 'FibCompute' op OP_DELETE }
+unit 'uFib' after label 'FibCompute' op OP_DELETE }
+
+9 labels get called in a sequence, all the way from the initial call to the result printing. And only then the whole sequence unrolls back. 3 of them are chained through the bindings, so they don't push the stack frames onto the stack, and there is always the outermost stack frame, with the result of 9-3+1 = 7.  This number grows fast. For the 6th number the number of labels becomes 75 and the frame count 51.
+
+It happens because all the calls get unrolled into a single sequence, like what I've warned against in the section on the loops. The function return does unroll its FnReturn stack but doesn't unroll the unit call stack, it just goes even deeper by calling the label that processes it.
+
+There are ways to improve it. The simplest one is to use the FnBinding with a tray, and call this tray after the function completely returns. This works out quite conveniently in two other ways too: First, AutoFnBind with its scoped approach can be used again. And second, it allows to handle the situations where a function returns not just one row but multiple of them. That will be the next example. 

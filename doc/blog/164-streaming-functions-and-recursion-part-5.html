@@ -1,0 +1,93 @@
+Streaming functions and recursion, part 5
+
+And there is also a way to run the recursive calls without even the need to increase the recursion depth limit. It can be left at the default 1, without setMaxRecursionDepth(). The secret is to fork the argument rowops to the functions instead of calling them.
+
+###
+# A streaming function that computes a Fibonacci number.
+
+# Input:
+#   $lbFibCompute: request to compute the number.
+# Output (by FnReturn labels):
+#   "result": the computed value.
+# The opcode is preserved through the computation.
+
+my @stackFib; # stack of the function states
+my $stateFib; # The current state
+
+my $frFib = Triceps::FnReturn->new(
+    name => "Fib",
+    unit => $uFib,
+    labels => [
+        result => $rtFibRes,
+    ],
+    onPush => sub { push @stackFib, $stateFib; $stateFib = { }; },
+    onPop => sub { $stateFib = pop @stackFib; },
+);
+
+my $lbFibResult = $frFib->getLabel("result");
+
+# Declare the label & binding variables in advance, to define them sequentially.
+my ($lbFibCompute, $fbFibPrev1, $fbFibPrev2);
+$lbFibCompute = $uFib->makeLabel($rtFibArg, "FibCompute", undef, sub {
+    my $row = $_[1]->getRow();
+    my $op = $_[1]->getOpcode();
+    my $idx = $row->get("idx");
+
+    if ($idx <= 1) {
+        $uFib->fork($frFib->getLabel("result")->makeRowopHash($op,
+            idx => $idx,
+            fib => $idx < 1 ? 0 : 1,
+        ));
+    } else {
+        $stateFib->{op} = $op;
+        $stateFib->{idx} = $idx;
+
+        $frFib->push($fbFibPrev1);
+        $uFib->fork($lbFibCompute->makeRowopHash($op,
+            idx => $idx - 1,
+        ));
+    }
+}) or confess "$!";
+$fbFibPrev1 = Triceps::FnBinding->new(
+    unit => $uFib,
+    name => "FibPrev1",
+    on => $frFib,
+    labels => [
+        result => sub {
+            $frFib->pop($fbFibPrev1);
+
+            $stateFib->{prev1} = $_[1]->getRow()->get("fib");
+
+            # must prepare before pushing new state and with it new $stateFib
+            my $rop = $lbFibCompute->makeRowopHash($stateFib->{op},
+                idx => $stateFib->{idx} - 2,
+            );
+
+            $frFib->push($fbFibPrev2);
+            $uFib->fork($rop);
+        },
+    ],
+);
+$fbFibPrev2 = Triceps::FnBinding->new(
+    unit => $uFib,
+    on => $frFib,
+    name => "FibPrev2",
+    labels => [
+        result => sub {
+            $frFib->pop($fbFibPrev2);
+
+            $stateFib->{prev2} = $_[1]->getRow()->get("fib");
+            $uFib->fork($frFib->getLabel("result")->makeRowopHash($stateFib->{op},
+                idx => $stateFib->{idx},
+                fib => $stateFib->{prev1} + $stateFib->{prev2},
+            ));
+        },
+    ],
+);
+
+# End of streaming function
+###
+
+This is a variety of the pre-previous example, with the split push and pop. The split is required for the fork to work: when the forked rowop executes, the calling label has already returned, so obviously the scoped approach won't work.
+
+In this version the unit stack depth required to compute the 6th (and any) Fibonacci number reduces to 2: it's really only one level on top of the outermost frame. 

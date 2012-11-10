@@ -1,0 +1,9 @@
+More of the fork reform
+
+I've made one more change to the execution logic. I'm not sure if I've told anything explicit about this area before, or if it's going to be a new information but here we go anyway:
+
+All the time before it was implicitly assumed that when a label in FnReturn passes the call to a label in its bound FnBinding, it does a proper call. And indeed it was so. But the problem with that is that the bound label can not easily fork a rowop to the frame of its parent label in FnReturn. This was breaking some of the examples that I've been playing with but I haven't shown yet.
+
+So I've changed it to work like a chained label. All along, even in 1.0, the chained labels were executing their rowops reusing the frame of their parent label, from which they are chained. Now the binding labels do the same thing. And they even are shown in the traces as being chained from the labels in FnReturn.
+
+The only exception (this is another subject that I haven't described yet) is when the FnReturn and FnBinding are in the different units. Then the bound label is properly called with its own frame in the unit where it belongs. 

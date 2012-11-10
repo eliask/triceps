@@ -1,0 +1,31 @@
+Streaming functions and tables
+
+The Copy Tray used in the tables in the version 1.0 was really a precursor to the streaming functions. Now when the full-blown streaming functions became worked out, there is no sense in keeping the copy trays any more, so I've removed them.
+
+Instead, I've added a Table method that gets the FnReturn for that table:
+
+$fret = $table->fnReturn();
+
+The return contains the labels "pre", "out", and the named labels for each aggregators. The FnReturn object is created on the first call of this method and is kept in the table. All the following calls return the same object. This has some interesting consequences for the "pre" label: the rowop for the "pre" label doesn't get created at all if there is nothing chained from that label. But when the FnReturn gets created, one of its labels gets chained from the "pre" label. Which means that once, you call $table->fnReturn() for the first time, you will see that table's "pre" label called in all the traces. It's not a huge extra overhead, but still something to keep in mind and not be surprised when calling fnReturn() changes all your traces.
+
+The produced FnReturn then gets used as any other one. If you use it with an FnBinding that has withTrace => 1, you get an improved equivalent of the Copy Tray. For example:
+
+$fret2 = $t2->fnReturn();
+$fbind2 = Triceps::FnBinding->new(
+    unit => $u1,
+    name => "fbind2",
+    on => $fret2,
+    withTray => 1,
+    labels => [
+        out => sub { }, # another way to make a dummy
+    ],
+);
+
+$fret2->push($fbind2);
+$t2->insert($r2);
+$fret2->pop($fbind2);
+
+# $ctr is the Copy Tray analog
+$ctr = $fbind2->swapTray(); # get the updates on an insert
+
+Of course, most of the time you would not want to make a dummy label and then iterate manually through the copy tray. You would want to create bindings to the actual next logical labels and simply execute them, immediately or delayed with a tray. 

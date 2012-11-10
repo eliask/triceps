@@ -1,0 +1,47 @@
+Streaming functions and template results
+
+The same way as the FnReturns can be used to get back the direct results of the operations on the tables, can be also used on the templates in general. Indeed, it's a good idea to have a method that would create an FnReturn in all the templates. So I went ahead and added it to the LookupJoin, JoinTwo and Collapse.
+
+For the joins, the resulting FnReturn has one label "out". It's created similarly to the table's:
+
+my $fret = $join->fnReturn();
+
+And then it can be used as usual. The implementation of this method is fairly simple:
+
+sub fnReturn # (self)
+{
+    my $self = shift;
+    if (!defined $self->{fret}) {
+        $self->{fret} = Triceps::FnReturn->new(
+            name => $self->{name} . ".fret",
+            labels => [
+                out => $self->{outputLabel},
+            ],
+        );
+    }
+    return $self->{fret};
+}
+
+All this kind of makes the method lookup() of LookupJoin redundant, since now pretty much all the same can be done with the streaming function API, and even better, because it provides the opcodes on rowops, can handle the full processing, and calls the rowops one by one without necessarily creating an array. But it could happen yet that the lookup() has some more convenient uses too, so I didn't remove it yet.
+
+For Collapse the interface is a little more complicated: the FnReturn contains a label for each data set, named the same as the data set. The order of labels follows the order of the data set definitions (though right now it's kind of moot, because only one data set is supported). The implementation is:
+
+sub fnReturn # (self)
+{
+    my $self = shift;
+    if (!defined $self->{fret}) {
+        my @labels;
+        for my $n (@{$self->{dsetnames}}) {
+            push @labels, $n, $self->{datasets}{$n}{lbOut};
+        }
+        $self->{fret} = Triceps::FnReturn->new(
+            name => $self->{name} . ".fret",
+            labels => \@labels,
+        );
+    }  
+    return $self->{fret};
+}   
+
+It uses the new element $self->{dsetnames} that wasn't present in the code shown before. I've added it now to keep the array of data set names in the order they were defined.
+
+Use these examples to write the fnReturn() in your templates. 
