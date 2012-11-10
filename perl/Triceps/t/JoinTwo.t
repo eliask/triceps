@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 193 };
+BEGIN { plan tests => 199 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -1043,6 +1043,34 @@ join3r.rightLookup.out OP_INSERT source="source1" external="999" internal="4" rt
 	ok($join->getType(), "outer"); # the default
 	ok($join->getOverrideSimpleMinded(), 11); # the default
 	ok($join->getOverrideKeyTypes(), 12); # the default
+}
+
+#########
+# fnReturn
+{
+	my $join = Triceps::JoinTwo->new( 
+		name => "join",
+		leftTable => $tTrans3,
+		rightTable => $tAccounts3,
+		leftIdxPath => ["byAccount"],
+		rightIdxPath => ["lookupSrcExt"],
+		type => "outer",
+		fieldsUniqKey => "none",
+		fieldsLeftFirst => 10,
+		overrideSimpleMinded => 11,
+		overrideKeyTypes => 12,
+	);
+	ok(ref $join, "Triceps::JoinTwo");
+
+	my $out = $join->getOutputLabel();
+	ok(!$out->hasChained());
+
+	my $ret = $join->fnReturn();
+	ok(ref $ret, "Triceps::FnReturn");
+	ok($ret->getName(), "join.fret");
+	ok($out->hasChained());
+	my @chain = $out->getChain();
+	ok($chain[0]->same($ret->getLabel("out")));
 }
 
 #########
