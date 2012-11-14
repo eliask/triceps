@@ -22,7 +22,6 @@ use IO::Socket::INET;
 ok(1); # If we made it this far, we're ok.
 
 use strict;
-no warnings;
 
 #########################
 
@@ -63,174 +62,6 @@ sub sendX # (@message)
 }
 
 #########################
-# The server infrastructure
-
-# the socket and buffering control for the main loop;
-# they are all indexed by a unique id
-our %clients; # client sockets
-our %inbufs; # input buffers, collecting the whole lines
-our %outbufs; # output buffers
-our $poll; # the poll object
-our $cur_cli; # the id of the current client being processed
-our $srv_exit; # exit when all the client connections are closed
-
-# writing to the output buffers
-sub outBuf # ($id, $string)
-{
-	my $id = shift;
-	my $line = shift;
-	$outbufs{$id} .= $line;
-	# If there is anything to write on a buffer, stop reading from it.
-	$poll->mask($clients{$id} => POLLOUT);
-}
-
-sub outCurBuf # ($string)
-{
-	outBuf($cur_cli, @_);
-}
-
-sub closeClient # ($id, $h)
-{
-	my $id = shift;
-	my $h = shift;
-	$poll->mask($h, 0);
-	$h->close();
-	delete $clients{$id}; # OK per Perl manual even when iterating
-	delete $inbufs{$id};
-	delete $outbufs{$id};
-}
-
-# The server main loop. Runs with the specified server socket.
-# Uses the labels hash to send the incoming data to Triceps.
-sub mainLoop # ($srvsock, $%labels)
-{
-	my $srvsock = shift;
-	my $labels = shift;
-
-	my $client_id = 0; # unique strings
-	our $poll = IO::Poll->new();
-
-	$srvsock->blocking(0);
-	$poll->mask($srvsock => POLLIN);
-	$srv_exit = 0;
-
-	while(!$srv_exit || keys %clients != 0) {
-		my $r = $poll->poll();
-		confess "poll failed: $!" if ($r < 0 && ! $!{EAGAIN} && ! $!{EINTR});
-
-		if ($poll->events($srvsock)) {
-			while(1) {
-				my $client = $srvsock->accept();
-				if (defined $client) {
-					$client->blocking(0);
-					$clients{++$client_id} = $client;
-					# &send("Accepted client $client_id\n");
-					$poll->mask($client => (POLLIN|POLLHUP));
-				} elsif($!{EAGAIN} || $!{EINTR}) {
-					last;
-				} else {
-					confess "accept failed: $!";
-				}
-			}
-		}
-
-		my ($id, $h, $mask, $n, $s);
-		while (($id, $h) = each %clients) {
-			$cur_cli = $id;
-			$mask = $poll->events($h);
-			if (($mask & POLLHUP) && !defined $outbufs{$id}) {
-				# &send("Lost client $client_id\n");
-				closeClient($id, $h);
-				next;
-			}
-			if ($mask & POLLOUT) {
-				$s = $outbufs{$id};
-				$n = $h->syswrite($s);
-				if (defined $n) {
-					if ($n >= length($s)) {
-						delete $outbufs{$id};
-						# now can accept more input
-						$poll->mask($h => (POLLIN|POLLHUP));
-					} else {
-						substr($outbufs{$id}, 0, $n) = '';
-					}
-				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
-					warn "write to client $id failed: $!";
-					closeClient($id, $h);
-					next;
-				}
-			}
-			if ($mask & POLLIN) {
-				$n = $h->sysread($s, 10000);
-				if ($n == 0) {
-					# &send("Lost client $client_id\n");
-					closeClient($id, $h);
-					next;
-				} elsif ($n > 0) {
-					$inbufs{$id} .= $s;
-				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
-					warn "read from client $id failed: $!";
-					closeClient($id, $h);
-					next;
-				}
-			}
-			# The way this works, if there is no '\n' before EOF,
-			# the last line won't be processed.
-			# Also, the whole output for all the input will be buffered
-			# before it can be sent.
-			while($inbufs{$id} =~ s/^(.*)\n//) {
-				my $line = $1;
-				chomp $line;
-				local $/ = "\r"; # take care of a possible CR-LF
-				chomp $line;
-				my @data = split(/,/, $line);
-				my $lname = shift @data;
-				my $label = $labels->{$lname};
-				if (defined $label) {
-					my $unit = $label->getUnit();
-					confess "label '$lname' received from client $id has been cleared"
-						unless defined $unit;
-					eval {
-						$unit->makeArrayCall($label, @data);
-						$unit->drainFrame();
-					};
-					warn "input data error: $@\nfrom data: $line\n" if $@;
-				} else {
-					warn "unknown label '$lname' received from client $id: $line "
-				}
-			}
-		}
-	}
-}
-
-# The server start function that creates the server socket,
-# remembers its auto-generated unique port, then forks and
-# starts the main loop in the child process. The parent
-# process then returns the pair (port number, child PID).
-sub startServer # ($labels)
-{
-	my $labels = shift;
-
-	my $srvsock = IO::Socket::INET->new(
-		Proto => "tcp",
-		LocalPort => 0,
-		Listen => 10,
-	) or confess "socket failed: $!";
-	my $port = $srvsock->sockport() or confess "sockport failed: $!";
-	my $pid = fork();
-	confess "fork failed: $!" unless defined $pid;
-	if ($pid) {
-		# parent
-		$srvsock->close();
-	} else {
-		# child
-		&mainLoop($srvsock, $labels);
-		exit(0);
-	}
-	return ($port, $pid);
-}
-
-#########################
 # The common client that connects to the port, sends and receives data,
 # and waits for the server to exit.
 
@@ -238,7 +69,7 @@ sub run # ($labels)
 {
 	my $labels = shift;
 
-	my ($port, $pid) = startServer($labels);
+	my ($port, $pid) = Triceps::X::SimpleServer::startServer(0, $labels);
 	my $sock = IO::Socket::INET->new(
 		Proto => "tcp",
 		PeerAddr => "localhost",
@@ -291,7 +122,7 @@ if (0) {
 			$_[1]->getRow()->toArray()) . "\n");
 	});
 	my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
-		$srv_exit = 1;
+		$Triceps::X::SimpleServer::srv_exit = 1;
 	});
 
 	my %dispatch;
@@ -299,7 +130,7 @@ if (0) {
 	$dispatch{"echo2"} = $lbEcho2;
 	$dispatch{"exit"} = $lbExit;
 
-	my ($port, $pid) = &startServer(\%dispatch);
+	my ($port, $pid) = &Triceps::X::SimpleServer::startServer(0, \%dispatch);
 	print STDERR "port=$port pid=$pid\n";
 	waitpid($pid, 0);
 	exit(0);
@@ -309,33 +140,6 @@ if (0) {
 # Module for server control.
 package ServerHelpers;
 use Carp;
-
-# Exiting the server.
-sub makeExitLabel # ($unit, $name)
-{
-	my $unit = shift;
-	my $name = shift;
-	return $unit->makeLabel($unit->getEmptyRowType(), $name, undef, sub {
-		$srv_exit = 1;
-	});
-}
-
-# Sending of rows to the server output.
-sub makeServerOutLabel # ($fromLabel)
-{
-	my $fromLabel = shift;
-	my $unit = $fromLabel->getUnit();
-	my $fromName = $fromLabel->getName();
-	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
-		$fromName . ".serverOut", undef, sub {
-			&main::outCurBuf(join(",", $fromName, 
-				&Triceps::opcodeString($_[1]->getOpcode()),
-				$_[1]->getRow()->toArray()) . "\n");
-		});
-	$fromLabel->chain($lbOut) or confess "$!";
-	return $lbOut;
-}
-
 
 #########################
 # Module for querying the table, version 1: no conditions.
@@ -402,12 +206,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query1->new($tWindow, "qWindow");
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -474,7 +278,7 @@ sub new # ($class, $unit, $tabType, $name)
 	}, $self);
 	$self->{resLabel} = $unit->makeDummyLabel($rt, $name . ".response");
 	
-	$self->{sendLabel} = &ServerHelpers::makeServerOutLabel($self->{resLabel});
+	$self->{sendLabel} = &Triceps::X::SimpleServer::makeServerOutLabel($self->{resLabel});
 
 	bless $self, $class;
 	return $self;
@@ -550,7 +354,7 @@ my $window = $uTrades->makeTableQuery2($ttWindow, "window");
 my %dispatch;
 $dispatch{$window->getName()} = $window->getInputLabel();
 $dispatch{$window->getQueryLabel()->getName()} = $window->getQueryLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -649,12 +453,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query3->new(table => $tWindow, name => "qWindow");
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -769,12 +573,12 @@ my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 my $cmpcode;
 my $query = Query4->new(table => $tWindow, name => "qWindow",
 	fields => ["symbol", "price"]);
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -821,12 +625,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query4->new(table => $tWindow, name => "qWindow");
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -891,14 +695,15 @@ sub new # ($class, $optionName => $optionValue ...)
 			sub # ($query, $data)
 			{
 				use strict;
-				my ($query, $data) = @_;';
+				my ($query, $data) = @_;
+				my $v;';
 		foreach my $f (@$fields) {
 			my $t = $rtdef{$f};
 			confess "$class::new: unknown field '$f', the row type is:\n"
 					. $rt->print() . " "
 				unless defined $t;
 			$gencmp .= '
-				my $v = $query->get("' . quotemeta($f) . '");
+				$v = $query->get("' . quotemeta($f) . '");
 				if ($v) {';
 			if (&Triceps::Fields::isStringType($t)) {
 				$gencmp .= '
@@ -976,12 +781,12 @@ my $query = Query5->new(table => $tWindow, name => "qWindow",
 	fields => ["symbol", "price"], saveCodeTo => \$cmpcode );
 # as a demonstration
 &send("Code:\n$cmpcode\n");
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1005,11 +810,12 @@ ok($result,
 			{
 				use strict;
 				my ($query, $data) = @_;
-				my $v = $query->get("symbol");
+				my $v;
+				$v = $query->get("symbol");
 				if ($v) {
 					return 0 if ($v ne $data->get("symbol"));
 				}
-				my $v = $query->get("price");
+				$v = $query->get("price");
 				if ($v) {
 					return 0 if ($v != $data->get("price"));
 				}
@@ -1044,12 +850,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query5->new(table => $tWindow, name => "qWindow");
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1165,7 +971,7 @@ sub genComparison # ($self, $query)
 		if $@;
 
 	# for debugging
-	&main::outCurBuf("Compiled comparator:\n$gencmp\n");
+	&Triceps::X::SimpleServer::outCurBuf("Compiled comparator:\n$gencmp\n");
 
 	return $compare;
 }
@@ -1200,12 +1006,12 @@ my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
 my $query = Query6->new(table => $tWindow, name => "qWindow",);
-my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
+my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1361,14 +1167,14 @@ my $query = Query7->new(table => $tWindow, name => "qWindow",
 # print in the tokenized format
 my $srvout = $uTrades->makeLabel($query->getOutputLabel()->getType(), 
 	$query->getOutputLabel()->getName() . ".serverOut", undef, sub {
-		&main::outCurBuf($_[1]->printP() . "\n");
+		&Triceps::X::SimpleServer::outCurBuf($_[1]->printP() . "\n");
 	});
 $query->getOutputLabel()->chain($srvout) or confess "$!";
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 
@@ -1401,6 +1207,8 @@ use Carp;
 # Sending of rows to the server output.
 sub new # ($class, $option => $value, ...)
 {
+	no warnings;
+
 	my $class = shift;
 	my $self = {};
 
@@ -1426,7 +1234,7 @@ sub new # ($class, $option => $value, ...)
 
 	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
 		$self->{name}, undef, sub {
-			&main::outCurBuf(join(",", 
+			&Triceps::X::SimpleServer::outCurBuf(join(",", 
 				$fromLabel? $fromLabel->getName() : $self->{name},
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
@@ -1464,7 +1272,7 @@ my $srvout = ServerOutput->new(fromLabel => $query->getOutputLabel());
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1496,7 +1304,7 @@ $query->getOutputLabel()->chain($srvout->getInputLabel())
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1528,6 +1336,8 @@ use Carp;
 # Sending of rows to the server output.
 sub new # ($class, $option => $value, ...)
 {
+	no warnings;
+
 	my $class = shift;
 	my $self = {};
 
@@ -1555,7 +1365,7 @@ sub new # ($class, $option => $value, ...)
 
 	my $lb = $self->{unit}->makeLabel($self->{rowType}, 
 		$self->{name}, undef, sub {
-			&main::outCurBuf(join(",", 
+			&Triceps::X::SimpleServer::outCurBuf(join(",", 
 				$fromLabel? $fromLabel->getName() : $self->{name},
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
@@ -1596,7 +1406,7 @@ my $srvout = ServerOutput2->new(
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
@@ -1628,7 +1438,7 @@ $query->getOutputLabel()->chain($srvout->getInputLabel())
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
-$dispatch{"exit"} = &ServerHelpers::makeExitLabel($uTrades, "exit");
+$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
 run(\%dispatch);
 };
