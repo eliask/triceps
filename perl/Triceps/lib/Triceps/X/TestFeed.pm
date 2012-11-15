@@ -6,11 +6,11 @@
 # The infrastructure to feed the tests in a controllable manner, simulating
 # the stdin and stdout.
 
+use strict;
+
 package Triceps::X::TestFeed;
 
 use Carp;
-
-use strict;
 
 our @ISA = qw(Exporter);
 

@@ -6,6 +6,8 @@
 # A simple server implementation used in the Query examples.
 # It contains many simplifications and is not of production quality.
 
+use strict;
+
 package Triceps::X::SimpleServer;
 
 use Carp;
@@ -14,7 +16,13 @@ use IO::Poll qw(POLLIN POLLOUT POLLHUP);
 use IO::Socket;
 use IO::Socket::INET;
 
-use strict;
+our @ISA = qw(Exporter);
+
+our %EXPORT_TAGS = ( 'all' => [ qw(
+	outBuf outCurBuf mainLoop startServer makeExitLabel makeServerOutLabel
+) ] );
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
 #########################
 # The server infrastructure

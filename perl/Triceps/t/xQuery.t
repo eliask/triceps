@@ -16,8 +16,6 @@ BEGIN { plan tests => 14 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
-use IO::Socket;
-use IO::Socket::INET;
 ok(1); # If we made it this far, we're ok.
 
 use strict;
@@ -26,33 +24,6 @@ use strict;
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# The common client that connects to the port, sends and receives data,
-# and waits for the server to exit.
-
-sub run # ($labels)
-{
-	my $labels = shift;
-
-	my ($port, $pid) = Triceps::X::SimpleServer::startServer(0, $labels);
-	my $sock = IO::Socket::INET->new(
-		Proto => "tcp",
-		PeerAddr => "localhost",
-		PeerPort => $port,
-	) or confess "socket failed: $!";
-	while(&readLine) {
-		$sock->print($_);
-		$sock->flush();
-	}
-	$sock->print("exit,OP_INSERT\n");
-	$sock->flush();
-	$sock->shutdown(1); # SHUT_WR
-	while(<$sock>) {
-		&send($_);
-	}
-	waitpid($pid, 0);
-}
 
 #########################
 # Common Triceps types.
@@ -179,7 +150,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 # the same input and result gets reused mutiple times
@@ -321,7 +292,7 @@ $dispatch{$window->getName()} = $window->getInputLabel();
 $dispatch{$window->getQueryLabel()->getName()} = $window->getQueryLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(
@@ -424,7 +395,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(@inputQuery1);
@@ -543,7 +514,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(
@@ -594,7 +565,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(
@@ -749,7 +720,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(
@@ -817,7 +788,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(
@@ -972,7 +943,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(
@@ -1134,7 +1105,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 
 };
 
@@ -1231,7 +1202,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(@inputQuery1);
@@ -1262,7 +1233,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(@inputQuery1);
@@ -1363,7 +1334,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(@inputQuery1);
@@ -1394,7 +1365,7 @@ $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$query->getName()} = $query->getInputLabel();
 $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 
-run(\%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
 };
 
 setInputLines(@inputQuery1);
