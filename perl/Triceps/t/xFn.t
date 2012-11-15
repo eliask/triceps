@@ -18,6 +18,7 @@ use Test;
 BEGIN { plan tests => 18 };
 use Triceps;
 use Carp;
+use Triceps::X::TestFeed qw(:all);
 ok(1); # If we made it this far, we're ok.
 
 use strict;
@@ -26,60 +27,6 @@ use strict;
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# write a message to user, like printf
-sub sendf # ($msg, $vars...)
-{
-	my $fmt = shift;
-	$result .= sprintf($fmt, @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel($$) # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
 
 ############################################################
 # A looping Fibonacci computation with the streaming functions.
@@ -178,16 +125,15 @@ while(&readLine) {
 
 } # doFibFn1
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn1();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -295,16 +241,15 @@ while(&readLine) {
 
 } # doFibFn2
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn2();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -432,16 +377,15 @@ while(&readLine) {
 
 } # doFibFn3
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn3();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -573,16 +517,15 @@ while(&readLine) {
 
 } # doFibFn4
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn4();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -732,16 +675,15 @@ while(&readLine) {
 
 } # doFibFn5
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn5();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(),
 "> OP_INSERT,1
 1 is Fibonacci number 1
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
@@ -1163,16 +1105,15 @@ while(&readLine) {
 
 } # doFibFn6
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn6();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(),
 "> OP_INSERT,1
 1 is Fibonacci number 1
 unit 'uFib' before label 'FibCompute' op OP_INSERT {
@@ -1586,16 +1527,15 @@ while(&readLine) {
 
 } # doFibFn7
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn7();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(),
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -1755,16 +1695,15 @@ while(&readLine) {
 
 } # doFibFn8
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibFn8();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(),
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -1992,11 +1931,10 @@ collapse.idata.out OP_INSERT local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="300"
 collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300" 
 ';
 
-@input = @inputData;
-$result = undef;
+setInputLines(@inputData);
 &doCollapse1();
-#print $result;
-ok($result, $expectResult);
+#print &getResultLines();
+ok(&getResultLines(), $expectResult);
 }
 
 ############################################################
@@ -2121,11 +2059,10 @@ my @inputData = @collapseInputData;
 # XXX here the result order depends on the hash order
 my $expectResult = $collapseResultInterleaved;
 
-@input = @inputData;
-$result = undef;
+setInputLines(@inputData);
 &doCollapse2();
-#print $result;
-ok($result, $expectResult);
+#print &getResultLines();
+ok(&getResultLines(), $expectResult);
 }
 
 ############################################################
@@ -2296,11 +2233,10 @@ collapse.idata.lbDel OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100
 collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300" 
 ';
 
-@input = @inputData;
-$result = undef;
+setInputLines(@inputData);
 &doCollapse3();
-#print $result;
-ok($result, $expectResult);
+#print &getResultLines();
+ok(&getResultLines(), $expectResult);
 }
 
 ############################################################
@@ -2424,7 +2360,7 @@ while(&readLine) {
 
 }; # doSymbology
 
-@input = (
+setInputLines(
 	"isin,OP_INSERT,ABC.L,US0000012345\n",
 	"isin,OP_INSERT,ABC.N,US0000012345\n",
 	"isin,OP_INSERT,DEF.N,US0000054321\n",
@@ -2435,10 +2371,9 @@ while(&readLine) {
 	"trade,OP_INSERT,GHI.N,XX0000012345,500,10.5\n",
 	"trade,OP_INSERT,GHI.N,,600,10.5\n",
 );
-$result = undef;
 &doSymbology();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> isin,OP_INSERT,ABC.L,US0000012345
 tIsin.out OP_INSERT ric="ABC.L" isin="US0000012345" 
 > isin,OP_INSERT,ABC.N,US0000012345
@@ -2624,7 +2559,7 @@ while(&readLine) {
 
 }; # doEncPipeline
 
-@input = (
+setInputLines(
 	"inc,OP_INSERT,abc,1\n",
 	"inc,OP_DELETE,def,100\n",
 	# perl -e 'print((unpack "H*", "inc,OP_INSERT,abc,2"), "\n");'
@@ -2632,14 +2567,13 @@ while(&readLine) {
 	# perl -e 'print((unpack "H*", "inc,OP_DELETE,def,101"), "\n");'
 	"+696e632c4f505f44454c4554452c6465662c313031\n",
 );
-$result = undef;
 &doEncPipeline();
-#print $result;
+#print &getResultLines();
 # perl -e 'print((pack "H*", "726573756c74204f505f494e53455254206e616d653d226162632220636f756e743d22332220"), "\n");'
 # result OP_INSERT name="abc" count="3" 
 # perl -e 'print((pack "H*", "726573756c74204f505f44454c455445206e616d653d226465662220636f756e743d223130322220"), "\n");'
 # result OP_DELETE name="def" count="102" 
-ok($result, '> inc,OP_INSERT,abc,1
+ok(&getResultLines(), '> inc,OP_INSERT,abc,1
 result OP_INSERT name="abc" count="2" 
 > inc,OP_DELETE,def,100
 result OP_DELETE name="def" count="101" 
@@ -3005,29 +2939,25 @@ my $rpExpect =
 37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230
 ';
 
-@input = @rpInput;
-$result = undef;
+setInputLines(@rpInput);
 &doRecursivePipeline(1);
-#print $result;
-ok($result, $rpExpect);
+#print &getResultLines();
+ok(&getResultLines(), $rpExpect);
 
-@input = @rpInput;
-$result = undef;
+setInputLines(@rpInput);
 &doRecursivePipeline(2);
-#print $result;
-ok($result, $rpExpect);
+#print &getResultLines();
+ok(&getResultLines(), $rpExpect);
 
-@input = @rpInput;
-$result = undef;
+setInputLines(@rpInput);
 &doRecursivePipeline(3);
-#print $result;
-ok($result, $rpExpect);
+#print &getResultLines();
+ok(&getResultLines(), $rpExpect);
 
-@input = @rpInput;
-$result = undef;
+setInputLines(@rpInput);
 &doRecursivePipeline(4);
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(),
 '> 3639366536333263346635303566343934653533343535323534326336313632363332633332
 37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230
 37323635373337353663373432303466353035663439346535333435353235343230366536313664363533643232363136323633323232303633366637353665373433643232333332323230

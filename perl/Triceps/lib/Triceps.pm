@@ -112,8 +112,9 @@ require Triceps::SimpleAggregator;
 require Triceps::Collapse;
 require Triceps::LookupJoin;
 require Triceps::JoinTwo;
-# The X subpackages contain the eXample, eXtraneous code.
+# The X subpackages contain the eXperimental, eXample, eXtraneous code.
 require Triceps::X::SimpleServer;
+require Triceps::X::TestFeed;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
