@@ -1,0 +1,11 @@
+test code restructuring
+
+There is one more feature of the streaming functions I want to show but it requires a bit of work. The feature itself is small and easy but a good way to show it an example is in the user queries on a socket, which is a little involved.
+
+With that goal in mind, so far I've done some restructuring. It's been an inconvenience to not share the code between the example files, requiring to either put everything that uses a certain code fragment into one file, or to copy that fragment around.
+
+Now there is a place for such code, collected under the namespace Triceps::X. X can be thought of as a mark of eXperimental, eXample, eXtraneous code. This code is not exactly of production quality but is good enough for the examples, and can be used as a starting point for development of the better code. Quite a few fragments of Triceps went this way: the joins have been done as an example first, and then solidified for the main code base, and so did the aggregation.
+
+The socket-handling examples discussed in the section 7.8. "Main loop with a socket" of the manual have been moved there. The server part became Triceps::X::SimpleServer, and the client part became Triceps::X::DumbClient. More to be added soon.
+
+Another module that got extracted is Triceps::X::TestFeed. It's a small infrastructure to run the examples, pretending that it gets the input from stdin and sends output to stdout, while actually doing it all in memory. I haven't been discussing it much, but all of the more complicated examples have been written to use it. It also shows once in a while in the blog when I forget to edit the code to pretend that it uses stdin/stdout, and then a &readLine shows instead of <STDIN>, and a &send instead of print (and for the manual I have a script that does these substitutions automatically when I insert the code examples into it). 
