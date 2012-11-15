@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 11 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -26,52 +27,6 @@ use strict;
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel($$) # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
 
 #########################
 # common row types and such, for translation of the external account
@@ -161,11 +116,10 @@ while(&readLine) {
 
 } # doManualLookup 
 
-@input = @commonInput;
-$result = undef;
+setInputLines(@commonInput);
 &doManualLookup();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(), 
 '> acct,OP_INSERT,source1,999,1
 > acct,OP_INSERT,source1,2011,2
 > acct,OP_INSERT,source2,ABCD,1
@@ -219,11 +173,10 @@ while(&readLine) {
 
 } # doLookupLeft
 
-@input = @commonInput;
-$result = undef;
+setInputLines(@commonInput);
 &doLookupLeft();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> acct,OP_INSERT,source1,999,1
 > acct,OP_INSERT,source1,2011,2
 > acct,OP_INSERT,source2,ABCD,1
@@ -284,11 +237,10 @@ while(&readLine) {
 
 } # doLookupFull
 
-@input = @commonInput;
-$result = undef;
+setInputLines(@commonInput);
 &doLookupFull();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> acct,OP_INSERT,source1,999,1
 > acct,OP_INSERT,source1,2011,2
 > acct,OP_INSERT,source2,ABCD,1
@@ -352,7 +304,7 @@ while(&readLine) {
 
 } # doLookupLeftMulti
 
-@input = (
+setInputLines(
 	"acct,OP_INSERT,source1,999,1\n",
 	"acct,OP_INSERT,source1,2011,2\n",
 	"acct,OP_INSERT,source2,ABCD,1\n",
@@ -365,10 +317,9 @@ while(&readLine) {
 	"trans,OP_DELETE,3,source2,QWERTY,200\n", 
 	"acct,OP_DELETE,source1,999,1\n",
 );
-$result = undef;
 &doLookupLeftMulti();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> acct,OP_INSERT,source1,999,1
 > acct,OP_INSERT,source1,2011,2
 > acct,OP_INSERT,source2,ABCD,1
@@ -429,7 +380,7 @@ while(&readLine) {
 
 } # doLookupLeftMultiOne
 
-@input = (
+setInputLines(
 	"acct,OP_INSERT,source1,999,1\n",
 	"acct,OP_INSERT,source1,2011,2\n",
 	"acct,OP_INSERT,source2,ABCD,1\n",
@@ -442,10 +393,9 @@ while(&readLine) {
 	"trans,OP_DELETE,3,source2,QWERTY,200\n", 
 	"acct,OP_DELETE,source1,999,1\n",
 );
-$result = undef;
 &doLookupLeftMultiOne();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> acct,OP_INSERT,source1,999,1
 > acct,OP_INSERT,source1,2011,2
 > acct,OP_INSERT,source2,ABCD,1
@@ -507,11 +457,10 @@ while(&readLine) {
 
 } # doLookupLeftManual
 
-@input = @commonInput;
-$result = undef;
+setInputLines(@commonInput);
 &doLookupLeftManual();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> acct,OP_INSERT,source1,999,1
 > acct,OP_INSERT,source1,2011,2
 > acct,OP_INSERT,source2,ABCD,1
@@ -635,11 +584,10 @@ while(&readLine) {
 
 } # doJoinInner
 
-@input = @inputBasicJoin;
-$result = undef;
+setInputLines(@inputBasicJoin);
 &doJoinInner();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> cur,OP_INSERT,20120310,USD,1
 > cur,OP_INSERT,20120310,GBP,2
 > cur,OP_INSERT,20120310,EUR,1.5
@@ -723,17 +671,16 @@ while(&readLine) {
 
 } # doJoinLeft
 
-@input = (
+setInputLines(
 	# add the clearing for the contrast with the later filtered demo
 	"day,20120310\n",
 	@inputBasicJoin,
 	"day,20120311\n",
 	"clear\n",
 );
-$result = undef;
 &doJoinLeft();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> day,20120310
 > cur,OP_INSERT,20120310,USD,1
 > cur,OP_INSERT,20120310,GBP,2
@@ -808,7 +755,7 @@ while(&readLine) {
 
 } # doJoinOuter
 
-@input = (
+setInputLines(
 	"cur,OP_INSERT,20120310,GBP,2\n",
 	"pos,OP_INSERT,20120310,two,AAA,100,8,GBP\n",
 	"pos,OP_INSERT,20120310,three,BBB,200,80,GBP\n",
@@ -819,10 +766,9 @@ while(&readLine) {
 	"pos,OP_DELETE,20120310,three,BBB,200,80,GBP\n",
 	"pos,OP_DELETE,20120310,three,AAA,100,300,RUR\n",
 );
-$result = undef;
 &doJoinOuter();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> cur,OP_INSERT,20120310,GBP,2
 join.rightLookup.out OP_INSERT date="20120310" currency="GBP" toUsd="2" 
 > pos,OP_INSERT,20120310,two,AAA,100,8,GBP
@@ -919,17 +865,16 @@ while(&readLine) {
 
 } # doJoinFiltered
 
-@input = (
+setInputLines(
 	# add the clearing for the contrast with the later filtered demo
 	"day,20120310\n",
 	@inputBasicJoin,
 	"day,20120311\n",
 	"clear\n",
 );
-$result = undef;
 &doJoinFiltered();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> day,20120310
 > cur,OP_INSERT,20120310,USD,1
 > cur,OP_INSERT,20120310,GBP,2

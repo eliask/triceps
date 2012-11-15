@@ -14,6 +14,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 2 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -23,53 +24,6 @@ use strict;
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel($$) # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
-
 
 #########################
 
@@ -158,7 +112,7 @@ while(&readLine) {
 
 } # doClearChunks
 
-@input = (
+setInputLines(
 	"data,1\n",
 	"clear\n",
 	"data,5\n",
@@ -171,10 +125,9 @@ while(&readLine) {
 	"dump\n",
 	"idle\n",
 );
-$result = undef;
 &doClearChunks();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> data,1
 tJoin1.out OP_INSERT s="data_1" i="1" 
 > clear

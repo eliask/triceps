@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 6 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -24,52 +25,6 @@ ok(1); # If we made it this far, we're ok.
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel($$) # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
 
 #########################
 # the simple window
@@ -135,7 +90,7 @@ while(&readLine) {
 #########################
 #  run the example
 
-@input = (
+setInputLines(
 	"1,AAA,10,10\n",
 	"2,BBB,100,100\n",
 	"3,AAA,20,20\n",
@@ -143,9 +98,9 @@ while(&readLine) {
 	"5,AAA,30,30\n",
 	"6,BBB,300,300\n",
 );
-$result = undef;
 &doWindow();
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> 1,AAA,10,10
 tWindow.out OP_INSERT id="1" symbol="AAA" price="10" size="10" 
 New contents:
@@ -255,7 +210,7 @@ while(&readLine) {
 #########################
 #  run the example
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -265,9 +220,9 @@ while(&readLine) {
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doSecondary();
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
@@ -405,17 +360,16 @@ while(&readLine) {
 #########################
 #  run the example
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doManualAgg1();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
@@ -547,17 +501,16 @@ while(&readLine) {
 #########################
 #  run the example
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doManualAgg2();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 
@@ -587,17 +540,16 @@ tAvgPrice.out OP_DELETE symbol="AAA" id="5" price="30"
 #########################
 #  run the same example, demonstrating an issue with a missing DELETE
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_INSERT,5,BBB,30,30\n",
 	"OP_INSERT,7,AAA,40,40\n",
 );
-$result = undef;
 &doManualAgg2();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 Contents:
   id="1" symbol="AAA" price="10" size="10" 

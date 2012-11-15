@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 4 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -24,39 +25,6 @@ ok(1); # If we made it this far, we're ok.
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
 
 #########################
 # Example with the direct table ops
@@ -130,7 +98,7 @@ sub helloWorldDirect()
 #########################
 # test the last example
 
-@input = (
+setInputLines(
 	"Hello, table!\n",
 	"Hello, world!\n",
 	"Hello, table!\n",
@@ -152,10 +120,10 @@ sub helloWorldDirect()
 	"dump\n",
 	"goodbye, world\n",
 );
-$result = undef;
 &helloWorldDirect();
 # XXX the result depends on the hashing order
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 "> Hello, table!
 > Hello, world!
 > Hello, table!
@@ -289,7 +257,7 @@ sub helloWorldLabels()
 #########################
 # test the last example
 
-@input = (
+setInputLines(
 	"Hello, table!\n",
 	"Hello, world!\n",
 	"Hello, table!\n",
@@ -297,9 +265,9 @@ sub helloWorldLabels()
 	"Hello, table!\n",
 	"goodbye, world\n",
 );
-$result = undef;
 &helloWorldLabels();
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 "> Hello, table!
 OP_INSERT 'table', count 1
 > Hello, world!

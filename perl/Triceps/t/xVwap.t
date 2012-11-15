@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 20 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -350,39 +351,7 @@ ok(&dataToString(@resultData), &dataToString(@expectResultData));
 
 ###################### 3. VWAP function for SimpleAggregator #################################
 
-# this uses the same infrastructure as xAgg, xWindow etc.
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
+# this uses the TestFeed
 
 #########################
 sub doVwapFunction {
@@ -463,7 +432,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,11,abc,123,100\n",
 	"OP_INSERT,12,abc,125,300\n",
 	"OP_INSERT,13,def,200,100\n",
@@ -473,10 +442,9 @@ while(&readLine) {
 	"OP_INSERT,17,def,202,100\n",
 	"OP_INSERT,18,def,192,1000\n",
 );
-$result = undef;
 &doVwapFunction();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,11,abc,123,100
 tWindow.aggrVwap OP_INSERT symbol="abc" id="11" volume="100" vwap="123" 
 > OP_INSERT,12,abc,125,300

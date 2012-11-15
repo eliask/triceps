@@ -14,9 +14,8 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 14 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
-use Errno qw(EINTR EAGAIN);
-use IO::Poll qw(POLLIN POLLOUT POLLHUP);
 use IO::Socket;
 use IO::Socket::INET;
 ok(1); # If we made it this far, we're ok.
@@ -27,39 +26,6 @@ use strict;
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
 
 #########################
 # The common client that connects to the port, sends and receives data,
@@ -238,11 +204,10 @@ qWindow.out,OP_INSERT,5,AAA,30,30
 qWindow.out,OP_NOP,,,,
 ';
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runQuery1();
-#print $result;
-ok($result, $expectQuery1);
+#print &getResultLines();
+ok(&getResultLines(), $expectQuery1);
 
 #########################
 # Module for querying the table, version 2: including the table.
@@ -359,17 +324,16 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+setInputLines(
 	"window,OP_INSERT,1,AAA,10,10\n",
 	"window,OP_INSERT,3,AAA,20,20\n",
 	"window.query,OP_INSERT\n",
 	"window,OP_INSERT,5,AAA,30,30\n",
 	"window.query,OP_INSERT\n",
 );
-$result = undef;
 &runQuery2();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> window,OP_INSERT,1,AAA,10,10
 > window,OP_INSERT,3,AAA,20,20
 > window.query,OP_INSERT
@@ -463,11 +427,10 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runQuery3();
-#print $result;
-ok($result, $expectQuery1);
+#print &getResultLines();
+ok(&getResultLines(), $expectQuery1);
 
 #########################
 # Module for querying the table, version 4: with fields for querying, interpreted.
@@ -583,7 +546,7 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+setInputLines(
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"tWindow,OP_INSERT,4,BBB,20,20\n",
@@ -592,10 +555,9 @@ run(\%dispatch);
 	"qWindow,OP_INSERT,5,AAA,0,0\n",
 	"qWindow,OP_INSERT,0,,20,0\n",
 );
-$result = undef;
 &runQuery4();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > tWindow,OP_INSERT,4,BBB,20,20
@@ -635,17 +597,16 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+setInputLines(
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"qWindow,OP_INSERT\n",
 	"tWindow,OP_INSERT,5,AAA,30,30\n",
 	"qWindow,OP_INSERT\n",
 );
-$result = undef;
 &runQuery4a();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > qWindow,OP_INSERT
@@ -791,7 +752,7 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+setInputLines(
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"tWindow,OP_INSERT,4,BBB,20,20\n",
@@ -800,10 +761,9 @@ run(\%dispatch);
 	"qWindow,OP_INSERT,5,AAA,0,0\n",
 	"qWindow,OP_INSERT,0,,20,0\n",
 );
-$result = undef;
 &runQuery5();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 'Code:
 
 			sub # ($query, $data)
@@ -860,17 +820,16 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+setInputLines(
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"qWindow,OP_INSERT\n",
 	"tWindow,OP_INSERT,5,AAA,30,30\n",
 	"qWindow,OP_INSERT\n",
 );
-$result = undef;
 &runQuery5a();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > qWindow,OP_INSERT
@@ -1016,7 +975,7 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = (
+setInputLines(
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"tWindow,OP_INSERT,4,BBB,20,20\n",
@@ -1025,10 +984,9 @@ run(\%dispatch);
 	"qWindow,OP_INSERT,5,AAA,0,0\n",
 	"qWindow,OP_INSERT,0,,20,0\n",
 );
-$result = undef;
 &runQuery6();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > tWindow,OP_INSERT,4,BBB,20,20
@@ -1180,11 +1138,10 @@ run(\%dispatch);
 
 };
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runQuery7();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > qWindow,OP_INSERT
@@ -1277,11 +1234,10 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runServerOutputFromLabel();
-#print $result;
-ok($result, $expectQuery1);
+#print &getResultLines();
+ok(&getResultLines(), $expectQuery1);
 
 #########################
 # Example with ServerOutput created independently, using Query1.
@@ -1309,11 +1265,10 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runServerOutputFromRowType();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > qWindow,OP_INSERT
@@ -1411,11 +1366,10 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runServerOutput2FromLabel();
-#print $result;
-ok($result, $expectQuery1);
+#print &getResultLines();
+ok(&getResultLines(), $expectQuery1);
 
 #########################
 # Example with ServerOutput created independently, using Query1.
@@ -1443,11 +1397,10 @@ $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
 run(\%dispatch);
 };
 
-@input = @inputQuery1;
-$result = undef;
+setInputLines(@inputQuery1);
 &runServerOutput2FromRowType();
-#print $result;
-ok($result,
+#print &getResultLines();
+ok(&getResultLines(), 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > qWindow,OP_INSERT

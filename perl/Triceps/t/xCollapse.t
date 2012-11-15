@@ -18,6 +18,7 @@ use Carp;
 use Test;
 BEGIN { plan tests => 16 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -205,52 +206,9 @@ use strict;
 #########################
 # Tests
 
-# helper functions to support either user i/o or i/o from vars
+# helper functions
 
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel($$) # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
-
-# the common main loop
+# the common main loop based on FeedTest
 sub mainloop($$$) # ($unit, $datalabel, $collapse)
 {
 	my $unit = shift;
@@ -376,17 +334,15 @@ collapse.idata.out OP_INSERT local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000"
 collapse.idata.out OP_DELETE local_ip="1.2.3.4" remote_ip="6.7.8.9" bytes="2000" 
 ';
 
-@input = @inputData;
-$result = undef;
+setInputLines(@inputData);
 &testExplicitRowType();
-#print $result;
-ok($result, $expectResult);
+#print &getResultLines();
+ok(&getResultLines(), $expectResult);
 
-@input = @inputData;
-$result = undef;
+setInputLines(@inputData);
 &testFromLabel();
-#print $result;
-ok($result, $expectResult);
+#print &getResultLines();
+ok(&getResultLines(), $expectResult);
 
 #########################
 # errors: bad values in options

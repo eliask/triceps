@@ -18,6 +18,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 3 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -27,40 +28,6 @@ use strict;
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
 
 #########################
 # the traffic that gets consolidated by the hour
@@ -177,19 +144,6 @@ our $tHourly = $uTraffic->makeTable($ttHourly,
 $tPackets->getAggregatorLabel("aggrHourly")->chain($tHourly->getInputLabel()) 
 	or confess "$!";
 
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
-
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrintPackets", $tPackets->getOutputLabel());
 # label to print the changes to the hourly stats
@@ -245,7 +199,7 @@ while(&readLine) {
 #########################
 #  run the hourly aggregation
 
-@input = (
+setInputLines(
 	"new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100\n",
 	"new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50\n",
 	"new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300\n",
@@ -259,10 +213,9 @@ while(&readLine) {
 	"dumpPackets\n",
 	"dumpHourly\n",
 );
-$result = undef;
 &doHourly();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100
 tPackets.out OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
 tHourly.out OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
@@ -530,7 +483,7 @@ while(&readLine) {
 #########################
 #  run the daily aggregation
 
-@input = (
+setInputLines(
 	"new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100\n",
 	"new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50\n",
 	"new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300\n",
@@ -539,10 +492,9 @@ while(&readLine) {
 	"new,OP_INSERT,1331145211000000\n",
 	"dumpDaily\n",
 );
-$result = undef;
 &doDaily();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100
 tPackets.out OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
 tHourly.out OP_INSERT time="1330884000000000" day="20120304" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 

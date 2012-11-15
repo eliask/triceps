@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 15 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -24,59 +25,6 @@ ok(1); # If we made it this far, we're ok.
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# write a message to user, like printf
-sub sendf # ($msg, $vars...)
-{
-	$fmt = shift;
-	$result .= sprintf($fmt, @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
-
-# a template to make a label that prints the data passing through another label
-sub makePrintLabel($$) # ($print_label_name, $parent_label)
-{
-	my $name = shift;
-	my $lbParent = shift;
-	my $lb = $lbParent->getUnit()->makeLabel($lbParent->getType(), $name,
-		undef, sub { # (label, rowop)
-			&send($_[1]->printP(), "\n");
-		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
-	return $lb;
-}
 
 #########################
 # the window with a non-additive aggregator
@@ -161,17 +109,16 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doNonAdditive();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,3,AAA,20,20
@@ -190,17 +137,16 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 #########################
 #  demonstrate no missing DELETE
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_INSERT,5,BBB,30,30\n",
 	"OP_INSERT,7,AAA,40,40\n",
 );
-$result = undef;
 &doNonAdditive();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,3,AAA,20,20
@@ -306,17 +252,16 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doExtraRecord();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,3,AAA,20,20
@@ -423,7 +368,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,5,AAA,30,30\n",
@@ -431,10 +376,9 @@ while(&readLine) {
 	"OP_INSERT,3,AAA,20,20\n",
 	"OP_INSERT,7,AAA,40,40\n",
 );
-$result = undef;
 &doSortById();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,3,AAA,20,20
@@ -548,7 +492,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -557,10 +501,9 @@ while(&readLine) {
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doRememberLast();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,2,BBB,100,100
@@ -674,7 +617,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -683,10 +626,9 @@ while(&readLine) {
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doRememberLastNR();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,2,BBB,100,100
@@ -804,7 +746,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -813,10 +755,9 @@ while(&readLine) {
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doSimpleAdditiveState();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,2,BBB,100,100
@@ -840,16 +781,15 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 #########################
 #  demonstrate the precision loss
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,1,10\n",
 	"OP_INSERT,2,AAA,1e20,20\n",
 	"OP_INSERT,3,AAA,2,10\n",
 	"OP_INSERT,4,AAA,3,10\n",
 );
-$result = undef;
 &doSimpleAdditiveState();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,1,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="1" 
 > OP_INSERT,2,AAA,1e20,20
@@ -953,7 +893,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -962,10 +902,9 @@ while(&readLine) {
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doSimpleAdditiveNoLast();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,2,BBB,100,100
@@ -1050,7 +989,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -1058,10 +997,9 @@ while(&readLine) {
 	"OP_INSERT,3,BBB,20,20\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doPrintCall();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.pre OP_INSERT id="1" symbol="AAA" price="10" size="10" 
 tWindow.out OP_INSERT id="1" symbol="AAA" price="10" size="10" 
@@ -1293,11 +1231,10 @@ while(&readLine) {
 	"OP_INSERT,8,BBB,1,10\n",
 );
 
-@input = @inputOrder;
-$result = undef;
+setInputLines(@inputOrder);
 &doNonAdditive3();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,1,10
 1
 > OP_INSERT,2,AAA,1,10
@@ -1316,11 +1253,10 @@ ok($result,
 2500000000000000
 ');
 
-@input = @inputOrder;
-$result = undef;
+setInputLines(@inputOrder);
 &doOrderedSum();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,1,10
 1
 > OP_INSERT,2,AAA,1,10
@@ -1433,11 +1369,10 @@ while(&readLine) {
 
 }; # OrderedSum2
 
-@input = @inputOrder;
-$result = undef;
+setInputLines(@inputOrder);
 &doOrderedSum2();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,1,10
 1
 > OP_INSERT,2,AAA,1,10
@@ -1521,7 +1456,7 @@ while(&readLine) {
 #########################
 #  run the same input as with manual aggregation
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -1530,10 +1465,9 @@ while(&readLine) {
 	"OP_DELETE,3\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &doSimpleAgg();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1,AAA,10,10
 tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="1" price="10" 
 > OP_INSERT,2,BBB,100,100
