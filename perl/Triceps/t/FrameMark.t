@@ -17,6 +17,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 21 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 use Carp;
 ok(1); # If we made it this far, we're ok.
 
@@ -24,40 +25,6 @@ ok(1); # If we made it this far, we're ok.
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
-
-
-#########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= "> $_" if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
 
 ###################### new #################################
 
@@ -92,7 +59,7 @@ sub startLoop # ($label, $rowop)
 	my $depth = $u1->getStackDepth();
 	($depth == 2) or confess "Stack depth growing to $depth";
 
-	$result .= $rowop->printP() . "\n";
+	&send($rowop->printP(), "\n");
 	$u1->setMark($m1);
 
 	my %data = $rowop->getRow()->toHash();
@@ -111,7 +78,7 @@ sub startLoop # ($label, $rowop)
 		};
 		$@ =~ s/ at \S*FrameMark[^\n]*//g; # remove the varying line number
 		$@ =~ s/SCALAR\(\w+\)/SCALAR/g; # remove the varying scalar pointers
-		$result .= "bad loopAt: $@\n"
+		&send("bad loopAt: $@\n");
 	} else {
 		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow())) or confess "$!";
 	}
@@ -121,7 +88,7 @@ sub nextLoop # ($label, $rowop)
 {
 	my ($label, $rowop) = @_;
 
-	$result .= $rowop->printP() . "\n";
+	&send($rowop->printP(), "\n");
 
 	my %data = $rowop->getRow()->toHash();
 	$data{count}++;
@@ -157,7 +124,7 @@ $firstRowop = $labStart->makeRowop(&Triceps::OP_INSERT, $firstRow);
 ok(ref $firstRowop, "Triceps::Rowop");
 
 # run the test with single-records
-$result = "";
+setInputLines();
 $callType = "single";
 $u1->schedule($firstRowop);
 
@@ -187,38 +154,38 @@ labStart OP_DELETE count=\"3\" id=\"3\"
 
 $u1->drainFrame();
 ok($u1->empty());
-ok($result, $expect);
-#print STDERR $result;
+#print &getResultLines();
+ok(&getResultLines(), $expect);
 
 # run the test with trays
-$result = "";
+setInputLines();
 $callType = "tray";
 $u1->schedule($firstRowop);
 
 $u1->drainFrame();
 ok($u1->empty());
-ok($result, $expect);
-#print STDERR $result;
+#print &getResultLines();
+ok(&getResultLines(), $expect);
 
 # run the test with makeHashLoopAt
-$result = "";
+setInputLines();
 $callType = "fromHash";
 $u1->schedule($firstRowop);
 
 $u1->drainFrame();
 ok($u1->empty());
-ok($result, $expect);
-#print STDERR $result;
+#print &getResultLines();
+ok(&getResultLines(), $expect);
 
 # run the test with makeArrayLoopAt
-$result = "";
+setInputLines();
 $callType = "fromArray";
 $u1->schedule($firstRowop);
 
 $u1->drainFrame();
 ok($u1->empty());
-ok($result, $expect);
-#print STDERR $result;
+#print &getResultLines();
+ok(&getResultLines(), $expect);
 
 ############################################################
 # test of makeLoopHead()
@@ -280,16 +247,15 @@ while(&readLine) {
 
 } # doFibHead
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibHead();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1
 1 is Fibonacci number 1
 > OP_DELETE,2
@@ -358,16 +324,15 @@ while(&readLine) {
 
 } # doFibAround
 
-@input = (
+setInputLines(
 	"OP_INSERT,1\n",
 	"OP_DELETE,2\n",
 	"OP_INSERT,5\n",
 	"OP_INSERT,6\n",
 );
-$result = undef;
 &doFibAround();
-#print $result;
-ok($result, 
+#print &getResultLines();
+ok(&getResultLines(), 
 '> OP_INSERT,1
 1 is a Fibonacci number 1
 > OP_DELETE,2

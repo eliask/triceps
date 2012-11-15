@@ -18,6 +18,7 @@ use Carp;
 use Test;
 BEGIN { plan tests => 71 };
 use Triceps;
+use Triceps::X::TestFeed qw(:all);
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -28,37 +29,7 @@ ok(1); # If we made it this far, we're ok.
 use strict;
 
 #########################
-# helper functions to support either user i/o or i/o from vars
-
-# vars to serve as input and output sources
-my @input;
-my $result;
-
-# simulates user input: returns the next line or undef
-sub readLine # ()
-{
-	$_ = shift @input;
-	$result .= $_ if defined $_; # have the inputs overlap in result, as on screen
-	return $_;
-}
-
-# write a message to user
-sub send # (@message)
-{
-	$result .= join('', @_);
-}
-
-# versions for the real user interaction
-sub readLineX # ()
-{
-	$_ = <STDIN>;
-	return $_;
-}
-
-sub sendX # (@message)
-{
-	print @_;
-}
+# helper functions
 
 # instantiate the table and run it with the given input
 sub runExample($$$) # ($unit, $tabType, $aggName)
@@ -194,7 +165,7 @@ ok($compText =~ /rhi = /);
 ok($compText =~ /rowFirst = /);
 ok($compText =~ /rowLast = /);
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -202,26 +173,25 @@ ok($compText =~ /rowLast = /);
 	"OP_INSERT,3,BBB,20,20\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &runExample($uTrades, $ttWindow, "myAggr");
-#print $result;
-ok($result, 
-'OP_INSERT,1,AAA,10,10
+#print &getResultLines();
+ok(&getResultLines(), 
+'> OP_INSERT,1,AAA,10,10
 t.myAggr OP_INSERT symbol="AAA" id="1" volume="10" count="1" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 t.myAggr OP_INSERT symbol="BBB" id="2" volume="100" count="1" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 t.myAggr OP_DELETE symbol="AAA" id="1" volume="10" count="1" 
 t.myAggr OP_INSERT symbol="AAA" id="3" volume="30" count="2" second="3" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 t.myAggr OP_DELETE symbol="AAA" id="3" volume="30" count="2" second="3" 
 t.myAggr OP_INSERT symbol="AAA" id="5" volume="50" count="2" second="5" 
-OP_INSERT,3,BBB,20,20
+> OP_INSERT,3,BBB,20,20
 t.myAggr OP_DELETE symbol="AAA" id="5" volume="50" count="2" second="5" 
 t.myAggr OP_DELETE symbol="BBB" id="2" volume="100" count="1" 
 t.myAggr OP_INSERT symbol="AAA" id="5" volume="30" count="1" 
 t.myAggr OP_INSERT symbol="BBB" id="3" volume="120" count="2" second="3" 
-OP_DELETE,5
+> OP_DELETE,5
 t.myAggr OP_DELETE symbol="AAA" id="5" volume="30" count="1" 
 ');
 
@@ -252,7 +222,7 @@ ok($compText !~ /rhi = /);
 ok($compText !~ /rowFirst = /);
 ok($compText !~ /rowLast = /);
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -260,26 +230,25 @@ ok($compText !~ /rowLast = /);
 	"OP_INSERT,3,BBB,20,20\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &runExample($uTrades, $ttWindow, "myAggr");
-#print $result;
-ok($result, 
-'OP_INSERT,1,AAA,10,10
+#print &getResultLines();
+ok(&getResultLines(), 
+'> OP_INSERT,1,AAA,10,10
 t.myAggr OP_INSERT count="1" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 t.myAggr OP_INSERT count="1" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 t.myAggr OP_DELETE count="1" 
 t.myAggr OP_INSERT count="2" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 t.myAggr OP_DELETE count="2" 
 t.myAggr OP_INSERT count="2" 
-OP_INSERT,3,BBB,20,20
+> OP_INSERT,3,BBB,20,20
 t.myAggr OP_DELETE count="2" 
 t.myAggr OP_DELETE count="1" 
 t.myAggr OP_INSERT count="1" 
 t.myAggr OP_INSERT count="2" 
-OP_DELETE,5
+> OP_DELETE,5
 t.myAggr OP_DELETE count="1" 
 ');
 
@@ -310,7 +279,7 @@ ok($compText !~ /rhi = /);
 ok($compText =~ /rowFirst = /);
 ok($compText !~ /rowLast = /);
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -318,26 +287,25 @@ ok($compText !~ /rowLast = /);
 	"OP_INSERT,3,BBB,20,20\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &runExample($uTrades, $ttWindow, "myAggr");
-#print $result;
-ok($result, 
-'OP_INSERT,1,AAA,10,10
+#print &getResultLines();
+ok(&getResultLines(), 
+'> OP_INSERT,1,AAA,10,10
 t.myAggr OP_INSERT symbol="AAA" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 t.myAggr OP_INSERT symbol="BBB" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 t.myAggr OP_DELETE symbol="AAA" 
 t.myAggr OP_INSERT symbol="AAA" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 t.myAggr OP_DELETE symbol="AAA" 
 t.myAggr OP_INSERT symbol="AAA" 
-OP_INSERT,3,BBB,20,20
+> OP_INSERT,3,BBB,20,20
 t.myAggr OP_DELETE symbol="AAA" 
 t.myAggr OP_DELETE symbol="BBB" 
 t.myAggr OP_INSERT symbol="AAA" 
 t.myAggr OP_INSERT symbol="BBB" 
-OP_DELETE,5
+> OP_DELETE,5
 t.myAggr OP_DELETE symbol="AAA" 
 ');
 
@@ -368,7 +336,7 @@ ok($compText !~ /rhi = /);
 ok($compText !~ /rowFirst = /);
 ok($compText =~ /rowLast = /);
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,10\n",
 	"OP_INSERT,2,BBB,100,100\n",
 	"OP_INSERT,3,AAA,20,20\n",
@@ -376,26 +344,25 @@ ok($compText =~ /rowLast = /);
 	"OP_INSERT,3,BBB,20,20\n",
 	"OP_DELETE,5\n",
 );
-$result = undef;
 &runExample($uTrades, $ttWindow, "myAggr");
-#print $result;
-ok($result, 
-'OP_INSERT,1,AAA,10,10
+#print &getResultLines();
+ok(&getResultLines(), 
+'> OP_INSERT,1,AAA,10,10
 t.myAggr OP_INSERT symbol="AAA" 
-OP_INSERT,2,BBB,100,100
+> OP_INSERT,2,BBB,100,100
 t.myAggr OP_INSERT symbol="BBB" 
-OP_INSERT,3,AAA,20,20
+> OP_INSERT,3,AAA,20,20
 t.myAggr OP_DELETE symbol="AAA" 
 t.myAggr OP_INSERT symbol="AAA" 
-OP_INSERT,5,AAA,30,30
+> OP_INSERT,5,AAA,30,30
 t.myAggr OP_DELETE symbol="AAA" 
 t.myAggr OP_INSERT symbol="AAA" 
-OP_INSERT,3,BBB,20,20
+> OP_INSERT,3,BBB,20,20
 t.myAggr OP_DELETE symbol="AAA" 
 t.myAggr OP_DELETE symbol="BBB" 
 t.myAggr OP_INSERT symbol="AAA" 
 t.myAggr OP_INSERT symbol="BBB" 
-OP_DELETE,5
+> OP_DELETE,5
 t.myAggr OP_DELETE symbol="AAA" 
 ');
 
@@ -708,26 +675,25 @@ ok(ref $rtAggr, "Triceps::RowType");
 ok($rtAggr->print(undef), "row { string symbol, int32 id, float64 maxsize, float64 minsize, int32 count, float64 avg, float64 avgperl, float64 xsum, }");
 #print $compText;
 
-@input = (
+setInputLines(
 	"OP_INSERT,1,AAA,10,\n",
 	"OP_INSERT,2,AAA,10,100\n",
 	"OP_INSERT,3,AAA,10,200\n",
 	"OP_INSERT,4,AAA,10,50\n",
 );
-$result = undef;
 &runExample($uTrades, $ttWindow, "myAggr");
-#print $result;
+#print &getResultLines();
 # the old records get pushed out of the window by the limit
-ok($result, 
-'OP_INSERT,1,AAA,10,
+ok(&getResultLines(), 
+'> OP_INSERT,1,AAA,10,
 t.myAggr OP_INSERT symbol="AAA" id="1" count="0" avgperl="0" xsum="1000" 
-OP_INSERT,2,AAA,10,100
+> OP_INSERT,2,AAA,10,100
 t.myAggr OP_DELETE symbol="AAA" id="1" count="0" avgperl="0" xsum="1000" 
 t.myAggr OP_INSERT symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" xsum="1100" 
-OP_INSERT,3,AAA,10,200
+> OP_INSERT,3,AAA,10,200
 t.myAggr OP_DELETE symbol="AAA" id="1" maxsize="100" minsize="100" count="1" avg="100" avgperl="50" xsum="1100" 
 t.myAggr OP_INSERT symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" xsum="1300" 
-OP_INSERT,4,AAA,10,50
+> OP_INSERT,4,AAA,10,50
 t.myAggr OP_DELETE symbol="AAA" id="2" maxsize="200" minsize="100" count="2" avg="150" avgperl="150" xsum="1300" 
 t.myAggr OP_INSERT symbol="AAA" id="3" maxsize="200" minsize="50" count="2" avg="125" avgperl="125" xsum="1250" 
 ');

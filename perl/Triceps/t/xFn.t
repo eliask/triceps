@@ -17,8 +17,8 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 18 };
 use Triceps;
-use Carp;
 use Triceps::X::TestFeed qw(:all);
+use Carp;
 ok(1); # If we made it this far, we're ok.
 
 use strict;
