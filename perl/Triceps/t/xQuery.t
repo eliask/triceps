@@ -290,7 +290,8 @@ my $window = $uTrades->makeTableQuery2($ttWindow, "window");
 my %dispatch;
 $dispatch{$window->getName()} = $window->getInputLabel();
 $dispatch{$window->getQueryLabel()->getName()} = $window->getQueryLabel();
-$dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
+# For a change, use the exitFunc form.
+$dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
 
 Triceps::X::DumbClient::run(\%dispatch);
 };
@@ -301,15 +302,18 @@ setInputLines(
 	"window.query,OP_INSERT\n",
 	"window,OP_INSERT,5,AAA,30,30\n",
 	"window.query,OP_INSERT\n",
+	"exit\n" # before the auto-added exit; this one has no args
 );
 &runQuery2();
 #print &getResultLines();
+# This one reflects the explicit "exit" from the input.
 ok(&getResultLines(), 
 '> window,OP_INSERT,1,AAA,10,10
 > window,OP_INSERT,3,AAA,20,20
 > window.query,OP_INSERT
 > window,OP_INSERT,5,AAA,30,30
 > window.query,OP_INSERT
+> exit
 window.response,OP_INSERT,1,AAA,10,10
 window.response,OP_INSERT,3,AAA,20,20
 window.response,OP_NOP,,,,

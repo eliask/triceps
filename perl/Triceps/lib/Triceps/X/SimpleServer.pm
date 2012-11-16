@@ -91,11 +91,16 @@ sub _closeClient # ($id, $h)
 # before it can be sent.
 #
 # @param srvsock - the server socket handle
-# @param labels - reference to the label hash, that contains the
-#        mappings name => label_object used to dispatch the input;
-#        the input from the clients is parsed as CSV with the 1st field
-#        containing the label name, the 2nd the opcode, and the rest
-#        the data fields in the order of the label's row type
+# @param labels - Reference to the label hash, that contains the
+#        mappings used to dispatch the input, in either of formats:
+#          name => label_object
+#          name => code_reference
+#        The input from the clients is parsed as CSV with the 1st field
+#        containing the label name.  Then if the looked up dispatch is an
+#        actual label, the rest of CSV fields are: the 2nd the opcode, and the rest
+#        the data fields in the order of the label's row type. If the
+#        looked up dispatch is a Perl sub reference, just the whole input
+#        line is passed to it as an argument.
 sub mainLoop # ($srvsock, $%labels)
 {
 	my $srvsock = shift;
@@ -183,14 +188,18 @@ sub mainLoop # ($srvsock, $%labels)
 				my $lname = shift @data;
 				my $label = $labels->{$lname};
 				if (defined $label) {
-					my $unit = $label->getUnit();
-					confess "label '$lname' received from client $id has been cleared"
-						unless defined $unit;
-					eval {
-						$unit->makeArrayCall($label, @data);
-						$unit->drainFrame();
-					};
-					warn "input data error: $@\nfrom data: $line\n" if $@;
+					if (ref($label) eq 'CODE') {
+						&$label($line);
+					} else {
+						my $unit = $label->getUnit();
+						confess "label '$lname' received from client $id has been cleared"
+							unless defined $unit;
+						eval {
+							$unit->makeArrayCall($label, @data);
+							$unit->drainFrame();
+						};
+						warn "input data error: $@\nfrom data: $line\n" if $@;
+					}
 				} else {
 					warn "unknown label '$lname' received from client $id: $line "
 				}
@@ -235,8 +244,27 @@ sub startServer # ($port, $%labels)
 	return ($port, $pid);
 }
 
+# A dispatch function, sending anything to which will exit the server.
+# The server will not flush the outputs before exit.
+#
+# Use like:
+#   $dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+#
+# In this way the input line doesn't have to contain the opcode.
+# The alternative way is through makeExitLabel().
+sub exitFunc # ($line)
+{
+		$srv_exit = 1;
+}
+
 # Create a label, sending anything to which will exit the server.
 # The server will not flush the outputs before exit.
+#
+# Use like:
+#   $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
+#
+# In this way the input line has to contain at least the opcode.
+# The alternative way is through exitFunc().
 #
 # @param unit - the unit in which to create the label
 # @param name - the label name
