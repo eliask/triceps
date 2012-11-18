@@ -7,8 +7,6 @@
 
 #########################
 
-# change 'tests => 1' to 'tests => last_test_to_print';
-
 use ExtUtils::testlib;
 
 use Test;
@@ -72,11 +70,6 @@ if (0) {
 	waitpid($pid, 0);
 	exit(0);
 }
-
-#########################
-# Module for server control.
-package ServerHelpers;
-use Carp;
 
 #########################
 # Module for querying the table, version 1: no conditions.
