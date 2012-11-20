@@ -1,0 +1,45 @@
+Table dump
+
+Another intermediate step for the example I'm working on is the table dumping. It allows to iterate on a table in a functional manner.
+
+A new label "dump" is added to the table and its FnReturn. Whenever the method dumpAll() is called, it sends the whole contents of the table to that label. Then you can set a binding on the table's FnReturn, call dumpAll(), and the binding will iterate through the whole table's contents.
+
+The grand plan is also to add the dumping by a a condition that selects a sub-index, but it's not implemented yet.
+
+It's also possible to dump in an alternative order: dumpAllIdx() can send the rows in the order of any index, rather than the default first leaf index.
+
+If you want to get the dump label explicitly, you can do it with
+
+my $dlab = $table->getDumpLabel();
+
+Normally the only reason to do that would be to add it to another FnReturn (besides the table's FnReturn). Chaining anything else directly to this label would not make much sense, because the dump of the table can be called from many places, and the directly chained label will receive data every time the dump is called.
+
+The typical usage looks like this:
+
+    Triceps::FnBinding::call(
+        name => "iterate",
+        on => $table->fnReturn(),
+        unit => $unit,
+        labels => [
+            dump => sub { ... },        ],
+        code => sub {
+            $table->dumpAll();
+        },
+    );
+
+It's less efficient than the normal iteration but sometimes comes handy.
+
+Normally the rowops are sent with the opcode OP_INSERT. But the opcode can also be specified explicitly:
+
+$table->dumpAll($opcode);
+
+The alternative order can be achieved with:
+
+$table->dumpAllIdx($indexType);
+$table->dumpAllIdx($indexType, $opcode);
+
+As usual, the index type must belong to the exact type of this table. For example:
+
+$table->dumpAllIdx($table->getType()->findIndexPath("cb"), "OP_NOP");
+
+And some more interesting examples will be forthcoming later. 

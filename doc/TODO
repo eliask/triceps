@@ -70,6 +70,7 @@ Things that need to be done:
 * in Perl FnReturn add the argument
   handler, and pass the args directly in push(), like [$fbind, @args...].
 * A more strict handling of frame marks?
+* add table dumping by condition
 * add callAsChained in Perl
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
