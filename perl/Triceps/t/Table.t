@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 229 };
+BEGIN { plan tests => 248 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -629,6 +629,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 		labels => [
 			pre => sub { $buf .= "on pre\n"; },
 			out => sub { $buf .= "on out\n"; },
+			dump => sub { $buf .= "on dump\n"; },
 			myAggr => sub { $buf .= "on myAggr\n"; },
 		],
 		code => sub {
@@ -670,4 +671,132 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 	ok(!defined $fret);
 	#print "$@";
 	ok($@ =~ /^Failed to create an FnReturn on table 't9':\n  duplicate row name 'pre' at/);
+}
+
+############################## dump ##################################################
+
+{
+	my $u9 = Triceps::Unit->new("u9");
+	ok(ref $u9, "Triceps::Unit");
+
+	my $tt9 = Triceps::TableType->new($rt1)
+		->addSubIndex("bc", Triceps::SimpleOrderedIndex->new("b" => "ASC", "c" => "ASC"))
+		->addSubIndex("cb", Triceps::SimpleOrderedIndex->new("c" => "ASC", "b" => "ASC"))
+		;
+	ok(ref $tt9, "Triceps::TableType");
+	ok($tt9->initialize(), 1);
+
+	my $t9 = $u9->makeTable($tt9, "EM_CALL", "t9");
+	ok(ref $t9, "Triceps::Table");
+	my $fret = $t9->fnReturn();
+	ok(ref $fret, "Triceps::FnReturn");
+
+	my $dlab = $t9->getDumpLabel();
+	ok(ref $dlab, "Triceps::Label");
+
+	my($res1, $res2);
+	my $lp1 = $u9->makeLabel($rt1, "lp1", undef, sub {
+		$res1 .= $_[1]->printP();
+		$res1 .= "\n";
+	});
+	my $lp2 = $u9->makeLabel($rt1, "lp2", undef, sub {
+		$res2 .= $_[1]->printP();
+		$res2 .= "\n";
+	});
+
+	$dlab->chain($lp1);
+
+	$t9->insert($rt1->makeRowHash(b => 1, c => 1, e => "r11"));
+	$t9->insert($rt1->makeRowHash(b => 1, c => 2, e => "r12"));
+	$t9->insert($rt1->makeRowHash(b => 2, c => 2, e => "r22"));
+	$t9->insert($rt1->makeRowHash(b => 2, c => 1, e => "r21"));
+
+	ok(!defined $res1);
+
+	Triceps::FnBinding::call(
+		name => "test",
+		on => $fret,
+		unit => $u9,
+		labels => [
+			dump => $lp2,
+		],
+		code => sub {
+			$t9->dumpAll();
+		},
+	);
+	#print "$res1";
+	ok($res1,
+'t9.dump OP_INSERT b="1" c="1" e="r11" 
+t9.dump OP_INSERT b="1" c="2" e="r12" 
+t9.dump OP_INSERT b="2" c="1" e="r21" 
+t9.dump OP_INSERT b="2" c="2" e="r22" 
+');
+	#print "$res2";
+	ok($res2,
+'lp2 OP_INSERT b="1" c="1" e="r11" 
+lp2 OP_INSERT b="1" c="2" e="r12" 
+lp2 OP_INSERT b="2" c="1" e="r21" 
+lp2 OP_INSERT b="2" c="2" e="r22" 
+');
+
+	undef $res1;
+	undef $res2;
+	Triceps::FnBinding::call(
+		name => "test",
+		on => $fret,
+		unit => $u9,
+		labels => [
+			dump => $lp2,
+		],
+		code => sub {
+			$t9->dumpAll($t9->getType()->findIndexPath("cb"));
+		},
+	);
+	#print "$res1";
+	ok($res1,
+'t9.dump OP_INSERT b="1" c="1" e="r11" 
+t9.dump OP_INSERT b="2" c="1" e="r21" 
+t9.dump OP_INSERT b="1" c="2" e="r12" 
+t9.dump OP_INSERT b="2" c="2" e="r22" 
+');
+	#print "$res2";
+	ok($res2,
+'lp2 OP_INSERT b="1" c="1" e="r11" 
+lp2 OP_INSERT b="2" c="1" e="r21" 
+lp2 OP_INSERT b="1" c="2" e="r12" 
+lp2 OP_INSERT b="2" c="2" e="r22" 
+');
+
+	# the bad args
+	my $res;
+	$res = eval {
+		$t9->dumpAll($t9->getType()->findIndexPath("cb"), 2);
+	};
+	ok(!defined $res);
+	#print "$@\n";
+	ok($@ =~ /^Usage: Triceps::Table::dumpAll\(self, \[, widx\]\)/);
+
+	my $res;
+	$res = eval {
+		$t9->dumpAll($t9);
+	};
+	ok(!defined $res);
+	#print "$@\n";
+	ok($@ =~ /^Triceps::Table::dumpAll: widx argument has an incorrect magic for IndexType/);
+
+	my $res;
+	$res = eval {
+		$t9->dumpAll(1);
+	};
+	ok(!defined $res);
+	#print "$@\n";
+	ok($@ =~ /^Triceps::Table::dumpAll: row argument is not a blessed SV reference to IndexType/);
+
+	my $res;
+	$res = eval {
+		$t9->dumpAll($it1);
+	};
+	ok(!defined $res);
+	#print "$@\n";
+	ok($@ =~ /^Triceps::Table::dumpAll: indexType argument does not belong to table's type/);
 }

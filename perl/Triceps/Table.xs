@@ -125,6 +125,18 @@ getPreLabel(WrapTable *self)
 		RETVAL
 
 WrapLabel *
+getDumpLabel(WrapTable *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Label";
+
+		clearErrMsg();
+		Table *t = self->get();
+		RETVAL = new WrapLabel(t->getDumpLabel());
+	OUTPUT:
+		RETVAL
+
+WrapLabel *
 getAggregatorLabel(WrapTable *self, char *aggname)
 	CODE:
 		static char funcName[] =  "Triceps::Table::getAggregatorLabel";
@@ -570,3 +582,36 @@ clear(WrapTable *self, ...)
 
 			t->clear(arg);
 		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+dumpAll(WrapTable *self, ...)
+	CODE:
+		try { do {
+			static char funcName[] =  "Triceps::Table::dumpAll";
+			clearErrMsg();
+			Table *t = self->get();
+			IndexType *idx;
+
+			if (items == 1) {
+				idx = NULL;
+			} else if (items == 2) {
+				if( sv_isobject(ST(1)) && (SvTYPE(SvRV(ST(1))) == SVt_PVMG) ) {
+					WrapIndexType *widx = (WrapIndexType *)SvIV((SV*)SvRV( ST(1) ));
+					if (widx->badMagic()) {
+						throw TRICEPS_NS::Exception::f("%s: widx argument has an incorrect magic for IndexType", funcName);
+					}
+
+					idx = widx->get();
+					if (idx->getTabtype() != t->getType()) {
+						throw TRICEPS_NS::Exception(strprintf("%s: indexType argument does not belong to table's type", funcName), false);
+					}
+				} else{
+					throw TRICEPS_NS::Exception::f("%s: row argument is not a blessed SV reference to IndexType", funcName);
+				}
+			} else {
+				throw TRICEPS_NS::Exception::f("Usage: %s(self, [, widx])", funcName);
+			}
+
+			t->dumpAll(idx);
+		} while(0); } TRICEPS_CATCH_CROAK;
+

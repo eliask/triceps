@@ -83,7 +83,6 @@ Things that need to be done:
 * doc: the new draining of forked rowops, new mark semantics
 
 * doc: streaming functions and the unit boundaries
-* doc: streaming functions replace the copy trays in tables
 
 App ideas:
 * queries on CSV files

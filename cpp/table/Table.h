@@ -45,7 +45,6 @@ public:
 	// Return the label for sending Rowops into the table
 	// (as opposed to getLabel() which is inherited from gadget and
 	// returns the output label, on which the rowops are sent from the table).
-	// May return NULL if the input label was not created.
 	Label *getInputLabel() const
 	{
 		return inputLabel_.get();
@@ -53,10 +52,18 @@ public:
 
 	// Return the label that gets called (always called, no other modes)
 	// if it has anything else chained on it before modifying each row.
-	// May return NULL if the input label was not created.
 	Label *getPreLabel() const
 	{
 		return preLabel_.get();
+	}
+
+	// Return the label that gets called by the dump methods.
+	// This is a way to iterate with the streaming functions: connect your
+	// binding to the dump label, and then call one of the dump methods
+	// to send a set of rows to it.
+	Label *getDumpLabel() const
+	{
+		return dumpLabel_.get();
 	}
 
 	// Return the label of a named aggregator
@@ -82,7 +89,7 @@ public:
 	// Get the FnReturn for this table. It will get created on the first
 	// call, so if not used, it will not add overhead.
 	// Its name is "<table_name>.fret".
-	// It contains two fixed labels: "out" and "pre", and a label for every
+	// It contains some fixed labels: "out", "pre" and "dump", and a label for every
 	// aggregator.
 	// The table keeps a reference to the FnReturn, so returning a pointer
 	// is always safe.
@@ -228,7 +235,7 @@ public:
 	// finding the group.
 	size_t groupSizeRowIdx(IndexType *ixt, const Row *what) const;
 
-	// Clear the table. The delete rowops will be send out of the "pre" and
+	// Clear the table. The deleted rowops will be send out of the "pre" and
 	// "out" labels as usual. The rows are sent in the order of the
 	// first leaf index.
 	// In the future it might be optimized, the initial implementation
@@ -237,6 +244,16 @@ public:
 	// @param limit - maximal number of the rows to delete. 0 means
 	//        "delete all".
 	void clear(size_t limit = 0);
+
+	// { The dump interface.
+	
+	// Send the whole contents of the table to the dump label.
+	// @param ixt - Index type that determines the ordering of the rows.
+	//        If NULL then the default first leaf index is used.
+	//        The index type must belong to this table's type.
+	void dumpAll(IndexType *ixt = NULL) const;
+
+	// } The dump interface.
 
 protected:
 	friend class TableType;
@@ -295,6 +312,7 @@ protected:
 	Autoref<InputLabel> inputLabel_;
 	Autoref<IndexType> firstLeaf_; // the first leaf index type, used for default find
 	Autoref<DummyLabel> preLabel_; // called before modifying a row, if has anything chained
+	Autoref<DummyLabel> dumpLabel_; // the iteration data
 	mutable Autoref<FnReturn> fnReturn_; // the FnReturn object for table results
 	AggGadgetVec aggs_; // gadgets for all aggregators, matching the order in TableType
 	string name_; // base name of the table

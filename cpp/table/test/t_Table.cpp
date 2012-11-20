@@ -90,9 +90,11 @@ UTESTCASE preLabel(Utest *utest)
 	UT_ASSERT(!t.isNull());
 	UT_ASSERT(t->getInputLabel() != NULL);
 	UT_ASSERT(t->getPreLabel() != NULL);
+	UT_ASSERT(t->getDumpLabel() != NULL);
 	UT_ASSERT(t->getLabel() != NULL);
 	UT_IS(t->getInputLabel()->getName(), "t.in");
 	UT_IS(t->getPreLabel()->getName(), "t.pre");
+	UT_IS(t->getDumpLabel()->getName(), "t.dump");
 	UT_IS(t->getLabel()->getName(), "t.out");
 
 	FdataVec dv;
@@ -167,7 +169,7 @@ UTESTCASE preLabel(Utest *utest)
 		"table size 2\n"
 	);
 
-	// Getting an FnReturn creates it and chains it to the "out" and "pre" labels.
+	// Getting an FnReturn creates it and chains it to the "out", "pre", "dump" labels.
 	FnReturn *fr = t->fnReturn();
 	UT_ASSERT(fr != NULL);
 	UT_IS(t->fnReturn(), fr); // repeated calls return the same object
@@ -567,3 +569,5 @@ UTESTCASE clear(Utest *utest)
 	UT_IS(ldel->nextval_, 10);
 	UT_IS(ldel->nextval_, 10);
 }
+
+// dumpAll() and .dump label are tested in Perl

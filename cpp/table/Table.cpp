@@ -44,6 +44,7 @@ Table::Table(Unit *unit, EnqMode emode, const string &name,
 	inputLabel_(new InputLabel(unit, rowt, name + ".in", this)),
 	firstLeaf_(tt->getFirstLeaf()),
 	preLabel_(new DummyLabel(unit, rowt, name + ".pre")),
+	dumpLabel_(new DummyLabel(unit, rowt, name + ".dump")),
 	name_(name),
 	busy_(false)
 { 
@@ -99,7 +100,9 @@ FnReturn *Table::fnReturn() const
 	if (fnReturn_.isNull()) {
 		fnReturn_ = FnReturn::make(unit_, name_ + ".fret")
 			->addFromLabel("out", label_)
-			->addFromLabel("pre", preLabel_);
+			->addFromLabel("pre", preLabel_)
+			->addFromLabel("dump", dumpLabel_)
+		;
 		for (AggGadgetVec::const_iterator it = aggs_.begin(); it != aggs_.end(); ++it) {
 			fnReturn_->addFromLabel( (*it)->getType()->getName(), (*it)->getLabel() );
 		}
@@ -438,6 +441,14 @@ void Table::clear(size_t limit)
 		if (limit != 0 && --limit == 0)
 			break;
 	}
+}
+
+void Table::dumpAll(IndexType *ixt) const
+{
+	if (ixt == NULL)
+		ixt = firstLeaf_;
+	for (RowHandle *rh = beginIdx(ixt); rh != NULL; rh = nextIdx(ixt, rh))
+		unit_->call(new Rowop(dumpLabel_, Rowop::OP_INSERT, rh->getRow()));
 }
 
 }; // TRICEPS_NS
