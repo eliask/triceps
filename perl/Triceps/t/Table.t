@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 248 };
+BEGIN { plan tests => 254 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -585,7 +585,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 
 	# bad args
 	ok(!eval { $tc1->clear(1, 2) });
-	ok($@ =~ /^Usage: Triceps::Table::clear\(self, \[, limit\]\) at/) or print STDERR "got: $@\n";
+	ok($@ =~ /^Usage: Triceps::Table::clear\(self \[, limit\]\) at/) or print STDERR "got: $@\n";
 	ok(!eval { $tc1->clear(-1) });
 	ok($@ =~ /^Triceps::Table::clear: the limit argument must be >=0, got -1/) or print STDERR "got: $@\n";
 }
@@ -713,6 +713,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 
 	ok(!defined $res1);
 
+	# default order, default opcode
 	Triceps::FnBinding::call(
 		name => "test",
 		on => $fret,
@@ -739,6 +740,7 @@ lp2 OP_INSERT b="2" c="1" e="r21"
 lp2 OP_INSERT b="2" c="2" e="r22" 
 ');
 
+	# default order, explicit opcode
 	undef $res1;
 	undef $res2;
 	Triceps::FnBinding::call(
@@ -749,7 +751,36 @@ lp2 OP_INSERT b="2" c="2" e="r22"
 			dump => $lp2,
 		],
 		code => sub {
-			$t9->dumpAll($t9->getType()->findIndexPath("cb"));
+			$t9->dumpAll("OP_DELETE");
+		},
+	);
+	#print "$res1";
+	ok($res1,
+'t9.dump OP_DELETE b="1" c="1" e="r11" 
+t9.dump OP_DELETE b="1" c="2" e="r12" 
+t9.dump OP_DELETE b="2" c="1" e="r21" 
+t9.dump OP_DELETE b="2" c="2" e="r22" 
+');
+	#print "$res2";
+	ok($res2,
+'lp2 OP_DELETE b="1" c="1" e="r11" 
+lp2 OP_DELETE b="1" c="2" e="r12" 
+lp2 OP_DELETE b="2" c="1" e="r21" 
+lp2 OP_DELETE b="2" c="2" e="r22" 
+');
+
+	# explicit order, default opcode
+	undef $res1;
+	undef $res2;
+	Triceps::FnBinding::call(
+		name => "test",
+		on => $fret,
+		unit => $u9,
+		labels => [
+			dump => $lp2,
+		],
+		code => sub {
+			$t9->dumpAllIdx($t9->getType()->findIndexPath("cb"));
 		},
 	);
 	#print "$res1";
@@ -767,6 +798,37 @@ lp2 OP_INSERT b="1" c="2" e="r12"
 lp2 OP_INSERT b="2" c="2" e="r22" 
 ');
 
+	# explicit order, explicit opcode
+	undef $res1;
+	undef $res2;
+	Triceps::FnBinding::call(
+		name => "test",
+		on => $fret,
+		unit => $u9,
+		labels => [
+			dump => $lp2,
+		],
+		code => sub {
+			$t9->dumpAllIdx($t9->getType()->findIndexPath("cb"), &Triceps::OP_DELETE);
+		},
+	);
+	#print "$res1";
+	ok($res1,
+'t9.dump OP_DELETE b="1" c="1" e="r11" 
+t9.dump OP_DELETE b="2" c="1" e="r21" 
+t9.dump OP_DELETE b="1" c="2" e="r12" 
+t9.dump OP_DELETE b="2" c="2" e="r22" 
+');
+	#print "$res2";
+	ok($res2,
+'lp2 OP_DELETE b="1" c="1" e="r11" 
+lp2 OP_DELETE b="2" c="1" e="r21" 
+lp2 OP_DELETE b="1" c="2" e="r12" 
+lp2 OP_DELETE b="2" c="2" e="r22" 
+');
+
+	# dumpAll errors
+
 	# the bad args
 	my $res;
 	$res = eval {
@@ -774,29 +836,36 @@ lp2 OP_INSERT b="2" c="2" e="r22"
 	};
 	ok(!defined $res);
 	#print "$@\n";
-	ok($@ =~ /^Usage: Triceps::Table::dumpAll\(self, \[, widx\]\)/);
+	ok($@ =~ /^Usage: Triceps::Table::dumpAll\(self \[, opcode\]\)/);
 
-	my $res;
 	$res = eval {
-		$t9->dumpAll($t9);
+		$t9->dumpAll("zzz");
 	};
 	ok(!defined $res);
 	#print "$@\n";
-	ok($@ =~ /^Triceps::Table::dumpAll: widx argument has an incorrect magic for IndexType/);
+	ok($@ =~ /^Triceps::Table::dumpAll: unknown opcode string 'zzz', if integer was meant, it has to be cast/);
 
-	my $res;
+	# dumpAllIdx errors
+
+	# the bad args
 	$res = eval {
-		$t9->dumpAll(1);
+		$t9->dumpAllIdx($t9->getType()->findIndexPath("cb"), 2, 3);
 	};
 	ok(!defined $res);
 	#print "$@\n";
-	ok($@ =~ /^Triceps::Table::dumpAll: row argument is not a blessed SV reference to IndexType/);
+	ok($@ =~ /^Usage: Triceps::Table::dumpAllIdx\(self, widx \[, opcode\]\)/);
 
-	my $res;
 	$res = eval {
-		$t9->dumpAll($it1);
+		$t9->dumpAllIdx($t9->getType()->findIndexPath("cb"), "zzz");
 	};
 	ok(!defined $res);
 	#print "$@\n";
-	ok($@ =~ /^Triceps::Table::dumpAll: indexType argument does not belong to table's type/);
+	ok($@ =~ /^Triceps::Table::dumpAllIdx: unknown opcode string 'zzz', if integer was meant, it has to be cast/);
+
+	$res = eval {
+		$t9->dumpAllIdx($it1);
+	};
+	ok(!defined $res);
+	#print "$@\n";
+	ok($@ =~ /^Triceps::Table::dumpAllIdx: indexType argument does not belong to table's type/);
 }

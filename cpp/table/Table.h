@@ -248,10 +248,16 @@ public:
 	// { The dump interface.
 	
 	// Send the whole contents of the table to the dump label.
+	// The first leaf index is used to determine the order of the rows sent.
+	// @param op - Opcode to use for sending (INSERT by default).
+	void dumpAll(Rowop::Opcode op = Rowop::OP_INSERT) const;
+
+	// Send the whole contents of the table to the dump label, in a specific order.
 	// @param ixt - Index type that determines the ordering of the rows.
 	//        If NULL then the default first leaf index is used.
 	//        The index type must belong to this table's type.
-	void dumpAll(IndexType *ixt = NULL) const;
+	// @param op - Opcode to use for sending (INSERT by default).
+	void dumpAllIdx(IndexType *ixt, Rowop::Opcode op = Rowop::OP_INSERT) const;
 
 	// } The dump interface.
 

@@ -443,12 +443,18 @@ void Table::clear(size_t limit)
 	}
 }
 
-void Table::dumpAll(IndexType *ixt) const
+void Table::dumpAll(Rowop::Opcode op) const
+{
+	for (RowHandle *rh = begin(); rh != NULL; rh = next(rh))
+		unit_->call(new Rowop(dumpLabel_, op, rh->getRow()));
+}
+
+void Table::dumpAllIdx(IndexType *ixt, Rowop::Opcode op) const
 {
 	if (ixt == NULL)
 		ixt = firstLeaf_;
 	for (RowHandle *rh = beginIdx(ixt); rh != NULL; rh = nextIdx(ixt, rh))
-		unit_->call(new Rowop(dumpLabel_, Rowop::OP_INSERT, rh->getRow()));
+		unit_->call(new Rowop(dumpLabel_, op, rh->getRow()));
 }
 
 }; // TRICEPS_NS

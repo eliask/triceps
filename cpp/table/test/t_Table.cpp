@@ -535,8 +535,8 @@ UTESTCASE clear(Utest *utest)
 	mkfields(fld);
 
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
-	unit->setTracer(trace);
+	// Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	// unit->setTracer(trace);
 
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 	UT_ASSERT(rt1->getErrors().isNull());
@@ -570,4 +570,57 @@ UTESTCASE clear(Utest *utest)
 	UT_IS(ldel->nextval_, 10);
 }
 
-// dumpAll() and .dump label are tested in Perl
+UTESTCASE dumpAll(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
+		->addSubIndex("fifo", new FifoIndexType())
+	);
+
+	Autoref<IndexType> idx = tt->getFirstLeaf();
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	FdataVec dv;
+	mkfdata(dv);
+	
+	// One record only. Anything smarter is tested in Perl.
+	Rhref rh1(t, dv);
+	t->insert(rh1);
+
+	string tlog;
+	
+	// dumpAll, explicit opcode
+	trace->clearBuffer();
+	t->dumpAll(Rowop::OP_DELETE);
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_DELETE\n");
+	
+	// dumpAll, default opcode
+	trace->clearBuffer();
+	t->dumpAll();
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_INSERT\n");
+	
+	// dumpAllIdx, explicit opcode
+	trace->clearBuffer();
+	t->dumpAllIdx(idx, Rowop::OP_DELETE);
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_DELETE\n");
+	
+	// dumpAllIdx, default opcode
+	trace->clearBuffer();
+	t->dumpAllIdx(idx);
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_INSERT\n");
+}

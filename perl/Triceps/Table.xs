@@ -577,7 +577,7 @@ clear(WrapTable *self, ...)
 						funcName, (long long)iarg);
 				arg = (size_t)iarg;
 			} else {
-				throw TRICEPS_NS::Exception::f("Usage: %s(self, [, limit])", funcName);
+				throw TRICEPS_NS::Exception::f("Usage: %s(self [, limit])", funcName);
 			}
 
 			t->clear(arg);
@@ -590,28 +590,43 @@ dumpAll(WrapTable *self, ...)
 			static char funcName[] =  "Triceps::Table::dumpAll";
 			clearErrMsg();
 			Table *t = self->get();
-			IndexType *idx;
+			Rowop::Opcode op;
 
 			if (items == 1) {
-				idx = NULL;
+				op = Rowop::OP_INSERT;
 			} else if (items == 2) {
-				if( sv_isobject(ST(1)) && (SvTYPE(SvRV(ST(1))) == SVt_PVMG) ) {
-					WrapIndexType *widx = (WrapIndexType *)SvIV((SV*)SvRV( ST(1) ));
-					if (widx->badMagic()) {
-						throw TRICEPS_NS::Exception::f("%s: widx argument has an incorrect magic for IndexType", funcName);
-					}
-
-					idx = widx->get();
-					if (idx->getTabtype() != t->getType()) {
-						throw TRICEPS_NS::Exception(strprintf("%s: indexType argument does not belong to table's type", funcName), false);
-					}
-				} else{
-					throw TRICEPS_NS::Exception::f("%s: row argument is not a blessed SV reference to IndexType", funcName);
-				}
+				if (!parseOpcode(funcName, ST(1), op))
+					break;
 			} else {
-				throw TRICEPS_NS::Exception::f("Usage: %s(self, [, widx])", funcName);
+				throw TRICEPS_NS::Exception::f("Usage: %s(self [, opcode])", funcName);
 			}
 
-			t->dumpAll(idx);
+			t->dumpAll(op);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+dumpAllIdx(WrapTable *self, WrapIndexType *widx, ...)
+	CODE:
+		try { do {
+			static char funcName[] =  "Triceps::Table::dumpAllIdx";
+			clearErrMsg();
+			Table *t = self->get();
+			IndexType *idx = widx->get();
+			Rowop::Opcode op;
+
+			if (idx->getTabtype() != t->getType()) {
+				throw TRICEPS_NS::Exception(strprintf("%s: indexType argument does not belong to table's type", funcName), false);
+			}
+
+			if (items <= 2) {
+				op = Rowop::OP_INSERT;
+			} else if (items == 3) {
+				if (!parseOpcode(funcName, ST(2), op))
+					break;
+			} else {
+				throw TRICEPS_NS::Exception::f("Usage: %s(self, widx [, opcode])", funcName);
+			}
+
+			t->dumpAllIdx(idx, op);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
