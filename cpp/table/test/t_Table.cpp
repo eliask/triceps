@@ -623,4 +623,10 @@ UTESTCASE dumpAll(Utest *utest)
 	t->dumpAllIdx(idx);
 	tlog = trace->getBuffer()->print();
 	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_INSERT\n");
+	
+	// dumpAllIdx, default opcode, default index
+	trace->clearBuffer();
+	t->dumpAllIdx(NULL);
+	tlog = trace->getBuffer()->print();
+	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_INSERT\n");
 }
