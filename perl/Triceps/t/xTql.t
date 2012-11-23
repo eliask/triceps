@@ -130,9 +130,9 @@ sub tqlPrint # ($ctx, @args)
 	# XXX This gets the printed label name from the auto-generated label name,
 	# which is not a good practice.
 	# XXX Should have a custom query name somewhere in the context?
+	my $prev = $ctx->{prev};
 	if ($tokenized) {
 		# print in the tokenized format
-		my $prev = $ctx->{prev};
 		my $lab = $ctx->{u}->makeLabel($prev->getRowType(), 
 			"lb" . $ctx->{id} . "print", undef, sub {
 				&Triceps::X::SimpleServer::outCurBuf($_[1]->printP() . "\n");
@@ -142,8 +142,14 @@ sub tqlPrint # ($ctx, @args)
 		my $lab = Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev});
 	}
 
+	# The end-of-data notification. It will run after the current pipeline
+	# finishes.
+	my $prevname = $prev->getName();
+	push @{$ctx->{actions}}, sub {
+		&Triceps::X::SimpleServer::outCurBuf("+EOD,OP_NOP,$prevname\n");
+	};
+
 	$ctx->{next} = undef; # end of the pipeline
-	# XXX add an end-of-data notification
 }
 
 our %tqlDispatch = (
@@ -273,10 +279,13 @@ my $expectQuery1 =
 > query,{read table tWindow} {project fields {symbol price}}
 lb1read OP_INSERT id="3" symbol="AAA" price="20" size="20" 
 lb1read OP_INSERT id="5" symbol="AAA" price="30" size="30" 
++EOD,OP_NOP,lb1read
 lb2project,OP_INSERT,AAA,20
 lb2project,OP_INSERT,AAA,30
++EOD,OP_NOP,lb2project
 lb2project OP_INSERT symbol="AAA" price="20" 
 lb2project OP_INSERT symbol="AAA" price="30" 
++EOD,OP_NOP,lb2project
 ';
 
 setInputLines(@inputQuery1);
