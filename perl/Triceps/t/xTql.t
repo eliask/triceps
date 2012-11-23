@@ -123,7 +123,7 @@ sub tqlPrint # ($ctx, @args)
 		unless (defined($ctx->{prev}));
 	my $opts = {};
 	&Triceps::Opt::parse("print", $opts, {
-		tokenized => [ 1, \&Triceps::Opt::ck_mandatory ],
+		tokenized => [ 1, undef ],
 	}, @_);
 	my $tokenized = bunquote($opts->{tokenized}) + 0;
 
@@ -158,7 +158,7 @@ our %tqlDispatch = (
 	print => \&tqlPrint,
 );
 
-sub Query1 # (\%tables, $fretDumps, $argline)
+sub tqlQuery # (\%tables, $fretDumps, $argline)
 {
 	my $tables = shift;
 	my $fretDumps = shift;
@@ -241,7 +241,7 @@ sub collectDumps # ($name, \%tables)
 	);
 }
 
-sub runQuery1
+sub runTqlQuery1
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
@@ -255,7 +255,7 @@ my $fretDumps = collectDumps("fretDumps", \%tables);
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
-$dispatch{"query"} = sub { Query1(\%tables, $fretDumps, @_); };
+$dispatch{"query"} = sub { tqlQuery(\%tables, $fretDumps, @_); };
 $dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
 
 Triceps::X::DumbClient::run(\%dispatch);
@@ -289,7 +289,7 @@ lb2project OP_INSERT symbol="AAA" price="30"
 ';
 
 setInputLines(@inputQuery1);
-&runQuery1();
+&runTqlQuery1();
 #print &getResultLines();
 ok(&getResultLines(), $expectQuery1);
 
