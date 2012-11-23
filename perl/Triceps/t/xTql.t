@@ -28,6 +28,7 @@ use strict;
 # Common Triceps types.
 
 # The basic table type to be used for querying.
+# Represents the trades reports.
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
@@ -44,6 +45,20 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
+
+# Represents the static information about a company.
+our $rtSymbol = Triceps::RowType->new(
+	symbol => "string", # symbol name
+	name => "string", # the official company name
+	eps => "float64", # last quarter earnings per share
+) or confess "$!";
+
+our $ttSymbol = Triceps::TableType->new($rtSymbol)
+	->addSubIndex("bySymbol", 
+		Triceps::SimpleOrderedIndex->new(symbol => "ASC")
+	)
+	or confess "$!";
+$ttSymbol->initialize() or confess "$!";
 
 #########################
 # Server with module version 1.
@@ -90,7 +105,7 @@ sub tqlRead # ($ctx, @args)
 sub tqlProject # ($ctx, @args)
 {
 	my $ctx = shift;
-	die "The project command requires a pipeline input.\n" 
+	die "The project command may not be used at the start of a pipeline.\n" 
 		unless (defined($ctx->{prev}));
 	my $opts = {};
 	&Triceps::Opt::parse("project", $opts, {
@@ -184,7 +199,7 @@ sub tqlQuery # (\%tables, $fretDumps, $argline)
 	$ctx->{id} = 0; # a unique id for auto-generated objects
 
 	my $cleaner = $ctx->{u}->makeClearingTrigger();
-	if (!  eval {
+	if (! eval {
 		foreach my $cmd (@cmds) {
 			#&Triceps::X::SimpleServer::outCurBuf("+DEBUGcmd, $cmd\n");
 			my @args = split_braced($cmd);
@@ -247,14 +262,18 @@ sub runTqlQuery1
 my $uTrades = Triceps::Unit->new("uTrades");
 my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
 	or confess "$!";
+my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
+	or confess "$!";
 
 # The information about tables, for querying.
 my %tables;
 $tables{$tWindow->getName()} = $tWindow;
+$tables{$tSymbol->getName()} = $tSymbol;
 my $fretDumps = collectDumps("fretDumps", \%tables);
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
 $dispatch{"query"} = sub { tqlQuery(\%tables, $fretDumps, @_); };
 $dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
 
@@ -263,22 +282,23 @@ Triceps::X::DumbClient::run(\%dispatch);
 
 # the same input and result gets reused mutiple times
 my @inputQuery1 = (
+	"tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5\n",
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"tWindow,OP_INSERT,5,AAA,30,30\n",
-	"query,{read table tWindow}\n",
+	"query,{read table tSymbol}\n",
 	"query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}\n",
 	"query,{read table tWindow} {project fields {symbol price}}\n",
 );
 my $expectQuery1 = 
-'> tWindow,OP_INSERT,1,AAA,10,10
+'> tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5
+> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
 > tWindow,OP_INSERT,5,AAA,30,30
-> query,{read table tWindow}
+> query,{read table tSymbol}
 > query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
 > query,{read table tWindow} {project fields {symbol price}}
-lb1read OP_INSERT id="3" symbol="AAA" price="20" size="20" 
-lb1read OP_INSERT id="5" symbol="AAA" price="30" size="30" 
+lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,lb1read
 lb2project,OP_INSERT,AAA,20
 lb2project,OP_INSERT,AAA,30
