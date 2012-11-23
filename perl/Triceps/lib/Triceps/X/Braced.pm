@@ -10,7 +10,7 @@ package Triceps::X::Braced;
 our @ISA = qw(Exporter);
 
 our %EXPORT_TAGS = ( 'all' => [ qw(
-	raw_split_braced split_braced bunquote
+	raw_split_braced split_braced bunquote bunquote_all
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -88,6 +88,17 @@ sub bunquote # (string)
 
 	# And this substitutes all the Perl escapes.
 	eval "\"$s\"";
+}
+
+# Un-quote all the strings in an array.
+# Returns the array of unquoted strings.
+sub bunquote_all # (@strings)
+{
+	my @res;
+	foreach my $s (@_) {
+		push @res, bunquote($s);
+	}
+	return @res;
 }
 
 1;

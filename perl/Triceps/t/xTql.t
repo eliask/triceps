@@ -10,7 +10,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 2 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
@@ -48,7 +48,7 @@ $ttWindow->initialize() or confess "$!";
 #########################
 # Server with module version 1.
 
-use Triceps::X::Braced qw(split_braced bunquote);
+use Triceps::X::Braced qw(split_braced bunquote bunquote_all);
 
 sub tqlRead # ($ctx, @args)
 {
@@ -69,7 +69,7 @@ sub tqlRead # ($ctx, @args)
 	my $unit = $ctx->{u};
 	my $table = $ctx->{tables}{$tabname};
 	my $lab = $unit->makeDummyLabel($table->getRowType(), "lb" . $ctx->{id} . "read");
-	$ctx->{prev} = $lab;
+	$ctx->{next} = $lab;
 
 	my $code = sub {
 		Triceps::FnBinding::call(
@@ -92,8 +92,28 @@ sub tqlProject # ($ctx, @args)
 	my $ctx = shift;
 	die "The project command requires a pipeline input.\n" 
 		unless (defined($ctx->{prev}));
-	# XXX for now just leave everything unchanged
-	# XXX should require some explicit action from the commands...
+	my $opts = {};
+	&Triceps::Opt::parse("project", $opts, {
+		fields => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	
+	my @patterns = bunquote_all(split_braced($opts->{fields}));
+
+	my $rtIn = $ctx->{prev}->getRowType();
+	my @inFields = $rtIn->getFieldNames();
+	my @pairs =  &Triceps::Fields::filterToPairs("project", \@inFields, \@patterns);
+	my ($rtOut, $projectFunc) = &Triceps::Fields::makeTranslation(
+		rowTypes => [ $rtIn ],
+		filterPairs => [ \@pairs ],
+	);
+
+	my $unit = $ctx->{u};
+	my $lab = $unit->makeDummyLabel($rtOut, "lb" . $ctx->{id} . "project");
+	my $labin = $unit->makeLabel($rtIn, "lb" . $ctx->{id} . "project.in", undef, sub {
+		$unit->call($lab->makeRowop($_[1]->getOpcode(), &$projectFunc($_[1]->getRow()) ));
+	});
+	$ctx->{prev}->chain($labin);
+	$ctx->{next} = $lab;
 }
 
 sub tqlPrint # ($ctx, @args)
@@ -102,14 +122,27 @@ sub tqlPrint # ($ctx, @args)
 	die "The print command may not be used at the start of a pipeline.\n" 
 		unless (defined($ctx->{prev}));
 	my $opts = {};
-	# No options, but still parse to check that none are specified.
-	&Triceps::Opt::parse("read", $opts, {
+	&Triceps::Opt::parse("print", $opts, {
+		tokenized => [ 1, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
+	my $tokenized = bunquote($opts->{tokenized}) + 0;
 
 	# XXX This gets the printed label name from the auto-generated label name,
 	# which is not a good practice.
-	my $lab = Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev});
-	$ctx->{prev} = undef; # end of the pipeline
+	# XXX Should have a custom query name somewhere in the context?
+	if ($tokenized) {
+		# print in the tokenized format
+		my $prev = $ctx->{prev};
+		my $lab = $ctx->{u}->makeLabel($prev->getRowType(), 
+			"lb" . $ctx->{id} . "print", undef, sub {
+				&Triceps::X::SimpleServer::outCurBuf($_[1]->printP() . "\n");
+			});
+		$prev->chain($lab);
+	} else {
+		my $lab = Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev});
+	}
+
+	$ctx->{next} = undef; # end of the pipeline
 	# XXX add an end-of-data notification
 }
 
@@ -155,6 +188,12 @@ sub Query1 # (\%tables, $fretDumps, $argline)
 			# XXX do something better with the errors, show the failing command...
 			$ctx->{id}++;
 			&{$tqlDispatch{$argv0}}($ctx, @args);
+			# Each command must set its result label (even if an undef) into
+			# $ctx->{next}.
+			die "Internal error in the command $argv0: missing result definition\n"
+				unless (exists $ctx->{next});
+			$ctx->{prev} = $ctx->{next};
+			delete $ctx->{next};
 		}
 		if (defined $ctx->{prev}) {
 			# implicitly print the result of the pipeline, no options
@@ -221,24 +260,27 @@ my @inputQuery1 = (
 	"tWindow,OP_INSERT,1,AAA,10,10\n",
 	"tWindow,OP_INSERT,3,AAA,20,20\n",
 	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"query,{read table tWindow}\n",
+	"query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}\n",
 	"query,{read table tWindow} {project fields {symbol price}}\n",
 );
 my $expectQuery1 = 
 '> tWindow,OP_INSERT,1,AAA,10,10
 > tWindow,OP_INSERT,3,AAA,20,20
-> qWindow,OP_INSERT
 > tWindow,OP_INSERT,5,AAA,30,30
-> qWindow,OP_INSERT
-qWindow.out,OP_INSERT,1,AAA,10,10
-qWindow.out,OP_INSERT,3,AAA,20,20
-qWindow.out,OP_NOP,,,,
-qWindow.out,OP_INSERT,3,AAA,20,20
-qWindow.out,OP_INSERT,5,AAA,30,30
-qWindow.out,OP_NOP,,,,
+> query,{read table tWindow}
+> query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
+> query,{read table tWindow} {project fields {symbol price}}
+lb1read OP_INSERT id="3" symbol="AAA" price="20" size="20" 
+lb1read OP_INSERT id="5" symbol="AAA" price="30" size="30" 
+lb2project,OP_INSERT,AAA,20
+lb2project,OP_INSERT,AAA,30
+lb2project OP_INSERT symbol="AAA" price="20" 
+lb2project OP_INSERT symbol="AAA" price="30" 
 ';
 
 setInputLines(@inputQuery1);
 &runQuery1();
 #print &getResultLines();
-#ok(&getResultLines(), $expectQuery1);
+ok(&getResultLines(), $expectQuery1);
 
