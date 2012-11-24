@@ -55,7 +55,7 @@ our $rtSymbol = Triceps::RowType->new(
 
 our $ttSymbol = Triceps::TableType->new($rtSymbol)
 	->addSubIndex("bySymbol", 
-		Triceps::SimpleOrderedIndex->new(symbol => "ASC")
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
 	)
 	or confess "$!";
 $ttSymbol->initialize() or confess "$!";
@@ -63,7 +63,7 @@ $ttSymbol->initialize() or confess "$!";
 #########################
 # Server with module version 1.
 
-use Triceps::X::Braced qw(split_braced bunquote bunquote_all);
+use Triceps::X::Braced qw(:all);
 
 sub tqlRead # ($ctx, @args)
 {
@@ -112,11 +112,11 @@ sub tqlProject # ($ctx, @args)
 		fields => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 	
-	my @patterns = bunquote_all(split_braced($opts->{fields}));
+	my $patterns = split_braced_final($opts->{fields});
 
 	my $rtIn = $ctx->{prev}->getRowType();
 	my @inFields = $rtIn->getFieldNames();
-	my @pairs =  &Triceps::Fields::filterToPairs("project", \@inFields, \@patterns);
+	my @pairs =  &Triceps::Fields::filterToPairs("project", \@inFields, $patterns);
 	my ($rtOut, $projectFunc) = &Triceps::Fields::makeTranslation(
 		rowTypes => [ $rtIn ],
 		filterPairs => [ \@pairs ],
@@ -167,10 +167,76 @@ sub tqlPrint # ($ctx, @args)
 	$ctx->{next} = undef; # end of the pipeline
 }
 
+sub tqlJoin # ($ctx, @args)
+{
+	my $ctx = shift;
+	die "The join command may not be used at the start of a pipeline.\n" 
+		unless (defined($ctx->{prev}));
+	my $opts = {};
+	&Triceps::Opt::parse("join", $opts, {
+		table => [ undef, \&Triceps::Opt::ck_mandatory ],
+		rightIdxPath => [ undef, \&Triceps::Opt::ck_mandatory ],
+		by => [ undef, undef ],
+		byLeft => [ undef, undef ],
+		leftFields => [ undef, undef ],
+		rightFields => [ undef, undef ],
+		type => [ "inner", undef ],
+	}, @_);
+
+	my $tabname = bunquote($opts->{table});
+	die ("Join found no such table '$tabname'\n")
+		unless (exists $ctx->{tables}{$tabname});
+	my $table = $ctx->{tables}{$tabname};
+
+	&Triceps::Opt::checkMutuallyExclusive("join", 1, "by", $opts->{by}, "byLeft", $opts->{byLeft});
+	my $by = split_braced_final($opts->{by});
+	my $byLeft = split_braced_final($opts->{byLeft});
+
+	my $rightIdxPath = split_braced_final($opts->{rightIdxPath});
+
+	my $isLeft = 0; # default for inner join
+	my $type = $opts->{type};
+	if ($type eq "inner") {
+		# already default
+	} elsif ($type eq "left") {
+		$isLeft = 1;
+	} else {
+		die "Unsupported value '$type' of option 'type'.\n"
+	}
+
+	my $leftFields = split_braced_final($opts->{leftFields});
+	my $rightFields = split_braced_final($opts->{rightFields});
+
+	# Build the filtering-out of the duplicate key fields on the right.
+	# Similar to what JoinTwo does.
+	my($rightIdxType, @rightkeys) = $table->getType()->findIndexKeyPath(@$rightIdxPath);
+	if (!defined($rightFields)) {
+		$rightFields = [ ".*" ]; # the implicit pass-all
+	}
+	unshift(@$rightFields, map("!$_", @rightkeys) );
+
+	my $unit = $ctx->{u};
+	my $join = Triceps::LookupJoin->new(
+		name => "join" . $ctx->{id},
+		unit => $unit,
+		leftFromLabel => $ctx->{prev},
+		rightTable => $table,
+		rightIdxPath => $rightIdxPath,
+		leftFields => $leftFields,
+		rightFields => $rightFields,
+		by => $by,
+		byLeft => $byLeft,
+		isLeft => $isLeft,
+	);
+	
+	$ctx->{next} = $join->getOutputLabel();
+}
+	
 our %tqlDispatch = (
 	read => \&tqlRead,
 	project => \&tqlProject,
 	print => \&tqlPrint,
+	join => \&tqlJoin,
 );
 
 sub tqlQuery # (\%tables, $fretDumps, $argline)
@@ -289,6 +355,7 @@ my @inputQuery1 = (
 	"query,{read table tSymbol}\n",
 	"query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}\n",
 	"query,{read table tWindow} {project fields {symbol price}}\n",
+	"query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}\n",
 );
 my $expectQuery1 = 
 '> tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5
@@ -298,6 +365,7 @@ my $expectQuery1 =
 > query,{read table tSymbol}
 > query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
 > query,{read table tWindow} {project fields {symbol price}}
+> query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}
 lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,lb1read
 lb2project,OP_INSERT,AAA,20
@@ -306,6 +374,9 @@ lb2project,OP_INSERT,AAA,30
 lb2project OP_INSERT symbol="AAA" price="20" 
 lb2project OP_INSERT symbol="AAA" price="30" 
 +EOD,OP_NOP,lb2project
+join2.out OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5" 
+join2.out OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5" 
++EOD,OP_NOP,join2.out
 ';
 
 setInputLines(@inputQuery1);

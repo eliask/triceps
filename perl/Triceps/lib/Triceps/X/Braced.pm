@@ -10,7 +10,7 @@ package Triceps::X::Braced;
 our @ISA = qw(Exporter);
 
 our %EXPORT_TAGS = ( 'all' => [ qw(
-	raw_split_braced split_braced bunquote bunquote_all
+	raw_split_braced split_braced bunquote bunquote_all split_braced_final
 ) ] );
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
@@ -99,6 +99,19 @@ sub bunquote_all # (@strings)
 		push @res, bunquote($s);
 	}
 	return @res;
+}
+
+# Split and un-quote the resulting strings. Returns
+# either a reference to array with the strings, or an undef
+# if the argument was undef.
+# This is frequently used when a TQL option contains a braced array.
+sub split_braced_final # ($s)
+{
+	if (defined $_[0]) {
+		return [ bunquote_all(split_braced($_[0])) ];
+	} else {
+		return undef;
+	}
 }
 
 1;
