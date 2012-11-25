@@ -63,6 +63,18 @@ $ttSymbol->initialize() or confess "$!";
 #########################
 # Server with module version 1.
 
+# The Safe module doesn't seem capable of importing the external
+# symbols from inside a package. So put this import outside the
+# package.
+sub _Triceps_X_Tql_share_safe_rowget # ($safe)
+{
+	my $safe = shift;
+	$safe->share('Triceps::Row::get');
+}
+
+package Triceps::X::Tql;
+
+use Carp;
 use Triceps::X::Braced qw(:all);
 use Safe;
 
@@ -268,7 +280,7 @@ sub tqlFilter # ($ctx, @args)
 	# This allows for the exploits that run the process out of memory,
 	# but the danger is in the highly useful functions, so better take this risk.
 	$safe->permit(qw(:base_core :base_mem :base_math sprintf));
-	$safe->share('Triceps::Row::get');
+	::_Triceps_X_Tql_share_safe_rowget($safe);
 
 	my $compiled = $safe->reval("sub { $expr }", 1);
 	die "$@" if($@);
@@ -293,18 +305,29 @@ our %tqlDispatch = (
 	filter => \&tqlFilter,
 );
 
-sub tqlQuery # (\%tables, $fretDumps, $argline)
+# Perform a query in the context of a SimpleServer.
+# The $argline is the full line received by the server and forwarded here;
+# it still includes the query command on it.
+sub query # ($self, $argline)
 {
-	my $tables = shift;
-	my $fretDumps = shift;
-	my $s = shift;
+	my $myname = "Triceps::X::Tql::query";
 
-	$s =~ s/^([^,]*)(,|$)//; # skip the name of the label
+	my $self = shift;
+	my $argline = shift;
+
+	my $tables = $self->{dispatch};
+	my $fretDumps = $self->{fret};
+
+	confess "$myname: may be used only on an initialized object"
+		unless ($self->{initialized});
+
+	$argline =~ s/^([^,]*)(,|$)//; # skip the name of the label
 	my $q = $1; # the name of the query itself
-	#&Triceps::X::SimpleServer::outCurBuf("+DEBUGquery: $s\n");
-	my @cmds = split_braced($s);
-	if ($s ne '') {
-		&Triceps::X::SimpleServer::outCurBuf("+ERROR,OP_INSERT,$q: mismatched braces in the trailing $s\n");
+	#&Triceps::X::SimpleServer::outCurBuf("+DEBUGquery: $argline\n");
+	my @cmds = split_braced($argline);
+	if ($argline ne '') {
+		# Presumably, the argument line should contain no line feeds, so it should be safe to send back.
+		&Triceps::X::SimpleServer::outCurBuf("+ERROR,OP_INSERT,$q: mismatched braces in the trailing $argline\n");
 		return
 	}
 
@@ -355,26 +378,128 @@ sub tqlQuery # (\%tables, $fretDumps, $argline)
 	}
 }
 
-# Build an FnReturn with dump labels of all the tables.
-# The labels in return will be named as their table.
-# @param name - name for the FnReturn
-# @param \%tables - a hash (table name => table object), the name from this
-#     hash will be used for FnReturn (it should probably be the same as the
-#     table name but no guarantees there).
-sub collectDumps # ($name, \%tables)
+# There are two ways to create a Tql object:
+# (1) Use the option "tables" (possibly, with "tableNames"): the Tql object
+# will be immediately initialized with thid list of tables.
+# (2) Use no options, and initially create an uninitialized object. Then
+# add the tables one by one with addTable(). After all tables are added,
+# call initialize().
+#
+# Options:
+# name - name for the object, will be use to derive the sub-object names
+# tables (optional) - reference to an array of tables on which the TQL 
+#   object will allow queries. The presence of this option triggers the
+#   immediate initialization.
+# tableNames (optional) - reference to an array of names, under which the tables
+#   from the option "tables" will be known to TQL. If absent, the table names
+#   will be obtained with getName() for each table.
+sub new # ($class, $optName => $optValue, ...)
 {
-	my $name = shift;
-	my $tables = shift;
-	my @labels;
-	my ($k, $v);
-	while (($k, $v) = each %$tables) {
-		push @labels, $k, $v->getDumpLabel();
+	my $myname = "Triceps::X::Tql";
+	my $class = shift;
+	my $self = {};
+
+	&Triceps::Opt::parse($class, $self, {
+		name => [ undef, \&Triceps::Opt::ck_mandatory ],
+		tables => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "Triceps::Table") } ],
+		tableNames => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+	}, @_);
+
+	if (defined $self->{tables}) {
+		if (defined $self->{tableNames}) {
+			confess "$myname: the arrays in options 'tables' and 'tableNames' must be of equal size, got "
+					. ($#{$self->{tables}} + 1) . " and " . ($#{$self->{tableNames}} + 1)
+				unless ($#{$self->{tableNames}} == $#{$self->{tables}});
+		} else {
+			my @names;
+			foreach my $t (@{$self->{tables}}) {
+				push @names, $t->getName();
+			}
+			$self->{tableNames} = \@names;
+		}
+		initialize($self);
+	} else {
+		confess "$myname: the option 'tableNames' may not be used without option 'tables'."
+			if (defined $self->{tableNames});
 	}
-	return Triceps::FnReturn->new(
-		name => $name,
+
+	bless $self, $class;
+	return $self;
+}
+
+# Add one or more named tables, defined in pairs of arguments.
+sub addNamedTable # ($self, $name => $table, ...)
+{
+	my $myname = "Triceps::X::Tql::addNamedTable";
+	my $self = shift;
+
+	confess "$myname: may be used only on an uninitialized object"
+		if ($self->{initialized});
+
+	while($#_ >= 0) {
+		my $name = shift; 
+		my $table = shift;
+
+		my $tref = ref $table;
+		confess "$myname: the table named '$name' must be of Triceps::Table type, is '$tref'"
+			unless ($tref eq "Triceps::Table");
+
+		push @{$self->{tables}}, $table;
+		push @{$self->{tableNames}}, $name;
+	}
+}
+
+sub addTable # ($self, @tables)
+{
+	my $myname = "Triceps::X::Tql::addTable";
+	my $self = shift;
+
+	confess "$myname: may be used only on an uninitialized object"
+		if ($self->{initialized});
+
+	for my $table (@_) {
+		my $tref = ref $table;
+		confess "$myname: the table must be of Triceps::Table type, is '$tref'"
+			unless ($tref eq "Triceps::Table");
+
+		push @{$self->{tables}}, $table;
+		push @{$self->{tableNames}}, $table->getName();
+	}
+}
+
+sub initialize # ($self)
+{
+	my $myname = "Triceps::X::Tql::initialize";
+	my $self = shift;
+
+	return if ($self->{initialized});
+
+	my %dispatch;
+	my @labels;
+	for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
+		my $name = $self->{tableNames}[$i]; 
+		my $table = $self->{tables}[$i];
+
+		confess "$myname: found a duplicate table name '$name', all names are: "
+				. join(", ", @{$self->{tableNames}})
+			if (exists $dispatch{$name});
+
+		$dispatch{$name} = $table;
+		push @labels, $name, $table->getDumpLabel();
+	}
+
+	$self->{dispatch} = \%dispatch;
+	$self->{fret} = Triceps::FnReturn->new(
+		name => $self->{name} . ".fret",
 		labels => \@labels,
 	);
+
+	$self->{initialized} = 1;
 }
+
+1;
+
+package main;
 
 sub runTqlQuery1
 {
@@ -386,15 +511,18 @@ my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
 	or confess "$!";
 
 # The information about tables, for querying.
-my %tables;
-$tables{$tWindow->getName()} = $tWindow;
-$tables{$tSymbol->getName()} = $tSymbol;
-my $fretDumps = collectDumps("fretDumps", \%tables);
+my $tql = Triceps::X::Tql->new(
+	name => "tql",
+	tables => [
+		$tWindow,
+		$tSymbol,
+	],
+);
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
 $dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
-$dispatch{"query"} = sub { tqlQuery(\%tables, $fretDumps, @_); };
+$dispatch{"query"} = sub { $tql->query(@_); };
 $dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
 
 Triceps::X::DumbClient::run(\%dispatch);
