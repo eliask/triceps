@@ -64,6 +64,7 @@ $ttSymbol->initialize() or confess "$!";
 # Server with module version 1.
 
 use Triceps::X::Braced qw(:all);
+use Safe;
 
 sub tqlRead # ($ctx, @args)
 {
@@ -231,12 +232,65 @@ sub tqlJoin # ($ctx, @args)
 	
 	$ctx->{next} = $join->getOutputLabel();
 }
+
+# Replace a field name with the code that would get the field
+# from a variable containing a row. The row definition in hash
+# formatr is used to check up-front that the field exists.
+sub replaceFieldRef # (\%def, $field)
+{
+	my $def = shift;
+	my $field = shift;
+	die "Unknown field '$field'; have fields: " . join(", ", keys %$def) . ".\n"
+		unless (exists ${$def}{$field});
+	#return '$_[0]->get("' . quotemeta($field) . '")';
+	return '&Triceps::Row::get($_[0], "' . quotemeta($field) . '")';
+}
+
+sub tqlFilter # ($ctx, @args)
+{
+	my $ctx = shift;
+	die "The filter command may not be used at the start of a pipeline.\n" 
+		unless (defined($ctx->{prev}));
+	my $opts = {};
+	&Triceps::Opt::parse("filter", $opts, {
+		expr => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+
+	# Here only the keys (field names) will be important, the values
+	# (field types) will be ignored.
+	my $rt = $ctx->{prev}->getRowType();
+	my %def = $rt->getdef();
+
+	my $expr = bunquote($opts->{expr});
+	$expr =~ s/\$\%(\w+)/&replaceFieldRef(\%def, $1)/ge;
+
+	my $safe = new Safe; 
+	# This allows for the exploits that run the process out of memory,
+	# but the danger is in the highly useful functions, so better take this risk.
+	$safe->permit(qw(:base_core :base_mem :base_math sprintf));
+	$safe->share('Triceps::Row::get');
+
+	my $compiled = $safe->reval("sub { $expr }", 1);
+	die "$@" if($@);
+
+	my $unit = $ctx->{u};
+	my $lab = $unit->makeDummyLabel($rt, "lb" . $ctx->{id} . "filter");
+	my $labin = $unit->makeLabel($rt, "lb" . $ctx->{id} . "filter.in", undef, sub {
+		if (&$compiled($_[1]->getRow())) {
+			$unit->call($lab->adopt($_[1]));
+		}
+	});
+	$ctx->{prev}->chain($labin);
+	$ctx->{next} = $lab;
+}
+
 	
 our %tqlDispatch = (
 	read => \&tqlRead,
 	project => \&tqlProject,
 	print => \&tqlPrint,
 	join => \&tqlJoin,
+	filter => \&tqlFilter,
 );
 
 sub tqlQuery # (\%tables, $fretDumps, $argline)
@@ -356,6 +410,7 @@ my @inputQuery1 = (
 	"query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}\n",
 	"query,{read table tWindow} {project fields {symbol price}}\n",
 	"query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}\n",
+	"query,{read table tWindow} {filter expr {\$%price == 20}}\n",
 );
 my $expectQuery1 = 
 '> tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5
@@ -366,6 +421,7 @@ my $expectQuery1 =
 > query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
 > query,{read table tWindow} {project fields {symbol price}}
 > query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}
+> query,{read table tWindow} {filter expr {$%price == 20}}
 lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,lb1read
 lb2project,OP_INSERT,AAA,20
@@ -377,6 +433,8 @@ lb2project OP_INSERT symbol="AAA" price="30"
 join2.out OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5" 
 join2.out OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,join2.out
+lb2filter OP_INSERT id="3" symbol="AAA" price="20" size="20" 
++EOD,OP_NOP,lb2filter
 ';
 
 setInputLines(@inputQuery1);
