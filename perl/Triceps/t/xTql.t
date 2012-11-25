@@ -258,14 +258,14 @@ sub replaceFieldRef # (\%def, $field)
 	return '&Triceps::Row::get($_[0], "' . quotemeta($field) . '")';
 }
 
-sub _tqlFilter # ($ctx, @args)
+sub _tqlWhere # ($ctx, @args)
 {
 	my $ctx = shift;
-	die "The filter command may not be used at the start of a pipeline.\n" 
+	die "The where command may not be used at the start of a pipeline.\n" 
 		unless (defined($ctx->{prev}));
 	my $opts = {};
-	&Triceps::Opt::parse("filter", $opts, {
-		expr => [ undef, \&Triceps::Opt::ck_mandatory ],
+	&Triceps::Opt::parse("where", $opts, {
+		istrue => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 
 	# Here only the keys (field names) will be important, the values
@@ -273,7 +273,7 @@ sub _tqlFilter # ($ctx, @args)
 	my $rt = $ctx->{prev}->getRowType();
 	my %def = $rt->getdef();
 
-	my $expr = bunquote($opts->{expr});
+	my $expr = bunquote($opts->{istrue});
 	$expr =~ s/\$\%(\w+)/&replaceFieldRef(\%def, $1)/ge;
 
 	my $safe = new Safe; 
@@ -286,8 +286,8 @@ sub _tqlFilter # ($ctx, @args)
 	die "$@" if($@);
 
 	my $unit = $ctx->{u};
-	my $lab = $unit->makeDummyLabel($rt, "lb" . $ctx->{id} . "filter");
-	my $labin = $unit->makeLabel($rt, "lb" . $ctx->{id} . "filter.in", undef, sub {
+	my $lab = $unit->makeDummyLabel($rt, "lb" . $ctx->{id} . "where");
+	my $labin = $unit->makeLabel($rt, "lb" . $ctx->{id} . "where.in", undef, sub {
 		if (&$compiled($_[1]->getRow())) {
 			$unit->call($lab->adopt($_[1]));
 		}
@@ -302,7 +302,7 @@ our %tqlDispatch = (
 	project => \&_tqlProject,
 	print => \&_tqlPrint,
 	join => \&_tqlJoin,
-	filter => \&_tqlFilter,
+	where => \&_tqlWhere,
 );
 
 # Perform a query in the context of a SimpleServer.
@@ -543,7 +543,7 @@ my @inputQuery1 = (
 	"query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}\n",
 	"query,{read table tWindow} {project fields {symbol price}}\n",
 	"query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}\n",
-	"query,{read table tWindow} {filter expr {\$%price == 20}}\n",
+	"query,{read table tWindow} {where istrue {\$%price == 20}}\n",
 );
 my $expectQuery1 = 
 '> tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5
@@ -554,7 +554,7 @@ my $expectQuery1 =
 > query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
 > query,{read table tWindow} {project fields {symbol price}}
 > query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}
-> query,{read table tWindow} {filter expr {$%price == 20}}
+> query,{read table tWindow} {where istrue {$%price == 20}}
 lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,lb1read
 lb2project,OP_INSERT,AAA,20
@@ -566,8 +566,8 @@ lb2project OP_INSERT symbol="AAA" price="30"
 join2.out OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5" 
 join2.out OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,join2.out
-lb2filter OP_INSERT id="3" symbol="AAA" price="20" size="20" 
-+EOD,OP_NOP,lb2filter
+lb2where OP_INSERT id="3" symbol="AAA" price="20" size="20" 
++EOD,OP_NOP,lb2where
 ';
 
 setInputLines(@inputQuery1);
