@@ -116,6 +116,7 @@ require Triceps::JoinTwo;
 require Triceps::X::SimpleServer;
 require Triceps::X::DumbClient;
 require Triceps::X::TestFeed;
+require Triceps::X::Tql;
 
 # Autoload methods go after =cut, and are processed by the autosplit program.
 
