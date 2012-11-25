@@ -10,7 +10,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 3 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
@@ -78,7 +78,7 @@ use Carp;
 use Triceps::X::Braced qw(:all);
 use Safe;
 
-sub tqlRead # ($ctx, @args)
+sub _tqlRead # ($ctx, @args)
 {
 	my $ctx = shift;
 	die "The read command may not be used in the middle of a pipeline.\n" 
@@ -115,7 +115,7 @@ sub tqlRead # ($ctx, @args)
 	push @{$ctx->{actions}}, $code;
 }
 
-sub tqlProject # ($ctx, @args)
+sub _tqlProject # ($ctx, @args)
 {
 	my $ctx = shift;
 	die "The project command may not be used at the start of a pipeline.\n" 
@@ -144,7 +144,7 @@ sub tqlProject # ($ctx, @args)
 	$ctx->{next} = $lab;
 }
 
-sub tqlPrint # ($ctx, @args)
+sub _tqlPrint # ($ctx, @args)
 {
 	my $ctx = shift;
 	die "The print command may not be used at the start of a pipeline.\n" 
@@ -180,7 +180,7 @@ sub tqlPrint # ($ctx, @args)
 	$ctx->{next} = undef; # end of the pipeline
 }
 
-sub tqlJoin # ($ctx, @args)
+sub _tqlJoin # ($ctx, @args)
 {
 	my $ctx = shift;
 	die "The join command may not be used at the start of a pipeline.\n" 
@@ -258,7 +258,7 @@ sub replaceFieldRef # (\%def, $field)
 	return '&Triceps::Row::get($_[0], "' . quotemeta($field) . '")';
 }
 
-sub tqlFilter # ($ctx, @args)
+sub _tqlFilter # ($ctx, @args)
 {
 	my $ctx = shift;
 	die "The filter command may not be used at the start of a pipeline.\n" 
@@ -298,25 +298,23 @@ sub tqlFilter # ($ctx, @args)
 
 	
 our %tqlDispatch = (
-	read => \&tqlRead,
-	project => \&tqlProject,
-	print => \&tqlPrint,
-	join => \&tqlJoin,
-	filter => \&tqlFilter,
+	read => \&_tqlRead,
+	project => \&_tqlProject,
+	print => \&_tqlPrint,
+	join => \&_tqlJoin,
+	filter => \&_tqlFilter,
 );
 
 # Perform a query in the context of a SimpleServer.
 # The $argline is the full line received by the server and forwarded here;
 # it still includes the query command on it.
+# May be used only after $self is initialized.
 sub query # ($self, $argline)
 {
 	my $myname = "Triceps::X::Tql::query";
 
 	my $self = shift;
 	my $argline = shift;
-
-	my $tables = $self->{dispatch};
-	my $fretDumps = $self->{fret};
 
 	confess "$myname: may be used only on an initialized object"
 		unless ($self->{initialized});
@@ -332,15 +330,18 @@ sub query # ($self, $argline)
 	}
 
 	# The context for the commands to build up an execution of a query.
+	# Unlike $self, the context is created afresh for every query.
 	my $ctx = {};
 	# The query will be built in a separate unit
-	$ctx->{tables} = $tables;
-	$ctx->{fretDumps} = $fretDumps;
-	$ctx->{u} = Triceps::Unit->new("u_${q}");
+	$ctx->{tables} = $self->{dispatch};
+	$ctx->{fretDumps} = $self->{fret};
+	$ctx->{u} = Triceps::Unit->new("${q}.unit");
 	$ctx->{prev} = undef; # will contain the output of the previous command in the pipeline
 	$ctx->{actions} = []; # code that will run the pipeline
 	$ctx->{id} = 0; # a unique id for auto-generated objects
 
+	# It's important to place the clearing trigger outside eval {}. Otherwise the
+	# clearing will erase any errors in $@ returned from eval.
 	my $cleaner = $ctx->{u}->makeClearingTrigger();
 	if (! eval {
 		foreach my $cmd (@cmds) {
@@ -428,6 +429,7 @@ sub new # ($class, $optName => $optValue, ...)
 }
 
 # Add one or more named tables, defined in pairs of arguments.
+# May be used only while $self is not initialized.
 sub addNamedTable # ($self, $name => $table, ...)
 {
 	my $myname = "Triceps::X::Tql::addNamedTable";
@@ -449,6 +451,8 @@ sub addNamedTable # ($self, $name => $table, ...)
 	}
 }
 
+# Add one or more tables, using their own names.
+# May be used only while $self is not initialized.
 sub addTable # ($self, @tables)
 {
 	my $myname = "Triceps::X::Tql::addTable";
@@ -467,6 +471,7 @@ sub addTable # ($self, @tables)
 	}
 }
 
+# Initialize the object. After that the tables may not be added any more.
 sub initialize # ($self)
 {
 	my $myname = "Triceps::X::Tql::initialize";
@@ -569,4 +574,76 @@ setInputLines(@inputQuery1);
 &runTqlQuery1();
 #print &getResultLines();
 ok(&getResultLines(), $expectQuery1);
+
+################################################################
+# Same as Query1 but initializes the Tql object piecemeal.
+# (the list of queries used is somewhat reduced).
+
+sub runTqlQuery2
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
+	or confess "$!";
+
+# The information about tables, for querying.
+my $tql = Triceps::X::Tql->new(name => "tql");
+$tql->addNamedTable(
+	window => $tWindow,
+	symbol => $tSymbol,
+);
+# add 2nd time, with different names
+$tql->addTable(
+	$tWindow,
+	$tSymbol,
+);
+$tql->initialize;
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
+$dispatch{"query"} = sub { $tql->query(@_); };
+$dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+
+Triceps::X::DumbClient::run(\%dispatch);
+};
+
+# the same input and result gets reused mutiple times
+my @inputQuery2 = (
+	"tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5\n",
+	"tWindow,OP_INSERT,1,AAA,10,10\n",
+	"tWindow,OP_INSERT,3,AAA,20,20\n",
+	"tWindow,OP_INSERT,5,AAA,30,30\n",
+	"query,{read table tSymbol}\n",
+	"query,{read table tWindow}\n",
+	"query,{read table symbol}\n",
+	"query,{read table window}\n",
+);
+my $expectQuery2 = 
+'> tSymbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,0.5
+> tWindow,OP_INSERT,1,AAA,10,10
+> tWindow,OP_INSERT,3,AAA,20,20
+> tWindow,OP_INSERT,5,AAA,30,30
+> query,{read table tSymbol}
+> query,{read table tWindow}
+> query,{read table symbol}
+> query,{read table window}
+lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
++EOD,OP_NOP,lb1read
+lb1read OP_INSERT id="3" symbol="AAA" price="20" size="20" 
+lb1read OP_INSERT id="5" symbol="AAA" price="30" size="30" 
++EOD,OP_NOP,lb1read
+lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
++EOD,OP_NOP,lb1read
+lb1read OP_INSERT id="3" symbol="AAA" price="20" size="20" 
+lb1read OP_INSERT id="5" symbol="AAA" price="30" size="30" 
++EOD,OP_NOP,lb1read
+';
+
+setInputLines(@inputQuery2);
+&runTqlQuery2();
+#print &getResultLines();
+ok(&getResultLines(), $expectQuery2);
 
