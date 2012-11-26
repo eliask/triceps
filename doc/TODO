@@ -62,8 +62,7 @@ Things that need to be done:
 * make the Aggregator object optional, with NULL used in case if it's
   not needed (and could save an spot in GroupHandle too). Call the method
   handle() in the AggregatorType. BasicAggregator doesn't need gadget_.
-* Table helper methods: dump() (through a separate label)
-* in joins require that only the input labels are of the same unit,
+* in JoinTwo require that only the input labels are of the same unit,
   tables may be different unit
 * aggregation: add an option for mandatory keeping of the last row,
   and a way to find and iterate them (thus avoiding a separate table)
@@ -72,6 +71,11 @@ Things that need to be done:
 * A more strict handling of frame marks?
 * add table dumping by condition
 * add callAsChained in Perl
+* in FnReturn add an option to act as a local nexus
+* in JoinTwo add a mode that would allow to compute the initial join of two
+  pre-existing tables, then disable thsi mode and continue with the subscription
+* add an override of the printed label name in print(), printP() and code 
+  that constructs labels around it
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -83,10 +87,8 @@ Things that need to be done:
 * doc: the templates for initialize(), initializeOrThrow(), checkOrThrow()
 * doc: the new draining of forked rowops, new mark semantics
 
-* doc: streaming functions and the unit boundaries
-
 App ideas:
-* queries on CSV files
+* queries on CSV files - already done in DBD::CSV?
 * distributed cron
 * data cache
 
