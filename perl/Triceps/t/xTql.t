@@ -10,7 +10,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 4 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
@@ -201,6 +201,50 @@ lb1read OP_INSERT id="5" symbol="AAA" price="30" size="30"
 
 setInputLines(@inputQuery2);
 &runTqlQuery2();
+#print &getResultLines();
+ok(&getResultLines(), $expectQuery2);
+
+################################################################
+# Same as Query1 but initializes the Tql object with explicit names.
+# (the list of queries used is shared with Query2).
+
+sub runTqlQuery3
+{
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+	or confess "$!";
+my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
+	or confess "$!";
+
+# The information about tables, for querying.
+my $tql = Triceps::X::Tql->new(
+	name => "tql",
+	tables => [
+		$tWindow,
+		$tSymbol,
+		$tWindow,
+		$tSymbol,
+	],
+	tableNames => [
+		"window",
+		"symbol",
+		$tWindow->getName(),
+		$tSymbol->getName(),
+	],
+);
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
+$dispatch{"query"} = sub { $tql->query(@_); };
+$dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+
+Triceps::X::DumbClient::run(\%dispatch);
+};
+
+setInputLines(@inputQuery2);
+&runTqlQuery3();
 #print &getResultLines();
 ok(&getResultLines(), $expectQuery2);
 
