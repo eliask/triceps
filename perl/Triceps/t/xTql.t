@@ -156,7 +156,7 @@ $tql->addTable(
 	$tWindow,
 	$tSymbol,
 );
-$tql->initialize;
+$tql->initialize();
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
