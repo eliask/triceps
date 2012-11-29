@@ -1,7 +1,10 @@
 AggregatorContext.xs
 AggregatorType.xs
+AutoFnBind.xs
 BUILD
 Changes
+FnBinding.xs
+FnReturn.xs
 FrameMark.xs
 IndexType.xs
 Label.xs
@@ -22,6 +25,7 @@ Table.xs
 TableType.xs
 Tray.xs
 Triceps.xs
+TricepsOpt.h
 TricepsPerl.cpp
 TricepsPerl.h
 Unit.xs
@@ -46,11 +50,17 @@ lib/Triceps/TableType.pm
 lib/Triceps/Unit.pm
 lib/Triceps/UnitTracerPerl.pm
 lib/Triceps/UnitTracerStringName.pm
+lib/Triceps/X/Braced.pm
+lib/Triceps/X/DumbClient.pm
+lib/Triceps/X/SimpleServer.pm
+lib/Triceps/X/TestFeed.pm
+lib/Triceps/X/Tql.pm
 ppport.h
 t/Aggregator.t
 t/AggregatorType.t
 t/Collapse.t
 t/Fields.t
+t/Fn.t
 t/FrameMark.t
 t/IndexType.t
 t/JoinTwo.t
@@ -73,6 +83,7 @@ t/makeRow.t
 t/xAgg.t
 t/xClear.t
 t/xCollapse.t
+t/xFn.t
 t/xHelloTable.t
 t/xHelloWorld.t
 t/xJoin.t
@@ -81,6 +92,7 @@ t/xRunAnywhere.t
 t/xSelfJoin.t
 t/xSimpleAggregator.t
 t/xSnippets.t
+t/xTql.t
 t/xTrafficAgg.t
 t/xVwap.t
 t/xWindow.t
