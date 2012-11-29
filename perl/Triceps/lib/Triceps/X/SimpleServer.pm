@@ -10,6 +10,8 @@ use strict;
 
 package Triceps::X::SimpleServer;
 
+our $VERSION = 'v1.0.1';
+
 use Carp;
 use Errno qw(EINTR EAGAIN);
 use IO::Poll qw(POLLIN POLLOUT POLLHUP);

@@ -23,6 +23,8 @@ sub _Triceps_X_Tql_share_safe_rowget # ($safe)
 
 package Triceps::X::Tql;
 
+our $VERSION = 'v1.0.1';
+
 use Carp;
 use Triceps::X::Braced qw(:all);
 use Safe;

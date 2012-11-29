@@ -10,6 +10,8 @@ use strict;
 
 package Triceps::X::TestFeed;
 
+our $VERSION = 'v1.0.1';
+
 use Carp;
 
 our @ISA = qw(Exporter);

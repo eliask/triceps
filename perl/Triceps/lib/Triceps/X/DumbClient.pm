@@ -9,6 +9,8 @@ use strict;
 
 package Triceps::X::DumbClient;
 
+our $VERSION = 'v1.0.1';
+
 use Carp;
 use IO::Socket::INET;
 use Triceps::X::SimpleServer;

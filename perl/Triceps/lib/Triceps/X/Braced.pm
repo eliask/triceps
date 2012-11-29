@@ -7,6 +7,8 @@
 
 package Triceps::X::Braced;
 
+our $VERSION = 'v1.0.1';
+
 our @ISA = qw(Exporter);
 
 our %EXPORT_TAGS = ( 'all' => [ qw(
