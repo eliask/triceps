@@ -1,0 +1,107 @@
+TQL: the Trivial Query Language
+
+In the Developer's Guide section 7.8. "Main loop with a socket" I've been showing the execution of the simple queries. I've wanted to use the queries to demonstrate a feature of the streaming functions, so I've substantially extended that example.
+
+Now the query example has grown to have its own language, TQL. You can think of it as a Trivial Query Language or Triceps Query Language. It's trivial, and so far it's of only an example quality, but it's extensible and it already can do some interesting things.
+
+Why not SQL, after all, there are multiple parser building tools available in Perl? Partially, because I wanted to keep it trivial and to avoid introducing extra dependencies, especially just for the examples. Partially, because I don't like SQL. I think that the queries can be expressed much more naturally in the form of shell-like pipelines. Back at DB when I wrote a simple toolkit for querying and comparison of the CSV files (yeah, I didn't find the DBD::CSV module), I've used a pipeline semantics and it worked pretty well. It also did things that are quite difficult with SQL, like mass renaming and reordering of fields, and diffing. Although TQL is not a descendant of the language I've used in that query tool, it is a further development of the pipeline idea.
+
+Syntactically, TQL is very simple: its query is a represented as a nested list, similar to Tcl (or if you like Lisp better, you can think that it's similar to Lisp but with different parentheses). A list is surrounded by curly braces "{}". The elements of a list are either other lists or words, consisting of non-space characters.
+
+{word1 {word21 word22} word3}
+
+Unlike Tcl, there are no quotes in the TQL syntax, the quote characters are just the normal word characters. If you want to include spaces into a word, you use the curly braces instead of the quotes.
+
+{   this is a {brace-enquoted} string with spaces and nested braces  }
+
+Note that the spaces inside a list are used as delimiters and thrown away but within a brace-quoted word-string they are significant. How do you know, which way they will be treated in a particular case? It all depends on what is expected in this case. If the command expects a string as an argument, it will treat it as a string. If the command expects a list as an argument, it will treat it as a list.
+
+What if you need to include an unbalanced brace character inside a string? Escape it with a backslash, "\{". The other usual Perl backslash sequences work too (though in the future TQL may get separated from Perl and then only the C sequences will work, that is to be seen). Any non-alphanumeric characters (including spaces) can be prepended with a backslash too. An important point is that when you build the lists, unlike shell, and like Tcl, you do the backslash escaping only once, when accepting a raw string. After that you can include into the lists of any depth without any extra escapes (and you must not add any extra escapes in the lists).
+
+Unlike shell, you can't combine a single string out of the quoted and unquoted parts. Instead the quoting braces work as implicit separators. For example, if you specify a list as {a{b}c d}, you don't get two strings "abc" and "d", you get four strings "a", "b", "c", "d".
+
+A TQL query is a list that represents a pipeline. Each element of the list is a command. The first command reads the data from a table, and the following commands perform transformations on that data. For example:
+
+{read table tWindow} {project fields {symbol price}} {print tokenized 0}
+
+If the print command is missing at the end of the pipeline, it will be added implicitly, with the default arguments: {print}.
+
+The arguments of each TQL command are always in the option name-value format, very much like the Perl constructors of many Triceps objects. There aren't any arguments in TQL that go by themselves without an option name.
+
+So for example the command "read" above has the option "table" with value "tWindow". The command "project" has an option "fields" with a list value of two elements. In this case the elements are simple words and don't need the further quoting. But the extra quoting won't hurt. Say, if you wanted to rename the field "price" to "trade_price", you use the Triceps::Fields::filter() syntax for it, and even though the format doesn't contain any spaces and can be still used just as a word, it looks nicer with the extra braces:
+
+{project fields {symbol {price/trade_price} }}
+
+I'm sure that the list of commands and their options will expand and change over time. So far the supported commands are:
+
+read
+Defines a table to read from and starts the command pipeline.
+Options:
+table - name of the table to read from.
+
+project
+Projects (and possibly renames) a subset of fields in the current pipeline.
+Options:
+fields - an array of field definitions in the syntax of Triceps::Fields::filter() (same as in the joins).
+
+print
+The last command of the pipeline, which prints the results. If not used explicitly, the query adds this command implicitly at the end of the pipeline, with the default options.
+Options:
+tokenized (optional) - Flag: print in the name-value format, as in Row::printP(). Otherwise prints only the values in the CSV format. (default: 1)
+
+join
+Joins the current pipeline with another table.This is functionally similar to LookupJoin, although the options are closer to JoinTwo.
+Options:
+table - name of the table to join with. The current pipeline is considered the "left side", the table the "right side". The duplicate key fields on the right side are always excluded from the result, like JoinTwo option (fieldsUniqKey => "left").
+rightIdxPath - path name of the table's index on which to join. At the moment there is no way to join without knowing the name of the index. (As usual, the path is an array of nested names).
+by (semi-optional) - the join equality condition specified as pairs of fields. Similarly to JoinTwo, it's a single-level array with the fields logically paired:{leftFld1 rightFld1 leftFld2 rightFld2 ... }.  Options "by" and "byLeft" are mutually exclusive, and one of them must be present.
+byLeft (semi-optional) - the join equality condition specified as a transformation on the left-side field set in the syntax of Triceps::Fields::filter(), with an implicit element {!.*} added at the end. Options "by" and "byLeft" are mutually exclusive, and one of them must be present.
+leftFields (optional) - the list of patterns for the left-side fields to pass through and possibly rename, in the syntax of  Triceps::Fields::filter(). (default: pass all, with the same name)
+rightFields (optional) - the list of patterns for the right-side fields to pass through and possibly rename, in the syntax of Triceps::Fields::filter(). The key fields get implicitly removed before. (default: pass all, with the same name)
+type (optional) - type of the join, "inner" or "left". (default: "inner")
+
+where
+Filters/selects the rows.
+Options:
+istrue - a Perl expression, the condition for the rows to pass through. The particularly dangerous constructions are not allowed in the expression, including the loops and the general function calls. The fields of the row are referred to as $%field, these references get translated before the expression is compiled.
+
+Here are some examples of the Tql queries, with results produced from the output of the code examples I'll show in a moment.
+
+> query,{read table tSymbol}
+lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5"
++EOD,OP_NOP,lb1read
+
+Reads the stock symbol information table and prints it in the default tokenized format. The result format is a bit messy for now, a mix of tokenized and CSV data. In the previous examples in the chapter 7 I've been marking the end-of-data either by a row with opcode OP_NOP or not marking it at all. For the TQL queries I've decided to try out a different approach: send a CSV row on the pseudo-label "+EOD" with the value equal to the name of the label that has been completed. The labels with names starting with "+" are special in this convention, they represent some kind of metadata.
+
+The name "lb1read" in the result rows is coming from an auto-generated label name in TQL. It will probably become less random-looking in the future, but for now I haven't yet figured out the best way to to it.
+
+ > query,{read table tWindow} {project fields {symbol price}}
+ lb2project OP_INSERT symbol="AAA" price="20"
+lb2project OP_INSERT symbol="AAA" price="30"
++EOD,OP_NOP,lb2project
+
+Reads the trade window rows and projects the fields "symbol" and "price" from them.
+
+> query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
+lb2project,OP_INSERT,AAA,20
+lb2project,OP_INSERT,AAA,30
++EOD,OP_NOP,lb2project
+
+The same, only explicitly prints the data in the CSV format.
+
+ > query,{read table tWindow} {where istrue {$%price == 20}}
+ lb2where OP_INSERT id="3" symbol="AAA" price="20" size="20"
++EOD,OP_NOP,lb2where
+
+Selects the trade window row with price equal to 20.
+
+> query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}
+join2.out OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5"
+join2.out OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5"
++EOD,OP_NOP,join2.out
+
+Reads the trade window and enriches it by joining with the symbol information.
+
+A nice feature of TQL is that it allows to combine the operations in the pipeline in any order, repeated any number of times. For example, you can read a table, filter it, join with another table, filter again, join with the third table, filter again and so on. SQL in the same situation has to resort to specially named clauses, for example WHERE filters before grouping and HAVING filters after grouping.
+
+Of course, a typical smart SQL compiler would determine the earliest application point for each WHERE sub-expression and build a similar pipeline. But TQL allows to keep the compiler trivial, following the explicit pipelining in the query. And nothing really prevents a smart TQL compiler either, it could as well analyze, split and reorder the pipeline stages. 

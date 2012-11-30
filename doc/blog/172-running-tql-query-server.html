@@ -1,0 +1,172 @@
+running the TQL query server
+
+The code that produced the query output examples from the previous post looks like this:
+
+# The basic table type to be used for querying.
+# Represents the trades reports.
+our $rtTrade = Triceps::RowType->new(
+  id => "int32", # trade unique id
+  symbol => "string", # symbol traded
+  price => "float64",
+  size => "float64", # number of shares traded
+) or confess "$!";
+
+our $ttWindow = Triceps::TableType->new($rtTrade)
+  ->addSubIndex("bySymbol",
+    Triceps::SimpleOrderedIndex->new(symbol => "ASC")
+      ->addSubIndex("last2",
+        Triceps::IndexType->newFifo(limit => 2)
+      )    
+  )
+  or confess "$!";
+$ttWindow->initialize() or confess "$!";
+
+# Represents the static information about a company.
+our $rtSymbol = Triceps::RowType->new(
+  symbol => "string", # symbol name
+  name => "string", # the official company name
+  eps => "float64", # last quarter earnings per share
+) or confess "$!";
+
+our $ttSymbol = Triceps::TableType->new($rtSymbol)
+  ->addSubIndex("bySymbol",
+    Triceps::IndexType->newHashed(key => [ "symbol" ])
+  )
+  or confess "$!";
+$ttSymbol->initialize() or confess "$!";
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+  or confess "$!";
+my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
+  or confess "$!";
+
+# The information about tables, for querying.
+my $tql = Triceps::X::Tql->new(
+  name => "tql",
+  tables => [
+    $tWindow,
+    $tSymbol,
+  ],
+);
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
+$dispatch{"query"} = sub { $tql->query(@_); };
+$dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+
+Triceps::X::DumbClient::run(\%dispatch);
+
+It's very much like the example shown before in the section 7.8 "Main loop with a socket", with a few differences. Obviously, Tql has been added, and we'll get to that part just in a moment. But the other differences are centered around the way the server and client code has been restructured.
+
+The Triceps::X::DumbClient is a module for testing that starts the server, then starts the client that sends the data to it and reads the result back. Its run method is:
+
+sub run # ($labels)
+{
+    my $labels = shift;
+
+    my ($port, $pid) = Triceps::X::SimpleServer::startServer(0, $labels);
+    my $sock = IO::Socket::INET->new(
+        Proto => "tcp",
+        PeerAddr => "localhost",
+        PeerPort => $port,
+    ) or confess "socket failed: $!";
+    while(<STDIN>) {
+        $sock->print($_);
+        $sock->flush();
+    }
+    $sock->print("exit,OP_INSERT\n");
+    $sock->flush();
+    $sock->shutdown(1); # SHUT_WR
+    while(<$sock>) {
+        print($_);
+    }
+    waitpid($pid, 0);
+}
+
+It's really intended only for the very small examples that fit into the TCP buffer, since it sends the whole input before it starts reading the output.
+
+The interesting server things happen inside startServer() which now also stayed almost the same but became a part of a module. The "almost the same" part is about the server loop being able to dispatch not only to the labels but also to the arbitrary Perl functions, citing from the example:
+
+$dispatch{"query"} = sub { $tql->query(@_); };
+$dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+
+
+It recognizes automatically whether the entry in the dispatch table is a Label or a function, and handles them appropriately. In the server it's implemented with:
+
+
+...
+        my $label = $labels->{$lname};
+        if (defined $label) {
+          if (ref($label) eq 'CODE') {
+            &$label($line);
+          } else { 
+            my $unit = $label->getUnit();
+            confess "label '$lname' received from client $id has been cleared"
+              unless defined $unit;
+            eval {     
+              $unit->makeArrayCall($label, @data);
+              $unit->drainFrame();
+            };         
+            warn "input data error: $@\nfrom data: $line\n" if $@;
+          }        
+        } else {
+          warn "unknown label '$lname' received from client $id: $line "
+        }      
+...
+
+And the exitFunc() method is another way to trigger the server exit, instead of makeExitLabel():
+sub exitFunc # ($line)
+{
+    $srv_exit = 1;
+}
+
+As you can see, the dispatched functions receive the whole argument line as the client had sent it,  including the label name, rather than having it split by commas. The functions can then do the text parsing in their own way, which comes real handy for TQL. It's convenient for the exit function too, as now there is no need to send the opcode with the "exit" (although X::DumbClient::run() still does send the opcode, to be compatible with the exit label approach, and the extra information doesn't hurt the exit function).
+
+
+And now, the TQL  definition. The TQL object gets created with the definition of a table, and then the TQL handler function shown above calls the method query() on it:
+
+# The information about tables, for querying.
+my $tql = Triceps::X::Tql->new(
+  name => "tql",
+  tables => [
+    $tWindow,
+    $tSymbol,
+  ],
+);
+
+
+There are multiple ways to create the Tql objects. By default the option "tables" lists all the queryable tables, and their "natural" names will be used in the queries. It's possible to specify the names explicitly as well:
+
+my $tql = Triceps::X::Tql->new(
+  name => "tql",
+  tables => [
+    $tWindow,
+    $tSymbol,
+    $tWindow,
+    $tSymbol,
+  ],
+  tableNames => [
+    "window",
+    "symbol",
+    $tWindow->getName(),
+    $tSymbol->getName(),
+  ],
+);
+
+This version defines each table under two synonymous names. It's also possible to create a Tql object without tables, and add tables to it later as they are created:
+
+my $tql = Triceps::X::Tql->new(name => "tql");
+$tql->addNamedTable(
+  window => $tWindow,
+  symbol => $tSymbol,
+);
+# add 2nd time, with different names
+$tql->addTable(
+  $tWindow,
+  $tSymbol,
+);
+$tql->initialize();
+
+The tables can be added with explicit names or with "natural" names. After all the tables are added, the Tql object has to be initialized. The two ways of creation are mutually exclusive: if the option "tables" is used, the object will be initialized right away in the constructor. If it's not used, the explicit initialization has to be done later. The methods addTable() and addNamedTable() can not be used on an initialized table, and query() can not be used on an uninitialized table. 
