@@ -553,6 +553,149 @@ protected:
 };
 // END
 
+// [[ex03af]]
+// DEBUG descr A simple-minded manual-reset event (renamed to avoid name conflicts).
+class basicevent
+{
+public:
+	basicevent(bool signaled = false) :
+		signaled_(signaled)
+	{ }
+
+	int wait()
+	{
+		pw::lockmutex lm(cond_);
+		if (signaled_)
+			return 0;
+		cond_.wait();
+		return 0;
+	}
+	int trywait()
+	{
+		pw::lockmutex lm(cond_);
+		if (signaled_)
+			return 0;
+		return ETIMEDOUT;
+	}
+	int timedwait(const struct timespec &abstime)
+	{
+		pw::lockmutex lm(cond_);
+		if (signaled_)
+			return 0;
+		if (cond_.timedwait(abstime) == ETIMEDOUT)
+			return ETIMEDOUT;
+		return 0;
+	}
+	int signal()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = true;
+		cond_.broadcast();
+		return 0;
+	}
+	int reset()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = false;
+		return 0;
+	}
+	int pulse()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = false;
+		cond_.broadcast();
+		return 0;
+	}
+
+protected:
+	// contains both condition variable and a mutex
+	pw::pmcond cond_; 
+	// event is in the signaled state
+	bool signaled_; 
+};
+// END
+
+// [[ex03ag]]
+// DEBUG descr Manual-reset event.
+class event
+{
+public:
+	event(bool signaled = false) :
+		signaled_(signaled),
+		seq_(0),
+		seqpulse_(0)
+	{ }
+
+	int wait()
+	{
+		pw::lockmutex lm(cond_);
+		if (signaled_)
+			return 0;
+		unsigned s = ++seq_;
+		do {
+			cond_.wait();
+			if (seqpulse_ - s >= 0)
+				return 0;
+		} while (!signaled_);
+		return 0;
+	}
+	int trywait()
+	{
+		pw::lockmutex lm(cond_);
+		// doesn't need the sequence because 
+		// doesn't care about pulsing
+		if (!signaled_)
+			return ETIMEDOUT;
+		return 0;
+	}
+	int timedwait(const struct timespec &abstime)
+	{
+		pw::lockmutex lm(cond_);
+		if (signaled_)
+			return 0;
+		unsigned s = ++seq_;
+		do {
+			if (cond_.timedwait(abstime) == ETIMEDOUT)
+				return ETIMEDOUT;
+			if (seqpulse_ - s >= 0)
+				return 0;
+		} while (!signaled_);
+		return 0;
+	}
+	int signal()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = true;
+		cond_.broadcast();
+		return 0;
+	}
+	int reset()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = false;
+		return 0;
+	}
+	int pulse()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = false;
+		seqpulse_ = seq_;
+		cond_.broadcast();
+		return 0;
+	}
+
+protected:
+	// contains both condition variable and a mutex
+	pw::pmcond cond_; 
+	// event is in the signaled state
+	bool signaled_; 
+	// every wait increases the sequence
+	unsigned seq_; 
+	// pulse frees all the waits up to this sequence
+	unsigned seqpulse_; 
+};
+// END
+
 // [[ex03ca]]
 // DEBUG descr The general hold.
 class hold 
