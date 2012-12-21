@@ -192,26 +192,6 @@ public:
 	// May throw an Exception on fatal error.
 	void drainFrame();
 
-	// API for the Label execution machinery. Not intended to be called
-	// directly by the user.
-	// {
-	
-	// Extract and execute the next record from the innermost frame.
-	// Does not push a new frame, executes directly in the parent's frame
-	// May throw an Exception on fatal error.
-	void callNextForked();
-	// Execute callNextForked() the current stack frame drains.
-	// Calls the tracing notifications around it.
-	// Normally used to process the forked records after a label call returns.
-	// May throw an Exception on fatal error.
-	// @param lab - Label that has created the frame. Used for the tracing
-	//     notification and error messages.
-	// @param rop - Rowop that has created the frame. Used for the tracing
-	//     notification.
-	void drainForkedFrame(const Label *lab, Rowop *rop);
-
-	// } Label execution.
-
 	// Check whether the queue is empty.
 	// @return - if no rowops in the whole queue
 	bool empty() const;
@@ -445,6 +425,26 @@ protected:
 	// A common internal implementation for call(). 
 	// @param rop - rowop to call. It must be held by the caller until returned.
 	void callGuts(Rowop *rop);
+
+	// API for the Label execution machinery. Not intended to be called
+	// directly by the user.
+	// {
+	
+	// Extract and execute the next record from the innermost frame.
+	// Does not push a new frame, executes directly in the parent's frame
+	// May throw an Exception on fatal error.
+	void callNextForked();
+	// Execute callNextForked() the current stack frame drains.
+	// Calls the tracing notifications around it.
+	// Normally used to process the forked records after a label call returns.
+	// May throw an Exception on fatal error.
+	// @param lab - Label that has created the frame. Used for the tracing
+	//     notification and error messages.
+	// @param rop - Rowop that has created the frame. Used for the tracing
+	//     notification.
+	void drainForkedFrame(const Label *lab, Rowop *rop);
+
+	// } Label execution.
 
 protected:
 	// the scheduling queue, trays work as stack frames on it
