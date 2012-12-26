@@ -1,6 +1,10 @@
 Things that need to be done:
+* need a separate Rowop representation for passing the data between the threads
+* check the labels for belonging to a right unit when enqueueing
+* in Rowop construction replace asserts with exceptions
 * redo the errors to confess
 * change the typemap to confess
+* remove the enqueueing mode in Rowops, and in Unit::enqueueDelayedTray(), and in table output
 * more features for the SimpleAggregator
  ** standard deviation can be done in one pass
  ** median and percentiles on sorted indexes
