@@ -25,12 +25,20 @@ namespace TRICEPS_NS {
 class Tray : public Starget, public deque< Autoref<Rowop> >
 {
 public:
+	typedef deque< Autoref<Rowop> > Deque;
+
 	Tray()
 	{}
 
 	Tray(const Tray &orig) :
 		deque< Autoref<Rowop> >(orig)
 	{ }
+
+	Tray &operator=(const Tray &other)
+	{
+		Deque::operator=(other);
+		return *this;
+	}
 };
 
 }; // TRICEPS_NS
