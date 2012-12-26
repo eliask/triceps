@@ -79,6 +79,8 @@ UTESTCASE tray(Utest *utest)
 	UT_IS(t3->size(), 3);
 
 	*t1 = *t2;
+	UT_IS(t1->getref(), 1);
+	UT_IS(t2->getref(), 1);
 	UT_IS(t1->size(), 2);
 	UT_IS(t1->at(0).get(), op2.get());
 }

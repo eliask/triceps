@@ -34,11 +34,17 @@ public:
 		deque< Autoref<Rowop> >(orig)
 	{ }
 
+#if 0
+	// The assignments happen to work out of the box, because the
+	// Starget assignment does the right thing and doesn't corrupt
+	// the counter. But for reference, how it would have looked
+	// explicitly.
 	Tray &operator=(const Tray &other)
 	{
 		Deque::operator=(other);
 		return *this;
 	}
+#endif
 };
 
 }; // TRICEPS_NS
