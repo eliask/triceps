@@ -43,7 +43,7 @@ public:
 	// @param unit - the unit where this label belongs
 	// @param rtype - type of row to be handled by this label
 	// @param name - a human-readable name of this label, for tracing
-	Label(Unit *unit, const_Onceref<RowType> rtype, const string &name = "");
+	Label(Unit *unit, const_Onceref<RowType> rtype, const string &name);
 	
 	virtual ~Label();
 
