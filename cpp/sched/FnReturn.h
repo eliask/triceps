@@ -41,7 +41,7 @@ namespace TRICEPS_NS {
 // some rowops through some inputs of the function before the
 // "data" rowops.
 //
-// The FnReturn is very inconvenient su subclass, to the context has
+// The FnReturn is very inconvenient to subclass, so the context has
 // its own class that can be attached to a FnReturn.
 // The methods "onPush" and "onPop" can be defined in the subclass
 // of FnContext to save and restore this context for the recursive calls.
