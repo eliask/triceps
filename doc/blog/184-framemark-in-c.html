@@ -1,0 +1,17 @@
+FrameMark in C++
+
+The FrameMark (defined in sched/FrameMark.h) marks the unit's frame at the start of the loop, to fork there the rowops for the next iterations of the loop. It's pretty simple:
+
+FrameMark(const string &name);
+
+The constructor that gives the mark a name. A FrameMark is an Starget, so it's reference-counted and may be used only in one thread.
+
+const string &getName() const;
+
+Read back the name.
+
+Unit *getUnit() const;
+
+This method is different from getUnit() on most of the other classes. It returns the pointer to the unit, on which it has been set. A freshly created FrameMark would return NULL. Internally a FrameMark doesn't keep a reference to the unit, it's just a pointer, and a way for the Unit to check in loopAt() that the mark has been indeed set on this unit. And you can use it for the entertainment purposes too. Normally when the frame marked with this mark gets popped from the Unit's stack, the mark becomes unset, and its getUnit() will return NULL.
+
+All the actions on the FrameMark are done by passing it to the appropriate methods of the Unit. When a mark is set on a frame, the frame has a reference to it, so the mark won't be destroyed until the frame is freed. 

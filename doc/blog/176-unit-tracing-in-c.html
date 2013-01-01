@@ -1,0 +1,104 @@
+Unit tracing in C++
+
+By the way, I forgot to mention that Unit lives in sched/Unit.h. Now, to the tracing.
+
+Unlike Perl, in C++ the tracer is defined by inheriting from the class Unit::Tracer. The base class provides the Mtarget, and in the subclass all you need is define your virtual method:
+
+virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
+
+It gets called at the exactly same points as the Perl tracer (the C++ part of the UnitTracerPerl forwards the calls to the Perl level). The arguments are also the same as described in the Perl docs. The only difference is that the argument when is a value of enum Unit::TracerWhen.
+
+For example:
+
+class SampleTracer : public Unit::Tracer
+{
+public:
+    virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, Unit::TracerWhen when)
+    {
+        printf("trace %s label '%s' %c\n", Unit::tracerWhenHumanString(when), label->getName().c_str(), Unit::tracerWhenIsBefore(when)? '{' : '}');
+    }
+};
+
+This also shows a few Unit methods used for conversion and testing of the constants:
+
+static const char *tracerWhenString(int when, const char *def = "???");
+static int stringTracerWhen(const char *when);
+
+Convert between the when enum value and the appropriate name. def is as usual the default placeholder that will be used for an invalid value. And the conversion from string would return a -1 on an invalid value.
+
+static const char *tracerWhenHumanString(int when, const char *def = "???");
+static int humanStringTracerWhen(const char *when);
+
+The same conversion, only using a "human-readable" string format that is nivcer for the messages. Basically, the same thing, only in the lowercase words. For example, TW_BEFORE_CHAINED would become "before-chained".
+
+static bool tracerWhenIsBefore(int when);
+static bool tracerWhenIsAfter(int when);
+
+Determines whether a when value is a "before" or "after" kind. This is an addition from 1.1, that was introduced together with the reformed scheduling. As you can see in the example above, it's convenient for printing the braces, or if you prefer indentation, for adjusting the indentation.
+
+The tracer object (not a class but a constructed object!) is set into the Unit:
+
+void setTracer(Onceref<Tracer> tracer);
+Onceref<Tracer> getTracer() const;
+
+Theoretically, nothing stops you from using the same tracer object for multiple units, even from multiple threads. But the catch for that is that for the multithreaded calls the tracer must have the internal synchronization. Sharing a tracer between multiple units in the same thread is a more interesting idea. It might be useful in case of the intertwined execution, with the cross-unit calls. But the catch is that the trace will be intertwined all the time.
+
+The SampleTracer above was just printing the trace right away. Usually a better idea is to save the trace in the tracer object and return it on demand. Triceps provides a couple of ready tracers, and they use exactly this approach.
+
+Here is the StringTracer interface:
+
+  class StringTracer : public Tracer
+  {
+  public:
+    // @param verbose - if true, record all the events, otherwise only the BEGIN records
+    StringTracer(bool verbose = false);
+
+    // Get back the buffer of messages
+    // (it can also be used to add messages to the buffer)
+    Erref getBuffer() const
+    {  
+      return buffer_;
+    }  
+
+    // Replace the message buffer with a clean one.
+    // The old one gets simply dereferenced, so if you have a reference, you can keep it.
+    void clearBuffer();
+
+    // from Tracer
+    virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
+
+  protected:
+    Erref buffer_;
+    bool verbose_;
+  };
+
+An Erref object is used as a buffer, where the data can be added efficiently line-by-line, and later read. On each call StringTracer::execute() builds the string res, and appends it to the buffer:
+
+buffer_->appendMsg(false, res);
+
+The pattern of reading the buffer contents works like this:
+
+string tlog = trace->getBuffer()->print();
+trace->clearBuffer();
+
+The log can then be actually printed, or used in any other way. An interesting point is that clearBuffer() doesn't clear the buffer but replaces it with a fresh one. So if you keep a reference to the buffer, you can keep using it:
+
+Erref buf = trace->getBuffer();trace->clearBuffer();
+string tlog = buf->print();
+
+The two ready tracers provided with Triceps are:
+
+
+StringTracer: collects the trace in a buffer, identifying the objects as addresses. This is not exactly easy to read normally but may come useful if you want to analyze a core dump.
+
+
+StringNameTracer: similar but prints the object identification as names. More convenient but prone to the duplicate names used for different objects.
+
+
+Unfortunately, at the C++ level there is currently no nice printout of the rowops, like in Perl. But you can always make your own.
+
+
+The tracing does not have to be used just for tracing. It can also be used for debugging, as a breakpoint: check in your tracer for an arbitrary condition, and stop if it has been met.
+
+
+There is only one tracer per uint at a time. However if you want, you can implement the chaining in your own tracer (particularly useful if it's a breakpoint tracer): support a reference to another tracer object, and after doing your own part, call that one's execute() method.

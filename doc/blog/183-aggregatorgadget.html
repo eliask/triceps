@@ -1,0 +1,16 @@
+AggregatorGadget
+
+AggregatorGadget is a fairly internal class, but I'll describe it as well while at it. Each aggregator in a table has its own gadget, and that's what it is. It carries some extra information.
+
+The grand plan was that the different aggregator types may define their own subclasses of AggregatorGadget but in reality there appears no need to. So far all the aggregators happily live with the base AggregatorGadget.
+
+AggregatorGadget(const AggregatorType *type, Table *table, IndexType *intype);
+
+The type of the aggregator and the index type on which this particular aggregator is defined will be kept as references in the AggregatorGadget. The table will be remembered as a simple pointer (as usual, to avoid the circulare references, since the Table references all its AggregatorGadgets).
+
+Table *getTable() const;
+const AggregatorType* getType() const;
+
+Get back the information. By now I'm not sure, why there is no method to get back the index type. Looks like nothing needs it, so the index type reference from the gadget is fully superfluous. The potential subclasses may read it from the field indexType_.
+
+The normal way to use the AggregatorGadget is to call its method sendDelayed(). And it's called by other classes, not by its subclasses, so it's exported as publuc. On the other hand, the method send() must never be used with the AggregatorGadget, so it's made private (yes, I know that if you really want, you can use the superclass method, but just don't, the idea here is to guard against the accidental misuse, not against the malicious one). 

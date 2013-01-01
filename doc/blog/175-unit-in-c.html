@@ -1,0 +1,87 @@
+Unit in C++
+
+I've been distracted a bit with the other things, and now I'm working on the multithreaded support. I expect that it will be some time until that jells together. In the meantime, let's continue the description of the C++ API. The next class is the Unit. This class has been modified in 1.1.0, and I will be describing the new version, without going separately into 1.0.
+
+Unit(const string &name);
+
+Constructs the execution unit.
+
+const string &getName() const;
+void setName(const string &name);
+
+Get back of modify the name. Modifying the name is probably not a good idea, but the method is still here.
+
+void schedule(Onceref<Rowop> rop);
+void scheduleTray(const_Onceref<Tray> tray);
+void fork(Onceref<Rowop> rop);
+void forkTray(const_Onceref<Tray> tray);
+void call(Onceref<Rowop> rop);
+void callTray(const_Onceref<Tray> tray);
+
+
+void enqueue(int em, Onceref<Rowop> rop);
+void enqueueTray(int em, const_Onceref<Tray> tray);
+
+Schedule, fork or call a rowop or tray, like in Perl. Unlike Perl, the methods with a tray argument have different names. And the enqueueing mode is always an integer constant. These constants are defined in the enum Gadget::EnqMode (the Gadget class will be described soon), and is one of Gadget::EM_SCHEDULE, Gadget::EM_FORK, Gadget::EM_CALL and Gadget::EM_IGNORE. I'm not sure if I've described EM_IGNORE before. I think I did but just in case: it means "do nothing with this rowop", and it's available in Perl too.
+
+bool empty() const;
+
+Check whether all the Unit's frames are empty.
+
+void callNext();
+void drainFrame();
+
+Execute the next rowop from the current (innermost) frame, or all the rowops on the current frame. The semantics is the same as in the Perl code.
+
+void setMark(Onceref<FrameMark> mark);
+
+Set a mark on the current frame, same as in Perl.
+
+void loopAt(FrameMark *mark, Onceref<Rowop> rop);
+void loopTrayAt(FrameMark *mark, const_Onceref<Tray> tray);
+
+Enqueue a rowop of tray at the marked frame.
+
+ void callAsChained(const Label *label, Rowop *rop, const Label *chainedFrom);
+
+This method was introduced in version 1.1, and hasn't propagated to Perl yet. I'm not even sure that I want it visible in Perl, since it's kind of low-level. It executes a label call, assuming that it was chained from another label (before 1.1 the functionality itself had obviously existed but was not visible in the API).
+
+Here the row types of all the arguments must be matching. It asks to call the label with rowop, where the target label was chained from another label. It will do all the correct tracing for the chained calls. This method is used for example in the streaming functions, when an FnReturn calls through an FnBinding. You can use it directly as well, just be careful. And remember that keeping the consistency in the tracing is up to you: if you use the chainedFrom label argument that hasn't actually been called, the trace will look surprising.
+
+void clearLabels();
+
+Clear all the unit's labels, same semantics as when called from Perl.
+
+void rememberLabel(Label *lab);
+
+The method that connects a label to the unit. Normally you don't need to call it manually, the label constructor calls it (and that's why it's not in the Perl API). The only real reason to use this method manually is if you've disconnected a label manually from the unit, and want to reconnect it back (and I'm not sure if anyone would ever want that). Calling this method repeatedly with the same label and unit will have no effect. Remembering the same label in multiple units is not a good idea.
+
+void  forgetLabel(Label *lab);
+
+Make the unit forget a label, so on clearLabels() that label won't be cleared. This is another dangerous low-level method, since only the unit will forget about the label but the label will still keep the pointer to the unit, unless it's cleared. Because of the danger, it's also not in the Perl API. The reason to use it would be if you want to disassemble and discard a part of the unit without disturbing the rest of it. However a safer alternative is to just create multiple units in one thread and discard by a whole unit.
+
+RowType *getEmptyRowType() const;
+
+A convenience method to get a reference to a row type with no fields. Such row type is useful for creation of pseudo-labels that have the user-defined clearing handlers that clear some user data. This has been described in more detail before.
+
+void setMaxStackDepth(int v);
+int maxStackDepth() const;
+void setMaxRecursionDepth(int v);
+int maxRecursionDepth() const;
+
+Set and get the maximal unit stack depth and recursion depth, works the same as in Perl.
+
+That's it, except for the tracing support. I'll describe that in a separate post.
+
+And there is also a class that can be used to trigger the unit clearing on leaving scope:
+
+UnitClearingTrigger(Unit *unit);
+
+The trigger is an Mtarget, so the typical use would be:
+
+{
+  Autoref<UnitClearingTrigger> ctrig = new UnitClearingTrigger(myunit);
+  ...
+}
+
+At the block exit the Autoref will get destroyed, destroy the trigger, which would in turn cause the clearing of the unit. Of course, you can also place the Autoref into another object, and then the destruction of that object would cause the clearing, instead of the end of the block.

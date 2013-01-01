@@ -1,0 +1,46 @@
+Gadget in C++
+
+The Gadget is unique to the C++ API, it has no parallels in Perl. Gadget is a base class defined in sched/Gadget.h, its object being a something with an output label. And the details of what this something is, are determined by the subclass. Presumably, it also has some kind of inputs but it's up to the subclass. The Gadget itself defines only the output label. To make a concrete example, a table is a gadget, and every aggregator in the table is also a gadget. However the "pre" and "dump" labels of the table is not a gadget, it's just an extra label strapped on the side.
+
+Some of the reasons for the Gadget creation are purely historic by now. At some point it seemed important to have the ability to associate a particular enqueueing mode with each output label. Most tables might be using EM_CALL but some, ones in a loop, would use EM_FORK, and those that don't need to produce the streaming output would use EM_IGNORE. This approach didn't work out as well as it seemed at first, and now is outright deprecated: just use EM_CALL everywhere, and there are the newer and better ways to handle the loops. The whole Gadget thing should be redesigned at some point but for now I'll just describe it as it is.
+
+As the result of that history, the enqueueing mode constants are defined in the Gadget class, enum EnqMode: EM_SCHEDULE, EM_FORK, EM_CALL, EM_IGNORE.
+
+static const char *emString(int enval, const char *def = "???");
+static int stringEm(const char *str);
+
+Convert from the enqueueing mode constant to string, and back.
+
+Gadget(Unit *unit, EnqMode mode, const string &name = "", const_Onceref<RowType> rt = (const RowType*)NULL);
+
+The Gadget constructor is protected, since Gadget is intended to be used only as a base class, and never instantiated directly. The name and row type can be left undefined if they aren't known yet and initialized later. The output label won't be created until the row type is known, and you better also set the name by that time too. The enqueueing mode may also be changed later, so initially it can be set to anything. All this is intended only to split the initialization in a more convenient way, once the Gadget components are set, they must not be changed any more.
+
+The output label of the Gadget is a DummyLabel, and it shares the name with the Gadget. So if you want to differentiate that label with a suffix in the name, you have to give the suffixed name to the whole Gadget. For example, the Table constructor does:
+
+
+  Gadget(unit, emode, name + ".out", rowt),
+
+
+A Gadget keeps a reference to both its output label and its unit. This means that the unit won't disappears from under a Gadget, but to avoid the circular references, the Unit must not have references to the Gadgets (having references to their output labels is fine).
+
+void setEnqMode(EnqMode mode);void setName(const string &name);
+void setRowType(const_Onceref<RowType> rt);
+
+The protected methods to finish the initialization. Once the values are set, they must not be changed any more. Calling setRowType() creates the output label, and since the name of the output label is taken from the Gadget, you need to set the name before you set the row type.
+
+EnqMode getEnqMode() const;
+const string &getName() const;
+Unit *getUnit() const;
+Label *getLabel() const;
+
+Get back the gadget's information. The label will be returned only after it's initialized (i.e. the row type is known), before then getLabel() would return NULL. And yes, it's getLabel(), NOT getOutputLabel().
+
+The rest of the methods are for convenience of sending the rows to the output label. They are protected, since they are intended for the Gadget subclasses (which in turn may decide to make them pubclic).
+
+void send(const Row *row, Rowop::Opcode opcode) const;
+
+Construct a Rowop from the given row and opcode, and enqueue it to the output label according to the gadget's enqueueing method. This is the most typical use.
+
+void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const;
+
+Create a Rowop and put it into the dest tray. The rowop will have the enqueueing mode populated according to the Gadget's setting. This method is used when the whole set of the rowops needs to be generated before any of them can be enqueued, such as when a Table computes its aggregators. After the delayed tray is fully generated, it can be enqueued with Unit::enqueueDelayedTray(), which will consult each rowop's enqueueing method and process it accordingly. Again, this stuff exists for the historic reasons, and will likely be removed somewhere soon. 

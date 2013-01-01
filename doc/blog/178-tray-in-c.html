@@ -1,0 +1,33 @@
+Tray in C++
+
+A Tray in C++, defined in shed/Tray.h, is simply a deque of Rowop references, plus an Starget, so that it can be referenced itself:
+
+class Tray : public Starget, public deque< Autoref<Rowop> >
+
+All it really defines is the constructors:
+
+Tray();
+Tray(const Tray &orig);
+
+The operations on the Tray are just the usual deque operations.
+
+Yes, you can copy the trays by constructing a new one from an old one:
+
+Autoref<Tray> t1 = new Tray;
+t1->push_back(op1);
+
+Autoref<Tray> t3 = new Tray(*t1);
+
+Afterwards t3 will contain references to the same rowops as t1 (but will be a different Tray than t1!).
+
+The assignments (operator=) happen to just work out of the box because the operator= implementation in Starget does the smart thing and avoids the corruption of the reference counter. So you can do things like
+
+*t3 = *t1;
+
+It's worth noticing once more that unlike Rows and Rowops, the Trays are mutable. If you have multiple references to the same Tray, modifying the Tray will make all the references see its new contents!
+
+An important difference from the Perl API is that in C++ the Tray is not associated with a Unit. It's constructed simply by calling its constructor, and there is no Unit involved. It's possible to create a tray that contains a mix of rowops for different units. If you combine the C++ and Perl code, and then create such mixes in the C++ part, the Perl part of your code won't be happy.
+
+ And there is actually a way to create the mixed-unit trays even in the Perl code, in the tray of FnBinding. But this situation would be caught when trying to get the tray into the Perl level, and the workaround is to use the method FnBinding:callTray().
+
+The reason why Perl  associates the trays with a unit is to make the check of enqueueing a tray easy: just check that the tray belongs to the right unit, and it's all guaranteed to be right. At the C++ level no such checks are made. If you enqueue the rowops on labels belonging to a wrong unit, they will be enqueued quietly, will attempt to execute, and from there everything will likely to go wrong. So be disciplined. And maybe I'll think of a better way for keeping the unit consistency in the future. 

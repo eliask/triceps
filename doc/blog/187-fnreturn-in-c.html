@@ -1,0 +1,119 @@
+FnReturn in C++
+
+FnReturn, defined in sched/FnReturn.h, is generally constructed similarly to the RowSetType:
+
+ret = initializeOrThrow(FnReturn::make(unit, name)
+    ->addLabel("lb1", rt1)
+    ->addFromLabel("lb2", lbX)
+);
+
+Or of course piece-meal. As it gets built, it actually builds a RowSetType inseide itself.
+
+FnReturn(Unit *unit, const string &name);
+static FnReturn *make(Unit *unit, const string &name);
+
+The constructor and convenience wrapper. The unit will be remembered only as a pointer, not reference, to avoid the reference loops. However this pointer will be used to construct the internal labels. So until the FnReturn is fully initialized, you better make sure that the Unit object has a reference and doesn't get freed. FnReturn is an Starget, and must be used in only one thread.
+
+ const string &getName() const;
+ Unit *getUnitPtr() const;
+ const string &getUnitName() const;
+
+Get back the information from the constructor. Just like for the label, it reminds you that the Unit is only available as a pointer, not reference, here.  The FnReturn also have a concept of clearing: it has the special labels inside, and once any of these labels gets cleared, the FnReturn is also cleared by setting the unit pointer to NULL and forgetting the FnContext (more on that one later). So after the FnReturn is cleared, getUnitPtr() will return NULL. And again similar to the Label, there is a convenience function to get the unit name for informational printouts. When FnReturn is cleared, it returns the same "[fn return cleared]".
+
+FnReturn *addFromLabel(const string &lname, Autoref<Label>from);
+
+Add a label to the return by chaining it off another label. lname is the name within the return. The full name of the label will be return_name.label_name. The label names within a return must be unique and not empty, or it will be returned as an initialization error. The label type will be copied (actually, referenced) from the from label, and the new label will be automatically chained off it. The labels can be added only until the return is initialized, or it will throw an Exception.
+
+FnReturn *addLabel(const string &lname, const_Autoref<RowType>rtype);
+
+Add a new independen label to the return. Works very similar to addFromLabel, only uses the explicit row type and doesn't chain to anything. The label can be later found with getLabel() and either chained off something or used to send the rows to it explicitly. The labels can be added only until the return is initialized.
+
+class FnContext: public Starget
+{
+public:
+    virtual ~FnContext();
+    virtual void onPush(const FnReturn *fret) = 0;
+     virtual void onPop(const FnReturn *fret) = 0;
+};
+FnReturn *setContext(Onceref<FnContext> ctx);
+
+Set the context with handlers for the pushing and popping of the bindings in the FnReturn. Triceps generally tries to follow the C++ tradition of using the virtual methods for the callbacks, with the user then subclassing the base class and replacing the callback methods. However subclassing FnReturn is extremely inconvenient, because it gets connected to the other objects in a quite complicated way. So the solution is to make a separate context class for the callbacks, and then connect it. By the way, FnContext is not a subclass of FnReturn but a separate top-level class. I.e. NOT Triceps::FnReturn::FnContext but Triceps::FnContext. The callbacks will be called just before the binding is pushed or popped, but after the check for the correctness of the push or pop. They can be used to adjust the state of the streaming function by pushing or popping its stack of local variables, like was shown in the Perl examples.The context can be set only until the return is initialized.
+
+template<class C>  C *contextIn() const;
+
+Get back the context. Since the context will be a subclass of FnContext, this also handles the correct type casting. Use it like:
+
+Autoref<MyFnCtx> ctx = fret1->contextIn<MyFnCtx>();
+
+The type is converted using the static_cast, and you need to know the correct type in advance, or your program will break in some horrible ways. If the context has not been set, it will return a NULL.
+
+void initialize();
+
+Initialize the FnReturn. Very similar to the Type classes, it will collect the errors in an Errors object that has to be checked afterwards, and an FnReturn with errors must not be used. The initialization can be called repeatedly with no ill effects. After initialization the structure of the return (labels and context) can not be changed any more.
+
+Erref getErrors() const;
+
+Get the errors detected. Normally called after initialization but can also be called at any stage, as the errors are collected all the way through the object construction.
+
+bool isInitialized() const;
+
+Check whether the return is initialized.
+
+RowSetType *getType() const;
+
+Get the type of the return, which gets built internally by the return. The names of the row types in the set will be the same as the names of labels in the return, and their order will also be the same. This call can be made only after initialization, or it will throw an Exception.
+
+int size() const;
+
+Get the number of labels in the return. Can be called at any time.
+
+const RowSetType::NameVec &getLabelNames() const;
+const RowSetType::RowTypeVec &getRowTypes() const;
+const string *getLabelName(int idx) const;
+RowType *getRowType(const string &name) const;
+RowType *getRowType(int idx) const;
+
+Get the piecemeal information about the label names and types. These are really the convenience wrappers around the RowSetType. Note that they return pointers to be able to return NULL on the argument that is out of range. A somewhat special feature is that even though the row set type can be read only after initialization (after it becomes frozen and can not be messed with any more), these wrappers work at any time, even when the return is being built.
+
+bool equals(const FnReturn *t) const;
+bool match(const FnReturn *t) const;
+bool equals(const FnBinding *t) const;
+bool match(const FnBinding *t) const;
+
+Convenience wrappers that compare the equality or match of the underlying row set types.
+
+Label *getLabel(const string &name) const;
+int findLabel(const string &name) const;
+Label *getLabel(int idx) const;
+
+Get the label by name or index, or the index of the label by name. Return a NULL pointer or -1 index on an invalid argument.
+
+typedef vector<Autoref<RetLabel> > ReturnVec;
+const ReturnVec &getLabels() const;
+
+Get the whole set of labels. FnReturn::RetLabel is a special private label type with undisclosed internals. You need to treat these labels as being a plain Label.
+
+void push(Onceref<FnBinding> bind);
+
+Push a binding on the return stack. The return must be initialized, and the binding must be of a matching type, or an Exception will be thrown. The reference to the binding will be kept until it's popped.
+
+void pushUnchecked(Onceref<FnBinding> bind);
+
+Similar to push(), only the type of the binding is not checked. This is an optimization for the automatically generated code that does all the type checks up front at the generation time. The manually written code probably should not be using it.
+
+void pop(Onceref<FnBinding> bind);
+
+Pop a binding from the return stack. The binding argument specifies, which binding is expected to be popped. It's not strictly necessary but allows to catch any mess-ups with the return stack early. If the stack is empty or the top binding is not the same as the argument, throws an Exception.
+
+void pop();
+
+The unchecked version. It still checks and throws if the stack is empty. This method may come handy occasionally, but in general the checked version should be preferred. Pretty much the only reason to use it would be if you try to restore after a major error and want to pop everything from all your FnReturns untill their stacks become empty. But there is much trouble with this kind of restoration.
+
+int bindingStackSize() const;
+
+Get the size of the return stack (AKA the stack of bindings). Useful for debugging.
+
+typedef vector<Autoref<FnBinding> > BindingVec;
+const BindingVec &bindingStack() const;
+
+Get the current return stack. Useful for debugging. 

@@ -1,0 +1,78 @@
+RowSetType
+
+RowSetType, defined in types/RowSetType.h, is another item that is not visible in Perl. Maybe it will be in the future but at the moment things look good enough without it. It has been added for 1.1.0 and expresses the type ("return type" if you want to be precise) of a streaming function (FnReturn and FnBinding classes). Naturally, it's a sequence of the row types, and despite the word "set", the order matters.
+
+A RowSetType is one of these objects that gets assembled from many parts and then initialized, like this:
+
+Autoref<RowSetType> rst = initializeOr  Throw(RowSetType::make()
+    ->addRow("name1", rt1)
+    ->addRow("name2", rt2)
+);
+
+The function, or actually template,  initializeOrThrow() itself is also a new addition, that I'll describe in detail later.
+
+Of course, nothing stops you from adding the row types one by one, in a loop or in some other way, and then calling initialize() manually. And yes, of course you can keep a reference to a row set type as soon as it has been constructed, not waiting for initialization. You could do instead:
+
+Autoref<RowSetType> rst = new RowSetType();
+rst->addRow("name1", rt1);
+rst->addRow("name2", rt2);
+rst->initialize();
+if (rst->getErrors()->hasError()) {
+  ...
+}
+
+You could use the initializeOrThrow() template here as well, just I also wanted to show the way for the manual handling of the errors. And you can use the new or make() interchangeably too.
+
+
+All that the initialization does is fixate the row set, forbid the addition of the further row types to it. Which kind of makes sense at the moment but I'm not so sure about the future, in the future the dynamically expandable row sets might come useful. We'll see when we get there.
+RowSetType();
+static RowSetType *make();
+
+Construct a row set type. The method make() is just a wrapper around the constructor that is more convenient to use with the following ->addRow(), because of the way the operator priorities work in C++. Like any other type, RowSetType is unnamed by itself, and takes no constructor arguments. Like any other type, RowSetType is an Mtarget and can be shared between multiple threads after it has been initialized.
+
+RowSetType *addRow(const string &rname, const_Autoref<RowType>rtype);
+
+Add a row type to the set. All the row types are named, and all the names must be unique within the set. The order of the addition matters too. See the further explanation of why it does in the description of the FnReturn. If this method detects an error (such as duplicate names), it will append the error to the internal Errors object, that can be read later by getErrors(). A type with errors must not be used.
+
+The row types may not be added after the row set type has been initialized.
+
+void initialize();
+
+Initialize the type. Any detected errors can be read afterwards with getErrors(). The repeated calls of initialize() are ignored.
+
+bool isInitialized() const;
+
+Check whether the type has been initialized.
+
+typedef vector<string> NameVec;
+const NameVec &getRowNames() const;
+typedef vector<Autoref<RowType> > RowTypeVec;
+const RowTypeVec &getRowTypes() const;
+
+Read back the contents of the type. The elements will go in the order they were added.
+
+int size() const;
+
+Read the number of row types in the set.
+
+int findName(const string &name) const;
+
+Translate the row type name to index (i.e. the order in which it was added, starting from 0).Returns -1 on an invalid name.
+
+RowType *getRowType(const string &name) const;
+
+Find the type by name. Returns NULL on an invalid name.
+
+const string *getRowTypeName(int idx) const;
+RowType *getRowType(int idx) const;
+
+Read the data by index. These methods check that the index is in the valid range, and otherwise return NULL.
+
+The usual methods inherited from Type also work: getErrors(), equals(), match(), printTo().
+
+The row set types are considered equal if they contain the equal row types with equal names going in the same order. They are considered matching if they contain matching row types going in the same order, with any names. If the match condition seems surprising to you, think of it as "nothing will break if one type is substituted for another at execution time".
+
+void addError(const string &msg);
+Erref appendErrors();
+
+The ways to add extra errors to the type's errors. It's for convenience of the users of this type, the thinking being that since we already have one Errors object, can as well use it for everything, and also keep all the errors reported in the order of the fields, rather than first all the errors from the type then all the errors from its user. The FnReturn and FnBinding use it. 

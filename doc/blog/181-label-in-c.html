@@ -1,0 +1,75 @@
+Label in C++
+
+In C++ the custom labels are defined by defining your own class that inherits from Label (in sched/Label.h). The subclass needs to  define its own execution method:
+
+virtual void execute(Rowop *arg) const;
+
+The base class takes care of all the general execution mechanics, chaining etc. All you need to do in this method is perform your user-defined actions. By the way, this method is protected and should never be called directly. The labels must always be called through a unit, which will then execute them in the correct way.
+
+It may (though doesn't have to) also define the custom clearing method:
+
+virtual void clearSubclass();
+
+Currently this method is called by clear() after the label is marked as cleared but before clearing of the chain, though this order may change in the future.
+
+Now, the rest of the methods:
+
+Label(Unit *unit, const_Onceref<RowType> rtype, const string &name);
+
+The base class constructor. It's always constructed from a subclass, you can not instantiate the base Label class because it contains an abstract execute() method. The name argument used to be optional (and if you really want, you still may use an empty string as an explicit argument) but the unnamed labels are very difficult to make sense of later.
+
+The constructed label keeps a reference to its row type, and a pointer (not reference, to avoid the circular references!) to the Unit.
+
+The information from the constructor can be read back:
+
+const string &getName() const;
+const RowType *getType() const;
+Unit *getUnitPtr() const;
+
+The method getUnitPtr() is named this way and not getUnit() to emphasize that the Label has only a pointer to the Unit, not a reference. After the label gets cleared, getUnitPtr() will return NULL.The reason is that after that the label doesn't know any more whether the unit still exists or has been deleted, and doesn't want to return a pointer to a potentially freed memory.
+
+const string &getUnitName() const;
+
+A convenience method for the special case of getting the label's unit name. It's used in many error message. You can't just say label->getUnitPtr()->getName() because getUnitPtr() might return a NULL. getUnitName() takes care of it and returns a special string "[label cleared]" if the label has been cleared.
+
+void clear();
+
+Clears the label. After that the label stops working. Note that clearing a label doesn't dissociate it from its unit. Well, the label won't tell you its unit any more but the unit will still have a reference to the label! Use the unit's method forgetLabel() to dissociate it (but that won't clear the label by itself, so you have to call both unit->forgetLabel() and label->clear()). Of course, if you call unit->clearLabels(), that would take care of everything.
+
+Clearing cleans the chaining list of this label but doesn't call recursively clear() on the formerly chained labels. If you need that, you have to do it yourself.
+
+bool isCleared() const;
+
+Check if the label is cleared.
+
+void setNonReentrant();
+bool isNonReentrant() const;
+
+Mark the label as non-reentrant, and check this flag. There is no way to unset this flag. The meaning of it has been described at length before.
+
+Erref chain(Onceref<Label> lab);
+
+Chain another label to this one (so when this label is executed, the chained labels will also be executed in order). This label will keep a reference of the chained label. The circular chainings are forbidden and will throw an Exception.
+
+typedef vector<Autoref<Label> > ChainedVec;
+const ChainedVec &getChain() const;
+
+Get back the information about the chained labels. This returns a reference to the internal vector, so if the chainings are changed afterwards, the changes will be visible in the vector.
+
+bool hasChained() const;
+
+A quick check, whether there is anything chained.
+
+void clearChained();
+
+Clear the chaining list of this label. (But doesn't call clear() on these labels!)
+
+Rowop *adopt(Rowop *from) const;
+
+A convenient factory method for adopting the rowops. Treat it as a constructor: the returned Rowop will be newly constructed and have the reference count of 0; the pointed must be stored in an Autoref (or Onceref). This method by itself doesn't check whether the original Rowop has a matching type, it simply makes a copy with the label reference replaced. It's up to you to make sure that the labels are correct.
+
+A special subclass of the Label is DummyLabel: it's a label that does nothing. It's execute() method is empty. It's constructed very similarly to the Label:
+
+DummyLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name);
+
+The dummy labels are convenient for chaining the other labels to them. 

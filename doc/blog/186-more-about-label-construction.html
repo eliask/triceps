@@ -1,0 +1,3 @@
+More about Label construction
+
+I forgot to tell it explicitly in the post on the Labels in C++, but the label construction in C++ works just the same as in Perl: it makes the Unit remember the label right away. So there is no need to call Unit::rememberLabel() manually. On the other hand, if you do not want the label to be remembered by its unit (why?), the only way to achieve that is to call Unit::forgetLabel() after its construction. 
