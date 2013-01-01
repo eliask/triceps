@@ -31,7 +31,7 @@ DESTROY(WrapAutoFnBind *self)
 			errefAppend(err, "Triceps::AutoFnBind::DESTROY: encountered an FnReturn corruption", e.getErrors());
 			err->appendMsg(true, "Perl does not allow to die properly in a destructor, so will just exit.");
 			warn("%sTo see a full call stack, add an explicit clear() of the AutoFnBind before the end of block starting", err->print().c_str());
-			exit(1);
+			_exit(1);
 		}
 		delete self;
 
