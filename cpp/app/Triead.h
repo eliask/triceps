@@ -10,8 +10,9 @@
 #ifndef __Triceps_Triead_h__
 #define __Triceps_Triead_h__
 
-#include <common/Common.h>
 #include <pw/ptwrap2.h>
+#include <common/Common.h>
+#include <sched/Unit.h>
 
 namespace TRICEPS_NS {
 
@@ -25,10 +26,20 @@ class Triead : public Mtarget
 public:
 	// No public constructor! Use App!
 
+	// Get the name
+	const string &getName() const
+	{
+		return name_;
+	}
+
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
 	Triead(const string &name);
+
+	// Clear all the direct or indirect references to the other threads.
+	// Called by the App at the destruction time.
+	void clear();
 	
 protected:
 	// The initialization is done in two stages:
@@ -55,7 +66,7 @@ protected:
 	// waiting on readiness of the other threads.
 	pw::oncevent ready_;
 
-	string name_; // name of the thread
+	string name_; // name of the thread, read-only
 
 private:
 	Triead();
@@ -67,10 +78,17 @@ private:
 // of the Triead to a single thread that owns it. The Triead and TrieadOwner
 // creation is wrapped even farther, through App. The owner class is an Starget
 // by design, it must be accessible to one thread only. 
+//
+// Also includes all the control information that should not be visible
+// from outside the owner thread.
 class TrieadOwner : public Starget
 {
 	friend class App;
 public:
+	// The list of units in this thread, also determines their predictable
+	// scheduling order.
+	typedef list<Autoref<Unit> > UnitList;
+
 	// Get the owned Triead.
 	// Reasonably safe to assume that the TrieadOwner should be long-lived
 	// and will survive any use of the returned pointer (at least until it
@@ -82,13 +100,42 @@ public:
 		return triead_.get();
 	}
 
+	// Get the main unit that get created with the thread and shares its name.
+	// Assumes that TrieadOwner won't be destroyed while the result is used.
+	Unit *unit() const
+	{
+		return mainUnit_;
+	}
+
+	// Add a unit to the thread, it's OK if it has been already added.
+	// There is no easy way to find it back other than going through the
+	// list of all the known units, so keep your own reference too.
+	// @param u - unit to register.
+	void addUnit(Autoref<Unit> u);
+
+	// Forget a unit and remove it from the list.
+	// The main unit can not be forgotten.
+	// @param u - unit to forget
+	// @return - true if unit was successfully forgotten, false if the unit was
+	//     not known or is the main unit
+	bool forgetUnit(Unit *u);
+
+	// Get the list of all the units, in the order they were added.
+	const UnitList &listUnits() const
+	{
+		return units_;
+	}
+
 protected:
-	// Called through App::makeThriead().
+	// Called through App::makeTriead().
+	// Creates the thread's "main" same-named unit.
 	// @param th - thread, whose control API to represent.
 	TrieadOwner(Triead *th);
 
 protected:
 	Autoref<Triead> triead_;
+	Autoref<Unit> mainUnit_; // the main unit, created with the thread
+	UnitList units_; // units of this thread, includiong the main one
 
 private:
 	TrieadOwner();

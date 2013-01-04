@@ -46,8 +46,8 @@ public:
 
 	// XXX how does an App get deleted?
 
-	// Get the list of all the defined Apps, for introspection.
-	// @param - a map where the list of the defined Apps will be returned.
+	// List all the defined Apps, for introspection.
+	// @param - a map where all the defined Apps will be returned.
 	//     It will be cleared before placing any data into it.
 	typedef map<string, Autoref<App> > Map;
 	static void list(Map &ret);
