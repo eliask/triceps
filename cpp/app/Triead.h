@@ -32,6 +32,8 @@ public:
 		return name_;
 	}
 
+	~Triead();
+
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
@@ -107,7 +109,8 @@ public:
 		return mainUnit_;
 	}
 
-	// Add a unit to the thread, it's OK if it has been already added.
+	// Add a unit to the thread, it's OK if it has been already added 
+	// (extra addition will be ignored).
 	// There is no easy way to find it back other than going through the
 	// list of all the known units, so keep your own reference too.
 	// @param u - unit to register.
@@ -121,10 +124,14 @@ public:
 	bool forgetUnit(Unit *u);
 
 	// Get the list of all the units, in the order they were added.
+	// This includes the main unit in the first position.
 	const UnitList &listUnits() const
 	{
 		return units_;
 	}
+
+	// The destruction clears labels in all the thread's units.
+	~TrieadOwner();
 
 protected:
 	// Called through App::makeTriead().

@@ -62,7 +62,7 @@ public:
 	// @param name - name of the thread to create. Must be unique in the App.
 	Onceref<TrieadOwner> makeTriead(const string &tname);
 
-	typedef map<string, Autoref<Thriead> > TrieadMap;
+	typedef map<string, Autoref<Triead> > TrieadMap;
 
 protected:
 	// Use App::Make to create new objects.
@@ -74,6 +74,7 @@ protected:
 	static Map apps_;
 	static pw::pmutex apps_mutex_;
 
+	static pw::pmutex mutex_; // mutex synchronizing this App
 	string name_; // name of the App
 	TrieadMap threads_; // threads defined in this App
 

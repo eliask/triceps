@@ -53,15 +53,17 @@ App::App(const string &name)
 
 Onceref<TrieadOwner> App::makeTriead(const string &tname)
 {
-	if (name.empty())
+	if (tname.empty())
 		throw Exception::fTrace("Empty thread name is not allowed, in application '%s'.", name_.c_str());
+
+	pw::lockmutex lm(mutex_);
 
 	TrieadMap::iterator it = threads_.find(tname);
 	if (it != threads_.end())
 		throw Exception::fTrace("Duplicate thread name '%s' is not allowed, in application '%s'.", 
 			tname.c_str(), name_.c_str());
 
-	Triead *th = new Triead(name);
+	Triead *th = new Triead(tname);
 	TrieadOwner *ow = new TrieadOwner(th);
 	threads_[tname] = th;
 
