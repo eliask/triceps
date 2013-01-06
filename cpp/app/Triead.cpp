@@ -30,6 +30,27 @@ Triead::~Triead()
 	clear();
 }
 
+bool Triead::isConstructed()
+{
+	return constructed_.check();
+}
+
+bool Triead::isReady()
+{
+	return ready_.check();
+}
+
+void Triead::markConstructed()
+{
+	constructed_.signal();
+}
+
+void Triead::markReady()
+{
+	markConstructed();
+	ready_.signal();
+}
+
 // -------------- TrieadOwner ------------------------------------------
 
 TrieadOwner::TrieadOwner(Triead *th) :

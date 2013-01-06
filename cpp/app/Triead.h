@@ -34,6 +34,17 @@ public:
 
 	~Triead();
 
+	// Check if all the nexuses have been constructed.
+	// Not const since the value might change between the calls,
+	// if marked by the owner of this thread.
+	bool isConstructed();
+
+	// Check if all the connections have been completed and the
+	// thread is ready to run.
+	// Not const since the value might change between the calls,
+	// if marked by the owner of this thread.
+	bool isReady();
+
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
@@ -43,6 +54,18 @@ protected:
 	// Called by the App at the destruction time.
 	void clear();
 	
+	// The TrieadOwner API
+	// {
+
+	// Mark that the thread has constructed and exported all of its
+	// nexuses.
+	void markConstructed();
+
+	// Mark that the thread has completed all its connections and
+	// is ready to run. This also implies Constructed, and can be
+	// used to set both flags at once.
+	void markReady();
+	// }
 protected:
 	// The initialization is done in two stages:
 	// 1. Construction: the thread defines its own nexuses and locates
@@ -91,6 +114,10 @@ public:
 	// scheduling order.
 	typedef list<Autoref<Unit> > UnitList;
 
+	// The constructor is protected, called through App.
+	// The destruction clears labels in all the thread's units.
+	~TrieadOwner();
+
 	// Get the owned Triead.
 	// Reasonably safe to assume that the TrieadOwner should be long-lived
 	// and will survive any use of the returned pointer (at least until it
@@ -130,8 +157,20 @@ public:
 		return units_;
 	}
 
-	// The destruction clears labels in all the thread's units.
-	~TrieadOwner();
+	// Mark that the thread has constructed and exported all of its
+	// nexuses.
+	void markConstructed()
+	{
+		triead_->markConstructed();
+	}
+
+	// Mark that the thread has completed all its connections and
+	// is ready to run. This also implies Constructed, and can be
+	// used to set both flags at once.
+	void markReady()
+	{
+		triead_->markReady();
+	}
 
 protected:
 	// Called through App::makeTriead().
