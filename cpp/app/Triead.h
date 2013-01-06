@@ -26,13 +26,13 @@ class Triead : public Mtarget
 public:
 	// No public constructor! Use App!
 
+	~Triead();
+
 	// Get the name
 	const string &getName() const
 	{
 		return name_;
 	}
-
-	~Triead();
 
 	// Check if all the nexuses have been constructed.
 	// Not const since the value might change between the calls,

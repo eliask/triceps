@@ -7,7 +7,6 @@
 // A Triceps Thread.  It keeps together the Nexuses defined by the thread and
 // is also used to track the state of the app initialization.
 
-#include <algorithm>
 #include <app/Triead.h>
 
 namespace TRICEPS_NS {

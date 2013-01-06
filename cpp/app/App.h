@@ -19,9 +19,12 @@ namespace TRICEPS_NS {
 
 class Triead; // The Triceps Thread
 class TrieadOwner; // The Triceps Thread's Owner interface
+class Nexus;
 
 class App : public Mtarget
 {
+protected:
+
 public:
 	// the static interface {
 
@@ -55,6 +58,14 @@ public:
 	// } static interface
 
 public:
+	typedef map<string, Autoref<Triead> > TrieadMap;
+
+	// Get the name
+	const string &getName() const
+	{
+		return name_;
+	}
+
 	// Create a new thread.
 	//
 	// Throws an Exception if the name is empty or not unique.
@@ -62,12 +73,24 @@ public:
 	// @param name - name of the thread to create. Must be unique in the App.
 	Onceref<TrieadOwner> makeTriead(const string &tname);
 
-	typedef map<string, Autoref<Triead> > TrieadMap;
+	// Export a nexus in a thread.
+	// Throws an Exception on any errors (such as the thread not belonging to this
+	// app, nexus being already exported or having been incorrectly defined).
+	//
+	// @param to - thread that owns the nexus
+	// @param nexus - nexus to be exported
+	void exportNexus(TrieadOwner *to, Nexus *nexus);
 
 protected:
 	// Use App::Make to create new objects.
 	// @param name - name of the app.
 	App(const string &name);
+
+	// Check that the thread belongs to this app.
+	// If not, throws an Exception.
+	// Relies on mutex_ being already locked.
+	void assertTrieadL(Triead *th);
+	void assertTrieadOwnerL(TrieadOwner *to);
 
 protected:
 	// The single process-wide directory of all the apps, protected by a mutex.
