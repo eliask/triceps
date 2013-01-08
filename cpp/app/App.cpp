@@ -68,6 +68,14 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 	TrieadOwner *ow = new TrieadOwner(th);
 	threads_[tname] = th;
 
+	TrieadUpdMap::iterator upit = upd_.find(tname);
+	if (upit == upd_.end()) {
+		upd_[tname] = new TrieadUpd(mutex_);
+	} else {
+		// Already declared and there might be someone waiting for definition.
+		upit->second->broadcast();
+	}
+
 	return ow; // the only owner API for the thread!
 }
 

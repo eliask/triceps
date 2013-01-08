@@ -73,6 +73,39 @@ public:
 	// @param name - name of the thread to create. Must be unique in the App.
 	Onceref<TrieadOwner> makeTriead(const string &tname);
 
+	// Declare a thread's name.
+	// After that the thread can be found: it will wait for the thread's
+	// construction and not throw an error. Not needed if the thread is known
+	// to already exist. It's OK to declare a Triead that already exists,
+	// then it becomes a no-op.
+	//
+	// I.e. if a parent C++ thread creates a Triead and then gives its name
+	// to a child C++ thread as a source of data, there is no need for declaration
+	// because the parent thread is already defined.
+	// But if a parent C++ thread creates a child C++ thread, giving it a Triead 
+	// name to use, and then wants to connect to that child Triead, it has to
+	// declare that Triead first to avoid the race with the child thread not
+	// being able to define a Triead before the parent trying to use it.
+	// 
+	// There are two caveats though:
+	// 1. The child thread still might die before it completes the initialization.
+	//    For this, there is a timeout.
+	// 2. If the parent thread tries to connect to the child AND the child tries
+	//    to connect to the parent, avoid the race by fully constructing the
+	//    parent Triead and only then starting the child thread. Otherwise a
+	//    deadlock is possible. It will be detected reliably, but then still
+	//    you would have to fix it like this.
+	void declareTriead(const string &name);
+
+	// Find a thread by name.
+	// Will wait if the thread has not completed its construction yet.
+	//
+	// Throws an Exception if no such thread is declared nor made.
+	//
+	// @param to - identity of the calling thread (used for the deadlock detection).
+	// @param tname - name of the thread
+	Onceref<Triead> findTriead(TrieadOwner *to, const string &tname);
+
 	// Export a nexus in a thread.
 	// Throws an Exception on any errors (such as the thread not belonging to this
 	// app, nexus being already exported or having been incorrectly defined).
@@ -80,6 +113,22 @@ public:
 	// @param to - thread that owns the nexus
 	// @param nexus - nexus to be exported
 	void exportNexus(TrieadOwner *to, Nexus *nexus);
+
+	// Find a nexus in a thread by name.
+	// Will wait if the thread has not completed its construction yet.
+	//
+	// Throws an Exception if no such nexus exists.
+	//
+	// @param to - identity of the calling thread (used for the deadlock detection).
+	// @param tname - name of the target thread
+	// @paran nexname - name of the nexus in it
+	// @return - the nexus reference.
+	Onceref<Nexus> findNexus(TrieadOwner *to, const string &tname, const string &nexname);
+
+	// Get all the threads defined and declared in the app.
+	// The declared but undefined threads will have the value of NULL.
+	// @param ret - map where to put the return values (it will be cleared first).
+	void getTrieads(TrieadMap &ret) const;
 
 protected:
 	// Use App::Make to create new objects.
@@ -93,6 +142,33 @@ protected:
 	void assertTrieadOwnerL(TrieadOwner *to);
 
 protected:
+	// Since there might be a need to wait for the initialization of
+	// even the declared and not yet defined threads, the wait structures
+	// exist separately.
+	class TrieadUpd : public Mtarget
+	{
+	public:
+		TrieadUpd(pmutex &mutex):
+			cond_(mutex)
+		{ }
+
+		// Signals the condvar and throws an exception if it fails
+		// (which should never happen but who knows).
+		void broadcast();
+
+		// Condvar for waiting for any updates in the Triead status.
+		pw::pchaincond cond_; // all chained from the App's mutex_
+
+		// XXX TODO figure out the destruction sequence
+		// Condvar for waiting for any sleepers to wake up and go away.
+		// pw::pchaincond freecond_; // all chained from the App's mutex_
+	private:
+		TrieadUpd();
+		TrieadUpd(const TrieadUpd &);
+		void operator=(const TrieadUpd &);
+	};
+	typedef map<string, Autoref<TrieadUpd> > TrieadUpdMap;
+
 	// The single process-wide directory of all the apps, protected by a mutex.
 	static Map apps_;
 	static pw::pmutex apps_mutex_;
@@ -100,6 +176,7 @@ protected:
 	static pw::pmutex mutex_; // mutex synchronizing this App
 	string name_; // name of the App
 	TrieadMap threads_; // threads defined in this App
+	TrieadUpdMap upd_; // for waiting for updates
 
 private:
 	App();

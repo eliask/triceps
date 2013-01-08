@@ -20,7 +20,9 @@ class Triead;
 
 // Nexus is the machinery that keeps a queue of rowops (their inter-thread
 // representations) for passing between the threads. The queue is common
-// between all the labels and provides a common order for them.
+// between all the labels and provides a common order for them. More exactly,
+// there might be up to two queues: one "downstream" and one "upstream".
+// But the initial goal is to have one per nexus.
 //
 // The Nexuses could live right on the level under App but in case of the
 // deadlocks this would make tracing the cause difficult (i.e. thread A

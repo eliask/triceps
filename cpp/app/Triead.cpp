@@ -11,8 +11,6 @@
 
 namespace TRICEPS_NS {
 
-// -------------- Triead -----------------------------------------------
-
 Triead::Triead(const string &name) :
 	name_(name)
 { }
@@ -48,44 +46,6 @@ void Triead::markReady()
 {
 	markConstructed();
 	ready_.signal();
-}
-
-// -------------- TrieadOwner ------------------------------------------
-
-TrieadOwner::TrieadOwner(Triead *th) :
-	triead_(th),
-	mainUnit_(new Unit(th->getName()))
-{
-	units_.push_back(mainUnit_);
-}
-
-TrieadOwner::~TrieadOwner()
-{
-	for (UnitList::iterator it = units_.begin(); it != units_.end(); ++it)
-		(*it)->clearLabels();
-}
-
-void TrieadOwner::addUnit(Autoref<Unit> u)
-{
-	for (UnitList::iterator it = units_.begin(); it != units_.end(); ++it) {
-		if (*it == u)
-			return; // a repeated insert, ignore
-	}
-	units_.push_back(u);
-}
-
-bool TrieadOwner::forgetUnit(Unit *u)
-{
-	if (u == mainUnit_)
-		return false; // can not forget the main unit
-
-	for (UnitList::iterator it = units_.begin(); it != units_.end(); ++it) {
-		if (it->get() == u) {
-			units_.erase(it);
-			return true;
-		}
-	}
-	return false;
 }
 
 }; // TRICEPS_NS
