@@ -23,7 +23,7 @@ class Nexus;
 
 class App : public Mtarget
 {
-protected:
+	friend class TrieadOwner;
 
 public:
 	// the static interface {
@@ -106,10 +106,25 @@ public:
 	//        method will do nothing.
 	void declareTriead(const string &tname);
 
+	// Get all the threads defined and declared in the app.
+	// The declared but undefined threads will have the value of NULL.
+	// @param ret - map where to put the return values (it will be cleared first).
+	void getTrieads(TrieadMap &ret) const;
+
+	// Wait for all the threads to become ready.
+	void waitReady();
+
+protected:
+	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
+	// XXXXXXXXXXX a lot of this API will move into the TrieadOwner
+	
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.
+	// If the thread refers to itself (i.e. the name is of the same thread
+	// owner, returns the thread back even if it's not fully constructed yet).
 	//
-	// Throws an Exception if no such thread is declared nor made.
+	// Throws an Exception if no such thread is declared nor made,
+	// or the thread is declared but not constructed within the timeout.
 	//
 	// @param to - identity of the calling thread (used for the deadlock detection).
 	// @param tname - name of the thread
@@ -134,14 +149,6 @@ public:
 	// @return - the nexus reference.
 	Onceref<Nexus> findNexus(TrieadOwner *to, const string &tname, const string &nexname);
 
-	// Get all the threads defined and declared in the app.
-	// The declared but undefined threads will have the value of NULL.
-	// @param ret - map where to put the return values (it will be cleared first).
-	void getTrieads(TrieadMap &ret) const;
-
-	// Wait for all the threads to become ready.
-	void waitReady();
-
 protected:
 	// Use App::Make to create new objects.
 	// @param name - name of the app.
@@ -150,8 +157,12 @@ protected:
 	// Check that the thread belongs to this app.
 	// If not, throws an Exception.
 	// Relies on mutex_ being already locked.
-	void assertTrieadL(Triead *th);
-	void assertTrieadOwnerL(TrieadOwner *to);
+	void assertTrieadL(Triead *th) const;
+	void assertTrieadOwnerL(TrieadOwner *to) const;
+
+	// Create a timestamp for the wait time limit, timeout_ from now.
+	// @param ret - the struct timespec to fill out
+	void initTimespec(timespec &ret) const;
 
 protected:
 	// Since there might be a need to wait for the initialization of

@@ -93,7 +93,7 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 			tname.c_str(), name_.c_str());
 
 	Triead *th = new Triead(tname);
-	TrieadOwner *ow = new TrieadOwner(th);
+	TrieadOwner *ow = new TrieadOwner(this, th);
 	threads_[tname] = th;
 
 	TrieadUpdMap::iterator upit = upd_.find(tname);
@@ -133,9 +133,9 @@ void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 	// Find if anyone is waiting for this nexus, and wake them up.
 }
 
-void App::assertTrieadL(Triead *th)
+void App::assertTrieadL(Triead *th) const
 {
-	TrieadMap::iterator it = threads_.find(th->getName());
+	TrieadMap::const_iterator it = threads_.find(th->getName());
 	if (it == threads_.end()) {
 		throw Exception::fTrace("Thread '%s' does not belong to the application '%s'.",
 			th->getName().c_str(), name_.c_str());
@@ -146,9 +146,46 @@ void App::assertTrieadL(Triead *th)
 	}
 }
 
-void App::assertTrieadOwnerL(TrieadOwner *to)
+void App::assertTrieadOwnerL(TrieadOwner *to) const
 {
 	assertTrieadL(to->get());
+}
+
+void App::initTimespec(timespec &ret) const
+{
+	clock_gettime(CLOCK_REALTIME, &ret); // the current time
+	ret.tv_sec += timeout_;
+}
+
+Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
+{
+	pw::lockmutex lm(mutex_);
+
+	assertTrieadOwnerL(to);
+
+	// A special short-circuit for the self-reference, a thread can
+	// find itself even if it's not fully constructed.
+	if (to->get()->getName() == tname)
+		return to->get();
+
+	TrieadMap::iterator it = threads_.find(tname);
+	if (it != threads_.end() && it->second->isConstructed())
+		return it->second;
+
+	TrieadUpdMap::iterator upit = upd_.find(tname);
+	if (upit == upd_.end())
+		throw Exception::fTrace("In app '%s' thread '%s' is referring to a non-existing thread '%s'.",
+			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
+
+	timespec limit;
+	initTimespec(limit);
+
+	do {
+		upit->second->waitL(name_, tname, limit); // will throw on timeout
+		it = threads_.find(tname);
+	} while (it == threads_.end() || !it->second->isConstructed());
+
+	return it->second;
 }
 
 }; // TRICEPS_NS

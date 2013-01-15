@@ -83,7 +83,7 @@ public:
 	// nexuses.
 	void markConstructed()
 	{
-		triead_->markConstructed();
+		triead_->markConstructed(); // XXX notify App
 	}
 
 	// Mark that the thread has completed all its connections and
@@ -91,20 +91,55 @@ public:
 	// used to set both flags at once.
 	void markReady()
 	{
-		triead_->markReady();
+		triead_->markReady(); // XXX notify App
 	}
+
+	// Find a thread by name.
+	// Will wait if the thread has not completed its construction yet.
+	// If the thread refers to itself (i.e. the name is of the same thread
+	// owner), returns the thread back even if it's not fully constructed yet.
+	//
+	// Throws an Exception if no such thread is declared nor made,
+	// or the thread is declared but not constructed within the App timeout.
+	//
+	// @param tname - name of the thread to find
+	Onceref<Triead> findTriead(const string &tname)
+	{
+		return app_->findTriead(this, tname);
+	}
+
+	// Export a nexus in this thread.
+	// Throws an Exception on any errors (such as the thread not belonging to this
+	// app, nexus being already exported or having been incorrectly defined).
+	//
+	// @param nexus - nexus to be exported
+	void exportNexus(Nexus *nexus);
+
+	// Find a nexus in a thread by name.
+	// Will wait if the thread has not completed its construction yet.
+	// If the thread refers to itself (i.e. the name is of the same thread
+	// owner), returns the nexus even if the thread not fully constructed yet
+	// or fails immediately if the nexus has not been defined yet.
+	//
+	// Throws an Exception if no such nexus exists within the App timeout.
+	//
+	// @param tname - name of the target thread that owns the nexus
+	// @paran nexname - name of the nexus in it
+	// @return - the nexus reference.
+	Onceref<Nexus> findNexus(const string &tname, const string &nexname);
 
 protected:
 	// Called through App::makeTriead().
 	// Creates the thread's "main" same-named unit.
+	// @param app - app where this thread belongs
 	// @param th - thread, whose control API to represent.
-	TrieadOwner(Triead *th);
+	TrieadOwner(App *app, Triead *th);
 
 protected:
 	Autoref<App> app_; // app where the thread belongs
 	Autoref<Triead> triead_; // the thread owned here
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
-	UnitList units_; // units of this thread, includiong the main one
+	UnitList units_; // units of this thread, including the main one
 
 private:
 	TrieadOwner();

@@ -9,7 +9,8 @@
 
 namespace TRICEPS_NS {
 
-TrieadOwner::TrieadOwner(Triead *th) :
+TrieadOwner::TrieadOwner(App *app, Triead *th) :
+	app_(app),
 	triead_(th),
 	mainUnit_(new Unit(th->getName()))
 {
