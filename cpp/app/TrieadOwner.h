@@ -101,8 +101,8 @@ protected:
 	TrieadOwner(Triead *th);
 
 protected:
-	Autoref<App>
-	Autoref<Triead> triead_;
+	Autoref<App> app_; // app where the thread belongs
+	Autoref<Triead> triead_; // the thread owned here
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
 	UnitList units_; // units of this thread, includiong the main one
 

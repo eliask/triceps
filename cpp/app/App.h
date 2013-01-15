@@ -60,6 +60,12 @@ public:
 public:
 	typedef map<string, Autoref<Triead> > TrieadMap;
 
+	enum {
+		// The default timeout (seconds) when waiting for the threads
+		// to initialize.
+		DEFAULT_TIMEOUT = 30,
+	};
+
 	// Get the name
 	const string &getName() const
 	{
@@ -70,7 +76,7 @@ public:
 	//
 	// Throws an Exception if the name is empty or not unique.
 	//
-	// @param name - name of the thread to create. Must be unique in the App.
+	// @param tname - name of the thread to create. Must be unique in the App.
 	Onceref<TrieadOwner> makeTriead(const string &tname);
 
 	// Declare a thread's name.
@@ -95,7 +101,10 @@ public:
 	//    parent Triead and only then starting the child thread. Otherwise a
 	//    deadlock is possible. It will be detected reliably, but then still
 	//    you would have to fix it like this.
-	void declareTriead(const string &name);
+	//
+	// @param tname - name of the thread to declare. If already declared, this
+	//        method will do nothing.
+	void declareTriead(const string &tname);
 
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.
@@ -130,6 +139,9 @@ public:
 	// @param ret - map where to put the return values (it will be cleared first).
 	void getTrieads(TrieadMap &ret) const;
 
+	// Wait for all the threads to become ready.
+	void waitReady();
+
 protected:
 	// Use App::Make to create new objects.
 	// @param name - name of the app.
@@ -148,14 +160,31 @@ protected:
 	class TrieadUpd : public Mtarget
 	{
 	public:
-		TrieadUpd(pmutex &mutex):
+		// The mutex would be normally the App object's mutex.
+		TrieadUpd(pw::pmutex &mutex):
 			cond_(mutex)
 		{ }
 
-		// Signals the condvar and throws an exception if it fails
+		// Signals the condvar and throws an Exception if it fails
 		// (which should never happen but who knows).
-		void broadcast();
+		// The mutex should be already locked.
+		//
+		// @param appname - application name, for error messages
+		void broadcastL(const string &appname);
 
+		// Waits for the condition, time-limited to the App's timeout.
+		// (To maintain the limit through repeated calls, it's built by
+		// the caller and passed as an argument).
+		// Throws an Exception if the wait times out or on any
+		// other error.
+		// The mutex should be already locked.
+		//
+		// @param appname - application name, for error messages
+		// @param tname - thread name of this object, for error messages
+		// @param abstime - the time limit
+		void waitL(const string &appname, const string &tname, const timespec &abstime);
+
+	protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_
 
@@ -176,7 +205,8 @@ protected:
 	static pw::pmutex mutex_; // mutex synchronizing this App
 	string name_; // name of the App
 	TrieadMap threads_; // threads defined in this App
-	TrieadUpdMap upd_; // for waiting for updates
+	TrieadUpdMap upd_; // for waiting for updates, includes the declared threads
+	int timeout_; // timeout in seconds for waiting for initialization // XXX add a method to change it
 
 private:
 	App();

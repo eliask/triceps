@@ -7,10 +7,37 @@
 // The Application class that manages the threads. There may be multiple
 // Apps in one program, each with a different name.
 
+#include <string.h>
 #include <app/App.h>
+#include <app/TrieadOwner.h>
 #include <app/Nexus.h>
 
 namespace TRICEPS_NS {
+
+// -------------------- App::TrieadUpd -----------------------------------
+
+void App::TrieadUpd::broadcastL(const string &appname)
+{
+	int err = cond_.broadcast();
+	if (err != 0)
+		throw Exception::fTrace("Internal error: condvar broadcast failed in application '%s', errno=%d: %s.", 
+			appname.c_str(), err, strerror(err));
+}
+
+void App::TrieadUpd::waitL(const string &appname, const string &tname, const timespec &abstime)
+{
+	int err = cond_.timedwait(abstime);
+	if (err != 0) {
+		if (err == ETIMEDOUT)
+			throw Exception::fTrace("Thread '%s' in application '%s' did not initialize within the time limit.", 
+				tname.c_str(), appname.c_str());
+		else 
+			throw Exception::fTrace("Internal error: condvar wait for thread '%s' in application '%s' failed, errno=%d: %s.", 
+				tname.c_str(), appname.c_str(), err, strerror(err));
+	}
+}
+
+// -------------------- App ----------------------------------------------
 
 Onceref<App> App::make(const string &name)
 {
@@ -48,8 +75,9 @@ void App::list(Map &ret)
 		ret.insert(*it);
 }
 
-App::App(const string &name)
-	: name_(name)
+App::App(const string &name) :
+	name_(name),
+	timeout_(DEFAULT_TIMEOUT)
 { }
 
 Onceref<TrieadOwner> App::makeTriead(const string &tname)
@@ -73,10 +101,22 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 		upd_[tname] = new TrieadUpd(mutex_);
 	} else {
 		// Already declared and there might be someone waiting for definition.
-		upit->second->broadcast();
+		upit->second->broadcastL(name_);
 	}
 
 	return ow; // the only owner API for the thread!
+}
+
+void App::declareTriead(const string &tname)
+{
+	if (tname.empty())
+		throw Exception::fTrace("Empty thread name is not allowed, in application '%s'.", name_.c_str());
+
+	pw::lockmutex lm(mutex_);
+	TrieadUpdMap::iterator upit = upd_.find(tname);
+	if (upit == upd_.end()) {
+		upd_[tname] = new TrieadUpd(mutex_);
+	} // else just do nothing
 }
 
 void App::exportNexus(TrieadOwner *to, Nexus *nexus)
