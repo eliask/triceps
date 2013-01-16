@@ -77,7 +77,9 @@ void App::list(Map &ret)
 
 App::App(const string &name) :
 	name_(name),
-	timeout_(DEFAULT_TIMEOUT)
+	timeout_(DEFAULT_TIMEOUT),
+	unreadyCnt_(0),
+	ready_(true) // since no threads are unready
 { }
 
 Onceref<TrieadOwner> App::makeTriead(const string &tname)
@@ -99,6 +101,8 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 	TrieadUpdMap::iterator upit = upd_.find(tname);
 	if (upit == upd_.end()) {
 		upd_[tname] = new TrieadUpd(mutex_);
+		if (++unreadyCnt_ == 1)
+			ready_.reset();
 	}
 
 	return ow; // the only owner API for the thread!
@@ -113,6 +117,8 @@ void App::declareTriead(const string &tname)
 	TrieadUpdMap::iterator upit = upd_.find(tname);
 	if (upit == upd_.end()) {
 		upd_[tname] = new TrieadUpd(mutex_);
+		if (++unreadyCnt_ == 1)
+			ready_.reset();
 	} // else just do nothing
 }
 
@@ -209,8 +215,35 @@ void App::markTrieadReady(TrieadOwner *to)
 
 	if (!t->isReady()) {
 		t->markReady();
-		TrieadUpdMap::iterator upit = upd_.find(t->getName());
-		upit->second->broadcastL(name_);
+		if (--unreadyCnt_ == 0)
+			ready_.signal();
+	}
+}
+
+void App::waitReady()
+{
+	timespec limit;
+	initTimespec(limit);
+
+	int err = ready_.timedwait(limit);
+	if (err != 0) {
+		if (err == ETIMEDOUT) {
+			Erref lags = new Errors(true);
+			{
+				pw::lockmutex lm(mutex_); // reading the list must be protected
+				for (TrieadMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+					if (!it->second->isReady())
+						lags->appendMsg(true, it->second->getName());
+				}
+			}
+			Erref err = new Errors(strprintf(
+				"Application '%s' did not initialize within the time limit.\nThe lagging threads are:", name_.c_str()),
+				lags);
+			throw new Exception(err, true);
+		} else  {
+			throw Exception::fTrace("Internal error: condvar wait for all-ready in application '%s' failed, errno=%d: %s.", 
+				name_.c_str(), err, strerror(err));
+		}
 	}
 }
 

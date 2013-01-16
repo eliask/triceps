@@ -111,9 +111,6 @@ public:
 	// @param ret - map where to put the return values (it will be cleared first).
 	void getTrieads(TrieadMap &ret) const;
 
-	// Wait for all the threads to become ready.
-	void waitReady();
-
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
 	// XXXXXXXXXXX a lot of this API will move into the TrieadOwner
@@ -161,6 +158,9 @@ protected:
 	//
 	// @param to - identity of the thread to be marked
 	void markTrieadReady(TrieadOwner *to);
+
+	// Wait for all the threads to become ready.
+	void waitReady();
 
 protected:
 	// Use App::Make to create new objects.
@@ -231,6 +231,8 @@ protected:
 	TrieadMap threads_; // threads defined in this App
 	TrieadUpdMap upd_; // for waiting for updates, includes the declared threads
 	int timeout_; // timeout in seconds for waiting for initialization // XXX add a method to change it
+	int unreadyCnt_; // count of threads that aren't ready yet
+	pw::event ready_; // will be set when all the threads are ready
 
 private:
 	App();
