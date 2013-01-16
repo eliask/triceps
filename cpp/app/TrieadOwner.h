@@ -83,7 +83,7 @@ public:
 	// nexuses.
 	void markConstructed()
 	{
-		triead_->markConstructed(); // XXX notify App
+		app_->markTrieadConstructed(this);
 	}
 
 	// Mark that the thread has completed all its connections and
@@ -91,7 +91,15 @@ public:
 	// used to set both flags at once.
 	void markReady()
 	{
-		triead_->markReady(); // XXX notify App
+		app_->markTrieadReady(this);
+	}
+
+	// Mark the thread as ready, and wait for all the threads in
+	// the app to become ready.
+	void readyReady()
+	{
+		markReady();
+		app_->waitReady();
 	}
 
 	// Find a thread by name.

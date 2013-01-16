@@ -149,6 +149,19 @@ protected:
 	// @return - the nexus reference.
 	Onceref<Nexus> findNexus(TrieadOwner *to, const string &tname, const string &nexname);
 
+	// Mark that the thread has constructed and exported all of its
+	// nexuses. This wakes up anyone waiting.
+	//
+	// @param to - identity of the thread to be marked
+	void markTrieadConstructed(TrieadOwner *to);
+
+	// Mark that the thread has completed all its connections and
+	// is ready to run. This also implies Constructed, and can be
+	// used to set both flags at once.
+	//
+	// @param to - identity of the thread to be marked
+	void markTrieadReady(TrieadOwner *to);
+
 protected:
 	// Use App::Make to create new objects.
 	// @param name - name of the app.

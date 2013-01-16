@@ -99,9 +99,6 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 	TrieadUpdMap::iterator upit = upd_.find(tname);
 	if (upit == upd_.end()) {
 		upd_[tname] = new TrieadUpd(mutex_);
-	} else {
-		// Already declared and there might be someone waiting for definition.
-		upit->second->broadcastL(name_);
 	}
 
 	return ow; // the only owner API for the thread!
@@ -180,12 +177,41 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 	timespec limit;
 	initTimespec(limit);
 
+	// XXX detect deadlocks
 	do {
 		upit->second->waitL(name_, tname, limit); // will throw on timeout
 		it = threads_.find(tname);
 	} while (it == threads_.end() || !it->second->isConstructed());
 
 	return it->second;
+}
+
+void App::markTrieadConstructed(TrieadOwner *to)
+{
+	pw::lockmutex lm(mutex_);
+
+	Triead *t = to->get();
+	assertTrieadL(t);
+
+	if (!t->isConstructed()) {
+		t->markConstructed();
+		TrieadUpdMap::iterator upit = upd_.find(t->getName());
+		upit->second->broadcastL(name_);
+	}
+}
+
+void App::markTrieadReady(TrieadOwner *to)
+{
+	pw::lockmutex lm(mutex_);
+
+	Triead *t = to->get();
+	assertTrieadL(t);
+
+	if (!t->isReady()) {
+		t->markReady();
+		TrieadUpdMap::iterator upit = upd_.find(t->getName());
+		upit->second->broadcastL(name_);
+	}
 }
 
 }; // TRICEPS_NS

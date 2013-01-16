@@ -37,13 +37,19 @@ public:
 	// Check if all the nexuses have been constructed.
 	// Not const since the value might change between the calls,
 	// if marked by the owner of this thread.
-	bool isConstructed();
+	bool isConstructed() const
+	{
+		return constructed_;
+	}
 
 	// Check if all the connections have been completed and the
 	// thread is ready to run.
 	// Not const since the value might change between the calls,
 	// if marked by the owner of this thread.
-	bool isReady();
+	bool isReady() const
+	{
+		return ready_;
+	}
 
 protected:
 	// Called through App::makeThriead().
@@ -59,12 +65,20 @@ protected:
 
 	// Mark that the thread has constructed and exported all of its
 	// nexuses.
-	void markConstructed();
+	void markConstructed()
+	{
+		constructed_ = true;
+	}
 
 	// Mark that the thread has completed all its connections and
 	// is ready to run. This also implies Constructed, and can be
 	// used to set both flags at once.
-	void markReady();
+	void markReady()
+	{
+		constructed_ = true;
+		ready_ = true;
+	}
+
 	// }
 protected:
 	// The initialization is done in two stages:
@@ -84,14 +98,14 @@ protected:
 	// allowed in either of the graphs. The cycles get detected and 
 	// mean the application initialization failure.
 	
-	// Flag/event: all the nexuses of this thread have been defined.
-	// When this flag is set, the nexuses become visible.
-	pw::oncevent constructed_;
-	// Flag/event: the thread has been fully initialized, including
-	// waiting on readiness of the other threads.
-	pw::oncevent ready_;
-
 	string name_; // name of the thread, read-only
+
+	// Flag: all the nexuses of this thread have been defined.
+	// When this flag is set, the nexuses become visible.
+	bool constructed_;
+	// Flag: the thread has been fully initialized, including
+	// waiting on readiness of the other threads.
+	bool ready_;
 
 private:
 	Triead();

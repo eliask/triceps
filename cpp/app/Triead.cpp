@@ -12,7 +12,9 @@
 namespace TRICEPS_NS {
 
 Triead::Triead(const string &name) :
-	name_(name)
+	name_(name),
+	constructed_(false),
+	ready_(false)
 { }
 
 void Triead::clear()
@@ -25,27 +27,6 @@ void Triead::clear()
 Triead::~Triead()
 {
 	clear();
-}
-
-bool Triead::isConstructed()
-{
-	return constructed_.check();
-}
-
-bool Triead::isReady()
-{
-	return ready_.check();
-}
-
-void Triead::markConstructed()
-{
-	constructed_.signal();
-}
-
-void Triead::markReady()
-{
-	markConstructed();
-	ready_.signal();
 }
 
 }; // TRICEPS_NS
