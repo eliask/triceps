@@ -11,6 +11,7 @@
 #define __Triceps_App_h__
 
 #include <map>
+#include <set>
 #include <pw/ptwrap.h>
 #include <common/Common.h>
 #include <app/Triead.h>
@@ -113,7 +114,6 @@ public:
 
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
-	// XXXXXXXXXXX a lot of this API will move into the TrieadOwner
 	
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.
@@ -160,6 +160,7 @@ protected:
 	void markTrieadReady(TrieadOwner *to);
 
 	// Wait for all the threads to become ready.
+	// XXX should it be accessible outside of TrieadOwner?
 	void waitReady();
 
 protected:
@@ -208,6 +209,8 @@ protected:
 		// @param abstime - the time limit
 		void waitL(const string &appname, const string &tname, const timespec &abstime);
 
+		Autoref<Triead> t_; // the thread object, will be NULL if only declared
+
 	protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_
@@ -228,8 +231,7 @@ protected:
 
 	static pw::pmutex mutex_; // mutex synchronizing this App
 	string name_; // name of the App
-	TrieadMap threads_; // threads defined in this App
-	TrieadUpdMap upd_; // for waiting for updates, includes the declared threads
+	TrieadUpdMap threads_; // threads defined and declared
 	int timeout_; // timeout in seconds for waiting for initialization // XXX add a method to change it
 	int unreadyCnt_; // count of threads that aren't ready yet
 	pw::event ready_; // will be set when all the threads are ready

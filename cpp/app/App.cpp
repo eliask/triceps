@@ -89,21 +89,23 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 
 	pw::lockmutex lm(mutex_);
 
-	TrieadMap::iterator it = threads_.find(tname);
-	if (it != threads_.end())
-		throw Exception::fTrace("Duplicate thread name '%s' is not allowed, in application '%s'.", 
-			tname.c_str(), name_.c_str());
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	TrieadUpd *upd;
+	if (it == threads_.end()) {
+		upd = new TrieadUpd(mutex_);
+		threads_[tname] = upd;
+		if (++unreadyCnt_ == 1)
+			ready_.reset();
+	} else {
+		upd = it->second;
+		if(!upd->t_.isNull())
+			throw Exception::fTrace("Duplicate thread name '%s' is not allowed, in application '%s'.", 
+				tname.c_str(), name_.c_str());
+	}
 
 	Triead *th = new Triead(tname);
 	TrieadOwner *ow = new TrieadOwner(this, th);
-	threads_[tname] = th;
-
-	TrieadUpdMap::iterator upit = upd_.find(tname);
-	if (upit == upd_.end()) {
-		upd_[tname] = new TrieadUpd(mutex_);
-		if (++unreadyCnt_ == 1)
-			ready_.reset();
-	}
+	upd->t_ = th;
 
 	return ow; // the only owner API for the thread!
 }
@@ -114,9 +116,9 @@ void App::declareTriead(const string &tname)
 		throw Exception::fTrace("Empty thread name is not allowed, in application '%s'.", name_.c_str());
 
 	pw::lockmutex lm(mutex_);
-	TrieadUpdMap::iterator upit = upd_.find(tname);
-	if (upit == upd_.end()) {
-		upd_[tname] = new TrieadUpd(mutex_);
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	if (it == threads_.end()) {
+		threads_[tname] = new TrieadUpd(mutex_);
 		if (++unreadyCnt_ == 1)
 			ready_.reset();
 	} // else just do nothing
@@ -138,12 +140,12 @@ void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 
 void App::assertTrieadL(Triead *th) const
 {
-	TrieadMap::const_iterator it = threads_.find(th->getName());
+	TrieadUpdMap::const_iterator it = threads_.find(th->getName());
 	if (it == threads_.end()) {
 		throw Exception::fTrace("Thread '%s' does not belong to the application '%s'.",
 			th->getName().c_str(), name_.c_str());
 	}
-	if (it->second.get() != th) {
+	if (it->second->t_.get() != th) {
 		throw Exception::fTrace("Thread '%s' does not belong to the application '%s', it's same-names but from another app.",
 			th->getName().c_str(), name_.c_str());
 	}
@@ -171,25 +173,25 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 	if (to->get()->getName() == tname)
 		return to->get();
 
-	TrieadMap::iterator it = threads_.find(tname);
-	if (it != threads_.end() && it->second->isConstructed())
-		return it->second;
-
-	TrieadUpdMap::iterator upit = upd_.find(tname);
-	if (upit == upd_.end())
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	if (it == threads_.end())
 		throw Exception::fTrace("In app '%s' thread '%s' is referring to a non-existing thread '%s'.",
 			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
+
+	Triead *t = it->second->t_;
+	if (t != NULL && t->isConstructed())
+		return t;
 
 	timespec limit;
 	initTimespec(limit);
 
 	// XXX detect deadlocks
 	do {
-		upit->second->waitL(name_, tname, limit); // will throw on timeout
-		it = threads_.find(tname);
-	} while (it == threads_.end() || !it->second->isConstructed());
+		it->second->waitL(name_, tname, limit); // will throw on timeout
+		t = it->second->t_;
+	} while (t == NULL || !t->isConstructed());
 
-	return it->second;
+	return t;
 }
 
 void App::markTrieadConstructed(TrieadOwner *to)
@@ -197,12 +199,12 @@ void App::markTrieadConstructed(TrieadOwner *to)
 	pw::lockmutex lm(mutex_);
 
 	Triead *t = to->get();
-	assertTrieadL(t);
+	assertTrieadL(t); // means the the find below can't fail
 
 	if (!t->isConstructed()) {
 		t->markConstructed();
-		TrieadUpdMap::iterator upit = upd_.find(t->getName());
-		upit->second->broadcastL(name_);
+		TrieadUpdMap::iterator it = threads_.find(t->getName());
+		it->second->broadcastL(name_);
 	}
 }
 
@@ -231,9 +233,15 @@ void App::waitReady()
 			Erref lags = new Errors(true);
 			{
 				pw::lockmutex lm(mutex_); // reading the list must be protected
-				for (TrieadMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
-					if (!it->second->isReady())
-						lags->appendMsg(true, it->second->getName());
+				for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+					Triead *t = it->second->t_;
+					if (t == NULL) {
+						lags->appendMsg(true, it->first + ": not defined");
+					} else if (!t->isConstructed()) {
+						lags->appendMsg(true, it->first + ": not constructed");
+					} else if (!t->isReady()) {
+						lags->appendMsg(true, it->first + ": not ready");
+					}
 				}
 			}
 			Erref err = new Errors(strprintf(
