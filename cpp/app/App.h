@@ -111,6 +111,22 @@ public:
 	// @param ret - map where to put the return values (it will be cleared first).
 	void getTrieads(TrieadMap &ret) const;
 
+	// Mark the app as aborted. This is done when a thread detects a fatal
+	// error after which it could not continue the initialization. The App
+	// normally can not continue without any of its threads, so it's better to
+	// abort right away than to wait for the thread timeout to expire.
+	//
+	// @param tname - name of the failed thread that calls the abort
+	void abortBy(const string &tname);
+
+	// Check whether the app was marked as aborted.
+	bool isAborted() const;
+
+	// Get the name of the thread that caused the app abort
+	// (will be empty if not aborted).
+	// The result is NOT a reference but a copy of the string!
+	string getAbortedBy() const;
+
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
 	
@@ -166,6 +182,17 @@ protected:
 	// Use App::Make to create new objects.
 	// @param name - name of the app.
 	App(const string &name);
+
+	// Check whether the app was marked as aborted.
+	// Relies on mutex_ being already locked.
+	bool isAbortedL() const
+	{
+		return !abortedBy_.empty();
+	}
+
+	// Check that the app is not aborted. Otherwise throws an Exception.
+	// Relies on mutex_ being already locked.
+	void assertNotAbortedL() const;
 
 	// Check that the thread belongs to this app.
 	// If not, throws an Exception.
@@ -230,12 +257,13 @@ protected:
 	static Map apps_;
 	static pw::pmutex apps_mutex_;
 
-	static pw::pmutex mutex_; // mutex synchronizing this App
+	mutable pw::pmutex mutex_; // mutex synchronizing this App
 	string name_; // name of the App
+	string abortedBy_; // name of the thread that aborted the app (empty if not aborted)
 	TrieadUpdMap threads_; // threads defined and declared
+	pw::event ready_; // will be set when all the threads are ready
 	int timeout_; // timeout in seconds for waiting for initialization // XXX add a method to change it
 	int unreadyCnt_; // count of threads that aren't ready yet
-	pw::event ready_; // will be set when all the threads are ready
 
 private:
 	App();

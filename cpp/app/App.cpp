@@ -77,10 +77,22 @@ void App::list(Map &ret)
 
 App::App(const string &name) :
 	name_(name),
+	ready_(true), // since no threads are unready
 	timeout_(DEFAULT_TIMEOUT),
-	unreadyCnt_(0),
-	ready_(true) // since no threads are unready
+	unreadyCnt_(0)
 { }
+
+bool App::isAborted() const
+{
+	pw::lockmutex lm(mutex_);
+	return isAbortedL();
+}
+
+string App::getAbortedBy() const
+{
+	pw::lockmutex lm(mutex_);
+	return abortedBy_;
+}
 
 Onceref<TrieadOwner> App::makeTriead(const string &tname)
 {
@@ -138,6 +150,13 @@ void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 	// Find if anyone is waiting for this nexus, and wake them up.
 }
 
+void App::assertNotAbortedL() const
+{
+	if (!abortedBy_.empty())
+		throw Exception::fTrace("App '%s' has been aborted by thread '%s'.",
+			name_.c_str(), abortedBy_.c_str());
+}
+
 void App::assertTrieadL(Triead *th) const
 {
 	TrieadUpdMap::const_iterator it = threads_.find(th->getName());
@@ -148,6 +167,22 @@ void App::assertTrieadL(Triead *th) const
 	if (it->second->t_.get() != th) {
 		throw Exception::fTrace("Thread '%s' does not belong to the application '%s', it's same-names but from another app.",
 			th->getName().c_str(), name_.c_str());
+	}
+}
+
+void App::abortBy(const string &tname)
+{
+	pw::lockmutex lm(mutex_);
+
+	if (isAbortedL()) // already aborted, nothing more to do
+		return;
+
+	abortedBy_ = tname; // mark as aborted
+
+	// now wake up all the sleepers
+	ready_.signal();
+	for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+		it->second->broadcastL(name_);
 	}
 }
 
@@ -166,6 +201,7 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 {
 	pw::lockmutex lm(mutex_);
 
+	assertNotAbortedL();
 	assertTrieadOwnerL(to);
 
 	// A special short-circuit for the self-reference, a thread can
@@ -191,6 +227,8 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 
 	// Make sure that won't deadlock: go through the dependency
 	// chain and ensure that it doesn't return back to our thread.
+	// Doing it once up front is enough, because afterwards the responsibility
+	// of the deadlock detection will be on the new sleepers.
 	for (TrieadUpd *p = upd; p != NULL; p = p->waitFor_) {
 		if (p == selfupd.get()) {
 			// print the list of dependencies, it repeats the same loop
@@ -213,13 +251,14 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 		do {
 			upd->waitL(name_, tname, limit); // will throw on timeout
 			t = upd->t_;
-		} while (t == NULL || !t->isConstructed());
+		} while (!isAbortedL() && (t == NULL || !t->isConstructed()));
 		selfupd->waitFor_ = NULL;
 	} catch (...) {
 		selfupd->waitFor_ = NULL;
 		throw;
 	}
 
+	assertNotAbortedL();
 	return t;
 }
 
@@ -256,6 +295,11 @@ void App::waitReady()
 	timespec limit;
 	initTimespec(limit);
 
+	{
+		pw::lockmutex lm(mutex_);
+		assertNotAbortedL();
+	}
+
 	int err = ready_.timedwait(limit);
 	if (err != 0) {
 		if (err == ETIMEDOUT) {
@@ -281,6 +325,11 @@ void App::waitReady()
 			throw Exception::fTrace("Internal error: condvar wait for all-ready in application '%s' failed, errno=%d: %s.", 
 				name_.c_str(), err, strerror(err));
 		}
+	}
+
+	{
+		pw::lockmutex lm(mutex_);
+		assertNotAbortedL();
 	}
 }
 

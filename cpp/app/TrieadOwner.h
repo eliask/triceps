@@ -102,6 +102,12 @@ public:
 		app_->waitReady();
 	}
 
+	// Abort the thread and with it the whole app.
+	void abort() const
+	{
+		app_->abortBy(triead_->getName());
+	}
+
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.
 	// If the thread refers to itself (i.e. the name is of the same thread
