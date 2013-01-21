@@ -11,7 +11,6 @@
 #define __Triceps_App_h__
 
 #include <map>
-#include <set>
 #include <pw/ptwrap.h>
 #include <common/Common.h>
 #include <app/Triead.h>
@@ -187,6 +186,7 @@ protected:
 	public:
 		// The mutex would be normally the App object's mutex.
 		TrieadUpd(pw::pmutex &mutex):
+			waitFor_(NULL),
 			cond_(mutex)
 		{ }
 
@@ -211,6 +211,7 @@ protected:
 
 		Autoref<Triead> t_; // the thread object, will be NULL if only declared
 
+		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL)
 	protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_

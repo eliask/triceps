@@ -173,23 +173,52 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 	if (to->get()->getName() == tname)
 		return to->get();
 
+	// The assertion above makes sure that this succeeds.
+	Autoref<TrieadUpd> selfupd = threads_.find(to->get()->getName())->second;
+	if (selfupd->waitFor_ != NULL)
+		throw Exception::fTrace("In app '%s' thread '%s' object must not be used from 2 OS threads.",
+			name_.c_str(), to->get()->getName().c_str());
+
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it == threads_.end())
 		throw Exception::fTrace("In app '%s' thread '%s' is referring to a non-existing thread '%s'.",
 			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
 
-	Triead *t = it->second->t_;
+	Autoref <TrieadUpd> upd = it->second;
+	Triead *t = upd->t_;
 	if (t != NULL && t->isConstructed())
 		return t;
+
+	// Make sure that won't deadlock: go through the dependency
+	// chain and ensure that it doesn't return back to our thread.
+	for (TrieadUpd *p = upd; p != NULL; p = p->waitFor_) {
+		if (p == selfupd.get()) {
+			// print the list of dependencies, it repeats the same loop
+			Erref trace = new Errors(true);
+			for (TrieadUpd *pp = upd; pp != selfupd.get(); pp = pp->waitFor_)
+				trace->appendMsg(true, pp->t_->getName() + " waits for " + pp->waitFor_->t_->getName());
+			Erref err = new Errors(strprintf(
+					"In app '%s' thread '%s' waiting for thread '%s' would cause a deadlock:",
+						name_.c_str(), to->get()->getName().c_str(), tname.c_str()),
+				trace);
+			throw new Exception(err, true);
+		}
+	}
 
 	timespec limit;
 	initTimespec(limit);
 
-	// XXX detect deadlocks
-	do {
-		it->second->waitL(name_, tname, limit); // will throw on timeout
-		t = it->second->t_;
-	} while (t == NULL || !t->isConstructed());
+	selfupd->waitFor_ = upd;
+	try {
+		do {
+			upd->waitL(name_, tname, limit); // will throw on timeout
+			t = upd->t_;
+		} while (t == NULL || !t->isConstructed());
+		selfupd->waitFor_ = NULL;
+	} catch (...) {
+		selfupd->waitFor_ = NULL;
+		throw;
+	}
 
 	return t;
 }
