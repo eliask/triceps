@@ -29,7 +29,7 @@ void App::TrieadUpd::waitL(const string &appname, const string &tname, const tim
 	int err = cond_.timedwait(abstime);
 	if (err != 0) {
 		if (err == ETIMEDOUT)
-			throw Exception::fTrace("Thread '%s' in application '%s' did not initialize within the time limit.", 
+			throw Exception::fTrace("Thread '%s' in application '%s' did not initialize within the deadline.", 
 				tname.c_str(), appname.c_str());
 		else 
 			throw Exception::fTrace("Internal error: condvar wait for thread '%s' in application '%s' failed, errno=%d: %s.", 
@@ -78,9 +78,26 @@ void App::list(Map &ret)
 App::App(const string &name) :
 	name_(name),
 	ready_(true), // since no threads are unready
-	timeout_(DEFAULT_TIMEOUT),
 	unreadyCnt_(0)
-{ }
+{
+	computeDeadline(DEFAULT_TIMEOUT);
+}
+
+void App::setTimeout(int sec)
+{
+	pw::lockmutex lm(mutex_); // needed for the thread count check
+	if (!threads_.empty())
+		throw Exception::fTrace("Triceps application '%s' deadline can not be changed after the thread creation.", name_.c_str());
+	computeDeadline(sec);
+}
+
+void App::setDeadline(const timespec &dl)
+{
+	pw::lockmutex lm(mutex_); // needed for the thread count check
+	if (!threads_.empty())
+		throw Exception::fTrace("Triceps application '%s' deadline can not be changed after the thread creation.", name_.c_str());
+	deadline_ = dl;
+}
 
 bool App::isAborted() const
 {
@@ -191,12 +208,6 @@ void App::assertTrieadOwnerL(TrieadOwner *to) const
 	assertTrieadL(to->get());
 }
 
-void App::initTimespec(timespec &ret) const
-{
-	clock_gettime(CLOCK_REALTIME, &ret); // the current time
-	ret.tv_sec += timeout_;
-}
-
 Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 {
 	pw::lockmutex lm(mutex_);
@@ -243,13 +254,10 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 		}
 	}
 
-	timespec limit;
-	initTimespec(limit);
-
 	selfupd->waitFor_ = upd;
 	try {
 		do {
-			upd->waitL(name_, tname, limit); // will throw on timeout
+			upd->waitL(name_, tname, deadline_); // will throw on timeout
 			t = upd->t_;
 		} while (!isAbortedL() && (t == NULL || !t->isConstructed()));
 		selfupd->waitFor_ = NULL;
@@ -292,15 +300,12 @@ void App::markTrieadReady(TrieadOwner *to)
 
 void App::waitReady()
 {
-	timespec limit;
-	initTimespec(limit);
-
 	{
 		pw::lockmutex lm(mutex_);
 		assertNotAbortedL();
 	}
 
-	int err = ready_.timedwait(limit);
+	int err = ready_.timedwait(deadline_);
 	if (err != 0) {
 		if (err == ETIMEDOUT) {
 			Erref lags = new Errors(true);
@@ -318,7 +323,7 @@ void App::waitReady()
 				}
 			}
 			Erref err = new Errors(strprintf(
-				"Application '%s' did not initialize within the time limit.\nThe lagging threads are:", name_.c_str()),
+				"Application '%s' did not initialize within the deadline.\nThe lagging threads are:", name_.c_str()),
 				lags);
 			throw new Exception(err, true);
 		} else  {

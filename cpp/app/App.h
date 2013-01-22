@@ -29,7 +29,8 @@ public:
 	// the static interface {
 
 	// Create an app with a given name and remember it in the directory
-	// of apps. 
+	// of apps. This set the deadline with default timeout (which can
+	// be changed later, before the creation of the first thread).
 	// 
 	// Throws an Exception if the App with this name already exists.
 	//
@@ -71,6 +72,17 @@ public:
 	{
 		return name_;
 	}
+
+	// Set an explicit timeout (counting from now) for the initialization
+	// deadline.
+	// Throws an Exception if any thread exists in the App.
+	// @param sec - timeout in seconds
+	void setTimeout(int sec);
+
+	// Set an explicit absolute initialization deadline.
+	// Throws an Exception if any thread exists in the App.
+	// @param dl - deadline, absolute value
+	void setDeadline(const timespec &dl);
 
 	// Create a new thread.
 	//
@@ -200,9 +212,11 @@ protected:
 	void assertTrieadL(Triead *th) const;
 	void assertTrieadOwnerL(TrieadOwner *to) const;
 
-	// Create a timestamp for the wait time limit, timeout_ from now.
-	// @param ret - the struct timespec to fill out
-	void initTimespec(timespec &ret) const;
+	// Create a timestamp for the initialization deadline.
+	// Must be called only before creation of any threads, so since
+	// it's all single-threaded, there is no need for locking.
+	// @param sec - timeout in seconds from now
+	void computeDeadline(int sec) const;
 
 protected:
 	// Since there might be a need to wait for the initialization of
@@ -262,7 +276,7 @@ protected:
 	string abortedBy_; // name of the thread that aborted the app (empty if not aborted)
 	TrieadUpdMap threads_; // threads defined and declared
 	pw::event ready_; // will be set when all the threads are ready
-	int timeout_; // timeout in seconds for waiting for initialization // XXX add a method to change it
+	timespec deadline_; // deadline for the initialization, set on or soon after App creation
 	int unreadyCnt_; // count of threads that aren't ready yet
 
 private:
