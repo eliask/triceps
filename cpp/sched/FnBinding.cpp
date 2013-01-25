@@ -142,6 +142,14 @@ Label *FnBinding::getLabel(int idx) const
 	return labels_[idx];
 }
 
+bool FnBinding::isAutoclear(const string &name) const
+{
+	int idx = findLabel(name);
+	if (idx < 0)
+		return false;
+	return autoclear_[idx];
+}
+
 bool FnBinding::equals(const FnBinding *t) const
 {
 	return type_->equals(t->type_);

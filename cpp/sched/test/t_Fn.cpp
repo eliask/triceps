@@ -437,6 +437,15 @@ UTESTCASE fn_binding(Utest *utest)
 	UT_IS(labels.size(), 2);
 	UT_IS(labels[0], lb1a);
 	UT_IS(labels[1], lb3a);
+
+	const FnBinding::BoolVec &clears = bind1->getAutoclear();
+	UT_IS(clears.size(), 2);
+	UT_IS(clears[0], true);
+	UT_IS(clears[1], true);
+
+	UT_IS(bind1->isAutoclear("one"), true);
+	UT_IS(bind1->isAutoclear("two"), true);
+	UT_IS(bind1->isAutoclear("unknown"), false);
 }
 
 UTESTCASE call_bindings(Utest *utest)

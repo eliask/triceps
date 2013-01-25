@@ -27,12 +27,12 @@ public:
 	typedef vector<bool> BoolVec; 
 
 	// The typical construction is done as a chain:
-	// ret = FnBinding::make(fn)
+	// Autoref<FnBinding> bind = FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1, true)
 	//     ->addLabel("lb2", lb2, false);
 	//
 	// Or to throw on errors:
-	// ret = checkOrThrow(FnBinding::make(fn)
+	// Autoref<FnBinding> bind = checkOrThrow(FnBinding::make(fn)
 	//     ->addLabel("lb1", lb1, true)
 	//     ->addLabel("lb2", lb2, false)
 	// );
@@ -70,11 +70,11 @@ public:
 	// @return - the same FnBinding object, for chained calls.
 	FnBinding *addLabel(const string &name, Autoref<Label> lb, bool autoclear);
 
-	// Set the tray collection more: if enabled, instead of calling the
+	// Set the tray collection mode: if enabled, instead of calling the
 	// rowops immediately, they will be collected on a tray and can
 	// be called later.
 	//
-	// @param on - trye to enable the tray collection, false to disable.
+	// @param on - true to enable the tray collection, false to disable.
 	// @return - the same FnBinding object, for chained calls.
 	FnBinding *withTray(bool on);
 
@@ -182,6 +182,7 @@ public:
 	}
 
 	// Check if the named label has the 
+	// @return - the autoclear flag, or false for the unknown names.
 	bool isAutoclear(const string &name) const;
 
 	// This is technically not a type but these are convenient wrappers to
