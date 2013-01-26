@@ -19,8 +19,19 @@ TrieadOwner::TrieadOwner(App *app, Triead *th) :
 
 TrieadOwner::~TrieadOwner()
 {
+	markDead();
+}
+
+void TrieadOwner::markDead()
+{
+	app_->markTrieadDead(this);
 	for (UnitList::iterator it = units_.begin(); it != units_.end(); ++it)
 		(*it)->clearLabels();
+	units_.clear();
+	mainUnit_ = NULL;
+	// XXX should also drop references to the app and thread?
+	// triead_ = NULL;
+	// app_ = NULL;
 }
 
 void TrieadOwner::addUnit(Autoref<Unit> u)

@@ -51,6 +51,12 @@ public:
 		return triead_.get();
 	}
 
+	// Get the App where this thread belongs.
+	App *app() const
+	{
+		return app_.get();
+	}
+
 	// Get the main unit that get created with the thread and shares its name.
 	// Assumes that TrieadOwner won't be destroyed while the result is used.
 	Unit *unit() const
@@ -103,10 +109,22 @@ public:
 	}
 
 	// Abort the thread and with it the whole app.
+	// Typically used if a fatal error is found during initialization.
+	// XXX reconcile with markDead()
 	void abort() const
 	{
 		app_->abortBy(triead_->getName());
 	}
+
+	// Mark the thread as dead and free its resources.
+	// It's automatically called as a part of TrieadOwner destructor,
+	// so normally there should be no need to call it manually.
+	// Unless you have some other weird references to TrieadOwner
+	// and really want to mark the death right now.
+	//
+	// This also deletes the references to the units, including the
+	// main unit.
+	void markDead();
 
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.

@@ -14,7 +14,8 @@ namespace TRICEPS_NS {
 Triead::Triead(const string &name) :
 	name_(name),
 	constructed_(false),
-	ready_(false)
+	ready_(false),
+	dead_(false)
 { }
 
 void Triead::clear()

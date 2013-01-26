@@ -186,6 +186,13 @@ protected:
 	// @param to - identity of the thread to be marked
 	void markTrieadReady(TrieadOwner *to);
 
+	// Mark that the thread has exited.
+	// This also implies Constructed and Ready, even though it should
+	// not normally be used to mark all the flags at once.
+	//
+	// @param to - identity of the thread to be marked
+	void markTrieadDead(TrieadOwner *to);
+
 	// Wait for all the threads to become ready.
 	// XXX should it be accessible outside of TrieadOwner?
 	void waitReady();
@@ -211,6 +218,13 @@ protected:
 	// Relies on mutex_ being already locked.
 	void assertTrieadL(Triead *th) const;
 	void assertTrieadOwnerL(TrieadOwner *to) const;
+
+	// The internal versions. Require the mutex_ to be held
+	// by the caller, and also assume that the Triead has been
+	// already checked.
+	void markTrieadConstructedL(Triead *t);
+	void markTrieadReadyL(Triead *t);
+	void markTrieadDeadL(Triead *t);
 
 	// Create a timestamp for the initialization deadline.
 	// Must be called only before creation of any threads, so since
@@ -276,8 +290,10 @@ protected:
 	string abortedBy_; // name of the thread that aborted the app (empty if not aborted)
 	TrieadUpdMap threads_; // threads defined and declared
 	pw::event ready_; // will be set when all the threads are ready
+	pw::event dead_; // will be set when all the threads are dead
 	timespec deadline_; // deadline for the initialization, set on or soon after App creation
 	int unreadyCnt_; // count of threads that aren't ready yet
+	int aliveCnt_; // count of threads that aren't dead yet
 
 private:
 	App();

@@ -51,6 +51,16 @@ public:
 		return ready_;
 	}
 
+	// Check if the thread has already exited. The dead thread
+	// is also always marked as completed and ready. It could happen
+	// that some threads are still waiting for readiness of the app while the
+	// other threads have already found the readiness, executed and exited.
+	// Though it should not happen much in the normal operation.
+	bool isDead() const
+	{
+		return dead_;
+	}
+
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
@@ -60,7 +70,10 @@ protected:
 	// Called by the App at the destruction time.
 	void clear();
 	
-	// The TrieadOwner API
+	// The TrieadOwner API.
+	// Naturally, it can be called from only one thread, the owner one.
+	// These calls usually also involve the inter-thread signaling
+	// done by the ThreadOwner through App.
 	// {
 
 	// Mark that the thread has constructed and exported all of its
@@ -77,6 +90,14 @@ protected:
 	{
 		constructed_ = true;
 		ready_ = true;
+	}
+
+	// Mark the thread that is has completed the execution and exited.
+	void markDead()
+	{
+		constructed_ = true;
+		ready_ = true;
+		dead_ = true;
 	}
 
 	// }
@@ -106,6 +127,8 @@ protected:
 	// Flag: the thread has been fully initialized, including
 	// waiting on readiness of the other threads.
 	bool ready_;
+	// Flag: the thread has completed execution and exited.
+	bool dead_;
 
 private:
 	Triead();

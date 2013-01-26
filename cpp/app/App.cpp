@@ -78,7 +78,9 @@ void App::list(Map &ret)
 App::App(const string &name) :
 	name_(name),
 	ready_(true), // since no threads are unready
-	unreadyCnt_(0)
+	dead_(true), // since no threads are alive
+	unreadyCnt_(0),
+	aliveCnt_(0)
 {
 	computeDeadline(DEFAULT_TIMEOUT);
 }
@@ -125,6 +127,8 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 		threads_[tname] = upd;
 		if (++unreadyCnt_ == 1)
 			ready_.reset();
+		if (++aliveCnt_ == 1)
+			dead_.reset();
 	} else {
 		upd = it->second;
 		if(!upd->t_.isNull())
@@ -150,6 +154,8 @@ void App::declareTriead(const string &tname)
 		threads_[tname] = new TrieadUpd(mutex_);
 		if (++unreadyCnt_ == 1)
 			ready_.reset();
+		if (++aliveCnt_ == 1)
+			dead_.reset();
 	} // else just do nothing
 }
 
@@ -277,6 +283,11 @@ void App::markTrieadConstructed(TrieadOwner *to)
 	Triead *t = to->get();
 	assertTrieadL(t); // means the the find below can't fail
 
+	markTrieadConstructedL(t);
+}
+
+void App::markTrieadConstructedL(Triead *t)
+{
 	if (!t->isConstructed()) {
 		t->markConstructed();
 		TrieadUpdMap::iterator it = threads_.find(t->getName());
@@ -291,10 +302,37 @@ void App::markTrieadReady(TrieadOwner *to)
 	Triead *t = to->get();
 	assertTrieadL(t);
 
+	markTrieadConstructedL(t);
+	markTrieadReadyL(t);
+}
+
+void App::markTrieadReadyL(Triead *t)
+{
 	if (!t->isReady()) {
 		t->markReady();
 		if (--unreadyCnt_ == 0)
 			ready_.signal();
+	}
+}
+
+void App::markTrieadDead(TrieadOwner *to)
+{
+	pw::lockmutex lm(mutex_);
+
+	Triead *t = to->get();
+	assertTrieadL(t);
+
+	markTrieadConstructedL(t);
+	markTrieadReadyL(t);
+	markTrieadDeadL(t);
+}
+
+void App::markTrieadDeadL(Triead *t)
+{
+	if (!t->isDead()) {
+		t->markDead();
+		if (--aliveCnt_ == 0)
+			dead_.signal();
 	}
 }
 
