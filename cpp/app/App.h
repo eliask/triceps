@@ -216,7 +216,9 @@ protected:
 	// not normally be used to mark all the flags at once.
 	//
 	// @param to - identity of the thread to be marked
-	void markTrieadDead(TrieadOwner *to);
+	// @param exiting - flag: the thread is about to exit and needs to be
+	//        joined (usually would be true)
+	void markTrieadDead(TrieadOwner *to, bool exiting);
 
 	// Wait for all the threads to become ready.
 	// XXX should it be accessible outside of TrieadOwner?
@@ -306,6 +308,7 @@ protected:
 		void operator=(const TrieadUpd &);
 	};
 	typedef map<string, Autoref<TrieadUpd> > TrieadUpdMap;
+	typedef vector<Autoref<TrieadUpd> > TrieadUpdVec;
 
 	// The single process-wide directory of all the apps, protected by a mutex.
 	static Map apps_;
@@ -315,11 +318,14 @@ protected:
 	string name_; // name of the App
 	string abortedBy_; // name of the thread that aborted the app (empty if not aborted)
 	TrieadUpdMap threads_; // threads defined and declared
+	TrieadUpdVec zombies_; // the thread that have exited and need harvesting
 	pw::event ready_; // will be set when all the threads are ready
 	pw::event dead_; // will be set when all the threads are dead
+	pw::event needHarvest_; // will be set when there are zombies to harvest
 	timespec deadline_; // deadline for the initialization, set on or soon after App creation
 	int unreadyCnt_; // count of threads that aren't ready yet
 	int aliveCnt_; // count of threads that aren't dead yet
+
 
 private:
 	App();

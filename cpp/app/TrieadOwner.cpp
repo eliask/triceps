@@ -22,9 +22,9 @@ TrieadOwner::~TrieadOwner()
 	markDead();
 }
 
-void TrieadOwner::markDead()
+void TrieadOwner::markDead(bool exiting)
 {
-	app_->markTrieadDead(this);
+	app_->markTrieadDead(this, exiting);
 	for (UnitList::iterator it = units_.begin(); it != units_.end(); ++it)
 		(*it)->clearLabels();
 	units_.clear();

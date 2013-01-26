@@ -79,6 +79,7 @@ App::App(const string &name) :
 	name_(name),
 	ready_(true), // since no threads are unready
 	dead_(true), // since no threads are alive
+	needHarvest_(false), 
 	unreadyCnt_(0),
 	aliveCnt_(0)
 {
@@ -327,7 +328,7 @@ void App::markTrieadReadyL(Triead *t)
 	}
 }
 
-void App::markTrieadDead(TrieadOwner *to)
+void App::markTrieadDead(TrieadOwner *to, bool exiting)
 {
 	pw::lockmutex lm(mutex_);
 
@@ -337,6 +338,17 @@ void App::markTrieadDead(TrieadOwner *to)
 	markTrieadConstructedL(t);
 	markTrieadReadyL(t);
 	markTrieadDeadL(t);
+
+	// XXX add the harvester
+	if (exiting) {
+		// due to the asssert above, can't fail
+		TrieadUpd *upd = threads_.find(t->getName())->second;
+		if (upd->j_) {
+			zombies_.push_back(upd);
+			needHarvest_.signal();
+		}
+		// XXX discard the references to transient threads?
+	}
 }
 
 void App::markTrieadDeadL(Triead *t)

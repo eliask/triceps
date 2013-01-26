@@ -124,7 +124,9 @@ public:
 	//
 	// This also deletes the references to the units, including the
 	// main unit.
-	void markDead();
+	//
+	// @param exiting - flag: the OS-level thread is about to exit and needs joining
+	void markDead(bool exiting = true);
 
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.
