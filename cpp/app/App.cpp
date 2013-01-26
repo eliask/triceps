@@ -159,6 +159,18 @@ void App::declareTriead(const string &tname)
 	} // else just do nothing
 }
 
+void App::defineJoin(const string &tname, Onceref<TrieadJoin> j)
+{
+	pw::lockmutex lm(mutex_);
+
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	if (it == threads_.end()) {
+		throw Exception::fTrace("In application '%s' can not define a join for an unknown thread '%s'.", 
+			name_.c_str(), tname.c_str());
+	}
+	it->second->j_ = j;
+}
+
 void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 {
 	pw::lockmutex lm(mutex_);

@@ -14,6 +14,7 @@
 #include <pw/ptwrap.h>
 #include <common/Common.h>
 #include <app/Triead.h>
+#include <app/TrieadJoin.h>
 
 namespace TRICEPS_NS {
 
@@ -118,6 +119,30 @@ public:
 	//        method will do nothing.
 	void declareTriead(const string &tname);
 
+	// Define a join object for the thread. Called by the parent thread.
+	// May be left undefined if the thread is detached (not the best idea but doable). 
+	// The normal sequence would be:
+	// * declare a thread from its parent
+	// * start the thread and get its identity
+	// * construct a joiner object with this identity and define it
+	// The threda identity is not known until it's constructed, so it has to be
+	// done after the thread runs but the thread has to be declared before it
+	// starts because (1) otherwise the child thread might not define itsels yet
+	// and defineJoin() would fail and (2) because some other threads may be
+	// waiting for everything being ready, so the parent thread must declare the
+	// child threads before it reports itself ready.
+	//
+	// Will throw an Exception if no such thread is declared nor defined.
+	//
+	// Theoretically, this method can be called multiple times for the same
+	// thread to change or remove (with NULL argument) the joiner but
+	// practically it's probably not a good idea.
+	//
+	// @param tname - name of the thread to define a joiner for; the thread must
+	//        be already declared or defined
+	// @param j - the joiner, the App will keep a reference to it until the join is done
+	void defineJoin(const string &tname, Onceref<TrieadJoin> j);
+	
 	// Get all the threads defined and declared in the app.
 	// The declared but undefined threads will have the value of NULL.
 	// @param ret - map where to put the return values (it will be cleared first).
@@ -141,7 +166,7 @@ public:
 
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
-	
+
 	// Find a thread by name.
 	// Will wait if the thread has not completed its construction yet.
 	// If the thread refers to itself (i.e. the name is of the same thread
@@ -265,8 +290,9 @@ protected:
 		void waitL(const string &appname, const string &tname, const timespec &abstime);
 
 		Autoref<Triead> t_; // the thread object, will be NULL if only declared
+		Autoref<TrieadJoin> j_; // the joiner object, may be NULL for detached or already joined threads
 
-		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL)
+		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL), for deadlock detection
 	protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_
