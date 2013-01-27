@@ -11,6 +11,7 @@
 #define __Triceps_App_h__
 
 #include <map>
+#include <list>
 #include <pw/ptwrap.h>
 #include <common/Common.h>
 #include <app/Triead.h>
@@ -55,7 +56,7 @@ public:
 	// @param - a map where all the defined Apps will be returned.
 	//     It will be cleared before placing any data into it.
 	typedef map<string, Autoref<App> > Map;
-	static void list(Map &ret);
+	static void getList(Map &ret);
 
 	// Dereference the app from the list. The object will
 	// still exist until all the links to it are gone.
@@ -170,6 +171,40 @@ public:
 	// The result is NOT a reference but a copy of the string!
 	string getAbortedBy() const;
 
+	// Check whether the app is dead (naturally or aborted).
+	// (This check may be called with mutex_ not held or held).
+	bool isDead();
+
+	// Wait for the App to become dead.
+	void waitDead();
+
+	// The harvester API.
+	// The harvester would normally run in a "master" thread. It would
+	// join the threads as they die, and after all of them are dead,
+	// drop the App.
+	// There is expected to be only on eharvester thread, or many
+	// assumptions will break.
+	// {
+
+	// Do one run of the harvester. Join all the threads that have
+	// died since the last run. Resets the "need harvest" flag, unless
+	// the whole App is dead.
+	// @return - whether the App is dead. Combining the check into this
+	//           method allows to avoid a race that would leave the
+	//           last thread(s) unharvested.
+	bool harvest();
+
+	// Wait for either more threads become harvestable of for the
+	// app to become dead.
+	// (This check may be called with mutex_ not held or held).
+	void waitNeedHarvest();
+
+	// Run the harvester thread logic, harvesting the threads
+	// as they die, and after the whole App is dead, drop it.
+	void harvesterLogic();
+
+	// }
+
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
 
@@ -220,11 +255,11 @@ protected:
 	// Mark that the thread has exited.
 	// This also implies Constructed and Ready, even though it should
 	// not normally be used to mark all the flags at once.
+	// This also triggers the thread's join by the harvester, 
+	// so it should exit soon.
 	//
 	// @param to - identity of the thread to be marked
-	// @param exiting - flag: the thread is about to exit and needs to be
-	//        joined (usually would be true)
-	void markTrieadDead(TrieadOwner *to, bool exiting);
+	void markTrieadDead(TrieadOwner *to);
 
 	// Wait for all the threads to become ready.
 	// XXX should it be accessible outside of TrieadOwner?
@@ -314,7 +349,7 @@ protected:
 		void operator=(const TrieadUpd &);
 	};
 	typedef map<string, Autoref<TrieadUpd> > TrieadUpdMap;
-	typedef vector<Autoref<TrieadUpd> > TrieadUpdVec;
+	typedef list<Autoref<TrieadUpd> > TrieadUpdList;
 
 	// The single process-wide directory of all the apps, protected by a mutex.
 	static Map apps_;
@@ -324,7 +359,7 @@ protected:
 	string name_; // name of the App
 	string abortedBy_; // name of the thread that aborted the app (empty if not aborted)
 	TrieadUpdMap threads_; // threads defined and declared
-	TrieadUpdVec zombies_; // the thread that have exited and need harvesting
+	TrieadUpdList zombies_; // the thread that have exited and need harvesting
 	pw::event ready_; // will be set when all the threads are ready
 	pw::event dead_; // will be set when all the threads are dead
 	pw::event needHarvest_; // will be set when there are zombies to harvest

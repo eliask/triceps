@@ -63,7 +63,7 @@ Onceref<App> App::find(const string &name)
 	return it->second;
 }
 
-void App::list(Map &ret)
+void App::getList(Map &ret)
 {
 	pw::lockmutex lm(apps_mutex_);
 
@@ -124,6 +124,16 @@ string App::getAbortedBy() const
 {
 	pw::lockmutex lm(mutex_);
 	return abortedBy_;
+}
+
+bool App::isDead()
+{
+	return (dead_.trywait() == 0);
+}
+
+void App::waitDead()
+{
+	dead_.wait();
 }
 
 Onceref<TrieadOwner> App::makeTriead(const string &tname)
@@ -227,8 +237,17 @@ void App::abortBy(const string &tname)
 
 	abortedBy_ = tname; // mark as aborted
 
+	// mark the thread as dead, so that it can be collected if the whole
+	// program is not exiting right now
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	if (it != threads_.end()) {
+		markTrieadDeadL(it->second->t_);
+	}
+
 	// now wake up all the sleepers
 	ready_.signal();
+	dead_.signal();
+	needHarvest_.signal();
 	for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
 		it->second->broadcastL(name_);
 	}
@@ -340,7 +359,7 @@ void App::markTrieadReadyL(Triead *t)
 	}
 }
 
-void App::markTrieadDead(TrieadOwner *to, bool exiting)
+void App::markTrieadDead(TrieadOwner *to)
 {
 	pw::lockmutex lm(mutex_);
 
@@ -350,26 +369,64 @@ void App::markTrieadDead(TrieadOwner *to, bool exiting)
 	markTrieadConstructedL(t);
 	markTrieadReadyL(t);
 	markTrieadDeadL(t);
-
-	// XXX add the harvester
-	if (exiting) {
-		// due to the asssert above, can't fail
-		TrieadUpd *upd = threads_.find(t->getName())->second;
-		if (upd->j_) {
-			zombies_.push_back(upd);
-			needHarvest_.signal();
-		}
-		// XXX discard the references to transient threads?
-	}
 }
 
 void App::markTrieadDeadL(Triead *t)
 {
 	if (!t->isDead()) {
 		t->markDead();
-		if (--aliveCnt_ == 0)
+		if (--aliveCnt_ == 0) {
 			dead_.signal();
+			needHarvest_.signal();
+		}
+
+		TrieadUpdMap::iterator it = threads_.find(t->getName());
+		// should never fail but check just in case
+		if (it != threads_.end()) {
+			TrieadUpd *upd = it->second;
+			if (upd->j_) {
+				zombies_.push_back(upd);
+				needHarvest_.signal();
+			}
+		}
 	}
+}
+
+bool App::harvest()
+{
+	while(true) {
+		Autoref<TrieadJoin> j;
+		{
+			pw::lockmutex lm(mutex_);
+			if (zombies_.empty()) {
+				bool dead = isDead();
+				if (!dead)
+					needHarvest_.reset();
+				return dead;
+			}
+			TrieadUpd *upd = zombies_.front();
+			j = upd->j_;
+			upd->j_ = NULL; // guarantees that will be joined only once
+			zombies_.pop_front();
+		}
+		if (!j.isNull()) // should never be NULL, but just in case
+			j->join();
+	}
+}
+
+void App::waitNeedHarvest()
+{
+	needHarvest_.wait();
+}
+
+void App::harvesterLogic()
+{
+	bool dead = false;
+	while (!dead) {
+		waitNeedHarvest();
+		dead = harvest();
+	}
+	drop(this);
 }
 
 void App::waitReady()
