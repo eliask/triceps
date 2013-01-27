@@ -57,6 +57,12 @@ public:
 	typedef map<string, Autoref<App> > Map;
 	static void list(Map &ret);
 
+	// Dereference the app from the list. The object will
+	// still exist until all the links to it are gone.
+	// If the App is already dereferenced, does nothing.
+	// @param app - the App to drop
+	static void drop(Onceref<App> app);
+
 	// } static interface
 
 public:

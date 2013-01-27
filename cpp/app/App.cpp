@@ -75,6 +75,18 @@ void App::list(Map &ret)
 		ret.insert(*it);
 }
 
+void App::drop(Onceref<App> app)
+{
+	pw::lockmutex lm(apps_mutex_);
+
+	Map::iterator it = apps_.find(app->name_);
+	if (it == apps_.end())
+		return;
+	if (it->second != app)
+		return;
+	apps_.erase(it);
+}
+
 App::App(const string &name) :
 	name_(name),
 	ready_(true), // since no threads are unready
