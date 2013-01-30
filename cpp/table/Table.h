@@ -27,17 +27,17 @@ public:
 	~Table();
 
 	// Get the type of this table
-	const TableType *getType()
+	const TableType *getType() const
 	{
 		return type_;
 	}
 	// Get the row type of this table
-	const RowType *getRowType()
+	const RowType *getRowType() const
 	{
 		return rowType_;
 	}
 	// Get the row handle type of this table
-	const RowHandleType *getRhType()
+	const RowHandleType *getRhType() const
 	{
 		return rhType_;
 	}
