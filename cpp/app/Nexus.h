@@ -10,8 +10,11 @@
 #ifndef __Triceps_Nexus_h__
 #define __Triceps_Nexus_h__
 
+#include <map>
 #include <common/Common.h>
 #include <mem/Mtarget.h>
+#include <type/RowSetType.h>
+#include <type/TableType.h>
 
 namespace TRICEPS_NS {
 
@@ -24,6 +27,9 @@ class Triead;
 // there might be up to two queues: one "downstream" and one "upstream".
 // But the initial goal is to have one per nexus.
 //
+// Besides the queues, a nexus is used to export the assorted row types
+// and table types. They live in their separate sub-namespaces.
+//
 // The Nexuses could live right on the level under App but in case of the
 // deadlocks this would make tracing the cause difficult (i.e. thread A
 // waits for a nexus to be defined by thread B, while thread B waits for
@@ -32,7 +38,11 @@ class Triead;
 class Nexus : public Mtarget
 {
 	friend class App;
+	friend class Triead;
 public:
+	typedef map<string, Autoref<RowType> > RowTypeMap;
+	typedef map<string, Autoref<TableType> > TableTypeMap;
+
 	// The nexus creation consists of the following steps:
 	// * create the object;
 	// * fill it with the contents;
@@ -41,7 +51,9 @@ public:
 	
 	// @param parent - thread that created and owns this nexus.
 	// @param name - name of the nexus, must be unique within the thread.
-	Nexus(Triead *parent, const string &name);
+	// @param reverse - flag: the nexus's queue is pointed upwards,
+	//        forming a loop in the model
+	Nexus(Triead *parent, const string &name, bool reverse);
 
 	// Get the name
 	const string &getName() const
@@ -50,14 +62,27 @@ public:
 	}
 
 	// Check whether the nexus is initializaed and attached.
-	bool isInitialized()
+	bool isInitialized() const
 	{
 		return parent_ != NULL;
 	}
 
+	// Check whether the nexus is reverse, i.e. the its queue is pointed
+	// upwards.
+	bool isReverse() const
+	{
+		return reverse_;
+	}
+
 protected:
 	string name_;
-	Triead *parent_; // will be NULL until connected to the Triead
+	Triead *parent_; // will be NULL until connected to the Triead that exports this nexus
+
+	Autoref<RowSetType> type_; // the type of the nexus's main queue
+	RowTypeMap rowTypes_; // the collection of row types
+	TableTypeMap tableTypes_; // the collection of table types
+
+	bool reverse_; // Flag: this nexus's main queue is pointed upwards
 
 private:
 	Nexus();

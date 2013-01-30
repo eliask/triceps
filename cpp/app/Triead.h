@@ -10,9 +10,11 @@
 #ifndef __Triceps_Triead_h__
 #define __Triceps_Triead_h__
 
+#include <map>
 #include <pw/ptwrap2.h>
 #include <common/Common.h>
 #include <sched/Unit.h>
+#include <app/Nexus.h>
 
 namespace TRICEPS_NS {
 
@@ -24,6 +26,8 @@ class Triead : public Mtarget
 	friend class TrieadOwner;
 	friend class App;
 public:
+	typedef map<string, Autoref<Nexus> > NexusMap;
+
 	// No public constructor! Use App!
 
 	~Triead();
@@ -120,7 +124,12 @@ protected:
 	// mean the application initialization failure.
 	
 	string name_; // name of the thread, read-only
+	mutable pw::pmutex mutex_; // mutex synchronizing this Triead
+	NexusMap exports_; // the nexuses exported from this thread
 
+	// The flags are interacting with the App's state and
+	// are synchronized by the App's mutex.
+	// {
 	// Flag: all the nexuses of this thread have been defined.
 	// When this flag is set, the nexuses become visible.
 	bool constructed_;
@@ -129,6 +138,7 @@ protected:
 	bool ready_;
 	// Flag: the thread has completed execution and exited.
 	bool dead_;
+	// }
 
 private:
 	Triead();
