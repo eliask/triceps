@@ -1,0 +1,128 @@
+Table in C++
+
+The Table is defined in table/Table.h. It inherits from Gadget, with the table's output label being the gadget's output label. Naturally, it's an Starget and usable from one thread only.
+
+ It's constructor is not public, and it's created from the TableType with its  method makeTable():
+
+Autoref<Table> t = tabType->makeTable(unit, Table::EM_CALL, "t");
+
+The arguments are the unit where the table will belong, the enqueueing mode for its output label (this is a legacy argument and will go away soon), and the name of the table.
+
+For the reference, that TableType method is:
+
+Onceref<Table> makeTable(Unit *unit, Gadget::EnqMode emode, const string &name) const;
+
+The table has a large number of methods, grouped into multiple subsets.
+
+EnqMode getEnqMode() const;
+const string &getName() const;
+Unit *getUnit() const;
+Label *getLabel() const;
+
+These methods are inherited from the Gadget. The only special thing to remember is that getLabel() returns the table's output label. Technically, getName() has an overriding implementation in the Table, to return the table's name while its output label has the suffix ".out" appended to it.
+
+
+const TableType *getType() const;
+const RowType *getRowType() const;
+const RowHandleType *getRhType() const;
+
+Get back the type of the table, of its rows, and its row handles.
+
+Label *getInputLabel() const;
+Label *getPreLabel() const;
+Label *getDumpLabel() const;
+Label *getAggregatorLabel(const string &agname) const;
+
+Get the assorted labels. The aggregator label getter takes the name of the aggregator (as was defined in the TableType) as an argument.
+
+FnReturn *fnReturn() const;
+
+Get the FnReturn of this table's outputs. It gets created and remembered on the first call, and the subsequent calls return the same object.  It has a few labels with the fixed names: "out", "pre" and "dump", and a label for each aggregator with the aggregator's name. It could throw an Exception if you name an aggregator to conflict with one of the fixed labels, which you should not. The return's name will be "tableName.fret".
+
+Next go the operations on the table (and of course the table may also be modified by sending rowops to its input label).
+RowHandle *makeRowHandle(const Row *row) const;
+
+Create a row handle for a row. Remember, the row handles are reference-counted, and also have the special kind of references with Rhref. So the returned pointer should be stored in an Rhref. The row handle created will not be inserted into the table yet.
+
+bool insert(RowHandle *rh);
+
+Insert a row handle into the table. This invokes all the row replacement policies along the way. If the handle is already in the table, does nothing and returns false. May also return false if a replacement policy refuses the row, but in practice there are no such refusing policies yet. Otherwise returns true.
+
+It may throw an Exception. It may throw by itself if the row handle doesn't belong to this table or propagate the exception up: since the execution involves calling the output labels and such, an exception might be thrown from there.
+
+bool insertRow(const Row *row);
+
+The version that combines the row handle construction and insertion. Unlike Perl, in C++ this method is named differently instead of overloading. The comments about the replacement policies and return code, and about exceptions apply here too.
+
+void remove(RowHandle *rh);
+
+Remove a row handle from the table. If the handle is not in the table, silently does nothing. May throw an Exception.
+
+bool deleteRow(const Row *row);
+
+Find a matching row and delete it. Returns true if the row was found and removed, false if not found. May throw an Exception.
+
+void clear(size_t limit = 0);
+
+Clear the table by removing all the rows from it. The removed rows are sent as usual to the "pre" and "out" labels. If the limit is not 0, no more than that number of the rows will be removed. The rows are removed in the usual order of the first leaf index.
+
+Next go the iteration methods. The rule of thumb is that for them a NULL row handle pointer means "end of iteration" or "not found" (or sometimes "bad arguments"). And they can handle the NULL row handles OK on the input, just returning NULL on the output.
+
+RowHandle *begin() const;
+
+Get the first row handle in the default order of the first leaf index. If the table is empty, returns NULL.
+
+RowHandle *beginIdx(IndexType *ixt) const;
+
+Get the first handle in the order of a particular index. The index type must belong to this table's type. For an incorrect index type it returns NULL (perhaps in the future this will be changed to an exception).
+
+RowHandle *next(const RowHandle *cur) const;
+RowHandle *nextIdx(IndexType *ixt, const RowHandle *cur) const;
+
+Get the next row handle in the order of  the default or specific index. Returns NULL after the last handle. It's safe to pass the current row handle as NULL, the result will be NULL, and also on any other error.
+
+RowHandle *firstOfGroupIdx(IndexType *ixt, const RowHandle *cur) const;
+RowHandle *lastOfGroupIdx(IndexType *ixt, const RowHandle *cur) const;
+
+Get the first or last row handle in the same group as the current row according to a non-leaf index. The NULL current handle will cause NULL returned. See the details in the description of the Perl API.
+
+RowHandle *nextGroupIdx(IndexType *ixt, const RowHandle *cur) const;
+
+Get the first row handle of the next group. The return will be NULL if the current group was the last one, or if the current handle is NULL.
+
+Next go the size operations:
+
+size_t size() const;
+
+
+Get the number of rows currently in the table.
+
+
+size_t groupSizeIdx(IndexType *ixt, const RowHandle *what) const;
+
+Get the size of the group where the handle belongs according to a non-leaf index. If any arguments are wrong, returns 0. The row handle doesn't have to be in the table. If it isn't in the table, the method will find the group where the row would belong if it were inserted and return its current size.
+
+size_t groupSizeRowIdx(IndexType *ixt, const Row *what) const;
+
+A convenience version that makes a row handle from a row, finds the group size and disposes of the handle.
+
+Next go the finding methods:
+
+RowHandle *find(const RowHandle *what) const;
+RowHandle *findIdx(IndexType *ixt, const RowHandle *what) const;
+
+Find the handle of a matching row according to the default (first leaf) or the specific index, or return NULL if not found.
+
+RowHandle *findRow(const Row *what) const;
+RowHandle *findRowIdx(IndexType *ixt, const Row *what) const;
+
+The convenience versions that create a temporary row handle and then perform the search.
+
+Next goes the dump API that sends the whole contents of the table to the "dump" label, thus making any labels connected to it perform an implicit iteration over the table.
+
+void dumpAll(Rowop::Opcode op = Rowop::OP_INSERT) const;
+void dumpAllIdx(IndexType *ixt, Rowop::Opcode op = Rowop::OP_INSERT) const;
+
+The dump can go in the order of default or specific index. The opcode argument is used for the rowops sent on the dump label. Using the argument index type of NULL makes dumpAllIdx() use the default index and work just like DumpAll(). In the furute there probably will be methods that dump only a group of records.
+
+As usual, the general logic of the methods matches the Perl API unless said otherwise. Please refer to the Perl API description for the details and exampl

@@ -1,0 +1,105 @@
+FnBinding in C++
+
+FnBinding is defined in sched/FnBinding.h, and substantially matches the Perl version. It inherits from Starget, and can be used in only one thread.
+
+Like many other classes, it has the constructor and the static make() function:
+
+FnBinding(const string &name, FnReturn *fn);
+static FnBinding *make(const string &name, FnReturn *fn);
+
+The binding is constructed on a specific FnReturn and gets (references) the RowSetType from it. The FnReturn must be initialized before it can be used to create the bindings. It can be used with any matching FnReturn, not just the one it was constructed with.
+
+It's generally constructed in a chain fashion:
+
+Autoref<FnBinding> bind = FnBinding::make(fn)
+    ->addLabel("lb1", lb1, true)
+    ->addLabel("lb2", lb2, false);
+
+Each method in the chain returns the same FnBinding object. The method addLabel() adds one concrete label that gets connected to the FnReturn's label by name. The other chainable method is withTray() which switches the mode of collecting the resulting rowops in a tray rather than calling them immediately.
+
+The errors encountered during the chained construction are remembered and can be read later with the method:
+
+Erref getErrors() const;
+
+You must check the bindings for errors before using it. A binding with errors may not be used.
+
+Or you can use the checkOrThrow() wrapper from common/Initialize.h to automatically convert any detected errors to an Exception:
+
+Autoref<FnBinding> bind = checkOrThrow(FnBinding::make(fn)
+    ->addLabel("lb1", lb1, true)
+    ->addLabel("lb2", lb2, false)
+    ->withTray(true)
+);
+
+FnBinding *addLabel(const string &name, Autoref<Label> lb, bool autoclear);
+
+Adds a label to the binding. The name must match a name from the FnReturn, and there may be only one label bound to a name (some names from the return may be left unbound). The label must have a type matching the named FnReturn's label. The autoclear flag enables the automatic clearing of the label (and also forgetting it in the Unit) when the binding gets destroyed. This allows to create and destroy the bindings dynamically as needed. So, basically, if you've created a label just for the binding, use autoclear==true. If you do a binding to a label that exists in the model by itself and can be used without the binding, use autoclear==false.
+
+In principle, nothing stops you from adding more labels later (though you can't remove nor replace the labels that are already added). Just make sure that their types match the expected ones.
+
+Not all the available names have to get the labels added. Some (or all) may be left without labels. Any rowops coming to the undefined ones will be simply ignored.
+
+The labels in the FnBinding may belong to a different Unit than the FnReturn. This allows to use the FnReturn/FnBinding coupling to connect the units.
+
+FnBinding *withTray(bool on);
+
+Changes the tray collection mode, the true argument enables it, false disables. Can be done at any time, not just at construction. Disabling the tray mode discards the current tray. If the tray mode is enabled, whenever the binding is pushed onto a return and the rowops come into it, the labels in this binding won't be called immediately but they would adopt the incoming rowops, and the result will be queued into a tray, to be executed later.
+
+Onceref<Tray> swapTray();
+
+Used with the tray collection mode, normally after some rowops have been collected in the tray. Returns the current tray and replaces it in the binding with a new clean tray. You can call the returned tray afterwards. If the tray mode is not enabled, will return NULL, and won't create a new tray.
+
+Tray *getTray() const;
+
+Get the current tray. You can use and modify the tray contents in any usual way.  If the tray mode is not enabled, will return NULL.
+
+void callTray();
+
+A convenience combination method that swaps the tray and calls it. This method is smart about the labels belonging to different units. Each rowop in the tray is called with its proper unit, that is found from the rowop's label. Mixing the labels of multiple units in one binding is probably still not such a great idea, but it works anyway.
+
+const string &getName() const;
+
+Get back the binding's name.
+
+RowSetType *getType() const;
+
+Get the type of the binding. It will be the same row set type object as created in the FnReturn that was used to construct this FnBinding.
+
+int size() const;
+
+Get the number of labels in the row set type (of all available labels, not just the ones that have been added).
+
+const RowSetType::NameVec &getLabelNames() const;
+const RowSetType::RowTypeVec &getRowTypes() const;
+const string *getLabelName(int idx) const;
+RowType *getRowType(const string &name) const;
+RowType *getRowType(int idx) const;
+
+The convenience wrappers that translate to the same methods in the RowSetType.
+
+Label *getLabel(const string &name) const;
+int findLabel(const string &name) const;
+Label *getLabel(int idx) const;
+
+Methods similar to FnReturn that allow to translate the names to indexes and get the labels by name or index. The same return values, the index -1 is returned for an unknown name, and a NULL label pointer is returned for an unknown name, incorrect index and a undefined label at a correct name or index.
+
+typedef vector<Autoref<Label> > LabelVec;
+const LabelVec &getLabels() const;
+
+Return all the labels as a vector. This is an internal vector of the class, so only a const reference is returned. The elements for undefined labels will contain NULLs.
+
+typedef vector<bool> BoolVec;
+const BoolVec &getAutoclear() const;
+
+Return the vector of the autoclear flags for the labels.
+
+bool isAutoclear(const string &name) const;
+
+Get the autoclear flag for a label by name. If the name is unknown, will quietly return false.
+
+bool equals(const FnReturn *t) const;
+bool match(const FnReturn *t) const;
+bool equals(const FnBinding *t) const;
+bool match(const FnBinding *t) const;
+
+Similarly to the FnReturn, the convenience methods that compare the types between the FnReturns and FnBindings. They really translate to the same methods on the types of the returns or bindings. 

@@ -1,0 +1,99 @@
+Streaming function helper classes
+
+A couple more of helper classes are defined in sched/FnReturn.h.
+
+ScopeFnBind does a scoped pushing and popping of a binding on an FnReturn. Its only method is the constructor:
+
+ScopeFnBind(Onceref<FnReturn> ret, Onceref<FnBinding> binding);
+
+It's used as:
+
+{
+    ScopeFnBind autobind(ret, binding);
+    ...
+}
+
+It will pop the binding at the end of the block. An unpleasant feature is that if the return stack get messed up, it will throw an Exception from a destructor, which is a big no-no in C++. However since normally in the C++ code the Triceps Exception is essentially an abort, this works good enough. If you make the Exception catchable, such as when calling the C++ code from an interpreter, you better make very sure that the stack can not get corrupted, or do not use ScopeFnBind.
+
+AutoFnBind is a further extension of the scoped binding. It does three additional things: It allows to push multiple bindings on multiple returns as a group, popping them all on destruction. It's a reference-counted Starget object, which allows the scope to be more than one block. It also has a more controllable way of dealing with the exceptions. This last two properties allow to use it from the Perl code, making the scope of a Perl block, not C++ block, and to pass the exceptions properly back to Perl.
+
+AutoFnBind();
+AutoFnBind *make();
+
+The constructor just creates an empty object which then gets filled with bindings.
+
+AutoFnBind *add(Onceref<FnReturn> ret, Autoref<FnBinding> binding);
+
+Add a binding, in a chainable fashion. The simple-minded of using the AutoFnBind is:
+
+{
+    Autoref<AutoFnBind> bind = AutoFnBind::make()
+        ->add(ret1, binding1)
+        ->add(ret2, binding2);
+    ...
+}
+
+However if any of these add()s throw an Exception, this will leave an orphaned AutoFnBind object, since the throwing would happen before it has a chance to do the reference-counting. So the safer way to use it is:
+
+{
+    Autoref<AutoFnBind> bind = new AutoFnBind;
+    bind
+        ->add(ret1, binding1)
+        ->add(ret2, binding2);
+    ...
+}
+
+Then the AutoFnBind will be reference-counted first, and if an add() throws later, this will cause a controlled destruction of the Autoref and of AutoFnBind.
+
+But it's not the end of the story yet. The throws on destruction are still a possibility. To catch them, use an explicit clearing:
+
+void clear();
+
+Pops all the bindings. If any Exceptions get thrown, they can get caught nicely. It tries to be real smart, going through all the bindings in the backwards order and popping each one of them. If a pop() throws an exception, its information will be collected but clear() will then continue going through the whole list. At the end of the run it will make sure that it doesn't have any references to anything any more, and then will re-throw any collected errors as a single Exception. This cleans up the things as much as possible and as much as can be handled, but the end result will still not be particularly clean: the returns that got their stacks corrupted will still have their stacks corrupted, and some very serious application-level cleaning will be needed to continue. Probably a better choice would be to destroy everything and restart from scratch. But at least it allows to get safely to this point of restarting from scratch.
+
+So, the full correct sequence will be:
+
+{
+    Autoref<AutoFnBind> bind = new AutoFnBind;
+    bind
+        ->add(ret1, binding1)
+        ->add(ret2, binding2);
+    ...
+    bind->clear() ;
+}
+
+
+Or if any code in "..." can throw anything, then something like (not tested, so use with caution):
+
+{
+    Autoref<AutoFnBind> bind = new AutoFnBind;
+    bind
+        ->add(ret1, binding1)
+        ->add(ret2, binding2);
+    try {
+    ...
+    } catch (Triceps::Exception e) {
+        try {
+            bind->clear() ;
+        } catch (Triceps::Exception ee) {
+            e->getErrors()->append("Unbinding errors triggered by the last error:", ee->getErrors());
+        }
+        throw;
+    } catch (exception e) {
+        bind->clear() ;
+        throw;
+
+
+    }
+}
+
+
+It tries to be nice if the exception thrown from "..." was a Triceps one, and add nicely any errors from the binding clearing to it.
+
+Finally, a little about how the Perl AutoFnBind translates to the C++ AutoFnBind:
+
+The Perl constructor creates the C++-level object and adds the bindings to it. If any of them throw, it destroys everything nicely and translates the Exception to Perl. Otherwise it saves a reference to the AutoFnBind in a wrapper object that gets returned to Perl.
+
+The Perl destructor then first clears the AutoFnBind and catches if there is any Exception. However there is just no way to return a Perl exception from a Perl destructor, so it juts prints the error on stderr and calls exit(1). If no exception was thrown, the AutoFnBind gets destroyed nicely by removing the last reference.
+
+For the nicer handling, there is a Perl-level method clear() that does the clearing and translates the exception to Perl.
