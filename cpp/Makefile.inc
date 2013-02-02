@@ -1,7 +1,7 @@
 
 # The base settings that are always needed.
 TRICEPS_CONF =
-TRICEPS_XLIB = -lpthread
+TRICEPS_XLIB = -lpthread -lrt
 
 # configuration settings
 

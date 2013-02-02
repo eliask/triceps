@@ -298,7 +298,7 @@ protected:
 	// Must be called only before creation of any threads, so since
 	// it's all single-threaded, there is no need for locking.
 	// @param sec - timeout in seconds from now
-	void computeDeadline(int sec) const;
+	void computeDeadline(int sec);
 
 protected:
 	// Since there might be a need to wait for the initialization of

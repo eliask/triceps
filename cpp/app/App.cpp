@@ -39,6 +39,9 @@ void App::TrieadUpd::waitL(const string &appname, const string &tname, const tim
 
 // -------------------- App ----------------------------------------------
 
+App::Map App::apps_;
+pw::pmutex App::apps_mutex_;
+
 Onceref<App> App::make(const string &name)
 {
 	pw::lockmutex lm(apps_mutex_);
@@ -112,6 +115,15 @@ void App::setDeadline(const timespec &dl)
 	if (!threads_.empty())
 		throw Exception::fTrace("Triceps application '%s' deadline can not be changed after the thread creation.", name_.c_str());
 	deadline_ = dl;
+}
+
+void App::computeDeadline(int sec)
+{
+	int err = clock_gettime(CLOCK_REALTIME, &deadline_); // the current time
+	if (err != 0) {
+		throw Exception::fTrace("Triceps internal error: clock_gettime() failed err=%d.", err);
+	}
+	deadline_.tv_sec += sec;
 }
 
 bool App::isAborted() const
