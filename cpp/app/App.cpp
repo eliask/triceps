@@ -404,7 +404,7 @@ void App::markTrieadDeadL(Triead *t)
 	}
 }
 
-bool App::harvest()
+bool App::harvestOnce()
 {
 	while(true) {
 		Autoref<TrieadJoin> j;
@@ -431,12 +431,12 @@ void App::waitNeedHarvest()
 	needHarvest_.wait();
 }
 
-void App::harvesterLogic()
+void App::harvester()
 {
 	bool dead = false;
 	while (!dead) {
 		waitNeedHarvest();
-		dead = harvest();
+		dead = harvestOnce();
 	}
 	drop(this);
 }

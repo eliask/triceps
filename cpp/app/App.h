@@ -192,7 +192,7 @@ public:
 	// @return - whether the App is dead. Combining the check into this
 	//           method allows to avoid a race that would leave the
 	//           last thread(s) unharvested.
-	bool harvest();
+	bool harvestOnce();
 
 	// Wait for either more threads become harvestable of for the
 	// app to become dead.
@@ -201,7 +201,10 @@ public:
 
 	// Run the harvester thread logic, harvesting the threads
 	// as they die, and after the whole App is dead, drop it.
-	void harvesterLogic();
+	// Note that the caller is expected to keep a reference to the App,
+	// so teh dead App won't be actually destroyed until that reference
+	// is destroyed.
+	void harvester();
 
 	// }
 
