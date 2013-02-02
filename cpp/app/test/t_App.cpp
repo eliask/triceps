@@ -6,10 +6,20 @@
 //
 // Test of the App building.
 
-#include <time.h>
 #include <utest/Utest.h>
 #include <app/App.h>
 #include <app/TrieadOwner.h>
+
+// Access to the protected internals of App.
+class AppGuts: public App
+{
+public:
+	static void gutsWaitReady(App *a)
+	{
+		AppGuts *ag = ((AppGuts *)a);
+		return ag->waitReady();
+	}
+};
 
 // make the exceptions catchable
 void make_catchable()
@@ -90,6 +100,27 @@ UTESTCASE statics(Utest *utest)
 	UT_IS(amap.size(), 2);
 	a = App::find("a2");
 	UT_IS(a, aa2);
+
+	// clean-up, since the apps catalog is global
+	App::drop(a1);
+	App::drop(aa2);
+
+	restore_uncatchable();
+}
+
+// Test that a newly created app with no threads is considered ready and dead.
+UTESTCASE empty_is_ready(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	UT_ASSERT(!a1->isAborted());
+	UT_ASSERT(a1->isDead());
+	AppGuts::gutsWaitReady(a1);
+	a1->waitDead();
+
+	a1->waitNeedHarvest();
+	UT_ASSERT(a1->harvest());
 
 	restore_uncatchable();
 }

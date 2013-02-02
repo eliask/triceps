@@ -94,7 +94,7 @@ App::App(const string &name) :
 	name_(name),
 	ready_(true), // since no threads are unready
 	dead_(true), // since no threads are alive
-	needHarvest_(false), 
+	needHarvest_(true), // "dead" also implies being ready to harvest
 	unreadyCnt_(0),
 	aliveCnt_(0)
 {
