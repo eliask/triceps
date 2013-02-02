@@ -14,10 +14,15 @@
 class AppGuts: public App
 {
 public:
+	static bool gutsIsReady(App *a)
+	{
+		AppGuts *ag = ((AppGuts *)a);
+		return ag->isReady();
+	}
 	static void gutsWaitReady(App *a)
 	{
 		AppGuts *ag = ((AppGuts *)a);
-		return ag->waitReady();
+		ag->waitReady();
 	}
 };
 
@@ -114,6 +119,7 @@ UTESTCASE empty_is_ready(Utest *utest)
 	make_catchable();
 
 	Autoref<App> a1 = App::make("a1");
+	UT_ASSERT(AppGuts::gutsIsReady(a1));
 	UT_ASSERT(!a1->isAborted());
 	UT_ASSERT(a1->isDead());
 	AppGuts::gutsWaitReady(a1);

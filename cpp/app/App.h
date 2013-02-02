@@ -261,6 +261,10 @@ protected:
 	// @param to - identity of the thread to be marked
 	void markTrieadDead(TrieadOwner *to);
 
+	// Check whether the app is ready.
+	// (This check may be called with mutex_ not held or held).
+	bool isReady();
+
 	// Wait for all the threads to become ready.
 	// XXX should it be accessible outside of TrieadOwner?
 	void waitReady();

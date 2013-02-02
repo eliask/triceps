@@ -441,6 +441,11 @@ void App::harvesterLogic()
 	drop(this);
 }
 
+bool App::isReady()
+{
+	return (ready_.trywait() == 0);
+}
+
 void App::waitReady()
 {
 	{
