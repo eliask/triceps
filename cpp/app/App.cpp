@@ -324,7 +324,7 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 					"In app '%s' thread '%s' waiting for thread '%s' would cause a deadlock:",
 						name_.c_str(), to->get()->getName().c_str(), tname.c_str()),
 				trace);
-			throw new Exception(err, true);
+			throw Exception(err, true);
 		}
 	}
 
@@ -485,7 +485,7 @@ void App::waitReady()
 			Erref err = new Errors(strprintf(
 				"Application '%s' did not initialize within the deadline.\nThe lagging threads are:", name_.c_str()),
 				lags);
-			throw new Exception(err, true);
+			throw Exception(err, true);
 		} else  {
 			throw Exception::fTrace("Internal error: condvar wait for all-ready in application '%s' failed, errno=%d: %s.", 
 				name_.c_str(), err, strerror(err));

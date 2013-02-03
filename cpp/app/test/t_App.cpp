@@ -456,3 +456,103 @@ UTESTCASE basic_abort(Utest *utest)
 
 	restore_uncatchable();
 }
+
+UTESTCASE timeout_find(Utest *utest)
+{
+	make_catchable();
+
+	// successfully change the time as relative seconds
+	{
+		Autoref<App> a1 = App::make("a1");
+
+		a1->setTimeout(0); // for immediate failure
+
+		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+
+		{
+			string msg;
+			try {
+				ow1->findTriead("t2");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Thread 't2' in application 'a1' did not initialize within the deadline.\n");
+		}
+
+		// also check the timeout for the readiness wait
+		{
+			string msg;
+			try {
+				ow1->readyReady();
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Application 'a1' did not initialize within the deadline.\nThe lagging threads are:\n  t2: not constructed\n");
+		}
+
+		// still have to mark them dead to harvest
+		ow1->markDead();
+		ow2->markDead();
+		a1->harvester();
+	}
+
+	// successfully change the time as absolute point
+	{
+		Autoref<App> a1 = App::make("a1");
+
+		timespec tm;
+		clock_gettime(CLOCK_REALTIME, &tm);
+		a1->setDeadline(tm); // for immediate failure
+
+		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+
+		{
+			string msg;
+			try {
+				ow1->findTriead("t2");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Thread 't2' in application 'a1' did not initialize within the deadline.\n");
+		}
+
+		// still have to mark them dead to harvest
+		ow1->markDead();
+		ow2->markDead();
+		a1->harvester();
+	}
+
+	// can't change after the first thread was created
+	{
+		Autoref<App> a1 = App::make("a1");
+		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+
+		{
+			string msg;
+			try {
+				a1->setTimeout(0);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Triceps application 'a1' deadline can not be changed after the thread creation.\n");
+		}
+		{
+			string msg;
+			try {
+				timespec tm;
+				clock_gettime(CLOCK_REALTIME, &tm);
+				a1->setDeadline(tm);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Triceps application 'a1' deadline can not be changed after the thread creation.\n");
+		}
+
+		ow1->markDead();
+		a1->harvester();
+	}
+
+	restore_uncatchable();
+}
