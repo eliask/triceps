@@ -111,9 +111,10 @@ public:
 	// Abort the thread and with it the whole app.
 	// Typically used if a fatal error is found during initialization.
 	// XXX reconcile with markDead()
-	void abort() const
+	// @param msg - message that can communicate the reason fo abort
+	void abort(const string &msg) const
 	{
-		app_->abortBy(triead_->getName());
+		app_->abortBy(triead_->getName(), msg);
 	}
 
 	// Mark the thread as dead and free its resources.

@@ -10,6 +10,7 @@
 #define __Triceps_TrieadJoin_h__
 
 #include <common/Common.h>
+#include <mem/Mtarget.h>
 
 namespace TRICEPS_NS {
 
@@ -24,6 +25,8 @@ namespace TRICEPS_NS {
 class TrieadJoin: public Mtarget
 {
 public:
+	virtual ~TrieadJoin();
+
 	// Perform a join() on the thread identity stored in this object.
 	//
 	// The subclass must define this method. It must also define some

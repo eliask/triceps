@@ -161,7 +161,8 @@ public:
 	// abort right away than to wait for the thread timeout to expire.
 	//
 	// @param tname - name of the failed thread that calls the abort
-	void abortBy(const string &tname);
+	// @param msg - the abort message, allowing to propagate the error info
+	void abortBy(const string &tname, const string &msg);
 
 	// Check whether the app was marked as aborted.
 	bool isAborted() const;
@@ -170,6 +171,9 @@ public:
 	// (will be empty if not aborted).
 	// The result is NOT a reference but a copy of the string!
 	string getAbortedBy() const;
+	// Get the message from the aborted thread.
+	// The result is NOT a reference but a copy of the string!
+	string getAbortedMsg() const;
 
 	// Check whether the app is dead (naturally or aborted).
 	// (This check may be called with mutex_ not held or held).
@@ -365,6 +369,7 @@ protected:
 	mutable pw::pmutex mutex_; // mutex synchronizing this App
 	string name_; // name of the App
 	string abortedBy_; // name of the thread that aborted the app (empty if not aborted)
+	string abortedMsg_; // an optional message from the aborted thread
 	TrieadUpdMap threads_; // threads defined and declared
 	TrieadUpdList zombies_; // the thread that have exited and need harvesting
 	pw::event ready_; // will be set when all the threads are ready

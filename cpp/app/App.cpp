@@ -135,7 +135,15 @@ bool App::isAborted() const
 string App::getAbortedBy() const
 {
 	pw::lockmutex lm(mutex_);
-	return abortedBy_;
+	string s = abortedBy_;
+	return s;
+}
+
+string App::getAbortedMsg() const
+{
+	pw::lockmutex lm(mutex_);
+	string s = abortedMsg_;
+	return s;
 }
 
 bool App::isDead()
@@ -240,7 +248,7 @@ void App::assertTrieadL(Triead *th) const
 	}
 }
 
-void App::abortBy(const string &tname)
+void App::abortBy(const string &tname, const string &msg)
 {
 	pw::lockmutex lm(mutex_);
 
@@ -248,6 +256,7 @@ void App::abortBy(const string &tname)
 		return;
 
 	abortedBy_ = tname; // mark as aborted
+	abortedMsg_ = msg;
 
 	// mark the thread as dead, so that it can be collected if the whole
 	// program is not exiting right now

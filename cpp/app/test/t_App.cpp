@@ -11,17 +11,17 @@
 #include <app/TrieadOwner.h>
 
 // Access to the protected internals of App.
-class AppGuts: public App
+class AppGuts : public App
 {
 public:
 	static bool gutsIsReady(App *a)
 	{
-		AppGuts *ag = ((AppGuts *)a);
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
 		return ag->isReady();
 	}
 	static void gutsWaitReady(App *a)
 	{
-		AppGuts *ag = ((AppGuts *)a);
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
 		ag->waitReady();
 	}
 };
@@ -272,3 +272,22 @@ UTESTCASE basic_trieads(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// the abort of a thread
+#if 0
+UTESTCASE basic_abort(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	// successful creation
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	UT_ASSERT(!AppGuts::gutsIsReady(a1));
+	UT_ASSERT(!a1->isAborted());
+	UT_ASSERT(!a1->isDead());
+
+XXXXXXXXXX
+	restore_uncatchable();
+}
+#endif
