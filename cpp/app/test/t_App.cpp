@@ -715,3 +715,43 @@ UTESTCASE find_deadlock_catch_pthread(Utest *utest)
 	restore_uncatchable();
 }
 
+class TestPthreadNothing : public BasicPthread
+{
+public:
+	TestPthreadNothing(const string &name):
+		BasicPthread(name)
+	{ }
+
+	virtual void execute(TrieadOwner *to)
+	{
+		// do nothing
+	}
+
+	virtual void join()
+	{
+		BasicPthread::join();
+	}
+};
+
+// check on BasicPthread exit that the thread was marked ready
+UTESTCASE basic_pthread_assert(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+
+	Autoref<TestPthreadNothing> pt1 = new TestPthreadNothing("t1");
+	pt1->start(a1);
+
+	AppGuts::gutsWaitTrieadDead(a1, "t1");
+
+	// and it will mark itself aborted
+	UT_ASSERT(a1->isAborted());
+	UT_IS(a1->getAbortedBy(), "t1");
+	UT_IS(a1->getAbortedMsg(), "thread execution completed without marking it as ready");
+
+	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	restore_uncatchable();
+}
