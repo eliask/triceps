@@ -360,7 +360,7 @@ UTESTCASE find_triead_success(Utest *utest)
 
 	Triead *t;
 
-	// Finding itself doesn't require readiness.
+	// Finding itself doesn't require the thread being constructed.
 	t = ow1->findTriead("t1").get();
 	UT_IS(t, ow1->get());
 
@@ -372,11 +372,29 @@ UTESTCASE find_triead_success(Utest *utest)
 	// wait until t2 and t3 actually wait for t1
 	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 2);
 
-	// marking t1 as dead (and thus ready) must wake up the sleepers,
-	// after which they all exit and can be harvested
-	ow1->markDead();
+	// marking t1 as constructed must wake up the sleepers
+	ow1->markConstructed();
+	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 0);
+
+	// now repeat the same with an only declared thread
+	a1->declareTriead("t4");
+
+	Autoref<TestPthreadWait> pt5 = new TestPthreadWait("t5", "t4");
+	pt5->start(a1);
+	Autoref<TestPthreadWait> pt6 = new TestPthreadWait("t6", "t4");
+	pt6->start(a1);
+
+	// wait until t5 and t6 actually wait for t4
+	AppGuts::gutsWaitTrieadSleepers(a1, "t4", 2);
+
+	// marking t4 as constructed must wake up the sleepers
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+	ow4->markConstructed();
+	AppGuts::gutsWaitTrieadSleepers(a1, "t4", 0);
 
 	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow4->markDead();
 	a1->harvester();
 
 	UT_IS(pt2->result_, ow1->get());
@@ -451,7 +469,6 @@ UTESTCASE basic_abort(Utest *utest)
 
 	// clean-up, since the apps catalog is global
 	ow4->markDead();
-	UT_ASSERT(a1->isDead());
 	a1->harvester();
 
 	restore_uncatchable();
@@ -469,7 +486,9 @@ UTESTCASE timeout_find(Utest *utest)
 
 		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
 		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+		a1->declareTriead("t3");
 
+		// check the timeout for construction
 		{
 			string msg;
 			try {
@@ -488,12 +507,18 @@ UTESTCASE timeout_find(Utest *utest)
 			} catch(Exception e) {
 				msg = e.getErrors()->print();
 			}
-			UT_IS(msg, "Application 'a1' did not initialize within the deadline.\nThe lagging threads are:\n  t2: not constructed\n");
+			UT_IS(msg, 
+				"Application 'a1' did not initialize within the deadline.\n"
+				"The lagging threads are:\n"
+				"  t2: not constructed\n"
+				"  t3: not defined\n");
 		}
 
 		// still have to mark them dead to harvest
+		Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
 		ow1->markDead();
 		ow2->markDead();
+		ow3->markDead();
 		a1->harvester();
 	}
 
@@ -507,20 +532,24 @@ UTESTCASE timeout_find(Utest *utest)
 
 		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
 		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+		a1->declareTriead("t3");
 
+		// check the timeout for construction of a declared thread
 		{
 			string msg;
 			try {
-				ow1->findTriead("t2");
+				ow1->findTriead("t3");
 			} catch(Exception e) {
 				msg = e.getErrors()->print();
 			}
-			UT_IS(msg, "Thread 't2' in application 'a1' did not initialize within the deadline.\n");
+			UT_IS(msg, "Thread 't3' in application 'a1' did not initialize within the deadline.\n");
 		}
 
 		// still have to mark them dead to harvest
+		Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
 		ow1->markDead();
 		ow2->markDead();
+		ow3->markDead();
 		a1->harvester();
 	}
 
