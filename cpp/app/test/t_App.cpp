@@ -395,6 +395,7 @@ public:
 
 	virtual void execute(TrieadOwner *to)
 	{
+		to_ = to;
 		result_ = to->findTriead(wname_, immed_).get();
 		to->markDead();
 	}
@@ -402,6 +403,7 @@ public:
 	string wname_;
 	Triead *result_;
 	bool immed_; // immediate find
+	TrieadOwner *to_; // for messing in the tests
 };
 
 // thread finding by name, successful case
@@ -486,7 +488,7 @@ UTESTCASE find_triead_immed_fail(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "In app 'a1' thread 't1' did an immediate find of a declared but undefined thread 't2'.\n");
+		UT_IS(msg, "In Triceps application 'a1' thread 't1' did an immediate find of a declared but undefined thread 't2'.\n");
 	}
 
 	// clean-up, since the apps catalog is global
@@ -714,7 +716,7 @@ UTESTCASE find_deadlock_catch_pthread(Utest *utest)
 	UT_ASSERT(a1->isAborted());
 	UT_IS(a1->getAbortedBy(), "t1");
 	UT_IS(a1->getAbortedMsg(), 
-		"In app 'a1' thread 't1' waiting for thread 't4' would cause a deadlock:\n"
+		"In Triceps application 'a1' thread 't1' waiting for thread 't4' would cause a deadlock:\n"
 		"  t4 waits for t2\n"
 		"  t2 waits for t1\n"
 	);
@@ -830,6 +832,48 @@ UTESTCASE define_join(Utest *utest)
 	UT_IS(AppGuts::gutsJoin(a1, "t1"), NULL);
 
 	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// the other error conditions in findTriead()
+UTESTCASE find_errors(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TestPthreadWait> pt2 = new TestPthreadWait("t2", "t1");
+	pt2->start(a1);
+
+	// one find comes from the other thread
+	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 1);
+
+	// try calling find from 2 separate OS threads on teh same owner
+	{
+		string msg;
+		try {
+			pt2->to_->findTriead("t1");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In Triceps application 'a1' thread 't2' owner object must not be used from 2 OS threads.\n");
+	}
+
+	// try to find an undeclared thread
+	{
+		string msg;
+		try {
+			ow1->findTriead("t3");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In Triceps application 'a1' thread 't1' is referring to a non-existing thread 't3'.\n");
+	}
+
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
 	a1->harvester();
 
 	restore_uncatchable();

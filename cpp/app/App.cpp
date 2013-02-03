@@ -226,7 +226,7 @@ void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 
 	assertTrieadOwnerL(to);
 	if (nexus->isInitialized())
-		throw Exception::fTrace("Nexus '%s' is already exported, can not export again in app '%s' thread '%s'.",
+		throw Exception::fTrace("Nexus '%s' is already exported, can not export again in Triceps application '%s' thread '%s'.",
 			nexus->getName().c_str(), name_.c_str(), to->get()->getName().c_str());
 
 	// XXX TODO
@@ -298,12 +298,12 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 	// The assertion above makes sure that this succeeds.
 	Autoref<TrieadUpd> selfupd = threads_.find(to->get()->getName())->second;
 	if (selfupd->waitFor_ != NULL)
-		throw Exception::fTrace("In app '%s' thread '%s' object must not be used from 2 OS threads.",
+		throw Exception::fTrace("In Triceps application '%s' thread '%s' owner object must not be used from 2 OS threads.",
 			name_.c_str(), to->get()->getName().c_str());
 
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it == threads_.end())
-		throw Exception::fTrace("In app '%s' thread '%s' is referring to a non-existing thread '%s'.",
+		throw Exception::fTrace("In Triceps application '%s' thread '%s' is referring to a non-existing thread '%s'.",
 			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
 
 	Autoref <TrieadUpd> upd = it->second;
@@ -312,7 +312,7 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 		return t;
 
 	if (immed)
-		throw Exception::fTrace("In app '%s' thread '%s' did an immediate find of a declared but undefined thread '%s'.",
+		throw Exception::fTrace("In Triceps application '%s' thread '%s' did an immediate find of a declared but undefined thread '%s'.",
 			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
 
 	// Make sure that won't deadlock: go through the dependency
@@ -326,7 +326,7 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 			for (TrieadUpd *pp = upd; pp != selfupd.get(); pp = pp->waitFor_)
 				trace->appendMsg(true, pp->t_->getName() + " waits for " + pp->waitFor_->t_->getName());
 			Erref err = new Errors(strprintf(
-					"In app '%s' thread '%s' waiting for thread '%s' would cause a deadlock:",
+					"In Triceps application '%s' thread '%s' waiting for thread '%s' would cause a deadlock:",
 						name_.c_str(), to->get()->getName().c_str(), tname.c_str()),
 				trace);
 			throw Exception(err, true);
