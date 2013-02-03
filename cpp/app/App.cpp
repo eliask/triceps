@@ -257,18 +257,17 @@ void App::abortBy(const string &tname, const string &msg)
 {
 	pw::lockmutex lm(mutex_);
 
+	// mark the thread as dead
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	if (it != threads_.end()) {
+		markTrieadDeadL(it->second->t_);
+	}
+
 	if (isAbortedL()) // already aborted, nothing more to do
 		return;
 
 	abortedBy_ = tname; // mark as aborted
 	abortedMsg_ = msg;
-
-	// mark the thread as dead, so that it can be collected if the whole
-	// program is not exiting right now
-	TrieadUpdMap::iterator it = threads_.find(tname);
-	if (it != threads_.end()) {
-		markTrieadDeadL(it->second->t_);
-	}
 
 	// now wake up all the sleepers
 	ready_.signal();

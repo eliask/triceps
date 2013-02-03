@@ -444,8 +444,12 @@ UTESTCASE basic_abort(Utest *utest)
 		UT_IS(msg, "App 'a1' has been aborted by thread 't1': test error\n");
 	}
 
+	// one more abort gets ignored
+	ow3->abort("another msg");
+	UT_IS(a1->getAbortedBy(), "t1");
+	UT_IS(a1->getAbortedMsg(), "test error");
+
 	// clean-up, since the apps catalog is global
-	ow3->markDead();
 	ow4->markDead();
 	UT_ASSERT(a1->isDead());
 	a1->harvester();
