@@ -84,6 +84,16 @@ public:
 				return;
 		}
 	}
+
+	// Get the joiner for a thread.
+	static TrieadJoin *gutsJoin(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		pw::lockmutex lm(ag->mutex_);
+		TrieadUpdMap::iterator it = ag->threads_.find(tname);
+		assert(it != ag->threads_.end());
+		return it->second->j_;
+	}
 };
 
 // make the exceptions catchable
@@ -749,6 +759,75 @@ UTESTCASE basic_pthread_assert(Utest *utest)
 	UT_ASSERT(a1->isAborted());
 	UT_IS(a1->getAbortedBy(), "t1");
 	UT_IS(a1->getAbortedMsg(), "thread execution completed without marking it as ready");
+
+	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// can call abort even with an undeclared thread name
+UTESTCASE any_abort(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+
+	a1->abortBy("t2", "test error"); // t2 is not even declared
+	UT_ASSERT(a1->isAborted());
+	UT_IS(a1->getAbortedBy(), "t2");
+	UT_IS(a1->getAbortedMsg(), "test error");
+
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+class TrieadJoinEmpty : public TrieadJoin
+{
+public:
+	TrieadJoinEmpty():
+		s_("abcd")
+	{ }
+
+	virtual void join()
+	{ } // do nothing
+
+	string s_; // to test the virtual destruction
+};
+
+// test all varieties of defineJoin()
+UTESTCASE define_join(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadJoin> j1 = new TrieadJoinEmpty();
+
+	{
+		string msg;
+		try {
+			a1->defineJoin("t2", j1);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In Triceps application 'a1' can not define a join for an unknown thread 't2'.\n");
+	}
+
+	a1->defineJoin("t1", j1);
+	a1->defineJoin("t1", NULL);
+	UT_IS(AppGuts::gutsJoin(a1, "t1"), NULL);
+	a1->defineJoin("t1", j1);
+	UT_IS(AppGuts::gutsJoin(a1, "t1"), j1.get());
+
+	ow1->markDead();
+	// after harvest the join will be dropped
+	a1->harvestOnce();
+	UT_IS(AppGuts::gutsJoin(a1, "t1"), NULL);
 
 	// clean-up, since the apps catalog is global
 	a1->harvester();

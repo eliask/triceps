@@ -126,7 +126,8 @@ void App::computeDeadline(int sec)
 {
 	int err = clock_gettime(CLOCK_REALTIME, &deadline_); // the current time
 	if (err != 0) {
-		throw Exception::fTrace("Triceps internal error: clock_gettime() failed err=%d.", err);
+		throw Exception::fTrace("Triceps internal error: clock_gettime() failed: err=%d %s.", 
+			err, strerror(err));
 	}
 	deadline_.tv_sec += sec;
 }
@@ -213,7 +214,7 @@ void App::defineJoin(const string &tname, Onceref<TrieadJoin> j)
 
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it == threads_.end()) {
-		throw Exception::fTrace("In application '%s' can not define a join for an unknown thread '%s'.", 
+		throw Exception::fTrace("In Triceps application '%s' can not define a join for an unknown thread '%s'.", 
 			name_.c_str(), tname.c_str());
 	}
 	it->second->j_ = j;
