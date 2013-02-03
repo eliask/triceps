@@ -672,3 +672,46 @@ UTESTCASE timeout_find(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// detection of deadlocks in the find; 
+// also used to test the catch of Exception in BasicPthread
+UTESTCASE find_deadlock_catch_pthread(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+
+	a1->declareTriead("t1");
+
+	Autoref<TestPthreadWait> pt2 = new TestPthreadWait("t2", "t1");
+	pt2->start(a1);
+	Autoref<TestPthreadWait> pt3 = new TestPthreadWait("t3", "t1");
+	pt3->start(a1);
+	Autoref<TestPthreadWait> pt4 = new TestPthreadWait("t4", "t2");
+	pt4->start(a1);
+
+	// wait until the sleepers settle down
+	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 2);
+	AppGuts::gutsWaitTrieadSleepers(a1, "t2", 1);
+
+	// now that the thread that will deadlock
+	Autoref<TestPthreadWait> pt1 = new TestPthreadWait("t1", "t4");
+	pt1->start(a1);
+
+	AppGuts::gutsWaitTrieadDead(a1, "t1");
+
+	// and it will throw an exception that will be caught and abort the app
+	UT_ASSERT(a1->isAborted());
+	UT_IS(a1->getAbortedBy(), "t1");
+	UT_IS(a1->getAbortedMsg(), 
+		"In app 'a1' thread 't1' waiting for thread 't4' would cause a deadlock:\n"
+		"  t4 waits for t2\n"
+		"  t2 waits for t1\n"
+	);
+
+	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
