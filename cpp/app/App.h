@@ -343,6 +343,11 @@ protected:
 		// @param abstime - the time limit
 		void waitL(const string &appname, const string &tname, const timespec &abstime);
 
+		// For testing: returns the current count of sleepers.
+		// This allows the busy-wait until the sleepers get into position.
+		// The mutex should be already locked.
+		int _countSleepersL();
+
 		Autoref<Triead> t_; // the thread object, will be NULL if only declared
 		Autoref<TrieadJoin> j_; // the joiner object, may be NULL for detached or already joined threads
 

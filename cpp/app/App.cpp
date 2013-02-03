@@ -37,6 +37,11 @@ void App::TrieadUpd::waitL(const string &appname, const string &tname, const tim
 	}
 }
 
+int App::TrieadUpd::_countSleepersL()
+{
+	return cond_.sleepers_;
+}
+
 // -------------------- App ----------------------------------------------
 
 App::Map App::apps_;
@@ -235,8 +240,8 @@ void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 void App::assertNotAbortedL() const
 {
 	if (!abortedBy_.empty())
-		throw Exception::fTrace("App '%s' has been aborted by thread '%s'.",
-			name_.c_str(), abortedBy_.c_str());
+		throw Exception::fTrace("App '%s' has been aborted by thread '%s': %s",
+			name_.c_str(), abortedBy_.c_str(), abortedMsg_.c_str());
 }
 
 void App::assertTrieadL(Triead *th) const

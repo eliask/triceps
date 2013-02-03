@@ -6,6 +6,7 @@
 //
 // Test of the App building.
 
+#include <assert.h>
 #include <utest/Utest.h>
 #include <app/App.h>
 #include <app/TrieadOwner.h>
@@ -24,6 +25,22 @@ public:
 	{
 		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
 		ag->waitReady();
+	}
+	// Busy-wait until the number of sleepers waiting for a
+	// thread reaches the count.
+	// @param tname - thread name for sleepers
+	// @param n - the expected count of sleepers
+	static void gutsWaitTrieadSleepers(App *a, const string &tname, int n)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		int nsl;
+		do {
+			sched_yield();
+			pw::lockmutex lm(ag->mutex_);
+			TrieadUpdMap::iterator it = ag->threads_.find(tname);
+			assert(it != ag->threads_.end());
+			nsl = it->second->_countSleepersL();
+		} while(nsl != n);
 	}
 };
 
@@ -314,19 +331,59 @@ UTESTCASE basic_pthread_join(Utest *utest)
 	restore_uncatchable();
 }
 
-class TestPthreadWaitT2 : public BasicPthread
+class TestPthreadWait : public BasicPthread
 {
 public:
-	TestPthreadWaitT2(const string &name):
-		BasicPthread(name)
+	TestPthreadWait(const string &name, const string &wname):
+		BasicPthread(name),
+		wname_(wname),
+		result_(NULL)
 	{ }
 
 	virtual void execute(TrieadOwner *to)
 	{
-		to->findTriead("t2");
+		result_ = to->findTriead(wname_).get();
 		to->markDead();
 	}
+
+	string wname_;
+	Triead *result_;
 };
+
+// thread finding by name, successful case
+UTESTCASE find_triead_success(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+
+	Triead *t;
+
+	// Finding itself doesn't require readiness.
+	t = ow1->findTriead("t1").get();
+	UT_IS(t, ow1->get());
+
+	Autoref<TestPthreadWait> pt2 = new TestPthreadWait("t2", "t1");
+	pt2->start(a1);
+	Autoref<TestPthreadWait> pt3 = new TestPthreadWait("t3", "t1");
+	pt3->start(a1);
+
+	// wait until t2 and t3 actually wait for t1
+	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 2);
+
+	// marking t1 as dead (and thus ready) must wake up the sleepers,
+	// after which they all exit and can be harvested
+	ow1->markDead();
+
+	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	UT_IS(pt2->result_, ow1->get());
+	UT_IS(pt3->result_, ow1->get());
+
+	restore_uncatchable();
+}
 
 // the abort of a thread
 UTESTCASE basic_abort(Utest *utest)
@@ -337,15 +394,61 @@ UTESTCASE basic_abort(Utest *utest)
 
 	// successful creation
 	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
-	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 	UT_ASSERT(!AppGuts::gutsIsReady(a1));
 	UT_ASSERT(!a1->isAborted());
 	UT_ASSERT(!a1->isDead());
 
-	// now abort!
+	Autoref<TestPthreadWait> pt2 = new TestPthreadWait("t2", "t1");
+	pt2->start(a1);
+	// wait until t2 actually waits for t1
+	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 1);
+
+	// now abort! this will wake up the background thread too
+	// (and throw an exception in it, which will be caught and
+	// converted to another abort, which will be ignored)
 	ow1->abort("test error");
+	UT_ASSERT(AppGuts::gutsIsReady(a1));
+	UT_ASSERT(a1->isAborted());
+	UT_ASSERT(a1->isDead());
+
+	UT_IS(a1->getAbortedBy(), "t1");
+	UT_IS(a1->getAbortedMsg(), "test error");
+
+	// creating another thread doesn't reset the abort or readiness
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+	UT_ASSERT(AppGuts::gutsIsReady(a1));
+	UT_ASSERT(a1->isAborted());
+	UT_ASSERT(a1->isDead());
+
+	ow4->markReady();
+
+	// a wait for any thread after abort throws an immediate exception,
+	// even if the target thread is ready or even the same thread
+	{
+		string msg;
+		try {
+			ow3->findTriead("t4"); // t4 is ready and not aborted itself
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "App 'a1' has been aborted by thread 't1': test error\n");
+	}
+	{
+		string msg;
+		try {
+			ow3->findTriead("t3"); // t4 is not aborted itself
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "App 'a1' has been aborted by thread 't1': test error\n");
+	}
+
+	ow3->markDead();
+	ow4->markDead();
 
 	// clean-up, since the apps catalog is global
+	// XXX the harvester still has to wait for all the threads to join!!!
 	a1->harvester();
 
 	restore_uncatchable();
