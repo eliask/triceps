@@ -9,6 +9,7 @@
 #include <utest/Utest.h>
 #include <app/App.h>
 #include <app/TrieadOwner.h>
+#include <app/BasicPthread.h>
 
 // Access to the protected internals of App.
 class AppGuts : public App
@@ -273,8 +274,61 @@ UTESTCASE basic_trieads(Utest *utest)
 	restore_uncatchable();
 }
 
+class TestPthreadEmpty : public BasicPthread
+{
+public:
+	TestPthreadEmpty(const string &name):
+		BasicPthread(name),
+		joined_(false)
+	{ }
+
+	virtual void execute(TrieadOwner *to)
+	{
+		to->markDead();
+	}
+
+	virtual void join()
+	{
+		BasicPthread::join();
+		joined_ = true;
+	}
+
+	bool joined_;
+};
+
+// The minimal construction, starting and joining of BasicPthread.
+UTESTCASE basic_pthread_join(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	Autoref<TestPthreadEmpty> pt1 = new TestPthreadEmpty("t1");
+	pt1->start(a1);
+	
+	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	UT_ASSERT(pt1->joined_);
+
+	restore_uncatchable();
+}
+
+class TestPthreadWaitT2 : public BasicPthread
+{
+public:
+	TestPthreadWaitT2(const string &name):
+		BasicPthread(name)
+	{ }
+
+	virtual void execute(TrieadOwner *to)
+	{
+		to->findTriead("t2");
+		to->markDead();
+	}
+};
+
 // the abort of a thread
-#if 0
 UTESTCASE basic_abort(Utest *utest)
 {
 	make_catchable();
@@ -283,11 +337,16 @@ UTESTCASE basic_abort(Utest *utest)
 
 	// successful creation
 	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 	UT_ASSERT(!AppGuts::gutsIsReady(a1));
 	UT_ASSERT(!a1->isAborted());
 	UT_ASSERT(!a1->isDead());
 
-XXXXXXXXXX
+	// now abort!
+	ow1->abort("test error");
+
+	// clean-up, since the apps catalog is global
+	a1->harvester();
+
 	restore_uncatchable();
 }
-#endif

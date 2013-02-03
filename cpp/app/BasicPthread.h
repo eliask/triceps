@@ -51,6 +51,9 @@ public:
 	// If after exit the thread is not marked as ready, it will
 	// abort the App.
 	//
+	// If the method thows a Triceps::Exception, it will be
+	// caught and converted to the App abort.
+	//
 	// @param to - the pre-created owner object for this thread.
 	//        No need to create a reference here, since the caller
 	//        will already keep a reference.

@@ -49,7 +49,11 @@ void *BasicPthread::run_it(void *arg)
 	Autoref<TrieadOwner> to = self->to_;
 	self->to_ = NULL;
 
-	self->execute(to);
+	try {
+		self->execute(to);
+	} catch (Exception e) {
+		to->abort(e.getErrors()->print());
+	}
 
 	if (!to->get()->isReady()) {
 		to->abort("thread execution completed without marking it as ready");

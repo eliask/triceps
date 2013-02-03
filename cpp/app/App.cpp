@@ -168,10 +168,12 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 	if (it == threads_.end()) {
 		upd = new TrieadUpd(mutex_);
 		threads_[tname] = upd;
-		if (++unreadyCnt_ == 1)
-			ready_.reset();
-		if (++aliveCnt_ == 1)
-			dead_.reset();
+		if (!isAbortedL()) {
+			if (++unreadyCnt_ == 1)
+				ready_.reset();
+			if (++aliveCnt_ == 1)
+				dead_.reset();
+		}
 	} else {
 		upd = it->second;
 		if(!upd->t_.isNull())
@@ -195,10 +197,12 @@ void App::declareTriead(const string &tname)
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it == threads_.end()) {
 		threads_[tname] = new TrieadUpd(mutex_);
-		if (++unreadyCnt_ == 1)
-			ready_.reset();
-		if (++aliveCnt_ == 1)
-			dead_.reset();
+		if (!isAbortedL()) {
+			if (++unreadyCnt_ == 1)
+				ready_.reset();
+			if (++aliveCnt_ == 1)
+				dead_.reset();
+		}
 	} // else just do nothing
 }
 
