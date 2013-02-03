@@ -229,7 +229,11 @@ protected:
 	//
 	// @param to - identity of the calling thread (used for the deadlock detection).
 	// @param tname - name of the thread
-	Onceref<Triead> findTriead(TrieadOwner *to, const string &tname);
+	// @param immed - flag: find immediate, which means that the thread will be
+	//        returned even if it's not constructed yet and there will never be
+	//        a wait, so if the thread is declared but not defined yet, an Exception
+	//        will be thrown
+	Onceref<Triead> findTriead(TrieadOwner *to, const string &tname, bool immed = false);
 
 	// Export a nexus in a thread.
 	// Throws an Exception on any errors (such as the thread not belonging to this

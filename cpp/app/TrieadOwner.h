@@ -139,9 +139,13 @@ public:
 	// or the thread is declared but not constructed within the App timeout.
 	//
 	// @param tname - name of the thread to find
-	Onceref<Triead> findTriead(const string &tname)
+	// @param immed - flag: find immediate, which means that the thread will be
+	//        returned even if it's not constructed yet and there will never be
+	//        a wait, so if the thread is declared but not defined yet, an Exception
+	//        will be thrown
+	Onceref<Triead> findTriead(const string &tname, bool immed = false)
 	{
-		return app_->findTriead(this, tname);
+		return app_->findTriead(this, tname, immed);
 	}
 
 	// Export a nexus in this thread.

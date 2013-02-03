@@ -282,7 +282,7 @@ void App::assertTrieadOwnerL(TrieadOwner *to) const
 	assertTrieadL(to->get());
 }
 
-Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
+Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed)
 {
 	pw::lockmutex lm(mutex_);
 
@@ -307,8 +307,12 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname)
 
 	Autoref <TrieadUpd> upd = it->second;
 	Triead *t = upd->t_;
-	if (t != NULL && t->isConstructed())
+	if (t != NULL && (immed || t->isConstructed()))
 		return t;
+
+	if (immed)
+		throw Exception::fTrace("In app '%s' thread '%s' did an immediate find of a declared but undefined thread '%s'.",
+			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
 
 	// Make sure that won't deadlock: go through the dependency
 	// chain and ensure that it doesn't return back to our thread.

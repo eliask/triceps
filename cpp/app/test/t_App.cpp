@@ -42,6 +42,48 @@ public:
 			nsl = it->second->_countSleepersL();
 		} while(nsl != n);
 	}
+	// Busy-wait until the thread is marked as dead.
+	// @param tname - thread name
+	static void gutsWaitTrieadDead(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		while (true) {
+			sched_yield();
+			pw::lockmutex lm(ag->mutex_);
+			TrieadUpdMap::iterator it = ag->threads_.find(tname);
+			assert(it != ag->threads_.end());
+			if (it->second->t_->isDead())
+				return;
+		}
+	}
+	// Busy-wait until the thread is marked as ready.
+	// @param tname - thread name
+	static void gutsWaitTrieadReady(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		while (true) {
+			sched_yield();
+			pw::lockmutex lm(ag->mutex_);
+			TrieadUpdMap::iterator it = ag->threads_.find(tname);
+			assert(it != ag->threads_.end());
+			if (it->second->t_->isReady())
+				return;
+		}
+	}
+	// Busy-wait until the thread is marked as constructed.
+	// @param tname - thread name
+	static void gutsWaitTrieadConstructed(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		while (true) {
+			sched_yield();
+			pw::lockmutex lm(ag->mutex_);
+			TrieadUpdMap::iterator it = ag->threads_.find(tname);
+			assert(it != ag->threads_.end());
+			if (it->second->t_->isConstructed())
+				return;
+		}
+	}
 };
 
 // make the exceptions catchable
@@ -334,20 +376,22 @@ UTESTCASE basic_pthread_join(Utest *utest)
 class TestPthreadWait : public BasicPthread
 {
 public:
-	TestPthreadWait(const string &name, const string &wname):
+	TestPthreadWait(const string &name, const string &wname, bool immed = false):
 		BasicPthread(name),
 		wname_(wname),
-		result_(NULL)
+		result_(NULL),
+		immed_(immed)
 	{ }
 
 	virtual void execute(TrieadOwner *to)
 	{
-		result_ = to->findTriead(wname_).get();
+		result_ = to->findTriead(wname_, immed_).get();
 		to->markDead();
 	}
 
 	string wname_;
 	Triead *result_;
+	bool immed_; // immediate find
 };
 
 // thread finding by name, successful case
@@ -364,6 +408,13 @@ UTESTCASE find_triead_success(Utest *utest)
 	t = ow1->findTriead("t1").get();
 	UT_IS(t, ow1->get());
 
+	// t7 for immediate find was added later, so its numbering is out of sequence
+	Autoref<TestPthreadWait> pt7 = new TestPthreadWait("t7", "t1", true);
+	pt7->start(a1);
+	// t7 finds an un-constructed thread immediately
+	AppGuts::gutsWaitTrieadDead(a1, "t7");
+	UT_IS(pt7->result_, ow1->get());
+
 	Autoref<TestPthreadWait> pt2 = new TestPthreadWait("t2", "t1");
 	pt2->start(a1);
 	Autoref<TestPthreadWait> pt3 = new TestPthreadWait("t3", "t1");
@@ -375,8 +426,10 @@ UTESTCASE find_triead_success(Utest *utest)
 	// marking t1 as constructed must wake up the sleepers
 	ow1->markConstructed();
 	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 0);
+	AppGuts::gutsWaitTrieadDead(a1, "t2");
+	AppGuts::gutsWaitTrieadDead(a1, "t3");
 
-	// now repeat the same with an only declared thread
+	// now repeat the same with an only-declared thread
 	a1->declareTriead("t4");
 
 	Autoref<TestPthreadWait> pt5 = new TestPthreadWait("t5", "t4");
@@ -391,6 +444,8 @@ UTESTCASE find_triead_success(Utest *utest)
 	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
 	ow4->markConstructed();
 	AppGuts::gutsWaitTrieadSleepers(a1, "t4", 0);
+	AppGuts::gutsWaitTrieadDead(a1, "t5");
+	AppGuts::gutsWaitTrieadDead(a1, "t6");
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
@@ -399,6 +454,36 @@ UTESTCASE find_triead_success(Utest *utest)
 
 	UT_IS(pt2->result_, ow1->get());
 	UT_IS(pt3->result_, ow1->get());
+	UT_IS(pt5->result_, ow4->get());
+	UT_IS(pt6->result_, ow4->get());
+
+	restore_uncatchable();
+}
+
+// the find of an undefined thread fails immediately
+UTESTCASE find_triead_immed_fail(Utest *utest)
+{
+	make_catchable();
+	
+	Autoref<App> a1 = App::make("a1");
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	a1->declareTriead("t2");
+
+	{
+		string msg;
+		try {
+			ow1->findTriead("t2", true);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In app 'a1' thread 't1' did an immediate find of a declared but undefined thread 't2'.\n");
+	}
+
+	// clean-up, since the apps catalog is global
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	ow1->markDead();
+	ow2->markDead();
+	a1->harvester();
 
 	restore_uncatchable();
 }
@@ -427,7 +512,9 @@ UTESTCASE basic_abort(Utest *utest)
 	ow1->abort("test error");
 	UT_ASSERT(AppGuts::gutsIsReady(a1));
 	UT_ASSERT(a1->isAborted());
-	// Can't check isDead() because of a race with t2.
+
+	AppGuts::gutsWaitTrieadDead(a1, "t2");
+	UT_ASSERT(a1->isDead());
 
 	UT_IS(a1->getAbortedBy(), "t1");
 	UT_IS(a1->getAbortedMsg(), "test error");
