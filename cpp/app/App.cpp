@@ -173,12 +173,10 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 	if (it == threads_.end()) {
 		upd = new TrieadUpd(mutex_);
 		threads_[tname] = upd;
-		if (!isAbortedL()) {
-			if (++unreadyCnt_ == 1)
-				ready_.reset();
-			if (++aliveCnt_ == 1)
-				dead_.reset();
-		}
+		if (++unreadyCnt_ == 1 && !isAbortedL())
+			ready_.reset();
+		if (++aliveCnt_ == 1)
+			dead_.reset();
 	} else {
 		upd = it->second;
 		if(!upd->t_.isNull())
@@ -202,12 +200,10 @@ void App::declareTriead(const string &tname)
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it == threads_.end()) {
 		threads_[tname] = new TrieadUpd(mutex_);
-		if (!isAbortedL()) {
-			if (++unreadyCnt_ == 1)
-				ready_.reset();
-			if (++aliveCnt_ == 1)
-				dead_.reset();
-		}
+		if (++unreadyCnt_ == 1 && !isAbortedL())
+			ready_.reset();
+		if (++aliveCnt_ == 1)
+			dead_.reset();
 	} // else just do nothing
 }
 
@@ -276,7 +272,6 @@ void App::abortBy(const string &tname, const string &msg)
 
 	// now wake up all the sleepers
 	ready_.signal();
-	dead_.signal();
 	needHarvest_.signal();
 	for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
 		it->second->broadcastL(name_);

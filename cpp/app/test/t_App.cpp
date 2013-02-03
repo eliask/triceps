@@ -409,7 +409,7 @@ UTESTCASE basic_abort(Utest *utest)
 	ow1->abort("test error");
 	UT_ASSERT(AppGuts::gutsIsReady(a1));
 	UT_ASSERT(a1->isAborted());
-	UT_ASSERT(a1->isDead());
+	// Can't check isDead() because of a race with t2.
 
 	UT_IS(a1->getAbortedBy(), "t1");
 	UT_IS(a1->getAbortedMsg(), "test error");
@@ -419,7 +419,7 @@ UTESTCASE basic_abort(Utest *utest)
 	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
 	UT_ASSERT(AppGuts::gutsIsReady(a1));
 	UT_ASSERT(a1->isAborted());
-	UT_ASSERT(a1->isDead());
+	UT_ASSERT(!a1->isDead()); // but now it's definitely not dead
 
 	ow4->markReady();
 
@@ -444,11 +444,10 @@ UTESTCASE basic_abort(Utest *utest)
 		UT_IS(msg, "App 'a1' has been aborted by thread 't1': test error\n");
 	}
 
+	// clean-up, since the apps catalog is global
 	ow3->markDead();
 	ow4->markDead();
-
-	// clean-up, since the apps catalog is global
-	// XXX the harvester still has to wait for all the threads to join!!!
+	UT_ASSERT(a1->isDead());
 	a1->harvester();
 
 	restore_uncatchable();

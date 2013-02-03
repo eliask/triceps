@@ -159,6 +159,10 @@ public:
 	// error after which it could not continue the initialization. The App
 	// normally can not continue without any of its threads, so it's better to
 	// abort right away than to wait for the thread timeout to expire.
+	// The abort immediately makes the App ready, wakes up all the waits
+	// for threads, and immediately throws Exception on all the future waits. 
+	// But it takes all the threads to be collected as usual for the App to
+	// become dead.
 	//
 	// @param tname - name of the failed thread that calls the abort
 	// @param msg - the abort message, allowing to propagate the error info
