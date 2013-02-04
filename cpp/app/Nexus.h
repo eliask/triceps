@@ -39,21 +39,75 @@ class Nexus : public Mtarget
 {
 	friend class App;
 	friend class Triead;
+	friend class TrieadOwner;
 public:
 	typedef map<string, Autoref<RowType> > RowTypeMap;
 	typedef map<string, Autoref<TableType> > TableTypeMap;
 
 	// The nexus creation consists of the following steps:
 	// * create the object;
-	// * fill it with the contents;
+	// * fill it with the contents (the usual chain syntax);
 	// * export it in the thread, thus initializing it and making it
-	//   visible throughout the app.
-	
-	// @param parent - thread that created and owns this nexus.
+	//   visible throughout the app. After that the nexus can't be changed.
+	//
 	// @param name - name of the nexus, must be unique within the thread.
-	// @param reverse - flag: the nexus's queue is pointed upwards,
-	//        forming a loop in the model
-	Nexus(Triead *parent, const string &name, bool reverse);
+	Nexus(const string &name);
+
+	// Mark this Nexus as going in the reverse direction ("upwards").
+	// This has two implications:
+	// * no queue size limit, no flow control
+	// * this nexus will have a higher reading priority than the direct ones
+	// May be used only until the Nexus is exported.
+	// @param on - flag: the direction is reverse
+	// @return - the same Nexus
+	Nexus *setReverse(bool on = true);
+
+	// Mark this Nexus as unicast. The normal ("multicast") nexuses
+	// send all the data passing through them to all the readers.
+	// The unicast nexuses send each piece of the input to one
+	// of the readers, chosen essentially at random. This allows
+	// to implement the worker thread pools. A whole transaction
+	// goes to the same reader.
+	// May be used only until the Nexus is exported.
+	// @param on - flag: the unicast mode is on
+	// @return - the same Nexus
+	Nexus *setUnicast(bool on = true);
+
+	// Set the type of the nexus'es queue. The type will be deep-copied, with
+	// all its row types copied. This leaves the original type for the
+	// exclusive use of the creating thread. The created type will be
+	// un-initialized and can have more row types added to it.
+	// May be used only until the Nexus is exported.
+	// @param rst - the type to set
+	// @return - the same Nexus
+	Nexus *setType(Onceref<RowSetType> rst);
+
+	// Add a row type to the nexus'es queue.
+	// May be used only until the Nexus is exported.
+	// @param rtype - row type to add
+	// @return - the same Nexus
+	Nexus *addRow(const string &rname, const_Autoref<RowType>rtype);
+
+	// Export a row type through the nexus. It won't be a part of the
+	// queue, just a row type that can be imported by the other threads.
+	// The type will be copied into the nexus, leaving the original
+	// instance for the exclusive use of the creating thread.
+	// May be used only until the Nexus is exported.
+	// @param rtype - row type to export
+	// @return - the same Nexus
+	Nexus *exportRowType(const string &name, Onceref<RowType> rtype);
+
+	// Export a table type through the nexus. It can be imported
+	// by the other threads.
+	// The type will be copied into the nexus, leaving the original
+	// instance for the exclusive use of the creating thread.
+	// May be used only until the Nexus is exported.
+	// @param tt - table type to export
+	// @return - the same Nexus
+	Nexus *exportTableType(const string &name, Onceref<TableType> tt);
+
+	// Get the collected errors.
+	Erref getErrors() const;
 
 	// Get the name
 	const string &getName() const
@@ -61,10 +115,10 @@ public:
 		return name_;
 	}
 
-	// Check whether the nexus is initializaed and attached.
-	bool isInitialized() const
+	// Check whether the nexus is exported.
+	bool isExported() const
 	{
-		return parent_ != NULL;
+		return !tname_.empty();
 	}
 
 	// Check whether the nexus is reverse, i.e. the its queue is pointed
@@ -75,14 +129,15 @@ public:
 	}
 
 protected:
+	string tname_; // name of the thread that owns this nexus
 	string name_;
-	Triead *parent_; // will be NULL until connected to the Triead that exports this nexus
 
 	Autoref<RowSetType> type_; // the type of the nexus's main queue
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
 
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
+	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers
 
 private:
 	Nexus();

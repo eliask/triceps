@@ -225,7 +225,7 @@ void App::exportNexus(TrieadOwner *to, Nexus *nexus)
 	pw::lockmutex lm(mutex_);
 
 	assertTrieadOwnerL(to);
-	if (nexus->isInitialized())
+	if (nexus->isExported())
 		throw Exception::fTrace("Nexus '%s' is already exported, can not export again in Triceps application '%s' thread '%s'.",
 			nexus->getName().c_str(), name_.c_str(), to->get()->getName().c_str());
 

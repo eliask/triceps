@@ -11,10 +11,10 @@
 
 namespace TRICEPS_NS {
 
-Nexus::Nexus(Triead *parent, const string &name, bool reverse) :
+Nexus::Nexus(const string &name) :
 	name_(name),
-	parent_(parent),
-	reverse_(reverse)
+	reverse_(false),
+	unicast_(false)
 {
 }
 
