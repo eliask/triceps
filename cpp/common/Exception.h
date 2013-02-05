@@ -87,6 +87,10 @@ public:
 	// The message will go _before_ the error buffer.
 	static Exception f(Onceref<Errors> err, const char *fmt, ...)
 		__attribute__((format(printf, 2, 3)));
+	// The version with trace is used when the error buffer is a plain one
+	// and doesn't come from a nested exception.
+	static Exception fTrace(Onceref<Errors> err, const char *fmt, ...)
+		__attribute__((format(printf, 2, 3)));
 
 	// Build from an error buffer from an exception and a message.
 	// The message will go _before_ the error buffer.

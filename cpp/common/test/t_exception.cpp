@@ -135,6 +135,17 @@ UTESTCASE throw_catch(Utest *utest)
 		UT_IS(what.find("message\nStack trace:\n  "), 0);
 	}
 
+	try {
+		Erref err = new Errors;
+		err->appendMsg(true, "message");
+		throw Exception::fTrace(err, "wrapper %d", 99);
+	} catch (Exception e) {
+		Erref err = e.getErrors();
+		string what;
+		err->printTo(what);
+		UT_IS(what.find("wrapper 99\n  message\nStack trace:\n  "), 0);
+	}
+
 	// see that the stack trace ges disabled
 	Exception::enableBacktrace_ = false;
 	try {

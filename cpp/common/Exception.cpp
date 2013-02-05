@@ -88,6 +88,16 @@ Exception Exception::f(Onceref<Errors> err, const char *fmt, ...)
 	return Exception(err, msg);
 }
 
+Exception Exception::fTrace(Onceref<Errors> err, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	string msg = vstrprintf(fmt, ap);
+	va_end(ap);
+
+	return Exception(new Errors(msg, err), true);
+}
+
 Exception Exception::f(const Exception &exc, const char *fmt, ...)
 {
 	va_list ap;
