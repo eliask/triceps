@@ -191,4 +191,9 @@ UTESTCASE rowset(Utest *utest)
 		" string e,"
 		" } two,"
 		" }");
+
+	// deeep copy
+	Autoref<RowSetType> set6 = set1->deepCopy();
+	UT_ASSERT(set6->equals(set1));
+	UT_ASSERT(!set6->isInitialized());
 }

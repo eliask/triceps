@@ -17,6 +17,16 @@ RowSetType::RowSetType() :
 	initialized_(false)
 { }
 
+RowSetType *RowSetType::deepCopy() const
+{
+	RowSetType *cp = new RowSetType;
+	int sz = types_.size();
+	for (int i = 0; i < sz; i++) {
+		cp->addRow(names_[i], types_[i]->copy());
+	}
+	return cp;
+}
+
 RowSetType *RowSetType::addRow(const string &rname, const_Autoref<RowType>rtype)
 {
 	if (initialized_)

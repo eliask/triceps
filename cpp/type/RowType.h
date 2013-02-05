@@ -78,6 +78,12 @@ public:
 	// same internal format.
 	virtual RowType *newSameFormat(const FieldVec &fields) const = 0;
 
+	// Create a copy.
+	RowType *copy() const
+	{
+		return newSameFormat(fields_);
+	}
+
 	// from Type
 	virtual Erref getErrors() const;
 	virtual bool equals(const Type *t) const;

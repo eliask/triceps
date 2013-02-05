@@ -56,6 +56,10 @@ UTESTCASE rowtype(Utest *utest)
 	UT_ASSERT(rt1->match(rt2));
 	UT_ASSERT(rt2->match(rt1));
 
+	Autoref<RowType> rt1cp = rt1->copy();
+	UT_ASSERT(rt1cp->getErrors().isNull());
+	UT_ASSERT(rt1->equals(rt1cp));
+
 	fld[0].name_ = "aa";
 	Autoref<RowType> rt3 = rt1->newSameFormat(fld);
 	UT_ASSERT(rt3->getErrors().isNull());

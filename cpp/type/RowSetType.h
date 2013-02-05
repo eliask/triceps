@@ -34,6 +34,17 @@ public:
 	// );
 	RowSetType();
 
+	// A copy constructor should be fine if errors_ is NULL,
+	// or if nothing gets added to the errors, because they
+	// will be shared before both. It will also share the
+	// initialized flag.
+
+	// Create a depp copy of the row set type, copying all the
+	// row types for it. The result of this copy is always
+	// uninitialized. If the original has errors, these errors
+	// won't be preserved in the copy.
+	RowSetType *deepCopy() const;
+
 	// A convenience wrapper for the constructor
 	static RowSetType *make()
 	{
