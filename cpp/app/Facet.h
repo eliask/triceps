@@ -25,13 +25,16 @@ namespace TRICEPS_NS {
 // A Facet is seen in only one thread, so it's an Starget.
 class Facet: public Starget
 {
+	friend class TrieadOwner;
+	friend class Nexus;
 public:
 	typedef Nexus::RowTypeMap RowTypeMap;
 	typedef Nexus::TableTypeMap TableTypeMap;
 
 	// Create the Facet from the minimal set of fragments.
 	// The extra row types and table types can be added later in
-	// the chained fashion. Any errors found in the construction
+	// the chained fashion, as well as the reverse and unicast flags. 
+	// Any errors found in the construction
 	// will be saved and can be read later, or will cause an Exception
 	// to be thrown at export time.
 	//
@@ -57,9 +60,9 @@ public:
 
 	// Export a row type through the nexus. It won't be a part of the
 	// queue, just a row type that can be imported by the other threads.
-	// May be called only until the Facet is exported or will throw an Exception.
 	//
 	// If the Facet is imported, this will throw an Exception.
+	// Also throws Exception on other errors.
 	//
 	// @param name - name of the row type, these are in a separate namespace from
 	//         the types in the FnReturn
@@ -69,15 +72,43 @@ public:
 
 	// Export a table type through the nexus. It can be imported
 	// by the other threads.
-	// May be called only until the Facet is exported or will throw an Exception.
 	//
 	// If the Facet is imported, this will throw an Exception.
+	// Also throws Exception on other errors.
 	//
 	// @param name - name of the table type, these are in a separate namespace from
 	//         the row types
-	// @param tt - table type to export
+	// @param tt - table type to export; if not initialized then this call
+	//        will initialize it
 	// @return - the same Facet
 	Facet *exportTableType(const string &name, Onceref<TableType> tt);
+
+	// Mark the future Nexus as going in the reverse direction ("upwards").
+	// This has two implications:
+	// * no queue size limit, no flow control
+	// * this nexus will have a higher reading priority than the direct ones
+	// May be called only until the Facet is exported or will throw an Exception.
+	//
+	// @param on - flag: the direction is reverse
+	// @return - the same Facet
+	Facet *setReverse(bool on = true);
+
+	// Mark the future Nexus as unicast. The normal ("multicast") nexuses
+	// send all the data passing through them to all the readers.
+	// The unicast nexuses send each piece of the input to one
+	// of the readers, chosen essentially at random. This allows
+	// to implement the worker thread pools. A whole transaction
+	// goes to the same reader.
+	// May be called only until the Facet is exported or will throw an Exception.
+	// @param on - flag: the unicast mode is on
+	// @return - the same Facet
+	Facet *setUnicast(bool on = true);
+	
+	// Get the collected errors.
+	Erref getErrors() const
+	{
+		return err_;
+	}
 
 	// Check whether this facet is imported (and that means, also exported).
 	// As opposed to being in the middle of creation.
@@ -88,11 +119,36 @@ public:
 		return !nexus_.isNull();
 	}
 
+	// Get back the FnReturn.
+	// Since the caller is not expected to immediately destroy this object
+	// with its reference, returning a pointer is safe enough.
+	FnReturn *getFnReturn() const
+	{
+		return fret_;
+	}
+
+	// Get the full name of the imported facet.
+	// @return - for an imported facet, the name in format "thread_name/nexus_name",
+	//           for a non-imported facet an empty string
+	const string &getFullName() const
+	{
+		return name_;
+	}
+
+	// XXX add all the introspection methods
+
 protected:
 	// XXX add a constructor for import from a Nexus
 
 	// Check that the Facet is not ex/imported, or throw an Exception.
-	void assertNotImported();
+	void assertNotImported() const;
+
+	// Mark the facet as imported.
+	// A step in the export process, when the facet gets immediately
+	// imported back.
+	// @param nexus - the nexus constructed from this facet
+	// @param tname - name of the thread that owns it
+	void reimport(Nexus *nexus, const string &tname);
 
 	string name_; // the name is set only in the ex/imported facet:
 		// it includes two parts separated by a "/": the nexus owner thread
@@ -109,6 +165,8 @@ protected:
 	Autoref<FnReturn> fret_; // the interface to the nexus'es queue
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
+	bool reverse_; // Flag: this nexus's main queue is pointed upwards
+	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers
 
 private:
 	Facet();

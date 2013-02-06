@@ -12,8 +12,31 @@ namespace TRICEPS_NS {
 
 Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	writer_(writer),
-	fret_(fret)
-{ }
+	fret_(fret),
+	reverse_(false),
+	unicast_(false)
+{ 
+	if (!fret->isInitialized())
+		fret->initialize();
+	Erref err = fret->getErrors();
+	if (err->hasError()) {
+		errefAppend(err_, "Errors in the underlying FnReturn:", err);
+	}
+}
+
+Facet *Facet::setReverse(bool on)
+{
+	assertNotImported();
+	reverse_ = on;
+	return this;
+}
+
+Facet *Facet::setUnicast(bool on)
+{
+	assertNotImported();
+	unicast_ = on;
+	return this;
+}
 
 Facet *Facet::exportRowType(const string &name, Onceref<RowType> rtype)
 {
@@ -33,23 +56,36 @@ Facet *Facet::exportRowType(const string &name, Onceref<RowType> rtype)
 Facet *Facet::exportTableType(const string &name, Onceref<TableType> tt)
 {
 	assertNotImported();
+	if (tt.isNull()) {
+		errefAppend(err_, "Can not export a NULL table type with name '" + name + "'.", NULL);
+		return this;
+	}
+	tt->initialize();
+	Erref err = tt->getErrors();
+
 	if (name.empty()) {
 		errefAppend(err_, "Can not export a table type with an empty name.", NULL);
 	} else if (tableTypes_.find(name) != tableTypes_.end()) {
 		errefAppend(err_, "Can not export a duplicate table type name '" + name + "'.", NULL);
-	} else if (tt.isNull()) {
-		errefAppend(err_, "Can not export a NULL table type with name '" + name + "'.", NULL);
+	} else if (err->hasError()) {
+		errefAppend(err_, "Can not export a table type '" + name + "' containing errors:", err);
 	} else {
 		tableTypes_[name] = tt;
 	}
 	return this;
 }
 
-void Facet::assertNotImported()
+void Facet::assertNotImported() const
 {
 	if (isImported())
 		throw Exception::fTrace("Triceps API violation: attempted to modify an imported facet '%s'.",
 			name_.c_str());
+}
+
+void Facet::reimport(Nexus *nexus, const string &tname)
+{
+	nexus_ = nexus;
+	name_ = tname + "/" + fret_->getName();
 }
 
 }; // TRICEPS_NS

@@ -57,19 +57,26 @@ bool TrieadOwner::forgetUnit(Unit *u)
 	return false;
 }
 
-void TrieadOwner::exportNexus(Autoref<Nexus> nexus)
+void TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
 {
-	if (nexus->isExported())
-		throw Exception::fTrace("Can not export the nexus '%s/%s' twice in thread '%s.%s'.",
-			nexus->getTrieadName().c_str(), nexus->getName().c_str(), 
-			app_->getName().c_str(), get()->getName().c_str());
-	nexus->initialize();
-	Erref err = nexus->getErrors();
+	const string &name = facet->getFnReturn()->getName();
+	if (facet->isImported())
+		throw Exception::fTrace("Can not re-export the imported facet '%s' in app '%s' thread '%s'.",
+			facet->getFullName().c_str(), app_->getName().c_str(), get()->getName().c_str());
+	Erref err = facet->getErrors();
 	if (err->hasError()) {
-		throw Exception::fTrace(err, "Error in the nexus '%s' in thread '%s.%s':",
-			nexus->getName().c_str(), app_->getName().c_str(), get()->getName().c_str());
+		throw Exception::fTrace(err, "Can not export a facet '%s' with an error in app '%s' thread '%s':",
+			name.c_str(), app_->getName().c_str(), get()->getName().c_str());
 	}
+	Autoref<Nexus> nexus = new Nexus(get()->getName(), facet);
 	triead_->exportNexus(app_->getName(), nexus); // adds to the map or throws if duplicate
+	if (import) {
+		facet->reimport(nexus, get()->getName());
+		if (facets_.find(facet->getFullName()) != facets_.end())
+			throw Exception::fTrace("On exporting a facet in app '%s' found a same-named facet '%s' already imported, did you mess with the funny names?",
+				app_->getName().c_str(), facet->getFullName().c_str());
+		facets_[facet->getFullName()] = facet;
+	}
 }
 
 }; // TRICEPS_NS

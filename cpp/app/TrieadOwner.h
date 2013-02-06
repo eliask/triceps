@@ -11,6 +11,7 @@
 
 #include <app/Triead.h>
 #include <app/App.h>
+#include <app/Facet.h>
 
 namespace TRICEPS_NS {
 
@@ -32,6 +33,8 @@ class TrieadOwner : public Starget
 {
 	friend class App;
 public:
+	typedef map<string, Autoref<Facet> > FacetMap;
+
 	// The list of units in this thread, also determines their predictable
 	// scheduling order.
 	typedef list<Autoref<Unit> > UnitList;
@@ -149,11 +152,21 @@ public:
 	}
 
 	// Export a nexus in this thread.
-	// Throws an Exception on any errors (such as the thread not belonging to this
-	// app, nexus being already exported or having been incorrectly defined).
+	// Throws an Exception on any errors are found (such as errors in the
+	// facet or a duplicate name).
 	//
-	// @param nexus - nexus to be exported
-	void exportNexus(Autoref<Nexus> nexus);
+	// @param facet - Facet used to create the Nexus. Its name will also
+	//        determine the Nexus'es name in the thread.
+	// @param import - flag: import the nexus right back through the
+	//        same facet and make it available to the constructing thread.
+	//        If false, the facet will be left un-imported, and can be
+	//        discarded.
+	void exportNexus(Autoref<Facet> facet, bool import = true);
+	// A syntactic sugar.
+	void exportNexusNoImport(Autoref<Facet> facet)
+	{
+		exportNexus(facet, false);
+	}
 
 	// Find a nexus in a thread by name.
 	// Will wait if the thread has not completed its construction yet.
@@ -180,6 +193,7 @@ protected:
 	Autoref<Triead> triead_; // the thread owned here
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
 	UnitList units_; // units of this thread, including the main one
+	FacetMap facets_; // the imported facets
 
 private:
 	TrieadOwner();

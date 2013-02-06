@@ -20,9 +20,8 @@ Triead::Triead(const string &name) :
 
 void Triead::clear()
 {
-	// XXX TODO
-	// Must make sure that anyone waiting on the construction and
-	// readiness gets returned a proper error and doesn't crash!
+	pw::lockmutex lm(mutex_);
+	exports_.clear();
 }
 
 Triead::~Triead()
@@ -34,10 +33,9 @@ void Triead::exportNexus(const string &appName, Nexus *nexus)
 {
 	pw::lockmutex lm(mutex_);
 
-	nexus->setTrieadName(name_); // marks the nexus as exported
 	if (exports_.find(nexus->getName()) != exports_.end())
-		// the message is intentionally different than in TrieadOwned::exportNexus
-		throw Exception::fTrace("Can not export the second nexus with the same name '%s' in thread '%s/%s'.",
+		// the message is intentionally different than in TrieadOwner::exportNexus
+		throw Exception::fTrace("Can not export the nexus with duplicate name '%s' in app '%s' thread '%s'.",
 			nexus->getName().c_str(), appName.c_str(), name_.c_str());
 	exports_[nexus->getName()] = nexus;
 }
