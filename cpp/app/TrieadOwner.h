@@ -153,7 +153,7 @@ public:
 	// app, nexus being already exported or having been incorrectly defined).
 	//
 	// @param nexus - nexus to be exported
-	void exportNexus(Nexus *nexus);
+	void exportNexus(Autoref<Nexus> nexus);
 
 	// Find a nexus in a thread by name.
 	// Will wait if the thread has not completed its construction yet.

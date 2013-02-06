@@ -131,6 +131,12 @@ public:
 		return name_;
 	}
 
+	// Get the name of the thread
+	const string &getTrieadName() const
+	{
+		return tname_;
+	}
+
 	// Check whether the nexus is exported.
 	bool isExported() const
 	{
@@ -150,9 +156,23 @@ public:
 		return unicast_;
 	}
 
+	// XXX add print() ?
 protected:
 	// Throw an Exception if the nexus has been already exported.
 	void assertNotExported();
+
+	// Initialize the nexus'es row type and collect the errors from it, if any.
+	// A part of export sequence.
+	void initialize();
+	// Set the thread name.
+	// A part of export sequence.
+	void setTrieadName(const string &tname)
+	{
+		tname_ = tname;
+	}
+
+	// The nexus gets defined in one thread and then never changed,
+	// so it doesn't need a lock.
 
 	string tname_; // name of the thread that owns this nexus
 	string name_;
@@ -161,6 +181,7 @@ protected:
 	Autoref<RowSetType> type_; // the type of the nexus's main queue
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
+	// XXX and also save the original types for the exporting thread's own faces
 
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
 	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers

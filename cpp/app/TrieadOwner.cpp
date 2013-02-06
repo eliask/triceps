@@ -57,4 +57,19 @@ bool TrieadOwner::forgetUnit(Unit *u)
 	return false;
 }
 
+void TrieadOwner::exportNexus(Autoref<Nexus> nexus)
+{
+	if (nexus->isExported())
+		throw Exception::fTrace("Can not export the nexus '%s/%s' twice in thread '%s.%s'.",
+			nexus->getTrieadName().c_str(), nexus->getName().c_str(), 
+			app_->getName().c_str(), get()->getName().c_str());
+	nexus->initialize();
+	Erref err = nexus->getErrors();
+	if (err->hasError()) {
+		throw Exception::fTrace(err, "Error in the nexus '%s' in thread '%s.%s':",
+			nexus->getName().c_str(), app_->getName().c_str(), get()->getName().c_str());
+	}
+	triead_->exportNexus(app_->getName(), nexus); // adds to the map or throws if duplicate
+}
+
 }; // TRICEPS_NS

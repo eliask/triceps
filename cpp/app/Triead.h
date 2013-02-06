@@ -65,6 +65,18 @@ public:
 		return dead_;
 	}
 
+	// List all the defined Nexuses, for introspection.
+	// @param - a map where all the defined Nexuses will be returned.
+	//     It will be cleared before placing any data into it.
+	void getList(NexusMap &ret) const;
+
+	// Find a nexus with the given name.
+	// Throws an Error if not found.
+	// @param srcName - name of the Triead that initiated the request
+	// @param appName - name of the App where this thread belongs, for error messages
+	// @param name - name of the nexus to find
+	Onceref<Nexus> findNexus(const string &srcName, const string &appName, const string &name) const;
+
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
@@ -122,6 +134,14 @@ protected:
 	// will have the opposite direction of the edges. The cycles are not
 	// allowed in either of the graphs. The cycles get detected and 
 	// mean the application initialization failure.
+	
+	// Export a nexus. Called from TrieadOwner. The nexus must be already
+	// marked as exported.
+	// Throws an Exception if the name is duplicate.
+	// @param appName - App name, for error messages
+	// @param nexus - the nexus to export (TriedOwner keeps a reference to it
+	//        during the call)
+	void exportNexus(const string &appName, Nexus *nexus);
 	
 	string name_; // name of the thread, read-only
 	mutable pw::pmutex mutex_; // mutex synchronizing this Triead

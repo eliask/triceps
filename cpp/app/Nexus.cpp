@@ -34,9 +34,17 @@ Nexus *Nexus::setUnicast(bool on)
 Nexus *Nexus::setType(Onceref<RowSetType> rst)
 {
 	assertNotExported();
+	if (!type_.isNull()) {
+		errefAppend(err_, "Attempted to set the queue type twice.", NULL);
+		err_->appendMsg(true, "The first type:");
+		err_->appendMultiline(true, type_->print("  "));
+		err_->appendMsg(true, "The second type:");
+		err_->appendMultiline(true, rst->print("  "));
+		return this;
+	}
 	Erref err = rst->getErrors();
 	if (err->hasError()) {
-		errefAppend(err_, "The row set type contains an error:", err);
+		errefAppend(err_, "The queue type contains an error:", err);
 		return this;
 	}
 	type_ = rst->deepCopy();
@@ -87,6 +95,23 @@ void Nexus::assertNotExported()
 	if (isExported())
 		throw Exception::fTrace("Triceps API violation: attempted to modify an exported nexus '%s/%s'.",
 			tname_.c_str(), name_.c_str());
+}
+
+void Nexus::initialize()
+{
+	if (err_->hasError()) // don't even try to make more progress
+		return;
+
+	if (type_.isNull())
+		type_ = new RowSetType; // an empty type is OK
+		
+	if (!type_->isInitialized()) {
+		type_->initialize();
+		Erref err = type_->getErrors();
+		if (err->hasError()) {
+			errefAppend(err_, "The queue type contains an error:", err);
+		}
+	}
 }
 
 }; // TRICEPS_NS

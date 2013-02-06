@@ -220,20 +220,6 @@ void App::defineJoin(const string &tname, Onceref<TrieadJoin> j)
 	it->second->j_ = j;
 }
 
-void App::exportNexus(TrieadOwner *to, Nexus *nexus)
-{
-	pw::lockmutex lm(mutex_);
-
-	assertTrieadOwnerL(to);
-	if (nexus->isExported())
-		throw Exception::fTrace("Nexus '%s' is already exported, can not export again in Triceps application '%s' thread '%s'.",
-			nexus->getName().c_str(), name_.c_str(), to->get()->getName().c_str());
-
-	// XXX TODO
-	// Add to the thread.
-	// Find if anyone is waiting for this nexus, and wake them up.
-}
-
 void App::assertNotAbortedL() const
 {
 	if (!abortedBy_.empty())
@@ -347,6 +333,13 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 
 	assertNotAbortedL();
 	return t;
+}
+
+Onceref<Nexus> App::findNexus(TrieadOwner *to, const string &tname, const string &nexname, bool immed)
+{
+	// No App mutex! findTriead() takes care of that.
+	Autoref<Triead> t = findTriead(to, tname, immed); // uses App mutex
+	return t->findNexus(to->get()->getName(), name_, nexname); // uses Triead mutex
 }
 
 void App::markTrieadConstructed(TrieadOwner *to)

@@ -50,8 +50,6 @@ public:
 	// @return - reference to the app.
 	static Onceref<App> find(const string &name);
 
-	// XXX how does an App get deleted?
-
 	// List all the defined Apps, for introspection.
 	// @param - a map where all the defined Apps will be returned.
 	//     It will be cleared before placing any data into it.
@@ -69,6 +67,7 @@ public:
 public:
 	typedef map<string, Autoref<Triead> > TrieadMap;
 
+	// XXX have separate timeouts for Constructed and Ready
 	enum {
 		// The default timeout (seconds) when waiting for the threads
 		// to initialize.
@@ -233,15 +232,8 @@ protected:
 	//        returned even if it's not constructed yet and there will never be
 	//        a wait, so if the thread is declared but not defined yet, an Exception
 	//        will be thrown
+	// @return - the thread reference.
 	Onceref<Triead> findTriead(TrieadOwner *to, const string &tname, bool immed = false);
-
-	// Export a nexus in a thread.
-	// Throws an Exception on any errors (such as the thread not belonging to this
-	// app, nexus being already exported or having been incorrectly defined).
-	//
-	// @param to - thread that owns the nexus
-	// @param nexus - nexus to be exported
-	void exportNexus(TrieadOwner *to, Nexus *nexus);
 
 	// Find a nexus in a thread by name.
 	// Will wait if the thread has not completed its construction yet.
@@ -251,8 +243,14 @@ protected:
 	// @param to - identity of the calling thread (used for the deadlock detection).
 	// @param tname - name of the target thread
 	// @paran nexname - name of the nexus in it
+	// @param immed - flag: find immediate, which means that the thread will be
+	//        returned even if it's not constructed yet and there will never be
+	//        a wait, so if the thread is declared but not defined yet, an Exception
+	//        will be thrown; it also means that it might be looking for nexus
+	//        in an incomplete thread, and the nexus must be defined by then
 	// @return - the nexus reference.
-	Onceref<Nexus> findNexus(TrieadOwner *to, const string &tname, const string &nexname);
+	Onceref<Nexus> findNexus(TrieadOwner *to, const string &tname, const string &nexname,
+		bool immed = false);
 
 	// Mark that the thread has constructed and exported all of its
 	// nexuses. This wakes up anyone waiting.
