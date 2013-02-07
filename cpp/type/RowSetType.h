@@ -13,6 +13,8 @@
 
 namespace TRICEPS_NS {
 
+class HoldRowTypes;
+
 // This is used primarily as the type of FnReturn but may have other
 // uses too.
 class RowSetType: public Type
@@ -43,7 +45,14 @@ public:
 	// row types for it. The result of this copy is always
 	// uninitialized. If the original has errors, these errors
 	// won't be preserved in the copy.
-	RowSetType *deepCopy() const;
+	//
+	// @param holder - helper object that makes sure that multiple
+	//        references to the same row type stay multiple references
+	//        to the same copied row type, not multiple row types
+	//        (unless it's NULL, which reverts to plain copying).
+	//        The caller has to keep a reference to the holder for
+	//        the duration.
+	RowSetType *deepCopy(HoldRowTypes *holder = NULL) const;
 
 	// A convenience wrapper for the constructor
 	static RowSetType *make()

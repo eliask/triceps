@@ -944,7 +944,6 @@ public:
 	}
 };
 
-
 UTESTCASE aggregator(Utest *utest)
 {
 	RowType::FieldVec fld;
@@ -1150,5 +1149,61 @@ UTESTCASE aggregator(Utest *utest)
 	}
 	UT_IS(tt->print(NOINDENT), "table ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) { index HashedIndex(a, e, ) { index HashedIndex(a, e, ) level2, } { aggregator ( row { uint8[10] a, int32[] b, int64 c, float64 d, string e, } ) onPrimary } primary, }");
 
+}
+
+UTESTCASE deepCopy(Utest *utest)
+{
+#if 0
+	XXX need to add deep copying of row types to the aggregators, and through types
+	XXXXXXXXXXXXXXXXXX
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	mkfields(fld);
+	fld[0].name_="x";
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
+
+	mkfields(fld);
+	fld[0].type_ = Type::r_int32;
+	Autoref<RowType> rt3 = new CompactRowType(fld);
+	UT_ASSERT(rt3->getErrors().isNull());
+
+	Autoref<AggregatorType> agt1 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator);
+	
+	// now build the table type
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", (new HashedIndexType(
+			(new NameSet())->add("a")->add("e")))
+			->setAggregator(agt1)
+			->addSubIndex("level2", new FifoIndexType()
+			)
+		)
+		;
+
+	Autoref<HoldRowTypes> hrt1 = new HoldRowTypes;
+	Autoref<TableType> cptt1 = tt->deepCopy(hrt1);
+	{
+		IndexType *prim = cptt1->findSubIndex("primary");
+		UT_ASSERT(prim != NULL);
+		const AggregatorType *agt2 = prim->getAggregator();
+		UT_ASSERT(agt2 != NULL);
+		UT_IS(cptt1->getType(), agt2->getRowType());
+	}
+
+	Autoref<TableType> cptt2 = tt->deepCopy();// the default NULL holder
+	{
+		IndexType *prim = cptt2->findSubIndex("primary");
+		UT_ASSERT(prim != NULL);
+		const AggregatorType *agt2 = prim->getAggregator();
+		UT_ASSERT(agt2 != NULL);
+		UT_ASSERT(cptt1->getType() != agt2->getRowType());
+	}
+
+#endif
 }
 

@@ -19,6 +19,7 @@ namespace TRICEPS_NS {
 class Table;
 class RootIndexType;
 class AggregatorType;
+class HoldRowTypes;
 
 class TableType : public Type
 {
@@ -32,6 +33,17 @@ public:
 		return new TableType(rt);
 	}
 	~TableType();
+
+	// Create a copy of the type, also copying all the contents.
+	// The copy is also uninitialized.
+	//
+	// @param holder - helper object that makes sure that multiple
+	//        references to the same row type stay multiple references
+	//        to the same copied row type, not multiple row types
+	//        (unless it's NULL, which reverts to plain copying).
+	//        The caller has to keep a reference to the holder for
+	//        the duration.
+	TableType *deepCopy(HoldRowTypes *holder = NULL);
 
 	// from Type
 	virtual Erref getErrors() const; 

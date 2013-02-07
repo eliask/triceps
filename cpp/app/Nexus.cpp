@@ -9,6 +9,7 @@
 
 #include <app/Nexus.h>
 #include <app/Facet.h>
+#include <type/HoldRowTypes.h>
 
 namespace TRICEPS_NS {
 
@@ -18,14 +19,15 @@ Nexus::Nexus(const string &tname, Facet *facet):
 	reverse_(facet->reverse_),
 	unicast_(facet->unicast_)
 { 
+	// XXX where does it check that the types contain no errors? including RowTypes.
+	
 	// deep-copy the types
-	// XXX there is a problem with deep-copying: if multiple entries have shared
-	// a row type, deep-copying will create separate row types for them
-	type_ = facet->getFnReturn()->getType()->deepCopy();
+	Autoref<HoldRowTypes> holder = new HoldRowTypes;
+	type_ = facet->getFnReturn()->getType()->deepCopy(holder);
 	for (RowTypeMap::iterator it = facet->rowTypes_.begin(); it != facet->rowTypes_.end(); ++it)
-		rowTypes_[it->first] = it->second->copy();
+		rowTypes_[it->first] = holder->copy(it->second);
 	for (TableTypeMap::iterator it = facet->tableTypes_.begin(); it != facet->tableTypes_.end(); ++it)
-		tableTypes_[it->first] = it->second; // XXX ->deepCopy();
+		tableTypes_[it->first] = it->second->deepCopy(holder);
 }
 
 }; // TRICEPS_NS

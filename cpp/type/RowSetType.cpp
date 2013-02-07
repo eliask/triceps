@@ -7,6 +7,7 @@
 // Representation of an ordered set of row types. 
 
 #include <type/RowSetType.h>
+#include <type/HoldRowTypes.h>
 #include <common/Exception.h>
 
 namespace TRICEPS_NS {
@@ -17,12 +18,12 @@ RowSetType::RowSetType() :
 	initialized_(false)
 { }
 
-RowSetType *RowSetType::deepCopy() const
+RowSetType *RowSetType::deepCopy(HoldRowTypes *holder) const
 {
 	RowSetType *cp = new RowSetType;
 	int sz = types_.size();
 	for (int i = 0; i < sz; i++) {
-		cp->addRow(names_[i], types_[i]->copy());
+		cp->addRow(names_[i], holder->copy(types_[i]));
 	}
 	return cp;
 }

@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include <type/AllTypes.h>
+#include <type/HoldRowTypes.h>
 
 // Make fields of all simple types
 void mkfields(RowType::FieldVec &fields)
@@ -192,8 +193,21 @@ UTESTCASE rowset(Utest *utest)
 		" } two,"
 		" }");
 
-	// deeep copy
-	Autoref<RowSetType> set6 = set1->deepCopy();
-	UT_ASSERT(set6->equals(set1));
-	UT_ASSERT(!set6->isInitialized());
+	// deep copy
+	Autoref<RowSetType> set6 = initialize(RowSetType::make()
+		->addRow("one", rt1)
+		->addRow("two", rt1)
+	);
+	UT_ASSERT(set6->getErrors().isNull());
+	UT_ASSERT(set6->isInitialized());
+
+	Autoref<RowSetType> set7 = set6->deepCopy(); // with default NULL holder
+	UT_ASSERT(set7->equals(set7));
+	UT_ASSERT(!set7->isInitialized());
+
+	Autoref<HoldRowTypes> hrt = new HoldRowTypes;
+	Autoref<RowSetType> set8 = set6->deepCopy(hrt);
+	UT_ASSERT(set8->equals(set8));
+	UT_ASSERT(!set8->isInitialized());
+	UT_IS(set8->getRowType(0), set8->getRowType(1)); // both refer to the same type
 }

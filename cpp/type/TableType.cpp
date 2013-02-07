@@ -9,6 +9,7 @@
 #include <type/TableType.h>
 #include <type/RootIndexType.h>
 #include <type/AggregatorType.h>
+#include <type/HoldRowTypes.h>
 #include <table/Table.h>
 #include <common/Exception.h>
 
@@ -23,6 +24,14 @@ TableType::TableType(Onceref<RowType> rt) :
 
 TableType::~TableType()
 { }
+
+TableType *TableType::deepCopy(HoldRowTypes *holder)
+{
+	TableType *cpt = new TableType(holder->copy(rowType_));
+	// replace the root index type with a copy
+	cpt->root_ = (RootIndexType *)root_->copy();
+	return cpt;
+}
 
 TableType *TableType::addSubIndex(const string &name, IndexType *index)
 {
