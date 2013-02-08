@@ -90,7 +90,9 @@ Things that need to be done:
 * doc: in types construction throw instead of abort()
 * doc: the templates for initialize(), initializeOrThrow(), checkOrThrow()
 * doc: the new draining of forked rowops, new mark semantics
+* doc: HoldRowTypes
 * doc: RowType::copy(), RowSetType::deepCopy()
+* doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

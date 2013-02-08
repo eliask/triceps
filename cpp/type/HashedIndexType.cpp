@@ -91,6 +91,14 @@ HashedIndexType::HashedIndexType(const HashedIndexType &orig) :
 	}
 }
 
+HashedIndexType::HashedIndexType(const HashedIndexType &orig, HoldRowTypes *holder) :
+	TreeIndexType(orig, holder)
+{
+	if (!orig.key_.isNull()) {
+		key_ = new NameSet(*orig.key_);
+	}
+}
+
 HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
 	if (initialized_) {
@@ -202,6 +210,11 @@ void HashedIndexType::printTo(string &res, const string &indent, const string &s
 IndexType *HashedIndexType::copy() const
 {
 	return new HashedIndexType(*this);
+}
+
+IndexType *HashedIndexType::deepCopy(HoldRowTypes *holder) const
+{
+	return new HashedIndexType(*this, holder);
 }
 
 void HashedIndexType::initialize()

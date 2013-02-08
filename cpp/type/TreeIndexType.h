@@ -31,6 +31,10 @@ protected:
 	TreeIndexType(const TreeIndexType &orig) :
 		IndexType(orig)
 	{ }
+	// used by deepCopy()
+	TreeIndexType(const TreeIndexType &orig, HoldRowTypes *holder) :
+		IndexType(orig, holder)
+	{ }
 
 public:
 	// index instance interface: the part made public for the sorted indexes

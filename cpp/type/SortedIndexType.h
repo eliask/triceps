@@ -83,6 +83,23 @@ public:
 	// and if it keeps the initialization flag, make the copy
 	// un-initialized.
 	virtual SortedIndexCondition *copy() const = 0;
+
+	// Deep-copy the condition object by calling the copy constructor,
+	// nicely cloning the row types.
+	//
+	// The defalult implementation just calls copy() since most index
+	// conditions would not have any row types.
+	//
+	// If redefined, the typical implementation is like this:
+	// IndexType *MySortCondition::copy(HoldRowTypes *holder) const
+	// {
+	//     return new MySortCondition(*this, holder);
+	// }
+	//
+	// The copy constructor should follow the common IndexType convention,
+	// and if it keeps the initialization flag, make the copy
+	// un-initialized.
+	virtual SortedIndexCondition *deepCopy(HoldRowTypes *holder) const;
 	
 public:
 	// The rest of virtual functions are not =0 and don't have to be redefined.
@@ -179,6 +196,7 @@ public:
 	// from IndexType
 	virtual const_Onceref<NameSet> getKey() const;
 	virtual IndexType *copy() const;
+	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
 	virtual void initRowHandleSection(RowHandle *rh) const;
@@ -186,8 +204,10 @@ public:
 	virtual void copyRowHandleSection(RowHandle *rh, const RowHandle *fromrh) const;
 
 protected:
-	// used by copy(), deep-copies sc_
+	// used by copy(), copies sc_
 	SortedIndexType(const SortedIndexType &orig);
+	// used by deepCopy(), deep-copies sc_
+	SortedIndexType(const SortedIndexType &orig, HoldRowTypes *holder);
 
 protected:
 	Autoref<SortedIndexCondition> sc_; // the code that handles the user specifics

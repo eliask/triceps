@@ -18,9 +18,19 @@ BasicAggregatorType::BasicAggregatorType(const string &name, const RowType *rt, 
 	cb_(cb)
 { }
 
+BasicAggregatorType::BasicAggregatorType(const BasicAggregatorType &agg, HoldRowTypes *holder) :
+	AggregatorType(agg, holder),
+	cb_(agg.cb_)
+{ }
+
 AggregatorType *BasicAggregatorType::copy() const
 {
 	return new BasicAggregatorType(*this);
+}
+
+AggregatorType *BasicAggregatorType::deepCopy(HoldRowTypes *holder) const
+{
+	return new BasicAggregatorType(*this, holder);
 }
 
 bool BasicAggregatorType::equals(const Type *t) const

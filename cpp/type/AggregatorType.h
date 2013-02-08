@@ -19,6 +19,7 @@ class IndexType;
 class Table;
 class AggregatorGadget;
 class Aggregator;
+class HoldRowTypes;
 
 // The AggregatorType subclasses serve as a factory for both the AggregatorGadget
 // (one per table) and Aggregator (one per index/group) subclasses.
@@ -30,6 +31,8 @@ public:
 	AggregatorType(const string &name, const RowType *rt);
 	// for copying
 	AggregatorType(const AggregatorType &agg);
+	// for deep copying
+	AggregatorType(const AggregatorType &agg, HoldRowTypes *holder);
 	~AggregatorType();
 
 	// Get back the name
@@ -65,7 +68,7 @@ public:
 	}
 	
 	// Make a copy of this type. The copy is always uninitialized, no
-	// matter whther it was made from an initialized one or not.
+	// matter whether it was made from an initialized one or not.
 	// The subclasses must define the actual copying.
 	//
 	// The typical subclass copy function looks like this:
@@ -74,6 +77,28 @@ public:
 	//     return new MyAggregatorType(*this);
 	// }
 	virtual AggregatorType *copy() const = 0;
+	// Make a deep copy of this type. The copy is always uninitialized, no
+	// matter whether it was made from an initialized one or not.
+	// The subclasses must define the actual copying.
+	//
+	// The typical subclass copy function looks like this:
+	// AgregatorType *MyAggregatorType::deepCopy(HoldRowTypes *holder) const
+	// {
+	//     return new MyAggregatorType(*this, holder);
+	// }
+	//
+	// Note that using this method holder==NULL has a different meaning 
+	// than copy(): copy() will keep the references to the original
+	// RowType while deepCopy(NULL) will make an independent copy
+	// of for each use of RowType.
+	//
+	// @param holder - helper object that makes sure that multiple
+	//        references to the same row type stay multiple references
+	//        to the same copied row type, not multiple row types
+	//        (unless it's NULL, which reverts to plain copying).
+	//        The caller has to keep a reference to the holder for
+	//        the duration.
+	virtual AggregatorType *deepCopy(HoldRowTypes *holder) const = 0;
 
 	// Create an AggregatorGadget subclass, one per table.
 	//

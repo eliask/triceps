@@ -25,6 +25,7 @@ class GroupHandleType;
 class Index;
 class Table;
 class Aggregator;
+class HoldRowTypes;
 
 // connection of indexes into a tree
 class  IndexTypeRef 
@@ -49,8 +50,11 @@ public:
 	
 	IndexTypeVec();
 	IndexTypeVec(size_t size);
-	// Populate with the copy of the original types
+	// Populate with the copy of the original types.
 	IndexTypeVec(const IndexTypeVec &orig);
+	// Populate with the copy of the original types, and preserve the
+	// sharedness of RowType references.
+	IndexTypeVec(const IndexTypeVec &orig, HoldRowTypes *holder);
 
 	// Find the nested index by name.
 	// @param name - name of the nested index
@@ -198,6 +202,27 @@ public:
 	// matter whther it was made from an initialized one or not.
 	// The subclasses must define the actual copying.
 	virtual IndexType *copy() const = 0;
+	// Make a deep copy of this type. The copy is always uninitialized, no
+	// matter whther it was made from an initialized one or not.
+	// The subclasses must define the actual copying.
+	// Preserve the sharedness of RowType references in the copy.
+	//
+	// Note that using this method holder==NULL has a different meaning 
+	// than copy(): copy() will keep the references to the original
+	// RowType while deepCopy(NULL) will make an independent copy
+	// of for each use of RowType.
+	//
+	// Here there is no use in the holder having the default of NULL
+	// because it would produce something seriously undesirable.
+	// Just use copy() instead if you don't need the deepness.
+	//
+	// @param holder - helper object that makes sure that multiple
+	//        references to the same row type stay multiple references
+	//        to the same copied row type, not multiple row types
+	//        (unless it's NULL, which reverts to plain copying).
+	//        The caller has to keep a reference to the holder for
+	//        the duration.
+	virtual IndexType *deepCopy(HoldRowTypes *holder) const = 0;
 
 	// @return - true if there are no nested indexes
 	bool isLeaf() const
@@ -282,7 +307,10 @@ protected:
 
 	// can be constructed only from subclasses
 	IndexType(IndexId it);
+	// Copy.
 	IndexType(const IndexType &orig); 
+	// Copy and preserve the sharedness of RowType references in the copy.
+	IndexType(const IndexType &orig, HoldRowTypes *holder); 
 
 	// let the index find itself in parent and table type
 	// @param tabtype - table type where this index type belongs (to only one table type!)

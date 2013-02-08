@@ -43,11 +43,11 @@ public:
 	// @param orig - the original row type to copy, if it's NULL then a NULL
 	//        will be returned
 	// @return - the copied row type
-	RowType *copy(RowType *orig);
+	RowType *copy(const RowType *orig);
 
 protected:
 	// Mapping from the original to the copied types.
-	typedef map<RowType *, Autoref<RowType> > Map;
+	typedef map<const RowType *, Autoref<RowType> > Map;
 
 	Map map_;
 };

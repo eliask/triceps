@@ -25,6 +25,7 @@ public:
 	// from IndexType
 	virtual const_Onceref<NameSet> getKey() const;
 	virtual IndexType *copy() const;
+	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
 	virtual void initRowHandleSection(RowHandle *rh) const;
@@ -39,6 +40,8 @@ protected:
 
 	// used by copy()
 	RootIndexType(const RootIndexType &orig);
+	// used by deepCopy()
+	RootIndexType(const RootIndexType &orig, HoldRowTypes *holder);
 };
 
 }; // TRICEPS_NS

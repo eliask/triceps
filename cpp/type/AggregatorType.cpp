@@ -9,6 +9,7 @@
 #include <typeinfo>
 #include <type/AggregatorType.h>
 #include <type/TableType.h>
+#include <type/HoldRowTypes.h>
 #include <sched/AggregatorGadget.h>
 #include <common/Exception.h>
 
@@ -25,6 +26,14 @@ AggregatorType::AggregatorType(const string &name, const RowType *rt) :
 AggregatorType::AggregatorType(const AggregatorType &agg) :
 	Type(false, TT_AGGREGATOR),
 	rowType_(agg.rowType_),
+	name_(agg.name_),
+	pos_(-1),
+	initialized_(false)
+{ }
+
+AggregatorType::AggregatorType(const AggregatorType &agg, HoldRowTypes *holder) :
+	Type(false, TT_AGGREGATOR),
+	rowType_(holder->copy(agg.rowType_)),
 	name_(agg.name_),
 	pos_(-1),
 	initialized_(false)

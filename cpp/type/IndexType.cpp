@@ -10,6 +10,7 @@
 #include <type/TableType.h>
 #include <type/GroupHandleType.h>
 #include <type/AggregatorType.h>
+#include <type/HoldRowTypes.h>
 #include <table/Index.h>
 #include <table/Table.h>
 #include <table/Aggregator.h>
@@ -49,6 +50,13 @@ IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig)
 	size_t n = orig.size();
 	for (size_t i = 0; i < n; i++) 
 		push_back(IndexTypeRef(orig[i].name_, orig[i].index_->copy()));
+}
+
+IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig, HoldRowTypes *holder)
+{
+	size_t n = orig.size();
+	for (size_t i = 0; i < n; i++) 
+		push_back(IndexTypeRef(orig[i].name_, orig[i].index_->deepCopy(holder)));
 }
 
 void IndexTypeVec::initialize(TableType *tabtype, IndexType *parent, Erref parentErr)
@@ -162,6 +170,17 @@ IndexType::IndexType(const IndexType &orig) :
 	tabtype_(NULL),
 	parent_(NULL),
 	agg_(orig.agg_.isNull()? NULL : orig.agg_->copy()),
+	indexId_(orig.indexId_),
+	initialized_(false)
+{ 
+}
+
+IndexType::IndexType(const IndexType &orig, HoldRowTypes *holder) :
+	Type(false, TT_INDEX),
+	nested_(orig.nested_, holder),
+	tabtype_(NULL),
+	parent_(NULL),
+	agg_(orig.agg_.isNull()? NULL : orig.agg_->deepCopy(holder)),
 	indexId_(orig.indexId_),
 	initialized_(false)
 { 

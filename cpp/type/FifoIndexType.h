@@ -39,6 +39,7 @@ public:
 	// from IndexType
 	virtual const_Onceref<NameSet> getKey() const;
 	virtual IndexType *copy() const;
+	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
 	virtual void initRowHandleSection(RowHandle *rh) const;
@@ -91,6 +92,8 @@ protected:
 protected:
 	// used by copy()
 	FifoIndexType(const FifoIndexType &orig);
+	// used by deepCopy()
+	FifoIndexType(const FifoIndexType &orig, HoldRowTypes *holder);
 
 	intptr_t rhOffset_; // offset of this index's data in table's row handle
 	size_t limit_; // 0 means unlimited

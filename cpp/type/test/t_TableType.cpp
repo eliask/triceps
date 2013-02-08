@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include <type/AllTypes.h>
+#include <type/HoldRowTypes.h>
 #include <sched/AggregatorGadget.h>
 #include <common/StringUtil.h>
 #include <common/Exception.h>
@@ -929,10 +930,18 @@ public:
 		AggregatorType(name, rt)
 	{ }
 
+	MyAggregatorType(const MyAggregatorType &other, HoldRowTypes *holder):
+		AggregatorType(other, holder)
+	{ }
+
 	// from AggregatorType
 	virtual AggregatorType *copy() const
 	{
 		return new MyAggregatorType(*this);
+	}
+	virtual AggregatorType *deepCopy(HoldRowTypes *holder) const
+	{
+		return new MyAggregatorType(*this, holder);
 	}
 	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const
 	{
@@ -1153,10 +1162,6 @@ UTESTCASE aggregator(Utest *utest)
 
 UTESTCASE deepCopy(Utest *utest)
 {
-#if 0
-	XXX need to add deep copying of row types to the aggregators, and through types
-	XXXXXXXXXXXXXXXXXX
-
 	RowType::FieldVec fld;
 	mkfields(fld);
 
@@ -1174,36 +1179,85 @@ UTESTCASE deepCopy(Utest *utest)
 	UT_ASSERT(rt3->getErrors().isNull());
 
 	Autoref<AggregatorType> agt1 = new BasicAggregatorType("onPrimary", rt1, dummyAggregator);
+	Autoref<AggregatorType> agt2 = new BasicAggregatorType("onSecondary", rt1, dummyAggregator);
+	Autoref<AggregatorType> agt3 = new BasicAggregatorType("onTertiary", rt1, dummyAggregator);
 	
 	// now build the table type
 	Autoref<TableType> tt = (new TableType(rt1))
 		->addSubIndex("primary", (new HashedIndexType(
 			(new NameSet())->add("a")->add("e")))
 			->setAggregator(agt1)
-			->addSubIndex("level2", new FifoIndexType()
+			->addSubIndex("level2", (new FifoIndexType)
+				->setAggregator(agt2)
 			)
+		)->addSubIndex("tertiary", SortedIndexType::make(new MySortCondition(false))
+			->setAggregator(agt3)
 		)
 		;
 
+	// Check that it matches before the deep-copying.
+	{
+		IndexType *prim = tt->findSubIndex("primary");
+		UT_ASSERT(prim != NULL);
+		const AggregatorType *cpagt1 = prim->getAggregator();
+		UT_ASSERT(cpagt1 != NULL);
+		UT_IS(tt->rowType(), cpagt1->getRowType());
+
+		IndexType *sec = prim->findSubIndex("level2");
+		UT_ASSERT(sec != NULL);
+		const AggregatorType *cpagt2 = sec->getAggregator();
+		UT_ASSERT(cpagt2 != NULL);
+		UT_IS(tt->rowType(), cpagt2->getRowType());
+
+		IndexType *tert = tt->findSubIndex("tertiary");
+		UT_ASSERT(tert != NULL);
+		const AggregatorType *cpagt3 = tert->getAggregator();
+		UT_ASSERT(cpagt3 != NULL);
+		UT_IS(tt->rowType(), cpagt3->getRowType());
+	}
+
 	Autoref<HoldRowTypes> hrt1 = new HoldRowTypes;
-	Autoref<TableType> cptt1 = tt->deepCopy(hrt1);
 	{
-		IndexType *prim = cptt1->findSubIndex("primary");
+		Autoref<TableType> cptt = tt->deepCopy(hrt1);
+
+		IndexType *prim = cptt->findSubIndex("primary");
 		UT_ASSERT(prim != NULL);
-		const AggregatorType *agt2 = prim->getAggregator();
-		UT_ASSERT(agt2 != NULL);
-		UT_IS(cptt1->getType(), agt2->getRowType());
+		const AggregatorType *cpagt1 = prim->getAggregator();
+		UT_ASSERT(cpagt1 != NULL);
+		UT_IS(cptt->rowType(), cpagt1->getRowType());
+
+		IndexType *sec = prim->findSubIndex("level2");
+		UT_ASSERT(sec != NULL);
+		const AggregatorType *cpagt2 = sec->getAggregator();
+		UT_ASSERT(cpagt2 != NULL);
+		UT_IS(cptt->rowType(), cpagt2->getRowType());
+
+		IndexType *tert = cptt->findSubIndex("tertiary");
+		UT_ASSERT(tert != NULL);
+		const AggregatorType *cpagt3 = tert->getAggregator();
+		UT_ASSERT(cpagt3 != NULL);
+		UT_IS(cptt->rowType(), cpagt3->getRowType());
 	}
 
-	Autoref<TableType> cptt2 = tt->deepCopy();// the default NULL holder
 	{
-		IndexType *prim = cptt2->findSubIndex("primary");
+		Autoref<TableType> cptt = tt->deepCopy(NULL);// the default NULL holder
+		IndexType *prim = cptt->findSubIndex("primary");
 		UT_ASSERT(prim != NULL);
-		const AggregatorType *agt2 = prim->getAggregator();
-		UT_ASSERT(agt2 != NULL);
-		UT_ASSERT(cptt1->getType() != agt2->getRowType());
-	}
+		const AggregatorType *cpagt1 = prim->getAggregator();
+		UT_ASSERT(cpagt1 != NULL);
+		UT_ASSERT(cptt->rowType() != cpagt1->getRowType());
 
-#endif
+		IndexType *sec = prim->findSubIndex("level2");
+		UT_ASSERT(sec != NULL);
+		const AggregatorType *cpagt2 = sec->getAggregator();
+		UT_ASSERT(cpagt2 != NULL);
+		UT_ASSERT(cptt->rowType() != cpagt2->getRowType());
+
+		IndexType *tert = cptt->findSubIndex("tertiary");
+		UT_ASSERT(tert != NULL);
+		const AggregatorType *cpagt3 = tert->getAggregator();
+		UT_ASSERT(cpagt3 != NULL);
+		UT_ASSERT(cptt->rowType() != cpagt3->getRowType());
+	}
 }
 

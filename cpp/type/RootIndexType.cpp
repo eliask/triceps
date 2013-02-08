@@ -24,6 +24,11 @@ RootIndexType::RootIndexType(const RootIndexType &orig) :
 {
 }
 
+RootIndexType::RootIndexType(const RootIndexType &orig, HoldRowTypes *holder) :
+	IndexType(orig, holder)
+{
+}
+
 RootIndexType::~RootIndexType()
 { }
 
@@ -43,6 +48,11 @@ const_Onceref<NameSet> RootIndexType::getKey() const
 IndexType *RootIndexType::copy() const
 {
 	return new RootIndexType(*this);
+}
+
+IndexType *RootIndexType::deepCopy(HoldRowTypes *holder) const
+{
+	return new RootIndexType(*this, holder);
 }
 
 void RootIndexType::initialize()

@@ -33,6 +33,10 @@ public:
 	// @param rt - type of rows produced by this aggregator, wil be referenced
 	// @param cb - pointer to the callback function
 	BasicAggregatorType(const string &name, const RowType *rt, Callback *cb);
+	// the default copy constructor also works well
+	
+	// for deep copy
+	BasicAggregatorType(const BasicAggregatorType &agg, HoldRowTypes *holder);
 
 	// from Type
 	virtual bool equals(const Type *t) const;
@@ -40,6 +44,7 @@ public:
 
 	// from AggregatorType
 	virtual AggregatorType *copy() const;
+	virtual AggregatorType *deepCopy(HoldRowTypes *holder) const;
 	// creates just the generic AggregatorGadget, nothing special
 	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const;
 	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const;

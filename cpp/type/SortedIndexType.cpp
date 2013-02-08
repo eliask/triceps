@@ -55,6 +55,11 @@ void SortedIndexCondition::copyRowHandleSection(RowHandle *rh, const RowHandle *
 	new(rs) TreeIndexType::BasicRhSection(*fromrs);
 }
 
+SortedIndexCondition *SortedIndexCondition::deepCopy(HoldRowTypes *holder) const
+{
+	return copy();
+}
+
 //////////////////////////// SortedIndexType /////////////////////////
 
 SortedIndexType::SortedIndexType(Onceref<SortedIndexCondition> sc) :
@@ -67,6 +72,11 @@ SortedIndexType::SortedIndexType(Onceref<SortedIndexCondition> sc) :
 SortedIndexType::SortedIndexType(const SortedIndexType &orig) :
 	TreeIndexType(orig),
 	sc_(orig.sc_->copy())
+{ }
+
+SortedIndexType::SortedIndexType(const SortedIndexType &orig, HoldRowTypes *holder) :
+	TreeIndexType(orig, holder),
+	sc_(orig.sc_->deepCopy(holder))
 { }
 
 bool SortedIndexType::equals(const Type *t) const
@@ -120,6 +130,11 @@ const_Onceref<NameSet> SortedIndexType::getKey() const
 IndexType *SortedIndexType::copy() const
 {
 	return new SortedIndexType(*this);
+}
+
+IndexType *SortedIndexType::deepCopy(HoldRowTypes *holder) const
+{
+	return new SortedIndexType(*this, holder);
 }
 
 void SortedIndexType::initialize()

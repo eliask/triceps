@@ -37,13 +37,17 @@ public:
 	// Create a copy of the type, also copying all the contents.
 	// The copy is also uninitialized.
 	//
+	// Here there is no use in the holder having the default of NULL
+	// because it would produce something seriously undesirable.
+	// Just use copy() instead if you don't need the deepness.
+	//
 	// @param holder - helper object that makes sure that multiple
 	//        references to the same row type stay multiple references
 	//        to the same copied row type, not multiple row types
 	//        (unless it's NULL, which reverts to plain copying).
 	//        The caller has to keep a reference to the holder for
 	//        the duration.
-	TableType *deepCopy(HoldRowTypes *holder = NULL);
+	TableType *deepCopy(HoldRowTypes *holder);
 
 	// from Type
 	virtual Erref getErrors() const; 

@@ -10,7 +10,7 @@
 
 namespace TRICEPS_NS {
 
-RowType *HoldRowTypes::copy(RowType *orig)
+RowType *HoldRowTypes::copy(const RowType *orig)
 {
 	if (orig == NULL)
 		return NULL;
