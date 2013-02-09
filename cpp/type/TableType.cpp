@@ -25,6 +25,14 @@ TableType::TableType(Onceref<RowType> rt) :
 TableType::~TableType()
 { }
 
+TableType *TableType::copy()
+{
+	TableType *cpt = new TableType(rowType_);
+	// replace the root index type with a copy
+	cpt->root_ = (RootIndexType *)root_->copy();
+	return cpt;
+}
+
 TableType *TableType::deepCopy(HoldRowTypes *holder)
 {
 	TableType *cpt = new TableType(holder->copy(rowType_));

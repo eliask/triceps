@@ -1160,7 +1160,7 @@ UTESTCASE aggregator(Utest *utest)
 
 }
 
-UTESTCASE deepCopy(Utest *utest)
+UTESTCASE copy(Utest *utest)
 {
 	RowType::FieldVec fld;
 	mkfields(fld);
@@ -1216,6 +1216,31 @@ UTESTCASE deepCopy(Utest *utest)
 		UT_IS(tt->rowType(), cpagt3->getRowType());
 	}
 
+	// check the shallow copy
+	{
+		Autoref<TableType> cptt = tt->copy();
+
+		IndexType *prim = cptt->findSubIndex("primary");
+		UT_ASSERT(prim != NULL);
+		const AggregatorType *cpagt1 = prim->getAggregator();
+		UT_IS(rt1, cpagt1->getRowType());
+		UT_ASSERT(cpagt1 != NULL);
+		UT_IS(cptt->rowType(), cpagt1->getRowType());
+
+		IndexType *sec = prim->findSubIndex("level2");
+		UT_ASSERT(sec != NULL);
+		const AggregatorType *cpagt2 = sec->getAggregator();
+		UT_ASSERT(cpagt2 != NULL);
+		UT_IS(cptt->rowType(), cpagt2->getRowType());
+
+		IndexType *tert = cptt->findSubIndex("tertiary");
+		UT_ASSERT(tert != NULL);
+		const AggregatorType *cpagt3 = tert->getAggregator();
+		UT_ASSERT(cpagt3 != NULL);
+		UT_IS(cptt->rowType(), cpagt3->getRowType());
+	}
+
+	// deep copy with a holder
 	Autoref<HoldRowTypes> hrt1 = new HoldRowTypes;
 	{
 		Autoref<TableType> cptt = tt->deepCopy(hrt1);
@@ -1239,6 +1264,7 @@ UTESTCASE deepCopy(Utest *utest)
 		UT_IS(cptt->rowType(), cpagt3->getRowType());
 	}
 
+	// deep copy without a holder
 	{
 		Autoref<TableType> cptt = tt->deepCopy(NULL);// the default NULL holder
 		IndexType *prim = cptt->findSubIndex("primary");
