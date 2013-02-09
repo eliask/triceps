@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 75 };
+BEGIN { plan tests => 79 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -345,3 +345,30 @@ $res = $tt1->addSubIndex("second", Triceps::IndexType->newFifo());
 ok(!defined $res);
 ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can not add indexes any more");
 
+###################### copy ###########################################
+
+{
+	my $ttcp = $tt1->copy();
+	ok(ref $ttcp, "Triceps::TableType");
+	#printf "tt1: %s\nttcp: %s\n", $tt1->print(), $ttcp->print();
+	ok($tt1->equals($ttcp));
+}
+
+###################### copy ###########################################
+
+{
+	# this really tests the copying of PerlAggregator, the method TableType::deepCopy()
+	# itself is unpublished in Perl
+
+	# add an aggregator for the test
+	my $ttorig = $tt1->copy();
+	$ttorig->findSubIndex("primary")->setAggregator(
+		Triceps::AggregatorType->new($rt1, "aggr", sub {}, sub {})
+	);
+
+	# now test
+	my $ttcp = $ttorig->deepCopy();
+	ok(ref $ttcp, "Triceps::TableType");
+	#printf "tt1: %s\nttcp: %s\n", $tt1->print(), $ttcp->print();
+	ok($ttorig->equals($ttcp));
+}

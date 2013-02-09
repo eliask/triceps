@@ -36,8 +36,12 @@ public:
 	PerlAggregatorType(const string &name, const RowType *rt, 
 		Onceref<PerlCallback> cbConstructor, Onceref<PerlCallback> cbHandler);
 
+	// for deep copy
+	PerlAggregatorType(const PerlAggregatorType &agg, HoldRowTypes *holder);
+
 	// from AggregatorType
 	virtual AggregatorType *copy() const;
+	virtual AggregatorType *deepCopy(HoldRowTypes *holder) const;
 	// creates just the generic AggregatorGadget, nothing special
 	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const;
 	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const;

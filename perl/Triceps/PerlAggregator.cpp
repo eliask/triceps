@@ -35,9 +35,23 @@ PerlAggregatorType::PerlAggregatorType(const string &name, const RowType *rt,
 	cbHandler_(cbHandler)
 { }
 
+// XXX this might be actually be a real bad idea: deepCopy is used for copying
+// between threads, and copying the callback references between threads is
+// probably bad
+PerlAggregatorType::PerlAggregatorType(const PerlAggregatorType &agg, HoldRowTypes *holder):
+	AggregatorType(agg, holder),
+	cbConstructor_(agg.cbConstructor_), // XXX should it copy, not reference the callback? how?
+	cbHandler_(agg.cbHandler_) // XXX should it copy, not reference the callback? how?
+{ }
+
 AggregatorType *PerlAggregatorType::copy() const
 {
 	return new PerlAggregatorType(*this);
+}
+
+AggregatorType *PerlAggregatorType::deepCopy(HoldRowTypes *holder) const
+{
+	return new PerlAggregatorType(*this, holder);
 }
 
 AggregatorGadget *PerlAggregatorType::makeGadget(Table *table, IndexType *intype) const

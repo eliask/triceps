@@ -22,6 +22,8 @@ namespace TRICEPS_NS
 namespace TricepsPerl 
 {
 
+// XXX deepCopy of this sort condition between the threads is probably a bad idea
+// because it includes Perl code
 class PerlSortCondition : public SortedIndexCondition
 {
 public:

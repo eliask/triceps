@@ -12,6 +12,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include <type/HoldRowTypes.h>
 
 MODULE = Triceps::TableType		PACKAGE = Triceps::TableType
 ###################################################################################
@@ -30,8 +31,6 @@ Triceps::TableType::new(WrapRowType *wrt)
 		RETVAL = new WrapTableType(new TableType(wrt->get()));
 	OUTPUT:
 		RETVAL
-
-# XXX add copy()?
 
 # print(self, [ indent, [ subindent ] ])
 #   indent - default "", undef means "print everything in a signle line"
@@ -229,3 +228,29 @@ getRowType(WrapTableType *self)
 	OUTPUT:
 		RETVAL
 
+# copy the row type, the result is un-initialized
+WrapTableType *
+copy(WrapTableType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::TableType";
+
+		clearErrMsg();
+		TableType *tbt = self->get();
+		RETVAL = new WrapTableType(tbt->copy());
+	OUTPUT:
+		RETVAL
+
+# this one is exported to Perl for testing, and thus left undocumented
+WrapTableType *
+deepCopy(WrapTableType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::TableType";
+
+		clearErrMsg();
+		TableType *tbt = self->get();
+		Autoref<HoldRowTypes> holder = new HoldRowTypes;
+		RETVAL = new WrapTableType(tbt->deepCopy(holder));
+	OUTPUT:
+		RETVAL
