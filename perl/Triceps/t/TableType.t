@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 79 };
+BEGIN { plan tests => 80 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -371,4 +371,8 @@ ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can 
 	ok(ref $ttcp, "Triceps::TableType");
 	#printf "tt1: %s\nttcp: %s\n", $tt1->print(), $ttcp->print();
 	ok($ttorig->equals($ttcp));
+
+	my $cprt1 = $ttcp->getRowType();
+	my $cprt2 = $ttcp->findSubIndex("primary")->getAggregator()->getRowType();
+	ok($cprt1->same($cprt2));
 }

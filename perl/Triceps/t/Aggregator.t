@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 68 };
 use Triceps;
 ok(2); # If we made it this far, we're ok.
 
@@ -129,6 +129,7 @@ ok(ref $aggreslab1, "Triceps::Label");
 
 $agt1 = Triceps::AggregatorType->new($rt2, "aggr", undef, \&aggHandler1, "qqqq", 12);
 ok(ref $agt1, "Triceps::AggregatorType");
+ok($rt2->same($agt1->getRowType()));
 
 $it1 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
 	->addSubIndex("fifo", Triceps::IndexType->newFifo()

@@ -80,6 +80,19 @@ same(WrapAggregatorType *self, WrapAggregatorType *other)
 	OUTPUT:
 		RETVAL
 
+# get back the row type
+WrapRowType *
+getRowType(WrapAggregatorType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+
+		clearErrMsg();
+		PerlAggregatorType *agself = self->get();
+		RETVAL = new WrapRowType(const_cast<RowType *>(agself->getRowType()));
+	OUTPUT:
+		RETVAL
+
 # print(self, [ indent, [ subindent ] ])
 #   indent - default "", undef means "print everything in a signle line"
 #   subindent - default "  "
