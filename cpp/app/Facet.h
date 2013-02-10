@@ -31,6 +31,9 @@ public:
 	typedef Nexus::RowTypeMap RowTypeMap;
 	typedef Nexus::TableTypeMap TableTypeMap;
 
+	// Build API, used to build the facet for export
+	// {
+
 	// Create the Facet from the minimal set of fragments.
 	// The extra row types and table types can be added later in
 	// the chained fashion, as well as the reverse and unicast flags. 
@@ -47,6 +50,11 @@ public:
 	//        you can use either value
 	Facet(Onceref<FnReturn> fret, bool writer);
 
+	static Facet *make(Onceref<FnReturn> fret, bool writer)
+	{
+		return new Facet(fret, writer);
+	}
+
 	// The convenience methods that make remembering the options
 	// easier.
 	static Facet *makeReader(Onceref<FnReturn> fret)
@@ -56,12 +64,6 @@ public:
 	static Facet *makeWriter(Onceref<FnReturn> fret)
 	{
 		return new Facet(fret, true);
-	}
-
-	// Check whether this is a writer.
-	bool isWriter() const
-	{
-		return writer_;
 	}
 
 	// Export a row type through the nexus. It won't be a part of the
@@ -116,6 +118,31 @@ public:
 		return err_;
 	}
 
+	// Building of the full name from components.
+	static string buildFullName(const string &tname, const string &nxname)
+	{
+		return tname + "/" + nxname;
+	}
+
+	// } Build API
+	// The rest is used for import from an already-built Facet
+	// (either built here or imported).
+
+	// Check whether this facet is imported (and that means, also exported).
+	// As opposed to being in the middle of creation.
+	// An imported facet is final. A non-imported facet can be constructed
+	// further and eventually exported.
+	bool isImported() const
+	{
+		return !nexus_.isNull();
+	}
+
+	// Check whether this is a writer.
+	bool isWriter() const
+	{
+		return writer_;
+	}
+
 	// Check whether the underlying nexus is reverse.
 	bool isReverse() const
 	{
@@ -128,21 +155,18 @@ public:
 		return unicast_;
 	}
 
-	// Check whether this facet is imported (and that means, also exported).
-	// As opposed to being in the middle of creation.
-	// An imported facet is final. A non-imported facet can be constructed
-	// further and eventually exported.
-	bool isImported() const
-	{
-		return !nexus_.isNull();
-	}
-
 	// Get back the FnReturn.
 	// Since the caller is not expected to immediately destroy this object
 	// with its reference, returning a pointer is safe enough.
 	FnReturn *getFnReturn() const
 	{
 		return fret_;
+	}
+
+	// Get the short name of the FnReturn.
+	const string &getShortName() const
+	{
+		return fret_->getName();
 	}
 
 	// Get the full name of the imported facet.
@@ -153,13 +177,17 @@ public:
 		return name_;
 	}
 
-	// Building of the full name from components.
-	static string buildFullName(const string &tname, const string &nxname)
+	// Get the map of defined individual row types.
+	const RowTypeMap &rowTypes() const
 	{
-		return tname + "/" + nxname;
+		return rowTypes_;
 	}
 
-	// XXX add all the introspection methods
+	// Get the map of defined individual table types.
+	const TableTypeMap &tableTypes() const
+	{
+		return tableTypes_;
+	}
 
 protected:
 	// For importing of a nexus, create a facet from it.

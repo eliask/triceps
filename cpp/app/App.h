@@ -54,7 +54,7 @@ public:
 	// @param - a map where all the defined Apps will be returned.
 	//     It will be cleared before placing any data into it.
 	typedef map<string, Autoref<App> > Map;
-	static void getList(Map &ret);
+	static void listApps(Map &ret);
 
 	// Dereference the app from the list. The object will
 	// still exist until all the links to it are gone.

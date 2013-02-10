@@ -61,12 +61,12 @@ Onceref<Facet> TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
 {
 	const string &name = facet->getFnReturn()->getName();
 	if (facet->isImported())
-		throw Exception::fTrace("Can not re-export the imported facet '%s' in app '%s' thread '%s'.",
-			facet->getFullName().c_str(), app_->getName().c_str(), get()->getName().c_str());
+		throw Exception::fTrace("In app '%s' thread '%s' can not re-export the imported facet '%s'.",
+			app_->getName().c_str(), get()->getName().c_str(), facet->getFullName().c_str());
 	Erref err = facet->getErrors();
 	if (err->hasError()) {
-		throw Exception::fTrace(err, "Can not export a facet '%s' with an error in app '%s' thread '%s':",
-			name.c_str(), app_->getName().c_str(), get()->getName().c_str());
+		throw Exception::fTrace(err, "In app '%s' thread '%s' can not export the facet '%s' with an error:",
+			app_->getName().c_str(), get()->getName().c_str(), name.c_str());
 	}
 	Autoref<Nexus> nexus = new Nexus(get()->getName(), facet);
 	triead_->exportNexus(app_->getName(), nexus); // adds to the map or throws if duplicate

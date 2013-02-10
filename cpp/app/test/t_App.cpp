@@ -8,107 +8,7 @@
 
 #include <assert.h>
 #include <utest/Utest.h>
-#include <app/App.h>
-#include <app/TrieadOwner.h>
-#include <app/BasicPthread.h>
-
-// Access to the protected internals of App.
-class AppGuts : public App
-{
-public:
-	static bool gutsIsReady(App *a)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		return ag->isReady();
-	}
-	static void gutsWaitReady(App *a)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		ag->waitReady();
-	}
-	// Busy-wait until the number of sleepers waiting for a
-	// thread reaches the count.
-	// @param tname - thread name for sleepers
-	// @param n - the expected count of sleepers
-	static void gutsWaitTrieadSleepers(App *a, const string &tname, int n)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		int nsl;
-		do {
-			sched_yield();
-			pw::lockmutex lm(ag->mutex_);
-			TrieadUpdMap::iterator it = ag->threads_.find(tname);
-			assert(it != ag->threads_.end());
-			nsl = it->second->_countSleepersL();
-		} while(nsl != n);
-	}
-	// Busy-wait until the thread is marked as dead.
-	// @param tname - thread name
-	static void gutsWaitTrieadDead(App *a, const string &tname)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		while (true) {
-			sched_yield();
-			pw::lockmutex lm(ag->mutex_);
-			TrieadUpdMap::iterator it = ag->threads_.find(tname);
-			assert(it != ag->threads_.end());
-			if (it->second->t_->isDead())
-				return;
-		}
-	}
-	// Busy-wait until the thread is marked as ready.
-	// @param tname - thread name
-	static void gutsWaitTrieadReady(App *a, const string &tname)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		while (true) {
-			sched_yield();
-			pw::lockmutex lm(ag->mutex_);
-			TrieadUpdMap::iterator it = ag->threads_.find(tname);
-			assert(it != ag->threads_.end());
-			if (it->second->t_->isReady())
-				return;
-		}
-	}
-	// Busy-wait until the thread is marked as constructed.
-	// @param tname - thread name
-	static void gutsWaitTrieadConstructed(App *a, const string &tname)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		while (true) {
-			sched_yield();
-			pw::lockmutex lm(ag->mutex_);
-			TrieadUpdMap::iterator it = ag->threads_.find(tname);
-			assert(it != ag->threads_.end());
-			if (it->second->t_->isConstructed())
-				return;
-		}
-	}
-
-	// Get the joiner for a thread.
-	static TrieadJoin *gutsJoin(App *a, const string &tname)
-	{
-		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
-		pw::lockmutex lm(ag->mutex_);
-		TrieadUpdMap::iterator it = ag->threads_.find(tname);
-		assert(it != ag->threads_.end());
-		return it->second->j_;
-	}
-};
-
-// make the exceptions catchable
-void make_catchable()
-{
-	Exception::abort_ = false; // make them catchable
-	Exception::enableBacktrace_ = false; // make the error messages predictable
-}
-
-// restore the exceptions back to the uncatchable state
-void restore_uncatchable()
-{
-	Exception::abort_ = true;
-	Exception::enableBacktrace_ = true;
-}
+#include "AppTest.h"
 
 UTESTCASE statics(Utest *utest)
 {
@@ -127,18 +27,18 @@ UTESTCASE statics(Utest *utest)
 
 	// list
 	App::Map amap;
-	App::getList(amap);
+	App::listApps(amap);
 	UT_IS(amap.size(), 2);
 	UT_IS(amap["a1"], a1);
 	UT_IS(amap["a2"], a2);
 
 	// check that the old map gets cleared on the call
-	App::getList(amap);
+	App::listApps(amap);
 	UT_IS(amap.size(), 2);
 
 	// drop
 	App::drop(a2);
-	App::getList(amap);
+	App::listApps(amap);
 	UT_IS(amap.size(), 1);
 	
 	// unsuccessfull make
@@ -168,10 +68,10 @@ UTESTCASE statics(Utest *utest)
 
 	// drop of an old app with the same name has no effect
 	Autoref<App> aa2 = App::make("a2"); // new one
-	App::getList(amap);
+	App::listApps(amap);
 	UT_IS(amap.size(), 2);
 	App::drop(a2); // drop the old one
-	App::getList(amap);
+	App::listApps(amap);
 	UT_IS(amap.size(), 2);
 	a = App::find("a2");
 	UT_IS(a, aa2);

@@ -71,7 +71,7 @@ Onceref<App> App::find(const string &name)
 	return it->second;
 }
 
-void App::getList(Map &ret)
+void App::listApps(Map &ret)
 {
 	pw::lockmutex lm(apps_mutex_);
 
