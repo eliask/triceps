@@ -161,25 +161,76 @@ public:
 	//        same facet and make it available to the constructing thread.
 	//        If false, the facet will be left un-imported, and can be
 	//        discarded.
-	void exportNexus(Autoref<Facet> facet, bool import = true);
-	// A syntactic sugar.
-	void exportNexusNoImport(Autoref<Facet> facet)
+	// @return - the same facet, for a convenient chaining of the calls, like:
+	//        Autoref<Facet> myfacet = to->exportNexus(
+	//            Facet::makeWriter(FnReturn::make("My")->...)
+	//            ->setReverse()
+	//            ->exportTableType(Table::make(...)->...)
+	//        );
+	Onceref<Facet> exportNexus(Autoref<Facet> facet, bool import = true);
+	// A syntactic sugar: export with no automatic re-import.
+	Onceref<Facet> exportNexusNoImport(Autoref<Facet> facet)
 	{
-		exportNexus(facet, false);
+		return exportNexus(facet, false);
 	}
 
-	// Find a nexus in a thread by name.
-	// Will wait if the thread has not completed its construction yet.
+	// Import a nexus from a thread by name, producing its local facet.
+	//
+	// The facet will have its FnReturn created in the thread's main unit.
+	//
+	// If this nexus has been already imported, will return the previously
+	// imported copy. The as-name and the direction (read or write) must match
+	// or an Exception will not be throw. You may not import the same nexus
+	// for both reading and writing into the same thread.
+	//
+	// Normally will wait if the thread has not completed its construction yet.
+	// The target thread must be at least declared, or the import will fail right away.
+	//
+	// But if the immediate flag is set, the wait for construction is skipped
+	// and the nexus is looked up in the thread immediately. If the thread or
+	// nexus in it has not been defined yet, the immediate import will fail.
 	// If the thread refers to itself (i.e. the name is of the same thread
-	// owner), returns the nexus even if the thread not fully constructed yet
-	// or fails immediately if the nexus has not been defined yet.
+	// as this thread owner), it always works as immediate.
 	//
 	// Throws an Exception if no such nexus exists within the App timeout.
 	//
 	// @param tname - name of the target thread that owns the nexus
-	// @paran nexname - name of the nexus in it
-	// @return - the nexus reference.
-	Onceref<Nexus> findNexus(const string &tname, const string &nexname);
+	// @param nexname - name of the nexus in it
+	// @param asname - name of the facet to be created from this nexus, very
+	//        much like the SQL "AS clause", which allows to avoid both the
+	//        local duplicates and the long full names. If empty, will
+	//        be set to the same as the nexus name.
+	// @param writer - flag: this thread will be writing into the nexus,
+	//        otherwise reading from it
+	// @param immed - flag: the nexus lookup is immediate, not waiting for its
+	//        thread to be fully constructed
+	// @return - the imported facet reference.
+	Onceref<Facet> importNexus(const string &tname, const string &nexname, const string &asname, 
+		bool writer, bool immed = false);
+	// Syntactic sugar varieties.
+	Onceref<Facet> importNexusImmed(const string &tname, const string &nexname, const string &asname,
+		bool writer)
+	{
+		return importNexus(tname, nexname, asname, writer, true);
+	}
+	Onceref<Facet> importReader(const string &tname, const string &nexname, const string &asname,
+		bool immed=false)
+	{
+		return importNexus(tname, nexname, asname, false, immed);
+	}
+	Onceref<Facet> importWriter(const string &tname, const string &nexname, const string &asname,
+		bool immed=false)
+	{
+		return importNexus(tname, nexname, asname, true, immed);
+	}
+	Onceref<Facet> importReaderImmed(const string &tname, const string &nexname, const string &asname)
+	{
+		return importNexus(tname, nexname, asname, false, true);
+	}
+	Onceref<Facet> importWriterImmed(const string &tname, const string &nexname, const string &asname)
+	{
+		return importNexus(tname, nexname, asname, true, true);
+	}
 
 protected:
 	// Called through App::makeTriead().

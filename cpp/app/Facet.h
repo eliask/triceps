@@ -58,6 +58,12 @@ public:
 		return new Facet(fret, true);
 	}
 
+	// Check whether this is a writer.
+	bool isWriter() const
+	{
+		return writer_;
+	}
+
 	// Export a row type through the nexus. It won't be a part of the
 	// queue, just a row type that can be imported by the other threads.
 	//
@@ -110,6 +116,18 @@ public:
 		return err_;
 	}
 
+	// Check whether the underlying nexus is reverse.
+	bool isReverse() const
+	{
+		return reverse_;
+	}
+
+	// Check whether the underlying nexus is unicast.
+	bool isUnicast() const
+	{
+		return unicast_;
+	}
+
 	// Check whether this facet is imported (and that means, also exported).
 	// As opposed to being in the middle of creation.
 	// An imported facet is final. A non-imported facet can be constructed
@@ -135,10 +153,23 @@ public:
 		return name_;
 	}
 
+	// Building of the full name from components.
+	static string buildFullName(const string &tname, const string &nxname)
+	{
+		return tname + "/" + nxname;
+	}
+
 	// XXX add all the introspection methods
 
 protected:
-	// XXX add a constructor for import from a Nexus
+	// For importing of a nexus, create a facet from it.
+	// @param unit - unit where the FnReturn will be created
+	// @param nx - nexus being imported
+	// @param fullname - the full name of the nexus, including its thread name
+	// @param asname - short local name to use for the FnReturn
+	// @param writer - flag: this facet will be writing into the nexus, 
+	//        otherwise read from it
+	Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string &asname, bool writer);
 
 	// Check that the Facet is not ex/imported, or throw an Exception.
 	void assertNotImported() const;

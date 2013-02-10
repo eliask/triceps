@@ -40,12 +40,14 @@ class Nexus : public Mtarget
 	friend class App;
 	friend class Triead;
 	friend class TrieadOwner;
+	friend class Facet;
 public:
 	typedef map<string, Autoref<RowType> > RowTypeMap;
 	typedef map<string, Autoref<TableType> > TableTypeMap;
 
 	// Create a Nexus from its first Facet.
-	// The types will be deep-copied from the Facet
+	// The types will be deep-copied from the Facet. The Facet must not
+	// contain errors, the callexp rmust check it before.
 	//
 	// @param tname - name of the thread that owns the nexus
 	// @param facet - the first facet; must not contain errors

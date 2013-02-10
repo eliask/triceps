@@ -7,6 +7,7 @@
 // A facet represents a nexus imported into a thread.
 
 #include <app/Facet.h>
+#include <type/HoldRowTypes.h>
 
 namespace TRICEPS_NS {
 
@@ -22,6 +23,32 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	if (err->hasError()) {
 		errefAppend(err_, "Errors in the underlying FnReturn:", err);
 	}
+}
+
+Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string &asname, bool writer):
+	name_(fullname),
+	nexus_(nx),
+	writer_(writer),
+	fret_(new FnReturn(unit, asname)), // will be filled in the body
+	reverse_(nx->isReverse()),
+	unicast_(nx->isUnicast())
+{
+	Autoref<HoldRowTypes> holder = new HoldRowTypes;
+
+	// construct the body of FnReturn
+	RowSetType *rst = nx->type_;
+	const RowSetType::NameVec &rsnames = rst->getRowNames();
+	const RowSetType::RowTypeVec &rstypes = rst->getRowTypes();
+	int rsz = rsnames.size();
+	for (int i = 0; i < rsz; i++)
+		fret_->addLabel(rsnames[i], holder->copy(rstypes[i]));
+	fret_->initialize(); // never fails
+	
+	// this is pretty much a copy of the Nexus constructor logic from Facet
+	for (RowTypeMap::iterator it = nx->rowTypes_.begin(); it != nx->rowTypes_.end(); ++it)
+		rowTypes_[it->first] = holder->copy(it->second);
+	for (TableTypeMap::iterator it = nx->tableTypes_.begin(); it != nx->tableTypes_.end(); ++it)
+		tableTypes_[it->first] = it->second->deepCopy(holder);
 }
 
 Facet *Facet::setReverse(bool on)
@@ -41,12 +68,18 @@ Facet *Facet::setUnicast(bool on)
 Facet *Facet::exportRowType(const string &name, Onceref<RowType> rtype)
 {
 	assertNotImported();
+	if (rtype.isNull()) {
+		errefAppend(err_, "Can not export a NULL row type with name '" + name + "'.", NULL);
+		return this;
+	}
+	Erref err = rtype->getErrors();
+
 	if (name.empty()) {
 		errefAppend(err_, "Can not export a row type with an empty name.", NULL);
 	} else if (rowTypes_.find(name) != rowTypes_.end()) {
 		errefAppend(err_, "Can not export a duplicate row type name '" + name + "'.", NULL);
-	} else if (rtype.isNull()) {
-		errefAppend(err_, "Can not export a NULL row type with name '" + name + "'.", NULL);
+	} else if (err->hasError()) {
+		errefAppend(err_, "Can not export a row type '" + name + "' containing errors:", err);
 	} else {
 		rowTypes_[name] = rtype;
 	}
@@ -85,7 +118,7 @@ void Facet::assertNotImported() const
 void Facet::reimport(Nexus *nexus, const string &tname)
 {
 	nexus_ = nexus;
-	name_ = tname + "/" + fret_->getName();
+	name_ = buildFullName(tname, fret_->getName());
 }
 
 }; // TRICEPS_NS

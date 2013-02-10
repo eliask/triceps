@@ -16,11 +16,9 @@ namespace TRICEPS_NS {
 Nexus::Nexus(const string &tname, Facet *facet):
 	tname_(tname),
 	name_(facet->getFnReturn()->getName()),
-	reverse_(facet->reverse_),
-	unicast_(facet->unicast_)
+	reverse_(facet->isReverse()),
+	unicast_(facet->isUnicast())
 { 
-	// XXX where does it check that the types contain no errors? including RowTypes.
-	
 	// deep-copy the types
 	Autoref<HoldRowTypes> holder = new HoldRowTypes;
 	type_ = facet->getFnReturn()->getType()->deepCopy(holder);

@@ -57,7 +57,7 @@ bool TrieadOwner::forgetUnit(Unit *u)
 	return false;
 }
 
-void TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
+Onceref<Facet> TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
 {
 	const string &name = facet->getFnReturn()->getName();
 	if (facet->isImported())
@@ -77,6 +77,28 @@ void TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
 				app_->getName().c_str(), facet->getFullName().c_str());
 		facets_[facet->getFullName()] = facet;
 	}
+	return facet;
+}
+
+Onceref<Facet> TrieadOwner::importNexus(const string &tname, const string &nexname, const string &asname, 
+	bool writer, bool immed)
+{
+	// first look in the imported list
+	string fullName = Facet::buildFullName(tname, nexname);
+	FacetMap::iterator it = facets_.find(fullName);
+	if (it != facets_.end()) {
+		if (writer != it->second->isWriter()) {
+			throw Exception::fTrace("In app '%s' thread '%s' can not import the nexus '%s' for both reading and writing.",
+				app_->getName().c_str(), get()->getName().c_str(), fullName.c_str());
+		}
+		return it->second;
+	}
+
+	Autoref<Triead> t = findTriead(tname, immed); // may throw
+	Autoref<Nexus> nx = t->findNexus(get()->getName(), app_->getName(), nexname); // may throw
+	Autoref<Facet> facet = new Facet(mainUnit_, nx, fullName, (asname.empty()? nexname: asname), writer);
+	facets_[fullName] = facet;
+	return facet;
 }
 
 }; // TRICEPS_NS
