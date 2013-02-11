@@ -168,5 +168,11 @@ UTESTCASE errefAppend(Utest *utest)
 	UT_ASSERT(e3.isNull());
 	UT_IS(errefAppend(e3, "msg5", NULL), false);
 	UT_ASSERT(e3.isNull());
+
+	Erref e4;
+	UT_ASSERT(e4.isNull());
+	errefF(e4, "msg %d\nline %d", 1, 2);
+	errefF(e4, "msg %d\nline %d", 3, 4);
+	UT_IS(e4->print(), "msg 1\nline 2\nmsg 3\nline 4\n");
 }
 

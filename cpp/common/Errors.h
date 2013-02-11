@@ -157,7 +157,7 @@ public:
 // the typical error indication returned by the parsing functions
 typedef Autoref<Errors> Erref;
 
-// Add information about a child's errors, ellocating an Error
+// Add information about a child's errors, allocating an Error
 // object if needed. The Erref may initially contain a NULL,
 // and will have a new Errors added to it before any error
 // gets added to it. Or if no errors are added, Erref is left unchanged.
@@ -173,6 +173,17 @@ typedef Autoref<Errors> Erref;
 // @return - true if the child's errors were added
 //       (if clde had the error indication flag set)
 bool errefAppend(Erref &ref, const string &msg, Autoref<Errors> clde);
+
+// Add a message to the errors, allocating an Error object if needed.
+// The Erref may initially contain a NULL, and will have a new Errors 
+// created in it before addin an error. Always sets the error flag.
+//
+// @param ref - reference that collects the errors, and that might
+//        get a new Errors object placed into it before adding any errors.
+// @param fmt - the printf format string, followed by arguments. The 
+//        produced message may be multi-line.
+void errefF(Erref &ref, const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)));
 
 }; // TRICEPS_NS
 
