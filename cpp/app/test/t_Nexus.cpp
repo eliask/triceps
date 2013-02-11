@@ -202,6 +202,44 @@ UTESTCASE make_facet(Utest *utest)
 			"    duplicate field name 'a' for fields 2 and 1\n");
 	}
 
+	// can not modify an imported Facet
+	{
+		string msg;
+		try {
+			fa1->setReverse();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+	}
+	{
+		string msg;
+		try {
+			fa1->setUnicast();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+	}
+	{
+		string msg;
+		try {
+			fa1->exportRowType("rtx", rt1);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+	}
+	{
+		string msg;
+		try {
+			fa1->exportTableType("ttx", tt1);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+	}
+
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
 	a1->harvester();
