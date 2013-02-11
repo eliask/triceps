@@ -213,21 +213,21 @@ public:
 	{
 		return importNexus(tname, nexname, asname, writer, true);
 	}
-	Onceref<Facet> importReader(const string &tname, const string &nexname, const string &asname,
+	Onceref<Facet> importReader(const string &tname, const string &nexname, const string &asname = "",
 		bool immed=false)
 	{
 		return importNexus(tname, nexname, asname, false, immed);
 	}
-	Onceref<Facet> importWriter(const string &tname, const string &nexname, const string &asname,
+	Onceref<Facet> importWriter(const string &tname, const string &nexname, const string &asname = "",
 		bool immed=false)
 	{
 		return importNexus(tname, nexname, asname, true, immed);
 	}
-	Onceref<Facet> importReaderImmed(const string &tname, const string &nexname, const string &asname)
+	Onceref<Facet> importReaderImmed(const string &tname, const string &nexname, const string &asname = "")
 	{
 		return importNexus(tname, nexname, asname, false, true);
 	}
-	Onceref<Facet> importWriterImmed(const string &tname, const string &nexname, const string &asname)
+	Onceref<Facet> importWriterImmed(const string &tname, const string &nexname, const string &asname = "")
 	{
 		return importNexus(tname, nexname, asname, true, true);
 	}

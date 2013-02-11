@@ -255,6 +255,8 @@ UTESTCASE export_import(Utest *utest)
 	a1->setTimeout(0); // will replace all waits with an Exception
 	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
 	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
 
 	Triead::NexusMap exp;
 
@@ -310,15 +312,111 @@ UTESTCASE export_import(Utest *utest)
 	// import into the same thread, works immediately
 	Autoref<Facet> fa3 = ow1->importNexus("t1", "fret2", "fret3", true);
 	UT_ASSERT(fa3->getFnReturn()->equals(fa2->getFnReturn()));
+	UT_IS(fa3->getFnReturn()->getUnitPtr(), ow1->unit());
 	
 	UT_IS(ow1->imports().size(), 2);
 	UT_IS(ow1->imports().at("t1/fret2"), fa3);
 
-	// XXX more
+	// an import into another thread would wait for thread to be fully constructed
+	// (and in this case fail on timeout)
+	{
+		string msg;
+		try {
+			ow2->importReader("t1", "fret2");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Thread 't1' in application 'a1' did not initialize within the deadline.\n");
+	}
+
+	// an immediate import into another thread would succeed
+	Autoref<Facet> fa4 = ow2->importReaderImmed("t1", "fret2");
+	UT_ASSERT(fa4->getFnReturn()->equals(fa2->getFnReturn()));
+	UT_IS(fa4->nexus(), fa3->nexus());
+	UT_IS(fa4->getShortName(), "fret2");
+	UT_IS(fa4->getFnReturn()->getUnitPtr(), ow2->unit());
+	
+	UT_IS(ow2->imports().size(), 1);
+	UT_IS(ow2->imports().at("t1/fret2"), fa4);
+
+	// test importWriterImmed success
+	Autoref<Facet> fa5 = ow3->importWriterImmed("t1", "fret2", "fff");
+	UT_ASSERT(fa5->getFnReturn()->equals(fa2->getFnReturn()));
+	UT_IS(fa5->nexus(), fa3->nexus());
+	UT_IS(fa5->getShortName(), "fff");
+	
+	UT_IS(ow3->imports().size(), 1);
+	UT_IS(ow3->imports().at("t1/fret2"), fa5);
+
+	// a repeated import succeeds immediately even if it's not marked as such
+	Autoref<Facet> fa6 = ow3->importWriter("t1", "fret2", "xxx");
+	UT_IS(fa6, fa5); // same, ignoring the asname!
+	UT_IS(ow3->imports().size(), 1);
+
+	// errors
+	// exporting a facet with an error already tested in make_facet()
+	{
+		string msg;
+		try {
+			ow2->exportNexus(fa4);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In app 'a1' thread 't2' can not re-export the imported facet 't1/fret2'.\n");
+	}
+	{
+		string msg;
+		try {
+			ow3->importReader("t1", "fret2", "xxx");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In app 'a1' thread 't3' can not import the nexus 't1/fret2' for both reading and writing.\n");
+	}
+	{
+		string msg;
+		try {
+			ow3->importReaderImmed("t1", "fret99", "xxx");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "For thread 't3', the nexus 'fret99' is not found in application 'a1' thread 't1'.\n");
+	}
+	{
+		string msg;
+		try {
+			ow1->exportNexusNoImport(fa2);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Can not export the nexus with duplicate name 'fret2' in app 'a1' thread 't1'.\n");
+	}
+	{
+		string msg;
+
+		Autoref<FnReturn> fretm1 = FnReturn::make(ow3->unit(), "a/nex") // a acrewy name
+			->addLabel("one", rt1)
+		;
+		ow3->exportNexus(Facet::makeReader(fretm1)); // also tests the reference passing as the argument
+		ow4->importReaderImmed("t3", "a/nex"); // has full name "t3/a/nex"
+		
+		Autoref<FnReturn> fretm2 = FnReturn::make(ow4->unit(), "nex")
+			->addLabel("one", rt1)
+		;
+
+		try {
+			ow4->exportNexus(Facet::makeReader(fretm2));
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "On exporting a facet in app 'a1' found a same-named facet 't3/a/nex' already imported, did you mess with the funny names?\n");
+	}
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
 	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
 	a1->harvester();
 
 	restore_uncatchable();
