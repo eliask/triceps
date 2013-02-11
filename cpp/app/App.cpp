@@ -441,14 +441,23 @@ void App::waitNeedHarvest()
 	needHarvest_.wait();
 }
 
-void App::harvester()
+void App::harvester(bool throwAbort)
 {
+	string appName, abThread, abMsg;
+
 	bool dead = false;
 	while (!dead) {
 		waitNeedHarvest();
 		dead = harvestOnce();
 	}
+	appName = name_;
+	abThread = abortedBy_;
+	abMsg = abortedMsg_;
 	drop(this);
+
+	if (throwAbort && !abThread.empty())
+		throw Exception::fTrace("App '%s' has been aborted by thread '%s': %s",
+			appName.c_str(), abThread.c_str(), abMsg.c_str());
 }
 
 bool App::isReady()

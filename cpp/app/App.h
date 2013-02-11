@@ -209,9 +209,12 @@ public:
 	// Run the harvester thread logic, harvesting the threads
 	// as they die, and after the whole App is dead, drop it.
 	// Note that the caller is expected to keep a reference to the App,
-	// so teh dead App won't be actually destroyed until that reference
+	// so the dead App won't be actually destroyed until that reference
 	// is destroyed.
-	void harvester();
+	//
+	// @param throwAbort - flag: if an app abort is detected, propagate it by throwing
+	//         an exception after disposing of the App
+	void harvester(bool throwAbort = true);
 
 	// }
 

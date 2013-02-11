@@ -97,7 +97,7 @@ UTESTCASE empty_is_ready(Utest *utest)
 	UT_ASSERT(a1->harvestOnce());
 
 	// clean-up, since the apps catalog is global
-	a1->harvester();
+	a1->harvester(false);
 }
 
 // Basic Triead creation, no actual OS-level threads yet.
@@ -238,7 +238,7 @@ UTESTCASE basic_trieads(Utest *utest)
 	UT_ASSERT(a1->isDead()); // all threads are dead now
 
 	// clean-up, since the apps catalog is global
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
@@ -276,7 +276,7 @@ UTESTCASE basic_pthread_join(Utest *utest)
 	pt1->start(a1);
 	
 	// clean-up, since the apps catalog is global
-	a1->harvester();
+	a1->harvester(false);
 
 	UT_ASSERT(pt1->joined_);
 
@@ -362,7 +362,7 @@ UTESTCASE find_triead_success(Utest *utest)
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
 	ow4->markDead();
-	a1->harvester();
+	a1->harvester(false);
 
 	UT_IS(pt2->result_, ow1->get());
 	UT_IS(pt3->result_, ow1->get());
@@ -395,7 +395,7 @@ UTESTCASE find_triead_immed_fail(Utest *utest)
 	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 	ow1->markDead();
 	ow2->markDead();
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
@@ -468,7 +468,16 @@ UTESTCASE basic_abort(Utest *utest)
 
 	// clean-up, since the apps catalog is global
 	ow4->markDead();
-	a1->harvester();
+	// the error propagates through the harvester
+	{
+		string msg;
+		try {
+			a1->harvester();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "App 'a1' has been aborted by thread 't1': test error\n");
+	}
 
 	restore_uncatchable();
 }
@@ -518,7 +527,7 @@ UTESTCASE timeout_find(Utest *utest)
 		ow1->markDead();
 		ow2->markDead();
 		ow3->markDead();
-		a1->harvester();
+		a1->harvester(false);
 	}
 
 	// successfully change the time as absolute point
@@ -549,7 +558,7 @@ UTESTCASE timeout_find(Utest *utest)
 		ow1->markDead();
 		ow2->markDead();
 		ow3->markDead();
-		a1->harvester();
+		a1->harvester(false);
 	}
 
 	// can't change after the first thread was created
@@ -579,7 +588,7 @@ UTESTCASE timeout_find(Utest *utest)
 		}
 
 		ow1->markDead();
-		a1->harvester();
+		a1->harvester(false);
 	}
 
 	restore_uncatchable();
@@ -622,7 +631,7 @@ UTESTCASE find_deadlock_catch_pthread(Utest *utest)
 	);
 
 	// clean-up, since the apps catalog is global
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
@@ -663,7 +672,7 @@ UTESTCASE basic_pthread_assert(Utest *utest)
 	UT_IS(a1->getAbortedMsg(), "thread execution completed without marking it as ready");
 
 	// clean-up, since the apps catalog is global
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
@@ -683,7 +692,7 @@ UTESTCASE any_abort(Utest *utest)
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
@@ -732,7 +741,7 @@ UTESTCASE define_join(Utest *utest)
 	UT_IS(AppGuts::gutsJoin(a1, "t1"), NULL);
 
 	// clean-up, since the apps catalog is global
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
@@ -774,7 +783,7 @@ UTESTCASE find_errors(Utest *utest)
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
-	a1->harvester();
+	a1->harvester(false);
 
 	restore_uncatchable();
 }
