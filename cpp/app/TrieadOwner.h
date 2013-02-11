@@ -232,6 +232,12 @@ public:
 		return importNexus(tname, nexname, asname, true, true);
 	}
 
+	// Get all ite imported facets, for introspection.
+	const FacetMap &imports() const
+	{
+		return facets_;
+	}
+
 protected:
 	// Called through App::makeTriead().
 	// Creates the thread's "main" same-named unit.

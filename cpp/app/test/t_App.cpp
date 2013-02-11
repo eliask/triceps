@@ -278,7 +278,7 @@ UTESTCASE basic_pthread_join(Utest *utest)
 	// clean-up, since the apps catalog is global
 	a1->harvester();
 
-	UT_ASSERT(pt1->joined_);
+	UT_ASSERT(pt1->joined_); // XXX why does it fail sometimes? harvested must join it
 
 	restore_uncatchable();
 }

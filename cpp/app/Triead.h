@@ -68,7 +68,7 @@ public:
 	// List all the defined Nexuses, for introspection.
 	// @param - a map where all the defined Nexuses will be returned.
 	//     It will be cleared before placing any data into it.
-	void listExports(NexusMap &ret) const;
+	void exports(NexusMap &ret) const;
 
 	// Find a nexus with the given name.
 	// Throws an Error if not found.

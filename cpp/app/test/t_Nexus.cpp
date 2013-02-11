@@ -252,11 +252,69 @@ UTESTCASE export_import(Utest *utest)
 	make_catchable();
 
 	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
 	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
 	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 
-	// export
-	// XXX
+	Triead::NexusMap exp;
+
+	// initially no imports, no exports
+	UT_ASSERT(ow1->imports().empty());
+	ow1->get()->exports(exp);
+	UT_ASSERT(exp.empty());
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	Autoref<Unit> unit1 = ow1->unit();
+
+	// With an uninitialized FnReturn
+	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+		->addLabel("one", rt1)
+		->addLabel("two", rt1)
+		->addLabel("three", rt1)
+	;
+	Autoref<Facet> fa1 = Facet::makeReader(fret1);
+
+	// basic export with reimport
+	Autoref<Facet> fa1im = ow1->exportNexus(fa1);
+	UT_IS(fa1im, fa1);
+	UT_ASSERT(fa1->isImported());
+
+	UT_IS(ow1->imports().size(), 1);
+	UT_IS(ow1->imports().at("t1/fret1"), fa1);
+
+	ow1->get()->exports(exp);
+	UT_IS(exp.size(), 1);
+	UT_IS(exp["fret1"].get(), fa1->nexus());
+
+	// basic export with no reimport
+	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
+		->addLabel("one", rt1)
+	;
+	Autoref<Facet> fa2 = Facet::makeReader(fret2);
+	Autoref<Facet> fa2im = ow1->exportNexusNoImport(fa2);
+	UT_IS(fa2im, fa2);
+	UT_ASSERT(!fa2->isImported());
+	UT_ASSERT(fa2->nexus() == NULL);
+	UT_ASSERT(fa2->getFullName().empty());
+
+	UT_IS(ow1->imports().size(), 1);
+
+	ow1->get()->exports(exp);
+	UT_IS(exp.size(), 2);
+	UT_IS(exp["fret2"].get()->getName(), "fret2");
+
+	// import into the same thread, works immediately
+	Autoref<Facet> fa3 = ow1->importNexus("t1", "fret2", "fret3", true);
+	UT_ASSERT(fa3->getFnReturn()->equals(fa2->getFnReturn()));
+	
+	UT_IS(ow1->imports().size(), 2);
+	UT_IS(ow1->imports().at("t1/fret2"), fa3);
+
+	// XXX more
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();

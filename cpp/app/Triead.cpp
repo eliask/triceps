@@ -40,7 +40,7 @@ void Triead::exportNexus(const string &appName, Nexus *nexus)
 	exports_[nexus->getName()] = nexus;
 }
 
-void Triead::listExports(NexusMap &ret) const
+void Triead::exports(NexusMap &ret) const
 {
 	pw::lockmutex lm(mutex_);
 

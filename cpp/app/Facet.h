@@ -189,6 +189,12 @@ public:
 		return tableTypes_;
 	}
 
+	// Get back the nexus.
+	Nexus *nexus() const
+	{
+		return nexus_;
+	}
+
 protected:
 	// For importing of a nexus, create a facet from it.
 	// @param unit - unit where the FnReturn will be created
