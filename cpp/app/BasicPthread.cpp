@@ -18,6 +18,7 @@ BasicPthread::BasicPthread(const string &name):
 
 void BasicPthread::start(Autoref<App> app)
 {
+	pw::lockmutex lm(startMutex_);
 	to_ = app->makeTriead(name_); // might throw
 	selfref_ = this; // will be reset to NULL in run_it
 	int err = pthread_create(&id_, NULL, run_it, (void *)this); // sets id_
@@ -48,6 +49,9 @@ void *BasicPthread::run_it(void *arg)
 	self->selfref_ = NULL;
 	Autoref<TrieadOwner> to = self->to_;
 	self->to_ = NULL;
+
+	self->startMutex_.lock(); // makes sure that defineJoin() is completed
+	self->startMutex_.unlock();
 
 	try {
 		self->execute(to);

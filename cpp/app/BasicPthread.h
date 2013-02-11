@@ -70,6 +70,8 @@ protected:
 	// subclass as needed.
 	string name_; // name of the app
 
+	// Mutex used to synchronize the start of the thread.
+	pw::pmutex startMutex_;
 	// The temporary self-reference used to pass this object to the thread.
 	// Will be reset once the thread starts and creates its stack-based
 	// reference. This makes sure that this object won't get destroyed
