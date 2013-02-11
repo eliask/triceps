@@ -320,6 +320,12 @@ protected:
 	// @param sec - timeout in seconds from now
 	void computeDeadline(int sec);
 
+	// Check the inter-thread connectivity for loops.
+	// The loops containing both the direct and reverse nexuses are OK,
+	// only the loops of the nexuses of the same kind are an issue.
+	// Throws an Exception if it finds any loops.
+	void checkLoopsL() const;
+
 protected:
 	// Since there might be a need to wait for the initialization of
 	// even the declared and not yet defined threads, the wait structures

@@ -411,6 +411,21 @@ UTESTCASE export_import(Utest *utest)
 		}
 		UT_IS(msg, "On exporting a facet in app 'a1' found a same-named facet 't3/a/nex' already imported, did you mess with the funny names?\n");
 	}
+	{
+		string msg;
+
+		ow1->markConstructed();
+		Autoref<FnReturn> fretm1 = FnReturn::make(ow1->unit(), "more")
+			->addLabel("one", rt1)
+		;
+
+		try {
+			ow1->exportNexus(Facet::makeReader(fretm1));
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Can not export the nexus 'more' in app 'a1' thread 't1' that is already marked as constructed.\n");
+	}
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();

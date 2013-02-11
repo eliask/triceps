@@ -137,7 +137,8 @@ protected:
 	
 	// Export a nexus. Called from TrieadOwner. The nexus must be already
 	// marked as exported.
-	// Throws an Exception if the name is duplicate.
+	// Throws an Exception if the name is duplicate or if the thread is already
+	// marked as constructed.
 	// @param appName - App name, for error messages
 	// @param nexus - the nexus to export (TriedOwner keeps a reference to it
 	//        during the call)

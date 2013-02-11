@@ -505,5 +505,41 @@ void App::waitReady()
 	}
 }
 
+// a dynamically-allocated 2-d array of booleans
+class BoolMatrix
+{
+public:
+	BoolMatrix(int y, int x):
+		v_(y*x),
+		lsz_(x)
+	{ }
+	
+	bool get(int y, int x)
+	{
+		return v_[y*lsz_ + x];
+	}
+
+	void set(int y, int x, bool val)
+	{
+		v_[y*lsz_ + x] = val;
+	}
+
+protected:
+	vector<bool> v_;
+	int lsz_; // line size
+
+private:
+	BoolMatrix();
+};
+
+void App::checkLoopsL() const
+{
+	// first find all nexuses
+	vector<Nexus *> nx_;
+
+	for (TrieadUpdMap::const_iterator it = threads_.begin(); it != threads_.end(); ++it) {
+	}
+}
+
 }; // TRICEPS_NS
 

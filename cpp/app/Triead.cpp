@@ -33,6 +33,10 @@ void Triead::exportNexus(const string &appName, Nexus *nexus)
 {
 	pw::lockmutex lm(mutex_);
 
+	if (constructed_)
+		throw Exception::fTrace("Can not export the nexus '%s' in app '%s' thread '%s' that is already marked as constructed.",
+			nexus->getName().c_str(), appName.c_str(), name_.c_str());
+
 	if (exports_.find(nexus->getName()) != exports_.end())
 		// the message is intentionally different than in TrieadOwner::exportNexus
 		throw Exception::fTrace("Can not export the nexus with duplicate name '%s' in app '%s' thread '%s'.",
