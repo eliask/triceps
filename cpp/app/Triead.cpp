@@ -56,6 +56,18 @@ void Triead::exports(NexusMap &ret) const
 		ret.insert(*it);
 }
 
+void Triead::imports(FacetMap &ret) const
+{
+	pw::lockmutex lm(mutex_);
+
+	if (!ret.empty())
+		ret.clear();
+
+	// copy a snapshot of the exports map to the return value
+	for (FacetMap::const_iterator it = imports_.begin(); it != imports_.end(); ++it)
+		ret.insert(*it);
+}
+
 Onceref<Nexus> Triead::findNexus(const string &srcName, const string &appName, const string &name) const
 {
 	pw::lockmutex lm(mutex_);
@@ -67,5 +79,20 @@ Onceref<Nexus> Triead::findNexus(const string &srcName, const string &appName, c
 
 	return it->second;
 }
+
+void Triead::importFacet(Onceref<Facet> facet)
+{
+	pw::lockmutex lm(mutex_);
+
+	imports_[facet->getFullName()] = facet;
+}
+
+#if 0 // {
+int Triead::exportsCount() const
+{
+	pw::lockmutex lm(mutex_);
+	return (int)exports_.size();
+}
+#endif // }
 
 }; // TRICEPS_NS

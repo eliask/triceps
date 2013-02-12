@@ -259,9 +259,11 @@ UTESTCASE export_import(Utest *utest)
 	Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
 
 	Triead::NexusMap exp;
+	Triead::FacetMap imp;
 
 	// initially no imports, no exports
-	UT_ASSERT(ow1->imports().empty());
+	ow1->get()->imports(imp);
+	UT_ASSERT(imp.empty());
 	ow1->get()->exports(exp);
 	UT_ASSERT(exp.empty());
 
@@ -285,10 +287,11 @@ UTESTCASE export_import(Utest *utest)
 	UT_IS(fa1im, fa1);
 	UT_ASSERT(fa1->isImported());
 
-	UT_IS(ow1->imports().size(), 1);
-	UT_IS(ow1->imports().at("t1/fret1"), fa1);
+	ow1->imports(imp);
+	UT_IS(imp.size(), 1);
+	UT_IS(imp["t1/fret1"], fa1);
 
-	ow1->get()->exports(exp);
+	ow1->exports(exp);
 	UT_IS(exp.size(), 1);
 	UT_IS(exp["fret1"].get(), fa1->nexus());
 
@@ -303,9 +306,10 @@ UTESTCASE export_import(Utest *utest)
 	UT_ASSERT(fa2->nexus() == NULL);
 	UT_ASSERT(fa2->getFullName().empty());
 
-	UT_IS(ow1->imports().size(), 1);
+	ow1->imports(imp);
+	UT_IS(imp.size(), 1);
 
-	ow1->get()->exports(exp);
+	ow1->exports(exp);
 	UT_IS(exp.size(), 2);
 	UT_IS(exp["fret2"].get()->getName(), "fret2");
 
@@ -314,8 +318,9 @@ UTESTCASE export_import(Utest *utest)
 	UT_ASSERT(fa3->getFnReturn()->equals(fa2->getFnReturn()));
 	UT_IS(fa3->getFnReturn()->getUnitPtr(), ow1->unit());
 	
-	UT_IS(ow1->imports().size(), 2);
-	UT_IS(ow1->imports().at("t1/fret2"), fa3);
+	ow1->imports(imp);
+	UT_IS(imp.size(), 2);
+	UT_IS(imp["t1/fret2"], fa3);
 
 	// an import into another thread would wait for thread to be fully constructed
 	// (and in this case fail on timeout)
@@ -336,8 +341,9 @@ UTESTCASE export_import(Utest *utest)
 	UT_IS(fa4->getShortName(), "fret2");
 	UT_IS(fa4->getFnReturn()->getUnitPtr(), ow2->unit());
 	
-	UT_IS(ow2->imports().size(), 1);
-	UT_IS(ow2->imports().at("t1/fret2"), fa4);
+	ow2->imports(imp);
+	UT_IS(imp.size(), 1);
+	UT_IS(imp["t1/fret2"], fa4);
 
 	// test importWriterImmed success
 	Autoref<Facet> fa5 = ow3->importWriterImmed("t1", "fret2", "fff");
@@ -345,13 +351,15 @@ UTESTCASE export_import(Utest *utest)
 	UT_IS(fa5->nexus(), fa3->nexus());
 	UT_IS(fa5->getShortName(), "fff");
 	
-	UT_IS(ow3->imports().size(), 1);
-	UT_IS(ow3->imports().at("t1/fret2"), fa5);
+	ow3->imports(imp);
+	UT_IS(imp.size(), 1);
+	UT_IS(imp["t1/fret2"], fa5);
 
 	// a repeated import succeeds immediately even if it's not marked as such
 	Autoref<Facet> fa6 = ow3->importWriter("t1", "fret2", "xxx");
 	UT_IS(fa6, fa5); // same, ignoring the asname!
-	UT_IS(ow3->imports().size(), 1);
+	ow3->imports(imp);
+	UT_IS(imp.size(), 1);
 
 	// errors
 	// exporting a facet with an error already tested in make_facet()

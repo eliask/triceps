@@ -15,6 +15,7 @@
 #include <common/Common.h>
 #include <sched/Unit.h>
 #include <app/Nexus.h>
+#include <app/Facet.h>
 
 namespace TRICEPS_NS {
 
@@ -27,6 +28,7 @@ class Triead : public Mtarget
 	friend class App;
 public:
 	typedef map<string, Autoref<Nexus> > NexusMap;
+	typedef map<string, Autoref<Facet> > FacetMap;
 
 	// No public constructor! Use App!
 
@@ -69,6 +71,16 @@ public:
 	// @param - a map where all the defined Nexuses will be returned.
 	//     It will be cleared before placing any data into it.
 	void exports(NexusMap &ret) const;
+
+	// List all the imported Facets, for introspection.
+	// @param - a map where all the imported Facets will be returned.
+	//     It will be cleared before placing any data into it.
+	void imports(FacetMap &ret) const;
+
+#if 0 // {
+	// Get the count of exports.
+	int exportsCount() const;
+#endif // }
 
 	// Find a nexus with the given name.
 	// Throws an Error if not found.
@@ -143,10 +155,32 @@ protected:
 	// @param nexus - the nexus to export (TriedOwner keeps a reference to it
 	//        during the call)
 	void exportNexus(const string &appName, Nexus *nexus);
+
+	// Add the facet to the list of imports.
+	// @param facet - facet to import
+	void importFacet(Onceref<Facet> facet);
+
+	// Access from TrieadOwner. 
+	// The "L" means in this case that the owner thread doesn't even
+	// need to lock th emutex.
+	FacetMap::const_iterator importsFindL(const string &name) const
+	{
+		return imports_.find(name);
+	}
+	FacetMap::const_iterator importsEndL() const
+	{
+		return imports_.end();
+	}
 	
 	string name_; // name of the thread, read-only
 	mutable pw::pmutex mutex_; // mutex synchronizing this Triead
 	NexusMap exports_; // the nexuses exported from this thread
+
+	// The imports are modified only by the TrieadOwner, so the
+	// owner thread may read it without locking. However any
+	// modifications and reading by anyone else have to be
+	// synchronized by the mutex.
+	FacetMap imports_; // the imported facets
 
 	// The flags are interacting with the App's state and
 	// are synchronized by the App's mutex.

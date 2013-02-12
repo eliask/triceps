@@ -72,10 +72,10 @@ Onceref<Facet> TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
 	triead_->exportNexus(app_->getName(), nexus); // adds to the map or throws if duplicate
 	if (import) {
 		facet->reimport(nexus, get()->getName());
-		if (facets_.find(facet->getFullName()) != facets_.end())
+		if (triead_->importsFindL(facet->getFullName()) != triead_->importsEndL())
 			throw Exception::fTrace("On exporting a facet in app '%s' found a same-named facet '%s' already imported, did you mess with the funny names?",
 				app_->getName().c_str(), facet->getFullName().c_str());
-		facets_[facet->getFullName()] = facet;
+		triead_->importFacet(facet);
 	}
 	return facet;
 }
@@ -85,8 +85,8 @@ Onceref<Facet> TrieadOwner::importNexus(const string &tname, const string &nexna
 {
 	// first look in the imported list
 	string fullName = Facet::buildFullName(tname, nexname);
-	FacetMap::iterator it = facets_.find(fullName);
-	if (it != facets_.end()) {
+	FacetMap::const_iterator it = triead_->importsFindL(fullName);
+	if (it != triead_->importsEndL()) {
 		if (writer != it->second->isWriter()) {
 			throw Exception::fTrace("In app '%s' thread '%s' can not import the nexus '%s' for both reading and writing.",
 				app_->getName().c_str(), get()->getName().c_str(), fullName.c_str());
@@ -97,7 +97,7 @@ Onceref<Facet> TrieadOwner::importNexus(const string &tname, const string &nexna
 	Autoref<Triead> t = findTriead(tname, immed); // may throw
 	Autoref<Nexus> nx = t->findNexus(get()->getName(), app_->getName(), nexname); // may throw
 	Autoref<Facet> facet = new Facet(mainUnit_, nx, fullName, (asname.empty()? nexname: asname), writer);
-	facets_[fullName] = facet;
+	triead_->importFacet(facet);
 	return facet;
 }
 

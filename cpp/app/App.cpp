@@ -505,6 +505,7 @@ void App::waitReady()
 	}
 }
 
+#if 0 // {
 // a dynamically-allocated 2-d array of booleans
 class BoolMatrix
 {
@@ -534,12 +535,14 @@ private:
 
 void App::checkLoopsL() const
 {
-	// first find all nexuses
-	vector<Nexus *> nx_;
+	// first count all nexuses
+	int nexcnt = 0;
 
 	for (TrieadUpdMap::const_iterator it = threads_.begin(); it != threads_.end(); ++it) {
+		nexcnt += it->second->t_->exportsCount();
 	}
 }
+#endif // }
 
 }; // TRICEPS_NS
 

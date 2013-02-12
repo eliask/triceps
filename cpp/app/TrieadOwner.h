@@ -33,7 +33,8 @@ class TrieadOwner : public Starget
 {
 	friend class App;
 public:
-	typedef map<string, Autoref<Facet> > FacetMap;
+	typedef Triead::NexusMap NexusMap;
+	typedef Triead::FacetMap FacetMap;
 
 	// The list of units in this thread, also determines their predictable
 	// scheduling order.
@@ -232,10 +233,14 @@ public:
 		return importNexus(tname, nexname, asname, true, true);
 	}
 
-	// Get all ite imported facets, for introspection.
-	const FacetMap &imports() const
+	// Convenience wrappers that forward to the Triead.
+	void exports(NexusMap &ret) const
 	{
-		return facets_;
+		return triead_->exports(ret);
+	}
+	void imports(FacetMap &ret) const
+	{
+		return triead_->imports(ret);
 	}
 
 protected:
@@ -250,7 +255,6 @@ protected:
 	Autoref<Triead> triead_; // the thread owned here
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
 	UnitList units_; // units of this thread, including the main one
-	FacetMap facets_; // the imported facets
 
 private:
 	TrieadOwner();
