@@ -533,6 +533,8 @@ private:
 	BoolMatrix();
 };
 
+// The way the threads and nexuses are interconnected
+
 void App::checkLoopsL() const
 {
 	// first count all nexuses

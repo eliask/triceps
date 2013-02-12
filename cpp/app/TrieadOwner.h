@@ -240,7 +240,7 @@ public:
 	}
 	void imports(FacetMap &ret) const
 	{
-		return triead_->imports(ret);
+		return triead_->facets(ret);
 	}
 
 protected:

@@ -56,7 +56,19 @@ void Triead::exports(NexusMap &ret) const
 		ret.insert(*it);
 }
 
-void Triead::imports(FacetMap &ret) const
+void Triead::imports(NexusMap &ret) const
+{
+	pw::lockmutex lm(mutex_);
+
+	if (!ret.empty())
+		ret.clear();
+
+	// copy a snapshot of the exports map to the return value
+	for (FacetMap::const_iterator it = imports_.begin(); it != imports_.end(); ++it)
+		ret[it->first] = it->second->nexus();
+}
+
+void Triead::facets(FacetMap &ret) const
 {
 	pw::lockmutex lm(mutex_);
 

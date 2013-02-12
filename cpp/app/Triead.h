@@ -72,10 +72,10 @@ public:
 	//     It will be cleared before placing any data into it.
 	void exports(NexusMap &ret) const;
 
-	// List all the imported Facets, for introspection.
+	// List all the imported Nexuses, for introspection.
 	// @param - a map where all the imported Facets will be returned.
 	//     It will be cleared before placing any data into it.
-	void imports(FacetMap &ret) const;
+	void imports(NexusMap &ret) const;
 
 #if 0 // {
 	// Get the count of exports.
@@ -147,6 +147,11 @@ protected:
 	// allowed in either of the graphs. The cycles get detected and 
 	// mean the application initialization failure.
 	
+	// List all the imported Facets, for introspection.
+	// @param - a map where all the imported Facets will be returned.
+	//     It will be cleared before placing any data into it.
+	void facets(FacetMap &ret) const;
+
 	// Export a nexus. Called from TrieadOwner. The nexus must be already
 	// marked as exported.
 	// Throws an Exception if the name is duplicate or if the thread is already
