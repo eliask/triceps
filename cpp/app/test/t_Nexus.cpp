@@ -446,7 +446,7 @@ UTESTCASE export_import(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "In app 'a1' thread 't4' can not import the nexus 't1/fret2' into a ready thread.\n");
+		UT_IS(msg, "In app 'a1' thread 't3/a' can not import the nexus 't1/fret2' into a ready thread.\n");
 	}
 
 	// clean-up, since the apps catalog is global

@@ -327,6 +327,86 @@ protected:
 	void checkLoopsL() const;
 
 protected:
+	// The internal machinery of the topological loop finding.
+	// {
+
+	// The way the threads and nexuses are interconnected is very inconvenient
+	// for finding the loops, so it's converted to an intermediate representation first.
+
+	// A graph node representing a Nexus or a Triead. For the loop detection
+	// purpose, they are the same, so it's easier to unify them and make
+	// the code easier.
+	struct NxTr: public Starget
+	{
+		// Construct from an original object.
+		NxTr(Triead *tr);
+		NxTr(Nexus *nx);
+
+		// Copy constructor is used to copy the graphs.
+		NxTr(const NxTr &nxtr);
+
+		// Add a link, an edge going from this node to another one.
+		// @param target - the target node
+		void addLink(NxTr *target);
+
+		// Returns the printable description of the underlying object.
+		string print() const;
+
+		Triead *tr_; // if it's a thread
+		Nexus *nx_; // if it's a nexus
+		int ninc_; // number of incoming connections
+		typedef list<NxTr *> List;
+		List links_; // edge links following the model topology
+	};
+
+	// A uni-directional graph of NxTr nodes.
+	// This object serves 2 purposes:
+	// 1. Hold the NxTr objects and eventually dispose of them.
+	// 2. Map from the original Nexuses and Trieads and their NxTr nodes,
+	//    so that each original object gets only one node.
+	//
+	// It's also used to map from one set of NxTr nodes to another set,
+	// thus creating a modified copy of the graph.
+	struct Graph
+	{
+		typedef map<void *, Autoref<NxTr> > Map;
+
+		// Add a node that represents an original object (Nexus, Triead or
+		// an NxTr from another graph). If that original object was not seen yet,
+		// will create and remember a new node. Otherwise will return the
+		// previously created node. The created nodes are held by the
+		// graph, so there is no need to create more references to it.
+		//
+		// @param tr, nx, nxtr - the original object
+		// @return - the matching NxTr node
+		NxTr *addTriead(Triead *tr);
+		NxTr *addNexus(Nexus *nx);
+		// this one is for copying graphs
+		NxTr *addCopy(NxTr *nxtr);
+
+		Map m_;
+	};
+
+	// Half of the logic of checkLoopsL() that handles the loops with
+	// nexuses going in one direction (either direct or reverse).
+	// Throws an Exception if it finds a loop.
+	// @param g - the parsed representation of the App's topology that
+	//        includes only the nexuses of one direction.
+	// @param direction - the human-readable string describing the
+	//        direction of the nexuses for the error message, either
+	//        "direct" or "reverse".
+	void checkGraphL(Graph &g, const char *direction) const;
+
+	// Logic that removes all the links leading from any start nodes
+	// (i.e. nodes that have no incoming connections).
+	// The checkGraphL() works by applying this function, reversing the
+	// resulting graph, then applying this function again. Anything
+	// left is the loops.
+	void reduceGraphL(Graph &g) const;
+
+	// }
+
+protected:
 	// Since there might be a need to wait for the initialization of
 	// even the declared and not yet defined threads, the wait structures
 	// exist separately.

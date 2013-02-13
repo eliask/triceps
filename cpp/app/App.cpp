@@ -505,87 +505,6 @@ void App::waitReady()
 	}
 }
 
-// The way the threads and nexuses are interconnected is very inconvenient
-// for finding the loops, so it's converted to an intermediate representation first.
-
-struct NxTr: public Starget
-{
-	// a graph node representing an edge or a thread
-	NxTr(Triead *tr):
-		tr_(tr),
-		nx_(NULL),
-		ninc_(0),
-		nextlink_(0)
-	{ }
-
-	NxTr(Nexus *nx):
-		tr_(NULL),
-		nx_(nx),
-		ninc_(0),
-		nextlink_(0)
-	{ }
-
-	NxTr(const NxTr &nxtr):
-		tr_(nxtr.tr_),
-		nx_(nxtr.nx_),
-		ninc_(0), // a fresh copied node has no links
-		nextlink_(0)
-	{ }
-
-	void addLink(NxTr *target)
-	{
-		links_.push_back(target);
-		target->ninc_++;
-	}
-
-	string printName() const
-	{
-		if (nx_ != NULL)
-			return strprintf("nexus '%s/%s'", nx_->getTrieadName().c_str(), nx_->getName().c_str());
-		else
-			return strprintf("thread '%s'", tr_->getName().c_str());
-	}
-
-	Triead *tr_; // if it's a thread
-	Nexus *nx_; // if it's a nexus
-	int ninc_; // number of incoming connections
-	typedef list<NxTr *> List;
-	List links_; // links following the model topology
-};
-struct Graph
-{
-	typedef map<void *, Autoref<NxTr> > Map;
-
-	NxTr *addTriead(Triead *tr)
-	{
-		Map::iterator it = m_.find(tr);
-		if (it == m_.end())
-			return m_[tr] = new NxTr(tr);
-		else
-			return m_->second;
-	}
-	NxTr *addNexus(Nexus *nx)
-	{
-		Map::iterator it = m_.find(nx);
-		if (it == m_.end())
-			return m_[nx] = new NxTr(nx);
-		else
-			return m_->second;
-	}
-
-	// this one is for copying graphs
-	NxTr *addCopy(NxTr *nxtr)
-	{
-		Map::iterator it = m_.find(nxtr);
-		if (it == m_.end())
-			return m_[nxtr] = new NxTr(nxtr);
-		else
-			return m_->second;
-	}
-
-	Map m_;
-};
-
 void App::checkLoopsL() const
 {
 	Graph gdown, gup; // separate graphs for direct and reverse nexuses
@@ -594,7 +513,7 @@ void App::checkLoopsL() const
 
 	// first build the graphs, separately for the downwards and upwards links
 	for (TrieadUpdMap::const_iterator it = threads_.begin(); it != threads_.end(); ++it) {
-		Triead *t = it->second;
+		Triead *t = it->second->t_;
 
 		t->facets(nmap);
 		for (Triead::FacetMap::iterator jt = nmap.begin(); jt != nmap.end(); ++jt) {
@@ -618,59 +537,62 @@ void App::checkLoopsL() const
 	checkGraphL(gup, "reverse");
 }
 
-void App::checkGraphL(Graph &g, const char *direction)
+void App::checkGraphL(Graph &g, const char *direction) const
 {
-	typedef list<NxTr *> Nlist;
-	Nlist todo; // list of starting-point nodes
-
 	reduceGraphL(g);
 
-	// now whatever links left represent the loops and any twigs coming from them;
-	// it would be nice to get rid of the twigs by doing the same traversal 
-	// backwards but there are no backwards links;
-	// so create a backwards copy of the graph (skipping the nodes that
-	// have become disconnected)
+	// Now whatever links left represent the loops and any twigs coming from them.
+	// To get rid of the twigs, the graph has to be traversed backwards
+	// but there are no backwards links.
+	// So create a backwards copy of the graph (skipping the nodes that
+	// have become disconnected) and then reduce it.
 	Graph backg;
-	for (Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
+	for (Graph::Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
 		NxTr *node = it->second;
 		if (node->links_.empty())
 			continue;
 		NxTr *ncopy = backg.addCopy(node);
 		for (NxTr::List::iterator jt = node->links_.begin(); jt != node->links_.end(); ++jt) {
-			backg.addCopy(jt->second)->addLink(ncopy);
+			backg.addCopy(*jt)->addLink(ncopy);
 		}
 	}
 
 	reduceGraphL(backg);
 
-	// whatever is left now will contain the loops in it;
-	// so just print one loop by always following the first link and always starting
-	// from a thread
-	for (Map::iterator it = backg.m_.begin(); it != backg.m_.end(); ++it) {
+	// Whatever is left now will contain the loops in it.  So just print one
+	// loop by always following the first link and always starting from a
+	// thread.  It might be better to print all the loops but not terribly
+	// important.
+	for (Graph::Map::iterator it = backg.m_.begin(); it != backg.m_.end(); ++it) {
 		NxTr *node = it->second;
 		if (node->ninc_ != 0 && node->tr_ != NULL) {
 			// found a loop, print it from this point
 			Erref eloop = new Errors;
-			eloop->appendMsg(true, node->printName());
+			eloop->appendMsg(true, node->print());
 			for (NxTr *cur = node->links_.front(); cur != node; cur = cur->links_.front())
-				eloop->appendMsg(true, cur->printName());
+				eloop->appendMsg(true, cur->print());
 			throw Exception::fTrace(eloop, "In application '%s' detected an illegal %s loop:",
 				name_.c_str(), direction);
 		}
 	}
 }
 
-// reduce the graph by removing all the links going from the start points
-void App::reduceGraphL(Graph &g)
+void App::reduceGraphL(Graph &g) const
 {
+	typedef list<NxTr *> Nlist;
+	Nlist todo; // list of starting-point nodes
+
 	// The graph is a general tree, so there may be many starting points.
 	// As we traverse the graph, more untraversed starting points will appear.
 	// We traverse until we run out of starting points.
 	// The starting points are found by the condition ninc_==0.
-	// As the links are traversed, they get deleted.
+	// As the links are traversed, they get deleted and more starting points
+	// may appear, which again get included into the traversal.
 	// If after traversing from all the starting points there still are
-	// untraversed edges, it means that the loops are present.
-	for (Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
+	// untraversed links, it means that the loops are present.
+
+	// Find the initial set of starting points.
+	for (Graph::Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
 		NxTr *node = it->second;
 		if (!node->links_.empty() && node->ninc_ == 0)
 			todo.push_back(node);
@@ -684,7 +606,9 @@ void App::reduceGraphL(Graph &g)
 		if (cur->links_.empty())
 			todo.pop_front(); // that was the last link from it, don't return there
 		
-		// now follow until the path comes to a join
+		// A minor optimization: instead of pushing and popping the nodes in
+		// a sequece on the todo list, just follow it through until
+		// the path comes to a Y-join.
 		while (1) {
 			cur = next;
 			// decrement because an incoming connection has just been consumed
@@ -699,6 +623,68 @@ void App::reduceGraphL(Graph &g)
 				todo.push_back(cur); // more links from it, come back to it later
 		}
 	}
+}
+
+//---------------------------- App::NxTr -------------------------------------
+
+App::NxTr::NxTr(Triead *tr):
+	tr_(tr),
+	nx_(NULL),
+	ninc_(0)
+{ }
+
+App::NxTr::NxTr(Nexus *nx):
+	tr_(NULL),
+	nx_(nx),
+	ninc_(0)
+{ }
+
+App::NxTr::NxTr(const NxTr &nxtr):
+	tr_(nxtr.tr_),
+	nx_(nxtr.nx_),
+	ninc_(0) // a fresh copied node has no links
+{ }
+
+void App::NxTr::addLink(NxTr *target)
+{
+	links_.push_back(target);
+	target->ninc_++;
+}
+
+string App::NxTr::print() const
+{
+	if (nx_ != NULL)
+		return strprintf("nexus '%s/%s'", nx_->getTrieadName().c_str(), nx_->getName().c_str());
+	else
+		return strprintf("thread '%s'", tr_->getName().c_str());
+}
+
+//---------------------------- App::Graph ------------------------------------
+
+App::NxTr *App::Graph::addTriead(Triead *tr)
+{
+	Map::iterator it = m_.find(tr);
+	if (it == m_.end())
+		return m_[tr] = new NxTr(tr);
+	else
+		return it->second;
+}
+App::NxTr *App::Graph::addNexus(Nexus *nx)
+{
+	Map::iterator it = m_.find(nx);
+	if (it == m_.end())
+		return m_[nx] = new NxTr(nx);
+	else
+		return it->second;
+}
+
+App::NxTr *App::Graph::addCopy(NxTr *nxtr)
+{
+	Map::iterator it = m_.find(nxtr);
+	if (it == m_.end())
+		return m_[nxtr] = new NxTr(*nxtr);
+	else
+		return it->second;
 }
 
 }; // TRICEPS_NS
