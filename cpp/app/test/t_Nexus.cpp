@@ -438,6 +438,16 @@ UTESTCASE export_import(Utest *utest)
 		}
 		UT_IS(msg, "Can not export the nexus 'more' in app 'a1' thread 't1' that is already marked as constructed.\n");
 	}
+	{
+		string msg;
+		ow4->markReady();
+		try {
+			ow4->importReader("t1", "fret2", "xxx");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In app 'a1' thread 't4' can not import the nexus 't1/fret2' into a ready thread.\n");
+	}
 
 	// clean-up, since the apps catalog is global
 	ow1->markDead();

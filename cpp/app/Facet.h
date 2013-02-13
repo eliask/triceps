@@ -22,8 +22,10 @@ namespace TRICEPS_NS {
 //    that facet just gets discarded).
 // 2. Import a nexus and receive a facet as its representation.
 //
-// A Facet is seen in only one thread, so it's an Starget.
-class Facet: public Starget
+// A Facet is seen in only one thread, however during the analysis for loop
+// the App reads all the Facets, and thus they must be accessible from
+// outside the thread.
+class Facet: public Mtarget
 {
 	friend class TrieadOwner;
 	friend class Nexus;

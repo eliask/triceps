@@ -83,6 +83,10 @@ Onceref<Facet> TrieadOwner::exportNexus(Autoref<Facet> facet, bool import)
 Onceref<Facet> TrieadOwner::importNexus(const string &tname, const string &nexname, const string &asname, 
 	bool writer, bool immed)
 {
+	if (t_->isReady())
+		throw Exception::fTrace("In app '%s' thread '%s' can not import the nexus '%s' into a ready thread.",
+			app_->getName().c_str(), get()->getName().c_str(), fullName.c_str());
+		
 	// first look in the imported list
 	string fullName = Facet::buildFullName(tname, nexname);
 	FacetMap::const_iterator it = triead_->importsFindL(fullName);
