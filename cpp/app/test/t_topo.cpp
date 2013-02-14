@@ -620,3 +620,278 @@ UTESTCASE check_graph(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// full-blown check, a horizontal figure 8 of 2 diamonds
+UTESTCASE check_loops_diamond_horiz(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	//      t1      t2
+	// nx1<   >nx2<   >nx3
+	//      t3      t4
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+
+	ow2->importWriterImmed("t1", "nx2");
+	ow3->importReaderImmed("t1", "nx1");
+	ow3->importReaderImmed("t1", "nx2");
+	ow4->importReaderImmed("t1", "nx2");
+	ow4->importReaderImmed("t2", "nx3");
+
+	a1->checkLoopsL();
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// full-blown check, a vertical figure 8 of 2 diamonds
+UTESTCASE check_loops_diamond_vert(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	//      t1
+	//  nx1<  >nx2
+	//      t2
+	//  nx3<  >nx4
+	//      t3
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx4")->addLabel("one", rt1)))->nexus();
+
+	ow2->importReaderImmed("t1", "nx1");
+	ow2->importReaderImmed("t1", "nx2");
+	ow3->importReaderImmed("t2", "nx3");
+	ow3->importReaderImmed("t2", "nx4");
+
+	a1->checkLoopsL();
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// full-blown check, two touching loops
+UTESTCASE check_loops_touching(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	ow2->importReaderImmed("t1", "nx1");
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow1->importReaderImmed("t2", "nx2");
+
+	ow3->importWriterImmed("t2", "nx2");
+	ow4->importReaderImmed("t2", "nx2");
+	ow4->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow4->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	ow3->importReaderImmed("t4", "nx3");
+
+	{
+		string msg;
+		try {
+			a1->checkLoopsL();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, // printed in opposite direction
+			"In application 'a1' detected an illegal direct loop:\n"
+			"  thread 't1'\n"
+			"  nexus 't1/nx1'\n"
+			"  thread 't2'\n"
+			"  nexus 't2/nx2'\n");
+	}
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// full-blown check, one loop with twigs
+UTESTCASE check_loops_twigs(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1))->setReverse())->nexus();
+	// ow2 is an outgoing twig
+	ow2->importReaderImmed("t1", "nx1");
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx2")->addLabel("one", rt1))->setReverse())->nexus();
+
+	// ow3 continues the loop
+	ow3->importReaderImmed("t1", "nx1");
+	ow3->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow3->unit(), "nx3")->addLabel("one", rt1))->setReverse())->nexus();
+	ow1->importReaderImmed("t3", "nx3");
+
+	// ow4 is an incoming twig
+	ow4->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow4->unit(), "nx4")->addLabel("one", rt1))->setReverse())->nexus();
+	ow1->importReaderImmed("t4", "nx4");
+	ow3->importReaderImmed("t4", "nx4");
+
+	{
+		string msg;
+		try {
+			a1->checkLoopsL();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, // printed in opposite direction
+			"In application 'a1' detected an illegal reverse loop:\n"
+			"  thread 't1'\n"
+			"  nexus 't1/nx1'\n"
+			"  thread 't3'\n"
+			"  nexus 't3/nx3'\n");
+	}
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// full-blown check, two touching loops, but with a reverse-direction
+// breaking up one loop
+UTESTCASE check_loops_twodir(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	// same as check_loops_touching() except for one nexus marked reverse
+	ow1->exportNexus(Facet::makeWriter( // setReverse breaks up the 1st loop
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1))->setReverse())->nexus();
+	ow2->importReaderImmed("t1", "nx1");
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow1->importReaderImmed("t2", "nx2");
+
+	ow3->importWriterImmed("t2", "nx2");
+	ow4->importReaderImmed("t2", "nx2");
+	ow4->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow4->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	ow3->importReaderImmed("t4", "nx3");
+
+	{
+		string msg;
+		try {
+			a1->checkLoopsL();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, // printed in opposite direction
+			"In application 'a1' detected an illegal direct loop:\n"
+			"  thread 't3'\n"
+			"  nexus 't2/nx2'\n"
+			"  thread 't4'\n"
+			"  nexus 't4/nx3'\n");
+	}
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
