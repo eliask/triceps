@@ -79,6 +79,9 @@ UTESTCASE mkgraph(Utest *utest)
 		UT_IS(cnode2->nx_, nx2);
 		UT_ASSERT(cnode2 != cnode1);
 
+		UT_IS(g.m_.size(), 6);
+		UT_IS(g.l_.size(), 6);
+
 		// printing
 		UT_IS(tnode1->print(), "thread 't1'");
 		UT_IS(nnode1->print(), "nexus 't1/nx1'");
@@ -527,7 +530,6 @@ UTESTCASE check_graph(Utest *utest)
 				"  nexus 't1/nx1'\n");
 		}
 	}
-#if 0
 	// a longer loop
 	{
 		AppGuts::Graph g;
@@ -543,15 +545,71 @@ UTESTCASE check_graph(Utest *utest)
 			} catch(Exception e) {
 				msg = e.getErrors()->print();
 			}
-			UT_IS(msg, 
+			UT_IS(msg, // printed in opposite direction
 				"In application 'a1' detected an illegal direct loop:\n"
-				"  thread 't1'\n"
-				"  nexus 't1/nx1'\n"
 				"  thread 't2'\n"
+				"  nexus 't1/nx1'\n"
+				"  thread 't1'\n"
 				"  nexus 't1/nx2'\n");
 		}
 	}
-#endif
+	// a longer loop, with incoming and outgoing twigs
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addTriead(t2)->addLink(g.addNexus(nx2));
+		g.addNexus(nx2)->addLink(g.addTriead(t1));
+
+		// here are the twigs
+		g.addNexus(nx4)->addLink(g.addTriead(t1));
+		g.addTriead(t3)->addLink(g.addNexus(nx1));
+		g.addNexus(nx2)->addLink(g.addTriead(t4));
+		g.addTriead(t4)->addLink(g.addNexus(nx3));
+
+		{
+			string msg;
+			try {
+				a1->checkGraphL(g, "direct");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, // printed in opposite direction
+				"In application 'a1' detected an illegal direct loop:\n"
+				"  thread 't2'\n"
+				"  nexus 't1/nx1'\n"
+				"  thread 't1'\n"
+				"  nexus 't1/nx2'\n");
+		}
+	}
+	// a figure 8 of 2 touching loops
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addTriead(t2)->addLink(g.addNexus(nx2));
+		g.addNexus(nx2)->addLink(g.addTriead(t1));
+
+		g.addTriead(t3)->addLink(g.addNexus(nx2));
+		g.addNexus(nx2)->addLink(g.addTriead(t4));
+		g.addTriead(t4)->addLink(g.addNexus(nx3));
+		g.addNexus(nx3)->addLink(g.addTriead(t3));
+
+		{
+			string msg;
+			try {
+				a1->checkGraphL(g, "reverse");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, // printed in opposite direction
+				"In application 'a1' detected an illegal reverse loop:\n"
+				"  thread 't2'\n"
+				"  nexus 't1/nx1'\n"
+				"  thread 't1'\n"
+				"  nexus 't1/nx2'\n");
+		}
+	}
 	
 	// clean-up, since the apps catalog is global
 	ow1->markDead();

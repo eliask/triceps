@@ -525,11 +525,13 @@ void App::checkLoopsL() const
 				tnode = gdown.addTriead(t); 
 				nnode = gdown.addNexus(fa->nexus());
 			}
-			// XXX is it better to create graphs in opposite direction?
+			// create graphs in opposite direction, because the logic later will
+			// require reversing the graph, and the printout of the loops will 
+			// go from the reversed graph
 			if (fa->isWriter()) {
-				tnode->addLink(nnode);
-			} else {
 				nnode->addLink(tnode);
+			} else {
+				tnode->addLink(nnode);
 			}
 		}
 	}
@@ -547,8 +549,8 @@ void App::checkGraphL(Graph &g, const char *direction) const
 	// So create a backwards copy of the graph (skipping the nodes that
 	// have become disconnected) and then reduce it.
 	Graph backg;
-	for (Graph::Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
-		NxTr *node = it->second;
+	for (Graph::List::iterator it = g.l_.begin(); it != g.l_.end(); ++it) {
+		NxTr *node = *it;
 		if (node->links_.empty())
 			continue;
 		NxTr *ncopy = backg.addCopy(node);
@@ -563,8 +565,8 @@ void App::checkGraphL(Graph &g, const char *direction) const
 	// loop by always following the first link and always starting from a
 	// thread.  It might be better to print all the loops but not terribly
 	// important.
-	for (Graph::Map::iterator it = backg.m_.begin(); it != backg.m_.end(); ++it) {
-		NxTr *node = it->second;
+	for (Graph::List::iterator it = backg.l_.begin(); it != backg.l_.end(); ++it) {
+		NxTr *node = *it;
 		if (node->ninc_ != 0 && node->tr_ != NULL) {
 			// found a loop, print it from this point
 			Erref eloop = new Errors;
@@ -592,8 +594,8 @@ void App::reduceGraphL(Graph &g)
 	// untraversed links, it means that the loops are present.
 
 	// Find the initial set of starting points.
-	for (Graph::Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
-		NxTr *node = it->second;
+	for (Graph::List::iterator it = g.l_.begin(); it != g.l_.end(); ++it) {
+		NxTr *node = *it;
 		// printf("XXX inspect %s in %d out %d\n", node->print().c_str(), node->ninc_, (int)node->links_.size());
 		if (!node->links_.empty() && node->ninc_ == 0) {
 			// printf("XXX push initial todo %s\n", node->print().c_str());
@@ -677,26 +679,35 @@ string App::NxTr::print() const
 App::NxTr *App::Graph::addTriead(Triead *tr)
 {
 	Map::iterator it = m_.find(tr);
-	if (it == m_.end())
-		return m_[tr] = new NxTr(tr);
-	else
+	if (it == m_.end()) {
+		NxTr *node = new NxTr(tr);
+		m_[tr] = node;
+		l_.push_back(node);
+		return node;
+	} else
 		return it->second;
 }
 App::NxTr *App::Graph::addNexus(Nexus *nx)
 {
 	Map::iterator it = m_.find(nx);
-	if (it == m_.end())
-		return m_[nx] = new NxTr(nx);
-	else
+	if (it == m_.end()) {
+		NxTr *node = new NxTr(nx);
+		m_[nx] = node;
+		l_.push_back(node);
+		return node;
+	} else
 		return it->second;
 }
 
 App::NxTr *App::Graph::addCopy(NxTr *nxtr)
 {
 	Map::iterator it = m_.find(nxtr);
-	if (it == m_.end())
-		return m_[nxtr] = new NxTr(*nxtr);
-	else
+	if (it == m_.end()) {
+		NxTr *node = new NxTr(*nxtr);
+		m_[nxtr] = node;
+		l_.push_back(node);
+		return node;
+	} else
 		return it->second;
 }
 

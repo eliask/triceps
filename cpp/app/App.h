@@ -370,6 +370,7 @@ protected:
 	struct Graph
 	{
 		typedef map<void *, Autoref<NxTr> > Map;
+		typedef list<NxTr *> List;
 
 		// Add a node that represents an original object (Nexus, Triead or
 		// an NxTr from another graph). If that original object was not seen yet,
@@ -385,6 +386,7 @@ protected:
 		NxTr *addCopy(NxTr *nxtr);
 
 		Map m_;
+		List l_; // keeps the nodes in a consistent order, for predictable tests
 	};
 
 	// Half of the logic of checkLoopsL() that handles the loops with
