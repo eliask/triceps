@@ -402,7 +402,7 @@ protected:
 	// The checkGraphL() works by applying this function, reversing the
 	// resulting graph, then applying this function again. Anything
 	// left is the loops.
-	void reduceGraphL(Graph &g) const;
+	static void reduceGraphL(Graph &g);
 
 	// }
 

@@ -104,7 +104,7 @@ public:
 	{
 		App::checkGraphL(g, direction);
 	}
-	void reduceGraphL(Graph &g) const
+	static void reduceGraphL(Graph &g)
 	{
 		App::reduceGraphL(g);
 	}

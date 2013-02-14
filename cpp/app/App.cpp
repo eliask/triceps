@@ -577,7 +577,7 @@ void App::checkGraphL(Graph &g, const char *direction) const
 	}
 }
 
-void App::reduceGraphL(Graph &g) const
+void App::reduceGraphL(Graph &g)
 {
 	typedef list<NxTr *> Nlist;
 	Nlist todo; // list of starting-point nodes
@@ -594,33 +594,46 @@ void App::reduceGraphL(Graph &g) const
 	// Find the initial set of starting points.
 	for (Graph::Map::iterator it = g.m_.begin(); it != g.m_.end(); ++it) {
 		NxTr *node = it->second;
-		if (!node->links_.empty() && node->ninc_ == 0)
+		// printf("XXX inspect %s in %d out %d\n", node->print().c_str(), node->ninc_, (int)node->links_.size());
+		if (!node->links_.empty() && node->ninc_ == 0) {
+			// printf("XXX push initial todo %s\n", node->print().c_str());
 			todo.push_back(node);
+		}
 	}
 
 	// now traverse
 	while (!todo.empty()) {
 		NxTr *cur = todo.front();
+		// printf("XXX processing todo %s\n", cur->print().c_str());
 		NxTr *next = cur->links_.front();
 		cur->links_.pop_front();
-		if (cur->links_.empty())
+		if (cur->links_.empty()) {
+			// printf("XXX pop todo %s\n", cur->print().c_str());
 			todo.pop_front(); // that was the last link from it, don't return there
+		}
 		
 		// A minor optimization: instead of pushing and popping the nodes in
 		// a sequece on the todo list, just follow it through until
 		// the path comes to a Y-join.
 		while (1) {
 			cur = next;
+			// printf("XXX following %s\n", cur->print().c_str());
 			// decrement because an incoming connection has just been consumed
-			if (--cur->ninc_ != 0)
+			if (--cur->ninc_ != 0) {
+				// printf("XXX stop at join %s\n", cur->print().c_str());
 				break; // found a join
-			if (cur->links_.empty())
+			}
+			if (cur->links_.empty()) {
+				// printf("XXX leaf at %s\n", cur->print().c_str());
 				break; // found an endpoint
+			}
 
 			next = cur->links_.front();
 			cur->links_.pop_front();
-			if (!cur->links_.empty())
+			if (!cur->links_.empty()) {
+				// printf("XXX push todo %s\n", cur->print().c_str());
 				todo.push_back(cur); // more links from it, come back to it later
+			}
 		}
 	}
 }
