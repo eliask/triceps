@@ -14,6 +14,9 @@
 class AppGuts : public App
 {
 public:
+	typedef App::NxTr NxTr;
+	typedef App::Graph Graph;
+
 	static bool gutsIsReady(App *a)
 	{
 		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
@@ -91,6 +94,19 @@ public:
 		TrieadUpdMap::iterator it = ag->threads_.find(tname);
 		assert(it != ag->threads_.end());
 		return it->second->j_;
+	}
+
+	void checkLoopsL() const
+	{
+		App::checkLoopsL();
+	}
+	void checkGraphL(Graph &g, const char *direction) const
+	{
+		App::checkGraphL(g, direction);
+	}
+	void reduceGraphL(Graph &g) const
+	{
+		App::reduceGraphL(g);
 	}
 };
 
