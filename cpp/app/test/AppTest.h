@@ -96,9 +96,9 @@ public:
 		return it->second->j_;
 	}
 
-	void checkLoopsL() const
+	void checkLoopsL(const string &tname)
 	{
-		App::checkLoopsL();
+		App::checkLoopsL(tname);
 	}
 	void reduceCheckGraphL(Graph &g, const char *direction) const
 	{

@@ -505,7 +505,7 @@ void App::waitReady()
 	}
 }
 
-void App::checkLoopsL() const
+void App::checkLoopsL(const string &tname)
 {
 	Graph gdown, gup; // separate graphs for direct and reverse nexuses
 	Triead::FacetMap nmap;
@@ -535,8 +535,13 @@ void App::checkLoopsL() const
 			}
 		}
 	}
-	reduceCheckGraphL(gdown, "direct");
-	reduceCheckGraphL(gup, "reverse");
+	try {
+		reduceCheckGraphL(gdown, "direct");
+		reduceCheckGraphL(gup, "reverse");
+	} catch (Exception e) {
+		abortBy(tname, e.getErrors()->print());
+		throw;
+	}
 }
 
 void App::reduceCheckGraphL(Graph &g, const char *direction) const

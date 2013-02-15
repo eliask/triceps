@@ -801,7 +801,8 @@ UTESTCASE check_loops_diamond_horiz(Utest *utest)
 	ow4->importReaderImmed("t1", "nx2");
 	ow4->importReaderImmed("t2", "nx3");
 
-	a1->checkLoopsL();
+	a1->checkLoopsL("t1");
+	UT_ASSERT(!a1->isAborted());
 	
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
@@ -850,7 +851,8 @@ UTESTCASE check_loops_diamond_vert(Utest *utest)
 	ow3->importReaderImmed("t2", "nx3");
 	ow3->importReaderImmed("t2", "nx4");
 
-	a1->checkLoopsL();
+	a1->checkLoopsL("t1");
+	UT_ASSERT(!a1->isAborted());
 	
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
@@ -896,7 +898,7 @@ UTESTCASE check_loops_touching(Utest *utest)
 	{
 		string msg;
 		try {
-			a1->checkLoopsL();
+			a1->checkLoopsL("t1");
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -908,6 +910,8 @@ UTESTCASE check_loops_touching(Utest *utest)
 			"  nexus 't2/nx2'\n"
 			"  thread 't1'\n"
 			);
+		UT_IS(a1->getAbortedBy(), "t1");
+		UT_IS(a1->getAbortedMsg(), msg);
 	}
 	
 	// clean-up, since the apps catalog is global
@@ -961,7 +965,7 @@ UTESTCASE check_loops_twigs(Utest *utest)
 	{
 		string msg;
 		try {
-			a1->checkLoopsL();
+			a1->checkLoopsL("t1");
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -972,6 +976,8 @@ UTESTCASE check_loops_twigs(Utest *utest)
 			"  thread 't3'\n"
 			"  nexus 't3/nx3'\n"
 			"  thread 't1'\n");
+		UT_IS(a1->getAbortedBy(), "t1");
+		UT_IS(a1->getAbortedMsg(), msg);
 	}
 	
 	// clean-up, since the apps catalog is global
@@ -1021,7 +1027,7 @@ UTESTCASE check_loops_twodir(Utest *utest)
 	{
 		string msg;
 		try {
-			a1->checkLoopsL();
+			a1->checkLoopsL("t1");
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
@@ -1032,6 +1038,8 @@ UTESTCASE check_loops_twodir(Utest *utest)
 			"  thread 't3'\n"
 			"  nexus 't2/nx2'\n"
 			"  thread 't4'\n");
+		UT_IS(a1->getAbortedBy(), "t1");
+		UT_IS(a1->getAbortedMsg(), msg);
 	}
 	
 	// clean-up, since the apps catalog is global

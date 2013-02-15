@@ -99,6 +99,9 @@ public:
 	// Mark that the thread has completed all its connections and
 	// is ready to run. This also implies Constructed, and can be
 	// used to set both flags at once.
+	//
+	// The last thread marked ready triggers the check of the
+	// App topology that may throw an Exception.
 	void markReady()
 	{
 		app_->markTrieadReady(this);

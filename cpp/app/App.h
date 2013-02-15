@@ -265,6 +265,9 @@ protected:
 	// is ready to run. This also implies Constructed, and can be
 	// used to set both flags at once.
 	//
+	// The last thread marked ready triggers the check of the
+	// App topology that may throw an Exception.
+	//
 	// @param to - identity of the thread to be marked
 	void markTrieadReady(TrieadOwner *to);
 
@@ -323,8 +326,11 @@ protected:
 	// Check the inter-thread connectivity for loops.
 	// The loops containing both the direct and reverse nexuses are OK,
 	// only the loops of the nexuses of the same kind are an issue.
-	// Throws an Exception if it finds any loops.
-	void checkLoopsL() const;
+	// Throws an Exception and marks the App aborted if it finds any loops.
+	//
+	// @param tname - name of the thread that initiated the check,
+	//        for the App abort
+	void checkLoopsL(const string &tname);
 
 protected:
 	// The internal machinery of the topological loop finding.
