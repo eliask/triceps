@@ -109,6 +109,9 @@ public:
 
 	// Mark the thread as ready, and wait for all the threads in
 	// the app to become ready.
+	//
+	// The last thread marked ready triggers the check of the
+	// App topology that may throw an Exception.
 	void readyReady()
 	{
 		markReady();
@@ -132,6 +135,13 @@ public:
 	//
 	// This also deletes the references to the units, including the
 	// main unit.
+	//
+	// If the thread was not ready before, it will be marked
+	// ready now, and if it was the last one to become ready,
+	// that will trigger the loop check in the App. However
+	// if a loop is found and an Exception is thrown, it will
+	// be caught and ignored. However the App will still be
+	// marked aborted.
 	//
 	// And it triggers the thread join by the harvester, so the
 	// OS-level theread should exit soon.

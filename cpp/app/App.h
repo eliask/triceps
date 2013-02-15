@@ -277,6 +277,13 @@ protected:
 	// This also triggers the thread's join by the harvester, 
 	// so it should exit soon.
 	//
+	// If the thread was not ready before, it will be marked
+	// ready now, and if it was the last one to become ready,
+	// that will trigger the loop check in the App. However
+	// if a loop is found and an Exception is thrown, it will
+	// be caught and ignored. However the App will still be
+	// marked aborted.
+	//
 	// @param to - identity of the thread to be marked
 	void markTrieadDead(TrieadOwner *to);
 
@@ -292,6 +299,9 @@ protected:
 	// Use App::Make to create new objects.
 	// @param name - name of the app.
 	App(const string &name);
+
+	// Internal version that relies on mutex_ being already locked.
+	void abortByL(const string &tname, const string &msg);
 
 	// Check whether the app was marked as aborted.
 	// Relies on mutex_ being already locked.

@@ -244,6 +244,11 @@ void App::abortBy(const string &tname, const string &msg)
 {
 	pw::lockmutex lm(mutex_);
 
+	abortByL(tname, msg);
+}
+
+void App::abortByL(const string &tname, const string &msg)
+{
 	// mark the thread as dead
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it != threads_.end()) {
@@ -376,8 +381,10 @@ void App::markTrieadReadyL(Triead *t)
 {
 	if (!t->isReady()) {
 		t->markReady();
-		if (--unreadyCnt_ == 0)
+		if (--unreadyCnt_ == 0) {
 			ready_.signal();
+			checkLoopsL(t->getName());
+		}
 	}
 }
 
@@ -389,7 +396,14 @@ void App::markTrieadDead(TrieadOwner *to)
 	assertTrieadL(t);
 
 	markTrieadConstructedL(t);
-	markTrieadReadyL(t);
+	try {
+		markTrieadReadyL(t);
+	} catch (Exception e) {
+		// Just ignore, marking the App aborted is good enough.
+		// After all, the current thread is about to exit anyway
+		// and might even be calling this from its destructor,
+		// so there is no need to make its life more difficult.
+	}
 	markTrieadDeadL(t);
 }
 
@@ -539,7 +553,7 @@ void App::checkLoopsL(const string &tname)
 		reduceCheckGraphL(gdown, "direct");
 		reduceCheckGraphL(gup, "reverse");
 	} catch (Exception e) {
-		abortBy(tname, e.getErrors()->print());
+		abortByL(tname, e.getErrors()->print());
 		throw;
 	}
 }

@@ -1052,3 +1052,117 @@ UTESTCASE check_loops_twodir(Utest *utest)
 	restore_uncatchable();
 }
 
+// full-blown check triggered on Ready mark, two touching loops
+UTESTCASE check_ready(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	ow2->importReaderImmed("t1", "nx1");
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow1->importReaderImmed("t2", "nx2");
+
+	ow3->importWriterImmed("t2", "nx2");
+	ow4->importReaderImmed("t2", "nx2");
+	ow4->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow4->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	ow3->importReaderImmed("t4", "nx3");
+
+	ow1->markReady();
+	ow2->markReady();
+	ow3->markReady();
+	{
+		string msg;
+		try {
+			ow4->markReady();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, // printed in opposite direction
+			"In application 'a1' detected an illegal direct loop:\n"
+			"  thread 't1'\n"
+			"  nexus 't1/nx1'\n"
+			"  thread 't2'\n"
+			"  nexus 't2/nx2'\n"
+			"  thread 't1'\n"
+			);
+		UT_IS(a1->getAbortedBy(), "t4");
+		UT_IS(a1->getAbortedMsg(), msg);
+	}
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// full-blown check triggered on Dead mark, two touching loops
+UTESTCASE check_dead(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	ow1->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	ow2->importReaderImmed("t1", "nx1");
+	ow2->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow2->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow1->importReaderImmed("t2", "nx2");
+
+	ow3->importWriterImmed("t2", "nx2");
+	ow4->importReaderImmed("t2", "nx2");
+	ow4->exportNexus(Facet::makeWriter(
+		FnReturn::make(ow4->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	ow3->importReaderImmed("t4", "nx3");
+
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead(); // does NOT throw!!!
+	UT_IS(a1->getAbortedBy(), "t4");
+	UT_IS(a1->getAbortedMsg(),
+		"In application 'a1' detected an illegal direct loop:\n"
+		"  thread 't1'\n"
+		"  nexus 't1/nx1'\n"
+		"  thread 't2'\n"
+		"  nexus 't2/nx2'\n"
+		"  thread 't1'\n"
+		);
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
