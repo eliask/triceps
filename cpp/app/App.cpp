@@ -535,11 +535,11 @@ void App::checkLoopsL() const
 			}
 		}
 	}
-	checkGraphL(gdown, "direct");
-	checkGraphL(gup, "reverse");
+	reduceCheckGraphL(gdown, "direct");
+	reduceCheckGraphL(gup, "reverse");
 }
 
-void App::checkGraphL(Graph &g, const char *direction) const
+void App::reduceCheckGraphL(Graph &g, const char *direction) const
 {
 	reduceGraphL(g);
 
@@ -560,19 +560,41 @@ void App::checkGraphL(Graph &g, const char *direction) const
 	}
 
 	reduceGraphL(backg);
+	checkGraphL(backg, direction);
+}
 
+
+void App::checkGraphL(Graph &g, const char *direction) const
+{
 	// Whatever is left now will contain the loops in it.  So just print one
 	// loop by always following the first link and always starting from a
 	// thread.  It might be better to print all the loops but not terribly
 	// important.
-	for (Graph::List::iterator it = backg.l_.begin(); it != backg.l_.end(); ++it) {
+	for (Graph::List::iterator it = g.l_.begin(); it != g.l_.end(); ++it) {
 		NxTr *node = *it;
-		if (node->ninc_ != 0 && node->tr_ != NULL) {
-			// found a loop, print it from this point
+		if (node->ninc_ != 0) {
+			// printf("DEBUG ---\n");
+			// Found a loop, walk it. However the simple walk might never
+			// return back to the starting point, so first walk and mark,
+			// and then after found a return to a marked point, print from there.
+			for (; !node->mark_; node = node->links_.front()) {
+				// printf("DEBUG marking %s\n", node->print().c_str());
+				node->mark_ = true;
+			}
+			// printf("DEBUG looped at %s\n", node->print().c_str());
+
+			// for printing, start with the thread, not nexus
+			if (node->tr_ == NULL) {
+				// printf("DEBUG stepped to %s\n", node->print().c_str());
+				node = node->links_.front();
+			}
+
+			// print it from this point
 			Erref eloop = new Errors;
 			eloop->appendMsg(true, node->print());
 			for (NxTr *cur = node->links_.front(); cur != node; cur = cur->links_.front())
 				eloop->appendMsg(true, cur->print());
+			eloop->appendMsg(true, node->print()); // repeat the initial node to emphasise the loop
 			throw Exception::fTrace(eloop, "In application '%s' detected an illegal %s loop:",
 				name_.c_str(), direction);
 		}
@@ -596,9 +618,9 @@ void App::reduceGraphL(Graph &g)
 	// Find the initial set of starting points.
 	for (Graph::List::iterator it = g.l_.begin(); it != g.l_.end(); ++it) {
 		NxTr *node = *it;
-		// printf("XXX inspect %s in %d out %d\n", node->print().c_str(), node->ninc_, (int)node->links_.size());
+		// printf("DEBUG inspect %s in %d out %d\n", node->print().c_str(), node->ninc_, (int)node->links_.size());
 		if (!node->links_.empty() && node->ninc_ == 0) {
-			// printf("XXX push initial todo %s\n", node->print().c_str());
+			// printf("DEBUG push initial todo %s\n", node->print().c_str());
 			todo.push_back(node);
 		}
 	}
@@ -606,11 +628,11 @@ void App::reduceGraphL(Graph &g)
 	// now traverse
 	while (!todo.empty()) {
 		NxTr *cur = todo.front();
-		// printf("XXX processing todo %s\n", cur->print().c_str());
+		// printf("DEBUG processing todo %s\n", cur->print().c_str());
 		NxTr *next = cur->links_.front();
 		cur->links_.pop_front();
 		if (cur->links_.empty()) {
-			// printf("XXX pop todo %s\n", cur->print().c_str());
+			// printf("DEBUG pop todo %s\n", cur->print().c_str());
 			todo.pop_front(); // that was the last link from it, don't return there
 		}
 		
@@ -619,21 +641,21 @@ void App::reduceGraphL(Graph &g)
 		// the path comes to a Y-join.
 		while (1) {
 			cur = next;
-			// printf("XXX following %s\n", cur->print().c_str());
+			// printf("DEBUG following %s\n", cur->print().c_str());
 			// decrement because an incoming connection has just been consumed
 			if (--cur->ninc_ != 0) {
-				// printf("XXX stop at join %s\n", cur->print().c_str());
+				// printf("DEBUG stop at join %s\n", cur->print().c_str());
 				break; // found a join
 			}
 			if (cur->links_.empty()) {
-				// printf("XXX leaf at %s\n", cur->print().c_str());
+				// printf("DEBUG leaf at %s\n", cur->print().c_str());
 				break; // found an endpoint
 			}
 
 			next = cur->links_.front();
 			cur->links_.pop_front();
 			if (!cur->links_.empty()) {
-				// printf("XXX push todo %s\n", cur->print().c_str());
+				// printf("DEBUG push todo %s\n", cur->print().c_str());
 				todo.push_back(cur); // more links from it, come back to it later
 			}
 		}
@@ -645,19 +667,22 @@ void App::reduceGraphL(Graph &g)
 App::NxTr::NxTr(Triead *tr):
 	tr_(tr),
 	nx_(NULL),
-	ninc_(0)
+	ninc_(0),
+	mark_(false)
 { }
 
 App::NxTr::NxTr(Nexus *nx):
 	tr_(NULL),
 	nx_(nx),
-	ninc_(0)
+	ninc_(0),
+	mark_(false)
 { }
 
 App::NxTr::NxTr(const NxTr &nxtr):
 	tr_(nxtr.tr_),
 	nx_(nxtr.nx_),
-	ninc_(0) // a fresh copied node has no links
+	ninc_(0), // a fresh copied node has no links
+	mark_(false)
 { }
 
 void App::NxTr::addLink(NxTr *target)

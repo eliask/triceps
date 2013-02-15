@@ -355,6 +355,7 @@ protected:
 		Triead *tr_; // if it's a thread
 		Nexus *nx_; // if it's a nexus
 		int ninc_; // number of incoming connections
+		bool mark_; // mark for the walk in the loop print
 		typedef list<NxTr *> List;
 		List links_; // edge links following the model topology
 	};
@@ -394,6 +395,14 @@ protected:
 	// Throws an Exception if it finds a loop.
 	// @param g - the parsed representation of the App's topology that
 	//        includes only the nexuses of one direction.
+	// @param direction - the human-readable string describing the
+	//        direction of the nexuses for the error message, either
+	//        "direct" or "reverse".
+	void reduceCheckGraphL(Graph &g, const char *direction) const;
+
+	// After the graph is reduced to loops only, check for their presence.
+	// Throws an Exception if it finds a loop.
+	// @param g - the reduced graph
 	// @param direction - the human-readable string describing the
 	//        direction of the nexuses for the error message, either
 	//        "direct" or "reverse".

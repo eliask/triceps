@@ -43,6 +43,7 @@ UTESTCASE mkgraph(Utest *utest)
 		UT_IS(tnode1->tr_, t1);
 		UT_IS(tnode1->nx_, NULL);
 		UT_IS(tnode1->ninc_, 0);
+		UT_IS(tnode1->mark_, false);
 		UT_ASSERT(tnode1->links_.empty());
 
 		node = g.addTriead(t1); // following additions return the same node
@@ -55,6 +56,7 @@ UTESTCASE mkgraph(Utest *utest)
 		UT_IS(nnode1->tr_, NULL);
 		UT_IS(nnode1->nx_, nx1);
 		UT_IS(nnode1->ninc_, 0);
+		UT_IS(tnode1->mark_, false);
 		UT_ASSERT(nnode1->links_.empty());
 
 		node = g.addNexus(nx1); // following additions return the same node
@@ -69,6 +71,7 @@ UTESTCASE mkgraph(Utest *utest)
 		UT_IS(cnode1->tr_, t1);
 		UT_IS(cnode1->nx_, NULL);
 		UT_IS(cnode1->ninc_, 0);
+		UT_IS(tnode1->mark_, false);
 		UT_ASSERT(cnode1->links_.empty());
 
 		node = g.addCopy(tnode1); // following additions return the same node
@@ -111,6 +114,7 @@ UTESTCASE mkgraph(Utest *utest)
 	restore_uncatchable();
 }
 
+// reduction of the non-loop incoming twigs from the graph
 UTESTCASE reduce(Utest *utest)
 {
 	make_catchable();
@@ -414,7 +418,8 @@ UTESTCASE reduce(Utest *utest)
 	restore_uncatchable();
 }
 
-UTESTCASE check_graph(Utest *utest)
+// detection and printing of a graph that has been already reduced
+UTESTCASE check(Utest *utest)
 {
 	make_catchable();
 
@@ -457,59 +462,7 @@ UTESTCASE check_graph(Utest *utest)
 		g.addNexus(nx3);
 		g.addNexus(nx4);
 
-		a1->checkGraphL(g, "direct");
-	}
-	// a diamond
-	{
-		AppGuts::Graph g;
-		g.addTriead(t1)->addLink(g.addNexus(nx1));
-		g.addTriead(t1)->addLink(g.addNexus(nx2));
-		g.addNexus(nx1)->addLink(g.addTriead(t2));
-		g.addNexus(nx2)->addLink(g.addTriead(t2));
-
-		a1->checkGraphL(g, "direct");
-	}
-	// a diamond with a tail
-	{
-		AppGuts::Graph g;
-		g.addTriead(t1)->addLink(g.addNexus(nx1));
-		g.addTriead(t1)->addLink(g.addNexus(nx2));
-		g.addNexus(nx1)->addLink(g.addTriead(t2));
-		g.addNexus(nx2)->addLink(g.addTriead(t2));
-		g.addTriead(t2)->addLink(g.addNexus(nx3));
-
-		a1->checkGraphL(g, "direct");
-	}
-	// a horizontal figure 8
-	{
-		AppGuts::Graph g;
-		g.addTriead(t1)->addLink(g.addNexus(nx1));
-		g.addTriead(t1)->addLink(g.addNexus(nx2));
-		g.addNexus(nx1)->addLink(g.addTriead(t2));
-		g.addNexus(nx2)->addLink(g.addTriead(t2));
-
-		g.addTriead(t3)->addLink(g.addNexus(nx2));
-		g.addTriead(t3)->addLink(g.addNexus(nx3));
-		g.addNexus(nx2)->addLink(g.addTriead(t4));
-		g.addNexus(nx3)->addLink(g.addTriead(t4));
-
-		a1->checkGraphL(g, "direct");
-	}
-	// a vertical figure 8 of 2 diamonds
-	{
-		AppGuts::Graph g;
-
-		g.addTriead(t1)->addLink(g.addNexus(nx1));
-		g.addTriead(t1)->addLink(g.addNexus(nx2));
-		g.addNexus(nx1)->addLink(g.addTriead(t2));
-		g.addNexus(nx2)->addLink(g.addTriead(t2));
-
-		g.addTriead(t2)->addLink(g.addNexus(nx3));
-		g.addTriead(t2)->addLink(g.addNexus(nx4));
-		g.addNexus(nx3)->addLink(g.addTriead(t3));
-		g.addNexus(nx4)->addLink(g.addTriead(t3));
-
-		a1->checkGraphL(g, "direct");
+		a1->checkGraphL(g, "direct"); // no loop, no Exception
 	}
 	// a simple loop
 	{
@@ -527,7 +480,8 @@ UTESTCASE check_graph(Utest *utest)
 			UT_IS(msg, 
 				"In application 'a1' detected an illegal direct loop:\n"
 				"  thread 't1'\n"
-				"  nexus 't1/nx1'\n");
+				"  nexus 't1/nx1'\n"
+				"  thread 't1'\n");
 		}
 	}
 	// a longer loop
@@ -548,9 +502,197 @@ UTESTCASE check_graph(Utest *utest)
 			UT_IS(msg, // printed in opposite direction
 				"In application 'a1' detected an illegal direct loop:\n"
 				"  thread 't2'\n"
+				"  nexus 't1/nx2'\n"
+				"  thread 't1'\n"
+				"  nexus 't1/nx1'\n"
+				"  thread 't2'\n");
+		}
+	}
+	// a figure 8 of 2 touching loops
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addTriead(t2)->addLink(g.addNexus(nx2));
+
+		g.addTriead(t3)->addLink(g.addNexus(nx2));
+		g.addNexus(nx2)->addLink(g.addTriead(t4));
+		g.addTriead(t4)->addLink(g.addNexus(nx3));
+		g.addNexus(nx3)->addLink(g.addTriead(t3));
+
+		// this link goes last, so that the walk by the first link
+		// would never get back to t1
+		g.addNexus(nx2)->addLink(g.addTriead(t1));
+
+		{
+			string msg;
+			try {
+				a1->checkGraphL(g, "reverse");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, // printed in opposite direction
+				"In application 'a1' detected an illegal reverse loop:\n"
+				"  thread 't4'\n"
+				"  nexus 't1/nx3'\n"
+				"  thread 't3'\n"
+				"  nexus 't1/nx2'\n"
+				"  thread 't4'\n");
+		}
+	}
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// the full reduction and check run
+UTESTCASE reduce_check_graph(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<AppGuts> a1 = (AppGuts *)App::make("a1").get();
+
+	// these threads and nexuses will be just used as graph fodder,
+	// nothing more;
+	// the connections don't matter because the graphs will be connected manually
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Triead *t1 = ow1->get();
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Triead *t2 = ow2->get();
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Triead *t3 = ow3->get();
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+	Triead *t4 = ow4->get();
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	Nexus *nx1 = ow1->exportNexus(Facet::makeReader(
+		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	Nexus *nx2 = ow1->exportNexus(Facet::makeReader(
+		FnReturn::make(ow1->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	Nexus *nx3 = ow1->exportNexus(Facet::makeReader(
+		FnReturn::make(ow1->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	Nexus *nx4 = ow1->exportNexus(Facet::makeReader(
+		FnReturn::make(ow1->unit(), "nx4")->addLabel("one", rt1)))->nexus();
+
+	// a disconnected graph
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1);
+		g.addTriead(t2);
+		g.addTriead(t3);
+		g.addTriead(t4);
+		g.addNexus(nx1);
+		g.addNexus(nx2);
+		g.addNexus(nx3);
+		g.addNexus(nx4);
+
+		a1->reduceCheckGraphL(g, "direct");
+	}
+	// a diamond
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addTriead(t1)->addLink(g.addNexus(nx2));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addNexus(nx2)->addLink(g.addTriead(t2));
+
+		a1->reduceCheckGraphL(g, "direct");
+	}
+	// a diamond with a tail
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addTriead(t1)->addLink(g.addNexus(nx2));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addNexus(nx2)->addLink(g.addTriead(t2));
+		g.addTriead(t2)->addLink(g.addNexus(nx3));
+
+		a1->reduceCheckGraphL(g, "direct");
+	}
+	// a horizontal figure 8
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addTriead(t1)->addLink(g.addNexus(nx2));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addNexus(nx2)->addLink(g.addTriead(t2));
+
+		g.addTriead(t3)->addLink(g.addNexus(nx2));
+		g.addTriead(t3)->addLink(g.addNexus(nx3));
+		g.addNexus(nx2)->addLink(g.addTriead(t4));
+		g.addNexus(nx3)->addLink(g.addTriead(t4));
+
+		a1->reduceCheckGraphL(g, "direct");
+	}
+	// a vertical figure 8 of 2 diamonds
+	{
+		AppGuts::Graph g;
+
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addTriead(t1)->addLink(g.addNexus(nx2));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addNexus(nx2)->addLink(g.addTriead(t2));
+
+		g.addTriead(t2)->addLink(g.addNexus(nx3));
+		g.addTriead(t2)->addLink(g.addNexus(nx4));
+		g.addNexus(nx3)->addLink(g.addTriead(t3));
+		g.addNexus(nx4)->addLink(g.addTriead(t3));
+
+		a1->reduceCheckGraphL(g, "direct");
+	}
+	// a simple loop
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addNexus(nx1)->addLink(g.addTriead(t1));
+
+		{
+			string msg;
+			try {
+				a1->reduceCheckGraphL(g, "direct");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, 
+				"In application 'a1' detected an illegal direct loop:\n"
+				"  thread 't1'\n"
 				"  nexus 't1/nx1'\n"
 				"  thread 't1'\n"
-				"  nexus 't1/nx2'\n");
+				);
+		}
+	}
+	// a longer loop
+	{
+		AppGuts::Graph g;
+		g.addTriead(t1)->addLink(g.addNexus(nx1));
+		g.addNexus(nx1)->addLink(g.addTriead(t2));
+		g.addTriead(t2)->addLink(g.addNexus(nx2));
+		g.addNexus(nx2)->addLink(g.addTriead(t1));
+
+		{
+			string msg;
+			try {
+				a1->reduceCheckGraphL(g, "direct");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, // printed in opposite direction
+				"In application 'a1' detected an illegal direct loop:\n"
+				"  thread 't1'\n"
+				"  nexus 't1/nx2'\n"
+				"  thread 't2'\n"
+				"  nexus 't1/nx1'\n"
+				"  thread 't1'\n"
+				);
 		}
 	}
 	// a longer loop, with incoming and outgoing twigs
@@ -570,16 +712,17 @@ UTESTCASE check_graph(Utest *utest)
 		{
 			string msg;
 			try {
-				a1->checkGraphL(g, "direct");
+				a1->reduceCheckGraphL(g, "direct");
 			} catch(Exception e) {
 				msg = e.getErrors()->print();
 			}
 			UT_IS(msg, // printed in opposite direction
 				"In application 'a1' detected an illegal direct loop:\n"
+				"  thread 't1'\n"
+				"  nexus 't1/nx2'\n"
 				"  thread 't2'\n"
 				"  nexus 't1/nx1'\n"
-				"  thread 't1'\n"
-				"  nexus 't1/nx2'\n");
+				"  thread 't1'\n");
 		}
 	}
 	// a figure 8 of 2 touching loops
@@ -598,16 +741,18 @@ UTESTCASE check_graph(Utest *utest)
 		{
 			string msg;
 			try {
-				a1->checkGraphL(g, "reverse");
+				a1->reduceCheckGraphL(g, "reverse");
 			} catch(Exception e) {
 				msg = e.getErrors()->print();
 			}
 			UT_IS(msg, // printed in opposite direction
 				"In application 'a1' detected an illegal reverse loop:\n"
+				"  thread 't1'\n"
+				"  nexus 't1/nx2'\n"
 				"  thread 't2'\n"
 				"  nexus 't1/nx1'\n"
 				"  thread 't1'\n"
-				"  nexus 't1/nx2'\n");
+				);
 		}
 	}
 	
@@ -760,7 +905,9 @@ UTESTCASE check_loops_touching(Utest *utest)
 			"  thread 't1'\n"
 			"  nexus 't1/nx1'\n"
 			"  thread 't2'\n"
-			"  nexus 't2/nx2'\n");
+			"  nexus 't2/nx2'\n"
+			"  thread 't1'\n"
+			);
 	}
 	
 	// clean-up, since the apps catalog is global
@@ -823,7 +970,8 @@ UTESTCASE check_loops_twigs(Utest *utest)
 			"  thread 't1'\n"
 			"  nexus 't1/nx1'\n"
 			"  thread 't3'\n"
-			"  nexus 't3/nx3'\n");
+			"  nexus 't3/nx3'\n"
+			"  thread 't1'\n");
 	}
 	
 	// clean-up, since the apps catalog is global
@@ -879,10 +1027,11 @@ UTESTCASE check_loops_twodir(Utest *utest)
 		}
 		UT_IS(msg, // printed in opposite direction
 			"In application 'a1' detected an illegal direct loop:\n"
+			"  thread 't4'\n"
+			"  nexus 't4/nx3'\n"
 			"  thread 't3'\n"
 			"  nexus 't2/nx2'\n"
-			"  thread 't4'\n"
-			"  nexus 't4/nx3'\n");
+			"  thread 't4'\n");
 	}
 	
 	// clean-up, since the apps catalog is global

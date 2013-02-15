@@ -100,6 +100,10 @@ public:
 	{
 		App::checkLoopsL();
 	}
+	void reduceCheckGraphL(Graph &g, const char *direction) const
+	{
+		App::reduceCheckGraphL(g, direction);
+	}
 	void checkGraphL(Graph &g, const char *direction) const
 	{
 		App::checkGraphL(g, direction);
