@@ -12,7 +12,8 @@ namespace TRICEPS_NS {
 TrieadOwner::TrieadOwner(App *app, Triead *th) :
 	app_(app),
 	triead_(th),
-	mainUnit_(new Unit(th->getName()))
+	mainUnit_(new Unit(th->getName())),
+	nexusMaker_(this)
 {
 	units_.push_back(mainUnit_);
 }
@@ -103,6 +104,50 @@ Onceref<Facet> TrieadOwner::importNexus(const string &tname, const string &nexna
 	Autoref<Facet> facet = new Facet(mainUnit_, nx, fullName, (asname.empty()? nexname: asname), writer);
 	triead_->importFacet(facet);
 	return facet;
+}
+
+TrieadOwner::NexusMaker *TrieadOwner::makeNexusReader(const string &name)
+{
+	nexusMaker_.init(mainUnit_, name, false, true);
+	return &nexusMaker_;
+}
+
+TrieadOwner::NexusMaker *TrieadOwner::makeNexusWriter(const string &name)
+{
+	nexusMaker_.init(mainUnit_, name, true, true);
+	return &nexusMaker_;
+}
+
+TrieadOwner::NexusMaker *TrieadOwner::makeNexusNoImport(const string &name)
+{
+	nexusMaker_.init(mainUnit_, name, false, false);
+	return &nexusMaker_;
+}
+
+// ---------------------------- TrieadOwner::NexusMaker ---------------------------------
+
+void TrieadOwner::NexusMaker::init(Unit *unit, const string &name, bool writer, bool import)
+{
+	fret_ = new FnReturn(unit, name);
+	facet_ = NULL;
+	writer_ = writer;
+	import_ = import;
+}
+
+void TrieadOwner::NexusMaker::mkfacet()
+{
+	if (facet_.isNull())
+		facet_ = new Facet(fret_, writer_);
+}
+
+Autoref<Facet> TrieadOwner::NexusMaker::complete()
+{
+	mkfacet();
+	fret_ = NULL;
+	ow_->exportNexus(facet_, import_);
+	Autoref<Facet> fa = facet_;
+	facet_ = NULL;
+	return fa;
 }
 
 }; // TRICEPS_NS

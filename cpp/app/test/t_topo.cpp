@@ -1166,3 +1166,5 @@ UTESTCASE check_dead(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// XXX add a test with real threads

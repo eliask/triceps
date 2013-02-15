@@ -32,6 +32,97 @@ namespace TRICEPS_NS {
 class TrieadOwner : public Starget
 {
 	friend class App;
+	
+protected:
+	// An intermediate helper object for convenience of making the nexuses.
+	// It's protected, so the end-users can only call it in a chained
+	// fashion.
+	// It's really a syntactic sugar, so if you're building a facet non-chained,
+	// just build it directly, without this helper.
+	class NexusMaker
+	{
+		friend class TrieadOwner;
+	public:
+		// This is a combination of construction methods from FnReturn and Facet.
+		// Obviously, the return type differs, for chaining of the calls.
+		// When the first Facet method is called, the FnReturn part
+		// becomes initialized and can not be called any more.
+		//
+		// The chain must always end in 
+		//   ->complete();
+		// or the built-up facet will be simply thrown away.
+
+		// from FnReturn
+		NexusMaker *addFromLabel(const string &lname, Autoref<Label>from)
+		{
+			fret_->addFromLabel(lname, from);
+			return this;
+		}
+		NexusMaker *addLabel(const string &lname, const_Autoref<RowType>rtype)
+		{
+			fret_->addLabel(lname, rtype);
+			return this;
+		}
+		// Very unlikely to be needed but just in case.
+		NexusMaker *setContext(Onceref<FnContext> ctx)
+		{
+			fret_->setContext(ctx);
+			return this;
+		}
+
+		// from Facet
+		NexusMaker *exportRowType(const string &name, Onceref<RowType> rtype)
+		{
+			mkfacet();
+			facet_->exportRowType(name, rtype);
+			return this;
+		}
+		NexusMaker *exportTableType(const string &name, Onceref<TableType> tt)
+		{
+			mkfacet();
+			facet_->exportTableType(name, tt);
+			return this;
+		}
+		NexusMaker *setReverse(bool on = true)
+		{
+			mkfacet();
+			facet_->setReverse(on);
+			return this;
+		}
+		NexusMaker *setUnicast(bool on = true)
+		{
+			mkfacet();
+			facet_->setUnicast(on);
+			return this;
+		}
+
+		// Actually exports the facet and returns it.
+		// After that the object doesn't have an FnReturn not a Facet in it.
+		Autoref<Facet> complete();
+
+	protected:
+		NexusMaker(TrieadOwner *ow): // only the TrieadOwner can create it
+			ow_(ow)
+		{ }
+
+		// Initialize for a new run
+		void init(Unit *unit, const string &name, bool writer, bool import);
+
+		// If the facet has not been created yet, creates it.
+		void mkfacet();
+
+		Autoref<FnReturn> fret_;
+		Autoref<Facet> facet_;
+		TrieadOwner *ow_; // owner of this maker
+		bool writer_; // the facet will be a writer
+		bool import_; // the facet will be imported back
+
+	private:
+		NexusMaker();
+		NexusMaker(const NexusMaker &);
+		void operator=(const NexusMaker &);
+	};
+	
 public:
 	typedef Triead::NexusMap NexusMap;
 	typedef Triead::FacetMap FacetMap;
@@ -256,6 +347,34 @@ public:
 		return triead_->facets(ret);
 	}
 
+	// The convenience way of making nexuses in a chained way.
+	// They are all used in the same way, so just one example:
+	//
+	// Autoref<Facet> myfacet = ow->makeNexusReader("my")
+	//     ->addLabel("one", rt1)
+	//     ->addFromLabel("two", lb2)
+	//     ->setContext(new MyFnContext)
+	//     ->setReverse()
+	//     ->complete();
+	//
+	// All the calls duplicated from FnReturn must always go before
+	// any of the calls duplicated from Facet. The last call must
+	// be complete() which will always return the constructed facet,
+	// even with NoImport.
+	//
+	// The FnReturn is constructed on the main unit of this thread.
+	// If you need more flexibility, there is always the manual way
+	// of building the FnReturn and Facet.
+	//
+	// makeNexusReader - on export also import this nexus for reading
+	// makeNexusWriter - on export also import this nexus for writing
+	// makeNexusNoImport - on export do not import this nexus
+	//
+	// @param name - name of the nexus
+	NexusMaker *makeNexusReader(const string &name);
+	NexusMaker *makeNexusWriter(const string &name);
+	NexusMaker *makeNexusNoImport(const string &name);
+
 protected:
 	// Called through App::makeTriead().
 	// Creates the thread's "main" same-named unit.
@@ -268,6 +387,7 @@ protected:
 	Autoref<Triead> triead_; // the thread owned here
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
 	UnitList units_; // units of this thread, including the main one
+	NexusMaker nexusMaker_; // helper for convenient nexus making
 
 private:
 	TrieadOwner();
