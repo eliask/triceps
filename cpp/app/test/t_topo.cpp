@@ -1135,17 +1135,20 @@ UTESTCASE check_dead(Utest *utest)
 	mkfields(fld);
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 
-	ow1->exportNexus(Facet::makeWriter(
-		FnReturn::make(ow1->unit(), "nx1")->addLabel("one", rt1)))->nexus();
+	ow1->makeNexusWriter("nx1")
+		->addLabel("one", rt1)
+		->complete();
 	ow2->importReaderImmed("t1", "nx1");
-	ow2->exportNexus(Facet::makeWriter(
-		FnReturn::make(ow2->unit(), "nx2")->addLabel("one", rt1)))->nexus();
+	ow2->makeNexusWriter("nx2")
+		->addLabel("one", rt1)
+		->complete();
 	ow1->importReaderImmed("t2", "nx2");
 
 	ow3->importWriterImmed("t2", "nx2");
 	ow4->importReaderImmed("t2", "nx2");
-	ow4->exportNexus(Facet::makeWriter(
-		FnReturn::make(ow4->unit(), "nx3")->addLabel("one", rt1)))->nexus();
+	ow4->makeNexusWriter("nx3")
+		->addLabel("one", rt1)
+		->complete();
 	ow3->importReaderImmed("t4", "nx3");
 
 	// clean-up, since the apps catalog is global

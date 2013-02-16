@@ -128,6 +128,7 @@ TrieadOwner::NexusMaker *TrieadOwner::makeNexusNoImport(const string &name)
 
 void TrieadOwner::NexusMaker::init(Unit *unit, const string &name, bool writer, bool import)
 {
+	// XXX should it throw if there are leftovers from the previous attempts?
 	fret_ = new FnReturn(unit, name);
 	facet_ = NULL;
 	writer_ = writer;

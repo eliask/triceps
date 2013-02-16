@@ -42,6 +42,7 @@ protected:
 	class NexusMaker
 	{
 		friend class TrieadOwner;
+		friend class TrieadOwnerGuts;
 	public:
 		// This is a combination of construction methods from FnReturn and Facet.
 		// Obviously, the return type differs, for chaining of the calls.

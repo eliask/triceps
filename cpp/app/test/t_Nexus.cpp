@@ -458,3 +458,133 @@ UTESTCASE export_import(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// copied from t_Fn.cpp
+class MyFnCtx: public FnContext
+{
+public:
+	MyFnCtx():
+		pushes_(0),
+		pops_(0),
+		throws_(false)
+	{ }
+
+	virtual void onPush(const FnReturn *fret)
+	{
+		fret_ = fret;
+		if (throws_)
+			throw Exception::f("push exception");
+		++pushes_;
+	}
+
+	virtual void onPop(const FnReturn *fret)
+	{
+		fret_ = fret;
+		if (throws_)
+			throw Exception::f("pop exception");
+		++pops_;
+	}
+
+	int pushes_, pops_;
+	bool throws_;
+	const FnReturn *fret_;
+};
+
+// the helper interface
+UTESTCASE mknexus(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
+
+	Triead::NexusMap exp;
+	Triead::FacetMap imp;
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	Autoref<Label> lb1 = new DummyLabel(ow1->unit(), rt1, "lb1");
+	Autoref<MyFnCtx> ctx1 = new MyFnCtx;
+
+	// build a writer, with all the trimmings
+	{
+		Autoref<Facet> fa1 = ow1->makeNexusWriter("nx1")
+			->addLabel("one", rt1)
+			->addFromLabel("two", lb1)
+			->setContext(ctx1)
+			->setUnicast()
+			->setUnicast(true)
+			->setReverse()
+			->setReverse(true)
+			->complete();
+
+		UT_ASSERT(fa1->isImported());
+		UT_ASSERT(fa1->isWriter());
+		UT_ASSERT(fa1->isUnicast());
+		UT_ASSERT(fa1->isReverse());
+		UT_IS(fa1->getShortName(), "nx1");
+		UT_IS(fa1->getFullName(), "t1/nx1");
+		UT_IS(fa1->getFnReturn()->context(), ctx1);
+
+		ow1->imports(imp);
+		UT_IS(imp.size(), 1);
+		UT_IS(imp["t1/nx1"], fa1);
+
+		ow1->exports(exp);
+		UT_IS(exp.size(), 1);
+		UT_IS(exp["nx1"].get(), fa1->nexus());
+
+		// the maker gets reset to NULL after completion
+		UT_IS(TrieadOwnerGuts::nexusMakerFnReturn(ow1), NULL);
+		UT_IS(TrieadOwnerGuts::nexusMakerFacet(ow1), NULL);
+	}
+
+	// build a reader
+	{
+		Autoref<Facet> fa1 = ow1->makeNexusReader("nx2")
+			->addLabel("one", rt1)
+			->complete();
+
+		UT_ASSERT(fa1->isImported());
+		UT_ASSERT(!fa1->isWriter());
+	}
+
+	{
+		// build a no-import
+		Autoref<Facet> fa1 = ow1->makeNexusNoImport("nx3")
+			->addLabel("one", rt1)
+			->complete();
+
+		UT_ASSERT(!fa1->isImported());
+	}
+
+	{
+		// incorrect initialization order
+		string msg;
+		try {
+			Autoref<Facet> fa1 = ow1->makeNexusWriter("nx4")
+				->setUnicast()
+				->addLabel("one", rt1)
+				->complete();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Attempted to add label 'one' to an initialized FnReturn 'nx4'.\n");
+	}
+
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester();
+
+	restore_uncatchable();
+}

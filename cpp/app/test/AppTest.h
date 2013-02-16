@@ -114,6 +114,37 @@ public:
 	}
 };
 
+class TrieadOwnerGuts: public TrieadOwner
+{
+public:
+	class NexusMakerGuts: public TrieadOwner::NexusMaker
+	{
+		friend class TrieadOwnerGuts;
+	public:
+		static FnReturn *getFret(TrieadOwner::NexusMaker &nm)
+		{
+			NexusMakerGuts *nmg = (NexusMakerGuts *)&nm;
+			return nmg->fret_;
+		}
+		static Facet *getFacet(TrieadOwner::NexusMaker &nm)
+		{
+			NexusMakerGuts *nmg = (NexusMakerGuts *)&nm;
+			return nmg->facet_;
+		}
+	};
+
+	static FnReturn *nexusMakerFnReturn(TrieadOwner *to)
+	{
+		TrieadOwnerGuts *tog = (TrieadOwnerGuts *)to;
+		return NexusMakerGuts::getFret(tog->nexusMaker_);
+	}
+	static Facet *nexusMakerFacet(TrieadOwner *to)
+	{
+		TrieadOwnerGuts *tog = (TrieadOwnerGuts *)to;
+		return NexusMakerGuts::getFacet(tog->nexusMaker_);
+	}
+};
+
 // make the exceptions catchable
 void make_catchable()
 {
