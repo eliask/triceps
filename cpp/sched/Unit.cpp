@@ -58,12 +58,23 @@ void UnitFrame::dropFromList(FrameMark *what)
 
 ///////////////////////////// Unit::Tracer //////////////////////////////////
 
+Unit::Tracer::Tracer(RowPrinter *rp):
+	rowPrinter_(rp)
+{ }
+
 Unit::Tracer::~Tracer()
 { }
 
+void Unit::Tracer::printRow(string &res, const RowType *rt, const Row *row)
+{
+	if (rowPrinter_)
+		rowPrinter_(res, rt, row);
+}
+
 ///////////////////////////// Unit::StringTracer //////////////////////////////////
 
-Unit::StringTracer::StringTracer(bool verbose) :
+Unit::StringTracer::StringTracer(bool verbose, RowPrinter *rp) :
+	Tracer(rp),
 	buffer_(new Errors),
 	verbose_(verbose)
 { }
@@ -86,6 +97,7 @@ void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fr
 		res.append(strprintf("(chain %p '%s') ", fromLabel, fromLabel->getName().c_str()));
 	};
 	res.append(strprintf("op %p %s", rop, Rowop::opcodeString(rop->getOpcode()) ));
+	printRow(res,  label->getType(), rop->getRow());
 
 	if (verbose_) {
 		if (Unit::tracerWhenIsBefore(when))
@@ -95,13 +107,12 @@ void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fr
 	}
 
 	buffer_->appendMsg(false, res);
-	// XXX print the row too?
 }
 
 ///////////////////////////// Unit::StringNameTracer //////////////////////////////////
 
-Unit::StringNameTracer::StringNameTracer(bool verbose) :
-	StringTracer(verbose)
+Unit::StringNameTracer::StringNameTracer(bool verbose, RowPrinter *rp) :
+	StringTracer(verbose, rp)
 { }
 
 void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when)
@@ -119,6 +130,7 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 	};
 	res.append("op ");
 	res.append(Rowop::opcodeString(rop->getOpcode()));
+	printRow(res,  label->getType(), rop->getRow());
 
 	if (verbose_) {
 		if (Unit::tracerWhenIsBefore(when))
@@ -128,8 +140,6 @@ void Unit::StringNameTracer::execute(Unit *unit, const Label *label, const Label
 	}
 
 	buffer_->appendMsg(false, res);
-	
-	// XXX print the row too?
 }
 
 ///////////////////////////// Unit //////////////////////////////////

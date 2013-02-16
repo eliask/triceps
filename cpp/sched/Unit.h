@@ -299,10 +299,39 @@ public:
 	class Tracer : public Mtarget
 	{
 	public:
+		// The printing of the rowop structure and of the contents of the
+		// rows is split into two separate methods, allowing to redefine them
+		// separately. One controls the formatting of the call chain,
+		// the other one knows how to print the contents of the rows.
+		// The first method is expected to call the second one appropriately.
+
+		// There are two ways to specify the row printing, that may come
+		// handy in different situations:
+		// 1. Inherit and re-define the virtual method for it.
+		// 2. Pass a simple C-like function pointer, for the very simple cases.
+		// The default implementation of the virtual method just calls
+		// the C-like function pointer (if it's not NULL). If you define
+		// your own virtual method, you probably don't care about the C-like
+		// function, don't need to call it, and probably set the pointer
+		// always to NULL.
+		//
+		// This is the type of that function pointer. It must start
+		// by appending a space (since the general formatting in execute()
+		// would not normally know if there is any printing and would not
+		// put a space in front).
+		typedef void RowPrinter(string &res, const RowType *rt, const Row *row);
+	
+		// XXX eventually provide a good default row printer
+
+		// @param rp - the row printer function
+		Tracer(RowPrinter *rp = NULL);
 		virtual ~Tracer();
 
 		// The callback on some event related to rowop execution happens
 		// May throw an Exception on fatal error.
+		//
+		// Should normally call printRow() to append the row contents to
+		// the trace data.
 		//
 		// @param unit - unit from where the tracer is called
 		// @param label - label that is being called
@@ -310,6 +339,24 @@ public:
 		// @param rop - rop operation that is executed
 		// @param when - the kind of event
 		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when) = 0;
+
+		// The method that appends the contents of a row to the trace string.
+		// Gets normally called by execute().
+		// The default implementation calls rowPrinter_ if it's not NULL,
+		// so the very default effect is to just do nothing.
+		// 
+		// When appending the printout, it must start by appending a space
+		// (since the general formatting in execute() would not normally know
+		// if there is any printing and would not put a space in front).
+		//
+		// @param res - the trace string, to which the row printout should be
+		//        appended (append, not replace!)
+		// @param rt - the type of the row
+		// @param row - the row to print
+		virtual void printRow(string &res, const RowType *rt, const Row *row);
+
+	protected:
+		RowPrinter *rowPrinter_;
 	};
 
 	// For convenience, a concrete tracer class that collects the trace information
@@ -319,7 +366,7 @@ public:
 	{
 	public:
 		// @param verbose - if true, record all the events, otherwise only the BEGIN records
-		StringTracer(bool verbose = false);
+		StringTracer(bool verbose = false, RowPrinter *rp = NULL);
 
 		// Get back the buffer of messages
 		// (it can also be used to add messages to the buffer)
@@ -346,7 +393,7 @@ public:
 	{
 	public:
 		// @param verbose - if true, record all the events, otherwise only the BEGIN records
-		StringNameTracer(bool verbose = false);
+		StringNameTracer(bool verbose = false, RowPrinter *rp = NULL);
 
 		// from Tracer
 		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
