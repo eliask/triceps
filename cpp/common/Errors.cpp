@@ -165,4 +165,37 @@ void errefF(Erref &ref, const char *fmt, ...)
 	ref->appendMultiline(true, msg);
 }
 
+// ------------------------------------ Erref ----------------------------------
+
+bool Erref::fAppend(Autoref<Errors> clde, const char *fmt, ...)
+{
+	if (!clde->hasError())
+		return false;
+
+	va_list ap;
+	va_start(ap, fmt);
+	string msg = vstrprintf(fmt, ap);
+	va_end(ap);
+
+	if (isNull())
+		*this = new Errors(msg, clde);
+	else
+		(*this)->append(msg, clde);
+
+	return true;
+}
+
+
+void Erref::f(const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	string msg = vstrprintf(fmt, ap);
+	va_end(ap);
+
+	if (isNull())
+		*this = new Errors;
+	(*this)->appendMultiline(true, msg);
+}
+
 }; // TRICEPS_NS

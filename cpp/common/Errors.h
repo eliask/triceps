@@ -154,10 +154,57 @@ public:
 	bool error_; // true if there is an error somewhere, false if only warnings
 };
 
-// the typical error indication returned by the parsing functions
-typedef Autoref<Errors> Erref;
+// The typical error indication returned by the parsing functions.
+// Is  a reference to Errors plus a couple of convenience methods.
+class Erref: public Autoref<Errors>
+{
+public:
+	typedef Autoref<Errors> Parent;
 
-// Add information about a child's errors, allocating an Error
+	// Define a constructor for each one of Autoref's.
+	Erref()
+	{ }
+	Erref(Errors *t) :
+		Parent(t)
+	{ }
+	Erref(const Parent &ar) :
+		Parent(ar)
+	{ }
+	template <typename OtherTarget>
+	Erref(const Autoref<OtherTarget> &ar) :
+		Parent(ar)
+	{ }
+
+	// Add information about a child's errors, allocating an Errors
+	// object if needed. The Erref may initially contain a NULL,
+	// and will have a new Errors added to it before any error
+	// gets added to it. Or if no errors are added, Erref is left unchanged.
+	//
+	// It's different from Errors::append in ignoring the non-error
+	// messages returned by the child.
+	//
+	// An important point worth telling once more: if clde is NULL
+	// or contains no errors, the Erref will be left unchanged.
+	//
+	// @param clde - errors returned by child (or NULL)
+	// @param msg - message describing the child, will be added only if the
+	//        child errors are not empty
+	// @return - true if the child's errors were added
+	//       (if clde had the error indication flag set)
+	bool fAppend(Autoref<Errors> clde, const char *fmt, ...)
+		__attribute__((format(printf, 3, 4))); // +1 for "this"
+
+	// Add a message to the errors, allocating an Error object if needed.
+	// The Erref may initially contain a NULL, and will have a new Errors 
+	// created in it before addin an error. Always sets the error flag.
+	//
+	// @param fmt - the printf format string, followed by arguments. The 
+	//        produced message may be multi-line.
+	void f(const char *fmt, ...)
+		__attribute__((format(printf, 2, 3))); // +1 for "this"
+};
+
+// Add information about a child's errors, allocating an Errors
 // object if needed. The Erref may initially contain a NULL,
 // and will have a new Errors added to it before any error
 // gets added to it. Or if no errors are added, Erref is left unchanged.

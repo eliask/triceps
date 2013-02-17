@@ -176,3 +176,39 @@ UTESTCASE errefAppend(Utest *utest)
 	UT_IS(e4->print(), "msg 1\nline 2\nmsg 3\nline 4\n");
 }
 
+UTESTCASE errefAppendNew(Utest *utest)
+{
+	Erref e1;
+	UT_ASSERT(e1.isNull());
+
+	UT_IS(e1.fAppend(new Errors("zzz"), "msg%d", 1), true);
+	UT_ASSERT(!e1.isNull());
+	UT_IS(e1->print(), "msg1\n  zzz\n");
+
+	UT_IS(e1.fAppend(new Errors("xxx"), "msg%d", 2), true);
+	UT_IS(e1->print(), "msg1\n  zzz\nmsg2\n  xxx\n");
+
+	UT_IS(e1.fAppend(new Errors(false), "msg%d", 3), false);
+	UT_IS(e1->print(), "msg1\n  zzz\nmsg2\n  xxx\n");
+
+	Erref e2 = new Errors();
+	e2->appendMsg(false, "yyy");
+	UT_IS(e1.fAppend(e2, "msg%d", 4), false);
+	UT_IS(e1->print(), "msg1\n  zzz\nmsg2\n  xxx\n");
+
+	UT_IS(e1.fAppend(NULL, "msg%d", 5), false);
+	UT_IS(e1->print(), "msg1\n  zzz\nmsg2\n  xxx\n");
+
+	Erref e3;
+	UT_ASSERT(e3.isNull());
+	UT_IS(e3.fAppend(e2, "msg%d", 4), false);
+	UT_ASSERT(e3.isNull());
+	UT_IS(e3.fAppend(NULL, "msg%d", 5), false);
+	UT_ASSERT(e3.isNull());
+
+	Erref e4;
+	UT_ASSERT(e4.isNull());
+	e4.f("msg %d\nline %d", 1, 2);
+	e4.f("msg %d\nline %d", 3, 4);
+	UT_IS(e4->print(), "msg 1\nline 2\nmsg 3\nline 4\n");
+}
