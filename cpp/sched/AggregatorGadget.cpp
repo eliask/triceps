@@ -21,4 +21,11 @@ AggregatorGadget::AggregatorGadget(const AggregatorType *type, Table *table, Ind
 	indexType_(intype)
 { }
 
+void AggregatorGadget::sendDelayed(Tray *dest, FdataVec &data, Rowop::Opcode opcode) const
+{
+	if (mode_ != EM_IGNORE) {
+		Gadget::sendDelayed(dest, label_->getType()->makeRow(data), opcode);
+	}
+}
+
 }; // TRICEPS_NS

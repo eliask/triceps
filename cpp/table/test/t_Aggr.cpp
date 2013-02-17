@@ -1001,16 +1001,8 @@ void MySumAggregator::handle(Table *table, AggregatorGadget *gadget, Index *inde
 	table->getRowType()->splitInto(lastrh->getRow(), fields);
 	fields[fidx].setPtr(true, &sum, sizeof(sum));
 
-	// could use the table row type again, but to exercise a different code,
-	// use the aggregator's result type:
-	// gadget()->getType()->getRowType() and gadget->getLabel()->getType()
-	// are equivalent
-	Rowref res(gadget->getLabel()->getType(), fields);
-	// Potentially could even use directly
-	//     gadget->getLabel()->getType()->makeRow(fields)
-	// as the 2nd argument of sendDelayed() but it would cause a memory
-	// leak if the table's enqueueing mode is EM_IGNORE
-	gadget->sendDelayed(dest, res, opcode);
+	// use the convenience wrapper version
+	gadget->sendDelayed(dest, fields, opcode);
 }
 
 // the Sum example that iterates over the group;

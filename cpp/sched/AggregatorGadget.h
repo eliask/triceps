@@ -54,11 +54,15 @@ public:
 		return static_cast<const C*>(type_.get());
 	}
 
-	// export the sendDeplayed() interface
+	// export the sendDelayed() interface
 	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const
 	{
 		Gadget::sendDelayed(dest, row, opcode);
 	}
+
+	// a convenience version of sendDelayed() that constructs the
+	// row from fields and sends it
+	void sendDelayed(Tray *dest, FdataVec &data, Rowop::Opcode opcode) const;
 
 protected:
 	Table *table_;

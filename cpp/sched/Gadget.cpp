@@ -68,8 +68,7 @@ void Gadget::sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const
 
 	if (mode_ != EM_IGNORE) {
 		Autoref<Rowop> rop = new Rowop(label_, opcode, row, mode_);
-		if (mode_ != EM_IGNORE)
-			dest->push_back(rop);
+		dest->push_back(rop);
 	}
 }
 
