@@ -72,7 +72,7 @@ AggregatorGadget *BasicAggregatorType::makeGadget(Table *table, IndexType *intyp
 
 Aggregator *BasicAggregatorType::makeAggregator(Table *table, AggregatorGadget *gadget) const
 {
-	return new BasicAggregator(table, gadget);
+	return new BasicAggregator;
 }
 
 }; // TRICEPS_NS

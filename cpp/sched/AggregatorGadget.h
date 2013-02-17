@@ -43,9 +43,15 @@ public:
 	}
 
 	// Get back the aggregation type
-	const AggregatorType* getType() const
+	const AggregatorType *getType() const
 	{
 		return type_;
+	}
+	// version with embedded type-casting
+	template<class C>
+	const C *typeAs() const
+	{
+		return static_cast<const C*>(type_.get());
 	}
 
 	// export the sendDeplayed() interface

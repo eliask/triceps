@@ -80,11 +80,15 @@ Things that need to be done:
   pre-existing tables, then disable thsi mode and continue with the subscription
 * add an override of the printed label name in print(), printP() and code 
   that constructs labels around it
+* move erref* to the member methods of class Erref (e.f(...))
+* in BasicAggregator add a storage for one previous result row (or make a separate
+  type with it)
+* export the AggregatorType::setRowType() to Perl initialization
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 * doc: the Exception::f, ::fTrace
-* doc: errefAppend()
+* doc: errefAppend(), errefF(), Erref::f, Erref::fAppend
 * doc: streaming functions
 * doc: perl Label::isCleared()
 * doc: in types construction throw instead of abort()
@@ -92,7 +96,8 @@ Things that need to be done:
 * doc: the new draining of forked rowops, new mark semantics
 * doc: HoldRowTypes
 * doc: RowType::copy(), RowSetType::deepCopy()
-* doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder
+* doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
+* doc: the row printing in Unit::Tracer in C++
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

@@ -27,7 +27,8 @@ class AggregatorType : public Type
 {
 public:
 	// @param name - name for aggregators' gadget in the table, will be tablename.name
-	// @param rt - type of rows produced by this aggregator, wil be referenced
+	// @param rt - type of rows produced by this aggregator, will be referenced;
+	//        may be NULL if the subclass will set it later during initialization
 	AggregatorType(const string &name, const RowType *rt);
 	// for copying
 	AggregatorType(const AggregatorType &agg);
@@ -150,6 +151,13 @@ protected:
 	int getPos() const
 	{
 		return pos_;
+	}
+
+	// Set the row type, can be called by the subclass initialize().
+	// @param rt - the result row type computed by the initialization.
+	void setRowType(const RowType *rt)
+	{
+		rowType_ = rt;
 	}
 
 protected:

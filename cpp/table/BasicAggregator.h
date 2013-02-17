@@ -19,18 +19,10 @@ class Table;
 class BasicAggregator : public Aggregator
 {
 public:
-	BasicAggregator(Table *table, AggregatorGadget *gadget) :
-		gadget_(gadget)
-	{ }
-
 	// from Aggregator
 	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
 		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
 		AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
-
-protected:
-	// In more complex aggregators the gadget would be of a subtype
-	AggregatorGadget *gadget_;
 };
 
 }; // TRICEPS_NS
