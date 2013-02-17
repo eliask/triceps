@@ -730,3 +730,136 @@ UTESTCASE aggLast(Utest *utest)
 	UT_IS(tlog, result_expect);
 }
 
+// aggregator that computes the sum of field B;
+// follows the outline of the Perl aggregators shown in xAgg.t
+void sumB(Table *table, AggregatorGadget *gadget, Index *index,
+        const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
+{
+	// don't send the NULL record after the group becomes empty
+	if (opcode == Rowop::OP_NOP || parentIndexType->groupSize(gh) == 0)
+		return;
+	
+	int32_t sum = 0;
+	for (RowHandle *rhi = index->begin(); rhi != NULL; rhi = index->next(rhi)) {
+		sum += table->getRowType()->getInt32(rhi->getRow(), 1, 0); // field b at idx 1
+	}
+
+	// pick the rest of fields from the last row of the group
+	RowHandle *lastrh = index->last();
+
+	// build the result row; relies on the aggregator result being of the
+	// same type as the rows in the table
+	FdataVec fields;
+	table->getRowType()->splitInto(lastrh->getRow(), fields);
+	fields[1].setPtr(true, &sum, sizeof(sum)); // set the field b from the sum
+
+	// could use the table row type again, but to exercise a different code,
+	// use the aggregator's result type:
+	// gadget()->getType()->getRowType() and gadget->getLabel()->getType()
+	// are equivalent
+	Rowref res(gadget->getLabel()->getType(), fields);
+	// Potentially could even use directly
+	//     gadget->getLabel()->getType()->makeRow(fields)
+	// as the 2nd argument of sendDelayed() but it would cause a memory
+	// leak if the table's enqueueing mode is EM_IGNORE
+	gadget->sendDelayed(dest, res, opcode);
+}
+
+// the row printer for tracing
+void printEB(string &res, const RowType *rt, const Row *row)
+{
+	int32_t b = rt->getInt32(row, 1, 0); // field b at idx 1
+	const char *e = rt->getString(row, 4); // field e at idx 4
+	res.append(strprintf(" e=%s b=%d", e, (int)b));
+}
+
+// the Sum example that iterates over the group;
+UTESTCASE aggBasicSum(Utest *utest)
+{
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+
+	Autoref<Unit::StringTracer> trace = new Unit::StringNameTracer(false, printEB);
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	// there is no need for a primary index, put the aggregation
+	// index(es) as top-level
+	Autoref<TableType> tt = TableType::make(rt1)
+		->addSubIndex("Hashed", HashedIndexType::make( // will be the default index
+				(new NameSet())->add("e")
+			)->addSubIndex("Fifo", FifoIndexType::make()
+				->setAggregator(new BasicAggregatorType("aggr", rt1, sumB))
+			)
+		);
+
+	aggHistory = new Errors;
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	FdataVec dv;
+	mkfdata(dv);
+
+	char sval[2] = "x"; // one-character string for "e"
+	dv[4].setPtr(true, &sval, sizeof(sval));
+
+	Rowref r11(rt1);
+
+	sval[0] = 'A';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'B';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'A';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'A';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->insertRow(r11));
+	
+	sval[0] = 'A';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->deleteRow(r11));
+	
+	// this will delete the group
+	sval[0] = 'B';
+	r11 = rt1->makeRow(dv);
+	UT_ASSERT(t->deleteRow(r11));
+	
+	string expect = 
+		"unit 'u' before label 't.out' op OP_INSERT e=A b=1234\n"
+		"unit 'u' before label 't.aggr' op OP_INSERT e=A b=1234\n"
+		"unit 'u' before label 't.out' op OP_INSERT e=B b=1234\n"
+		"unit 'u' before label 't.aggr' op OP_INSERT e=B b=1234\n"
+		"unit 'u' before label 't.aggr' op OP_DELETE e=A b=1234\n"
+		"unit 'u' before label 't.out' op OP_INSERT e=A b=1234\n"
+		"unit 'u' before label 't.aggr' op OP_INSERT e=A b=2468\n"
+		"unit 'u' before label 't.aggr' op OP_DELETE e=A b=2468\n"
+		"unit 'u' before label 't.out' op OP_INSERT e=A b=1234\n"
+		"unit 'u' before label 't.aggr' op OP_INSERT e=A b=3702\n"
+		"unit 'u' before label 't.aggr' op OP_DELETE e=A b=3702\n"
+		"unit 'u' before label 't.out' op OP_DELETE e=A b=1234\n"
+		"unit 'u' before label 't.aggr' op OP_INSERT e=A b=2468\n"
+		"unit 'u' before label 't.aggr' op OP_DELETE e=B b=1234\n"
+		"unit 'u' before label 't.out' op OP_DELETE e=B b=1234\n"
+		;
+
+	string tlog = trace->getBuffer()->print();
+	if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+}
+
