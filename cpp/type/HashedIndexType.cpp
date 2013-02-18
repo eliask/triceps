@@ -234,7 +234,7 @@ void HashedIndexType::initialize()
 	for (int i = 0; i < n; i++) {
 		int idx = rt->findIdx((*key_)[i]);
 		if (idx < 0) {
-			errors_->appendMsg(true, strprintf("can not find the key field '%s'", (*key_)[i].c_str()));
+			errors_.f("can not find the key field '%s'", (*key_)[i].c_str());
 		}
 		keyFld_[i] = idx;
 	}

@@ -247,7 +247,7 @@ void Unit::enqueue(int em, Onceref<Rowop> rop)
 	case Gadget::EM_IGNORE:
 		break;
 	default:
-		throw Exception(strprintf("Triceps API violation: Invalid enqueueing mode %d\n", em), true);
+		throw Exception::fTrace("Triceps API violation: Invalid enqueueing mode %d\n", em);
 		break;
 	}
 }
@@ -267,7 +267,7 @@ void Unit::enqueueTray(int em, const_Onceref<Tray> tray)
 	case Gadget::EM_IGNORE:
 		break;
 	default:
-		throw Exception(strprintf("Triceps API violation: Invalid enqueueing mode %d\n", em), true);
+		throw Exception::fTrace("Triceps API violation: Invalid enqueueing mode %d\n", em);
 		break;
 	}
 }
@@ -304,8 +304,8 @@ void Unit::loopAt(FrameMark *mark, Onceref<Rowop> rop)
 		outerFrame_->push_back(rop);
 	} else {
 		if (mark->getUnit() != this) {
-			throw Exception(strprintf("Triceps API violation: loopAt() attempt on unit '%s' with mark '%s' from unit '%s'\n", 
-				getName().c_str(), mark->getName().c_str(), mark->getUnit()->getName().c_str()), true);
+			throw Exception::fTrace("Triceps API violation: loopAt() attempt on unit '%s' with mark '%s' from unit '%s'\n", 
+				getName().c_str(), mark->getName().c_str(), mark->getUnit()->getName().c_str());
 		}
 		f->push_back(rop);
 	}
@@ -319,8 +319,8 @@ void Unit::loopTrayAt(FrameMark *mark, const_Onceref<Tray> tray)
 		f = outerFrame_;
 	} else {
 		if (mark->getUnit() != this) {
-			throw Exception(strprintf("Triceps API violation: loopTrayAt() attempt on unit '%s' with mark '%s' from unit '%s'\n", 
-				getName().c_str(), mark->getName().c_str(), mark->getUnit()->getName().c_str()), true);
+			throw Exception::fTrace("Triceps API violation: loopTrayAt() attempt on unit '%s' with mark '%s' from unit '%s'\n", 
+				getName().c_str(), mark->getName().c_str(), mark->getUnit()->getName().c_str());
 		}
 	}
 	for (Tray::const_iterator it = tray->begin(); it != tray->end(); ++it)

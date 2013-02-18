@@ -69,12 +69,12 @@ void IndexTypeVec::initialize(TableType *tabtype, IndexType *parent, Erref paren
 	size_t n = size();
 	for (size_t i = 0; i < n; i++) {
 		if (at(i).name_.empty()) {
-			parentErr->appendMsg(true, strprintf("nested index %d is not allowed to have an empty name", (int)i+1));
+			parentErr.f("nested index %d is not allowed to have an empty name", (int)i+1);
 			continue;
 		}
 		IndexType *st = (*this)[i].index_;
 		if (st == NULL) {
-			parentErr->appendMsg(true, strprintf("nested index %d '%s' reference must not be NULL", (int)i+1, at(i).name_.c_str()));
+			parentErr.f("nested index %d '%s' reference must not be NULL", (int)i+1, at(i).name_.c_str());
 			continue;
 		}
 		st->setNestPos(tabtype, parent, i);
@@ -86,7 +86,7 @@ void IndexTypeVec::initialize(TableType *tabtype, IndexType *parent, Erref paren
 	for (size_t i = 0; i < n; i++) {
 		at(i).index_->initializeNested();
 		Erref se = at(i).index_->getErrors();
-		parentErr->append(strprintf("nested index %d '%s':", (int)i+1, at(i).name_.c_str()), se);
+		parentErr.fAppend(se, "nested index %d '%s':", (int)i+1, at(i).name_.c_str());
 	}
 }
 
@@ -102,7 +102,7 @@ bool IndexTypeVec::checkDups(Erref parentErr)
 	for (size_t i = 0; i < n; i++) {
 		const string &name = at(i).name_;
 		if (known.find(name) != known.end()) {
-			parentErr->appendMsg(true, strprintf("nested index %d name '%s' is used more than once", (int)i+1, name.c_str()));
+			parentErr.f("nested index %d name '%s' is used more than once", (int)i+1, name.c_str());
 			res = false;
 		}
 		known.insert(name);
@@ -315,10 +315,10 @@ void IndexType::initializeNested()
 	if (!agg_.isNull()) {
 		agg_->initialize(tabtype_, this);
 		Erref se = agg_->getErrors();
-		errors_->append(strprintf("aggregator '%s':", agg_->getName().c_str()), se);
+		errors_.fAppend(se, "aggregator '%s':", agg_->getName().c_str());
 		if (agg_->getRowType() == NULL)
-			errors_->appendMsg(true, strprintf("aggregator '%s' internal error: the result row type is not initialized",
-				agg_->getName().c_str()));
+			errors_.f("aggregator '%s' internal error: the result row type is not initialized",
+				agg_->getName().c_str());
 	}
 
 	// optimize by nullifying the empty error set

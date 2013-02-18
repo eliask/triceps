@@ -313,14 +313,12 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 	for (TrieadUpd *p = upd; p != NULL; p = p->waitFor_) {
 		if (p == selfupd.get()) {
 			// print the list of dependencies, it repeats the same loop
-			Erref trace = new Errors(true);
+			Erref deps;
 			for (TrieadUpd *pp = upd; pp != selfupd.get(); pp = pp->waitFor_)
-				trace->appendMsg(true, pp->t_->getName() + " waits for " + pp->waitFor_->t_->getName());
-			Erref err = new Errors(strprintf(
-					"In Triceps application '%s' thread '%s' waiting for thread '%s' would cause a deadlock:",
-						name_.c_str(), to->get()->getName().c_str(), tname.c_str()),
-				trace);
-			throw Exception(err, true);
+				deps.f("%s waits for %s", pp->t_->getName().c_str(), pp->waitFor_->t_->getName().c_str());
+			throw Exception::fTrace(deps,
+				"In Triceps application '%s' thread '%s' waiting for thread '%s' would cause a deadlock:",
+							name_.c_str(), to->get()->getName().c_str(), tname.c_str());
 		}
 	}
 
@@ -489,24 +487,22 @@ void App::waitReady()
 	int err = ready_.timedwait(deadline_);
 	if (err != 0) {
 		if (err == ETIMEDOUT) {
-			Erref lags = new Errors(true);
+			Erref lags;
 			{
 				pw::lockmutex lm(mutex_); // reading the list must be protected
 				for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
 					Triead *t = it->second->t_;
 					if (t == NULL) {
-						lags->appendMsg(true, it->first + ": not defined");
+						lags.f("%s: not defined", it->first.c_str());
 					} else if (!t->isConstructed()) {
-						lags->appendMsg(true, it->first + ": not constructed");
+						lags.f("%s: not constructed", it->first.c_str());
 					} else if (!t->isReady()) {
-						lags->appendMsg(true, it->first + ": not ready");
+						lags.f("%s: not ready", it->first.c_str());
 					}
 				}
 			}
-			Erref err = new Errors(strprintf(
-				"Application '%s' did not initialize within the deadline.\nThe lagging threads are:", name_.c_str()),
-				lags);
-			throw Exception(err, true);
+			throw Exception::fTrace(lags,
+				"Application '%s' did not initialize within the deadline.\nThe lagging threads are:", name_.c_str());
 		} else  {
 			throw Exception::fTrace("Internal error: condvar wait for all-ready in application '%s' failed, errno=%d: %s.", 
 				name_.c_str(), err, strerror(err));

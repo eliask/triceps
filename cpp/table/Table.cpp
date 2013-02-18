@@ -159,7 +159,7 @@ bool Table::insert(RowHandle *newrh)
 		return false;  // nothing to do
 
 	if (busy_)
-		throw Exception(strprintf("Detected a recursive modification of the table '%s'.", getName().c_str()), false);
+		throw Exception::fTrace("Detected a recursive modification of the table '%s'.", getName().c_str());
 
 	BusyMark bm(busy_); // will auto-clean on exit
 
@@ -261,7 +261,7 @@ void Table::remove(RowHandle *rh)
 		return;
 
 	if (busy_)
-		throw Exception(strprintf("Detected a recursive modification of the table '%s'.", getName().c_str()), false);
+		throw Exception::fTrace("Detected a recursive modification of the table '%s'.", getName().c_str());
 
 	BusyMark bm(busy_); // will auto-clean on exit
 

@@ -100,8 +100,8 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 		return;
 
 	if (unit != unit_) {
-		throw Exception(strprintf("Triceps API violation: call() attempt with unit '%s' of label '%s' belonging to unit '%s'.\n", 
-			unit->getName().c_str(), getName().c_str(), unit_->getName().c_str()), true);
+		throw Exception::fTrace("Triceps API violation: call() attempt with unit '%s' of label '%s' belonging to unit '%s'.\n", 
+			unit->getName().c_str(), getName().c_str(), unit_->getName().c_str());
 	}
 
 	if (nonReentrant_ && recursion_ >= 1)
@@ -127,7 +127,7 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 		execute(arg);
 	} catch (Exception e) {
 		Erref err = e.getErrors();
-		err->appendMsg(true, strprintf("Called through the label '%s'.", getName().c_str()));
+		err.f("Called through the label '%s'.", getName().c_str());
 		throw; // the errors buffer got changed in place!
 	}
 	if (!chained_.empty()) {
@@ -141,7 +141,7 @@ void Label::call(Unit *unit, Rowop *arg, const Label *chainedFrom) const
 				(*it)->call(unit, arg, this); // each of them can do their own chaining....
 			} catch (Exception e) {
 				Erref err = e.getErrors();
-				err->appendMsg(true, strprintf("Called chained from the label '%s'.", getName().c_str()));
+				err.f("Called chained from the label '%s'.", getName().c_str());
 				throw; // the errors buffer got changed in place!
 			}
 		}
