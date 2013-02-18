@@ -156,6 +156,15 @@ public:
 		return (ref_ != ar.get());
 	}
 
+	// Swap the contents of two Autorefs.
+	// The reference counts don't change.
+	void swap(Autoref &other)
+	{
+		Target *r = ref_;
+		ref_ = other.ref_;
+		other.ref_ = r;
+	}
+
 protected:
 	// Drop the current reference
 	inline void drop()
