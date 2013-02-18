@@ -19,7 +19,7 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 { 
 	if (!fret->isInitialized())
 		fret->initialize();
-	errefAppend(err_, "Errors in the underlying FnReturn:", fret->getErrors());
+	err_.fAppend(fret->getErrors(), "Errors in the underlying FnReturn:");
 }
 
 Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string &asname, bool writer):
@@ -66,16 +66,16 @@ Facet *Facet::exportRowType(const string &name, Onceref<RowType> rtype)
 {
 	assertNotImported();
 	if (rtype.isNull()) {
-		errefF(err_, "Can not export a NULL row type with name '%s'.", name.c_str());
+		err_.f("Can not export a NULL row type with name '%s'.", name.c_str());
 		return this;
 	}
-	if (errefAppend(err_, "Can not export a row type '" + name + "' containing errors:", rtype->getErrors()))
+	if (err_.fAppend(rtype->getErrors(), "Can not export a row type '%s' containing errors:", name.c_str()))
 		return this;
 
 	if (name.empty()) {
-		errefF(err_, "Can not export a row type with an empty name.");
+		err_.f("Can not export a row type with an empty name.");
 	} else if (rowTypes_.find(name) != rowTypes_.end()) {
-		errefF(err_, "Can not export a duplicate row type name '%s'.", name.c_str());
+		err_.f("Can not export a duplicate row type name '%s'.", name.c_str());
 	} else {
 		rowTypes_[name] = rtype;
 	}
@@ -86,17 +86,17 @@ Facet *Facet::exportTableType(const string &name, Onceref<TableType> tt)
 {
 	assertNotImported();
 	if (tt.isNull()) {
-		errefF(err_, "Can not export a NULL table type with name '%s'.", name.c_str());
+		err_.f("Can not export a NULL table type with name '%s'.", name.c_str());
 		return this;
 	}
 	tt->initialize();
-	if (errefAppend(err_, "Can not export a table type '" + name + "' containing errors:", tt->getErrors()))
+	if (err_.fAppend(tt->getErrors(), "Can not export a table type '%s' containing errors:", name.c_str()))
 		return this;
 
 	if (name.empty()) {
-		errefF(err_, "Can not export a table type with an empty name.");
+		err_.f("Can not export a table type with an empty name.");
 	} else if (tableTypes_.find(name) != tableTypes_.end()) {
-		errefF(err_, "Can not export a duplicate table type name '%s'.", name.c_str());
+		err_.f("Can not export a duplicate table type name '%s'.", name.c_str());
 	} else {
 		tableTypes_[name] = tt;
 	}

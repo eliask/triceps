@@ -140,31 +140,6 @@ void Errors::clear()
 	error_ = false;
 }
 
-bool errefAppend(Erref &ref, const string &msg, Autoref<Errors> clde)
-{
-	if (!clde->hasError())
-		return false;
-
-	if (ref.isNull())
-		ref = new Errors(msg, clde);
-	else
-		ref->append(msg, clde);
-
-	return true;
-}
-
-void errefF(Erref &ref, const char *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	string msg = vstrprintf(fmt, ap);
-	va_end(ap);
-
-	if (ref.isNull())
-		ref = new Errors;
-	ref->appendMultiline(true, msg);
-}
-
 // ------------------------------------ Erref ----------------------------------
 
 bool Erref::fAppend(Autoref<Errors> clde, const char *fmt, ...)

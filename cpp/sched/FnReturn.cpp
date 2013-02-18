@@ -280,7 +280,7 @@ void AutoFnBind::clear()
 			rets_[i]->pop(bindings_[i]);
 		} catch (Exception e) {
 			// fprintf(stderr, "DEBUG caught\n");
-			errefAppend(err, strprintf("AutoFnBind::clear: caught an exception at position %d", i), e.getErrors());
+			err.fAppend(e.getErrors(), "AutoFnBind::clear: caught an exception at position %d", i);
 		}
 	}
 	rets_.clear(); bindings_.clear();
