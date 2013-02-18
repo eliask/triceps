@@ -145,6 +145,28 @@ public:
 	}
 };
 
+class FnReturnGuts: public FnReturn
+{
+public:
+	static Xtray *getXtray(FnReturn *fret)
+	{
+		const FnReturnGuts *frg = (FnReturnGuts *)fret;
+		return frg->xtray_;
+	}
+
+	static bool isXtrayEmpty(FnReturn *fret)
+	{
+		const FnReturnGuts *frg = (FnReturnGuts *)fret;
+		return frg->FnReturn::isXtrayEmpty();
+	}
+
+	static void swapXtray(FnReturn *fret, Autoref<Xtray> &other)
+	{
+		FnReturnGuts *frg = (FnReturnGuts *)fret;
+		frg->FnReturn::swapXtray(other);
+	}
+};
+
 // make the exceptions catchable
 void make_catchable()
 {
@@ -168,5 +190,22 @@ void mkfields(RowType::FieldVec &fields)
 	fields.push_back(RowType::Field("c", Type::r_int64));
 	fields.push_back(RowType::Field("d", Type::r_float64));
 	fields.push_back(RowType::Field("e", Type::r_string));
+}
+
+uint8_t v_uint8[10] = "123456789";
+int32_t v_int32 = 1234;
+int64_t v_int64 = 0xdeadbeefc00c;
+double v_float64 = 9.99e99;
+char v_string[] = "hello world";
+
+void mkfdata(FdataVec &fd)
+{
+	fd.resize(4);
+	fd[0].setPtr(true, &v_uint8, sizeof(v_uint8));
+	fd[1].setPtr(true, &v_int32, sizeof(v_int32));
+	fd[2].setPtr(true, &v_int64, sizeof(v_int64));
+	fd[3].setPtr(true, &v_float64, sizeof(v_float64));
+	// test the constructor
+	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
 }
 

@@ -52,6 +52,9 @@ public:
 	//        you can use either value
 	Facet(Onceref<FnReturn> fret, bool writer);
 
+	// The destructor removes the Xtray from FnReturn and discards it.
+	~Facet();
+
 	static Facet *make(Onceref<FnReturn> fret, bool writer)
 	{
 		return new Facet(fret, writer);
@@ -213,6 +216,10 @@ protected:
 	// Mark the facet as imported.
 	// A step in the export process, when the facet gets immediately
 	// imported back.
+	//
+	// If this is a writer facet, and the FnReturn is already bound
+	// to a writer facet, will throw an Exception.
+	//
 	// @param nexus - the nexus constructed from this facet
 	// @param tname - name of the thread that owns it
 	void reimport(Nexus *nexus, const string &tname);

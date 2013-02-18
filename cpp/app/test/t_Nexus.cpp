@@ -131,6 +131,57 @@ UTESTCASE make_facet(Utest *utest)
 		}
 	}
 
+	// an FnReturn that already has an xtray
+	{
+		Erref err;
+
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+			->addLabel("two", rt1)
+		;
+		err = fretbad->getErrors();
+		UT_ASSERT(!err->hasError());
+
+		fretbad->initialize();
+		Autoref<Xtray> xt1 = new Xtray(fretbad->getType());
+		FnReturnGuts::swapXtray(fretbad, xt1);
+		UT_ASSERT(fretbad->isFaceted());
+
+		{
+			Autoref<Facet> fabad = Facet::makeWriter(fretbad); // can't use a faceted FnReturn for a writer
+			err = fabad->getErrors();
+			UT_ASSERT(err->hasError());
+			UT_IS(err->print(), "The FnReturn is already connected to a writer facet, can not do it twice.\n");
+
+			UT_ASSERT(!fabad->isWriter()); // this error resets the writer flag
+
+			// the exception gets thrown at export attempt
+			{
+				string msg;
+				try {
+					ow1->exportNexus(fabad);
+				} catch(Exception e) {
+					msg = e.getErrors()->print();
+				}
+				UT_IS(msg, 
+					"In app 'a1' thread 't1' can not export the facet 'fretbad' with an error:\n"
+					"  The FnReturn is already connected to a writer facet, can not do it twice.\n");
+			}
+		}
+
+		// After the Facet with this error is destroyed, the FnReturn must stay faceted
+		UT_ASSERT(fretbad->isFaceted());
+
+		{
+			// however that same FnReturn with Xtray can be used fine for a reader
+			Autoref<Facet> fagood = Facet::makeReader(fretbad);
+			UT_ASSERT(!fagood->getErrors()->hasError());
+		}
+		
+		// After the reader Facet is destroyed, the FnReturn must stay faceted
+		UT_ASSERT(fretbad->isFaceted());
+	}
+
 	// rowType failures
 	{
 		Autoref<Facet> fabad;
@@ -251,210 +302,293 @@ UTESTCASE export_import(Utest *utest)
 {
 	make_catchable();
 
-	Autoref<App> a1 = App::make("a1");
-	a1->setTimeout(0); // will replace all waits with an Exception
-	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
-	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
-	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
-	Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
-
-	Triead::NexusMap exp;
-	Triead::FacetMap imp;
-
-	// initially no imports, no exports
-	ow1->imports(imp);
-	UT_ASSERT(imp.empty());
-	ow1->get()->exports(exp);
-	UT_ASSERT(exp.empty());
-
-	// prepare fragments
-	RowType::FieldVec fld;
-	mkfields(fld);
-	Autoref<RowType> rt1 = new CompactRowType(fld);
-
-	Autoref<Unit> unit1 = ow1->unit();
-
-	// With an uninitialized FnReturn
-	Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
-		->addLabel("one", rt1)
-		->addLabel("two", rt1)
-		->addLabel("three", rt1)
-	;
-	Autoref<Facet> fa1 = Facet::makeReader(fret1);
-
-	// basic export with reimport
-	Autoref<Facet> fa1im = ow1->exportNexus(fa1);
-	UT_IS(fa1im, fa1);
-	UT_ASSERT(fa1->isImported());
-
-	ow1->imports(imp);
-	UT_IS(imp.size(), 1);
-	UT_IS(imp["t1/fret1"], fa1);
-
-	ow1->get()->imports(exp); // test the list of imports from Triead
-	UT_IS(exp.size(), 1);
-	UT_IS(exp["t1/fret1"].get(), fa1->nexus());
-
-	ow1->exports(exp);
-	UT_IS(exp.size(), 1);
-	UT_IS(exp["fret1"].get(), fa1->nexus());
-
-	// basic export with no reimport
-	Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
-		->addLabel("one", rt1)
-	;
-	Autoref<Facet> fa2 = Facet::makeReader(fret2);
-	Autoref<Facet> fa2im = ow1->exportNexusNoImport(fa2);
-	UT_IS(fa2im, fa2);
-	UT_ASSERT(!fa2->isImported());
-	UT_ASSERT(fa2->nexus() == NULL);
-	UT_ASSERT(fa2->getFullName().empty());
-
-	ow1->imports(imp);
-	UT_IS(imp.size(), 1);
-
-	ow1->exports(exp);
-	UT_IS(exp.size(), 2);
-	UT_IS(exp["fret2"].get()->getName(), "fret2");
-
-	// import into the same thread, works immediately
-	Autoref<Facet> fa3 = ow1->importNexus("t1", "fret2", "fret3", true);
-	UT_ASSERT(fa3->getFnReturn()->equals(fa2->getFnReturn()));
-	UT_IS(fa3->getFnReturn()->getUnitPtr(), ow1->unit());
-	
-	ow1->imports(imp);
-	UT_IS(imp.size(), 2);
-	UT_IS(imp["t1/fret2"], fa3);
-
-	// an import into another thread would wait for thread to be fully constructed
-	// (and in this case fail on timeout)
+	Autoref<FnReturn> fret3; // will be used to check facet destruction
 	{
-		string msg;
-		try {
-			ow2->importReader("t1", "fret2");
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
-		}
-		UT_IS(msg, "Thread 't1' in application 'a1' did not initialize within the deadline.\n");
-	}
+		Autoref<App> a1 = App::make("a1");
+		a1->setTimeout(0); // will replace all waits with an Exception
+		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+		Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+		Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
 
-	// an immediate import into another thread would succeed
-	Autoref<Facet> fa4 = ow2->importReaderImmed("t1", "fret2");
-	UT_ASSERT(fa4->getFnReturn()->equals(fa2->getFnReturn()));
-	UT_IS(fa4->nexus(), fa3->nexus());
-	UT_IS(fa4->getShortName(), "fret2");
-	UT_IS(fa4->getFnReturn()->getUnitPtr(), ow2->unit());
-	
-	ow2->imports(imp);
-	UT_IS(imp.size(), 1);
-	UT_IS(imp["t1/fret2"], fa4);
+		Triead::NexusMap exp;
+		Triead::FacetMap imp;
 
-	// test importWriterImmed success
-	Autoref<Facet> fa5 = ow3->importWriterImmed("t1", "fret2", "fff");
-	UT_ASSERT(fa5->getFnReturn()->equals(fa2->getFnReturn()));
-	UT_IS(fa5->nexus(), fa3->nexus());
-	UT_IS(fa5->getShortName(), "fff");
-	
-	ow3->imports(imp);
-	UT_IS(imp.size(), 1);
-	UT_IS(imp["t1/fret2"], fa5);
+		// initially no imports, no exports
+		ow1->imports(imp);
+		UT_ASSERT(imp.empty());
+		ow1->get()->exports(exp);
+		UT_ASSERT(exp.empty());
 
-	// a repeated import succeeds immediately even if it's not marked as such
-	Autoref<Facet> fa6 = ow3->importWriter("t1", "fret2", "xxx");
-	UT_IS(fa6, fa5); // same, ignoring the asname!
-	ow3->imports(imp);
-	UT_IS(imp.size(), 1);
+		// prepare fragments
+		RowType::FieldVec fld;
+		mkfields(fld);
+		Autoref<RowType> rt1 = new CompactRowType(fld);
 
-	// errors
-	// exporting a facet with an error already tested in make_facet()
-	{
-		string msg;
-		try {
-			ow2->exportNexus(fa4);
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
-		}
-		UT_IS(msg, "In app 'a1' thread 't2' can not re-export the imported facet 't1/fret2'.\n");
-	}
-	{
-		string msg;
-		try {
-			ow3->importReader("t1", "fret2", "xxx");
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
-		}
-		UT_IS(msg, "In app 'a1' thread 't3' can not import the nexus 't1/fret2' for both reading and writing.\n");
-	}
-	{
-		string msg;
-		try {
-			ow3->importReaderImmed("t1", "fret99", "xxx");
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
-		}
-		UT_IS(msg, "For thread 't3', the nexus 'fret99' is not found in application 'a1' thread 't1'.\n");
-	}
-	{
-		string msg;
-		try {
-			ow1->exportNexusNoImport(fa2);
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
-		}
-		UT_IS(msg, "Can not export the nexus with duplicate name 'fret2' in app 'a1' thread 't1'.\n");
-	}
-	{
-		string msg;
+		Autoref<Unit> unit1 = ow1->unit();
 
-		Autoref<FnReturn> fretm1 = FnReturn::make(ow3->unit(), "a/nex") // a acrewy name
+		// With an uninitialized FnReturn
+		Autoref<FnReturn> fret1 = FnReturn::make(unit1, "fret1")
+			->addLabel("one", rt1)
+			->addLabel("two", rt1)
+			->addLabel("three", rt1)
+		;
+		Autoref<Facet> fa1 = Facet::makeReader(fret1);
+
+		// basic export of a reader with reimport
+		Autoref<Facet> fa1im = ow1->exportNexus(fa1);
+		UT_IS(fa1im, fa1);
+		UT_ASSERT(fa1->isImported());
+
+		ow1->imports(imp);
+		UT_IS(imp.size(), 1);
+		UT_IS(imp["t1/fret1"], fa1);
+
+		ow1->get()->imports(exp); // test the list of imports from Triead
+		UT_IS(exp.size(), 1);
+		UT_IS(exp["t1/fret1"].get(), fa1->nexus());
+
+		ow1->exports(exp);
+		UT_IS(exp.size(), 1);
+		UT_IS(exp["fret1"].get(), fa1->nexus());
+
+		UT_ASSERT(!fa1->getFnReturn()->isFaceted()); // reader doesn't add xtray to the FnReturn
+
+		// basic export with no reimport
+		Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
 			->addLabel("one", rt1)
 		;
-		ow3->exportNexus(Facet::makeReader(fretm1)); // also tests the reference passing as the argument
-		ow4->importReaderImmed("t3", "a/nex"); // has full name "t3/a/nex"
+		Autoref<Facet> fa2 = Facet::makeReader(fret2);
+		Autoref<Facet> fa2im = ow1->exportNexusNoImport(fa2);
+		UT_IS(fa2im, fa2);
+		UT_ASSERT(!fa2->isImported());
+		UT_ASSERT(fa2->nexus() == NULL);
+		UT_ASSERT(fa2->getFullName().empty());
+
+		UT_ASSERT(!fa2->getFnReturn()->isFaceted()); // reader doesn't add xtray to the FnReturn
+
+		ow1->imports(imp);
+		UT_IS(imp.size(), 1);
+
+		ow1->exports(exp);
+		UT_IS(exp.size(), 2);
+		UT_IS(exp["fret2"].get()->getName(), "fret2");
+
+		// import into the same thread, works immediately
+		Autoref<Facet> fa3 = ow1->importNexus("t1", "fret2", "fret3", true);
+		UT_ASSERT(fa3->getFnReturn()->equals(fa2->getFnReturn()));
+		UT_IS(fa3->getFnReturn()->getUnitPtr(), ow1->unit());
 		
-		Autoref<FnReturn> fretm2 = FnReturn::make(ow4->unit(), "nex")
-			->addLabel("one", rt1)
-		;
+		fret3 = fa3->getFnReturn();
+		UT_ASSERT(fret3->isFaceted()); // writer adds xtray to the FnReturn
 
-		try {
-			ow4->exportNexus(Facet::makeReader(fretm2));
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
+		ow1->imports(imp);
+		UT_IS(imp.size(), 2);
+		UT_IS(imp["t1/fret2"], fa3);
+
+		// an import into another thread would wait for thread to be fully constructed
+		// (and in this case fail on timeout)
+		{
+			string msg;
+			try {
+				ow2->importReader("t1", "fret2");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Thread 't1' in application 'a1' did not initialize within the deadline.\n");
 		}
-		UT_IS(msg, "On exporting a facet in app 'a1' found a same-named facet 't3/a/nex' already imported, did you mess with the funny names?\n");
-	}
-	{
-		string msg;
 
-		ow1->markConstructed();
-		Autoref<FnReturn> fretm1 = FnReturn::make(ow1->unit(), "more")
-			->addLabel("one", rt1)
-		;
+		// an immediate import into another thread would succeed
+		Autoref<Facet> fa4 = ow2->importReaderImmed("t1", "fret2");
+		UT_ASSERT(fa4->getFnReturn()->equals(fa2->getFnReturn()));
+		UT_IS(fa4->nexus(), fa3->nexus());
+		UT_IS(fa4->getShortName(), "fret2");
+		UT_IS(fa4->getFnReturn()->getUnitPtr(), ow2->unit());
+		
+		UT_ASSERT(!fa4->getFnReturn()->isFaceted()); // reader doesn't add xtray to the FnReturn
 
-		try {
-			ow1->exportNexus(Facet::makeReader(fretm1));
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
+		ow2->imports(imp);
+		UT_IS(imp.size(), 1);
+		UT_IS(imp["t1/fret2"], fa4);
+
+		// test importWriterImmed success
+		Autoref<Facet> fa5 = ow3->importWriterImmed("t1", "fret2", "fff");
+		UT_ASSERT(fa5->getFnReturn()->equals(fa2->getFnReturn()));
+		UT_IS(fa5->nexus(), fa3->nexus());
+		UT_IS(fa5->getShortName(), "fff");
+		
+		UT_ASSERT(fa5->getFnReturn()->isFaceted()); // writer adds xtray to the FnReturn
+
+		ow3->imports(imp);
+		UT_IS(imp.size(), 1);
+		UT_IS(imp["t1/fret2"], fa5);
+
+		// a repeated import succeeds immediately even if it's not marked as such
+		Autoref<Facet> fa6 = ow3->importWriter("t1", "fret2", "xxx");
+		UT_IS(fa6, fa5); // same, ignoring the asname!
+		ow3->imports(imp);
+		UT_IS(imp.size(), 1);
+
+		UT_ASSERT(fa6->getFnReturn()->isFaceted()); // writer adds xtray to the FnReturn
+
+		// errors
+		// exporting a facet with an error already tested in make_facet()
+		{
+			string msg;
+			try {
+				ow2->exportNexus(fa4);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "In app 'a1' thread 't2' can not re-export the imported facet 't1/fret2'.\n");
 		}
-		UT_IS(msg, "Can not export the nexus 'more' in app 'a1' thread 't1' that is already marked as constructed.\n");
-	}
-	{
-		string msg;
-		ow4->markReady();
-		try {
-			ow4->importReader("t1", "fret2", "xxx");
-		} catch(Exception e) {
-			msg = e.getErrors()->print();
+		{
+			string msg;
+			try {
+				ow3->importReader("t1", "fret2", "xxx");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "In app 'a1' thread 't3' can not import the nexus 't1/fret2' for both reading and writing.\n");
 		}
-		UT_IS(msg, "In app 'a1' thread 't3/a' can not import the nexus 't1/fret2' into a ready thread.\n");
+		{
+			string msg;
+			try {
+				ow3->importReaderImmed("t1", "fret99", "xxx");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "For thread 't3', the nexus 'fret99' is not found in application 'a1' thread 't1'.\n");
+		}
+		{
+			string msg;
+			try {
+				ow1->exportNexusNoImport(fa2);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Can not export the nexus with duplicate name 'fret2' in app 'a1' thread 't1'.\n");
+		}
+		{
+			string msg;
+
+			Autoref<FnReturn> fretm1 = FnReturn::make(ow3->unit(), "a/nex") // a acrewy name
+				->addLabel("one", rt1)
+			;
+			ow3->exportNexus(Facet::makeReader(fretm1)); // also tests the reference passing as the argument
+			ow4->importReaderImmed("t3", "a/nex"); // has full name "t3/a/nex"
+			
+			Autoref<FnReturn> fretm2 = FnReturn::make(ow4->unit(), "nex")
+				->addLabel("one", rt1)
+			;
+
+			try {
+				ow4->exportNexus(Facet::makeReader(fretm2));
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "On exporting a facet in app 'a1' found a same-named facet 't3/a/nex' already imported, did you mess with the funny names?\n");
+		}
+		{
+			string msg;
+
+			Autoref<FnReturn> fretx = FnReturn::make(unit1, "faceted")
+				->addLabel("one", rt1)
+			;
+
+			Autoref<Facet> fax = Facet::makeWriter(fretx);
+
+			// mess with the Xtray after the facet hasbeen constructed
+			Autoref<Xtray> xtx = new Xtray(fretx->getType());
+			FnReturnGuts::swapXtray(fretx, xtx);
+			UT_ASSERT(fretx->isFaceted());
+
+			try {
+				ow2->exportNexus(fax);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "The FnReturn 'faceted' in thread 't2' is already connected to a writer facet, can not do it twice.\n");
+		}
+		{
+			string msg;
+
+			ow1->markConstructed();
+			Autoref<FnReturn> fretm1 = FnReturn::make(ow1->unit(), "more")
+				->addLabel("one", rt1)
+			;
+
+			try {
+				ow1->exportNexus(Facet::makeReader(fretm1));
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Can not export the nexus 'more' in app 'a1' thread 't1' that is already marked as constructed.\n");
+		}
+		{
+			string msg;
+			ow4->markReady();
+			try {
+				ow4->importReader("t1", "fret2", "xxx");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "In app 'a1' thread 't3/a' can not import the nexus 't1/fret2' into a ready thread.\n");
+		}
+
+		// the other mess
+		{
+			// basic export of a reader with reimport works fine even if the FnReturn is faceted
+			Autoref<FnReturn> fret7 = FnReturn::make(unit1, "fret7")
+				->addLabel("one", rt1)
+			;
+			fret7->initialize();
+			Autoref<Xtray> xt7 = new Xtray(fret7->getType());
+			FnReturnGuts::swapXtray(fret7, xt7);
+			UT_ASSERT(fret7->isFaceted());
+
+			Autoref<Facet> fa7 = Facet::makeReader(fret7);
+
+			ow2->exportNexus(fa7);
+			UT_ASSERT(fa7->isImported());
+
+			// basic export of a writer with reimport
+			Autoref<FnReturn> fret8 = FnReturn::make(unit1, "fret8")
+				->addLabel("one", rt1)
+			;
+			fret8->initialize();
+			UT_ASSERT(!fret8->isFaceted());
+
+			Autoref<Facet> fa8 = Facet::makeWriter(fret8);
+
+			ow2->exportNexus(fa8);
+			UT_ASSERT(fa8->isImported());
+			UT_ASSERT(fret8->isFaceted());
+
+			// basic export of a writer with no reimport
+			Autoref<FnReturn> fret9 = FnReturn::make(unit1, "fret9")
+				->addLabel("one", rt1)
+			;
+			fret9->initialize();
+			UT_ASSERT(!fret9->isFaceted());
+
+			Autoref<Facet> fa9 = Facet::makeWriter(fret9);
+
+			ow2->exportNexusNoImport(fa9);
+			UT_ASSERT(!fa9->isImported());
+			UT_ASSERT(!fret9->isFaceted()); // not faceted if not reimported
+		}
+
+		// clean-up, since the apps catalog is global
+		ow1->markDead();
+		ow2->markDead();
+		ow3->markDead();
+		ow4->markDead();
+		a1->harvester();
 	}
 
-	// clean-up, since the apps catalog is global
-	ow1->markDead();
-	ow2->markDead();
-	ow3->markDead();
-	ow4->markDead();
-	a1->harvester();
+	// After a Facet is destroyed, its FnReturn must lose the Xtray.
+	UT_ASSERT(!fret3->isFaceted());
 
 	restore_uncatchable();
 }

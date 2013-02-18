@@ -25,6 +25,28 @@ void mkfields(RowType::FieldVec &fields)
 	fields.push_back(RowType::Field("e", Type::r_string));
 }
 
+class FnReturnGuts: public FnReturn
+{
+public:
+	static Xtray *getXtray(FnReturn *fret)
+	{
+		const FnReturnGuts *frg = (FnReturnGuts *)fret;
+		return frg->xtray_;
+	}
+
+	static bool isXtrayEmpty(FnReturn *fret)
+	{
+		const FnReturnGuts *frg = (FnReturnGuts *)fret;
+		return frg->FnReturn::isXtrayEmpty();
+	}
+
+	static void swapXtray(FnReturn *fret, Autoref<Xtray> &other)
+	{
+		FnReturnGuts *frg = (FnReturnGuts *)fret;
+		frg->FnReturn::swapXtray(other);
+	}
+};
+
 class MyFnCtx: public FnContext
 {
 public:
@@ -1110,6 +1132,87 @@ UTESTCASE tray_bindings(Utest *utest)
 
 	fret1->pop(bind1);
 	
+}
+
+UTESTCASE xtray(Utest *utest)
+{
+	string msg;
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+	Autoref<Tray> t;
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit1 = new Unit("u");
+
+	// make the components
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+	
+	fld[2].type_ = Type::r_int32;
+	Autoref<RowType> rt2 = new CompactRowType(fld);
+	UT_ASSERT(rt2->getErrors().isNull());
+
+	Autoref<Label> lb1 = new DummyLabel(unit1, rt1, "lb1");
+	Autoref<Label> lb2 = new DummyLabel(unit1, rt2, "lb2");
+
+	// make the return
+	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
+		->addFromLabel("one", lb1)
+		->addFromLabel("two", lb2)
+	);
+	UT_ASSERT(fret1->getErrors().isNull());
+	UT_ASSERT(fret1->isInitialized());
+
+	// no xtray by default
+	UT_ASSERT(!fret1->isFaceted());
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fret1));
+	UT_IS(FnReturnGuts::getXtray(fret1), NULL);
+	
+	// set the xtray
+	Autoref<Xtray> xt1 = new Xtray(fret1->getType());
+	Xtray *xtp1 = xt1;
+	FnReturnGuts::swapXtray(fret1, xt1);
+	UT_IS(xt1.get(), NULL); // old value
+	UT_ASSERT(fret1->isFaceted());
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fret1));
+	UT_IS(FnReturnGuts::getXtray(fret1), xtp1);
+
+	// make the rows to send
+	FdataVec dv; // just leave the contents all NULL
+	Autoref<Rowop> op1 = new Rowop(lb1, Rowop::OP_INSERT, rt1->makeRow(dv));
+	Autoref<Rowop> op2 = new Rowop(lb2, Rowop::OP_DELETE, rt2->makeRow(dv));
+
+	// send the data
+	unit1->call(op1);
+	UT_ASSERT(!FnReturnGuts::isXtrayEmpty(fret1));
+	UT_IS(FnReturnGuts::getXtray(fret1)->size(), 1);
+	unit1->call(op2);
+	UT_ASSERT(!FnReturnGuts::isXtrayEmpty(fret1));
+	UT_IS(FnReturnGuts::getXtray(fret1)->size(), 2);
+
+	// swap the tray again
+	xt1 = new Xtray(fret1->getType());
+	Xtray *xtp2 = xt1;
+	FnReturnGuts::swapXtray(fret1, xt1);
+	UT_IS(xt1.get(), xtp1); // old value
+	UT_ASSERT(fret1->isFaceted());
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fret1));
+	UT_IS(FnReturnGuts::getXtray(fret1), xtp2);
+
+	UT_IS(xt1->at(0).idx_, 0);
+	UT_IS(xt1->at(0).row_, op1->getRow());
+	UT_IS(xt1->at(0).opcode_, Rowop::OP_INSERT);
+	UT_IS(xt1->at(1).idx_, 1);
+	UT_IS(xt1->at(1).row_, op2->getRow());
+	UT_IS(xt1->at(1).opcode_, Rowop::OP_DELETE);
+
+	// reset the xtray to NULL
+	xt1 = NULL;
+	FnReturnGuts::swapXtray(fret1, xt1);
+	UT_IS(xt1.get(), xtp2); // old value
+	UT_ASSERT(!fret1->isFaceted());
 }
 
 int cleared;

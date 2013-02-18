@@ -20,6 +20,11 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	if (!fret->isInitialized())
 		fret->initialize();
 	err_.fAppend(fret->getErrors(), "Errors in the underlying FnReturn:");
+
+	if (writer_ && fret_->isFaceted()) {
+		err_.f("The FnReturn is already connected to a writer facet, can not do it twice.");
+		writer_ = false; // so that on destruction it won't reset the fret's xtray
+	}
 }
 
 Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string &asname, bool writer):
@@ -46,6 +51,19 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 		rowTypes_[it->first] = holder->copy(it->second);
 	for (TableTypeMap::iterator it = nx->tableTypes_.begin(); it != nx->tableTypes_.end(); ++it)
 		tableTypes_[it->first] = it->second->deepCopy(holder);
+
+	if (writer_) { // set the initial xtray, and thus mark fret_ with it
+		Autoref<Xtray> xtr(new Xtray(fret_->getType()));
+		fret_->swapXtray(xtr);
+	}
+}
+
+Facet::~Facet()
+{
+	if (writer_ && fret_->isFaceted()) {
+		Autoref<Xtray> xtr(NULL);
+		fret_->swapXtray(xtr);
+	}
 }
 
 Facet *Facet::setReverse(bool on)
@@ -112,6 +130,17 @@ void Facet::assertNotImported() const
 
 void Facet::reimport(Nexus *nexus, const string &tname)
 {
+	if (writer_) { // set the initial xtray, and thus mark fret_ with it
+		if (fret_->isFaceted()) {
+			// this has been already checked in the constructor,
+			// so it should never happen unless people are very creative
+			throw Exception::fTrace("The FnReturn '%s' in thread '%s' is already connected to a writer facet, can not do it twice.",
+				fret_->getName().c_str(), tname.c_str());
+			writer_ = false; // so that on destruction it won't reset the fret's xtray
+		}
+		Autoref<Xtray> xtr(new Xtray(fret_->getType()));
+		fret_->swapXtray(xtr);
+	}
 	nexus_ = nexus;
 	name_ = buildFullName(tname, fret_->getName());
 }

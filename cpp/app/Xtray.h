@@ -60,11 +60,22 @@ public:
 		return (int)ops_.size();
 	}
 
+	// Check if it's empty.
+	bool empty() const
+	{
+		return ops_.empty();
+	}
+
 	// Add a new Op.
+	// Assumes that the index of the row type is correct.
 	// @param data - a prototype to add
 	void push_back(const Op &data);
 
 	// Add a new Op from individual elements.
+	// Assumes that the index of the row type is correct.
+	// @param idx - index of the row type in the row set
+	// @param row - row of this type
+	// @param opcode - opcode of the rowop
 	void push_back(int idx, const Row *row, Rowop::Opcode opcode)
 	{
 		push_back(Op(idx, row, opcode));

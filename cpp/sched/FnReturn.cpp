@@ -202,6 +202,15 @@ FnReturn::RetLabel::RetLabel(Unit *unit, const_Onceref<RowType> rtype, const str
 
 void FnReturn::RetLabel::execute(Rowop *arg) const
 {
+	// first see if the cross-nexus procesisng needs to be done
+	{
+		Xtray *xtray = fnret_->xtray_;
+		if (xtray != NULL) {
+			xtray->push_back(idx_, arg->getRow(), arg->getOpcode());
+		}
+	}
+
+	// then the local processing
 	if (fnret_->stack_.empty())
 		return; // no binding yet
 	FnBinding *top = fnret_->stack_.back();
