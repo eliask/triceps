@@ -11,10 +11,13 @@
 #define __Triceps_Nexus_h__
 
 #include <map>
+#include <deque>
 #include <common/Common.h>
+#include <pw/ptwrap.h>
 #include <mem/Mtarget.h>
 #include <type/RowSetType.h>
 #include <type/TableType.h>
+#include <app/QueFacet.h>
 
 namespace TRICEPS_NS {
 
@@ -90,12 +93,27 @@ protected:
 	// so it doesn't need a lock. The actual working queue does need a lock.
 	// XXX add the working queue, with a lock
 
+	pw::pmutex mutex_; // mutex controlling the nexus
+
 	string tname_; // name of the thread that owns this nexus
 	string name_; // name of the nexus in that thread
 
 	Autoref<RowSetType> type_; // the type of the nexus's main queue
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
+
+	// Each writer sends its Xtrays directly to the readers, to avoid
+	// competing for a single queue in the Nexus. However
+	// all the readers must see the data in the exact same sequence.
+	// So each writer gets the sequential id from the Nexus through
+	// a quick atomic operation, and then uses this id to put the tray
+	// into the proper place in the reader's queue.
+	// The ids may wrap around and repeat over time, as long as they
+	// don't repeat within the length of one queue.
+	AtomicInt trayId_; // sequential ID of the last sent Xtray (starts at 0)
+
+	int nwrite_; // number of writer facets
+	int nread_; // number of reader facets
 
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
 	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers

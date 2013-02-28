@@ -13,6 +13,7 @@ namespace TRICEPS_NS {
 
 Triead::Triead(const string &name) :
 	name_(name),
+	qev_(new QueEvent),
 	constructed_(false),
 	ready_(false),
 	dead_(false)

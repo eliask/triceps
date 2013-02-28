@@ -67,6 +67,7 @@ private:
 #else  // } { TRICEPS_NSPR
 
 // the baseline implementation when nothing better is available
+// (it's actually not that bad, I've measured it only about 2.5-3 times slower)
 class AtomicInt
 {
 public:

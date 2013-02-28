@@ -180,6 +180,7 @@ protected:
 	string name_; // name of the thread, read-only
 	mutable pw::pmutex mutex_; // mutex synchronizing this Triead
 	NexusMap exports_; // the nexuses exported from this thread
+	Autoref<QueEvent> qev_;
 
 	// The imports are modified only by the TrieadOwner, so the
 	// owner thread may read it without locking. However any
@@ -205,7 +206,6 @@ private:
 	Triead(const Triead &);
 	void operator=(const Triead &);
 };
-
 }; // TRICEPS_NS
 
 #endif // __Triceps_Triead_h__
