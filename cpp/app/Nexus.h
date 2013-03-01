@@ -89,11 +89,28 @@ public:
 
 	// XXX add print() ?
 protected:
-	// The nexus'es metadata gets defined in one thread and then never changed,
-	// so it doesn't need a lock. The actual working queue does need a lock.
-	// XXX add the working queue, with a lock
+	// Add a new reader queue.
+	// Synchronizes with the data flow.
+	// @param rq - the reader queue to add, must be brand new (the deleted readers
+	//        can not be added back)
+	void addReader(ReaderQueue *rq);
+	
+	// Delete a reader queue.
+	// Synchronizes with the data flow.
+	// @param rq - the reader queue to add
+	void deleteReader(ReaderQueue *rq);
 
-	pw::pmutex mutex_; // mutex controlling the nexus
+	// XXX add and delete writers
+
+	// The nexus'es metadata gets defined in one thread and then never changed,
+	// so it doesn't need a lock. The setup of the reader and writer connections
+	// may change, so it requires a mutex.
+
+	pw::pmutex mutex_; // mutex controlling the reader-writer connections
+	Autoref<ReaderVec> readers_; // the readers, each writer gets a copy of it
+
+	typedef vector<Autoref<NexusWriter> > WriterVec;
+	WriterVec writers_; // the writers
 
 	string tname_; // name of the thread that owns this nexus
 	string name_; // name of the nexus in that thread

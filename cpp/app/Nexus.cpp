@@ -28,4 +28,101 @@ Nexus::Nexus(const string &tname, Facet *facet):
 		tableTypes_[it->first] = it->second->deepCopy(holder);
 }
 
+void Nexus::addReader(ReaderQueue *rq)
+{
+	pw::lockmutex lm(mutex_);
+
+	// in the new reader vector set the next generation
+	int gen = 0;
+	if (!readers_.isNull())
+		gen = readers_->gen()+1;
+
+	// make the new vector, with the next generation
+	Autoref<ReaderVec> rnew = new ReaderVec(gen);
+	rnew->v_ = readers_->v();
+	rnew->v_.push_back(rq); // doesn't check for duplicates
+
+	rq->setGenL(gen);
+
+	// the first reader is used to issue the sequential ids to the
+	// Xtrays in the queue, so use it also to synchronize the whole
+	// set of readers
+	if (!readers_.isNull() && !readers_->v().empty()) {
+		ReaderVec::Vec::const_iterator it = readers_->v().begin();
+		ReaderVec::Vec::const_iterator end = readers_->v().end();
+		ReaderQueue *rfirst = *it++;
+
+		pw::lockmutex lm(rfirst->mutex_);
+
+		rfirst->setGenL(gen);
+		rq->prevId_ = rq->lastId_ = rfirst->lastId_;
+
+		for (; it != end; ++it) {
+			pw::lockmutex lm((*it)->mutex_);
+			(*it)->setGenL(gen);
+		}
+
+		for (WriterVec::iterator wit = writers_.begin(); wit != writers_.end(); ++wit)
+			(*wit)->setReaderVec(rnew);
+	} else {
+		// the new reader is the first one
+		rq->prevId_ = rq->lastId_ = 0; // any value is good, as long as it's the same
+
+		for (WriterVec::iterator wit = writers_.begin(); wit != writers_.end(); ++wit)
+			(*wit)->setReaderVec(rnew);
+	}
+
+	readers_ = rnew;
+}
+	
+void Nexus::deleteReader(ReaderQueue *rq)
+{
+	pw::lockmutex lm(mutex_);
+
+	if (readers_.isNull() || readers_->v().empty())
+		// not sure why this call would be made at all
+		return;
+
+	// in the new reader vector set the next generation
+	int gen = readers_->gen()+1;
+
+	// make the new vector, with the next generation
+	Autoref<ReaderVec> rnew = new ReaderVec(gen);
+	ReaderVec::Vec::const_iterator it = readers_->v().begin();
+	ReaderVec::Vec::const_iterator end = readers_->v().end();
+	for (; it != end; ++it)
+		if (*it != rq)
+			rnew->v_.push_back(*it);
+
+	{
+		ReaderQueue *rfirst = *readers_->v().begin();
+
+		pw::lockmutex lm(rfirst->mutex_);
+
+		rfirst->setGenL(gen);
+		Xtray::QueId idx = rfirst->lastId_; // read before setting dead!
+
+		if (rq == rfirst) {
+			rq->markDeadL();
+		} else {
+			pw::lockmutex lm(rq->mutex_);
+			rq->markDeadL();
+		}
+
+		end = rnew->v().end();
+		for (it = rnew->v().begin(); it != end; ++it) {
+			if (*it == rfirst)
+				continue;
+			pw::lockmutex lm((*it)->mutex_);
+			(*it)->setLastIdL(idx);
+			(*it)->setGenL(gen);
+		}
+
+		for (WriterVec::iterator wit = writers_.begin(); wit != writers_.end(); ++wit)
+			(*wit)->setReaderVec(rnew);
+	}
+
+	readers_ = rnew;
+}
+
 }; // TRICEPS_NS

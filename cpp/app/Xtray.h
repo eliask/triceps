@@ -31,6 +31,12 @@ namespace TRICEPS_NS {
 class Xtray: public Mtarget
 {
 public:
+	// Value of sequential id of Xtray in the Nexus queue.
+	// The id doesn't have to be unique though the life of nexus,
+	// just its period has to be longer than the queue length
+	// limit.
+	typedef int32_t QueId;
+
 	// One rowop equivalent for traveling through the nexus.
 	class Op
 	{
@@ -94,6 +100,7 @@ protected:
 		// to un-reference the Rows and destroy them if needed
 	typedef vector<Op> OpVec;
 	OpVec ops_; // the data
+	QueId id_;
 
 private:
 	Xtray();

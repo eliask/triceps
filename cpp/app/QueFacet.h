@@ -40,6 +40,7 @@ public:
 // The queue of one reader facet.
 class ReaderQueue: public Mtarget
 {
+	friend class Nexus;
 public:
 	// Write an Xtray to the first reader in the vector.
 	// This generates the sequential id for the Xtray.
@@ -51,7 +52,7 @@ public:
 	// @return - true if the generations matched and the write went through
 	//        and generated the id; false if the generations were mismatched
 	//        or if this reader is marked as dead, and nothing was done
-	bool writeFirst(int gen, Xtray *xt, int32_t &trayId);
+	bool writeFirst(int gen, Xtray *xt, Xtray::QueId &trayId);
 
 	// Write an Xtray with a specific sequence to a reader that is
 	// not first in the vector. Does nothing if the queue is dead.
@@ -59,7 +60,7 @@ public:
 	//
 	// @param xt - Xtray being written
 	// @param trayId - the sequential id of the tray
-	void write(Xtray *xt, int32_t trayId);
+	void write(Xtray *xt, Xtray::QueId trayId);
 
 protected:
 	typedef deque<Autoref<Xtray> > Xdeque;
@@ -72,12 +73,34 @@ protected:
 	{
 		return q_[rq_];
 	}
+
+	// Update the generation of the reader vector.
+	// The caller should lock the mutex_ or otherwise have
+	// this reader not accessible to writers yet.
+	void setGenL(int gen)
+	{
+		gen_ = gen;
+	}
+
+	// Update the lastId_, so that it's consistent across all the readers.
+	// Done when a reader is deleted, to allow the use of any of them as the
+	// new first reader.
+	// Stretches the queue as needed.
+	// The caller should lock the mutex_ or otherwise have
+	// this reader not accessible to writers yet.
+	void setLastIdL(Xtray::QueId id);
+
 	// Insert an Xtray into the write queue at the specified index
 	// relative to the start of the queue.
 	// Extends the queue as needed. Never blocks.
 	// @param xt - Xtray to insert
 	// @param idx - index to insert at
-	void insertQueL(Xtray *xt, int32_t idx);
+	void insertQueL(Xtray *xt, Xtray::QueId idx);
+
+	// Mark this reader as dead and disconnected from the nexus.
+	// This clears the queue.
+	// All the future writes to it will be no-ops.
+	void markDeadL();
 
 	// part that is set once and never changed
 	
@@ -88,7 +111,6 @@ protected:
 
 	pw::pmutex mutex_;
 	pw::pchaincond condfull_; // wait when the queue is full
-	pw::pchaincond condempty_; // wait when the queue is empty
 
 	Xdeque q_[2]; // the queues of trays; they alternate with double buffering;
 		// the one currently used for reading can be accessed without a lock
@@ -97,10 +119,11 @@ protected:
 		// so that thread 
 
 	// the Xtray ids may roll over
-	int32_t prevId_; // id of the last Xtray preceding the start of the queue
-	int32_t nextId_; // id of the next Xtray past the end of the queue
+	Xtray::QueId prevId_; // id of the last Xtray preceding the start of the queue
+	Xtray::QueId lastId_; // id of the last Xtray at the end of the queue
+		// (if prevId_ and lastId_ are the same, the queue is empty)
 
-	int32_t sizeLimit_; // the high water mark for writing
+	Xtray::QueId sizeLimit_; // the high water mark for writing
 
 	int gen_; // the generation of the nexus's reader vector
 
