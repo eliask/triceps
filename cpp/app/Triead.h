@@ -11,6 +11,7 @@
 #define __Triceps_Triead_h__
 
 #include <map>
+#include <vector>
 #include <pw/ptwrap2.h>
 #include <common/Common.h>
 #include <sched/Unit.h>
@@ -29,6 +30,7 @@ class Triead : public Mtarget
 public:
 	typedef map<string, Autoref<Nexus> > NexusMap;
 	typedef map<string, Autoref<Facet> > FacetMap;
+	typedef vector<Facet *> FacetPtrVec;
 
 	// No public constructor! Use App!
 
@@ -88,6 +90,12 @@ public:
 	// @param appName - name of the App where this thread belongs, for error messages
 	// @param name - name of the nexus to find
 	Onceref<Nexus> findNexus(const string &srcName, const string &appName, const string &name) const;
+
+	// Get the queue event object.
+	QueEvent *queEvent() const
+	{
+		return qev_;
+	}
 
 protected:
 	// Called through App::makeThriead().
@@ -187,6 +195,9 @@ protected:
 	// modifications and reading by anyone else have to be
 	// synchronized by the mutex.
 	FacetMap imports_; // the imported facets
+
+	FacetPtrVec readers_; // the reader facets are copied here, and thus assigned the indexes
+		// (already referenced in imports_, just use pointers here)
 
 	// The flags are interacting with the App's state and
 	// are synchronized by the App's mutex.

@@ -27,6 +27,7 @@ namespace TRICEPS_NS {
 // outside the thread.
 class Facet: public Mtarget
 {
+	friend class Triead;
 	friend class TrieadOwner;
 	friend class Nexus;
 public:
@@ -35,6 +36,12 @@ public:
 
 	// Build API, used to build the facet for export
 	// {
+
+	enum {
+		// The queue size limit for the nexus. Due to the dual-buffering,
+		// the queue could actually contain up to twice this number of Xtrays.
+		DEFAULT_QUEUE_LIMIT = 500,
+	};
 
 	// Create the Facet from the minimal set of fragments.
 	// The extra row types and table types can be added later in
@@ -116,6 +123,10 @@ public:
 	// @param on - flag: the unicast mode is on
 	// @return - the same Facet
 	Facet *setUnicast(bool on = true);
+
+	// Set the nexus queue limit.
+	// @param limit - the new limit value (make sure to keep it >0).
+	Facet *setQueueLimit(int limit);
 	
 	// Get the collected errors.
 	Erref getErrors() const
@@ -158,6 +169,12 @@ public:
 	bool isUnicast() const
 	{
 		return unicast_;
+	}
+
+	// Get the queue size limit.
+	int queueLimit() const
+	{
+		return queueLimit_;
 	}
 
 	// Get back the FnReturn.
@@ -226,7 +243,11 @@ protected:
 
 	// Create the reader or writer interface and connect it to the
 	// nexus. The nexus_ and writer_ must be already set before then.
-	void connectToNexus();
+	// Normally called from Triead::importFacet().
+	// @param qev - queue event for the thread notification if this is
+	//        a reader (ignored for a writer)
+	// @param rqidx - reader queue index for notification (ignored for a writer)
+	void connectToNexus(QueEvent *qev, int rqidx);
 
 	string name_; // the name is set only in the ex/imported facet:
 		// it includes two parts separated by a "/": the nexus owner thread
@@ -245,6 +266,7 @@ protected:
 	Autoref<FnReturn> fret_; // the interface to the nexus'es queue
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
+	int queueLimit_; // the queue size limit for the nexus
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
 	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers
 

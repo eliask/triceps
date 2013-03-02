@@ -87,6 +87,12 @@ public:
 		return unicast_;
 	}
 
+	// Get the queue size limit.
+	int queueLimit() const
+	{
+		return queueLimit_;
+	}
+
 	// XXX add print() ?
 protected:
 	// Add a new reader queue.
@@ -142,6 +148,8 @@ protected:
 
 	int nwrite_; // number of writer facets
 	int nread_; // number of reader facets
+
+	int queueLimit_; // the queue size limit for the nexus
 
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
 	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers

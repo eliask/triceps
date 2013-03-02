@@ -16,6 +16,7 @@ namespace TRICEPS_NS {
 Nexus::Nexus(const string &tname, Facet *facet):
 	tname_(tname),
 	name_(facet->getShortName()),
+	queueLimit_(facet->queueLimit()),
 	reverse_(facet->isReverse()),
 	unicast_(facet->isUnicast())
 { 

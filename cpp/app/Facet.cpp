@@ -14,6 +14,7 @@ namespace TRICEPS_NS {
 Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	writer_(writer),
 	fret_(fret),
+	queueLimit_(DEFAULT_QUEUE_LIMIT),
 	reverse_(false),
 	unicast_(false)
 { 
@@ -32,6 +33,7 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 	nexus_(nx),
 	writer_(writer),
 	fret_(new FnReturn(unit, asname)), // will be filled in the body
+	queueLimit_(nx->queueLimit()),
 	reverse_(nx->isReverse()),
 	unicast_(nx->isUnicast())
 {
@@ -56,7 +58,6 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 		Autoref<Xtray> xtr(new Xtray(fret_->getType()));
 		fret_->swapXtray(xtr);
 	}
-	connectToNexus();
 }
 
 Facet::~Facet()
@@ -78,6 +79,16 @@ Facet *Facet::setUnicast(bool on)
 {
 	assertNotImported();
 	unicast_ = on;
+	return this;
+}
+
+Facet *Facet::setQueueLimit(int limit)
+{
+	assertNotImported();
+	if (limit < 1)
+		err_.f("Can not set the queue size limit to %d, must be greater than 0.", limit);
+	else 
+		queueLimit_ = limit;
 	return this;
 }
 
@@ -144,16 +155,15 @@ void Facet::reimport(Nexus *nexus, const string &tname)
 	}
 	nexus_ = nexus;
 	name_ = buildFullName(tname, fret_->getName());
-	connectToNexus();
 }
 
-void Facet::connectToNexus()
+void Facet::connectToNexus(QueEvent *qev, int rqidx)
 {
 	if (writer_) {
 		wr_ = new NexusWriter;
 		nexus_->addWriter(wr_);
 	} else {
-		rd_ = new ReaderQueue;
+		rd_ = new ReaderQueue(qev, rqidx, queueLimit_);
 		nexus_->addReader(rd_);
 	}
 }

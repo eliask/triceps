@@ -31,6 +31,15 @@ namespace TRICEPS_NS {
 class QueEvent: public Mtarget
 {
 public:
+	// Notify that a facet is ready.
+	// @param idx - index of the facet in the ready vector
+	void notify(int idx);
+
+	// Wait for data to become available.
+	// Before returning, copies the ready_ vector to sready_
+	// and clears ready_.
+	void wait();
+
 	pw::event ev_;
 	// XXX add a mutex? have a chainevent, like chaincond?
 	vector<bool> ready_; // indication of which facets are ready
@@ -42,8 +51,10 @@ class ReaderQueue: public Mtarget
 {
 	friend class Nexus;
 public:
-	ReaderQueue()
-	{ }
+	// @param qev - the thread's notification event
+	// @param qidx - the queue index to use in the notification
+	// @param limit - high watermark limit for the queue
+	ReaderQueue(QueEvent *qev, int qidx, Xtray::QueId limit);
 
 	// Write an Xtray to the first reader in the vector.
 	// This generates the sequential id for the Xtray.
@@ -136,6 +147,7 @@ protected:
 	bool dead_; // this queue has been disconnected from the nexus
 
 private:
+	ReaderQueue();
 	ReaderQueue(const ReaderQueue &);
 	void operator=(const ReaderQueue &);
 };

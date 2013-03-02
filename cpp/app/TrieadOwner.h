@@ -96,6 +96,12 @@ protected:
 			facet_->setUnicast(on);
 			return this;
 		}
+		NexusMaker *setQueueLimit(int limit)
+		{
+			mkfacet();
+			facet_->setQueueLimit(limit);
+			return this;
+		}
 
 		// Actually exports the facet and returns it.
 		// After that the object doesn't have an FnReturn not a Facet in it.
