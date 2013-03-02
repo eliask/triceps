@@ -97,10 +97,21 @@ protected:
 	
 	// Delete a reader queue.
 	// Synchronizes with the data flow.
-	// @param rq - the reader queue to add
+	// @param rq - the reader queue to delete
 	void deleteReader(ReaderQueue *rq);
 
-	// XXX add and delete writers
+	// Add a new writer.
+	// Synchronizes with the other reader/writer changes.
+	// @param wr - the writer to add, must be brand new (the deleted writers
+	//        can not be added back)
+	void addWriter(NexusWriter *wr);
+	
+	// Delete a writer.
+	// Synchronizes with the other reader/writer changes.
+	// The writer must not write anything after this point. If it's in the middle
+	// of a write, it can complete that write but it better be done by now.
+	// @param wr - the writer to delete
+	void deleteWriter(NexusWriter *wr);
 
 	// The nexus'es metadata gets defined in one thread and then never changed,
 	// so it doesn't need a lock. The setup of the reader and writer connections

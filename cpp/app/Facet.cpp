@@ -56,6 +56,7 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 		Autoref<Xtray> xtr(new Xtray(fret_->getType()));
 		fret_->swapXtray(xtr);
 	}
+	connectToNexus();
 }
 
 Facet::~Facet()
@@ -143,6 +144,18 @@ void Facet::reimport(Nexus *nexus, const string &tname)
 	}
 	nexus_ = nexus;
 	name_ = buildFullName(tname, fret_->getName());
+	connectToNexus();
+}
+
+void Facet::connectToNexus()
+{
+	if (writer_) {
+		wr_ = new NexusWriter;
+		nexus_->addWriter(wr_);
+	} else {
+		rd_ = new ReaderQueue;
+		nexus_->addReader(rd_);
+	}
 }
 
 }; // TRICEPS_NS

@@ -224,10 +224,16 @@ protected:
 	// @param tname - name of the thread that owns it
 	void reimport(Nexus *nexus, const string &tname);
 
+	// Create the reader or writer interface and connect it to the
+	// nexus. The nexus_ and writer_ must be already set before then.
+	void connectToNexus();
+
 	string name_; // the name is set only in the ex/imported facet:
 		// it includes two parts separated by a "/": the nexus owner thread
 		// name and the nexus name.
 	Autoref<Nexus> nexus_; // nexus represented by this facet
+	Autoref<ReaderQueue> rd_; // nexus reader interface, it a reader
+	Autoref<NexusWriter> wr_; // nexus writer interface, if a writer
 	bool writer_; // Flag: this thread is writing into the nexus;
 		// ignored in the non-imported facets
 

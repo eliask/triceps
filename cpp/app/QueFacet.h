@@ -42,6 +42,9 @@ class ReaderQueue: public Mtarget
 {
 	friend class Nexus;
 public:
+	ReaderQueue()
+	{ }
+
 	// Write an Xtray to the first reader in the vector.
 	// This generates the sequential id for the Xtray.
 	// May sleep if the write queue is full.
@@ -72,6 +75,10 @@ protected:
 	Xdeque &readq()
 	{
 		return q_[rq_];
+	}
+	pw::pmutex &mutex()
+	{
+		return condfull_;
 	}
 
 	// Update the generation of the reader vector.
@@ -109,8 +116,7 @@ protected:
 
 	// part that is protected by the mutex
 
-	pw::pmutex mutex_;
-	pw::pchaincond condfull_; // wait when the queue is full
+	pw::pmcond condfull_; // wait when the queue is full, also contains the mutex
 
 	Xdeque q_[2]; // the queues of trays; they alternate with double buffering;
 		// the one currently used for reading can be accessed without a lock
@@ -180,6 +186,9 @@ private:
 class NexusWriter: public Mtarget
 {
 public:
+	NexusWriter()
+	{ }
+
 	// Update the new reader vector (readersNew_).
 	// @param rv - the new vector (the caller must hold a reference to it
 	//        through the call). The writer will discover it on the next

@@ -39,7 +39,8 @@ void Nexus::addReader(ReaderQueue *rq)
 
 	// make the new vector, with the next generation
 	Autoref<ReaderVec> rnew = new ReaderVec(gen);
-	rnew->v_ = readers_->v();
+	if (!readers_.isNull())
+		rnew->v_ = readers_->v();
 	rnew->v_.push_back(rq); // doesn't check for duplicates
 
 	rq->setGenL(gen);
@@ -52,13 +53,13 @@ void Nexus::addReader(ReaderQueue *rq)
 		ReaderVec::Vec::const_iterator end = readers_->v().end();
 		ReaderQueue *rfirst = *it++;
 
-		pw::lockmutex lm(rfirst->mutex_);
+		pw::lockmutex lm(rfirst->mutex());
 
 		rfirst->setGenL(gen);
 		rq->prevId_ = rq->lastId_ = rfirst->lastId_;
 
 		for (; it != end; ++it) {
-			pw::lockmutex lm((*it)->mutex_);
+			pw::lockmutex lm((*it)->mutex());
 			(*it)->setGenL(gen);
 		}
 
@@ -97,7 +98,7 @@ void Nexus::deleteReader(ReaderQueue *rq)
 	{
 		ReaderQueue *rfirst = *readers_->v().begin();
 
-		pw::lockmutex lm(rfirst->mutex_);
+		pw::lockmutex lm(rfirst->mutex());
 
 		rfirst->setGenL(gen);
 		Xtray::QueId idx = rfirst->lastId_; // read before setting dead!
@@ -105,7 +106,7 @@ void Nexus::deleteReader(ReaderQueue *rq)
 		if (rq == rfirst) {
 			rq->markDeadL();
 		} else {
-			pw::lockmutex lm(rq->mutex_);
+			pw::lockmutex lm(rq->mutex());
 			rq->markDeadL();
 		}
 
@@ -113,7 +114,7 @@ void Nexus::deleteReader(ReaderQueue *rq)
 		for (it = rnew->v().begin(); it != end; ++it) {
 			if (*it == rfirst)
 				continue;
-			pw::lockmutex lm((*it)->mutex_);
+			pw::lockmutex lm((*it)->mutex());
 			(*it)->setLastIdL(idx);
 			(*it)->setGenL(gen);
 		}
@@ -123,6 +124,27 @@ void Nexus::deleteReader(ReaderQueue *rq)
 	}
 
 	readers_ = rnew;
+}
+
+void Nexus::addWriter(NexusWriter *wr)
+{
+	pw::lockmutex lm(mutex_);
+	wr->setReaderVec(readers_);
+	writers_.push_back(wr);
+}
+
+void Nexus::deleteWriter(NexusWriter *wr)
+{
+	pw::lockmutex lm(mutex_);
+	int sz = writers_.size();
+	for (int i = 0; i< sz; i++)
+		if (writers_[i].get() == wr) {
+			// replace this element with the last one, and discard the last one
+			if (i != sz-1)
+				writers_[i] = writers_[sz-1];
+			writers_.pop_back();
+			break;
+		}
 }
 
 }; // TRICEPS_NS
