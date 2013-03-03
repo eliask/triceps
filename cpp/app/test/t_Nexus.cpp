@@ -784,14 +784,15 @@ UTESTCASE import_queues(Utest *utest)
 	Nexus::WriterVec *wv;
 
 	UT_ASSERT(FacetGuts::readerQueue(fa1) == NULL);
-	UT_ASSERT(FacetGuts::nexusWriter(fa1) != NULL);
+	NexusWriter *faw1 = FacetGuts::nexusWriter(fa1);
+	UT_ASSERT(faw1 != NULL);
 
 	ReaderVec *rv1 = NexusGuts::readers(nx1);
 	wv = NexusGuts::writers(nx1);
 
 	UT_IS(rv1, NULL);
 	UT_IS(wv->size(), 1);
-	UT_IS(FacetGuts::nexusWriter(fa1), wv->at(0));
+	UT_IS(wv->at(0).get(), faw1);
 	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), NULL);
 
@@ -800,10 +801,11 @@ UTESTCASE import_queues(Utest *utest)
 	// add a reader
 	Autoref<Facet> fa2 = ow2->importReader("t1", "nx1", "");
 
-	UT_ASSERT(FacetGuts::readerQueue(fa2) != NULL);
+	ReaderQueue *far2 = FacetGuts::readerQueue(fa2);
+	UT_ASSERT(far2 != NULL);
 	UT_ASSERT(FacetGuts::nexusWriter(fa2) == NULL);
 
-	UT_ASSERT(!ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa2)));
+	UT_ASSERT(!ReaderQueueGuts::isDead(far2));
 
 	ReaderVec *rv2 = NexusGuts::readers(nx1);
 
@@ -814,16 +816,17 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rv2);
 	UT_IS(rv2->gen(), 0);
-	UT_IS(rv2->v()[0].get(), FacetGuts::readerQueue(fa2));
+	UT_IS(rv2->v()[0].get(), far2);
 	UT_IS(ReaderQueueGuts::gen(rv2->v()[0]), 0);
 
 	// add another reader
 	Autoref<Facet> fa3 = ow3->importReader("t1", "nx1", "");
 
-	UT_ASSERT(FacetGuts::readerQueue(fa3) != NULL);
+	ReaderQueue *far3 = FacetGuts::readerQueue(fa3);
+	UT_ASSERT(far3 != NULL);
 	UT_ASSERT(FacetGuts::nexusWriter(fa3) == NULL);
 
-	UT_ASSERT(!ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa3)));
+	UT_ASSERT(!ReaderQueueGuts::isDead(far3));
 
 	ReaderVec *rv3 = NexusGuts::readers(nx1);
 
@@ -834,8 +837,8 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rv3);
 	UT_IS(rv3->gen(), 1);
-	UT_IS(rv3->v()[0].get(), FacetGuts::readerQueue(fa2));
-	UT_IS(rv3->v()[1].get(), FacetGuts::readerQueue(fa3));
+	UT_IS(rv3->v()[0].get(), far2);
+	UT_IS(rv3->v()[1].get(), far3);
 	UT_IS(ReaderQueueGuts::gen(rv3->v()[0]), 1);
 	UT_IS(ReaderQueueGuts::gen(rv3->v()[1]), 1);
 
@@ -843,7 +846,8 @@ UTESTCASE import_queues(Utest *utest)
 	Autoref<Facet> fa4 = ow4->importWriter("t1", "nx1", "");
 
 	UT_ASSERT(FacetGuts::readerQueue(fa4) == NULL);
-	UT_ASSERT(FacetGuts::nexusWriter(fa4) != NULL);
+	NexusWriter *faw4 = FacetGuts::nexusWriter(fa4);
+	UT_ASSERT(faw4 != NULL);
 
 	ReaderVec *rv4 = NexusGuts::readers(nx1);
 
@@ -851,54 +855,102 @@ UTESTCASE import_queues(Utest *utest)
 	UT_ASSERT(rv4 == rv3);
 	UT_IS(rv4->v().size(), 2);
 	UT_IS(wv->size(), 2);
-	UT_IS(FacetGuts::nexusWriter(fa1), wv->at(0));
-	UT_IS(FacetGuts::nexusWriter(fa4), wv->at(1));
+	UT_IS(faw1, wv->at(0));
+	UT_IS(faw4, wv->at(1));
 	UT_IS(NexusWriterGuts::readers(wv->at(1)), NULL);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(1)), rv4);
 	UT_IS(rv4->gen(), 1);
+
+	// ----------------------------------------------------------------------
+	// Test the manual writing through the nexus, since everything is set up for it.
+
+	UT_ASSERT(!autoeventGuts::isSignaled(ow2->get()->queEvent()->ev_));
+	UT_ASSERT(!autoeventGuts::isSignaled(ow3->get()->queEvent()->ev_));
+
+	Autoref<Xtray> xt1 = new Xtray(fa1->getFnReturn()->getType());
+	faw1->write(xt1);
+
+	// this makes the writer pick up the recent version of the reader vector
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), rv4);
+	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rv4);
+	// the other writer is still not updated
+	UT_IS(NexusWriterGuts::readers(wv->at(1)), NULL);
+
+	UT_IS(ReaderQueueGuts::prevId(far2), 0);
+	UT_IS(ReaderQueueGuts::lastId(far2), 1);
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(far2)[0], xt1);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
+	UT_ASSERT(!ReaderQueueGuts::wrhole(far2));
+	UT_ASSERT(autoeventGuts::isSignaled(ow2->get()->queEvent()->ev_));
+	
+	UT_IS(ReaderQueueGuts::prevId(far3), 0);
+	UT_IS(ReaderQueueGuts::lastId(far3), 1);
+	UT_IS(ReaderQueueGuts::writeq(far3).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(far3)[0], xt1);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far3));
+	UT_ASSERT(!ReaderQueueGuts::wrhole(far3));
+	UT_ASSERT(autoeventGuts::isSignaled(ow3->get()->queEvent()->ev_));
+
+	// second write
+	Autoref<Xtray> xt2 = new Xtray(fa1->getFnReturn()->getType());
+	faw4->write(xt2);
+
+	// this makes the second writer pick up the recent version of the reader vector
+	UT_IS(NexusWriterGuts::readers(wv->at(1)), rv4);
+	UT_IS(NexusWriterGuts::readersNew(wv->at(1)), rv4);
+
+	// a reduced set of checks for the 2nd tray
+	UT_IS(ReaderQueueGuts::prevId(far2), 0);
+	UT_IS(ReaderQueueGuts::lastId(far2), 2);
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 2);
+	UT_IS(ReaderQueueGuts::writeq(far2)[0], xt1);
+	UT_IS(ReaderQueueGuts::writeq(far2)[1], xt2);
+
+	UT_IS(ReaderQueueGuts::lastId(far3), 2);
 
 	// ----------------------------------------------------------------------
 	// Test the manual calls for deletion of readers and writers
 	// (they are not normally accessible to the users).
 
 	// delete the first reader
-	NexusGuts::deleteReader(nx1, FacetGuts::readerQueue(fa2));
+	NexusGuts::deleteReader(nx1, far2);
 
 	ReaderVec *rvx2 = NexusGuts::readers(nx1);
 
 	UT_ASSERT(rvx2 != NULL);
 	UT_IS(rvx2->v().size(), 1);
 	UT_IS(wv->size(), 2);
-	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL); // XXX will change
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), rv4);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rvx2);
 	UT_IS(rvx2->gen(), 2);
-	UT_IS(rvx2->v()[0].get(), FacetGuts::readerQueue(fa3)); // shifted forward
+	UT_IS(rvx2->v()[0].get(), far3); // shifted forward
 	UT_IS(ReaderQueueGuts::gen(rvx2->v()[0]), 2);
-	UT_ASSERT(ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa2)));
+	UT_ASSERT(ReaderQueueGuts::isDead(far2));
 	// XXX also check the queue cleaned in fa2
 	// XXX also check the lastId in fa3
 
 	// delete the second and last reader
-	NexusGuts::deleteReader(nx1, FacetGuts::readerQueue(fa3));
+	NexusGuts::deleteReader(nx1, far3);
 
 	ReaderVec *rvx3 = NexusGuts::readers(nx1);
 
 	UT_ASSERT(rvx3 != NULL);
 	UT_IS(rvx3->v().size(), 0);
 	UT_IS(wv->size(), 2);
-	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL); // XXX will change
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), rv4); // XXX will change
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rvx3);
 	UT_IS(rvx3->gen(), 3);
-	UT_ASSERT(ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa3)));
+	UT_ASSERT(ReaderQueueGuts::isDead(far3));
 	// XXX also check the queue cleaned in fa3
 
 	// delete the first writer
-	NexusGuts::deleteWriter(nx1, FacetGuts::nexusWriter(fa1));
+	NexusGuts::deleteWriter(nx1, faw1);
 	UT_IS(wv->size(), 1);
-	UT_IS(FacetGuts::nexusWriter(fa4), wv->at(0));
+	UT_IS(wv->at(0).get(), faw4);
 
 	// delete the second and last writer
-	NexusGuts::deleteWriter(nx1, FacetGuts::nexusWriter(fa4));
+	NexusGuts::deleteWriter(nx1, faw4);
 	UT_IS(wv->size(), 0);
 
 	// ----------------------------------------------------------------------

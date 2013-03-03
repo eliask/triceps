@@ -101,7 +101,6 @@ protected:
 		// to un-reference the Rows and destroy them if needed
 	typedef vector<Op> OpVec;
 	OpVec ops_; // the data
-	QueId id_;
 
 private:
 	Xtray();

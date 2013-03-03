@@ -39,6 +39,8 @@ class ReaderQueue: public Mtarget
 {
 	friend class Nexus;
 public:
+	typedef deque<Autoref<Xtray> > Xdeque;
+
 	// @param qev - the thread's notification event
 	// @param qidx - the queue index to use in the notification
 	// @param limit - high watermark limit for the queue
@@ -95,7 +97,6 @@ public:
 	}
 
 protected:
-	typedef deque<Autoref<Xtray> > Xdeque;
 
 	Xdeque &writeq()
 	{

@@ -242,6 +242,60 @@ public:
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->dead_;
 	}
+
+	static bool wrhole(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->wrhole_;
+	}
+
+	static bool wrReady(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->wrReady_;
+	}
+
+	static Xtray::QueId prevId(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->prevId_;
+	}
+
+	static Xtray::QueId lastId(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->lastId_;
+	}
+
+	static Xdeque &writeq(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->ReaderQueue::writeq();
+	}
+
+	static Xdeque &readq(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->ReaderQueue::readq();
+	}
+};
+
+// really need to look in the guts for the state,
+// can't just do it by the honest waiting because it changes the state
+class autoeventGuts: public pw::autoevent
+{
+public:
+	static bool isSignaled(pw::autoevent &ev)
+	{
+		autoeventGuts *evg = (autoeventGuts *)&ev;
+		return evg->signaled_;
+	}
+
+	static int sleepers(pw::autoevent &ev)
+	{
+		autoeventGuts *evg = (autoeventGuts *)&ev;
+		return evg->evsleepers_;
+	}
 };
 
 // make the exceptions catchable
