@@ -1395,6 +1395,42 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	
 	// ----------------------------------------------------------------------
 
+	// The next test wants to be stuck on the 1st reader.
+	// The 2nd one is already gone. The 3rd needs to be cleaned.
+	UT_ASSERT(far3->refill());
+	ReaderQueueGuts::readq(far3).clear();
+	// The 1st has the limit of 3, so plug one more xtray into it.
+	faw1->write(xt);
+
+	// reset the event for the reader about to be deleted
+	owr1->get()->queEvent()->ev_.reset();
+	ReaderQueueGuts::wrReady(far1) = false;
+
+	// the next write will get stuck on far1
+	Autoref<WriteHelper2T> wh5 = new WriteHelper2T(faw1, xt);
+	wh5->start();
+	ReaderQueueGuts::waitCondfullSleep(far1, 1);
+
+	// delete far1 from nexus, in a hackish way
+	NexusGuts::deleteReader(nx1, far1);
+	// it wakes up the writer
+	wh5->join();
+
+	// the 1st reader will be dead
+	UT_IS(ReaderQueueGuts::writeq(far1).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(far1), 5);
+	UT_IS(ReaderQueueGuts::lastId(far1), 5);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far1));
+	UT_ASSERT(autoeventGuts::isSignaled(owr1->get()->queEvent()->ev_));
+
+	// the 3rd reader will have the same data queued
+	UT_IS(ReaderQueueGuts::writeq(far3).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(far3), 7);
+	UT_IS(ReaderQueueGuts::lastId(far3), 9);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far3));
+	
+	// ----------------------------------------------------------------------
+
 	// clean-up, since the apps catalog is global
 	oww1->markDead();
 	oww2->markDead();
@@ -1406,6 +1442,3 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	restore_uncatchable();
 }
 
-// XXX test the writer stop-and-resume on queue fill
-// XXX test the parallel writes and additional/removal of queues
-// XXX test writing to a dead queue (first and non-first)
