@@ -197,6 +197,18 @@ public:
 		NexusGuts *ng = (NexusGuts *)nx;
 		return &ng->writers_;
 	}
+
+	static void deleteReader(Nexus *nx, ReaderQueue *rq)
+	{
+		NexusGuts *ng = (NexusGuts *)nx;
+		ng->Nexus::deleteReader(rq);
+	}
+
+	static void deleteWriter(Nexus *nx, NexusWriter *wr)
+	{
+		NexusGuts *ng = (NexusGuts *)nx;
+		ng->Nexus::deleteWriter(wr);
+	}
 };
 
 class NexusWriterGuts: public NexusWriter

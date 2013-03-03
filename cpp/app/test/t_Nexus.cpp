@@ -858,7 +858,48 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(rv4->gen(), 1);
 
 	// ----------------------------------------------------------------------
+	// Test the manual calls for deletion of readers and writers
+	// (they are not normally accessible to the users).
 
+	// delete the first reader
+	NexusGuts::deleteReader(nx1, FacetGuts::readerQueue(fa2));
+
+	ReaderVec *rvx2 = NexusGuts::readers(nx1);
+
+	UT_ASSERT(rvx2 != NULL);
+	UT_IS(rvx2->v().size(), 1);
+	UT_IS(wv->size(), 2);
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL); // XXX will change
+	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rvx2);
+	UT_IS(rvx2->gen(), 2);
+	UT_IS(rvx2->v()[0].get(), FacetGuts::readerQueue(fa3)); // shifted forward
+	UT_IS(ReaderQueueGuts::gen(rvx2->v()[0]), 2);
+	UT_ASSERT(ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa2)));
+	// XXX also check the queue cleaned in fa2
+	// XXX also check the lastId in fa3
+
+	// delete the second and last reader
+	NexusGuts::deleteReader(nx1, FacetGuts::readerQueue(fa3));
+
+	ReaderVec *rvx3 = NexusGuts::readers(nx1);
+
+	UT_ASSERT(rvx3 != NULL);
+	UT_IS(rvx3->v().size(), 0);
+	UT_IS(wv->size(), 2);
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL); // XXX will change
+	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rvx3);
+	UT_IS(rvx3->gen(), 3);
+	UT_ASSERT(ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa3)));
+	// XXX also check the queue cleaned in fa3
+
+	// delete the first writer
+	NexusGuts::deleteWriter(nx1, FacetGuts::nexusWriter(fa1));
+	UT_IS(wv->size(), 1);
+	UT_IS(FacetGuts::nexusWriter(fa4), wv->at(0));
+
+	// delete the second and last writer
+	NexusGuts::deleteWriter(nx1, FacetGuts::nexusWriter(fa4));
+	UT_IS(wv->size(), 0);
 
 	// ----------------------------------------------------------------------
 	
