@@ -6,9 +6,13 @@
 //
 // A tray for passing the rowops across the nexuses.
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 #include <app/Xtray.h>
 
 namespace TRICEPS_NS {
+
+const Xtray::QueId Xtray::QUE_ID_MAX = INT32_MAX; // max value of the QueId type
 
 Xtray::Xtray(RowSetType *rst):
 	type_(rst)

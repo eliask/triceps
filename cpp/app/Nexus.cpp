@@ -16,7 +16,8 @@ namespace TRICEPS_NS {
 Nexus::Nexus(const string &tname, Facet *facet):
 	tname_(tname),
 	name_(facet->getShortName()),
-	queueLimit_(facet->queueLimit()),
+	// the "no limit" for reverse nexus translates to a very large limit
+	queueLimit_(facet->isReverse()? Xtray::QUE_ID_MAX: facet->queueLimit()),
 	reverse_(facet->isReverse()),
 	unicast_(facet->isUnicast())
 { 

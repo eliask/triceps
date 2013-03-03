@@ -36,6 +36,7 @@ public:
 	// just its period has to be longer than the queue length
 	// limit.
 	typedef int32_t QueId;
+	static const QueId QUE_ID_MAX; // max value of the QueId type
 
 	// One rowop equivalent for traveling through the nexus.
 	class Op

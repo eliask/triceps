@@ -45,6 +45,11 @@ UTESTCASE make_facet(Utest *utest)
 	UT_IS(fa1->getShortName(), "fret1");
 	UT_IS(fa1->getFullName(), ""); // empty until exported
 	UT_ASSERT(!fa1->isImported());
+
+	// the reverse mode is more interesting for reimport
+	fa1->setReverse();
+	UT_ASSERT(fa1->isReverse());
+	UT_IS(fa1->queueLimit(), Facet::DEFAULT_QUEUE_LIMIT);
 	
 	// reuse the same FnReturn, which is now initialized
 	Autoref<Facet> fa2 = Facet::make(fret1, true); // writer
@@ -65,6 +70,10 @@ UTESTCASE make_facet(Utest *utest)
 	UT_ASSERT(fa2->isReverse());
 	fa2->setReverse(false);
 	UT_ASSERT(!fa2->isReverse());
+
+	UT_IS(fa2->queueLimit(), Facet::DEFAULT_QUEUE_LIMIT);
+	fa2->setQueueLimit(100);
+	UT_IS(fa2->queueLimit(), 100);
 
 	// test the convenience wrappers
 	Autoref<Facet> fa3 = Facet::makeReader(fret1);
@@ -98,6 +107,7 @@ UTESTCASE make_facet(Utest *utest)
 	UT_ASSERT(fa1->isImported());
 	UT_IS(fa1->getFullName(), "t1/fret1");
 	UT_IS(fa1->getShortName(), "fret1");
+	UT_IS(fa1->queueLimit(), Xtray::QUE_ID_MAX);
 
 	// an invalid FnReturn
 	{
@@ -197,6 +207,11 @@ UTESTCASE make_facet(Utest *utest)
 		UT_IS(fabad->getErrors()->print(), "Can not export a row type with an empty name.\n");
 
 		fabad = Facet::make(fret1, true);
+		fabad->setQueueLimit(0);
+		UT_ASSERT(fabad->getErrors()->hasError());
+		UT_IS(fabad->getErrors()->print(), "Can not set the queue size limit to 0, must be greater than 0.\n");
+
+		fabad = Facet::make(fret1, true);
 		fabad->exportRowType("rt1", rt1); // this one is OK
 		fabad->exportRowType("rt1", rt1);
 		UT_ASSERT(fabad->getErrors()->hasError());
@@ -275,6 +290,15 @@ UTESTCASE make_facet(Utest *utest)
 	{
 		string msg;
 		try {
+			fa1->setQueueLimit(100);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+	}
+	{
+		string msg;
+		try {
 			fa1->exportRowType("rtx", rt1);
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
@@ -333,12 +357,13 @@ UTESTCASE export_import(Utest *utest)
 			->addLabel("two", rt1)
 			->addLabel("three", rt1)
 		;
-		Autoref<Facet> fa1 = Facet::makeReader(fret1);
+		Autoref<Facet> fa1 = Facet::makeReader(fret1)->setQueueLimit(100);
 
 		// basic export of a reader with reimport
 		Autoref<Facet> fa1im = ow1->exportNexus(fa1);
 		UT_IS(fa1im, fa1);
 		UT_ASSERT(fa1->isImported());
+		UT_IS(fa1->queueLimit(), 100);
 
 		ow1->imports(imp);
 		UT_IS(imp.size(), 1);
@@ -358,12 +383,14 @@ UTESTCASE export_import(Utest *utest)
 		Autoref<FnReturn> fret2 = FnReturn::make(unit1, "fret2")
 			->addLabel("one", rt1)
 		;
-		Autoref<Facet> fa2 = Facet::makeReader(fret2);
+		Autoref<Facet> fa2 = Facet::makeReader(fret2)
+			->setReverse()->setQueueLimit(100); // limit would not change with no reimport
 		Autoref<Facet> fa2im = ow1->exportNexusNoImport(fa2);
 		UT_IS(fa2im, fa2);
 		UT_ASSERT(!fa2->isImported());
 		UT_ASSERT(fa2->nexus() == NULL);
 		UT_ASSERT(fa2->getFullName().empty());
+		UT_IS(fa2->queueLimit(), 100);
 
 		UT_ASSERT(!fa2->getFnReturn()->isFaceted()); // reader doesn't add xtray to the FnReturn
 
@@ -378,6 +405,8 @@ UTESTCASE export_import(Utest *utest)
 		Autoref<Facet> fa3 = ow1->importNexus("t1", "fret2", "fret3", true);
 		UT_ASSERT(fa3->getFnReturn()->equals(fa2->getFnReturn()));
 		UT_IS(fa3->getFnReturn()->getUnitPtr(), ow1->unit());
+
+		UT_IS(fa3->queueLimit(), Xtray::QUE_ID_MAX); // on import the limit is set to max for reverse nexus
 		
 		fret3 = fa3->getFnReturn();
 		UT_ASSERT(fret3->isFaceted()); // writer adds xtray to the FnReturn

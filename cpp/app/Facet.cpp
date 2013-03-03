@@ -155,6 +155,7 @@ void Facet::reimport(Nexus *nexus, const string &tname)
 	}
 	nexus_ = nexus;
 	name_ = buildFullName(tname, fret_->getName());
+	queueLimit_ = nexus->queueLimit(); // might have been adjusted for reverse nexus
 }
 
 void Facet::connectToNexus(QueEvent *qev, int rqidx)
