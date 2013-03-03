@@ -910,6 +910,15 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(ReaderQueueGuts::lastId(far3), 2);
 
 	// ----------------------------------------------------------------------
+	// Before deletion, mess a bit with the queues, which will create
+	// interesting things to check in the deletion.
+
+	ReaderQueueGuts::setLastId(far2, 5);
+	UT_IS(ReaderQueueGuts::lastId(far2), 5);
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 5);
+	UT_ASSERT(ReaderQueueGuts::wrhole(far2));
+	
+	// ----------------------------------------------------------------------
 	// Test the manual calls for deletion of readers and writers
 	// (they are not normally accessible to the users).
 
@@ -927,8 +936,14 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(rvx2->v()[0].get(), far3); // shifted forward
 	UT_IS(ReaderQueueGuts::gen(rvx2->v()[0]), 2);
 	UT_ASSERT(ReaderQueueGuts::isDead(far2));
-	// XXX also check the queue cleaned in fa2
-	// XXX also check the lastId in fa3
+	// the queue gets cleared when dead
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(far2), 0);
+	UT_IS(ReaderQueueGuts::lastId(far2), 0);
+	// all the readers get updated with the last id from the first one
+	UT_IS(ReaderQueueGuts::lastId(far3), 5);
+	UT_IS(ReaderQueueGuts::writeq(far3).size(), 5);
+	UT_ASSERT(ReaderQueueGuts::wrhole(far3));
 
 	// delete the second and last reader
 	NexusGuts::deleteReader(nx1, far3);
@@ -938,11 +953,14 @@ UTESTCASE import_queues(Utest *utest)
 	UT_ASSERT(rvx3 != NULL);
 	UT_IS(rvx3->v().size(), 0);
 	UT_IS(wv->size(), 2);
-	UT_IS(NexusWriterGuts::readers(wv->at(0)), rv4); // XXX will change
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), rv4);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rvx3);
 	UT_IS(rvx3->gen(), 3);
 	UT_ASSERT(ReaderQueueGuts::isDead(far3));
-	// XXX also check the queue cleaned in fa3
+	// the queue gets cleared when dead
+	UT_IS(ReaderQueueGuts::writeq(far3).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(far3), 0);
+	UT_IS(ReaderQueueGuts::lastId(far3), 0);
 
 	// delete the first writer
 	NexusGuts::deleteWriter(nx1, faw1);

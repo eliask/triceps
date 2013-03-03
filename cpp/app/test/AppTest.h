@@ -278,6 +278,12 @@ public:
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->ReaderQueue::readq();
 	}
+
+	static void setLastId(ReaderQueue *rq, Xtray::QueId id)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		rqg->ReaderQueue::setLastIdL(id);
+	}
 };
 
 // really need to look in the guts for the state,
