@@ -47,6 +47,7 @@ class Nexus : public Mtarget
 public:
 	typedef map<string, Autoref<RowType> > RowTypeMap;
 	typedef map<string, Autoref<TableType> > TableTypeMap;
+	typedef vector<Autoref<NexusWriter> > WriterVec;
 
 	// Create a Nexus from its first Facet.
 	// The types will be deep-copied from the Facet. The Facet must not
@@ -126,7 +127,6 @@ protected:
 	pw::pmutex mutex_; // mutex controlling the reader-writer connections
 	Autoref<ReaderVec> readers_; // the readers, each writer gets a copy of it
 
-	typedef vector<Autoref<NexusWriter> > WriterVec;
 	WriterVec writers_; // the writers
 
 	string tname_; // name of the thread that owns this nexus

@@ -167,6 +167,71 @@ public:
 	}
 };
 
+class FacetGuts: public Facet
+{
+public:
+	static ReaderQueue *readerQueue(Facet *fa)
+	{
+		FacetGuts *fg = (FacetGuts *)fa;
+		return fg->rd_;
+	}
+
+	static NexusWriter *nexusWriter(Facet *fa)
+	{
+		FacetGuts *fg = (FacetGuts *)fa;
+		return fg->wr_;
+	}
+};
+
+class NexusGuts: public Nexus
+{
+public:
+	static ReaderVec *readers(Nexus *nx)
+	{
+		NexusGuts *ng = (NexusGuts *)nx;
+		return ng->readers_;
+	}
+
+	static WriterVec *writers(Nexus *nx)
+	{
+		NexusGuts *ng = (NexusGuts *)nx;
+		return &ng->writers_;
+	}
+};
+
+class NexusWriterGuts: public NexusWriter
+{
+public:
+	static ReaderVec *readers(NexusWriter *nx)
+	{
+		NexusWriterGuts *ng = (NexusWriterGuts *)nx;
+		return ng->readers_;
+	}
+
+	static ReaderVec *readersNew(NexusWriter *nx)
+	{
+		NexusWriterGuts *ng = (NexusWriterGuts *)nx;
+		return ng->readersNew_;
+	}
+
+};
+
+class ReaderQueueGuts: public ReaderQueue
+{
+public:
+	static int gen(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->gen_;
+	}
+
+	static bool isDead(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->dead_;
+	}
+};
+
 // make the exceptions catchable
 void make_catchable()
 {

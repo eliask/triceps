@@ -686,12 +686,14 @@ UTESTCASE mknexus(Utest *utest)
 			->setUnicast(true)
 			->setReverse()
 			->setReverse(true)
+			->setQueueLimit(3)
 			->complete();
 
 		UT_ASSERT(fa1->isImported());
 		UT_ASSERT(fa1->isWriter());
 		UT_ASSERT(fa1->isUnicast());
 		UT_ASSERT(fa1->isReverse());
+		UT_IS(fa1->queueLimit(), Xtray::QUE_ID_MAX); // auto-set for reverse
 		UT_IS(fa1->getShortName(), "nx1");
 		UT_IS(fa1->getFullName(), "t1/nx1");
 		UT_IS(fa1->getFnReturn()->context(), ctx1);
@@ -742,6 +744,124 @@ UTESTCASE mknexus(Utest *utest)
 		UT_IS(msg, "Attempted to add label 'one' to an initialized FnReturn 'nx4'.\n");
 	}
 
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// check the connection of queues done when importing facets
+UTESTCASE import_queues(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	Autoref<Unit> unit1 = ow1->unit();
+
+	// start with a writer
+	Autoref<Facet> fa1 = ow1->makeNexusWriter("nx1")
+		->addLabel("one", rt1)
+		->addLabel("two", rt1)
+		->addLabel("three", rt1)
+		->complete()
+	;
+	Nexus *nx1 = fa1->nexus();
+	Nexus::WriterVec *wv;
+
+	UT_ASSERT(FacetGuts::readerQueue(fa1) == NULL);
+	UT_ASSERT(FacetGuts::nexusWriter(fa1) != NULL);
+
+	ReaderVec *rv1 = NexusGuts::readers(nx1);
+	wv = NexusGuts::writers(nx1);
+
+	UT_IS(rv1, NULL);
+	UT_IS(wv->size(), 1);
+	UT_IS(FacetGuts::nexusWriter(fa1), wv->at(0));
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL);
+	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), NULL);
+
+	ow1->markReady(); // make the nexus visible for import
+
+	// add a reader
+	Autoref<Facet> fa2 = ow2->importReader("t1", "nx1", "");
+
+	UT_ASSERT(FacetGuts::readerQueue(fa2) != NULL);
+	UT_ASSERT(FacetGuts::nexusWriter(fa2) == NULL);
+
+	UT_ASSERT(!ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa2)));
+
+	ReaderVec *rv2 = NexusGuts::readers(nx1);
+
+	UT_ASSERT(rv2 != NULL);
+	UT_ASSERT(rv2 != rv1);
+	UT_IS(rv2->v().size(), 1);
+	UT_IS(wv->size(), 1);
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL);
+	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rv2);
+	UT_IS(rv2->gen(), 0);
+	UT_IS(rv2->v()[0].get(), FacetGuts::readerQueue(fa2));
+	UT_IS(ReaderQueueGuts::gen(rv2->v()[0]), 0);
+
+	// add another reader
+	Autoref<Facet> fa3 = ow3->importReader("t1", "nx1", "");
+
+	UT_ASSERT(FacetGuts::readerQueue(fa3) != NULL);
+	UT_ASSERT(FacetGuts::nexusWriter(fa3) == NULL);
+
+	UT_ASSERT(!ReaderQueueGuts::isDead(FacetGuts::readerQueue(fa3)));
+
+	ReaderVec *rv3 = NexusGuts::readers(nx1);
+
+	UT_ASSERT(rv3 != NULL);
+	UT_ASSERT(rv3 != rv2);
+	UT_IS(rv3->v().size(), 2);
+	UT_IS(wv->size(), 1);
+	UT_IS(NexusWriterGuts::readers(wv->at(0)), NULL);
+	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rv3);
+	UT_IS(rv3->gen(), 1);
+	UT_IS(rv3->v()[0].get(), FacetGuts::readerQueue(fa2));
+	UT_IS(rv3->v()[1].get(), FacetGuts::readerQueue(fa3));
+	UT_IS(ReaderQueueGuts::gen(rv3->v()[0]), 1);
+	UT_IS(ReaderQueueGuts::gen(rv3->v()[1]), 1);
+
+	// add another writer
+	Autoref<Facet> fa4 = ow4->importWriter("t1", "nx1", "");
+
+	UT_ASSERT(FacetGuts::readerQueue(fa4) == NULL);
+	UT_ASSERT(FacetGuts::nexusWriter(fa4) != NULL);
+
+	ReaderVec *rv4 = NexusGuts::readers(nx1);
+
+	UT_ASSERT(rv4 != NULL);
+	UT_ASSERT(rv4 == rv3);
+	UT_IS(rv4->v().size(), 2);
+	UT_IS(wv->size(), 2);
+	UT_IS(FacetGuts::nexusWriter(fa1), wv->at(0));
+	UT_IS(FacetGuts::nexusWriter(fa4), wv->at(1));
+	UT_IS(NexusWriterGuts::readers(wv->at(1)), NULL);
+	UT_IS(NexusWriterGuts::readersNew(wv->at(1)), rv4);
+	UT_IS(rv4->gen(), 1);
+
+	// ----------------------------------------------------------------------
+
+
+	// ----------------------------------------------------------------------
+	
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
 	ow2->markDead();
