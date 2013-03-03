@@ -812,7 +812,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_ASSERT(far2 != NULL);
 	UT_ASSERT(FacetGuts::nexusWriter(fa2) == NULL);
 
-	UT_ASSERT(!ReaderQueueGuts::isDead(far2));
+	UT_ASSERT(!far2->isDead());
 
 	ReaderVec *rv2 = NexusGuts::readers(nx1);
 
@@ -833,7 +833,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_ASSERT(far3 != NULL);
 	UT_ASSERT(FacetGuts::nexusWriter(fa3) == NULL);
 
-	UT_ASSERT(!ReaderQueueGuts::isDead(far3));
+	UT_ASSERT(!far3->isDead());
 
 	ReaderVec *rv3 = NexusGuts::readers(nx1);
 
@@ -942,7 +942,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(rvx2->gen(), 2);
 	UT_IS(rvx2->v()[0].get(), far3); // shifted forward
 	UT_IS(ReaderQueueGuts::gen(rvx2->v()[0]), 2);
-	UT_ASSERT(ReaderQueueGuts::isDead(far2));
+	UT_ASSERT(far2->isDead());
 	// the queue gets cleared when dead
 	UT_IS(ReaderQueueGuts::writeq(far2).size(), 0);
 	UT_IS(ReaderQueueGuts::prevId(far2), 0);
@@ -963,7 +963,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(NexusWriterGuts::readers(wv->at(0)), rv4);
 	UT_IS(NexusWriterGuts::readersNew(wv->at(0)), rvx3);
 	UT_IS(rvx3->gen(), 3);
-	UT_ASSERT(ReaderQueueGuts::isDead(far3));
+	UT_ASSERT(far3->isDead());
 	// the queue gets cleared when dead
 	UT_IS(ReaderQueueGuts::writeq(far3).size(), 0);
 	UT_IS(ReaderQueueGuts::prevId(far3), 0);
@@ -1213,6 +1213,197 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(q)[4].get(), xt.get());
 	UT_IS(ReaderQueueGuts::prevId(q), 8);
 	UT_IS(ReaderQueueGuts::lastId(q), 13);
+}
+
+class WriteHelper2T: public Mtarget, public pw::pwthread
+{
+public:
+	// will write this xtray to this NexusWriter
+	WriteHelper2T(NexusWriter *nxw, Autoref<Xtray> xt):
+		nxw_(nxw),
+		xt_(xt)
+	{ }
+
+	virtual void *execute()
+	{
+		nxw_->write(xt_);
+		return NULL;
+	}
+
+	Autoref<NexusWriter> nxw_;
+	Autoref<Xtray> xt_;
+};
+
+// add and delete readers while the writers are writing
+UTESTCASE dynamic_add_del(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> oww1 = a1->makeTriead("twr1");
+	Autoref<TrieadOwner> oww2 = a1->makeTriead("twr2");
+
+	Autoref<TrieadOwner> owr1 = a1->makeTriead("trd1");
+	Autoref<TrieadOwner> owr2 = a1->makeTriead("trd2");
+	Autoref<TrieadOwner> owr3 = a1->makeTriead("trd3");
+
+	// prepare fragments
+	Autoref<Xtray> xt = new Xtray(NULL); // this is an abuse but good enough here
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	// start with a writer
+	Autoref<Facet> fw1 = oww1->makeNexusWriter("nx1")
+		->addLabel("one", rt1)
+		->addLabel("two", rt1)
+		->addLabel("three", rt1)
+		->setQueueLimit(2)
+		->complete()
+	;
+	Nexus *nx1 = fw1->nexus();
+
+	NexusWriter *faw1 = FacetGuts::nexusWriter(fw1);
+	UT_ASSERT(faw1 != NULL);
+
+	oww1->markReady(); // make the nexus visible for import
+
+	// add another writer
+	Autoref<Facet> fw2 = oww2->importWriter("twr1", "nx1", "");
+	NexusWriter *faw2 = FacetGuts::nexusWriter(fw2);
+	UT_ASSERT(faw2 != NULL);
+	
+	// add the first reader
+	Autoref<Facet> fr1 = owr1->importReader("twr1", "nx1", "");
+	ReaderQueue *far1 = FacetGuts::readerQueue(fr1);
+	UT_ASSERT(far1 != NULL);
+
+	// ----------------------------------------------------------------------
+
+	// send a couple of xtrays to fill the queue
+	faw1->write(xt);
+	faw1->write(xt);
+
+	// now set up two more writes in the background, they will be blocked
+	// (two allows to have a race in writeFirst()
+	Autoref<WriteHelper2T> wh1 = new WriteHelper2T(faw1, xt);
+	Autoref<WriteHelper2T> wh2 = new WriteHelper2T(faw2, xt);
+	wh1->start();
+	wh2->start();
+	ReaderQueueGuts::waitCondfullSleep(far1, 2);
+
+	// add the second reader
+	Autoref<Facet> fr2 = owr2->importReader("twr1", "nx1", "");
+	ReaderQueue *far2 = FacetGuts::readerQueue(fr2);
+	UT_ASSERT(far2 != NULL);
+
+	// advance the 1st reader, letting the write proceed
+	UT_ASSERT(far1->refill());
+	ReaderQueueGuts::readq(far1).clear();
+	wh1->join();
+	wh2->join();
+
+	// check that the write proceeded consistently
+	UT_IS(ReaderQueueGuts::writeq(far1).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(far1), 2);
+	UT_IS(ReaderQueueGuts::lastId(far1), 4);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far1));
+
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(far2), 2);
+	UT_IS(ReaderQueueGuts::lastId(far2), 4);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
+
+	// ----------------------------------------------------------------------
+
+	// to make the write stop on 2nd reader, do the trick
+	// with setting the 1st reader's queue limit higher
+	ReaderQueueGuts::sizeLimit(far1)++;
+	
+	Autoref<WriteHelper2T> wh3 = new WriteHelper2T(faw1, xt);
+	wh3->start();
+	ReaderQueueGuts::waitCondfullSleep(far2, 1);
+
+	// now add one more reader
+	Autoref<Facet> fr3 = owr3->importReader("twr1", "nx1", "");
+	ReaderQueue *far3 = FacetGuts::readerQueue(fr3);
+	UT_ASSERT(far3 != NULL);
+
+	// advance the old readers, letting the write proceed
+	UT_ASSERT(far1->refill());
+	ReaderQueueGuts::readq(far1).clear();
+	UT_ASSERT(far2->refill());
+	ReaderQueueGuts::readq(far2).clear();
+	wh3->join();
+
+	// the 1st reader will have all data consumed
+	UT_IS(ReaderQueueGuts::writeq(far1).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(far1), 5);
+	UT_IS(ReaderQueueGuts::lastId(far1), 5);
+	UT_ASSERT(!ReaderQueueGuts::wrReady(far1));
+
+	// the 2nd reader will have the new xtray in it
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 1);
+	UT_IS(ReaderQueueGuts::prevId(far2), 4);
+	UT_IS(ReaderQueueGuts::lastId(far2), 5);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
+
+	// the 3rd (new) reader will just have the consistent ids
+	UT_IS(ReaderQueueGuts::writeq(far3).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(far3), 5);
+	UT_IS(ReaderQueueGuts::lastId(far3), 5);
+	UT_ASSERT(!ReaderQueueGuts::wrReady(far3));
+	
+	// ----------------------------------------------------------------------
+
+	// send one more xtray to fill the queue of far2
+	faw1->write(xt);
+
+	// reset the event for the reader about to be deleted
+	owr2->get()->queEvent()->ev_.reset();
+	ReaderQueueGuts::wrReady(far2) = false;
+
+	// the next write will get stuck on far2
+	Autoref<WriteHelper2T> wh4 = new WriteHelper2T(faw1, xt);
+	wh4->start();
+	ReaderQueueGuts::waitCondfullSleep(far2, 1);
+
+	// delete far2 from nexus, in a hackish way
+	NexusGuts::deleteReader(nx1, far2);
+	// it wakes up the writer
+	wh4->join();
+
+	// the 1st reader will have the data queued
+	UT_IS(ReaderQueueGuts::writeq(far1).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(far1), 5);
+	UT_IS(ReaderQueueGuts::lastId(far1), 7);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far1));
+
+	// the 2nd reader will be dead
+	UT_IS(ReaderQueueGuts::writeq(far2).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(far2), 4);
+	UT_IS(ReaderQueueGuts::lastId(far2), 4);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
+	UT_ASSERT(autoeventGuts::isSignaled(owr2->get()->queEvent()->ev_));
+
+	// the 3rd reader will have the same data queued
+	UT_IS(ReaderQueueGuts::writeq(far3).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(far3), 5);
+	UT_IS(ReaderQueueGuts::lastId(far3), 7);
+	UT_ASSERT(ReaderQueueGuts::wrReady(far3));
+	
+	// ----------------------------------------------------------------------
+
+	// clean-up, since the apps catalog is global
+	oww1->markDead();
+	oww2->markDead();
+	owr1->markDead();
+	owr2->markDead();
+	owr3->markDead();
+	a1->harvester();
+
+	restore_uncatchable();
 }
 
 // XXX test the writer stop-and-resume on queue fill

@@ -97,6 +97,12 @@ public:
 		return q.front().get();
 	}
 
+	// Check if the reader is disconnected and dead.
+	bool isDead() const
+	{
+		return dead_;
+	}
+
 protected:
 
 	Xdeque &writeq()

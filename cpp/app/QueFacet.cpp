@@ -182,6 +182,11 @@ void ReaderQueue::markDeadL()
 	dead_ = true;
 	writeq().clear();
 	lastId_ = prevId_;
+	condfull_.broadcast();
+
+	// notify the thread that this reader is dead
+	wrReady_ = true;
+	qev_->ev_.signal();
 }
 
 //-------------------------- NexusWriter --------------------------------

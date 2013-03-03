@@ -237,12 +237,6 @@ public:
 		return rqg->gen_;
 	}
 
-	static bool &isDead(ReaderQueue *rq)
-	{
-		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
-		return rqg->dead_;
-	}
-
 	static bool &wrhole(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
@@ -265,6 +259,12 @@ public:
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->lastId_;
+	}
+
+	static Xtray::QueId &sizeLimit(ReaderQueue *rq)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		return rqg->sizeLimit_;
 	}
 
 	static Xdeque &writeq(ReaderQueue *rq)
