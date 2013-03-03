@@ -31,19 +31,7 @@ namespace TRICEPS_NS {
 class QueEvent: public Mtarget
 {
 public:
-	// Notify that a facet is ready.
-	// @param idx - index of the facet in the ready vector
-	void notify(int idx);
-
-	// Wait for data to become available.
-	// Before returning, copies the ready_ vector to sready_
-	// and clears ready_.
-	void wait();
-
-	pw::event ev_;
-	// XXX add a mutex? have a chainevent, like chaincond?
-	vector<bool> ready_; // indication of which facets are ready
-	vector<bool> sready_; // of which facets the thread scheduler already knows that they are ready
+	pw::autoevent ev_;
 };
 
 // The queue of one reader facet.
@@ -75,6 +63,36 @@ public:
 	// @param xt - Xtray being written
 	// @param trayId - the sequential id of the tray
 	void write(Xtray *xt, Xtray::QueId trayId);
+
+	// Refill the read side of the queue from the write side.
+	// @return - whether the data became available in the reader queue
+	bool refill();
+
+	// Pop a value from the front of the read queue. 
+	// Set it to NULL before popping, to make sure that a reference
+	// won't be stuck in the queue for a long time.
+	void popread()
+	{
+		Xdeque &q = readq();
+		q.front() = NULL;
+		q.pop_front();
+	}
+
+	// Get the value from the front of the read queue.
+	// The value is returned as a pointer, to reduce the number of
+	// reference changes. Like STL front(), the value is not popped,
+	// so it's safe to use the pointer until popread() is called.
+	//
+	// @return - the next item from the front of the read queue, or
+	//           NULL if none is available any more (the write queue
+	//           may still have data)
+	Xtray *frontread() const
+	{
+		const Xdeque &q = q_[rq_]; // readq(), only preserve the constness
+		if (q.empty())
+			return NULL;
+		return q.front().get();
+	}
 
 protected:
 	typedef deque<Autoref<Xtray> > Xdeque;
@@ -125,9 +143,12 @@ protected:
 	Autoref<QueEvent> qev_; // where to signal when have data
 	int qidx_; // index of this facet's indication in QueEvent::ready_
 
-	// part that is protected by the mutex
+	// XXX set very high for the "never block" reverse nexuses
+	Xtray::QueId sizeLimit_; // the high water mark for writing
 
-	pw::pmcond condfull_; // wait when the queue is full, also contains the mutex
+	// part that is either protected by the mutex or used only by the
+	// facet-owning thread
+	// XXX should bother to separate better the part used by the facet-owning thread?
 
 	Xdeque q_[2]; // the queues of trays; they alternate with double buffering;
 		// the one currently used for reading can be accessed without a lock
@@ -140,11 +161,14 @@ protected:
 	Xtray::QueId lastId_; // id of the last Xtray at the end of the queue
 		// (if prevId_ and lastId_ are the same, the queue is empty)
 
-	Xtray::QueId sizeLimit_; // the high water mark for writing
-
 	int gen_; // the generation of the nexus's reader vector
 
+	bool wrhole_; // the write queue had a hole in it, so it can't be simply swapped with read queue
 	bool dead_; // this queue has been disconnected from the nexus
+
+	bool wrReady_; // there is new data in the writer queue
+	pw::pmcond condfull_; // wait when the queue is full, also contains the mutex
+
 
 private:
 	ReaderQueue();
