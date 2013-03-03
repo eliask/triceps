@@ -285,6 +285,14 @@ public:
 		rqg->ReaderQueue::setLastIdL(id);
 	}
 
+	// wait until a particular number of sleepers on condfull_
+	static void waitCondfullSleep(ReaderQueue *rq, int n)
+	{
+		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
+		while (rqg->condfull_.sleepers_ != n) {
+			sched_yield();
+		}
+	}
 };
 
 // really need to look in the guts for the state,

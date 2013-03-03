@@ -160,7 +160,7 @@ bool ReaderQueue::refill()
 			if (wq.front().isNull())
 				break;
 			rq.push_back(wq.front());
-			wq.front() = NULL; // remove the reference to prevent it from getting stuck
+			// wq.front() = NULL; // not really needed, deque destroys it right
 			wq.pop_front();
 			prevId_++;
 		}

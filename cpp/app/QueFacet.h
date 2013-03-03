@@ -77,7 +77,7 @@ public:
 	void popread()
 	{
 		Xdeque &q = readq();
-		q.front() = NULL;
+		// q.front() = NULL; // not really needed, deque destroys it right
 		q.pop_front();
 	}
 

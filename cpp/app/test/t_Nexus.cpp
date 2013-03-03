@@ -990,6 +990,27 @@ UTESTCASE import_queues(Utest *utest)
 	restore_uncatchable();
 }
 
+class WriteHelperT: public Mtarget, public pw::pwthread
+{
+public:
+	// will write this xtray to this queue at this id
+	WriteHelperT(ReaderQueue *q, Autoref<Xtray> xt, Xtray::QueId id):
+		q_(q),
+		xt_(xt),
+		id_(id)
+	{ }
+
+	virtual void *execute()
+	{
+		q_->write(xt_, id_);
+		return NULL;
+	}
+
+	Autoref<ReaderQueue> q_;
+	Autoref<Xtray> xt_;
+	Xtray::QueId id_;
+};
+
 // a small-scale test of communication in the ReaderQueue from writer to reader
 UTESTCASE queue_fill(Utest *utest)
 {
@@ -997,6 +1018,7 @@ UTESTCASE queue_fill(Utest *utest)
 	Autoref<ReaderQueue> q = new ReaderQueue(qev, 0, 5);
 	Autoref<Xtray> xt = new Xtray(NULL); // this is an abuse but good enough here
 	int n;
+	Xtray::QueId id;
 
 	// these will flip at some point, allows to keep track of it
 	ReaderQueue::Xdeque &dq1 = ReaderQueueGuts::writeq(q);
@@ -1008,6 +1030,8 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
 	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
+	
+	// ----------------------------------------------------------------------
 
 	// refilling from an empty write queue does nothing
 	UT_ASSERT(!q->refill());
@@ -1040,6 +1064,8 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
 
 	ReaderQueueGuts::wrReady(q) = true; // restore, to let the refill work
+	
+	// ----------------------------------------------------------------------
 
 	// refill the read queue from it
 	UT_ASSERT(q->refill());
@@ -1066,17 +1092,29 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
 	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
 
-	// write an xtray at the 1st position signals the readiness
-	q->write(xt, 3);
-	UT_IS(ReaderQueueGuts::writeq(q).size(), 3);
-	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), xt.get());
+	// check that writeFirst works even if there are holes
+	UT_ASSERT(q->writeFirst(ReaderQueueGuts::gen(q), xt, id));
+	UT_IS(id, 6);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 4);
+	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), NULL);
 	UT_IS(ReaderQueueGuts::writeq(q)[1].get(), NULL);
 	UT_IS(ReaderQueueGuts::writeq(q)[2].get(), xt.get());
+	UT_IS(ReaderQueueGuts::writeq(q)[3].get(), xt.get());
 	UT_IS(ReaderQueueGuts::prevId(q), 2);
-	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_IS(ReaderQueueGuts::lastId(q), 6);
+	UT_ASSERT(ReaderQueueGuts::wrhole(q));
+
+	// write an xtray at the 1st position signals the readiness
+	q->write(xt, 3);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 4);
+	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), xt.get());
+	UT_IS(ReaderQueueGuts::prevId(q), 2);
+	UT_IS(ReaderQueueGuts::lastId(q), 6);
 	UT_ASSERT(ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(ReaderQueueGuts::wrReady(q));
 	UT_ASSERT(autoeventGuts::isSignaled(qev->ev_));
+	
+	// ----------------------------------------------------------------------
 
 	// refill attempt when the read queue is not empty does nothing
 	UT_ASSERT(q->refill());
@@ -1097,6 +1135,8 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(xt->getref(), n-1); // popping drops the reference
 	UT_IS(ReaderQueueGuts::readq(q).size(), 0);
 	UT_IS(q->frontread(), NULL);
+	
+	// ----------------------------------------------------------------------
 
 	// now refill again, heeding the holes
 	n = xt->getref();
@@ -1106,22 +1146,25 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(&dq2, &ReaderQueueGuts::writeq(q));
 	UT_IS(&dq1, &ReaderQueueGuts::readq(q));
 	UT_IS(ReaderQueueGuts::readq(q).size(), 1);
-	UT_IS(ReaderQueueGuts::writeq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 3);
 	UT_IS(ReaderQueueGuts::prevId(q), 3);
-	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_IS(ReaderQueueGuts::lastId(q), 6);
 	UT_ASSERT(ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
 
 	// clear the reader queue
 	ReaderQueueGuts::readq(q).clear();
+	
+	// ----------------------------------------------------------------------
 
 	// fill the hole
 	q->write(xt, 4);
-	UT_IS(ReaderQueueGuts::writeq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 3);
 	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), xt.get());
 	UT_IS(ReaderQueueGuts::writeq(q)[1].get(), xt.get());
+	UT_IS(ReaderQueueGuts::writeq(q)[2].get(), xt.get());
 	UT_IS(ReaderQueueGuts::prevId(q), 3);
-	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_IS(ReaderQueueGuts::lastId(q), 6);
 	UT_ASSERT(ReaderQueueGuts::wrhole(q)); // doesn't know that it's filled yet
 	UT_ASSERT(ReaderQueueGuts::wrReady(q));
 	
@@ -1130,12 +1173,46 @@ UTESTCASE queue_fill(Utest *utest)
 	// queues stay the same, just the data moves
 	UT_IS(&dq2, &ReaderQueueGuts::writeq(q));
 	UT_IS(&dq1, &ReaderQueueGuts::readq(q));
-	UT_IS(ReaderQueueGuts::readq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::readq(q).size(), 3);
 	UT_IS(ReaderQueueGuts::writeq(q).size(), 0);
-	UT_IS(ReaderQueueGuts::prevId(q), 5);
-	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_IS(ReaderQueueGuts::prevId(q), 6);
+	UT_IS(ReaderQueueGuts::lastId(q), 6);
 	UT_ASSERT(!ReaderQueueGuts::wrhole(q)); // filled!
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+
+	// clear the reader queue
+	ReaderQueueGuts::readq(q).clear();
+	
+	// ----------------------------------------------------------------------
+
+	// now check that the queue limit is properly heeded
+	Autoref<WriteHelperT> wh1 = new WriteHelperT(q, xt, 12); // last was 6 + limit 5 + 1 past
+	Autoref<WriteHelperT> wh2 = new WriteHelperT(q, xt, 13); // next after it
+	qev->ev_.reset();
+	wh1->start(); // should get stuck writing
+	wh2->start(); // should get stuck writing
+	ReaderQueueGuts::waitCondfullSleep(q, 2);
+
+	// nothing should get added to the queue yet
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(q), 6);
+	UT_IS(ReaderQueueGuts::lastId(q), 6);
+
+	// add 2 xtrays at the front, that would allow the refill to free both sleepers
+	q->write(xt, 7);
+	q->write(xt, 8);
+
+	// the magic happens here
+	UT_ASSERT(q->refill());
+
+	// both writes must succeed now
+	wh1->join();
+	wh2->join();
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 5);
+	UT_IS(ReaderQueueGuts::writeq(q)[3].get(), xt.get());
+	UT_IS(ReaderQueueGuts::writeq(q)[4].get(), xt.get());
+	UT_IS(ReaderQueueGuts::prevId(q), 8);
+	UT_IS(ReaderQueueGuts::lastId(q), 13);
 }
 
 // XXX test the writer stop-and-resume on queue fill
