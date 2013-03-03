@@ -71,6 +71,7 @@ public:
 	bool refill();
 
 	// Pop a value from the front of the read queue. 
+	// MUST NOT BE CALLED WITH AN EMPTY QUEUE.
 	// Set it to NULL before popping, to make sure that a reference
 	// won't be stuck in the queue for a long time.
 	void popread()

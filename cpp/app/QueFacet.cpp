@@ -62,7 +62,7 @@ ReaderQueue::ReaderQueue(QueEvent *qev, int qidx, Xtray::QueId limit):
 	gen_(-1),
 	wrhole_(false),
 	dead_(false),
-	wrReady_(true)
+	wrReady_(false)
 { }
 
 bool ReaderQueue::writeFirst(int gen, Xtray *xt, Xtray::QueId &trayId)
@@ -154,8 +154,8 @@ bool ReaderQueue::refill()
 
 	if (wrhole_) {
 		// have to copy one by one until find the hole or end of deque
-		Xdeque rq = readq();
-		Xdeque wq = writeq();
+		Xdeque &rq = readq();
+		Xdeque &wq = writeq();
 		while (!wq.empty()) {
 			if (wq.front().isNull())
 				break;
@@ -172,6 +172,8 @@ bool ReaderQueue::refill()
 	}
 
 	wrReady_ = false; // the write queue has nothing immediately readable now
+	if (writeq().size() < sizeLimit_)
+		condfull_.broadcast();
 	return !readq().empty();
 }
 

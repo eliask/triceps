@@ -798,6 +798,13 @@ UTESTCASE import_queues(Utest *utest)
 
 	ow1->markReady(); // make the nexus visible for import
 
+	// as a little side-track test, write to a writer without any readers
+	// (it will be discarded and must not get stuck)
+	{
+		Autoref<Xtray> xt = new Xtray(fa1->getFnReturn()->getType());
+		faw1->write(xt);
+	}
+
 	// add a reader
 	Autoref<Facet> fa2 = ow2->importReader("t1", "nx1", "");
 
@@ -982,3 +989,155 @@ UTESTCASE import_queues(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// a small-scale test of communication in the ReaderQueue from writer to reader
+UTESTCASE queue_fill(Utest *utest)
+{
+	Autoref<QueEvent> qev = new QueEvent;
+	Autoref<ReaderQueue> q = new ReaderQueue(qev, 0, 5);
+	Autoref<Xtray> xt = new Xtray(NULL); // this is an abuse but good enough here
+	int n;
+
+	// these will flip at some point, allows to keep track of it
+	ReaderQueue::Xdeque &dq1 = ReaderQueueGuts::writeq(q);
+	ReaderQueue::Xdeque &dq2 = ReaderQueueGuts::readq(q);
+
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(q), 0);
+	UT_IS(ReaderQueueGuts::lastId(q), 0);
+	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
+	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
+
+	// refilling from an empty write queue does nothing
+	UT_ASSERT(!q->refill());
+	UT_IS(&dq1, &ReaderQueueGuts::writeq(q));
+	UT_IS(&dq2, &ReaderQueueGuts::readq(q));
+	// the read queue is empty
+	UT_IS(q->frontread(), NULL);
+
+	// write an xtray at a sequential id at the front
+	q->write(xt, 1);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 1);
+	UT_IS(ReaderQueueGuts::prevId(q), 0);
+	UT_IS(ReaderQueueGuts::lastId(q), 1);
+	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
+	UT_ASSERT(ReaderQueueGuts::wrReady(q));
+	UT_ASSERT(autoeventGuts::isSignaled(qev->ev_));
+
+	qev->ev_.wait(); // reset back the event
+	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
+	ReaderQueueGuts::wrReady(q) = false; // also reset
+
+	// write another xtray at a sequential id
+	q->write(xt, 2);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(q), 0);
+	UT_IS(ReaderQueueGuts::lastId(q), 2);
+	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
+	// writing any block but the first doesn't dignal
+	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
+
+	ReaderQueueGuts::wrReady(q) = true; // restore, to let the refill work
+
+	// refill the read queue from it
+	UT_ASSERT(q->refill());
+	// queues should get flipped
+	UT_IS(&dq2, &ReaderQueueGuts::writeq(q));
+	UT_IS(&dq1, &ReaderQueueGuts::readq(q));
+	// write queue gets reset
+	UT_IS(ReaderQueueGuts::readq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(q), 2);
+	UT_IS(ReaderQueueGuts::lastId(q), 2);
+	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
+	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+
+	// write an xtray with a hole
+	q->write(xt, 5);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 3);
+	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), NULL);
+	UT_IS(ReaderQueueGuts::writeq(q)[1].get(), NULL);
+	UT_IS(ReaderQueueGuts::writeq(q)[2].get(), xt.get());
+	UT_IS(ReaderQueueGuts::prevId(q), 2);
+	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_ASSERT(ReaderQueueGuts::wrhole(q));
+	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+	UT_ASSERT(!autoeventGuts::isSignaled(qev->ev_));
+
+	// write an xtray at the 1st position signals the readiness
+	q->write(xt, 3);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 3);
+	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), xt.get());
+	UT_IS(ReaderQueueGuts::writeq(q)[1].get(), NULL);
+	UT_IS(ReaderQueueGuts::writeq(q)[2].get(), xt.get());
+	UT_IS(ReaderQueueGuts::prevId(q), 2);
+	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_ASSERT(ReaderQueueGuts::wrhole(q));
+	UT_ASSERT(ReaderQueueGuts::wrReady(q));
+	UT_ASSERT(autoeventGuts::isSignaled(qev->ev_));
+
+	// refill attempt when the read queue is not empty does nothing
+	UT_ASSERT(q->refill());
+	// queues stay the same
+	UT_IS(&dq2, &ReaderQueueGuts::writeq(q));
+	UT_IS(&dq1, &ReaderQueueGuts::readq(q));
+	UT_IS(ReaderQueueGuts::readq(q).size(), 2);
+	UT_ASSERT(ReaderQueueGuts::wrReady(q));
+
+	// read up the read queue
+	UT_IS(q->frontread(), xt.get());
+	n = xt->getref();
+	q->popread();
+	UT_IS(xt->getref(), n-1); // popping drops the reference
+	UT_IS(ReaderQueueGuts::readq(q).size(), 1);
+	n = xt->getref();
+	q->popread();
+	UT_IS(xt->getref(), n-1); // popping drops the reference
+	UT_IS(ReaderQueueGuts::readq(q).size(), 0);
+	UT_IS(q->frontread(), NULL);
+
+	// now refill again, heeding the holes
+	n = xt->getref();
+	UT_ASSERT(q->refill());
+	UT_IS(xt->getref(), n); // moving between the queues keeps the same ref count
+	// queues stay the same, just the data moves
+	UT_IS(&dq2, &ReaderQueueGuts::writeq(q));
+	UT_IS(&dq1, &ReaderQueueGuts::readq(q));
+	UT_IS(ReaderQueueGuts::readq(q).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::prevId(q), 3);
+	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_ASSERT(ReaderQueueGuts::wrhole(q));
+	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+
+	// clear the reader queue
+	ReaderQueueGuts::readq(q).clear();
+
+	// fill the hole
+	q->write(xt, 4);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::writeq(q)[0].get(), xt.get());
+	UT_IS(ReaderQueueGuts::writeq(q)[1].get(), xt.get());
+	UT_IS(ReaderQueueGuts::prevId(q), 3);
+	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_ASSERT(ReaderQueueGuts::wrhole(q)); // doesn't know that it's filled yet
+	UT_ASSERT(ReaderQueueGuts::wrReady(q));
+	
+	// refill again, finding that the hole is closed
+	UT_ASSERT(q->refill());
+	// queues stay the same, just the data moves
+	UT_IS(&dq2, &ReaderQueueGuts::writeq(q));
+	UT_IS(&dq1, &ReaderQueueGuts::readq(q));
+	UT_IS(ReaderQueueGuts::readq(q).size(), 2);
+	UT_IS(ReaderQueueGuts::writeq(q).size(), 0);
+	UT_IS(ReaderQueueGuts::prevId(q), 5);
+	UT_IS(ReaderQueueGuts::lastId(q), 5);
+	UT_ASSERT(!ReaderQueueGuts::wrhole(q)); // filled!
+	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
+}
+
+// XXX test the writer stop-and-resume on queue fill
+// XXX test the parallel writes and additional/removal of queues
+// XXX test writing to a dead queue (first and non-first)

@@ -231,37 +231,37 @@ public:
 class ReaderQueueGuts: public ReaderQueue
 {
 public:
-	static int gen(ReaderQueue *rq)
+	static int &gen(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->gen_;
 	}
 
-	static bool isDead(ReaderQueue *rq)
+	static bool &isDead(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->dead_;
 	}
 
-	static bool wrhole(ReaderQueue *rq)
+	static bool &wrhole(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->wrhole_;
 	}
 
-	static bool wrReady(ReaderQueue *rq)
+	static bool &wrReady(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->wrReady_;
 	}
 
-	static Xtray::QueId prevId(ReaderQueue *rq)
+	static Xtray::QueId &prevId(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->prevId_;
 	}
 
-	static Xtray::QueId lastId(ReaderQueue *rq)
+	static Xtray::QueId &lastId(ReaderQueue *rq)
 	{
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		return rqg->lastId_;
@@ -284,6 +284,7 @@ public:
 		ReaderQueueGuts *rqg = (ReaderQueueGuts *)rq;
 		rqg->ReaderQueue::setLastIdL(id);
 	}
+
 };
 
 // really need to look in the guts for the state,
