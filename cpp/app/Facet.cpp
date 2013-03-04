@@ -158,14 +158,23 @@ void Facet::reimport(Nexus *nexus, const string &tname)
 	queueLimit_ = nexus->queueLimit(); // might have been adjusted for reverse nexus
 }
 
-void Facet::connectToNexus(QueEvent *qev, int rqidx)
+void Facet::connectToNexus(QueEvent *qev)
 {
 	if (writer_) {
 		wr_ = new NexusWriter;
 		nexus_->addWriter(wr_);
 	} else {
-		rd_ = new ReaderQueue(qev, rqidx, queueLimit_);
+		rd_ = new ReaderQueue(qev, queueLimit_);
 		nexus_->addReader(rd_);
+	}
+}
+
+void Facet::flushWriter()
+{
+	if (!wr_.isNull() && !fret_->isXtrayEmpty()) {
+		Autoref<Xtray> xt = new Xtray(fret_->getType());
+		fret_->swapXtray(xt);
+		wr_->write(xt);
 	}
 }
 

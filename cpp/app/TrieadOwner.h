@@ -382,6 +382,14 @@ public:
 	NexusMaker *makeNexusWriter(const string &name);
 	NexusMaker *makeNexusNoImport(const string &name);
 
+	// Send the collected non-empty Xtrays on the writer facets.
+	void flushWriters();
+
+	// Get the next Xtray from the input queues (sleep if needed),
+	// process it and send through the output queues.
+	// @return - true normally, false when there no more active readers
+	bool handleXtray();
+
 protected:
 	// Called through App::makeTriead().
 	// Creates the thread's "main" same-named unit.

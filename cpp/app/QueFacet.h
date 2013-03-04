@@ -15,8 +15,6 @@
 #include <mem/Atomic.h>
 #include <app/Xtray.h>
 
-// XXX work in progress
-
 namespace TRICEPS_NS {
 
 // These small classes logically belong as fragments to the bigger objects
@@ -42,9 +40,8 @@ public:
 	typedef deque<Autoref<Xtray> > Xdeque;
 
 	// @param qev - the thread's notification event
-	// @param qidx - the queue index to use in the notification
 	// @param limit - high watermark limit for the queue
-	ReaderQueue(QueEvent *qev, int qidx, Xtray::QueId limit);
+	ReaderQueue(QueEvent *qev, Xtray::QueId limit);
 
 	// Write an Xtray to the first reader in the vector.
 	// This generates the sequential id for the Xtray.
@@ -149,7 +146,6 @@ protected:
 	// part that is set once and never changed
 	
 	Autoref<QueEvent> qev_; // where to signal when have data
-	int qidx_; // index of this facet's indication in QueEvent::ready_
 
 	// XXX set very high for the "never block" reverse nexuses
 	Xtray::QueId sizeLimit_; // the high water mark for writing

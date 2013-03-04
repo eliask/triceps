@@ -124,6 +124,20 @@ TrieadOwner::NexusMaker *TrieadOwner::makeNexusNoImport(const string &name)
 	return &nexusMaker_;
 }
 
+void TrieadOwner::flushWriters()
+{
+	Triead::FacetPtrVec::iterator it = triead_->writers_.begin();
+	Triead::FacetPtrVec::iterator end = triead_->writers_.end();
+	for (; it != end; ++it)
+		(*it)->flushWriter();
+}
+
+bool TrieadOwner::handleXtray()
+{
+	// XXX
+	return false;
+}
+
 // ---------------------------- TrieadOwner::NexusMaker ---------------------------------
 
 void TrieadOwner::NexusMaker::init(Unit *unit, const string &name, bool writer, bool import)

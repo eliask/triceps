@@ -334,7 +334,7 @@ protected:
 	// Interface for Facet
 	// {
 
-	// Check if the Xtray is empy.
+	// Check if the Xtray is empty.
 	bool isXtrayEmpty() const
 	{
 		return xtray_.isNull() || xtray_->empty();

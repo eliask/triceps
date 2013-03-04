@@ -97,9 +97,14 @@ void Triead::importFacet(Onceref<Facet> facet)
 {
 	pw::lockmutex lm(mutex_);
 
-	facet->connectToNexus(qev_, readers_.size());
-	if (!facet->isWriter())
-		readers_.push_back(facet.get());
+	facet->connectToNexus(qev_);
+
+	if (facet->isWriter())
+		writers_.push_back(facet.get());
+	else if (facet->isReverse())
+		readersHi_.push_back(facet.get());
+	else
+		readersLo_.push_back(facet.get());
 
 	// last, since it erases the Onceref value
 	imports_[facet->getFullName()] = facet;

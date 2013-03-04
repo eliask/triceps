@@ -217,6 +217,10 @@ public:
 		return nexus_;
 	}
 
+	// If this facet is a writer and has a non-empty Xqueue,
+	// flushes it to the nexus. Otherwise does nothing.
+	void flushWriter();
+
 protected:
 	// For importing of a nexus, create a facet from it.
 	// @param unit - unit where the FnReturn will be created
@@ -246,8 +250,7 @@ protected:
 	// Normally called from Triead::importFacet().
 	// @param qev - queue event for the thread notification if this is
 	//        a reader (ignored for a writer)
-	// @param rqidx - reader queue index for notification (ignored for a writer)
-	void connectToNexus(QueEvent *qev, int rqidx);
+	void connectToNexus(QueEvent *qev);
 
 	string name_; // the name is set only in the ex/imported facet:
 		// it includes two parts separated by a "/": the nexus owner thread

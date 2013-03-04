@@ -52,9 +52,8 @@ namespace TRICEPS_NS {
 //   * get the lock, deposit the buffer at that id, release it - sleep if the queue is full
 //
 
-ReaderQueue::ReaderQueue(QueEvent *qev, int qidx, Xtray::QueId limit):
+ReaderQueue::ReaderQueue(QueEvent *qev, Xtray::QueId limit):
 	qev_(qev),
-	qidx_(qidx),
 	sizeLimit_(limit),
 	rq_(0),
 	prevId_(0),

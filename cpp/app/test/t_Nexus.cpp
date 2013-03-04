@@ -1015,7 +1015,7 @@ public:
 UTESTCASE queue_fill(Utest *utest)
 {
 	Autoref<QueEvent> qev = new QueEvent;
-	Autoref<ReaderQueue> q = new ReaderQueue(qev, 0, 5);
+	Autoref<ReaderQueue> q = new ReaderQueue(qev, 5);
 	Autoref<Xtray> xt = new Xtray(NULL); // this is an abuse but good enough here
 	int n;
 	Xtray::QueId id;
@@ -1437,6 +1437,91 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	owr1->markDead();
 	owr2->markDead();
 	owr3->markDead();
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// check the high-level passing of data
+UTESTCASE pass_data(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
+
+	Autoref<Unit> unit1 = ow1->unit();
+
+	// start with a writer
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->addLabel("two", rt1)
+		->addLabel("three", rt1)
+		->complete()
+	;
+	// Nexus *nxa = fa1a->nexus();
+
+	Autoref<Facet> fa1b = ow1->makeNexusWriter("nxb")
+		->addLabel("data", rt1)
+		->complete()
+	;
+	// Nexus *nxb = fa1b->nexus();
+
+	Autoref<Facet> fa1c = ow1->makeNexusNoImport("nxc")
+		->addLabel("data", rt1)
+		->complete()
+	;
+
+	ow1->markReady(); // make the nexus visible for import
+
+	// add a reader
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+	ReaderQueue *far2a = FacetGuts::readerQueue(fa2a);
+	UT_ASSERT(far2a != NULL);
+
+	Autoref<Facet> fa2b = ow2->importReader("t1", "nxb", "");
+	ReaderQueue *far2b = FacetGuts::readerQueue(fa2b);
+	UT_ASSERT(far2b != NULL);
+
+	// send the data
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, r1));
+	unit1->call(new Rowop(fa1b->getFnReturn()->getLabel("data"), 
+		Rowop::OP_INSERT, r1));
+	ow1->flushWriters();
+
+	// check that it arrived
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 1);
+
+	// check that flushing a facet with no data is a no-op
+	fa1a->flushWriter();
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
+	
+	// check that flushing a non-imported facet is a no-op
+	fa1c->flushWriter();
+
+	// check that flushing a reader facet is a no-op
+	fa2a->flushWriter();
+	
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	ow4->markDead();
 	a1->harvester();
 
 	restore_uncatchable();

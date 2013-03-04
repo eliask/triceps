@@ -196,8 +196,11 @@ protected:
 	// synchronized by the mutex.
 	FacetMap imports_; // the imported facets
 
-	FacetPtrVec readers_; // the reader facets are copied here, and thus assigned the indexes
-		// (already referenced in imports_, just use pointers here)
+	// All these are duplicates from references in imports_, so
+	// just keep simple pointers.
+	FacetPtrVec readersHi_; // the high-priority (reverse) readers
+	FacetPtrVec readersLo_; // the low-priority (normal) readers
+	FacetPtrVec writers_; // the writers
 
 	// The flags are interacting with the App's state and
 	// are synchronized by the App's mutex.
