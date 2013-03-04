@@ -387,8 +387,13 @@ public:
 
 	// Get the next Xtray from the input queues (sleep if needed),
 	// process it and send through the output queues.
+	// If called re-entrantly, the nested calls silently return true
+	// and do nothing.
+	//
+	// May propagate an Exception.
+	//
 	// @return - true normally, false when there no more active readers
-	bool handleXtray();
+	bool nextXtray();
 
 protected:
 	// Called through App::makeTriead().
@@ -397,12 +402,33 @@ protected:
 	// @param th - thread, whose control API to represent.
 	TrieadOwner(App *app, Triead *th);
 
+	// Try to find the next xtray in the next round (the reader facets
+	// of the same priority get collected in the same round).
+	// Continues the search from the last position remembered in 
+	// vec.idx_. If finds an xtray, its facet's index will be also
+	// left in vec.idx_. If doesn't find then vec.idx_ will cycle back
+	// to the original position.
+	// @param vec - the round to search through
+	// @return - the found xtray, or NULL if not found
+	Xtray *pickNextRound(Triead::FacetPtrRound &vec);
+
+	// Try to refill the readers in the round from their writer-side queues.
+	// @return - true if any reader found the new data
+	bool refillRound(Triead::FacetPtrRound &vec);
+
+	// Convert the Xtray entries to Rowops and run them through the
+	// Facet's FnReturn. The Xtray must match the Facet.
+	//
+	// May propagate an Exception.
+	void processXtray(Xtray *xt, Facet *facet);
+
 protected:
 	Autoref<App> app_; // app where the thread belongs
 	Autoref<Triead> triead_; // the thread owned here
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
 	UnitList units_; // units of this thread, including the main one
 	NexusMaker nexusMaker_; // helper for convenient nexus making
+	bool busy_; // flag: processing an Xtray
 
 private:
 	TrieadOwner();

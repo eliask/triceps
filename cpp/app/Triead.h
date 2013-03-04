@@ -31,6 +31,21 @@ public:
 	typedef map<string, Autoref<Nexus> > NexusMap;
 	typedef map<string, Autoref<Facet> > FacetMap;
 	typedef vector<Facet *> FacetPtrVec;
+	struct FacetPtrRound: public FacetPtrVec
+	{
+		FacetPtrRound():
+			idx_(0)
+		{ }
+
+		// Pop the front Xtray in the facet pointed by idx_;
+		// The caller must be done processing that Xtray.
+		void popread()
+		{
+			(*this)[idx_]->rd_->popread();
+		}
+
+		int idx_; // last index, for round-robin iteration
+	};
 
 	// No public constructor! Use App!
 
@@ -198,8 +213,8 @@ protected:
 
 	// All these are duplicates from references in imports_, so
 	// just keep simple pointers.
-	FacetPtrVec readersHi_; // the high-priority (reverse) readers
-	FacetPtrVec readersLo_; // the low-priority (normal) readers
+	FacetPtrRound readersHi_; // the high-priority (reverse) readers
+	FacetPtrRound readersLo_; // the low-priority (normal) readers
 	FacetPtrVec writers_; // the writers
 
 	// The flags are interacting with the App's state and

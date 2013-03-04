@@ -6,6 +6,7 @@
 //
 
 #include <app/TrieadOwner.h>
+#include <common/BusyMark.h>
 
 namespace TRICEPS_NS {
 
@@ -13,7 +14,8 @@ TrieadOwner::TrieadOwner(App *app, Triead *th) :
 	app_(app),
 	triead_(th),
 	mainUnit_(new Unit(th->getName())),
-	nexusMaker_(this)
+	nexusMaker_(this),
+	busy_(false)
 {
 	units_.push_back(mainUnit_);
 }
@@ -132,10 +134,106 @@ void TrieadOwner::flushWriters()
 		(*it)->flushWriter();
 }
 
-bool TrieadOwner::handleXtray()
+
+Xtray *TrieadOwner::pickNextRound(Triead::FacetPtrRound &vec)
 {
-	// XXX
-	return false;
+	int sz = vec.size();
+	if (sz == 0)
+		return NULL;
+
+	int idx = vec.idx_; // continue from the last spot
+	if (idx >= sz)
+		idx = 0;
+	int start = idx;
+
+	do {
+		Xtray *xt = vec[idx]->rd_->frontread();
+		if (xt != NULL) {
+			vec.idx_ = idx; // remembers where the xtray came from
+			return xt;
+		}
+		if (++idx >= sz)
+			idx = 0;
+	} while (idx != start);
+	return NULL; // nothing found
+}
+
+bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
+{
+	int sz = vec.size();
+	bool found = false;
+	for (int idx = 0; idx < sz; idx++)
+		found |= vec[idx]->rd_->refill();
+	return found;
+}
+
+bool TrieadOwner::nextXtray()
+{
+	if (busy_)
+		return true;
+	BusyMark bm(busy_);
+
+	Xtray *xt;
+	bool filled = false;
+	
+	while (true) {
+		Triead::FacetPtrRound &rhi = triead_->readersHi_;
+		// try really hard to do the high-priority first
+		if (!rhi.empty()) {
+			xt = pickNextRound(rhi);
+			if (xt == NULL && (filled = refillRound(rhi)))
+				xt = pickNextRound(rhi);
+			if (xt != NULL) {
+				try {
+					processXtray(xt, rhi[rhi.idx_]);
+				} catch (Exception e) {
+					rhi.popread();
+					throw;
+				}
+				rhi.popread();
+				if (filled)
+					triead_->qev_->ev_.reset();
+				return true;
+			}
+		} else if (triead_->readersLo_.empty()) {
+			// no more readers of either priority
+			return false;
+		}
+
+		Triead::FacetPtrRound &rlo = triead_->readersLo_;
+		xt = pickNextRound(rlo);
+		if (xt == NULL && (filled = refillRound(rlo)))
+			xt = pickNextRound(rlo);
+		if (xt != NULL) {
+			try {
+				processXtray(xt, rlo[rlo.idx_]);
+			} catch (Exception e) {
+				rlo.popread();
+				throw;
+			}
+			rlo.popread();
+			if (filled)
+				triead_->qev_->ev_.reset();
+			return true;
+		}
+
+		// This code is optimized for the case when the data comes
+		// in faster than it can be handled, so in case if there is
+		// little data, it may do two passes, consuming the signal
+		// from the data that got already refilled.
+		triead_->qev_->ev_.wait(); // wait for more data
+	}
+}
+
+void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
+{
+	int sz = xt->size();
+	FnReturn *fret = facet->getFnReturn();
+	for (int i = 0; i < sz; i++) {
+		const Xtray::Op &op = xt->at(i);
+		mainUnit_->call(new Rowop(
+			fret->getLabel(op.idx_), op.opcode_, op.row_));
+	}
 }
 
 // ---------------------------- TrieadOwner::NexusMaker ---------------------------------
