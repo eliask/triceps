@@ -124,7 +124,7 @@ void ReaderQueue::insertQueL(Xtray *xt, Xtray::QueId off)
 
 	if (off == 0) { // the front of the queue became readable
 		wrReady_ = true; // before notification!
-		qev_->ev_.signal();
+		qev_->signal();
 	}
 }
 
@@ -185,7 +185,7 @@ void ReaderQueue::markDeadL()
 
 	// notify the thread that this reader is dead
 	wrReady_ = true;
-	qev_->ev_.signal();
+	qev_->signal();
 }
 
 //-------------------------- NexusWriter --------------------------------

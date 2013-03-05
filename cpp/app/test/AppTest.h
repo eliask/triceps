@@ -300,15 +300,15 @@ public:
 class autoeventGuts: public pw::autoevent
 {
 public:
-	static bool isSignaled(pw::autoevent &ev)
+	static bool isSignaled(pw::autoevent *ev)
 	{
-		autoeventGuts *evg = (autoeventGuts *)&ev;
+		autoeventGuts *evg = (autoeventGuts *)ev;
 		return evg->signaled_;
 	}
 
-	static int sleepers(pw::autoevent &ev)
+	static int sleepers(pw::autoevent *ev)
 	{
-		autoeventGuts *evg = (autoeventGuts *)&ev;
+		autoeventGuts *evg = (autoeventGuts *)ev;
 		return evg->evsleepers_;
 	}
 };

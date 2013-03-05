@@ -205,7 +205,7 @@ bool TrieadOwner::nextXtray(bool wait)
 				}
 				rhi.popread();
 				if (filled)
-					triead_->qev_->ev_.reset();
+					triead_->qev_->reset();
 				flushWriters();
 				return true;
 			}
@@ -227,7 +227,7 @@ bool TrieadOwner::nextXtray(bool wait)
 			}
 			rlo.popread();
 			if (filled)
-				triead_->qev_->ev_.reset();
+				triead_->qev_->reset();
 			flushWriters();
 			return true;
 		}
@@ -237,7 +237,7 @@ bool TrieadOwner::nextXtray(bool wait)
 		// little data, it may do two passes, consuming the signal
 		// from the data that got already refilled.
 		if (wait)
-			triead_->qev_->ev_.wait(); // wait for more data
+			triead_->qev_->wait(); // wait for more data
 		else
 			return false;
 	}

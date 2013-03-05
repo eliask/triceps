@@ -26,11 +26,8 @@ namespace TRICEPS_NS {
 // to refrence it, and they can not reference the Tried directly
 // because that would cause a reference loop.
 // This event covers all the facets connected to the thread.
-class QueEvent: public Mtarget
-{
-public:
-	pw::autoevent ev_;
-};
+class QueEvent: public Mtarget, public pw::autoevent
+{ };
 
 // The queue of one reader facet.
 class ReaderQueue: public Mtarget
