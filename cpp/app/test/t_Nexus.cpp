@@ -1579,6 +1579,52 @@ UTESTCASE pass_data(Utest *utest)
 	
 	// ----------------------------------------------------------------------
 
+	// check that writing and reading with facets won't work until the App
+	// is found ready by the thread
+	{
+		string msg;
+		try {
+			ow1->flushWriters();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
+			"Triceps API violation: attempted to flush the facet 't1/nxa' before the App is ready.\n");
+	}
+	{
+		string msg;
+		try {
+			ow1->nextXtray();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
+			"Triceps API violation: attempted to read data in thread 't1' before the App is ready.\n");
+	}
+
+	ow1->markReady();
+	ow2->markReady();
+	ow3->markReady();
+	ow4->markReady();
+
+	ow1->readyReady();
+	ow2->readyReady();
+	ow3->readyReady();
+	ow4->readyReady();
+
+	{
+		string msg;
+		try {
+			fa1c->flushWriter();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
+			"Triceps API violation: attempted to flush a non-exported facet.\n");
+	}
+
+	// ----------------------------------------------------------------------
+
 	// send the data
 	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
 		Rowop::OP_INSERT, r1));
@@ -1594,9 +1640,6 @@ UTESTCASE pass_data(Utest *utest)
 	fa1a->flushWriter();
 	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
 	
-	// check that flushing a non-imported facet is a no-op
-	fa1c->flushWriter();
-
 	// check that flushing a reader facet is a no-op
 	fa2a->flushWriter();
 	

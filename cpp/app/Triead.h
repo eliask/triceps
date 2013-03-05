@@ -190,7 +190,7 @@ protected:
 
 	// Access from TrieadOwner. 
 	// The "L" means in this case that the owner thread doesn't even
-	// need to lock th emutex.
+	// need to lock the mutex.
 	FacetMap::const_iterator importsFindL(const string &name) const
 	{
 		return imports_.find(name);
@@ -199,6 +199,11 @@ protected:
 	{
 		return imports_.end();
 	}
+
+	// Notification from TrieadOwner that it had waited for the
+	// app to become ready, so now all the facets can be notified
+	// of that.
+	void setAppReady();
 	
 	string name_; // name of the thread, read-only
 	mutable pw::pmutex mutex_; // mutex synchronizing this Triead

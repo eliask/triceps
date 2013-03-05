@@ -15,6 +15,7 @@ TrieadOwner::TrieadOwner(App *app, Triead *th) :
 	triead_(th),
 	mainUnit_(new Unit(th->getName())),
 	nexusMaker_(this),
+	appReady_(false),
 	busy_(false)
 {
 	units_.push_back(mainUnit_);
@@ -35,6 +36,14 @@ void TrieadOwner::markDead()
 	// XXX should also drop references to the app and thread?
 	// triead_ = NULL;
 	// app_ = NULL;
+}
+
+void TrieadOwner::readyReady()
+{
+	markReady();
+	app_->waitReady();
+	appReady_ = true;
+	triead_->setAppReady();
 }
 
 void TrieadOwner::addUnit(Autoref<Unit> u)
@@ -169,6 +178,10 @@ bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
 
 bool TrieadOwner::nextXtray(bool wait)
 {
+	if (!appReady_) {
+		throw Exception::fTrace("Triceps API violation: attempted to read data in thread '%s' before the App is ready.",
+			triead_->getName().c_str());
+	}
 	if (busy_)
 		return true;
 	BusyMark bm(busy_);

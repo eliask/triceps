@@ -110,6 +110,12 @@ void Triead::importFacet(Onceref<Facet> facet)
 	imports_[facet->getFullName()] = facet;
 }
 
+void Triead::setAppReady()
+{
+	for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
+		it->second->setAppReady();
+}
+
 #if 0 // {
 int Triead::exportsCount() const
 {

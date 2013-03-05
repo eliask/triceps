@@ -210,11 +210,7 @@ public:
 	//
 	// The last thread marked ready triggers the check of the
 	// App topology that may throw an Exception.
-	void readyReady()
-	{
-		markReady();
-		app_->waitReady();
-	}
+	void readyReady();
 
 	// Abort the thread and with it the whole app.
 	// Typically used if a fatal error is found during initialization.
@@ -433,6 +429,7 @@ protected:
 	Autoref<Unit> mainUnit_; // the main unit, created with the thread
 	UnitList units_; // units of this thread, including the main one
 	NexusMaker nexusMaker_; // helper for convenient nexus making
+	bool appReady_; // waited for App to be ready, permits the processing
 	bool busy_; // flag: processing an Xtray
 
 private:

@@ -16,7 +16,8 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	fret_(fret),
 	queueLimit_(DEFAULT_QUEUE_LIMIT),
 	reverse_(false),
-	unicast_(false)
+	unicast_(false),
+	appReady_(false)
 { 
 	if (!fret->isInitialized())
 		fret->initialize();
@@ -171,6 +172,13 @@ void Facet::connectToNexus(QueEvent *qev)
 
 void Facet::flushWriter()
 {
+	if (!appReady_) {
+		if (nexus_.isNull())
+			throw Exception::fTrace("Triceps API violation: attempted to flush a non-exported facet.");
+		else
+			throw Exception::fTrace("Triceps API violation: attempted to flush the facet '%s' before the App is ready.",
+				name_.c_str());
+	}
 	if (!wr_.isNull() && !fret_->isXtrayEmpty()) {
 		Autoref<Xtray> xt = new Xtray(fret_->getType());
 		fret_->swapXtray(xt);

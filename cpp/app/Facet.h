@@ -219,6 +219,9 @@ public:
 
 	// If this facet is a writer and has a non-empty Xqueue,
 	// flushes it to the nexus. Otherwise does nothing.
+	//
+	// Throws an Exception if the App is not ready or the facet
+	// is not exported.
 	void flushWriter();
 
 protected:
@@ -252,6 +255,12 @@ protected:
 	//        a reader (ignored for a writer)
 	void connectToNexus(QueEvent *qev);
 
+	// called by the Triead/TrieadOwner
+	void setAppReady()
+	{
+		appReady_ = true;
+	}
+
 	string name_; // the name is set only in the ex/imported facet:
 		// it includes two parts separated by a "/": the nexus owner thread
 		// name and the nexus name.
@@ -270,8 +279,9 @@ protected:
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
 	int queueLimit_; // the queue size limit for the nexus
-	bool reverse_; // Flag: this nexus's main queue is pointed upwards
-	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers
+	bool reverse_; // flag: this nexus's main queue is pointed upwards
+	bool unicast_; // flag: each row goes to only one reader, as opposed to copied to all readers
+	bool appReady_; // flag: the App is ready, so the data passing can be done
 
 private:
 	Facet();
