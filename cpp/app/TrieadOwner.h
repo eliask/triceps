@@ -387,13 +387,18 @@ public:
 
 	// Get the next Xtray from the read facets (sleep if needed),
 	// process it and send through the write facets.
-	// If called re-entrantly, the nested calls silently return true
-	// and do nothing.
+	// If called re-entrantly (which it shiould not), the nested calls 
+	// silently return true and do nothing.
+	// If requested to wait, will wait for more input, unless all the
+	// readers are dead. Otherwise will return false as soon as the
+	// no more readily available buffers in the queues.
 	//
 	// May propagate an Exception.
-	//
+	// 
+	// @param wait - flag: when the queue is consumed, wait for more
 	// @return - true normally, false when there no more active readers
-	bool nextXtray();
+	//         (or with wait==false, when no more data in the queues)
+	bool nextXtray(bool wait = true);
 
 protected:
 	// Called through App::makeTriead().

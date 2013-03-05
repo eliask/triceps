@@ -1442,6 +1442,45 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	restore_uncatchable();
 }
 
+// the row printer for tracing
+void printB(string &res, const RowType *rt, const Row *row)
+{
+	int32_t b = rt->getInt32(row, 1, 0); // field b at idx 1
+	res.append(strprintf(" b=%d", (int)b));
+}
+
+// a class that forwards the rows into a writer facet
+// if the autodecreased field "b" (at index 1) is > 0
+class RewriteLabel: public Label
+{
+public:
+	RewriteLabel(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Facet *fa, int idx) :
+		Label(unit, rtype, name),
+		fa_(fa),
+		idx_(idx),
+		rt_(fa_->getFnReturn()->getType()->getRowType(idx))
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{ 
+		int32_t val = rt_->getInt32(arg->getRow(), 1, 0);
+		if (--val > 0) {
+			FdataVec dv;
+			rt_->splitInto(arg->getRow(), dv);
+			dv[1].setPtr(true, &val, sizeof(val));
+
+			Autoref<Xtray> xt = new Xtray(fa_->getFnReturn()->getType());
+			xt->push_back(idx_, rt_->makeRow(dv), arg->getOpcode());
+			FacetGuts::nexusWriter(fa_)->write(xt);
+		}
+	}
+
+	Facet *fa_;
+	int idx_; // index of row type in xtray
+	RowType *rt_; // used to extract the field 1
+};
+
 // check the high-level passing of data
 UTESTCASE pass_data(Utest *utest)
 {
@@ -1461,12 +1500,17 @@ UTESTCASE pass_data(Utest *utest)
 
 	FdataVec dv;
 	mkfdata(dv);
+	int32_t val = 2;
+	dv[1].setPtr(true, &val, sizeof(val));
 	Rowref r1(rt1,  rt1->makeRow(dv));
 
 	Autoref<Unit> unit1 = ow1->unit();
 	Autoref<Unit> unit2 = ow2->unit();
-	Autoref<Unit::StringTracer> trace2 = new Unit::StringNameTracer(false);
+	Autoref<Unit::StringTracer> trace2 = new Unit::StringNameTracer(false, printB);
 	unit2->setTracer(trace2);
+	Autoref<Unit> unit3 = ow3->unit();
+	Autoref<Unit::StringTracer> trace3 = new Unit::StringNameTracer(false, printB);
+	unit3->setTracer(trace3);
 
 	// start with a writer
 	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
@@ -1505,17 +1549,34 @@ UTESTCASE pass_data(Utest *utest)
 		->addLabel("one", rt1)
 		->complete()
 	;
+	// this nexus is technically from ow2 to ow3 but it will
+	// be used in a creative way
+	Autoref<Facet> fa2d = ow2->makeNexusWriter("nxd")
+		->addLabel("data", rt1)
+		->setReverse()
+		->complete()
+	;
 
 	ow2->markReady(); // make the nexus visible for import
 
 	Autoref<Facet> fa3c = ow3->importReader("t2", "nxc", "");
 	ReaderQueue *far3c = FacetGuts::readerQueue(fa3c);
 	UT_ASSERT(far3c != NULL);
+	Autoref<Facet> fa3d = ow3->importReader("t2", "nxd", "");
+	ReaderQueue *far3d = FacetGuts::readerQueue(fa3d);
+	UT_ASSERT(far3d != NULL);
 
 	// and interconnect inside ow2
 	fa2a->getFnReturn()->getLabel("one")->chain(fa2c->getFnReturn()->getLabel("one"));
 	fa2b->getFnReturn()->getLabel("data")->chain(fa2c->getFnReturn()->getLabel("one"));
 
+	// and do the looped connection inside ow3
+	// (this uses a test backdoor to send the rows pretending that it came from
+	// ow2, sending directly to its writer, to come back as a high-priority Xtray)
+	Autoref<RewriteLabel> rwl = new RewriteLabel(ow3->unit(), rt1, "rwl", fa2d, 0);
+	fa3c->getFnReturn()->getLabel("one")->chain(rwl);
+	fa3d->getFnReturn()->getLabel("data")->chain(rwl);
+	
 	// ----------------------------------------------------------------------
 
 	// send the data
@@ -1551,17 +1612,39 @@ UTESTCASE pass_data(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 0);
 	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
 
+	UT_ASSERT(!ow2->nextXtray(false)); // nothing else to read
+
 	string tlog = trace2->getBuffer()->print();
-	string expect =
-		"unit 't2' before label 'nxb.data' op OP_INSERT\n"
-		"unit 't2' before label 'nxc.one' (chain 'nxb.data') op OP_INSERT\n"
-		"unit 't2' before label 'nxa.one' op OP_INSERT\n"
-		"unit 't2' before label 'nxc.one' (chain 'nxa.one') op OP_INSERT\n"
+	string expect1 =
+		"unit 't2' before label 'nxb.data' op OP_INSERT b=2\n"
+		"unit 't2' before label 'nxc.one' (chain 'nxb.data') op OP_INSERT b=2\n"
+		"unit 't2' before label 'nxa.one' op OP_INSERT b=2\n"
+		"unit 't2' before label 'nxc.one' (chain 'nxa.one') op OP_INSERT b=2\n"
 	;
-	if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	if (UT_IS(tlog, expect1)) printf("Expected: \"%s\"\n", expect1.c_str());
 	
 	// and the records should make it through
 	UT_IS(ReaderQueueGuts::writeq(far3c).size(), 2);
+
+	// ----------------------------------------------------------------------
+
+	// test the priority handling in ow3:
+	// the rowops will be looped through the high-priority facet, so they
+	// will be read first
+	
+	while (ow3->nextXtray(false));
+	tlog = trace3->getBuffer()->print();
+	string expect2 =
+		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"
+		"unit 't3' before label 'rwl' (chain 'nxc.one') op OP_INSERT b=2\n"
+		"unit 't3' before label 'nxd.data' op OP_INSERT b=1\n"
+		"unit 't3' before label 'rwl' (chain 'nxd.data') op OP_INSERT b=1\n"
+		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"
+		"unit 't3' before label 'rwl' (chain 'nxc.one') op OP_INSERT b=2\n"
+		"unit 't3' before label 'nxd.data' op OP_INSERT b=1\n"
+		"unit 't3' before label 'rwl' (chain 'nxd.data') op OP_INSERT b=1\n"
+	;
+	if (UT_IS(tlog, expect2)) printf("Expected: \"%s\"\n", expect2.c_str());
 
 	// ----------------------------------------------------------------------
 

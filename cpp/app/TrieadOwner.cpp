@@ -167,7 +167,7 @@ bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
 	return found;
 }
 
-bool TrieadOwner::nextXtray()
+bool TrieadOwner::nextXtray(bool wait)
 {
 	if (busy_)
 		return true;
@@ -223,7 +223,10 @@ bool TrieadOwner::nextXtray()
 		// in faster than it can be handled, so in case if there is
 		// little data, it may do two passes, consuming the signal
 		// from the data that got already refilled.
-		triead_->qev_->ev_.wait(); // wait for more data
+		if (wait)
+			triead_->qev_->ev_.wait(); // wait for more data
+		else
+			return false;
 	}
 }
 
