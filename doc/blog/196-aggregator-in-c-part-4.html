@@ -1,0 +1,44 @@
+Aggregator in C++, Part 4
+
+And finally here is the reference of actions available in the aggregator handler:
+
+parentIndexType->groupSize(gh)
+
+Get the size of the group. The result is of the type size_t. This is pretty much the only method of IndexType that should be called directly, and only in the aggregation. The rest of the IndexType methods should be accessed through the similar methods in the Table, and I won't even document them. However if you really, really want to, you can find the description of the other methods type/IndexType.h and call them in the aggregation as well.
+
+gadget()->getLabel()->getType()
+
+Get the result row type.
+
+The rest of the actions are done by calling the Index methods on the argument index.Same as with the IndexType, the aggregation is the only place where these methods are called directly, everywhere else the equivalent actions are done through the Table methods. Because of this I've grouped their description with the aggregation and not deparately.
+
+const IndexType *getType() const;
+
+Get the type of this index.
+
+RowHandle *begin() const;
+
+
+Get the handle of the first row of the group, in the default order according to its first leaf index type. Note that here it's not the whole table's first leaf index type but the first leaf in the index type subtree under this index's type. All the iteration methods return NULL if there are no more rows.
+
+RowHandle *next(const RowHandle *cur) const;
+
+Get the handle of the next row (or NULL if that was the last one) in the default order. The NULL argument makes the NULL result.
+
+RowHandle *last() const;
+
+Get the handle of the last row in the group in the default order.
+
+The rest of the methods of Index aren't really to be used directly.
+
+Unlike the Perl API of AggregatorContext, there are no direct analogs of beginIdx() and such in C++ Index. To get them in C++, you need to translate the iteration to another index type through the Table (and of course, just like in Perl, you would need somehow to get the reference to another index type into your aggregator, and that index type better be in the subtree of the parentIndexType). To translate through the Table, you take any row from the group, usually the first one, and use it with the table methods that accept a sample row.
+
+For example:
+
+RowHandle *sample = index->begin();
+RowHandle *rhend =  table->nextGroupIdx(otherIndexType, sample);
+for (RowHandle *rhit = table->firstOfGroupIdx(otherIndexType, sample); rhit != rhend; rhit = table->nextIdx(otherIndexType, rhit)) {
+  ...
+}
+
+This concludes the discussion of the aggregators. This also concludes the description of the whole C++ API, except for the most recent additions.

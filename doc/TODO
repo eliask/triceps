@@ -86,17 +86,14 @@ Things that need to be done:
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
-* doc: the Exception::f, ::fTrace
-* doc: Erref::f, Erref::fAppend
-* doc: streaming functions
 * doc: perl Label::isCleared()
 * doc: in types construction throw instead of abort()
 * doc: the templates for initialize(), initializeOrThrow(), checkOrThrow()
-* doc: the new draining of forked rowops, new mark semantics
 * doc: HoldRowTypes
 * doc: RowType::copy(), RowSetType::deepCopy()
 * doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
 * doc: the row printing in Unit::Tracer in C++
+* doc: Autoref::swap()
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

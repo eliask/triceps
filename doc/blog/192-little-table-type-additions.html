@@ -1,0 +1,19 @@
+little table type additions 
+
+As I'm working on the multithreading, this has created some little additions that have been missed before.
+
+First, I've added a method to copy a whole table type. In Perl it is:
+
+$newtt = $oldtt->copy();
+
+In C++ it is:
+
+TableType *copy();
+
+This copies the table type, along with copying all the index types in it, since each table type must have its own instances of the index types. The copied table is always uninitialized.
+
+In case if the table type collected errors, the errors aren't copied, and you should not copy such a table type. This caveat applies to the C++ code, since the Perl code would not let you create a table type with errors, it would fail on these errors immediately.
+
+Second, in the Perl implementation of AggregatorType I've added a method to get back the row type:
+
+$rt = $aggtype->getRowType(); 

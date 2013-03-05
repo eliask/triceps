@@ -1,0 +1,63 @@
+Aggregator in C++, part 1
+
+I've described the AggregatorType and AggregatorGadget before. Now, the last piece of the puzzle is the Aggregator class.
+
+An object of subclass of AggregatorType defines the logic of the aggregation, and there is one of them per a TableType. An object of subclass of AggregatorGadget provides the aggregation output of a Table, and there is one of them per table. An object of subclass of Aggregator keeps the state of an aggregation group, and there is one of them per Index that holds a group in the table.
+
+Repeating what I wrote before:
+
+"The purpose of the Aggregator object created by AggregatorType's makeAggregator() is to keep the state of the group. If you're doing an additive aggregation, it allows you to keep the previous results. If you're doing the optimization of the deletes, it allows you to keep the previous sent row.
+
+What if your aggregator keeps no state? You still have to make an Aggregator for every group, and no, you can't just return NULL, and no, they are not reference-countable, so you have to make a new copy of it for every group (i.e. for every call of makeAggergator()). This looks decidedly sub-optimal, and eventually I'll get around to straighten it out. The good news though is that most of the real aggerators keep the state anyway, so it doesn't matter much."
+
+Once again, the Aggregator object doesn't normally do  the logic by itself, it calls its AggregatorType for the logic. It only provides storage for one group's state and lets the AggergatorType logic use that storage.
+
+The Aggregator is defined in table/Aggregator.h. It defines two things: the constants and the virtual method.
+
+The constants are in the enum Aggregator::AggOp, same as defined before in Perl:
+
+AO_BEFORE_MOD,
+AO_AFTER_DELETE,
+AO_AFTER_INSERT,
+AO_COLLAPSE,
+
+Their meaning is also the same. They can be converted to and from the string representation with methods
+
+static const char *aggOpString(int code, const char *def = "???");
+static int stringAggOp(const char *code);
+
+They work the same way as the other constant conversion methods.
+
+Notably, there is no explicit Aggregator constructor. The base class Aggregator doesn't have any knowledge of the group state, so the default constructor is good enough. You add this knowledge of the state in your subclass, and there you define your own constructor. Whether the constructor takes any arguments or not is completely up to you, since your subclass of AggregatorType will be calling that constructor.
+
+And the actual work then happens in the method
+
+virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
+    const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+    AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
+
+Your subclass absolutely has to define this method because it's abstract in the base class. The arguments provide the way to get back to the table, its components and its type, so you don't have to pass them through your Aggregator constructor and keep them in your instance, this saves memory.
+
+Notably absent is the pointer to the AggregatorType. This is because the AggregatorGadget already has this pointer, so all you need to to is call
+
+gadget->getType();
+
+You might also want to cast it to your aggregator's type in case if you plan to call your custom methods, like:
+
+MyAggregatorType *at = (MyAggregatorType *)gadget->getType();
+
+Some of the argument types, Index and GroupHandle, have not been described yet, and will be described shortly.
+
+But in general the method handle() is expected to work very much like the aggregator handler does in Perl. It's called at the same times (and indeed the Perl handler is called from the C++-level of the handler), with the same aggop and opcode. The rh is still the current modified row.
+
+A bit of a difference is that the Perl way hides the sensitive arguments in an AggregatorContext while in C++ they are passed directly.
+
+The job of the handle() is to do whatever is necessary, possibly iterate through the group, possibly use the previous state, produce the new state (and possibly remember it), then send the rowop to the gadget. This last step usually is:
+
+gadget->sendDelayed(dest, newrow, opcode);
+
+
+
+Here gadget is the AggregatorGadget from the arguments, opcode also helpfully comes from the arguments (and if it's OP_NOP, there is no need to send anything, it will be thrown away anyway), and newrow is the newly computed result Row (not RowHandle!). Obviously, the type of the result row must match the output row type of the AggregatorGadget, or all kinds of bad things will happen. dest is also an argument of handle(), and is a tray that will hold the aggregator results until a proper time when they can be sent. The "delayed" part of "sendDelayed" means exactly that: the created rowops are not sent directly to the gadget's output but are collected in a Tray until the Table decides that it's the right time to send them.
+
+You absolutely must not use the Gadget's default method send(), use only sendDelayed(). To help with this discipline, AggregatorGadget hides the send() method and makes only the sendDelayed() visible. 

@@ -1,0 +1,20 @@
+another approach to the weak references
+
+I've recently developed another idea about the weak references. So, let's look at the basic problem:
+
+There is an object A that has a reference to object B.
+
+A->B
+
+The object B needs to be able to reach back to the object A. But it can't have a reference because that would create a reference cycle. So instead it has to have some kind of weak reference. In the single-threaded situation it can be as simple as a plain pointer that gets reset to NULL when the object A is destroyed, like for example the Triceps Label has a pointer to its Unit.
+
+There could be lots of objects B per object A. So when the object A gets destroyed, it needs to take care to clear the weak references in all the objects B. Which is kind of annoying. And it easily gets worse if the connection is not direct but multi-level, say A->B->C and then C having a back reference back to A.
+
+However there is a way around it. Create a single object W that will keep a weak reference back to A. Then all the objects B can just keep a reference to W. And of course A would also keep a reference to W. When A is destroyed, it will reset the single weak reference in W.
+
+A------------>W
+ \-->B1-->/
+ \-->B2-->/
+ \-->B3-->/
+
+Then the logic for creating and resetting the object W can be placed into a base class and then reused all over the place. The object W could even hold the pieces of information that can be still useful after the object A goes away, such as the name of the object A for the error messages. 

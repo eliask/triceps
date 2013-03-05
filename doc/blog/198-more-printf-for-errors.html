@@ -1,0 +1,57 @@
+more printf for the errors
+I've been using strprintf() repeatedly for the error messages and exceptions, and I've come up with a better way for it.
+
+First, Ive added a var-args version of strprintf(), in common/Strprintf.h:
+
+string vstrprintf(const char *fmt, va_list ap);
+
+You can use it to create strings from other functions taking the printf-like arguments.
+
+Next go the extensions to the Errors class. The consistent theme there is "check if the Errors reference (Erref) is NULL, if it is, allocate a new Errors, and then add a formatted error message to it". So I've added the new methods not to Errors but to Erref. They check if the Erref object is NULL, allocate a new Errors object into it if needed, and then format the arguments. The simplest one is:
+
+void f(const char *fmt, ...);
+
+It adds a simple formatted message, always marked as an error. You use it like this:
+
+Erref e; // initially NULL
+...
+e.f("a message with integer %d", n);
+
+The message may be multi-line, it will be split appropriately, like in Errors::appendMultiline().
+
+The next one is even more smart:
+
+bool fAppend(Autoref<Errors> clde, const char *fmt, ...);
+
+It first checks that the child errors object is not NULL and contains an error, and if it does then it does through the dance of allocating a new Errors object if needed, appends the formatted message, and the child errors. The message goes before the child errors, unlike the method signature. So you can use it blindly like this to do the right thing:
+
+Autoref<Errors> checkSubObject(int idx);
+...
+for (int i = 0; i < sz; i++)
+  e.fAppend(checkSubObject(i),  "error in the sub-object %d:", i);
+
+Same as before, you can use the multi-line error messages.
+
+Next goes the same thing for Exception:
+
+ static Exception f(const char *fmt, ...);
+ static Exception fTrace(const char *fmt, ...);
+
+these are the static factory methods that create an Exception object with the message, and either without and with the stack trace. They are used like
+
+throw Exception::f("a message with integer %d", n);
+
+And the similar methods for construction with the nested errors:
+
+static Exception f(Onceref<Errors> err, const char *fmt, ...);
+static Exception fTrace(Onceref<Errors> err, const char *fmt, ...);
+
+Unlike the Erref method, these work unconditionally (since their result is normally used in throw, and it's too late to do anything by that time), so you better make sure in advance that there is a child error. A typical usage would be like this:
+
+try {
+  ...
+} catch (Exception e) {
+  throw Exception(e.getErrors(), "error at stage %d:",  n);
+}
+
+Again, in the resulting exception the message goes before the nested errors. 

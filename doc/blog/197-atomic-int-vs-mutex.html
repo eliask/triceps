@@ -1,0 +1,88 @@
+atomic int vs mutex
+
+I've been wondering, how much faster is the native implementation of an atomic integer (such as Triceps imports from NSPR) versus a simple mutex-based approach (lock the mutex, change the value, unlock the mutex).
+
+I've finally got interested enough to measure it. On my machine, compiled with GCC optimization -O3, the difference is at about 2.5-3 times. Both with and without contention, the difference is about the same. So it's faster but not hugely so.
+
+An interesting thing is that with contention of two threads for the same mutex, Linux shows the total user CPU time about the same as the real time. With contention of two threads for the same atomic integer, the user CPU time is twice higher than the real time. It looks like Linux manages to account for the wait time properly even in these tiny increments and without adding a huge amount of overhead.
+
+And the real time with contention of two threads for the same mutex (that is, threads doing nothing but locking-unlocking the mutex in a loop) is about 3-3.5 times higher than with the same two threads running sequentially. The same goes for the atomic integers as well.
+
+The program I used was:
+
+#include <stdlib.h>
+#include <vector>
+#include "pw/ptwrap.h"
+#include "mem/Atomic.h"
+
+using namespace Triceps;
+
+const int NTHREADS = 2;
+
+pw::pmutex m;
+AtomicInt ai(0);
+
+class TestThread: public pw::pwthread
+{
+public:
+  TestThread():
+    p_(NULL)
+  { }
+
+  virtual void *execute()
+  {
+    m.lock();
+    m.unlock();
+    for (int i = 0; i < 10*1000*1000; i++) {
+      if (p_)
+        p_();  
+      // ai.inc();
+      m.lock();
+      m.unlock();
+    }  
+  }
+
+  void (*p_)();
+};
+
+std::vector<TestThread *> t;
+
+int main(int argc, char **argv)
+{
+  m.lock();
+  for (int i = 0; i < NTHREADS; i++) {
+    TestThread *job = new TestThread;
+    t.push_back(job);
+    job->start();
+  }
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  sched_yield();
+  m.unlock(); // the run starts!
+  for (int i = 0; i < NTHREADS; i++) {
+    t[i]->join();
+    delete t[i];
+  }
+  return 0;
+}
+
+
+Comment, uncomment and adjust the constants as needed. The iteration count of 10 millions may be much too low for the newer faster machines.
+
+The build command for me was:
+
+g++ -DTRICEPS_NSPR=4 -I $TRICEPS/trunk/cpp -O3 -o x x.cpp -lnspr4 -lpthread $TRICEPS/trunk/cpp/build/libtriceps.a
+
+Adjust the library names and TRICEPS_NSPR value as needed (for Ubuntu it would likely be "-DTRICEPS_NSPR=0 -lnspr").To try the simple-minded implementation of atomics through the mutex, remove "-DTRICEPS_NSPR".
+
+To measure the time, run it in the time command:
+
+time ./x
+
+When comparing time, don't forget that when you run 2 threads, they make twice more iterations! 
