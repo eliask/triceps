@@ -193,6 +193,7 @@ bool TrieadOwner::nextXtray()
 				rhi.popread();
 				if (filled)
 					triead_->qev_->ev_.reset();
+				flushWriters();
 				return true;
 			}
 		} else if (triead_->readersLo_.empty()) {
@@ -214,6 +215,7 @@ bool TrieadOwner::nextXtray()
 			rlo.popread();
 			if (filled)
 				triead_->qev_->ev_.reset();
+			flushWriters();
 			return true;
 		}
 

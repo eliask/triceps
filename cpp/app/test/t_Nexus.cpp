@@ -1464,6 +1464,9 @@ UTESTCASE pass_data(Utest *utest)
 	Rowref r1(rt1,  rt1->makeRow(dv));
 
 	Autoref<Unit> unit1 = ow1->unit();
+	Autoref<Unit> unit2 = ow2->unit();
+	Autoref<Unit::StringTracer> trace2 = new Unit::StringNameTracer(false);
+	unit2->setTracer(trace2);
 
 	// start with a writer
 	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
@@ -1476,6 +1479,7 @@ UTESTCASE pass_data(Utest *utest)
 
 	Autoref<Facet> fa1b = ow1->makeNexusWriter("nxb")
 		->addLabel("data", rt1)
+		->setReverse()
 		->complete()
 	;
 	// Nexus *nxb = fa1b->nexus();
@@ -1495,6 +1499,24 @@ UTESTCASE pass_data(Utest *utest)
 	Autoref<Facet> fa2b = ow2->importReader("t1", "nxb", "");
 	ReaderQueue *far2b = FacetGuts::readerQueue(fa2b);
 	UT_ASSERT(far2b != NULL);
+
+	// add a nexus from ow2 to ow3
+	Autoref<Facet> fa2c = ow2->makeNexusWriter("nxc")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	ow2->markReady(); // make the nexus visible for import
+
+	Autoref<Facet> fa3c = ow3->importReader("t2", "nxc", "");
+	ReaderQueue *far3c = FacetGuts::readerQueue(fa3c);
+	UT_ASSERT(far3c != NULL);
+
+	// and interconnect inside ow2
+	fa2a->getFnReturn()->getLabel("one")->chain(fa2c->getFnReturn()->getLabel("one"));
+	fa2b->getFnReturn()->getLabel("data")->chain(fa2c->getFnReturn()->getLabel("one"));
+
+	// ----------------------------------------------------------------------
 
 	// send the data
 	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
@@ -1517,6 +1539,32 @@ UTESTCASE pass_data(Utest *utest)
 	// check that flushing a reader facet is a no-op
 	fa2a->flushWriter();
 	
+	// ----------------------------------------------------------------------
+
+	// read and process the data
+	UT_ASSERT(ow2->nextXtray());
+	// this must have picked the high-priority message from fa2b
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
+
+	UT_ASSERT(ow2->nextXtray());
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 0);
+	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
+
+	string tlog = trace2->getBuffer()->print();
+	string expect =
+		"unit 't2' before label 'nxb.data' op OP_INSERT\n"
+		"unit 't2' before label 'nxc.one' (chain 'nxb.data') op OP_INSERT\n"
+		"unit 't2' before label 'nxa.one' op OP_INSERT\n"
+		"unit 't2' before label 'nxc.one' (chain 'nxa.one') op OP_INSERT\n"
+	;
+	if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	
+	// and the records should make it through
+	UT_IS(ReaderQueueGuts::writeq(far3c).size(), 2);
+
+	// ----------------------------------------------------------------------
+
 	// clean-up, since the apps catalog is global
 	ow1->markDead();
 	ow2->markDead();

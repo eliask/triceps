@@ -385,8 +385,8 @@ public:
 	// Send the collected non-empty Xtrays on the writer facets.
 	void flushWriters();
 
-	// Get the next Xtray from the input queues (sleep if needed),
-	// process it and send through the output queues.
+	// Get the next Xtray from the read facets (sleep if needed),
+	// process it and send through the write facets.
 	// If called re-entrantly, the nested calls silently return true
 	// and do nothing.
 	//
