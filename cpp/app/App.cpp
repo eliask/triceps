@@ -101,7 +101,9 @@ App::App(const string &name) :
 	dead_(true), // since no threads are alive
 	needHarvest_(true), // "dead" also implies being ready to harvest
 	unreadyCnt_(0),
-	aliveCnt_(0)
+	aliveCnt_(0),
+	drain_(new DrainApp),
+	drainCnt_(0)
 {
 	computeDeadline(DEFAULT_TIMEOUT);
 }
@@ -185,7 +187,7 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 				tname.c_str(), name_.c_str());
 	}
 
-	Triead *th = new Triead(tname);
+	Triead *th = new Triead(tname, drain_);
 	TrieadOwner *ow = new TrieadOwner(this, th);
 	upd->t_ = th;
 
@@ -512,6 +514,49 @@ void App::waitReady()
 	{
 		pw::lockmutex lm(mutex_);
 		assertNotAbortedL();
+	}
+}
+
+void App::requestDrain()
+{
+	pw::lockmutex lm(mutex_);
+
+	if (!isReady()) {
+		throw Exception::fTrace("Application '%s' can not be drained while it is not ready.", name_.c_str());
+	}
+
+	if (++drainCnt_ == 1) {
+		drain_->init();
+		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+			it->second->t_->drain();
+		}
+		drain_->initDone();
+	}
+}
+
+void App::waitDrain()
+{
+	// no app mutex!
+
+	if (!isReady()) {
+		throw Exception::fTrace("Application '%s' can not wait for drain while it is not ready.", name_.c_str());
+	}
+
+	drain_->wait();
+}
+
+void App::undrain()
+{
+	pw::lockmutex lm(mutex_);
+
+	if (!isReady()) {
+		throw Exception::fTrace("Application '%s' can not be undrained while it is not ready.", name_.c_str());
+	}
+
+	if (--drainCnt_ == 0) {
+		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+			it->second->t_->undrain();
+		}
 	}
 }
 

@@ -115,11 +115,26 @@ public:
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
-	Triead(const string &name);
+	// @param drain - The drain state of the App.
+	Triead(const string &name, DrainApp *drain);
 
 	// Clear all the direct or indirect references to the other threads.
 	// Called by the App at the destruction time.
 	void clear();
+
+	// Report to the App when the thread is drained (i.e. not processing
+	// and not producing any data).
+	void drain()
+	{
+		// XXX handle separately the situation of a thread with no
+		// reader facets, thread that reads the data from outside
+		qev_->requestDrain();
+	}
+	// Stop reporting to the App about the thread drains.
+	void undrain()
+	{
+		qev_->requestUndrain();
+	}
 	
 	// The TrieadOwner API.
 	// Naturally, it can be called from only one thread, the owner one.

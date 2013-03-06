@@ -21,13 +21,193 @@ namespace TRICEPS_NS {
 // but had to be separated to keep the reference counting from creating
 // the cycles.
 
+// The state of the App drainage: allows to detect that all the
+// App's threads and queues have been drained on request.
+class DrainApp: public Mtarget
+{
+public:
+	// Initialize the drain: 
+	// Resets the state and temporarily adds 1 (i.e. set to 0 and add 1)
+	// to the number of undrained threads, for the time when all the
+	// threads are polled for the initial state. Afterwards this 1
+	// will be deducted.
+	// Whenever each thread is initially polled, it will notify
+	// if undrained and stay quiet if drained.
+	void init()
+	{
+		pw::lockmutex lm(ev_.mutex());
+		ev_.resetL();
+		left_ = 1;
+	}
+
+	// Completion of the initialization: after all threads have been
+	// polled, subtract the initial holder 1.
+	void initDone()
+	{
+		drainedOne();
+	}
+
+	// Notification that one thread has been drained.
+	void drainedOne()
+	{
+		pw::lockmutex lm(ev_.mutex());
+		if (--left_ == 0)
+			ev_.signalL();
+	}
+
+	// Notification that one thread has been undrained.
+	void undrainedOne()
+	{
+		pw::lockmutex lm(ev_.mutex());
+		if (left_++ == 0)
+			ev_.resetL();
+	}
+
+	// Wait for the drain to complete.
+	void wait()
+	{
+		ev_.wait();
+	}
+
+	// the mutex from ev_ also protects the rest of the fields
+	pw::event2 ev_; // allows to wait for drainage
+	int left_; // how many threads are left undrained,
+		// when it goes to 0, the event gets signaled
+};
+
 // Notification from the Nexuses to the Triead that there is something
 // to read. Done as a separate object because the Nexuses will need
 // to refrence it, and they can not reference the Tried directly
 // because that would cause a reference loop.
 // This event covers all the facets connected to the thread.
-class QueEvent: public Mtarget, public pw::autoevent2
-{ };
+class QueEvent: public Mtarget
+{ 
+public:
+	// No drain is requested by default, nor signaled either.
+	// @param drain - the App drain status, to propagate the state of this
+	//        event
+	QueEvent(DrainApp *drain);
+
+	// The request from App to start the drain notification.
+	// Immediately updates the state of the drain_ based on the
+	// current state of the semaphore and keeps it updated
+	// until requested to undrain.
+	void requestDrain();
+
+	// The request from App to stop the drain notification.
+	// The drain_ will be left in whatever state it happens to be.
+	void requestUndrain()
+	{
+		pw::lockmutex lm(cond_);
+		rqDrain_ = false;
+		cond_.signal(); // wake up if there is a stuck timed wait
+	}
+
+	// The logic is a copy-paste of autoevent2 with extensions
+	// (basically, because the methods are not virtual and would
+	// have to be redefined with the extra logic anyway.
+	//
+	// The pulse part has been dropped since it's of no use here.
+	// The wait supports no more than one sleeper at a time
+	// (since the presence of the sleeper is used to indicate that
+	// the queue has been drained).
+	//
+	// The drain condition is set when the thread starts waiting
+	// and reset when it gets signaled. This asymmetry makes at least
+	// one thread marked undrained while there is data ready in the
+	// ReqdereQueue's write queue. I.e. when thread A writes to thread B,
+	// first the thread B will be marked undrained when the Xtray is placed
+	// onto its input and only then the thread A will be marked drained
+	// when it blocks on its own input. This avoids the spurious
+	// "all drained" notifications while there still is data to process.
+	void wait()
+	{
+		pw::lockmutex lm(cond_);
+		waitL();
+	}
+	void waitL()
+	{
+		evsleeper_ = true;
+		while (!signaled_) {
+			if (rqDrain_ && !drained_) {
+				drained_ = true;
+				drain_->drainedOne();
+			}
+			cond_.wait();
+		}
+		evsleeper_ = false;
+		signaled_ = false;
+	}
+	int trywait()
+	{
+		pw::lockmutex lm(cond_);
+		return trywaitL();
+	}
+	int trywaitL()
+	{
+		if (!signaled_)
+			return ETIMEDOUT;
+		signaled_ = false;
+		return 0;
+	}
+
+	// If the thread is requested to drain, the timeout will
+	// be ignored and the call will be stuck until undrained or
+	// new data becomes available.
+	int timedwait(const struct timespec &abstime)
+	{
+		pw::lockmutex lm(cond_);
+		return timedwaitL(abstime);
+	}
+	int timedwaitL(const struct timespec &abstime);
+	void signal()
+	{
+		pw::lockmutex lm(cond_);
+		signalL();
+	}
+	void signalL()
+	{
+		signaled_ = true;
+		if (rqDrain_ && drained_) {
+			drained_ = false;
+			drain_->undrainedOne();
+		}
+		cond_.signal();
+	}
+	void reset()
+	{
+		pw::lockmutex lm(cond_);
+		resetL();
+	}
+	void resetL()
+	{
+		signaled_ = false;
+	}
+	bool read()
+	{
+		return signaled_;
+	}
+	pw::pmutex &mutex()
+	{
+		return cond_;
+	}
+
+protected:
+	// The thread is considered drained when it sits and waits
+	// for more input on the QueEvent. If it gets more input, it
+	// becomes undrained untill all that input is processed.
+	// The drainage notifications are done only when the
+	// app is interested in it and requested them.
+	Autoref<DrainApp> drain_; // where to notify the App of drainage
+	bool rqDrain_; // flag: the drain notifications have been requested
+	bool drained_; // flag: the queue has been drained
+
+	// the part cloned from autoevent2
+	// contains both condition variable and a mutex
+	pw::pmcond cond_; 
+	bool signaled_; // flag: semaphore has been signaled
+	bool evsleeper_; // flag: there is a sleep in progress
+};
 
 // The queue of one reader facet.
 class ReaderQueue: public Mtarget

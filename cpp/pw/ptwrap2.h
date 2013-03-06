@@ -54,6 +54,112 @@ private:
 	int pulse();
 };
 
+// an improved version of event
+class event2
+{
+public:
+	event2(bool signaled = false) :
+		signaled_(signaled),
+		seq_(0),
+		seqpulse_(0)
+	{ }
+
+	void wait()
+	{
+		pw::lockmutex lm(cond_);
+		waitL();
+	}
+	void waitL()
+	{
+		if (signaled_)
+			return;
+		unsigned s = ++seq_;
+		do {
+			cond_.wait();
+			if (seqpulse_ - s >= 0)
+				return;
+		} while (!signaled_);
+	}
+	int trywait()
+	{
+		pw::lockmutex lm(cond_);
+		return trywaitL();
+	}
+	int trywaitL()
+	{
+		// doesn't need the sequence because 
+		// doesn't care about pulsing
+		if (!signaled_)
+			return ETIMEDOUT;
+		return 0;
+	}
+	int timedwait(const struct timespec &abstime)
+	{
+		pw::lockmutex lm(cond_);
+		return timedwaitL(abstime);
+	}
+	int timedwaitL(const struct timespec &abstime)
+	{
+		if (signaled_)
+			return 0;
+		unsigned s = ++seq_;
+		do {
+			if (cond_.timedwait(abstime) == ETIMEDOUT)
+				return ETIMEDOUT;
+			if (seqpulse_ - s >= 0)
+				return 0;
+		} while (!signaled_);
+		return 0;
+	}
+	void signal()
+	{
+		pw::lockmutex lm(cond_);
+		signalL();
+	}
+	void signalL()
+	{
+		signaled_ = true;
+		cond_.broadcast();
+	}
+	void reset()
+	{
+		pw::lockmutex lm(cond_);
+		resetL();
+	}
+	void resetL()
+	{
+		signaled_ = false;
+	}
+	void pulse()
+	{
+		pw::lockmutex lm(cond_);
+		pulseL();
+	}
+	void pulseL()
+	{
+		signaled_ = false;
+		seqpulse_ = seq_;
+		cond_.broadcast();
+	}
+	bool read()
+	{
+		return signaled_;
+	}
+	pmutex &mutex()
+	{
+		return cond_;
+	}
+
+	// contains both condition variable and a mutex
+	pw::pmcond cond_; 
+	// event is in the signaled state
+	bool signaled_; 
+	// every wait increases the sequence
+	unsigned seq_; 
+	// pulse frees all the waits up to this sequence
+	unsigned seqpulse_; 
+};
+
 // an improved version of autoevent
 class autoevent2
 {
@@ -62,19 +168,18 @@ public:
 		signaled_(signaled), evsleepers_(0)
 	{ }
 
-	int wait()
+	void wait()
 	{
 		pw::lockmutex lm(cond_);
-		return waitL();
+		waitL();
 	}
-	int waitL()
+	void waitL()
 	{
 		++evsleepers_;
 		while (!signaled_)
 			cond_.wait();
 		--evsleepers_;
 		signaled_ = false;
-		return 0;
 	}
 	int trywait()
 	{
@@ -94,33 +199,31 @@ public:
 		return timedwaitL(abstime);
 	}
 	int timedwaitL(const struct timespec &abstime);
-	int signal()
+	void signal()
 	{
 		pw::lockmutex lm(cond_);
-		return signalL();
+		signalL();
 	}
-	int signalL()
+	void signalL()
 	{
 		signaled_ = true;
 		cond_.signal();
-		return 0;
 	}
-	int reset()
+	void reset()
 	{
 		pw::lockmutex lm(cond_);
-		return resetL();
+		resetL();
 	}
-	int resetL()
+	void resetL()
 	{
 		signaled_ = false;
-		return 0;
 	}
-	int pulse()
+	void pulse()
 	{
 		pw::lockmutex lm(cond_);
-		return pulseL();
+		pulseL();
 	}
-	int pulseL()
+	void pulseL()
 	{
 		if (evsleepers_ > 0) {
 			signaled_ = true;
@@ -128,11 +231,14 @@ public:
 		} else {
 			signaled_ = false;
 		}
-		return 0;
 	}
 	bool read()
 	{
 		return signaled_;
+	}
+	pmutex &mutex()
+	{
+		return cond_;
 	}
 
 	// contains both condition variable and a mutex

@@ -12,6 +12,60 @@
 
 namespace TRICEPS_NS {
 
+
+//-------------------------- QueEvent -----------------------------------
+
+QueEvent::QueEvent(DrainApp *drain):
+	drain_(drain),
+	rqDrain_(false), // drain_ doesn matter yet
+	signaled_(false), 
+	evsleeper_(false)
+{ }
+
+void QueEvent::requestDrain()
+{
+	pw::lockmutex lm(cond_);
+	if (!rqDrain_) {
+		// compute the initial drain state
+		if (evsleeper_ && !signaled_) {
+			drained_ = true;
+			// drain_ will be initialized to assume that the thread is drained,
+			// so leave its state as-is
+		} else {
+			drained_ = false;
+			drain_->undrainedOne();
+		}
+	}
+}
+
+int QueEvent::timedwaitL(const struct timespec &abstime)
+{
+	evsleeper_ = true;
+	while (!signaled_) {
+		if (rqDrain_) { // do the untimed sleep
+			if (!drained_) { // copied from waitL()
+				drained_ = true;
+				drain_->drainedOne();
+			}
+			cond_.wait();
+		} else {
+			if (cond_.timedwait(abstime) == ETIMEDOUT) {
+				evsleeper_ = false;
+				if (signaled_) {
+					signaled_ = false;
+					return 0;
+				} else if (!rqDrain_) { // never time out if a drain is requested
+					return ETIMEDOUT;
+				}
+			}
+		}
+	}
+	evsleeper_ = false;
+	signaled_ = false;
+	return 0;
+}
+//-------------------------- ReaderQueue --------------------------------
+
 // Adding a reader:
 // * lock the nexus
 // * make the new vector, with the next generation

@@ -11,9 +11,9 @@
 
 namespace TRICEPS_NS {
 
-Triead::Triead(const string &name) :
+Triead::Triead(const string &name, DrainApp *drain) :
 	name_(name),
-	qev_(new QueEvent),
+	qev_(new QueEvent(drain)),
 	constructed_(false),
 	ready_(false),
 	dead_(false)

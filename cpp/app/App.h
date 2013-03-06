@@ -16,6 +16,7 @@
 #include <common/Common.h>
 #include <app/Triead.h>
 #include <app/TrieadJoin.h>
+#include <app/QueFacet.h>
 
 namespace TRICEPS_NS {
 
@@ -218,6 +219,41 @@ public:
 
 	// }
 
+
+	// The drain API.
+	// XXX Right now the threads must not be added while the App is drained,
+	// it may cause the unpleasant interactions.
+	//
+	// The drain and undrain requests must go in matching pairs, or the App will
+	// be left drained forever. Nested requests are OK. 
+	// You can not assume that the App will continue on its way right after
+	// you call the undrain, since there may be the other drain requests.
+	// {
+	
+	// Start the drain sequence.
+	// May not be called if the app is not ready, or will throw an Exception.
+	void requestDrain();
+
+	// Wait for the drain to complete. May be called repeatedly while drained.
+	// Do not call when teh drain is not requested, or it will be stuck forever.
+	// May not be called if the app is not ready, or will throw an Exception.
+	// Returns immediately if the app is dead.
+	void waitDrain();
+
+	// Start the drain sequence and wait for the drain to complete.
+	// May not be called if the app is not ready.
+	void drain()
+	{
+		requestDrain();
+		waitDrain();
+	}
+
+	// End the drain sequence.
+	// May not be called if the app is not ready, or will throw an Exception.
+	void undrain();
+
+	// }
+	
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
 
@@ -506,12 +542,16 @@ protected:
 	int unreadyCnt_; // count of threads that aren't ready yet
 	int aliveCnt_; // count of threads that aren't dead yet
 
+	Autoref<DrainApp> drain_; // the drain synchronization event (has its own mutex!)
+	int drainCnt_;; // count of active drain requests, the app won't be undrained until it goes to 0
 
 private:
 	App();
 	App(const App &);
 	void operator=(const App &);
 };
+
+// XXX add a class for scoped drain
 
 }; // TRICEPS_NS
 

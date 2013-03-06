@@ -871,8 +871,8 @@ UTESTCASE import_queues(Utest *utest)
 	// ----------------------------------------------------------------------
 	// Test the manual writing through the nexus, since everything is set up for it.
 
-	UT_ASSERT(!autoeventGuts::isSignaled(ow2->get()->queEvent()));
-	UT_ASSERT(!autoeventGuts::isSignaled(ow3->get()->queEvent()));
+	UT_ASSERT(!QueEventGuts::isSignaled(ow2->get()->queEvent()));
+	UT_ASSERT(!QueEventGuts::isSignaled(ow3->get()->queEvent()));
 
 	Autoref<Xtray> xt1 = new Xtray(fa1->getFnReturn()->getType());
 	faw1->write(xt1);
@@ -889,7 +889,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(far2)[0], xt1);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
 	UT_ASSERT(!ReaderQueueGuts::wrhole(far2));
-	UT_ASSERT(autoeventGuts::isSignaled(ow2->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(ow2->get()->queEvent()));
 	
 	UT_IS(ReaderQueueGuts::prevId(far3), 0);
 	UT_IS(ReaderQueueGuts::lastId(far3), 1);
@@ -897,7 +897,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(far3)[0], xt1);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far3));
 	UT_ASSERT(!ReaderQueueGuts::wrhole(far3));
-	UT_ASSERT(autoeventGuts::isSignaled(ow3->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(ow3->get()->queEvent()));
 
 	// second write
 	Autoref<Xtray> xt2 = new Xtray(fa1->getFnReturn()->getType());
@@ -1014,7 +1014,7 @@ public:
 // a small-scale test of communication in the ReaderQueue from writer to reader
 UTESTCASE queue_fill(Utest *utest)
 {
-	Autoref<QueEvent> qev = new QueEvent;
+	Autoref<QueEvent> qev = new QueEvent(NULL);
 	Autoref<ReaderQueue> q = new ReaderQueue(qev, 5);
 	Autoref<Xtray> xt = new Xtray(NULL); // this is an abuse but good enough here
 	int n;
@@ -1029,7 +1029,7 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(ReaderQueueGuts::lastId(q), 0);
 	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
-	UT_ASSERT(!autoeventGuts::isSignaled(qev));
+	UT_ASSERT(!QueEventGuts::isSignaled(qev));
 	
 	// ----------------------------------------------------------------------
 
@@ -1047,10 +1047,10 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(ReaderQueueGuts::lastId(q), 1);
 	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(ReaderQueueGuts::wrReady(q));
-	UT_ASSERT(autoeventGuts::isSignaled(qev));
+	UT_ASSERT(QueEventGuts::isSignaled(qev));
 
 	qev->wait(); // reset back the event
-	UT_ASSERT(!autoeventGuts::isSignaled(qev));
+	UT_ASSERT(!QueEventGuts::isSignaled(qev));
 	ReaderQueueGuts::wrReady(q) = false; // also reset
 
 	// write another xtray at a sequential id
@@ -1061,7 +1061,7 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_ASSERT(!ReaderQueueGuts::wrhole(q));
 	// writing any block but the first doesn't dignal
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
-	UT_ASSERT(!autoeventGuts::isSignaled(qev));
+	UT_ASSERT(!QueEventGuts::isSignaled(qev));
 
 	ReaderQueueGuts::wrReady(q) = true; // restore, to let the refill work
 	
@@ -1090,7 +1090,7 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(ReaderQueueGuts::lastId(q), 5);
 	UT_ASSERT(ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(!ReaderQueueGuts::wrReady(q));
-	UT_ASSERT(!autoeventGuts::isSignaled(qev));
+	UT_ASSERT(!QueEventGuts::isSignaled(qev));
 
 	// check that writeFirst works even if there are holes
 	UT_ASSERT(q->writeFirst(ReaderQueueGuts::gen(q), xt, id));
@@ -1112,7 +1112,7 @@ UTESTCASE queue_fill(Utest *utest)
 	UT_IS(ReaderQueueGuts::lastId(q), 6);
 	UT_ASSERT(ReaderQueueGuts::wrhole(q));
 	UT_ASSERT(ReaderQueueGuts::wrReady(q));
-	UT_ASSERT(autoeventGuts::isSignaled(qev));
+	UT_ASSERT(QueEventGuts::isSignaled(qev));
 	
 	// ----------------------------------------------------------------------
 
@@ -1385,7 +1385,7 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	UT_IS(ReaderQueueGuts::prevId(far2), 4);
 	UT_IS(ReaderQueueGuts::lastId(far2), 4);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
-	UT_ASSERT(autoeventGuts::isSignaled(owr2->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(owr2->get()->queEvent()));
 
 	// the 3rd reader will have the same data queued
 	UT_IS(ReaderQueueGuts::writeq(far3).size(), 2);
@@ -1421,7 +1421,7 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	UT_IS(ReaderQueueGuts::prevId(far1), 5);
 	UT_IS(ReaderQueueGuts::lastId(far1), 5);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far1));
-	UT_ASSERT(autoeventGuts::isSignaled(owr1->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(owr1->get()->queEvent()));
 
 	// the 3rd reader will have the same data queued
 	UT_IS(ReaderQueueGuts::writeq(far3).size(), 2);
