@@ -297,16 +297,16 @@ public:
 
 // really need to look in the guts for the state,
 // can't just do it by the honest waiting because it changes the state
-class autoeventGuts: public pw::autoevent
+class autoeventGuts: public pw::autoevent2
 {
 public:
-	static bool isSignaled(pw::autoevent *ev)
+	static bool isSignaled(pw::autoevent2 *ev)
 	{
 		autoeventGuts *evg = (autoeventGuts *)ev;
 		return evg->signaled_;
 	}
 
-	static int sleepers(pw::autoevent *ev)
+	static int sleepers(pw::autoevent2 *ev)
 	{
 		autoeventGuts *evg = (autoeventGuts *)ev;
 		return evg->evsleepers_;

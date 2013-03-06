@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pw/ptwrap.h>
+#include <pw/ptwrap2.h>
 
 namespace TRICEPS_NS {
 
@@ -101,6 +102,27 @@ namespace pw // POSIX wrapped
 	int autoevent::timedwait(const struct timespec &abstime)
 	{
 		pw::lockmutex lm(cond_);
+		++evsleepers_;
+		while (!signaled_) {
+			if (cond_.timedwait(abstime) == ETIMEDOUT) {
+				--evsleepers_;
+				if (signaled_) {
+					signaled_ = false;
+					return 0;
+				} else {
+					return ETIMEDOUT;
+				}
+			}
+		}
+		--evsleepers_;
+		signaled_ = false;
+		return 0;
+	}
+
+// autoevent2
+
+	int autoevent2::timedwaitL(const struct timespec &abstime)
+	{
 		++evsleepers_;
 		while (!signaled_) {
 			if (cond_.timedwait(abstime) == ETIMEDOUT) {

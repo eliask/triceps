@@ -11,7 +11,7 @@
 
 #include <deque>
 #include <common/Common.h>
-#include <pw/ptwrap.h>
+#include <pw/ptwrap2.h>
 #include <mem/Atomic.h>
 #include <app/Xtray.h>
 
@@ -26,7 +26,7 @@ namespace TRICEPS_NS {
 // to refrence it, and they can not reference the Tried directly
 // because that would cause a reference loop.
 // This event covers all the facets connected to the thread.
-class QueEvent: public Mtarget, public pw::autoevent
+class QueEvent: public Mtarget, public pw::autoevent2
 { };
 
 // The queue of one reader facet.
