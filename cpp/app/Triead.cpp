@@ -15,8 +15,7 @@ Triead::Triead(const string &name, DrainApp *drain) :
 	name_(name),
 	qev_(new QueEvent(drain)),
 	inputOnly_(false),
-	inputDrained_(true), // nothing is writing at the moment
-	inputRqDrain_(false),
+	appReady_(false),
 	constructed_(false),
 	ready_(false),
 	dead_(false)
@@ -115,6 +114,7 @@ void Triead::importFacet(Onceref<Facet> facet)
 
 void Triead::setAppReady()
 {
+	appReady_ = true;
 	if (readersHi_.empty() && readersLo_.empty()) {
 		inputOnly_ = true;
 		for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
@@ -126,49 +126,33 @@ void Triead::setAppReady()
 
 void Triead::drain()
 {
-	// handle separately the situation of an input-only thread
-	// (with writer facets only), thread that reads the data from outside
-	if (inputOnly_) {
-		pw::lockmutex lm(inputCond_);
-		inputRqDrain_ = true;
-		if (inputDrained_)
-			qev_->drain_->drainedOne();
-	} else {
-		qev_->requestDrain();
-	}
+	// This happens to cover both normal and input-only threads.
+	qev_->requestDrain();
 }
 
 void Triead::undrain()
 {
-	if (inputOnly_) {
-		pw::lockmutex lm(inputCond_);
-		inputRqDrain_ = false;
-		inputCond_.signal();
-	} else {
-		qev_->requestUndrain();
-	}
+	// This happens to cover both normal and input-only threads.
+	qev_->requestUndrain();
 }
 
 void Triead::flushWriters()
 {
-	if (inputOnly_) {
-		pw::lockmutex lm(inputCond_);
-		while (inputRqDrain_)
-			inputCond_.wait();
-		inputDrained_ = false;
+	if (!appReady_) {
+		throw Exception::fTrace("Triceps API violation: attempted to flush the thread '%s' before the App is ready.",
+			name_.c_str());
 	}
+
+	if (inputOnly_)
+		qev_->beforeWrite();
 
 	Triead::FacetPtrVec::iterator it = writers_.begin();
 	Triead::FacetPtrVec::iterator end = writers_.end();
 	for (; it != end; ++it)
-		(*it)->flushWriter();
+		(*it)->flushWriterD();
 
-	if (inputOnly_) {
-		pw::lockmutex lm(inputCond_);
-		inputDrained_ = true;
-		if (inputRqDrain_)
-			qev_->drain_->drainedOne();
-	}
+	if (inputOnly_)
+		qev_->afterWrite();
 }
 
 #if 0 // {

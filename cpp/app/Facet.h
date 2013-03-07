@@ -255,6 +255,11 @@ protected:
 	//        a reader (ignored for a writer)
 	void connectToNexus(QueEvent *qev);
 
+	// The internal version of flushWriter that bypasses the 
+	// check for appReady_ and input-only synchronization.
+	// These parts are expected to be done by the caller Triead in bulk.
+	void flushWriterD();
+
 	// called by the Triead/TrieadOwner
 	void setAppReady()
 	{
@@ -272,6 +277,7 @@ protected:
 	Autoref<Nexus> nexus_; // nexus represented by this facet
 	Autoref<ReaderQueue> rd_; // nexus reader interface, it a reader
 	Autoref<NexusWriter> wr_; // nexus writer interface, if a writer
+	Autoref<QueEvent> qev_;  // the thread's queue notifications
 	bool writer_; // Flag: this thread is writing into the nexus;
 		// ignored in the non-imported facets
 

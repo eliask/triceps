@@ -1589,6 +1589,16 @@ UTESTCASE pass_data(Utest *utest)
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, 
+			"Triceps API violation: attempted to flush the thread 't1' before the App is ready.\n");
+	}
+	{
+		string msg;
+		try {
+			fa1a->flushWriter();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
 			"Triceps API violation: attempted to flush the facet 't1/nxa' before the App is ready.\n");
 	}
 	{

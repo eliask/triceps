@@ -26,6 +26,7 @@ void QueEvent::requestDrain()
 {
 	pw::lockmutex lm(cond_);
 	if (!rqDrain_) {
+		rqDrain_ = true;
 		// compute the initial drain state
 		if (evsleeper_ && !signaled_) {
 			drained_ = true;

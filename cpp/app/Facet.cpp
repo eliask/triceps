@@ -162,6 +162,7 @@ void Facet::reimport(Nexus *nexus, const string &tname)
 
 void Facet::connectToNexus(QueEvent *qev)
 {
+	qev_ = qev;
 	if (writer_) {
 		wr_ = new NexusWriter;
 		nexus_->addWriter(wr_);
@@ -180,6 +181,20 @@ void Facet::flushWriter()
 			throw Exception::fTrace("Triceps API violation: attempted to flush the facet '%s' before the App is ready.",
 				name_.c_str());
 	}
+
+	if (!wr_.isNull() && !fret_->isXtrayEmpty()) {
+		if (inputTriead_)
+			qev_->beforeWrite();
+
+		flushWriterD();
+
+		if (inputTriead_)
+			qev_->afterWrite();
+	}
+}
+
+void Facet::flushWriterD()
+{
 	if (!wr_.isNull() && !fret_->isXtrayEmpty()) {
 		Autoref<Xtray> xt = new Xtray(fret_->getType());
 		fret_->swapXtray(xt);

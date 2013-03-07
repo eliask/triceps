@@ -218,7 +218,7 @@ protected:
 	string name_; // name of the thread, read-only
 	mutable pw::pmutex mutex_; // mutex synchronizing this Triead
 	NexusMap exports_; // the nexuses exported from this thread
-	Autoref<QueEvent> qev_;
+	Autoref<QueEvent> qev_; // the thread's queue notification
 
 	// The imports are modified only by the TrieadOwner, so the
 	// owner thread may read it without locking. However any
@@ -232,10 +232,8 @@ protected:
 	FacetPtrRound readersLo_; // the low-priority (normal) readers
 	FacetPtrVec writers_; // the writers
 
-	pw::pmcond inputCond_; // controls the draining with input-only mode
 	bool inputOnly_; // flag: this thread is input-only (computed in setAppReady())
-	bool inputDrained_; // flag: this input thread is not trying to write anything right now
-	bool inputRqDrain_; // flag: the App is requesting to drain this input thread
+	bool appReady_; // flag: the App has been marked all ready
 
 	// The flags are interacting with the App's state and
 	// are synchronized by the App's mutex.

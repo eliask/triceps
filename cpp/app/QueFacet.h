@@ -92,7 +92,9 @@ public:
 	// The request from App to start the drain notification.
 	// Immediately updates the state of the drain_ based on the
 	// current state of the semaphore and keeps it updated
-	// until requested to undrain.
+	// until requested to undrain. The initial state of drain_
+	// at this time is "drained", so it gets changed to "undrained"
+	// if the event is found undrained.
 	void requestDrain();
 
 	// The request from App to stop the drain notification.
@@ -193,6 +195,27 @@ public:
 		return cond_;
 	}
 
+	// The QueEvent gets used in two ways:
+	// 1. Like a normal event
+	// 2. For communicating the drain state from the write-only threads
+	// The part above was (1). Here goes the (2).
+	void beforeWrite()
+	{
+		pw::lockmutex lm(cond_);
+		while (rqDrain_)
+			cond_.wait();
+		signaled_ = true; // marks as undrained for requestDrain()
+		// drained_ does not matter here
+	}
+	void afterWrite()
+	{
+		pw::lockmutex lm(cond_);
+		signaled_ = false; // mark as drained for requestDrain()
+		// drained_ does not matter here
+		if (rqDrain_)
+			drain_->drainedOne();
+	}
+
 protected:
 	// The thread is considered drained when it sits and waits
 	// for more input on the QueEvent. If it gets more input, it
@@ -204,8 +227,7 @@ protected:
 	bool drained_; // flag: the queue has been drained
 
 	// the part cloned from autoevent2
-	// contains both condition variable and a mutex
-	pw::pmcond cond_; 
+	pw::pmcond cond_; // contains both condition variable and a mutex
 	bool signaled_; // flag: semaphore has been signaled
 	bool evsleeper_; // flag: there is a sleep in progress
 };
@@ -350,7 +372,6 @@ protected:
 
 	bool wrReady_; // there is new data in the writer queue
 	pw::pmcond condfull_; // wait when the queue is full, also contains the mutex
-
 
 private:
 	ReaderQueue();
