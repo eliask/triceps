@@ -124,17 +124,9 @@ protected:
 
 	// Report to the App when the thread is drained (i.e. not processing
 	// and not producing any data).
-	void drain()
-	{
-		// XXX handle separately the situation of a thread with no
-		// reader facets, thread that reads the data from outside
-		qev_->requestDrain();
-	}
+	void drain();
 	// Stop reporting to the App about the thread drains.
-	void undrain()
-	{
-		qev_->requestUndrain();
-	}
+	void undrain();
 	
 	// The TrieadOwner API.
 	// Naturally, it can be called from only one thread, the owner one.
@@ -165,6 +157,9 @@ protected:
 		ready_ = true;
 		dead_ = true;
 	}
+
+	// Send the collected non-empty Xtrays on the writer facets.
+	void flushWriters();
 
 	// }
 protected:
@@ -236,6 +231,11 @@ protected:
 	FacetPtrRound readersHi_; // the high-priority (reverse) readers
 	FacetPtrRound readersLo_; // the low-priority (normal) readers
 	FacetPtrVec writers_; // the writers
+
+	pw::pmcond inputCond_; // controls the draining with input-only mode
+	bool inputOnly_; // flag: this thread is input-only (computed in setAppReady())
+	bool inputDrained_; // flag: this input thread is not trying to write anything right now
+	bool inputRqDrain_; // flag: the App is requesting to drain this input thread
 
 	// The flags are interacting with the App's state and
 	// are synchronized by the App's mutex.

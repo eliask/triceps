@@ -135,15 +135,6 @@ TrieadOwner::NexusMaker *TrieadOwner::makeNexusNoImport(const string &name)
 	return &nexusMaker_;
 }
 
-void TrieadOwner::flushWriters()
-{
-	Triead::FacetPtrVec::iterator it = triead_->writers_.begin();
-	Triead::FacetPtrVec::iterator end = triead_->writers_.end();
-	for (; it != end; ++it)
-		(*it)->flushWriter();
-}
-
-
 Xtray *TrieadOwner::pickNextRound(Triead::FacetPtrRound &vec)
 {
 	int sz = vec.size();

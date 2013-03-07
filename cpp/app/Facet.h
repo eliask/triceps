@@ -260,6 +260,11 @@ protected:
 	{
 		appReady_ = true;
 	}
+	// Mark as belonging to an input-only thread.
+	void setInputTriead()
+	{
+		inputTriead_ = true;
+	}
 
 	string name_; // the name is set only in the ex/imported facet:
 		// it includes two parts separated by a "/": the nexus owner thread
@@ -282,6 +287,7 @@ protected:
 	bool reverse_; // flag: this nexus's main queue is pointed upwards
 	bool unicast_; // flag: each row goes to only one reader, as opposed to copied to all readers
 	bool appReady_; // flag: the App is ready, so the data passing can be done
+	bool inputTriead_; // this writer belongs to an input-only thread
 
 private:
 	Facet();

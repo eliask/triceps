@@ -254,10 +254,10 @@ void NexusWriter::write(Xtray *xt)
 {
 	while (true) { // for an easy rerun
 		if (readers_.isNull() || readers_->v().empty()) {
-			// check if there is the new readers
+			// check if there is the new readers vector
 			pw::lockmutex lm(mutexNew_);
 			if (readers_ == readersNew_)
-				return; // still nowhere to write to
+				break; // still nowhere to write to
 			
 			readers_ = readersNew_;
 			continue;

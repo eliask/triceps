@@ -379,7 +379,10 @@ public:
 	NexusMaker *makeNexusNoImport(const string &name);
 
 	// Send the collected non-empty Xtrays on the writer facets.
-	void flushWriters();
+	void flushWriters()
+	{
+		triead_->flushWriters();
+	}
 
 	// Get the next Xtray from the read facets (sleep if needed),
 	// process it and send through the write facets.

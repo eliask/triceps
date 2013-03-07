@@ -17,7 +17,8 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	queueLimit_(DEFAULT_QUEUE_LIMIT),
 	reverse_(false),
 	unicast_(false),
-	appReady_(false)
+	appReady_(false),
+	inputTriead_(false)
 { 
 	if (!fret->isInitialized())
 		fret->initialize();

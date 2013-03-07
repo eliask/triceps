@@ -14,6 +14,9 @@ namespace TRICEPS_NS {
 Triead::Triead(const string &name, DrainApp *drain) :
 	name_(name),
 	qev_(new QueEvent(drain)),
+	inputOnly_(false),
+	inputDrained_(true), // nothing is writing at the moment
+	inputRqDrain_(false),
 	constructed_(false),
 	ready_(false),
 	dead_(false)
@@ -112,8 +115,60 @@ void Triead::importFacet(Onceref<Facet> facet)
 
 void Triead::setAppReady()
 {
+	if (readersHi_.empty() && readersLo_.empty()) {
+		inputOnly_ = true;
+		for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
+			(*it)->setInputTriead();
+	}
 	for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
 		it->second->setAppReady();
+}
+
+void Triead::drain()
+{
+	// handle separately the situation of an input-only thread
+	// (with writer facets only), thread that reads the data from outside
+	if (inputOnly_) {
+		pw::lockmutex lm(inputCond_);
+		inputRqDrain_ = true;
+		if (inputDrained_)
+			qev_->drain_->drainedOne();
+	} else {
+		qev_->requestDrain();
+	}
+}
+
+void Triead::undrain()
+{
+	if (inputOnly_) {
+		pw::lockmutex lm(inputCond_);
+		inputRqDrain_ = false;
+		inputCond_.signal();
+	} else {
+		qev_->requestUndrain();
+	}
+}
+
+void Triead::flushWriters()
+{
+	if (inputOnly_) {
+		pw::lockmutex lm(inputCond_);
+		while (inputRqDrain_)
+			inputCond_.wait();
+		inputDrained_ = false;
+	}
+
+	Triead::FacetPtrVec::iterator it = writers_.begin();
+	Triead::FacetPtrVec::iterator end = writers_.end();
+	for (; it != end; ++it)
+		(*it)->flushWriter();
+
+	if (inputOnly_) {
+		pw::lockmutex lm(inputCond_);
+		inputDrained_ = true;
+		if (inputRqDrain_)
+			qev_->drain_->drainedOne();
+	}
 }
 
 #if 0 // {

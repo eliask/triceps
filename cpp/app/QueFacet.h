@@ -82,6 +82,7 @@ public:
 // This event covers all the facets connected to the thread.
 class QueEvent: public Mtarget
 { 
+	friend class Triead;
 public:
 	// No drain is requested by default, nor signaled either.
 	// @param drain - the App drain status, to propagate the state of this
