@@ -311,6 +311,29 @@ public:
 		QueEventGuts *evg = (QueEventGuts *)ev;
 		return evg->evsleeper_;
 	}
+
+	static bool isRqDrain(QueEvent *ev)
+	{
+		QueEventGuts *evg = (QueEventGuts *)ev;
+		return evg->rqDrain_;
+	}
+
+	static bool isDrained(QueEvent *ev)
+	{
+		QueEventGuts *evg = (QueEventGuts *)ev;
+		return evg->drained_;
+	}
+
+	static void waitSleeping(QueEvent *ev)
+	{
+		QueEventGuts *evg = (QueEventGuts *)ev;
+		while(1) {
+			sched_yield();
+			pw::lockmutex lm(evg->mutex());
+			if (evg->evsleeper_)
+				break;
+		}
+	}
 };
 
 // make the exceptions catchable

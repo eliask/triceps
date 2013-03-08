@@ -199,6 +199,12 @@ public:
 	// 1. Like a normal event
 	// 2. For communicating the drain state from the write-only threads
 	// The part above was (1). Here goes the (2).
+	void setWriteMode(bool on = true)
+	{
+		// fudges the flags sufficiently to let the requestDrain/Undrain
+		// logic work unchanged from the normal (read) mode
+		evsleeper_ = on;
+	}
 	void beforeWrite()
 	{
 		pw::lockmutex lm(cond_);

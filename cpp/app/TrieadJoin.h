@@ -35,6 +35,10 @@ public:
 	// The method will be called when the thread reports that it is
 	// about to exit.
 	virtual void join() = 0;
+	
+	// XXX also provide some way to tell the thread that it should exit
+	// by calling a custom user function (to revoke the input file
+	// descriptors and such)
 };
 
 }; // TRICEPS_NS

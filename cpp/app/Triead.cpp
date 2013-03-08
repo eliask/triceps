@@ -117,6 +117,7 @@ void Triead::setAppReady()
 	appReady_ = true;
 	if (readersHi_.empty() && readersLo_.empty()) {
 		inputOnly_ = true;
+		qev_->setWriteMode();
 		for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
 			(*it)->setInputTriead();
 	}

@@ -159,6 +159,11 @@ protected:
 	}
 
 	// Send the collected non-empty Xtrays on the writer facets.
+	// XXX return an indication whether the triead is all dead
+	// (no more alive writers)
+	// XXX also provide some way to tell the thread that it should exit
+	// by calling a custom user function (to revoke th einput file
+	// descriptors and such)
 	void flushWriters();
 
 	// }
