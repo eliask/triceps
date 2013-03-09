@@ -169,12 +169,13 @@ bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
 
 bool TrieadOwner::nextXtray(bool wait)
 {
-	if (!appReady_) {
+	if (!appReady_)
 		throw Exception::fTrace("Triceps API violation: attempted to read data in thread '%s' before the App is ready.",
 			triead_->getName().c_str());
-	}
 	if (busy_)
-		return true;
+		throw Exception::fTrace("Triceps API violation: attempted to call the queue processing in thread '%s' recursively.",
+			triead_->getName().c_str());
+
 	BusyMark bm(busy_);
 
 	Xtray *xt;
@@ -236,6 +237,13 @@ bool TrieadOwner::nextXtray(bool wait)
 		} else
 			return false;
 	}
+}
+
+void TrieadOwner::mainLoop()
+{
+	while (nextXtray())
+		{ }
+	markDead();
 }
 
 void TrieadOwner::processXtray(Xtray *xt, Facet *facet)

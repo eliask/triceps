@@ -84,6 +84,14 @@ public:
 		return dead_;
 	}
 
+	// Check if this thread is input-only (i.e. has no reader facets).
+	// This flag will be valid only after the thread has been marked as
+	// constructed; before then it always shows False.
+	bool isInputOnly() const
+	{
+		return inputOnly_;
+	}
+
 	// List all the defined Nexuses, for introspection.
 	// @param - a map where all the defined Nexuses will be returned.
 	//     It will be cleared before placing any data into it.
@@ -140,19 +148,12 @@ protected:
 
 	// Mark that the thread has constructed and exported all of its
 	// nexuses.
-	void markConstructed()
-	{
-		constructed_ = true;
-	}
+	void markConstructed();
 
 	// Mark that the thread has completed all its connections and
 	// is ready to run. This also implies Constructed, and can be
 	// used to set both flags at once.
-	void markReady()
-	{
-		constructed_ = true;
-		ready_ = true;
-	}
+	void markReady();
 
 	// Mark the thread that is has completed the execution and exited.
 	// Also will mark the QueEvent and all the reader facets as dead.

@@ -400,18 +400,26 @@ public:
 
 	// Get the next Xtray from the read facets (sleep if needed),
 	// process it and send through the write facets.
-	// If called re-entrantly (which it shiould not), the nested calls 
-	// silently return true and do nothing.
 	// If requested to wait, will wait for more input, unless all the
-	// readers are dead. Otherwise will return false as soon as the
-	// no more readily available buffers in the queues.
+	// readers are dead and/or the thread has been requested to die. 
+	// With no wait, will return false as soon as the no more readily available
+	// buffers in the queues.
 	//
-	// May propagate an Exception.
+	// May propagate an Exception (in this case the unprocessed part of the
+	// Xtray contents will be discarded).
+	// Will throw an Exception if this thread didn't complete readyReady().
+	// Will throw an exception if attempted to call recursively.
 	// 
 	// @param wait - flag: when the queue is consumed, wait for more
 	// @return - true normally, false when there no more active readers
 	//         (or with wait==false, when no more data in the queues)
 	bool nextXtray(bool wait = true);
+
+	// The easy way to process all the input data until the thread
+	// is requested to die.
+	// Calls nextXtray() repeatedly until it returns false. Then marks
+	// the thread as dead.
+	void mainLoop();
 
 protected:
 	// Called through App::makeTriead().

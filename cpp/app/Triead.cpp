@@ -33,10 +33,26 @@ Triead::~Triead()
 	clear();
 }
 
-void Triead::markDead()
+void Triead::markConstructed()
 {
 	constructed_ = true;
+	if (readersHi_.empty() && readersLo_.empty()) {
+		inputOnly_ = true;
+		qev_->setWriteMode();
+		for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
+			(*it)->setInputTriead();
+	}
+}
+
+void Triead::markReady()
+{
+	markConstructed();
 	ready_ = true;
+}
+
+void Triead::markDead()
+{
+	markReady();
 	dead_ = true;
 	qev_->markDead();
 }
@@ -124,12 +140,6 @@ void Triead::importFacet(Onceref<Facet> facet)
 void Triead::setAppReady()
 {
 	appReady_ = true;
-	if (readersHi_.empty() && readersLo_.empty()) {
-		inputOnly_ = true;
-		qev_->setWriteMode();
-		for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
-			(*it)->setInputTriead();
-	}
 	for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
 		it->second->setAppReady();
 }
