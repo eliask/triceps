@@ -34,9 +34,8 @@ UTESTCASE create_die(Utest *utest)
 		->complete()
 	;
 
-	ow1->markConstructed();
-	UT_ASSERT(ow1->get()->isInputOnly());
 	ow1->markReady(); // ---
+	UT_ASSERT(ow1->get()->isInputOnly());
 
 	// Autoref<Facet> fa2b = 
 	ow2->makeNexusWriter("nxb")

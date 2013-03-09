@@ -36,18 +36,20 @@ Triead::~Triead()
 void Triead::markConstructed()
 {
 	constructed_ = true;
-	if (readersHi_.empty() && readersLo_.empty()) {
-		inputOnly_ = true;
-		qev_->setWriteMode();
-		for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
-			(*it)->setInputTriead();
-	}
 }
 
 void Triead::markReady()
 {
 	markConstructed();
-	ready_ = true;
+	if (!ready_) {
+		ready_ = true;
+		if (readersHi_.empty() && readersLo_.empty()) {
+			inputOnly_ = true;
+			qev_->setWriteMode();
+			for (FacetPtrVec::iterator it = writers_.begin(); it != writers_.end(); ++it)
+				(*it)->setInputTriead();
+		}
+	}
 }
 
 void Triead::markDead()
