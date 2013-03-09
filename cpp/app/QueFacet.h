@@ -106,6 +106,30 @@ public:
 		cond_.signal(); // wake up if there is a stuck timed wait
 	}
 
+	// Mark this thread as dead.
+	// This call propagates by the chain
+	//   TrieadOwner->App->Triead->QueEvent
+	// This part is for the benefit of the drain state, so that
+	// when a thread exits, it won't prevent the drain completion.
+	// The reader facets need to be marked as dead separately.
+	//
+	// In case if this QueEvent is for an input-only thread,
+	// this method is also used as a part of the requestDead()
+	// sequence. Calling it the second time when the thread is
+	// dead doesn't hurt anything.
+	void markDead()
+	{
+		pw::lockmutex lm(cond_);
+		dead_ = true;
+		if (rqDrain_ && !drained_) {
+			drained_ = true; // from now on, drained forever
+			drain_->drainedOne();
+		}
+		rqDrain_ = false; // don't bother with drains any more
+		// this is for the case of the input-only thread
+		cond_.signal();
+	}
+
 	// The logic is a copy-paste of autoevent2 with extensions
 	// (basically, because the methods are not virtual and would
 	// have to be redefined with the extra logic anyway.
@@ -199,20 +223,47 @@ public:
 	// 1. Like a normal event
 	// 2. For communicating the drain state from the write-only threads
 	// The part above was (1). Here goes the (2).
+	//
+	// How did I come up with this logic? Well, first I wrote is as a
+	// separate class and then I've noticed that the requestDrain/Undrain
+	// logic is the same if I use some read flags to mark the write
+	// conditions too.
+
+	// Mark this object that it's an input-only thread, and so
+	// the drain synchronization will be with the write requests.
 	void setWriteMode(bool on = true)
 	{
 		// fudges the flags sufficiently to let the requestDrain/Undrain
 		// logic work unchanged from the normal (read) mode
 		evsleeper_ = on;
 	}
-	void beforeWrite()
+	// The thread must call this before it writes to any facet.
+	// It will sleep if the drain is requested, until the end of
+	// drain. When/if the drain is not active, it will mark the
+	// thread as undrained for the future drains.
+	//
+	// When returns false, the caller MUST NOT WRITE ANY DATA ANY MORE,
+	// don't even call afterWrite().
+	//
+	// @return - true if cleared to write, false if the thread
+	//         was requested to die
+	bool beforeWrite()
 	{
 		pw::lockmutex lm(cond_);
-		while (rqDrain_)
+		if (dead_)
+			return false;
+		while (rqDrain_) {
 			cond_.wait();
+			if (dead_)
+				return false;
+		}
 		signaled_ = true; // marks as undrained for requestDrain()
 		// drained_ does not matter here
+		return true;
 	}
+	// The thread must call this after it writes to any facet.
+	// If a drain was requested in the meantime, this will mark
+	// the thread as drained.
 	void afterWrite()
 	{
 		pw::lockmutex lm(cond_);
@@ -231,6 +282,7 @@ protected:
 	Autoref<DrainApp> drain_; // where to notify the App of drainage
 	bool rqDrain_; // flag: the drain notifications have been requested
 	bool drained_; // flag: the queue has been drained
+	bool dead_; // flag: this thread is dead, and as such always drained
 
 	// the part cloned from autoevent2
 	pw::pmcond cond_; // contains both condition variable and a mutex

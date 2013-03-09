@@ -220,9 +220,14 @@ public:
 	// If this facet is a writer and has a non-empty Xqueue,
 	// flushes it to the nexus. Otherwise does nothing.
 	//
-	// Throws an Exception if the App is not ready or the facet
+	// Throws an Exception if the thread has not completed yet
+	// the wait for App readiness, or if the facet
 	// is not exported.
-	void flushWriter();
+	//
+	// @return - true if the flush was completed, false if the thread
+	//         was requested to die, and the data has been discarded;
+	//         the false generally means that the thread needs to exit
+	bool flushWriter();
 
 protected:
 	// For importing of a nexus, create a facet from it.
@@ -258,7 +263,13 @@ protected:
 	// The internal version of flushWriter that bypasses the 
 	// check for appReady_ and input-only synchronization.
 	// These parts are expected to be done by the caller Triead in bulk.
+	// "D" stands for "direct".
 	void flushWriterD();
+
+	// When the thread is requested to die and is not allowed to die
+	// any more, this method is used to dispose of the data if it
+	// keeps trying to write.
+	void discardXtray();
 
 	// called by the Triead/TrieadOwner
 	void setAppReady()

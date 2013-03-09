@@ -172,7 +172,7 @@ void Facet::connectToNexus(QueEvent *qev)
 	}
 }
 
-void Facet::flushWriter()
+bool Facet::flushWriter()
 {
 	if (!appReady_) {
 		if (nexus_.isNull())
@@ -183,14 +183,19 @@ void Facet::flushWriter()
 	}
 
 	if (!wr_.isNull() && !fret_->isXtrayEmpty()) {
-		if (inputTriead_)
-			qev_->beforeWrite();
+		if (inputTriead_) {
+			if (!qev_->beforeWrite()) {
+				discardXtray();
+				return false;
+			}
+		}
 
 		flushWriterD();
 
 		if (inputTriead_)
 			qev_->afterWrite();
 	}
+	return true;
 }
 
 void Facet::flushWriterD()
@@ -199,6 +204,14 @@ void Facet::flushWriterD()
 		Autoref<Xtray> xt = new Xtray(fret_->getType());
 		fret_->swapXtray(xt);
 		wr_->write(xt);
+	}
+}
+
+void Facet::discardXtray()
+{
+	if (!wr_.isNull() && !fret_->isXtrayEmpty()) {
+		Autoref<Xtray> xt = new Xtray(fret_->getType());
+		fret_->swapXtray(xt);
 	}
 }
 

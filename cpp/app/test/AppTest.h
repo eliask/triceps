@@ -143,6 +143,12 @@ public:
 		TrieadOwnerGuts *tog = (TrieadOwnerGuts *)to;
 		return NexusMakerGuts::getFacet(tog->nexusMaker_);
 	}
+
+	static QueEvent *qev(TrieadOwner *to)
+	{
+		TrieadOwnerGuts *tog = (TrieadOwnerGuts *)to;
+		return tog->queEvent();
+	}
 };
 
 class FnReturnGuts: public FnReturn

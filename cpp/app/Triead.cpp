@@ -16,6 +16,7 @@ Triead::Triead(const string &name, DrainApp *drain) :
 	qev_(new QueEvent(drain)),
 	inputOnly_(false),
 	appReady_(false),
+	rqDead_(false),
 	constructed_(false),
 	ready_(false),
 	dead_(false)
@@ -30,6 +31,14 @@ void Triead::clear()
 Triead::~Triead()
 {
 	clear();
+}
+
+void Triead::markDead()
+{
+	constructed_ = true;
+	ready_ = true;
+	dead_ = true;
+	qev_->markDead();
 }
 
 void Triead::exportNexus(const string &appName, Nexus *nexus)
@@ -137,15 +146,33 @@ void Triead::undrain()
 	qev_->requestUndrain();
 }
 
-void Triead::flushWriters()
+void Triead::requestDead()
+{
+	rqDead_ = true; // this is set-only, and at very least the mutex in qev_ will synchronize the CPU caches
+	if (inputOnly_)
+		qev_->markDead(); // the special case
+	else
+		// this might mark it as undrained but after the thread 
+		// dies, it will be drained again
+		qev_->signal(); 
+}
+
+bool Triead::flushWriters()
 {
 	if (!appReady_) {
 		throw Exception::fTrace("Triceps API violation: attempted to flush the thread '%s' before the App is ready.",
 			name_.c_str());
 	}
 
-	if (inputOnly_)
-		qev_->beforeWrite();
+	if (inputOnly_) {
+		if (!qev_->beforeWrite()) {
+			Triead::FacetPtrVec::iterator it = writers_.begin();
+			Triead::FacetPtrVec::iterator end = writers_.end();
+			for (; it != end; ++it)
+				(*it)->discardXtray();
+			return false;
+		}
+	}
 
 	Triead::FacetPtrVec::iterator it = writers_.begin();
 	Triead::FacetPtrVec::iterator end = writers_.end();
@@ -154,6 +181,7 @@ void Triead::flushWriters()
 
 	if (inputOnly_)
 		qev_->afterWrite();
+	return true;
 }
 
 #if 0 // {

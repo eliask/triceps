@@ -871,8 +871,8 @@ UTESTCASE import_queues(Utest *utest)
 	// ----------------------------------------------------------------------
 	// Test the manual writing through the nexus, since everything is set up for it.
 
-	UT_ASSERT(!QueEventGuts::isSignaled(ow2->get()->queEvent()));
-	UT_ASSERT(!QueEventGuts::isSignaled(ow3->get()->queEvent()));
+	UT_ASSERT(!QueEventGuts::isSignaled(TrieadOwnerGuts::qev(ow2)));
+	UT_ASSERT(!QueEventGuts::isSignaled(TrieadOwnerGuts::qev(ow3)));
 
 	Autoref<Xtray> xt1 = new Xtray(fa1->getFnReturn()->getType());
 	faw1->write(xt1);
@@ -889,7 +889,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(far2)[0], xt1);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
 	UT_ASSERT(!ReaderQueueGuts::wrhole(far2));
-	UT_ASSERT(QueEventGuts::isSignaled(ow2->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(TrieadOwnerGuts::qev(ow2)));
 	
 	UT_IS(ReaderQueueGuts::prevId(far3), 0);
 	UT_IS(ReaderQueueGuts::lastId(far3), 1);
@@ -897,7 +897,7 @@ UTESTCASE import_queues(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(far3)[0], xt1);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far3));
 	UT_ASSERT(!ReaderQueueGuts::wrhole(far3));
-	UT_ASSERT(QueEventGuts::isSignaled(ow3->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(TrieadOwnerGuts::qev(ow3)));
 
 	// second write
 	Autoref<Xtray> xt2 = new Xtray(fa1->getFnReturn()->getType());
@@ -1361,7 +1361,7 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	faw1->write(xt);
 
 	// reset the event for the reader about to be deleted
-	owr2->get()->queEvent()->reset();
+	TrieadOwnerGuts::qev(owr2)->reset();
 	ReaderQueueGuts::wrReady(far2) = false;
 
 	// the next write will get stuck on far2
@@ -1385,7 +1385,7 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	UT_IS(ReaderQueueGuts::prevId(far2), 4);
 	UT_IS(ReaderQueueGuts::lastId(far2), 4);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far2));
-	UT_ASSERT(QueEventGuts::isSignaled(owr2->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(TrieadOwnerGuts::qev(owr2)));
 
 	// the 3rd reader will have the same data queued
 	UT_IS(ReaderQueueGuts::writeq(far3).size(), 2);
@@ -1403,7 +1403,7 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	faw1->write(xt);
 
 	// reset the event for the reader about to be deleted
-	owr1->get()->queEvent()->reset();
+	TrieadOwnerGuts::qev(owr1)->reset();
 	ReaderQueueGuts::wrReady(far1) = false;
 
 	// the next write will get stuck on far1
@@ -1421,7 +1421,7 @@ UTESTCASE dynamic_add_del(Utest *utest)
 	UT_IS(ReaderQueueGuts::prevId(far1), 5);
 	UT_IS(ReaderQueueGuts::lastId(far1), 5);
 	UT_ASSERT(ReaderQueueGuts::wrReady(far1));
-	UT_ASSERT(QueEventGuts::isSignaled(owr1->get()->queEvent()));
+	UT_ASSERT(QueEventGuts::isSignaled(TrieadOwnerGuts::qev(owr1)));
 
 	// the 3rd reader will have the same data queued
 	UT_IS(ReaderQueueGuts::writeq(far3).size(), 2);

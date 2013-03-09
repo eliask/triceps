@@ -159,6 +159,12 @@ public:
 		return app_.get();
 	}
 
+	// Check whether the thread was requested to die.
+	bool isRqDead() const
+	{
+		return triead_->rqDead_;
+	}
+
 	// Get the main unit that get created with the thread and shares its name.
 	// Assumes that TrieadOwner won't be destroyed while the result is used.
 	Unit *unit() const
@@ -379,9 +385,17 @@ public:
 	NexusMaker *makeNexusNoImport(const string &name);
 
 	// Send the collected non-empty Xtrays on the writer facets.
-	void flushWriters()
+	//
+	// Throws an Exception if the thread has not completed yet
+	// the wait for App readiness readyReady().
+	//
+	// @return - true if the flush was completed, false if the thread
+	//         was requested to die, and the data has been discarded;
+	//         the false generally means that the thread needs to exit
+	//         (can also call isRqDead() to get this indication)
+	bool flushWriters()
 	{
-		triead_->flushWriters();
+		return triead_->flushWriters();
 	}
 
 	// Get the next Xtray from the read facets (sleep if needed),
@@ -425,6 +439,12 @@ protected:
 	//
 	// May propagate an Exception.
 	void processXtray(Xtray *xt, Facet *facet);
+
+	// Get the QueEvent.
+	QueEvent *queEvent()
+	{
+		return triead_->queEvent();
+	}
 
 protected:
 	Autoref<App> app_; // app where the thread belongs

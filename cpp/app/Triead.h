@@ -106,12 +106,6 @@ public:
 	// @param name - name of the nexus to find
 	Onceref<Nexus> findNexus(const string &srcName, const string &appName, const string &name) const;
 
-	// Get the queue event object.
-	QueEvent *queEvent() const
-	{
-		return qev_;
-	}
-
 protected:
 	// Called through App::makeThriead().
 	// @param name - Name of this thread (within the App).
@@ -128,6 +122,16 @@ protected:
 	// Stop reporting to the App about the thread drains.
 	void undrain();
 	
+	// Tell the thread that it should die. (Usually the App does this).
+	// To make it clear, markDead() is the thread itself telling that
+	// it's done and exiting, while requestDead() is a request from
+	// outside telling the thread to exit when it can.
+	//
+	// This disables the reading of any further Xtrays from the input
+	// queues (though whatever has been moved to the read side of the
+	// queues will still be consumed).
+	void requestDead();
+
 	// The TrieadOwner API.
 	// Naturally, it can be called from only one thread, the owner one.
 	// These calls usually also involve the inter-thread signaling
@@ -151,20 +155,24 @@ protected:
 	}
 
 	// Mark the thread that is has completed the execution and exited.
-	void markDead()
+	// Also will mark the QueEvent and all the reader facets as dead.
+	void markDead();
+
+	// Get the queue event object.
+	QueEvent *queEvent() const
 	{
-		constructed_ = true;
-		ready_ = true;
-		dead_ = true;
+		return qev_;
 	}
 
 	// Send the collected non-empty Xtrays on the writer facets.
-	// XXX return an indication whether the triead is all dead
-	// (no more alive writers)
-	// XXX also provide some way to tell the thread that it should exit
-	// by calling a custom user function (to revoke th einput file
-	// descriptors and such)
-	void flushWriters();
+	//
+	// Throws an Exception if the thread has not completed yet
+	// the wait for App readiness.
+	//
+	// @return - true if the flush was completed, false if the thread
+	//         was requested to die, and the data has been discarded;
+	//         the false generally means that the thread needs to exit
+	bool flushWriters();
 
 	// }
 protected:
@@ -239,6 +247,7 @@ protected:
 
 	bool inputOnly_; // flag: this thread is input-only (computed in setAppReady())
 	bool appReady_; // flag: the App has been marked all ready
+	bool rqDead_; // flag: App requested this thread to exit
 
 	// The flags are interacting with the App's state and
 	// are synchronized by the App's mutex.

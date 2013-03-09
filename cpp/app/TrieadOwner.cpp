@@ -227,9 +227,13 @@ bool TrieadOwner::nextXtray(bool wait)
 		// in faster than it can be handled, so in case if there is
 		// little data, it may do two passes, consuming the signal
 		// from the data that got already refilled.
-		if (wait)
+		if (wait) {
+			if (triead_->rqDead_)
+				return false;
 			triead_->qev_->wait(); // wait for more data
-		else
+			if (triead_->rqDead_)
+				return false;
+		} else
 			return false;
 	}
 }

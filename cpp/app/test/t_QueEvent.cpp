@@ -233,6 +233,41 @@ UTESTCASE drain_reader(Utest *utest)
 		qwt->join();
 		UT_IS(drain->left_, 0);
 	}
+	
+	// --------------------------------------------------------------------------
+
+	// now mark the thread as dead, it should become drained
+	{
+		// start the drain
+		drain->init();
+		UT_IS(drain->left_, 1);
+		UT_ASSERT(!drain->ev_.signaled_);
+
+		qev->requestDrain();
+		UT_IS(drain->left_, 2);
+		UT_ASSERT(QueEventGuts::isRqDrain(qev));
+		UT_ASSERT(!QueEventGuts::isDrained(qev));
+
+		drain->initDone();
+		UT_IS(drain->left_, 1);
+		UT_ASSERT(!drain->ev_.signaled_);
+
+		qev->markDead(); // marks drained
+		UT_IS(drain->left_, 0);
+		UT_ASSERT(drain->ev_.signaled_);
+
+		qev->markDead(); // repetitive use doesn't hurt
+		UT_IS(drain->left_, 0);
+
+		qev->requestUndrain();
+		UT_ASSERT(!QueEventGuts::isRqDrain(qev));
+
+		// now request drain again, after the thread is dead
+		qev->requestDrain();
+		UT_IS(drain->left_, 0); // unchanged
+		UT_ASSERT(QueEventGuts::isRqDrain(qev));
+		UT_ASSERT(QueEventGuts::isDrained(qev));
+	}
 }
 
 class QueBeforeWriteT: public Mtarget, public pw::pwthread
@@ -247,8 +282,7 @@ public:
 	virtual void *execute()
 	{
 		started_ = true;
-		qev_->beforeWrite();
-		return NULL;
+		return (void *)qev_->beforeWrite();
 	}
 
 	Autoref<QueEvent> qev_;
@@ -268,7 +302,7 @@ UTESTCASE drain_writer(Utest *utest)
 	UT_ASSERT(QueEventGuts::isSleeping(qev));
 
 	// with no drains, the write proceeds unimpeded
-	qev->beforeWrite();
+	UT_ASSERT(qev->beforeWrite());
 	UT_ASSERT(QueEventGuts::isSignaled(qev));
 	qev->afterWrite();
 	UT_ASSERT(!QueEventGuts::isSignaled(qev));
@@ -309,7 +343,7 @@ UTESTCASE drain_writer(Utest *utest)
 
 		// undraining wakes up the sleeper
 		qev->requestUndrain();
-		qwt->join();
+		UT_ASSERT(qwt->join());
 		UT_ASSERT(QueEventGuts::isSignaled(qev));
 
 		qev->afterWrite();
@@ -320,7 +354,7 @@ UTESTCASE drain_writer(Utest *utest)
 	// --------------------------------------------------------------------------
 
 	// start a write then request a drain
-	qev->beforeWrite();
+	UT_ASSERT(qev->beforeWrite());
 	UT_ASSERT(QueEventGuts::isSignaled(qev));
 
 	// start the drain
@@ -344,4 +378,51 @@ UTESTCASE drain_writer(Utest *utest)
 	// undraining pretty much does nothing
 	qev->requestUndrain();
 	UT_ASSERT(!QueEventGuts::isRqDrain(qev));
+	
+	// --------------------------------------------------------------------------
+
+	// request a drain, then start a write, then mark as dead (since it's invoked 
+	// on requestDead() for the input-only threads)
+	{
+		// start the drain
+		drain->init();
+		UT_IS(drain->left_, 1);
+		UT_ASSERT(!drain->ev_.signaled_);
+
+		qev->requestDrain();
+		UT_ASSERT(QueEventGuts::isRqDrain(qev));
+		UT_IS(drain->left_, 1);
+
+		drain->initDone();
+		UT_IS(drain->left_, 0);
+		UT_ASSERT(drain->ev_.signaled_);
+
+		Autoref<QueBeforeWriteT> qwt = new QueBeforeWriteT(qev);
+		qwt->start();
+
+		while (!qwt->started_)
+			sched_yield();
+
+		// no way to tell that it actually is sleeping, so do the
+		// next best
+		sched_yield();
+		sched_yield();
+		sched_yield();
+		UT_ASSERT(!QueEventGuts::isSignaled(qev));
+		qev->reset(); // this locks/unlocks the mutex
+		sched_yield();
+		sched_yield();
+		sched_yield();
+
+		// marking as dead wakes up the sleeper and keeps the event drained
+		qev->markDead();
+		UT_ASSERT(!qwt->join());
+		UT_ASSERT(!QueEventGuts::isSignaled(qev)); // unchanged
+
+		UT_IS(drain->left_, 0);
+		UT_ASSERT(drain->ev_.signaled_);
+
+		// any future attempts to do a write return false
+		UT_ASSERT(!qev->beforeWrite());
+	}
 }

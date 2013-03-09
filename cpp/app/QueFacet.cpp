@@ -18,6 +18,7 @@ namespace TRICEPS_NS {
 QueEvent::QueEvent(DrainApp *drain):
 	drain_(drain),
 	rqDrain_(false), // drain_ doesn matter yet
+	dead_(false),
 	signaled_(false), 
 	evsleeper_(false)
 { }
@@ -28,7 +29,8 @@ void QueEvent::requestDrain()
 	if (!rqDrain_) {
 		rqDrain_ = true;
 		// compute the initial drain state
-		if (evsleeper_ && !signaled_) {
+		if (dead_
+		|| (evsleeper_ && !signaled_)) {
 			drained_ = true;
 			// drain_ will be initialized to assume that the thread is drained,
 			// so leave its state as-is
