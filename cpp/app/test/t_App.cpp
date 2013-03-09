@@ -759,7 +759,7 @@ UTESTCASE find_errors(Utest *utest)
 	// one find comes from the other thread
 	AppGuts::gutsWaitTrieadSleepers(a1, "t1", 1);
 
-	// try calling find from 2 separate OS threads on teh same owner
+	// try calling find from 2 separate OS threads on the same owner
 	{
 		string msg;
 		try {

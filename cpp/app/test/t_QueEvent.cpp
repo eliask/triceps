@@ -4,7 +4,7 @@
 // See the file COPYRIGHT for the copyright notice and license information
 //
 //
-// Test of the nexus-related calls in App and Trieads.
+// Test of the QueEvent synchronization.
 
 #include <utest/Utest.h>
 #include "AppTest.h"
