@@ -116,7 +116,7 @@ UTESTCASE create_basics_die(Utest *utest)
 	UT_ASSERT(ow1->flushWriters());
 
 	// should be now in fa2a queue
-	ReaderQueue *rq2a = FacetGuts::readerQueue(fa2a);
+	Autoref<ReaderQueue> rq2a = FacetGuts::readerQueue(fa2a);
 	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 1);
 	UT_IS(ReaderQueueGuts::readq(rq2a).size(), 0);
 
@@ -124,11 +124,11 @@ UTESTCASE create_basics_die(Utest *utest)
 	UT_ASSERT(ow2->nextXtray());
  
 	// should be now in fa3b and fa4b queues
-	ReaderQueue *rq3b = FacetGuts::readerQueue(fa3b);
+	Autoref<ReaderQueue> rq3b = FacetGuts::readerQueue(fa3b);
 	UT_IS(ReaderQueueGuts::writeq(rq3b).size(), 1);
 	UT_IS(ReaderQueueGuts::readq(rq3b).size(), 0);
 
-	ReaderQueue *rq4b = FacetGuts::readerQueue(fa4b);
+	Autoref<ReaderQueue> rq4b = FacetGuts::readerQueue(fa4b);
 	UT_IS(ReaderQueueGuts::writeq(rq4b).size(), 1);
 	UT_IS(ReaderQueueGuts::readq(rq4b).size(), 0);
 
@@ -136,7 +136,7 @@ UTESTCASE create_basics_die(Utest *utest)
 	UT_ASSERT(ow3->nextXtray());
  
 	// should be now in fa2c queue
-	ReaderQueue *rq2c = FacetGuts::readerQueue(fa2c);
+	Autoref<ReaderQueue> rq2c = FacetGuts::readerQueue(fa2c);
 	UT_IS(ReaderQueueGuts::writeq(rq2c).size(), 1);
 	UT_IS(ReaderQueueGuts::readq(rq2c).size(), 0);
 
@@ -187,16 +187,26 @@ UTESTCASE create_basics_die(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(rq2c).size(), 2);
 	TrieadGuts::requestDead(ow2->get());
 
+	// writing to the requested-dead ow2 is still queuing more data
+	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 0);
+	ow1->unit()->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, r1));
+	UT_ASSERT(ow1->flushWriters());
+	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 1);
+
 	// the attempts to read will fail after request dead
 	UT_ASSERT(!ow2->nextXtray());
-
-	TrieadGuts::requestDead(ow3->get());
-	TrieadGuts::requestDead(ow4->get());
 
 	a1->requestDrain();
 	UT_IS(AppGuts::getDrain(a1)->left_, 3);
 
 	ow2->markDead();
+	UT_ASSERT(rq2c->isDead());
+	UT_IS(ReaderQueueGuts::writeq(rq2c).size(), 0); // dead clears the queue
+
+	TrieadGuts::requestDead(ow3->get());
+	TrieadGuts::requestDead(ow4->get());
+
 	ow3->markDead();
 	ow4->markDead();
 	
@@ -211,6 +221,7 @@ UTESTCASE create_basics_die(Utest *utest)
 
 	a1->drain();
 	TrieadGuts::requestDead(ow1->get());
+	UT_ASSERT(ow1->isRqDead());
 	a1->undrain();
 
 	UT_ASSERT(!ow1->flushWriters()); // no more writing
@@ -220,6 +231,85 @@ UTESTCASE create_basics_die(Utest *utest)
 	// ----------------------------------------------------------------------
 
 	// clean-up, since the apps catalog is global
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// check that the drain doesn't succeed until the running loop stops
+UTESTCASE drain_loop(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1"); // will be input-only
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2"); // t2 and t3 will form a loop
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
+
+	// start with a writer
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	// a non-exported facet, to try the calls on it
+	Autoref<Facet> fa1z = ow1->makeNexusNoImport("nxz")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	ow1->markReady(); // ---
+	UT_ASSERT(ow1->get()->isInputOnly());
+
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+
+	Autoref<Facet> fa2b = ow2->makeNexusWriter("nxb")
+		->addLabel("one", rt1)
+		->complete()
+	;
+	Autoref<Facet> fa2c = ow2->makeNexusReader("nxc")
+		->addLabel("one", rt1)
+		->setReverse()
+		->complete()
+	;
+
+	// connect through from readers to writer
+	fa2a->getFnReturn()->getLabel("one")->chain(
+		fa2b->getFnReturn()->getLabel("one"));
+	fa2c->getFnReturn()->getLabel("one")->chain(
+		fa2b->getFnReturn()->getLabel("one"));
+
+	ow2->markReady(); // ---
+	UT_ASSERT(!ow2->get()->isInputOnly());
+
+	Autoref<Facet> fa3b = ow3->importReader("t2", "nxb", "");
+	Autoref<Facet> fa3c = ow3->importWriter("t2", "nxc", "");
+
+	fa3b->getFnReturn()->getLabel("one")->chain(
+		fa3c->getFnReturn()->getLabel("one"));
+
+	ow3->markReady(); // ---
+	UT_ASSERT(!ow3->get()->isInputOnly());
+
+	ow1->readyReady();
+	ow2->readyReady();
+	ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+	ow1->markDead(); // ow1 is controlled manually
+	// a1->shutdown(); // request all the threads to die
+	ow2->markDead();
+	ow3->markDead();
 	a1->harvester();
 
 	restore_uncatchable();

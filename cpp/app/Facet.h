@@ -260,6 +260,10 @@ protected:
 	//        a reader (ignored for a writer)
 	void connectToNexus(QueEvent *qev);
 
+	// When the thread is marked dead, it disconnects from all the nexuses,
+	// and clears its input queues.
+	void disconnectFromNexus();
+
 	// The internal version of flushWriter that bypasses the 
 	// check for appReady_ and input-only synchronization.
 	// These parts are expected to be done by the caller Triead in bulk.

@@ -172,6 +172,19 @@ void Facet::connectToNexus(QueEvent *qev)
 	}
 }
 
+void Facet::disconnectFromNexus()
+{
+	if (wr_) {
+		nexus_->deleteWriter(wr_);
+		wr_ = NULL; // the reader logic checks for NULL, so can as wel unreference it
+	}
+	if (rd_) {
+		nexus_->deleteReader(rd_);
+		// don't set rd_ to NULL, in case if anyone by mistake calls the
+		// reading (since the reading doesn't check it for NULL)
+	}
+}
+
 bool Facet::flushWriter()
 {
 	if (!appReady_) {

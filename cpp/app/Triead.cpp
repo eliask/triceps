@@ -57,6 +57,9 @@ void Triead::markDead()
 	markReady();
 	dead_ = true;
 	qev_->markDead();
+	// and disconnect all the nexuses, clearing their queues
+	for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
+		it->second->disconnectFromNexus();
 }
 
 void Triead::exportNexus(const string &appName, Nexus *nexus)
