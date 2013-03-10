@@ -92,7 +92,7 @@ Things that need to be done:
 * doc: HoldRowTypes
 * doc: RowType::copy(), RowSetType::deepCopy()
 * doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
-* doc: the row printing in Unit::Tracer in C++
+* doc: the row printing in Unit::Tracer in C++, bugger getting moved to the base class
 * doc: Autoref::swap()
 
 App ideas:

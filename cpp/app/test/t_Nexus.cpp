@@ -1506,10 +1506,10 @@ UTESTCASE pass_data(Utest *utest)
 
 	Autoref<Unit> unit1 = ow1->unit();
 	Autoref<Unit> unit2 = ow2->unit();
-	Autoref<Unit::StringTracer> trace2 = new Unit::StringNameTracer(false, printB);
+	Autoref<Unit::Tracer> trace2 = new Unit::StringNameTracer(false, printB);
 	unit2->setTracer(trace2);
 	Autoref<Unit> unit3 = ow3->unit();
-	Autoref<Unit::StringTracer> trace3 = new Unit::StringNameTracer(false, printB);
+	Autoref<Unit::Tracer> trace3 = new Unit::StringNameTracer(false, printB);
 	unit3->setTracer(trace3);
 
 	// start with a writer

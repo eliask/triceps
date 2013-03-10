@@ -355,8 +355,19 @@ public:
 		// @param row - the row to print
 		virtual void printRow(string &res, const RowType *rt, const Row *row);
 
+		// Get back the buffer of messages(with the default implementation it
+		// can also be used to add messages to the buffer).
+		// A subclass is free to redefine it in any way or just leave default.
+		virtual Erref getBuffer();
+
+		// Replace the message buffer with a clean one.
+		// The old one gets simply dereferenced, so if you have a reference, you can keep it.
+		void clearBuffer();
+
 	protected:
 		RowPrinter *rowPrinter_;
+		Erref buffer_; // buffer for collecting the trace
+			// a subclass doesn't have to use it but can if it wants to
 	};
 
 	// For convenience, a concrete tracer class that collects the trace information
@@ -368,22 +379,10 @@ public:
 		// @param verbose - if true, record all the events, otherwise only the BEGIN records
 		StringTracer(bool verbose = false, RowPrinter *rp = NULL);
 
-		// Get back the buffer of messages
-		// (it can also be used to add messages to the buffer)
-		Erref getBuffer() const
-		{
-			return buffer_;
-		}
-
-		// Replace the message buffer with a clean one.
-		// The old one gets simply dereferenced, so if you have a reference, you can keep it.
-		void clearBuffer();
-
 		// from Tracer
 		virtual void execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when);
 
 	protected:
-		Erref buffer_;
 		bool verbose_;
 	};
 

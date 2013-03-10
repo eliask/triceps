@@ -59,7 +59,8 @@ void UnitFrame::dropFromList(FrameMark *what)
 ///////////////////////////// Unit::Tracer //////////////////////////////////
 
 Unit::Tracer::Tracer(RowPrinter *rp):
-	rowPrinter_(rp)
+	rowPrinter_(rp),
+	buffer_(new Errors)
 { }
 
 Unit::Tracer::~Tracer()
@@ -71,18 +72,22 @@ void Unit::Tracer::printRow(string &res, const RowType *rt, const Row *row)
 		rowPrinter_(res, rt, row);
 }
 
+void Unit::Tracer::clearBuffer()
+{
+	buffer_ = new Errors;
+}
+
+Erref Unit::Tracer::getBuffer()
+{
+	return buffer_;
+}
+
 ///////////////////////////// Unit::StringTracer //////////////////////////////////
 
 Unit::StringTracer::StringTracer(bool verbose, RowPrinter *rp) :
 	Tracer(rp),
-	buffer_(new Errors),
 	verbose_(verbose)
 { }
-
-void Unit::StringTracer::clearBuffer()
-{
-	buffer_ = new Errors;
-}
 
 void Unit::StringTracer::execute(Unit *unit, const Label *label, const Label *fromLabel, Rowop *rop, TracerWhen when)
 {

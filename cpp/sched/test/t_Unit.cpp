@@ -352,7 +352,7 @@ UTESTCASE scheduling(Utest *utest)
 {
 	// make a unit 
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	Autoref<Unit::Tracer> trace = new Unit::StringNameTracer;
 	unit->setTracer(trace);
 
 	// make row for setting
@@ -532,7 +532,7 @@ UTESTCASE chaining(Utest *utest)
 {
 	// make a unit 
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer(true);
+	Autoref<Unit::Tracer> trace = new Unit::StringNameTracer(true);
 	unit->setTracer(trace);
 
 	// make row for setting
@@ -608,7 +608,7 @@ UTESTCASE chaining(Utest *utest)
 
 	// now try the same with StringTracer, but since the pointers are unpredictable,
 	// just count the records
-	Autoref<Unit::StringTracer> trace2 = new Unit::StringTracer(true);
+	Autoref<Unit::Tracer> trace2 = new Unit::StringTracer(true);
 	unit->setTracer(trace2);
 	unit->schedule(op1);
 	unit->schedule(op2);
@@ -619,7 +619,7 @@ UTESTCASE chaining(Utest *utest)
 	// printf("StringTracer got:\n%s", trace2->getBuffer()->print().c_str());
 
 	// now the StringTracer not verbose
-	Autoref<Unit::StringTracer> trace3 = new Unit::StringTracer();
+	Autoref<Unit::Tracer> trace3 = new Unit::StringTracer();
 	unit->setTracer(trace3);
 	unit->schedule(op1);
 	unit->schedule(op2);
@@ -630,7 +630,7 @@ UTESTCASE chaining(Utest *utest)
 	// printf("StringTracer got:\n%s", trace3->getBuffer()->print().c_str());
 	
 	// now try the same with StringNameTracer with row printer
-	Autoref<Unit::StringTracer> trace4 = new Unit::StringNameTracer(true, printB);
+	Autoref<Unit::Tracer> trace4 = new Unit::StringNameTracer(true, printB);
 	unit->setTracer(trace4);
 	unit->schedule(op1);
 	unit->schedule(op2);
@@ -934,7 +934,7 @@ UTESTCASE markLoop(Utest *utest)
 {
 	// make a unit 
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer(false);
+	Autoref<Unit::Tracer> trace = new Unit::StringNameTracer(false);
 	unit->setTracer(trace);
 
 	// make row for setting
