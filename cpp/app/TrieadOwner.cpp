@@ -160,6 +160,8 @@ Xtray *TrieadOwner::pickNextRound(Triead::FacetPtrRound &vec)
 
 bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
 {
+	if (triead_->rqDead_)
+		return false;
 	int sz = vec.size();
 	bool found = false;
 	for (int idx = 0; idx < sz; idx++)

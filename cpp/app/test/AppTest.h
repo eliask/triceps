@@ -112,6 +112,22 @@ public:
 	{
 		App::reduceGraphL(g);
 	}
+
+	static DrainApp *getDrain(App *a)
+	{
+		AppGuts *ag = ((AppGuts *)a);
+		return ag->drain_;
+	}
+};
+
+class TrieadGuts: public Triead
+{
+public:
+	static void requestDead(Triead *t)
+	{
+		TrieadGuts *tg = (TrieadGuts *)t;
+		return tg->Triead::requestDead();
+	}
 };
 
 class TrieadOwnerGuts: public TrieadOwner
@@ -143,7 +159,6 @@ public:
 		TrieadOwnerGuts *tog = (TrieadOwnerGuts *)to;
 		return NexusMakerGuts::getFacet(tog->nexusMaker_);
 	}
-
 	static QueEvent *qev(TrieadOwner *to)
 	{
 		TrieadOwnerGuts *tog = (TrieadOwnerGuts *)to;
