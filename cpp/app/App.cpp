@@ -102,6 +102,7 @@ App::App(const string &name) :
 	needHarvest_(true), // "dead" also implies being ready to harvest
 	unreadyCnt_(0),
 	aliveCnt_(0),
+	shutdown_(false),
 	drain_(new DrainApp),
 	drainCnt_(0)
 {
@@ -162,6 +163,25 @@ bool App::isDead()
 void App::waitDead()
 {
 	dead_.wait();
+}
+
+void App::shutdown()
+{
+	pw::lockmutex lm(mutex_);
+	if (!shutdown_) {
+		shutdown_ = true;
+		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+			Triead *t = it->second->t_;
+			if (t->isReady())
+				t->requestDead();
+		}
+	}
+}
+
+bool App::isShutdown()
+{
+	pw::lockmutex lm(mutex_);
+	return shutdown_;
 }
 
 Onceref<TrieadOwner> App::makeTriead(const string &tname)
@@ -385,6 +405,8 @@ void App::markTrieadReadyL(Triead *t)
 			ready_.signal();
 			checkLoopsL(t->getName());
 		}
+		if (shutdown_)
+			t->requestDead(); // this thread was too late to the party
 	}
 }
 

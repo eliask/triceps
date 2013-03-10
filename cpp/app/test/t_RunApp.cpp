@@ -314,3 +314,10 @@ UTESTCASE drain_loop(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// XXX App::shutdown():
+//   mark shutdown in a flag
+//   request all current threads to die
+//   for any new threads, request them to die right after they report ready
+// Test the shutdown in the controlled env.
+// All the cases of threads being created after shutdown and so on.

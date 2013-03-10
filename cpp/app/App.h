@@ -186,6 +186,14 @@ public:
 	// Wait for the App to become dead.
 	void waitDead();
 
+	// Request the App to shut down. All the ready thread will be
+	// requested to die. Any new threads will be requested to die
+	// when they become ready.
+	void shutdown();
+
+	// Returns, whether the App is shutting down.
+	bool isShutdown();
+
 	// The harvester API.
 	// The harvester would normally run in a "master" thread. It would
 	// join the threads as they die, and after all of them are dead,
@@ -535,12 +543,13 @@ protected:
 	string abortedMsg_; // an optional message from the aborted thread
 	TrieadUpdMap threads_; // threads defined and declared
 	TrieadUpdList zombies_; // the thread that have exited and need harvesting
-	pw::event ready_; // will be set when all the threads are ready
-	pw::event dead_; // will be set when all the threads are dead
-	pw::event needHarvest_; // will be set when there are zombies to harvest
+	pw::event2 ready_; // will be set when all the threads are ready
+	pw::event2 dead_; // will be set when all the threads are dead
+	pw::event2 needHarvest_; // will be set when there are zombies to harvest
 	timespec deadline_; // deadline for the initialization, set on or soon after App creation
 	int unreadyCnt_; // count of threads that aren't ready yet
 	int aliveCnt_; // count of threads that aren't dead yet
+	bool shutdown_; // flag: has been requested to shut down
 
 	Autoref<DrainApp> drain_; // the drain synchronization event (has its own mutex!)
 	int drainCnt_;; // count of active drain requests, the app won't be undrained until it goes to 0
