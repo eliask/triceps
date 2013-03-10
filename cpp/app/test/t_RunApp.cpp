@@ -28,8 +28,13 @@ UTESTCASE create_die(Utest *utest)
 	Autoref<RowType> rt1 = new CompactRowType(fld);
 
 	// start with a writer
-	// Autoref<Facet> fa1a = 
-	ow1->makeNexusWriter("nxa")
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	// a non-exported facet, to try the calls on it
+	Autoref<Facet> fa1z = ow1->makeNexusNoImport("nxz")
 		->addLabel("one", rt1)
 		->complete()
 	;

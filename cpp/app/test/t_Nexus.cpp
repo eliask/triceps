@@ -276,7 +276,7 @@ UTESTCASE make_facet(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
 	{
 		string msg;
@@ -285,7 +285,7 @@ UTESTCASE make_facet(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
 	{
 		string msg;
@@ -294,7 +294,7 @@ UTESTCASE make_facet(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
 	{
 		string msg;
@@ -303,7 +303,7 @@ UTESTCASE make_facet(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
 	{
 		string msg;
@@ -312,7 +312,7 @@ UTESTCASE make_facet(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "Triceps API violation: attempted to modify an imported facet 't1/fret1'.\n");
+		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
 
 	// clean-up, since the apps catalog is global
@@ -1589,7 +1589,7 @@ UTESTCASE pass_data(Utest *utest)
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, 
-			"Triceps API violation: attempted to flush the thread 't1' before the App is ready.\n");
+			"Can not flush the thread 't1' before waiting for App readiness.\n");
 	}
 	{
 		string msg;
@@ -1599,7 +1599,7 @@ UTESTCASE pass_data(Utest *utest)
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, 
-			"Triceps API violation: attempted to flush the facet 't1/nxa' before the App is ready.\n");
+			"Can not flush the facet 't1/nxa' before waiting for App readiness.\n");
 	}
 	{
 		string msg;
@@ -1609,7 +1609,7 @@ UTESTCASE pass_data(Utest *utest)
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, 
-			"Triceps API violation: attempted to read data in thread 't1' before the App is ready.\n");
+			"Can not read the facets in thread 't1' before waiting for App readiness.\n");
 	}
 
 	ow1->markReady();
@@ -1630,7 +1630,7 @@ UTESTCASE pass_data(Utest *utest)
 			msg = e.getErrors()->print();
 		}
 		UT_IS(msg, 
-			"Triceps API violation: attempted to flush a non-exported facet.\n");
+			"Can not flush a non-exported facet 'nxc'.\n");
 	}
 
 	// ----------------------------------------------------------------------

@@ -172,7 +172,7 @@ void Triead::requestDead()
 bool Triead::flushWriters()
 {
 	if (!appReady_) {
-		throw Exception::fTrace("Triceps API violation: attempted to flush the thread '%s' before the App is ready.",
+		throw Exception::fTrace("Can not flush the thread '%s' before waiting for App readiness.",
 			name_.c_str());
 	}
 

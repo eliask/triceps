@@ -138,7 +138,7 @@ Facet *Facet::exportTableType(const string &name, Onceref<TableType> tt)
 void Facet::assertNotImported() const
 {
 	if (isImported())
-		throw Exception::fTrace("Triceps API violation: attempted to modify an imported facet '%s'.",
+		throw Exception::fTrace("Can not modify an imported facet '%s'.",
 			name_.c_str());
 }
 
@@ -176,9 +176,9 @@ bool Facet::flushWriter()
 {
 	if (!appReady_) {
 		if (nexus_.isNull())
-			throw Exception::fTrace("Triceps API violation: attempted to flush a non-exported facet.");
+			throw Exception::fTrace("Can not flush a non-exported facet '%s'.", fret_->getName().c_str());
 		else
-			throw Exception::fTrace("Triceps API violation: attempted to flush the facet '%s' before the App is ready.",
+			throw Exception::fTrace("Can not flush the facet '%s' before waiting for App readiness.",
 				name_.c_str());
 	}
 

@@ -170,10 +170,10 @@ bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
 bool TrieadOwner::nextXtray(bool wait)
 {
 	if (!appReady_)
-		throw Exception::fTrace("Triceps API violation: attempted to read data in thread '%s' before the App is ready.",
+		throw Exception::fTrace("Can not read the facets in thread '%s' before waiting for App readiness.",
 			triead_->getName().c_str());
 	if (busy_)
-		throw Exception::fTrace("Triceps API violation: attempted to call the queue processing in thread '%s' recursively.",
+		throw Exception::fTrace("Can not call the queue processing in thread '%s' recursively.",
 			triead_->getName().c_str());
 
 	BusyMark bm(busy_);
