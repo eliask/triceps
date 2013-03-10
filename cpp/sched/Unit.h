@@ -362,7 +362,7 @@ public:
 
 		// Replace the message buffer with a clean one.
 		// The old one gets simply dereferenced, so if you have a reference, you can keep it.
-		void clearBuffer();
+		virtual void clearBuffer();
 
 	protected:
 		RowPrinter *rowPrinter_;
