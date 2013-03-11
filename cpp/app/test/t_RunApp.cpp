@@ -236,88 +236,251 @@ UTESTCASE create_basics_die(Utest *utest)
 	restore_uncatchable();
 }
 
+class LoopPthread : public BasicPthread
+{
+public:
+	LoopPthread(const string &name):
+		BasicPthread(name),
+		ev_(true) // by default it just runs
+	{ 
+	}
+
+	// overrides BasicPthread::start
+	virtual void execute(TrieadOwner *to)
+	{
+		// like MainLoop() but increase the counter after each Xtray
+		while (to->nextXtray()) {
+			cnt_.inc();
+			ev_.wait();
+		}
+		to->markDead();
+	}
+
+	AtomicInt cnt_; 
+	pw::event2 ev_;
+};
+
+// A label that forwards data unless it's told to stop
+class ForwardLabel: public Label
+{
+public:
+	ForwardLabel(Unit *unit, Onceref<RowType> rtype, const string &name,
+			Label *dest) :
+		Label(unit, rtype, name),
+		dest_(dest),
+		forward_(1)
+	{ }
+
+	virtual void execute(Rowop *arg) const
+	{ 
+		if (forward_.get()) {
+			unit_->call(dest_->adopt(arg));
+		}
+	}
+
+	void enable()
+	{
+		forward_.set(1);
+	}
+
+	void disable()
+	{
+		forward_.set(0);
+	}
+
+	Autoref<Label> dest_; // the destination label
+	AtomicInt forward_; // flag: forward the data
+};
+
+// s set of threads that will be used for multiple tests
+class TestThreads1
+{
+public:
+	TestThreads1(Utest *utest)
+	{
+		a1 = App::make("a1");
+		a1->setTimeout(0); // will replace all waits with an Exception
+		ow1 = a1->makeTriead("t1"); // will be input-only
+		ow2 = a1->makeTriead("t2"); // t2 and t3 will form a loop
+		ow3 = a1->makeTriead("t3");
+
+		// prepare fragments
+		mkfields(fld);
+		rt1 = new CompactRowType(fld);
+
+		mkfdata(dv);
+		r1.assign(rt1,  rt1->makeRow(dv));
+
+		// start with a writer
+		fa1a = ow1->makeNexusWriter("nxa")
+			->addLabel("one", rt1)
+			->complete()
+		;
+
+		// a non-exported facet, to try the calls on it
+		fa1z = ow1->makeNexusNoImport("nxz")
+			->addLabel("one", rt1)
+			->complete()
+		;
+
+		// check that isDrained() works even when the app is not ready
+		UT_ASSERT(!a1->isDrained());
+
+		ow1->markReady(); // ---
+		UT_ASSERT(ow1->get()->isInputOnly());
+
+		fa2a = ow2->importReader("t1", "nxa", "");
+
+		fa2b = ow2->makeNexusWriter("nxb")
+			->addLabel("one", rt1)
+			->complete()
+		;
+		fa2c = ow2->makeNexusReader("nxc")
+			->addLabel("one", rt1)
+			->setReverse()
+			->complete()
+		;
+
+		// connect through from readers to writer
+		fwd2a = new ForwardLabel(ow2->unit(), rt1, "fwd2a", 
+			fa2b->getFnReturn()->getLabel("one"));
+		fa2a->getFnReturn()->getLabel("one")->chain(fwd2a);
+
+		fwd2c = new ForwardLabel(ow2->unit(), rt1, "fwd2c", 
+			fa2b->getFnReturn()->getLabel("one"));
+		fa2c->getFnReturn()->getLabel("one")->chain(fwd2c);
+
+		ow2->markReady(); // ---
+		UT_ASSERT(!ow2->get()->isInputOnly());
+
+		fa3b = ow3->importReader("t2", "nxb", "");
+		fa3c = ow3->importWriter("t2", "nxc", "");
+
+		fwd3b = new ForwardLabel(ow3->unit(), rt1, "fwd3b", 
+			fa3c->getFnReturn()->getLabel("one"));
+		fa3b->getFnReturn()->getLabel("one")->chain(fwd3b);
+
+		ow3->markReady(); // ---
+		UT_ASSERT(!ow3->get()->isInputOnly());
+	}
+
+	Autoref<App> a1;
+	Autoref<TrieadOwner> ow1; // will be input-only
+	Autoref<TrieadOwner> ow2; // t2 and t3 will form a loop
+	Autoref<TrieadOwner> ow3;
+
+	RowType::FieldVec fld;
+	Autoref<RowType> rt1;
+
+	FdataVec dv;
+	Rowref r1;
+
+	Autoref<Facet> fa1a;
+	Autoref<Facet> fa1z;
+	Autoref<Facet> fa2a;
+	Autoref<Facet> fa2b;
+	Autoref<Facet> fa2c;
+	Autoref<Facet> fa3b;
+	Autoref<Facet> fa3c;
+
+	Autoref<ForwardLabel> fwd2a;
+	Autoref<ForwardLabel> fwd2c;
+	Autoref<ForwardLabel> fwd3b;
+
+private:
+	TestThreads1();
+};
+
+// check that the shutdown stops a loop
+UTESTCASE shutdown_loop(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// initiate an endless loop between t2 and t3
+	tt.ow1->unit()->call(new Rowop(tt.fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, tt.r1));
+	UT_ASSERT(tt.ow1->flushWriters());
+
+	// let it run a little before shutdown
+	while (((unsigned)pt2->cnt_.get()) < 100)
+		sched_yield();
+
+	// ----------------------------------------------------------------------
+
+	tt.ow1->markDead(); // ow1 is controlled manually
+	tt.a1->shutdown(); // request all the threads to die
+
+	// create one more thread after shutdown
+	Autoref<TrieadOwner> ow4 = tt.a1->makeTriead("t4");
+	ow4->readyReady();
+	UT_ASSERT(ow4->isRqDead()); // gets requested to die right away
+	ow4->markDead();
+
+	tt.a1->harvester();
+
+	restore_uncatchable();
+}
+
 // check that the drain doesn't succeed until the running loop stops
 UTESTCASE drain_loop(Utest *utest)
 {
 	make_catchable();
 
-	Autoref<App> a1 = App::make("a1");
-	a1->setTimeout(0); // will replace all waits with an Exception
-	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1"); // will be input-only
-	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2"); // t2 and t3 will form a loop
-	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	TestThreads1 tt(utest);
 
-	// prepare fragments
-	RowType::FieldVec fld;
-	mkfields(fld);
-	Autoref<RowType> rt1 = new CompactRowType(fld);
-
-	FdataVec dv;
-	mkfdata(dv);
-	Rowref r1(rt1,  rt1->makeRow(dv));
-
-	// start with a writer
-	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
-		->addLabel("one", rt1)
-		->complete()
-	;
-
-	// a non-exported facet, to try the calls on it
-	Autoref<Facet> fa1z = ow1->makeNexusNoImport("nxz")
-		->addLabel("one", rt1)
-		->complete()
-	;
-
-	ow1->markReady(); // ---
-	UT_ASSERT(ow1->get()->isInputOnly());
-
-	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
-
-	Autoref<Facet> fa2b = ow2->makeNexusWriter("nxb")
-		->addLabel("one", rt1)
-		->complete()
-	;
-	Autoref<Facet> fa2c = ow2->makeNexusReader("nxc")
-		->addLabel("one", rt1)
-		->setReverse()
-		->complete()
-	;
-
-	// connect through from readers to writer
-	fa2a->getFnReturn()->getLabel("one")->chain(
-		fa2b->getFnReturn()->getLabel("one"));
-	fa2c->getFnReturn()->getLabel("one")->chain(
-		fa2b->getFnReturn()->getLabel("one"));
-
-	ow2->markReady(); // ---
-	UT_ASSERT(!ow2->get()->isInputOnly());
-
-	Autoref<Facet> fa3b = ow3->importReader("t2", "nxb", "");
-	Autoref<Facet> fa3c = ow3->importWriter("t2", "nxc", "");
-
-	fa3b->getFnReturn()->getLabel("one")->chain(
-		fa3c->getFnReturn()->getLabel("one"));
-
-	ow3->markReady(); // ---
-	UT_ASSERT(!ow3->get()->isInputOnly());
-
-	ow1->readyReady();
-	ow2->readyReady();
-	ow3->readyReady();
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
 
 	// ----------------------------------------------------------------------
-	ow1->markDead(); // ow1 is controlled manually
-	// a1->shutdown(); // request all the threads to die
-	ow2->markDead();
-	ow3->markDead();
-	a1->harvester();
+
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// initiate an endless loop between t2 and t3
+	tt.ow1->unit()->call(new Rowop(tt.fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, tt.r1));
+	UT_ASSERT(tt.ow1->flushWriters());
+
+	// request a drain
+	UT_ASSERT(!tt.a1->isDrained());
+	tt.a1->requestDrain();
+	UT_ASSERT(!tt.a1->isDrained());
+
+	// let the loop run a little to see that it's not interrupted
+	unsigned start = (unsigned)pt2->cnt_.get();
+	while (((unsigned)pt2->cnt_.get() - start) < 100)
+		sched_yield();
+	UT_ASSERT(!tt.a1->isDrained()); // and sure enough, still not drained
+
+	tt.fwd2c->disable(); // break the loop
+	tt.a1->waitDrain(); // should succeed now
+
+	// ----------------------------------------------------------------------
+
+	tt.ow1->markDead(); // ow1 is controlled manually
+	tt.a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	tt.a1->harvester();
 
 	restore_uncatchable();
 }
 
-// XXX App::shutdown():
-//   mark shutdown in a flag
-//   request all current threads to die
-//   for any new threads, request them to die right after they report ready
-// Test the shutdown in the controlled env.
-// All the cases of threads being created after shutdown and so on.
+// XXX when drained, the new threads should also be created drained
+// XXX add threads that get completely thrown away when dead
+// XXX add adopting of nexuses from another app

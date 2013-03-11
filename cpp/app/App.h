@@ -248,6 +248,12 @@ public:
 	// Returns immediately if the app is dead.
 	void waitDrain();
 
+	// Quickly check whether the drain has completed.
+	// It can be called even without the preceding requestDrain() but
+	// in that case there are no quarantees that the App won't be
+	// undrained a moment later.
+	bool isDrained();
+
 	// Start the drain sequence and wait for the drain to complete.
 	// May not be called if the app is not ready.
 	void drain()

@@ -19,7 +19,18 @@ BasicPthread::BasicPthread(const string &name):
 void BasicPthread::start(Autoref<App> app)
 {
 	pw::lockmutex lm(startMutex_);
-	to_ = app->makeTriead(name_); // might throw
+	startL(app, app->makeTriead(name_)); // makeTriead might throw
+}
+
+void BasicPthread::start(Autoref<TrieadOwner> to)
+{
+	pw::lockmutex lm(startMutex_);
+	startL(to->app(), to);
+}
+
+void BasicPthread::startL(Autoref<App> app, Autoref<TrieadOwner> to)
+{
+	to_ = to;
 	selfref_ = this; // will be reset to NULL in run_it
 	int err = pthread_create(&id_, NULL, run_it, (void *)this); // sets id_
 	if (err != 0) {

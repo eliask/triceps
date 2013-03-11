@@ -30,7 +30,7 @@ public:
 
 	// Start the thread's execution. Before starting,
 	// it defines the thread in the app and creates the TrieadOwner
-	// (could declare it first and define sfter start but since C++
+	// (could declare it first and define after start but since C++
 	// allows the passing of objects into the threads, this way is easier).
 	// Which allows to report the start failures even before the OS
 	// thread is created.
@@ -42,6 +42,11 @@ public:
 	//
 	// @param app - App where the thread gets created.
 	void start(Autoref<App> app);
+
+	// Start the thread's execution using the TrieadOwner
+	// created before by the caller. The rest of it is exacly like
+	// start(Autoref<App> app).
+	void start(Autoref<TrieadOwner> to);
 
 	// Define this one for the code of your thread.
 	// By this time the Triead will be created and registered
@@ -65,6 +70,11 @@ public:
 protected:
 	// The function that will be passed to Posix.
 	static void *run_it(void *arg);
+
+	// The common internal implementation of start().
+	// The mutex_ must be already locked.
+	void startL(Autoref<App> app, Autoref<TrieadOwner> to);
+
 
 	// Arguments passed to the thread. Add more in your
 	// subclass as needed.

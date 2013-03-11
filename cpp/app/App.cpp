@@ -567,6 +567,12 @@ void App::waitDrain()
 	drain_->wait();
 }
 
+bool App::isDrained()
+{
+	// here don't care about isReady() because the check is transient
+	return drain_->isDrained();
+}
+
 void App::undrain()
 {
 	pw::lockmutex lm(mutex_);

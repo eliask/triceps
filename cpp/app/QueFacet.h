@@ -69,6 +69,12 @@ public:
 		ev_.wait();
 	}
 
+	// Check whether currently drained.
+	bool isDrained()
+	{
+		return ev_.read();
+	}
+
 	// the mutex from ev_ also protects the rest of the fields
 	pw::event2 ev_; // allows to wait for drainage
 	int left_; // how many threads are left undrained,
