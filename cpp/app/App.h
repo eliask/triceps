@@ -346,6 +346,61 @@ protected:
 	void waitReady();
 
 protected:
+	// Since there might be a need to wait for the initialization of
+	// even the declared and not yet defined threads, the wait structures
+	// exist separately.
+	class TrieadUpd : public Mtarget
+	{
+	public:
+		// The mutex would be normally the App object's mutex.
+		TrieadUpd(pw::pmutex &mutex):
+			waitFor_(NULL),
+			cond_(mutex)
+		{ }
+
+		// Signals the condvar and throws an Exception if it fails
+		// (which should never happen but who knows).
+		// The mutex should be already locked.
+		//
+		// @param appname - application name, for error messages
+		void broadcastL(const string &appname);
+
+		// Waits for the condition, time-limited to the App's timeout.
+		// (To maintain the limit through repeated calls, it's built by
+		// the caller and passed as an argument).
+		// Throws an Exception if the wait times out or on any
+		// other error.
+		// The mutex should be already locked.
+		//
+		// @param appname - application name, for error messages
+		// @param tname - thread name of this object, for error messages
+		// @param abstime - the time limit
+		void waitL(const string &appname, const string &tname, const timespec &abstime);
+
+		// For testing: returns the current count of sleepers.
+		// This allows the busy-wait until the sleepers get into position.
+		// The mutex should be already locked.
+		int _countSleepersL();
+
+		Autoref<Triead> t_; // the thread object, will be NULL if only declared
+		Autoref<TrieadJoin> j_; // the joiner object, may be NULL for detached or already joined threads
+
+		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL), for deadlock detection
+	protected:
+		// Condvar for waiting for any updates in the Triead status.
+		pw::pchaincond cond_; // all chained from the App's mutex_
+
+		// XXX TODO figure out the destruction sequence
+		// Condvar for waiting for any sleepers to wake up and go away.
+		// pw::pchaincond freecond_; // all chained from the App's mutex_
+	private:
+		TrieadUpd();
+		TrieadUpd(const TrieadUpd &);
+		void operator=(const TrieadUpd &);
+	};
+	typedef map<string, Autoref<TrieadUpd> > TrieadUpdMap;
+	typedef list<Autoref<TrieadUpd> > TrieadUpdList;
+
 	// Use App::Make to create new objects.
 	// @param name - name of the app.
 	App(const string &name);
@@ -367,15 +422,18 @@ protected:
 	// Check that the thread belongs to this app.
 	// If not, throws an Exception.
 	// Relies on mutex_ being already locked.
-	void assertTrieadL(Triead *th) const;
-	void assertTrieadOwnerL(TrieadOwner *to) const;
+	// @return - the updates entry for this thread
+	TrieadUpd *assertTrieadL(Triead *th) const;
+	TrieadUpd *assertTrieadOwnerL(TrieadOwner *to) const;
 
 	// The internal versions. Require the mutex_ to be held
 	// by the caller, and also assume that the Triead has been
 	// already checked.
-	void markTrieadConstructedL(Triead *t);
-	void markTrieadReadyL(Triead *t);
-	void markTrieadDeadL(Triead *t);
+	// @param upd - the updates entry for the thread to be marked
+	// @param t - the thread to be marked
+	void markTrieadConstructedL(TrieadUpd *upd, Triead *t);
+	void markTrieadReadyL(TrieadUpd *upd, Triead *t);
+	void markTrieadDeadL(TrieadUpd *upd, Triead *t);
 
 	// Create a timestamp for the initialization deadline.
 	// Must be called only before creation of any threads, so since
@@ -484,61 +542,6 @@ protected:
 	// }
 
 protected:
-	// Since there might be a need to wait for the initialization of
-	// even the declared and not yet defined threads, the wait structures
-	// exist separately.
-	class TrieadUpd : public Mtarget
-	{
-	public:
-		// The mutex would be normally the App object's mutex.
-		TrieadUpd(pw::pmutex &mutex):
-			waitFor_(NULL),
-			cond_(mutex)
-		{ }
-
-		// Signals the condvar and throws an Exception if it fails
-		// (which should never happen but who knows).
-		// The mutex should be already locked.
-		//
-		// @param appname - application name, for error messages
-		void broadcastL(const string &appname);
-
-		// Waits for the condition, time-limited to the App's timeout.
-		// (To maintain the limit through repeated calls, it's built by
-		// the caller and passed as an argument).
-		// Throws an Exception if the wait times out or on any
-		// other error.
-		// The mutex should be already locked.
-		//
-		// @param appname - application name, for error messages
-		// @param tname - thread name of this object, for error messages
-		// @param abstime - the time limit
-		void waitL(const string &appname, const string &tname, const timespec &abstime);
-
-		// For testing: returns the current count of sleepers.
-		// This allows the busy-wait until the sleepers get into position.
-		// The mutex should be already locked.
-		int _countSleepersL();
-
-		Autoref<Triead> t_; // the thread object, will be NULL if only declared
-		Autoref<TrieadJoin> j_; // the joiner object, may be NULL for detached or already joined threads
-
-		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL), for deadlock detection
-	protected:
-		// Condvar for waiting for any updates in the Triead status.
-		pw::pchaincond cond_; // all chained from the App's mutex_
-
-		// XXX TODO figure out the destruction sequence
-		// Condvar for waiting for any sleepers to wake up and go away.
-		// pw::pchaincond freecond_; // all chained from the App's mutex_
-	private:
-		TrieadUpd();
-		TrieadUpd(const TrieadUpd &);
-		void operator=(const TrieadUpd &);
-	};
-	typedef map<string, Autoref<TrieadUpd> > TrieadUpdMap;
-	typedef list<Autoref<TrieadUpd> > TrieadUpdList;
-
 	// The single process-wide directory of all the apps, protected by a mutex.
 	static Map apps_;
 	static pw::pmutex apps_mutex_;

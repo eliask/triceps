@@ -252,7 +252,7 @@ void App::assertNotAbortedL() const
 			name_.c_str(), abortedBy_.c_str(), abortedMsg_.c_str());
 }
 
-void App::assertTrieadL(Triead *th) const
+App::TrieadUpd *App::assertTrieadL(Triead *th) const
 {
 	TrieadUpdMap::const_iterator it = threads_.find(th->getName());
 	if (it == threads_.end()) {
@@ -263,6 +263,7 @@ void App::assertTrieadL(Triead *th) const
 		throw Exception::fTrace("Thread '%s' does not belong to the application '%s', it's same-names but from another app.",
 			th->getName().c_str(), name_.c_str());
 	}
+	return it->second;
 }
 
 void App::abortBy(const string &tname, const string &msg)
@@ -277,7 +278,7 @@ void App::abortByL(const string &tname, const string &msg)
 	// mark the thread as dead
 	TrieadUpdMap::iterator it = threads_.find(tname);
 	if (it != threads_.end()) {
-		markTrieadDeadL(it->second->t_);
+		markTrieadDeadL(it->second, it->second->t_);
 	}
 
 	if (isAbortedL()) // already aborted, nothing more to do
@@ -294,9 +295,9 @@ void App::abortByL(const string &tname, const string &msg)
 	}
 }
 
-void App::assertTrieadOwnerL(TrieadOwner *to) const
+App::TrieadUpd *App::assertTrieadOwnerL(TrieadOwner *to) const
 {
-	assertTrieadL(to->get());
+	return assertTrieadL(to->get());
 }
 
 Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed)
@@ -304,15 +305,14 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 	pw::lockmutex lm(mutex_);
 
 	assertNotAbortedL();
-	assertTrieadOwnerL(to);
+	// reference guarantees that it won't disappear when sleeping
+	Autoref<TrieadUpd> selfupd = assertTrieadOwnerL(to);
 
 	// A special short-circuit for the self-reference, a thread can
 	// find itself even if it's not fully constructed.
 	if (to->get()->getName() == tname)
 		return to->get();
 
-	// The assertion above makes sure that this succeeds.
-	Autoref<TrieadUpd> selfupd = threads_.find(to->get()->getName())->second;
 	if (selfupd->waitFor_ != NULL)
 		throw Exception::fTrace("In Triceps application '%s' thread '%s' owner object must not be used from 2 OS threads.",
 			name_.c_str(), to->get()->getName().c_str());
@@ -375,17 +375,16 @@ void App::markTrieadConstructed(TrieadOwner *to)
 	pw::lockmutex lm(mutex_);
 
 	Triead *t = to->get();
-	assertTrieadL(t); // means the the find below can't fail
+	TrieadUpd *upd = assertTrieadL(t);
 
-	markTrieadConstructedL(t);
+	markTrieadConstructedL(upd, t);
 }
 
-void App::markTrieadConstructedL(Triead *t)
+void App::markTrieadConstructedL(TrieadUpd *upd, Triead *t)
 {
 	if (!t->isConstructed()) {
 		t->markConstructed();
-		TrieadUpdMap::iterator it = threads_.find(t->getName());
-		it->second->broadcastL(name_);
+		upd->broadcastL(name_);
 	}
 }
 
@@ -394,27 +393,26 @@ void App::markTrieadReady(TrieadOwner *to)
 	pw::lockmutex lm(mutex_);
 
 	Triead *t = to->get();
-	assertTrieadL(t);
+	TrieadUpd *upd = assertTrieadL(t);
 
-	markTrieadConstructedL(t);
-	markTrieadReadyL(t);
+	markTrieadConstructedL(upd, t);
+	markTrieadReadyL(upd, t);
 }
 
-void App::markTrieadReadyL(Triead *t)
+void App::markTrieadReadyL(TrieadUpd *upd, Triead *t)
 {
 	if (!t->isReady()) {
 		t->markReady();
-		if (--unreadyCnt_ == 0) {
-			ready_.signal();
-			checkLoopsL(t->getName());
-		}
 		if (drainCnt_)
 			t->drain();
 		if (shutdown_) {
 			t->requestDead(); // this thread was too late to the party
-			TrieadUpdMap::iterator it = threads_.find(t->getName());
-			if (it == threads_.end() && it->second->j_)
-				it->second->j_->interrupt();
+			if (upd->j_)
+				upd->j_->interrupt();
+		}
+		if (--unreadyCnt_ == 0) {
+			ready_.signal();
+			checkLoopsL(t->getName());
 		}
 	}
 }
@@ -424,21 +422,21 @@ void App::markTrieadDead(TrieadOwner *to)
 	pw::lockmutex lm(mutex_);
 
 	Triead *t = to->get();
-	assertTrieadL(t);
+	TrieadUpd *upd = assertTrieadL(t);
 
-	markTrieadConstructedL(t);
+	markTrieadConstructedL(upd, t);
 	try {
-		markTrieadReadyL(t);
+		markTrieadReadyL(upd, t);
 	} catch (Exception e) {
 		// Just ignore, marking the App aborted is good enough.
 		// After all, the current thread is about to exit anyway
 		// and might even be calling this from its destructor,
 		// so there is no need to make its life more difficult.
 	}
-	markTrieadDeadL(t);
+	markTrieadDeadL(upd, t);
 }
 
-void App::markTrieadDeadL(Triead *t)
+void App::markTrieadDeadL(TrieadUpd *upd, Triead *t)
 {
 	if (!t->isDead()) {
 		t->markDead();
@@ -447,14 +445,9 @@ void App::markTrieadDeadL(Triead *t)
 			needHarvest_.signal();
 		}
 
-		TrieadUpdMap::iterator it = threads_.find(t->getName());
-		// should never fail but check just in case
-		if (it != threads_.end()) {
-			TrieadUpd *upd = it->second;
-			if (upd->j_) {
-				zombies_.push_back(upd);
-				needHarvest_.signal();
-			}
+		if (upd->j_) {
+			zombies_.push_back(upd);
+			needHarvest_.signal();
 		}
 	}
 }

@@ -631,3 +631,5 @@ UTESTCASE drain_unready(Utest *utest)
 // XXX add adopting of nexuses from another app
 // XXX do a scoped drain object
 // XXX drain except a single thread that can then be used to inject data
+// XXX test an exception on loop topology when thread becomes ready and drained or shutting down
+// XXX an App abort should also include a shutdown request
