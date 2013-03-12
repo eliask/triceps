@@ -229,8 +229,6 @@ public:
 
 
 	// The drain API.
-	// XXX Right now the threads must not be added while the App is drained,
-	// it may cause the unpleasant interactions.
 	//
 	// The drain and undrain requests must go in matching pairs, or the App will
 	// be left drained forever. Nested requests are OK. 
@@ -238,32 +236,72 @@ public:
 	// you call the undrain, since there may be the other drain requests.
 	// {
 	
-	// Start the drain sequence.
-	// May not be called if the app is not ready, or will throw an Exception.
+	// Start the drain sequence for a shared full drain (where all the threads
+	// get drained). As the name suggests, multiple requests for shared drains
+	// may be active at the same time without conflicting.
+	// May sleep if an exclusive drain is currently in progress.
 	void requestDrain();
 
+	// Start the drain sequence for an exclusive drain (where all the threads
+	// except one get drained). Only one exclusive drain may be active at
+	// a time, all the other requests will sleep until this drain is done,
+	// and this request will sleep if there is another drain in progress.
+	//
+	// MAY NOT BE CALLED RECURSIVELY FROM THE SAME THREAD.
+	// MAY NOT BE MIXED RECURSIVELY WITH A SHARED DRAIN FROM THE SAME THREAD.
+	//
+	// Normally the caller is expected to represent and control the excepted
+	// thread, which would normally be an input-only thread. All the other
+	// input-only threads get stuck on a drain but the excepted one may
+	// continue sending data.
+	//
+	// The typical use of the exclusive drain is to send a batch of data
+	// in the controlled fashion: 
+	//   * request an axclusive drain,
+	//   * wait for the drain to complete (not sending anything from the
+	//     excepted thread),
+	//   * send the data from the excepted thread,
+	//   * wait for the drain to complete again,
+	//   * undrain.
+	// This guarantees that the data from the excepted thread goes through the
+	// App completely by itself, not mixing with any data from before or after.
+	//
+	// @param to - owner of the excepted thread
+	void requestDrainExclusive(TrieadOwner *to);
+
 	// Wait for the drain to complete. May be called repeatedly while drained.
-	// Do not call when teh drain is not requested, or it will be stuck forever.
-	// May not be called if the app is not ready, or will throw an Exception.
+	// Can be used with both shared and exclusive drains.
+	// Do not call when the drain is not requested, or it will be stuck forever.
 	// Returns immediately if the app is dead.
 	void waitDrain();
 
 	// Quickly check whether the drain has completed.
-	// It can be called even without the preceding requestDrain() but
+	// Can be used with both shared and exclusive drains.
+	// Can be called even without the preceding requestDrain*() but
 	// in that case there are no quarantees that the App won't be
 	// undrained a moment later.
 	bool isDrained();
 
-	// Start the drain sequence and wait for the drain to complete.
-	// May not be called if the app is not ready.
+	// Start the shared drain sequence and wait for the drain to complete.
 	void drain()
 	{
 		requestDrain();
 		waitDrain();
 	}
 
+	// Start the exclusive drain sequence and wait for the drain to complete.
+	//
+	// MAY NOT BE CALLED RECURSIVELY FROM THE SAME THREAD.
+	// MAY NOT BE MIXED RECURSIVELY WITH A SHARED DRAIN FROM THE SAME THREAD.
+	//
+	// @param to - owner of the excepted thread
+	void drainExclusive(TrieadOwner *to)
+	{
+		requestDrainExclusive(to);
+		waitDrain();
+	}
+
 	// End the drain sequence.
-	// May not be called if the app is not ready, or will throw an Exception.
 	void undrain();
 
 	// }
@@ -390,7 +428,6 @@ protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_
 
-		// XXX TODO figure out the destruction sequence
 		// Condvar for waiting for any sleepers to wake up and go away.
 		// pw::pchaincond freecond_; // all chained from the App's mutex_
 	private:
@@ -452,6 +489,10 @@ protected:
 	// @param tname - name of the thread that initiated the check,
 	//        for the App abort
 	void checkLoopsL(const string &tname);
+
+	// The common part of logic for shared and exclusive drain.
+	// @param t - excepted thread for exclusive, or NULL for shared
+	void requestDrainCommon(Triead *exct);
 
 protected:
 	// The internal machinery of the topological loop finding.
@@ -564,7 +605,9 @@ protected:
 	bool shutdown_; // flag: has been requested to shut down
 
 	Autoref<DrainApp> drain_; // the drain synchronization event (has its own mutex!)
-	int drainCnt_;; // count of active drain requests, the app won't be undrained until it goes to 0
+	pw::prwlock drainRw_; // synchronize shared/exclusive drains
+	Triead *drainExcept_; // drain all threads except this one (exclusively)
+	int drainCnt_; // count of active drain requests, the app won't be undrained until it goes to 0
 
 private:
 	App();

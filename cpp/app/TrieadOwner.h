@@ -421,6 +421,37 @@ public:
 	// the thread as dead.
 	void mainLoop();
 
+	// The convenience wrapper interface for drains. 
+	// See the long descriptions in App.
+	void requestDrainShared()
+	{
+		app_->requestDrain();
+	}
+	void requestDrainExclusive()
+	{
+		app_->requestDrainExclusive(this);
+	}
+	void waitDrain()
+	{
+		app_->waitDrain();
+	}
+	bool isDrained()
+	{
+		return app_->isDrained();
+	}
+	void drainShared()
+	{
+		app_->drain();
+	}
+	void drainExclusive()
+	{
+		app_->drainExclusive(this);
+	}
+	void undrain()
+	{
+		app_->undrain();
+	}
+
 protected:
 	// Called through App::makeTriead().
 	// Creates the thread's "main" same-named unit.

@@ -919,7 +919,6 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 
 	// ----------------------------------------------------------------------
 
-	
 	{
 		string msg;
 		try {
@@ -943,4 +942,6 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 // XXX add threads that get completely thrown away when dead, group them into fragments
 // XXX add adopting of nexuses from another app
 // XXX do a scoped drain object
+// XXX always do the exclusive drains through TrieadOwner?
 // XXX drain except a single thread that can then be used to inject data
+// XXX the _BEGIN_ and _END_ labels

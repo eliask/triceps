@@ -104,6 +104,7 @@ App::App(const string &name) :
 	aliveCnt_(0),
 	shutdown_(false),
 	drain_(new DrainApp),
+	drainExcept_(NULL),
 	drainCnt_(0)
 {
 	computeDeadline(DEFAULT_TIMEOUT);
@@ -410,7 +411,7 @@ void App::markTrieadReadyL(TrieadUpd *upd, Triead *t)
 {
 	if (!t->isReady()) {
 		t->markReady();
-		if (drainCnt_)
+		if (drainCnt_ && t != drainExcept_)
 			t->drain();
 		if (shutdown_) {
 			t->requestDead(); // this thread was too late to the party
@@ -550,13 +551,27 @@ void App::waitReady()
 
 void App::requestDrain()
 {
+	drainRw_.rdlock();
+	requestDrainCommon(NULL);
+}
+
+void App::requestDrainExclusive(TrieadOwner *to)
+{
+	drainRw_.wrlock();
+	requestDrainCommon(to->get());
+}
+
+void App::requestDrainCommon(Triead *exct)
+{
 	pw::lockmutex lm(mutex_);
+
+	drainExcept_ = exct;
 
 	if (++drainCnt_ == 1) {
 		drain_->init();
 		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
 			Triead *t = it->second->t_;
-			if (t != NULL && t->isReady())
+			if (t != NULL && t != drainExcept_ && t->isReady())
 				t->drain();
 		}
 		drain_->initDone();
@@ -577,15 +592,18 @@ bool App::isDrained()
 
 void App::undrain()
 {
-	pw::lockmutex lm(mutex_);
+	{
+		pw::lockmutex lm(mutex_);
 
-	if (--drainCnt_ == 0) {
-		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
-			Triead *t = it->second->t_;
-			if (t != NULL && t->isReady())
-				t->undrain();
+		if (--drainCnt_ == 0) {
+			for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+				Triead *t = it->second->t_;
+				if (t != NULL && t != drainExcept_ && t->isReady())
+					t->undrain();
+			}
 		}
 	}
+	drainRw_.unlock();
 }
 
 void App::checkLoopsL(const string &tname)
