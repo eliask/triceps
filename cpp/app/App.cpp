@@ -405,6 +405,8 @@ void App::markTrieadReadyL(Triead *t)
 			ready_.signal();
 			checkLoopsL(t->getName());
 		}
+		if (drainCnt_)
+			t->drain();
 		if (shutdown_)
 			t->requestDead(); // this thread was too late to the party
 	}
@@ -543,14 +545,12 @@ void App::requestDrain()
 {
 	pw::lockmutex lm(mutex_);
 
-	if (!isReady()) {
-		throw Exception::fTrace("Application '%s' can not be drained while it is not ready.", name_.c_str());
-	}
-
 	if (++drainCnt_ == 1) {
 		drain_->init();
 		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
-			it->second->t_->drain();
+			Triead *t = it->second->t_;
+			if (t != NULL && t->isReady())
+				t->drain();
 		}
 		drain_->initDone();
 	}
@@ -560,16 +560,11 @@ void App::waitDrain()
 {
 	// no app mutex!
 
-	if (!isReady()) {
-		throw Exception::fTrace("Application '%s' can not wait for drain while it is not ready.", name_.c_str());
-	}
-
 	drain_->wait();
 }
 
 bool App::isDrained()
 {
-	// here don't care about isReady() because the check is transient
 	return drain_->isDrained();
 }
 
@@ -577,13 +572,11 @@ void App::undrain()
 {
 	pw::lockmutex lm(mutex_);
 
-	if (!isReady()) {
-		throw Exception::fTrace("Application '%s' can not be undrained while it is not ready.", name_.c_str());
-	}
-
 	if (--drainCnt_ == 0) {
 		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
-			it->second->t_->undrain();
+			Triead *t = it->second->t_;
+			if (t != NULL && t->isReady())
+				t->undrain();
 		}
 	}
 }

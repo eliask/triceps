@@ -481,6 +481,153 @@ UTESTCASE drain_loop(Utest *utest)
 	restore_uncatchable();
 }
 
-// XXX when drained, the new threads should also be created drained
+// mark the App as drained, then add threads;
+// also do the drains with indefined (but declared) threads
+UTESTCASE drain_unready(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<ForwardLabel> fwd2a;
+	Autoref<ForwardLabel> fwd2c;
+	Autoref<ForwardLabel> fwd3b;
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+
+	a1->declareTriead("t1");
+	a1->declareTriead("t2");
+
+	a1->requestDrain(); // must not crash
+	UT_ASSERT(a1->isDrained()); // since only the ready threads are included
+
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1"); // will be input-only
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2"); // t2 and t3 will form a loop
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
+
+	// start with a writer
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	// a non-exported facet, to try the calls on it
+	Autoref<Facet> fa1z = ow1->makeNexusNoImport("nxz")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	ow1->markReady(); // ---
+	UT_ASSERT(ow1->get()->isInputOnly());
+
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+
+	Autoref<Facet> fa2b = ow2->makeNexusWriter("nxb")
+		->addLabel("one", rt1)
+		->complete()
+	;
+	Autoref<Facet> fa2c = ow2->makeNexusReader("nxc")
+		->addLabel("one", rt1)
+		->setReverse()
+		->complete()
+	;
+
+	// connect through from readers to writer
+	fwd2a = new ForwardLabel(ow2->unit(), rt1, "fwd2a", 
+		fa2b->getFnReturn()->getLabel("one"));
+	fa2a->getFnReturn()->getLabel("one")->chain(fwd2a);
+
+	fwd2c = new ForwardLabel(ow2->unit(), rt1, "fwd2c", 
+		fa2b->getFnReturn()->getLabel("one"));
+	fa2c->getFnReturn()->getLabel("one")->chain(fwd2c);
+
+	ow2->markReady(); // ---
+	UT_ASSERT(!ow2->get()->isInputOnly());
+
+	Autoref<Facet> fa3b = ow3->importReader("t2", "nxb", "");
+	Autoref<Facet> fa3c = ow3->importWriter("t2", "nxc", "");
+
+	fwd3b = new ForwardLabel(ow3->unit(), rt1, "fwd3b", 
+		fa3c->getFnReturn()->getLabel("one"));
+	fa3b->getFnReturn()->getLabel("one")->chain(fwd3b);
+
+	ow3->markReady(); // ---
+	UT_ASSERT(!ow3->get()->isInputOnly());
+
+	ow1->readyReady();
+	ow2->readyReady();
+	ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	UT_ASSERT(!a1->isDrained());
+	
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(ow3);
+
+	a1->waitDrain(); // should succeed now
+
+	// declare one more thread, which would be still drained
+	a1->declareTriead("t4");
+	UT_ASSERT(a1->isDrained());
+
+	a1->undrain(); // must not crash with an undefined thread
+
+	// ----------------------------------------------------------------------
+
+	a1->requestDrain();
+	UT_ASSERT(a1->isDrained());
+
+	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+	UT_ASSERT(a1->isDrained());
+	
+	Autoref<TrieadOwner> ow5 = a1->makeTriead("t5");
+	UT_ASSERT(a1->isDrained());
+	
+	// ow4 will be an input-only thread
+	Autoref<Facet> fa4d = ow4->makeNexusWriter("nxd")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	// ow5 will have a reader
+	Autoref<Facet> fa5a = ow5->importReader("t1", "nxa", "");
+
+	ow4->markReady();
+	UT_ASSERT(a1->isDrained()); // still drained, since it's input-only
+	ow5->markReady();
+	UT_ASSERT(!a1->isDrained()); // undrained, since it's not in the reading loop
+
+	ow4->readyReady();
+	ow5->readyReady();
+
+	Autoref<LoopPthread> pt5 = new LoopPthread("t5");
+	pt5->start(ow5);
+
+	a1->waitDrain(); // became drained by entering the main loop
+
+	// ----------------------------------------------------------------------
+
+	ow1->markDead(); // ow1 is controlled manually
+	ow4->markDead(); // ow4 is controlled manually
+	a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
 // XXX add threads that get completely thrown away when dead
 // XXX add adopting of nexuses from another app
+// XXX do a scoped drain object
+// XXX drain except a single thread that can then be used to inject data
