@@ -10,7 +10,16 @@
 
 namespace TRICEPS_NS {
 
+TrieadJoin::TrieadJoin():
+	fi_(new FileInterrupt)
+{ }
+
 TrieadJoin::~TrieadJoin()
 { }
+
+void TrieadJoin::interrupt()
+{
+	fi_->interrupt();
+}
 
 }; // TRICEPS_NS

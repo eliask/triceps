@@ -56,6 +56,9 @@ public:
 	// If after exit the thread is not marked as ready, it will
 	// abort the App.
 	//
+	// Since this class inherits from TrieadJoin, the FileInterrupt
+	// object is available as the field fi_.
+	//
 	// If the method thows a Triceps::Exception, it will be
 	// caught and converted to the App abort.
 	//

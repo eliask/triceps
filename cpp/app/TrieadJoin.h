@@ -11,6 +11,7 @@
 
 #include <common/Common.h>
 #include <mem/Mtarget.h>
+#include <app/FileInterrupt.h>
 
 namespace TRICEPS_NS {
 
@@ -25,6 +26,9 @@ namespace TRICEPS_NS {
 class TrieadJoin: public Mtarget
 {
 public:
+	// Creates and remembers a file interruptor object.
+	TrieadJoin();
+
 	virtual ~TrieadJoin();
 
 	// Perform a join() on the thread identity stored in this object.
@@ -36,9 +40,20 @@ public:
 	// about to exit.
 	virtual void join() = 0;
 	
-	// XXX also provide some way to tell the thread that it should exit
-	// by calling a custom user function (to revoke the input file
-	// descriptors and such)
+	// Tell the thread that it should exit by interrupting its
+	// wait on the external inputs.
+	// The default implementation works by revoking the file descriptors.
+	// But the subclass may override or extend it.
+	virtual void interrupt();
+
+	// Get the file interruptor object.
+	FileInterrupt *fileInterrupt() const
+	{
+		return fi_.get();
+	}
+
+protected:
+	Autoref<FileInterrupt> fi_; // may be NULL
 };
 
 }; // TRICEPS_NS

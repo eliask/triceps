@@ -172,8 +172,11 @@ void App::shutdown()
 		shutdown_ = true;
 		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
 			Triead *t = it->second->t_;
-			if (t->isReady())
+			if (t->isReady()) {
 				t->requestDead();
+				if (it->second->j_) // interrupt in case if it's sleeping on input
+					it->second->j_->interrupt();
+			}
 		}
 	}
 }
@@ -407,8 +410,12 @@ void App::markTrieadReadyL(Triead *t)
 		}
 		if (drainCnt_)
 			t->drain();
-		if (shutdown_)
+		if (shutdown_) {
 			t->requestDead(); // this thread was too late to the party
+			TrieadUpdMap::iterator it = threads_.find(t->getName());
+			if (it == threads_.end() && it->second->j_)
+				it->second->j_->interrupt();
+		}
 	}
 }
 
