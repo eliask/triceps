@@ -6,6 +6,7 @@
 //
 // Test of the App running.
 
+#include <assert.h>
 #include <utest/Utest.h>
 #include <type/AllTypes.h>
 #include "AppTest.h"
@@ -623,6 +624,226 @@ UTESTCASE drain_unready(Utest *utest)
 	a1->shutdown(); // request all the threads to die, and draining doesn't stop it
 
 	a1->harvester();
+
+	restore_uncatchable();
+}
+
+class MainLoopPthread : public BasicPthread
+{
+public:
+	MainLoopPthread(const string &name):
+		BasicPthread(name)
+	{ 
+	}
+
+	// overrides BasicPthread::start
+	virtual void execute(TrieadOwner *to)
+	{
+		to->mainLoop(); // test of mainLoop
+	}
+};
+
+// a thread that sleeps on a file opeation, it makes a pipe
+// from which attempts to read
+class FdPthread : public BasicPthread
+{
+public:
+	FdPthread(const string &name):
+		BasicPthread(name),
+		bytes_(0),
+		loops_(0),
+		raw_errno_(0),
+		errno_(0),
+		exit_(0)
+	{ }
+
+	// overrides BasicPthread::start
+	virtual void execute(TrieadOwner *to)
+	{
+		assert(pipe(fd_) == 0);
+
+		readyOpen_.signal();
+		mayOpen_.wait();
+
+		fi_->openFd(fd_[0]);
+		fi_->openFd(fd_[1]);
+
+		readyLoop_.signal();
+		mayLoop_.signal();
+
+		while (!exit_ && !to->isRqDead()) {
+			++loops_;
+			char bf[10];
+			int len  = read(fd_[0], bf, sizeof(bf));
+			if (len < 0) {
+				raw_errno_ = errno;
+				if (to->isRqDead())
+					break; // interrupt
+				errno_ = raw_errno_; // properly ignoring the error from interruption
+			} else if (len == 0) {
+				break; // EOF
+			} else {
+				bytes_ += len; // normal read
+			}
+		}
+
+		fi_->closeFd(fd_[0]);
+		fi_->closeFd(fd_[1]);
+
+		readyClose_.signal();
+		mayClose_.signal();
+
+		close(fd_[0]);
+		close(fd_[1]);
+	}
+
+	int fd_[2]; // read, write
+	int bytes_; // number of bytes read
+	int loops_; // number of loops done
+	int raw_errno_; // as reported by the system call
+	int errno_; // ignoring the errors from interruption
+	int exit_; // can be used to exit the loop early
+	pw::event2 readyOpen_, readyLoop_, readyClose_; // signals when ready to do the next step
+	pw::event2 mayOpen_, mayLoop_, mayClose_; // waits until allowed to do the next step
+};
+
+
+// the interruption of file operations on shutdown, before files are reported open
+UTESTCASE interrupt_fd_open(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	Autoref<FdPthread> pt1 = new FdPthread("t1");
+	pt1->start(tt.ow1);
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<MainLoopPthread> pt3 = new MainLoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// ----------------------------------------------------------------------
+
+	// syncronize the interrupt at before open
+	pt1->readyOpen_.wait();
+
+	tt.a1->shutdown(); // request all the threads to die
+
+	pt1->mayOpen_.signal();
+	pt1->mayLoop_.signal();
+	pt1->mayClose_.signal();
+
+	// ----------------------------------------------------------------------
+
+	tt.a1->harvester();
+
+	UT_IS(pt1->loops_, 0);
+
+	restore_uncatchable();
+}
+
+// the interruption of file operations on shutdown, while in the loop
+UTESTCASE interrupt_fd_loop(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	Autoref<FdPthread> pt1 = new FdPthread("t1");
+	pt1->start(tt.ow1);
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<MainLoopPthread> pt3 = new MainLoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// ----------------------------------------------------------------------
+
+	pt1->mayOpen_.signal();
+
+	// syncronize the interrupt inside the loop
+	pt1->readyLoop_.wait();
+	pt1->mayLoop_.signal();
+
+	// no way to tell reliably that the thread is sleeping, so do a guess
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	// sleep(1); // if want to be extra sure
+
+	tt.a1->shutdown(); // request all the threads to die
+
+	pt1->mayClose_.signal();
+
+	// ----------------------------------------------------------------------
+
+	tt.a1->harvester();
+
+	UT_IS(pt1->loops_, 1);
+
+	restore_uncatchable();
+}
+
+// the interruption of file operations on shutdown, before files are reported closed
+UTESTCASE interrupt_fd_close(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	Autoref<FdPthread> pt1 = new FdPthread("t1");
+	pt1->start(tt.ow1);
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<MainLoopPthread> pt3 = new MainLoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// ----------------------------------------------------------------------
+
+	// syncronize the interrupt at before close
+	pt1->exit_ = 1;
+	pt1->mayOpen_.signal();
+	pt1->mayLoop_.signal();
+
+	pt1->readyClose_.wait();
+
+	tt.a1->shutdown(); // request all the threads to die
+
+	pt1->mayClose_.signal();
+
+	// ----------------------------------------------------------------------
+
+	tt.a1->harvester();
+
+	UT_IS(pt1->loops_, 0);
 
 	restore_uncatchable();
 }
