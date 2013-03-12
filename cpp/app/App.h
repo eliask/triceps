@@ -408,6 +408,9 @@ protected:
 	// Internal version that relies on mutex_ being already locked.
 	void abortByL(const string &tname, const string &msg);
 
+	// Internal version that relies on mutex_ being already locked.
+	void shutdownL();
+
 	// Check whether the app was marked as aborted.
 	// Relies on mutex_ being already locked.
 	bool isAbortedL() const

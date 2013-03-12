@@ -697,6 +697,13 @@ public:
 		close(fd_[1]);
 	}
 
+	void mayAll() // enable to proceed without detailed synchronization
+	{
+		mayOpen_.signal();
+		mayLoop_.signal();
+		mayClose_.signal();
+	}
+
 	int fd_[2]; // read, write
 	int bytes_; // number of bytes read
 	int loops_; // number of loops done
@@ -848,9 +855,92 @@ UTESTCASE interrupt_fd_close(Utest *utest)
 	restore_uncatchable();
 }
 
-// XXX add threads that get completely thrown away when dead
+// the abort shuts down the running threads
+UTESTCASE shutdown_on_abort(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	Autoref<FdPthread> pt1 = new FdPthread("t1");
+	pt1->start(tt.ow1);
+	pt1->mayAll();
+
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<MainLoopPthread> pt3 = new MainLoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// ----------------------------------------------------------------------
+
+	// give the threads a little time...
+	pt1->readyLoop_.wait();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+
+	// create an abort by adding a thread that will induce an illegal loop
+	Autoref<TrieadOwner> ow4 = tt.a1->makeTriead("t4");
+	ow4->importWriter("t1", "nxa", "");
+	ow4->importReader("t2", "nxb", "");
+	{
+		string msg;
+		try {
+			ow4->readyReady(); // will abort here
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, 
+			"In application 'a1' detected an illegal direct loop:\n"
+			"  thread 't2'\n"
+			"  nexus 't2/nxb'\n"
+			"  thread 't4'\n"
+			"  nexus 't1/nxa'\n"
+			"  thread 't2'\n"
+		);
+	}
+
+	// ----------------------------------------------------------------------
+
+	
+	{
+		string msg;
+		try {
+			tt.a1->harvester(); // throws after it's done
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg,
+			"App 'a1' has been aborted by thread 't4': In application 'a1' detected an illegal direct loop:\n"
+			"  thread 't2'\n"
+			"  nexus 't2/nxb'\n"
+			"  thread 't4'\n"
+			"  nexus 't1/nxa'\n"
+			"  thread 't2'\n"
+		);
+	}
+
+	restore_uncatchable();
+}
+
+// XXX add threads that get completely thrown away when dead, group them into fragments
 // XXX add adopting of nexuses from another app
 // XXX do a scoped drain object
 // XXX drain except a single thread that can then be used to inject data
-// XXX test an exception on loop topology when thread becomes ready and drained or shutting down
-// XXX an App abort should also include a shutdown request

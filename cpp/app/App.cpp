@@ -168,6 +168,11 @@ void App::waitDead()
 void App::shutdown()
 {
 	pw::lockmutex lm(mutex_);
+	shutdownL();
+}
+
+void App::shutdownL()
+{
 	if (!shutdown_) {
 		shutdown_ = true;
 		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
@@ -286,6 +291,8 @@ void App::abortByL(const string &tname, const string &msg)
 
 	abortedBy_ = tname; // mark as aborted
 	abortedMsg_ = msg;
+
+	shutdownL(); // in case if some threads are already running, shut all of them down
 
 	// now wake up all the sleepers
 	ready_.signal();
