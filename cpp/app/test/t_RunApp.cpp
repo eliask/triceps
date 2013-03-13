@@ -460,7 +460,7 @@ UTESTCASE drain_loop(Utest *utest)
 
 	// request a drain
 	UT_ASSERT(!tt.a1->isDrained());
-	tt.a1->requestDrain();
+	tt.ow1->requestDrainShared(); // for a difference, go through TrieadOwner
 	UT_ASSERT(!tt.a1->isDrained());
 
 	// let the loop run a little to see that it's not interrupted
@@ -470,12 +470,14 @@ UTESTCASE drain_loop(Utest *utest)
 	UT_ASSERT(!tt.a1->isDrained()); // and sure enough, still not drained
 
 	tt.fwd2c->disable(); // break the loop
-	tt.a1->waitDrain(); // should succeed now
+	tt.ow1->waitDrain(); // should succeed now
 
 	// ----------------------------------------------------------------------
 
 	tt.ow1->markDead(); // ow1 is controlled manually
 	tt.a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	tt.ow1->undrain(); // doesn't matter by now but just test the call
 
 	tt.a1->harvester();
 
@@ -624,6 +626,187 @@ UTESTCASE drain_unready(Utest *utest)
 	a1->shutdown(); // request all the threads to die, and draining doesn't stop it
 
 	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// drain with exception of a thread
+UTESTCASE drain_except(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// request a drain
+	UT_ASSERT(!tt.a1->isDrained());
+	tt.ow1->requestDrainExclusive();
+	tt.a1->waitDrain();
+
+	// still can send from ow1 and initiate an endless loop between t2 and t3
+	tt.ow1->unit()->call(new Rowop(tt.fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, tt.r1));
+	UT_ASSERT(tt.ow1->flushWriters());
+	UT_ASSERT(!tt.a1->isDrained()); // not drained any more
+
+	// let the loop run a little to see that it's not interrupted
+	unsigned start = (unsigned)pt2->cnt_.get();
+	while (((unsigned)pt2->cnt_.get() - start) < 100)
+		sched_yield();
+	UT_ASSERT(!tt.a1->isDrained()); // and sure enough, still not drained
+
+	tt.fwd2c->disable(); // break the loop
+	tt.a1->waitDrain(); // should succeed now
+
+	// ----------------------------------------------------------------------
+
+	tt.ow1->markDead(); // ow1 is controlled manually
+	tt.a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	tt.a1->harvester();
+
+	restore_uncatchable();
+}
+
+class DrainParallelT: public Mtarget, public pw::pwthread
+{
+public:
+	// will write this xtray to this queue at this id
+	DrainParallelT(App *app):
+		app_(app),
+		drained_(false)
+	{ }
+
+	virtual void *execute()
+	{
+		app_->drain();
+		drained_ = true;
+		app_->undrain();
+		return NULL;
+	}
+
+	Autoref<App> app_;
+	bool drained_;
+};
+
+class DrainExclusiveT: public Mtarget, public pw::pwthread
+{
+public:
+	// will write this xtray to this queue at this id
+	DrainExclusiveT(TrieadOwner *to):
+		to_(to),
+		drained_(false)
+	{ }
+
+	virtual void *execute()
+	{
+		to_->drainExclusive();
+		drained_ = true;
+		to_->undrain();
+		return NULL;
+	}
+
+	Autoref<TrieadOwner> to_;
+	bool drained_;
+};
+
+// Multiple parallel drain requests
+UTESTCASE drain_parallel(Utest *utest)
+{
+	make_catchable();
+
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	// the background to comply with draining
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(tt.ow3);
+
+	// ----------------------------------------------------------------------
+
+	// get a shared drain
+	tt.a1->drain();
+	tt.a1->drain(); // do it recursevly a coule more times
+	tt.a1->drain();
+
+	// an exclusive drain will wait
+	Autoref<DrainExclusiveT> dt0 = new DrainExclusiveT(tt.ow1);
+	dt0->start();
+	
+	// the other shared drain will succeed
+	Autoref<DrainParallelT> dt1 = new DrainParallelT(tt.a1);
+	dt1->start();
+	Autoref<DrainParallelT> dt2 = new DrainParallelT(tt.a1);
+	dt2->start();
+
+	dt1->join();
+	dt2->join();
+
+	// check that the exclusive drain still waits
+	UT_ASSERT(!dt0->drained_);
+	tt.a1->undrain();
+	sched_yield();
+	sched_yield();
+	tt.a1->undrain();
+	sched_yield();
+	sched_yield();
+	UT_ASSERT(!dt0->drained_);
+	tt.a1->undrain();
+
+	dt0->join(); // now the exclusive drain succeeded
+
+	// ----------------------------------------------------------------------
+
+	// get an exclusive drain
+	tt.ow1->drainExclusive();
+
+	// an exclusive drain will wait
+	Autoref<DrainExclusiveT> dt3 = new DrainExclusiveT(tt.ow1);
+	dt3->start();
+	
+	// a shared drain will wait too
+	Autoref<DrainParallelT> dt4 = new DrainParallelT(tt.a1);
+	dt4->start();
+
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+	sched_yield();
+
+	UT_ASSERT(!dt3->drained_);
+	UT_ASSERT(!dt4->drained_);
+
+	tt.ow1->undrain(); // undraining will leth them both through, one by one
+	dt3->join();
+	dt4->join();
+
+	// ----------------------------------------------------------------------
+
+	tt.ow1->markDead(); // ow1 is controlled manually
+	tt.a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	tt.a1->harvester();
 
 	restore_uncatchable();
 }
@@ -943,5 +1126,4 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 // XXX add adopting of nexuses from another app
 // XXX do a scoped drain object
 // XXX always do the exclusive drains through TrieadOwner?
-// XXX drain except a single thread that can then be used to inject data
 // XXX the _BEGIN_ and _END_ labels
