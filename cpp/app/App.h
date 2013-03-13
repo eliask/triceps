@@ -615,8 +615,6 @@ private:
 	void operator=(const App &);
 };
 
-// XXX add a class for scoped drain
-
 }; // TRICEPS_NS
 
 #endif // __Triceps_App_h__

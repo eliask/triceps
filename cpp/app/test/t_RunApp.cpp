@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <utest/Utest.h>
 #include <type/AllTypes.h>
+#include <app/AppDrain.h>
 #include "AppTest.h"
 
 // Call the nextXtray() recursive to test the exception.
@@ -743,30 +744,27 @@ UTESTCASE drain_parallel(Utest *utest)
 
 	// get a shared drain
 	tt.a1->drain();
-	tt.a1->drain(); // do it recursevly a coule more times
-	tt.a1->drain();
-
-	// an exclusive drain will wait
 	Autoref<DrainExclusiveT> dt0 = new DrainExclusiveT(tt.ow1);
-	dt0->start();
-	
-	// the other shared drain will succeed
-	Autoref<DrainParallelT> dt1 = new DrainParallelT(tt.a1);
-	dt1->start();
-	Autoref<DrainParallelT> dt2 = new DrainParallelT(tt.a1);
-	dt2->start();
+	{
+		// do it recursevly a coule more times, with scoped varieties
+		Autoref<AutoDrainShared> ad1 = new AutoDrainShared(tt.a1);
+		AutoDrainShared ad2(tt.ow1);
 
-	dt1->join();
-	dt2->join();
+		// an exclusive drain will wait
+		dt0->start();
+		
+		// the other shared drain will succeed
+		Autoref<DrainParallelT> dt1 = new DrainParallelT(tt.a1);
+		dt1->start();
+		Autoref<DrainParallelT> dt2 = new DrainParallelT(tt.a1);
+		dt2->start();
 
+		dt1->join();
+		dt2->join();
+
+		UT_ASSERT(!dt0->drained_);
+	}
 	// check that the exclusive drain still waits
-	UT_ASSERT(!dt0->drained_);
-	tt.a1->undrain();
-	sched_yield();
-	sched_yield();
-	tt.a1->undrain();
-	sched_yield();
-	sched_yield();
 	UT_ASSERT(!dt0->drained_);
 	tt.a1->undrain();
 
@@ -774,30 +772,31 @@ UTESTCASE drain_parallel(Utest *utest)
 
 	// ----------------------------------------------------------------------
 
-	// get an exclusive drain
-	tt.ow1->drainExclusive();
-
-	// an exclusive drain will wait
 	Autoref<DrainExclusiveT> dt3 = new DrainExclusiveT(tt.ow1);
-	dt3->start();
-	
-	// a shared drain will wait too
 	Autoref<DrainParallelT> dt4 = new DrainParallelT(tt.a1);
-	dt4->start();
+	{
+		// get an exclusive drain with a scope
+		AutoDrainExclusive ad3(tt.ow1);
 
-	sched_yield();
-	sched_yield();
-	sched_yield();
-	sched_yield();
-	sched_yield();
-	sched_yield();
-	sched_yield();
-	sched_yield();
+		// an exclusive drain will wait
+		dt3->start();
+		
+		// a shared drain will wait too
+		dt4->start();
 
-	UT_ASSERT(!dt3->drained_);
-	UT_ASSERT(!dt4->drained_);
+		sched_yield();
+		sched_yield();
+		sched_yield();
+		sched_yield();
+		sched_yield();
+		sched_yield();
+		sched_yield();
+		sched_yield();
 
-	tt.ow1->undrain(); // undraining will leth them both through, one by one
+		UT_ASSERT(!dt3->drained_);
+		UT_ASSERT(!dt4->drained_);
+	}
+	// undraining will leth them both through, one by one
 	dt3->join();
 	dt4->join();
 
