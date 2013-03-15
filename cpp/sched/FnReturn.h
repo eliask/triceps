@@ -16,6 +16,8 @@
 
 namespace TRICEPS_NS {
 
+class Facet;
+
 // The concept of the streaming function is:
 // You call some label(s), that performs some streaming computations and 
 // produces the result on some other labels. Before you do the call, you
@@ -75,6 +77,7 @@ protected:
 	// to the final destination.
 	class RetLabel : public Label
 	{
+		friend class FnReturn;
 	public:
 		// @param unit - the unit where this label belongs
 		// @param rtype - type of row to be handled by this label
@@ -94,6 +97,8 @@ protected:
 
 		FnReturn *fnret_; // not a ref, to avoid cyclic refs
 		int idx_; // index in fnret_ to which to forward
+		bool isBegin_; // this label represents a _BEGIN_ in a Facet
+		bool isEnd_; // this label represents an _END_ in a Facet
 	};
 
 public:
@@ -351,9 +356,14 @@ protected:
 		xtray_.swap(other);
 	}
 
+	// Set the relation to a Facet.
+	// Sets facet_ and the flags in the labels that represent _BEGIN_ and _END_.
+	void setFacet(Facet *fa);
+
 	// }
 
 	Unit *unit_; // not a reference, used only to create the labels
+	Facet *facet_; // not a reference, the facet that wraps this object, or NULL; set directly by Facet
 	string name_; // human-readable name, and base for the label names
 	Autoref<RowSetType> type_;
 	Autoref<FnContext> context_;

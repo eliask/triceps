@@ -126,4 +126,10 @@ bool CompactRowType::equalRows(const Row *row1, const Row *row2) const
 	return memcmp(cr1->off_, cr2->off_, len1) == 0;
 }
 
+bool CompactRowType::isRowEmpty(const Row *row) const
+{
+	const CompactRow *cr = static_cast<const CompactRow *>(row);
+	return cr->isRowEmpty((int)fields_.size());
+}
+
 }; // TRICEPS_NS

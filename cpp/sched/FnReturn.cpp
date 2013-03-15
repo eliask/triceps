@@ -8,11 +8,13 @@
 
 #include <sched/FnReturn.h>
 #include <sched/Unit.h>
+#include <app/Facet.h>
 
 namespace TRICEPS_NS {
 
 FnReturn::FnReturn(Unit *unit, const string &name) :
 	unit_(unit),
+	facet_(NULL),
 	name_(name),
 	type_(new RowSetType),
 	initialized_(false)
@@ -183,6 +185,22 @@ void FnReturn::pop(Onceref<FnBinding> bind)
 	stack_.pop_back();
 }
 
+void FnReturn::setFacet(Facet *fa)
+{
+	facet_ = fa;
+	if (fa != NULL) {
+		int i;
+
+		i = fa->beginIdx();
+		if (i >= 0 && i < labels_.size())
+			labels_[i]->isBegin_ = true;
+
+		i = fa->endIdx();
+		if (i >= 0 && i < labels_.size())
+			labels_[i]->isEnd_ = true;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // FnContext
 
@@ -197,7 +215,9 @@ FnReturn::RetLabel::RetLabel(Unit *unit, const_Onceref<RowType> rtype, const str
 ) :
 	Label(unit, rtype, name),
 	fnret_(fnret),
-	idx_(idx)
+	idx_(idx),
+	isBegin_(false),
+	isEnd_(false)
 { }
 
 void FnReturn::RetLabel::execute(Rowop *arg) const
@@ -205,10 +225,29 @@ void FnReturn::RetLabel::execute(Rowop *arg) const
 	// first see if the cross-nexus procesisng needs to be done
 	{
 		Xtray *xtray = fnret_->xtray_;
-		if (xtray != NULL) {
-			xtray->push_back(idx_, arg->getRow(), arg->getOpcode());
+		if (xtray != NULL) { // this means a writer facet
+			if (isBegin_) {
+				if (!xtray->empty()) {
+					// beginning of the next transaction flushes the last transaction
+					fnret_->facet_->flushWriter();
+					if ((xtray = fnret_->xtray_) == NULL)
+						goto done_xtray;
+				}
+				if (!type_->isRowEmpty(arg->getRow()) || arg->getOpcode() != Rowop::OP_INSERT) // add the non-empty _BEGIN_ into the Xtray
+					xtray->push_back(idx_, arg->getRow(), arg->getOpcode());
+			} else if (isEnd_) {
+				if (!type_->isRowEmpty(arg->getRow()) || arg->getOpcode() != Rowop::OP_INSERT) // add the non-empty _END_ into the Xtray
+					xtray->push_back(idx_, arg->getRow(), arg->getOpcode());
+				// flush right away
+				if (!xtray->empty()) {
+					fnret_->facet_->flushWriter();
+				}
+			} else {
+				xtray->push_back(idx_, arg->getRow(), arg->getOpcode());
+			}
 		}
 	}
+done_xtray:
 
 	// then the local processing
 	if (fnret_->stack_.empty())

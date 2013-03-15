@@ -34,6 +34,9 @@ public:
 	typedef Nexus::RowTypeMap RowTypeMap;
 	typedef Nexus::TableTypeMap TableTypeMap;
 
+	static const string BEGIN; // the _BEGIN_ label name
+	static const string END; // the _END_ label name
+
 	// Build API, used to build the facet for export
 	// {
 
@@ -217,6 +220,18 @@ public:
 		return nexus_;
 	}
 
+	// Index of the _BEGIN_ label in the FnReturn.
+	int beginIdx() const
+	{
+		return beginIdx_;
+	}
+
+	// Index of the _END_ label in the FnReturn.
+	int endIdx() const
+	{
+		return endIdx_;
+	}
+
 	// If this facet is a writer and has a non-empty Xqueue,
 	// flushes it to the nexus. Otherwise does nothing.
 	//
@@ -295,6 +310,7 @@ protected:
 	Autoref<QueEvent> qev_;  // the thread's queue notifications
 	bool writer_; // Flag: this thread is writing into the nexus;
 		// ignored in the non-imported facets
+	bool inputTriead_; // this writer belongs to an input-only thread
 
 	Erref err_; // the collected errors
 
@@ -305,10 +321,11 @@ protected:
 	RowTypeMap rowTypes_; // the collection of row types
 	TableTypeMap tableTypes_; // the collection of table types
 	int queueLimit_; // the queue size limit for the nexus
+	int beginIdx_; // index of the _BEGIN_ label
+	int endIdx_; // index of the _END_ label
 	bool reverse_; // flag: this nexus's main queue is pointed upwards
 	bool unicast_; // flag: each row goes to only one reader, as opposed to copied to all readers
 	bool appReady_; // flag: the App is ready, so the data passing can be done
-	bool inputTriead_; // this writer belongs to an input-only thread
 
 private:
 	Facet();

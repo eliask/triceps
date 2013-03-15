@@ -11,17 +11,44 @@
 
 namespace TRICEPS_NS {
 
+const string Facet::BEGIN("_BEGIN_");
+const string Facet::END("_END_");
+static const string *BeginEnd[2] = { &Facet::BEGIN, &Facet::END };
+
 Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	writer_(writer),
+	inputTriead_(false),
 	fret_(fret),
 	queueLimit_(DEFAULT_QUEUE_LIMIT),
 	reverse_(false),
 	unicast_(false),
-	appReady_(false),
-	inputTriead_(false)
+	appReady_(false)
 { 
-	if (!fret->isInitialized())
+	if (fret->facet_ != NULL) {
+		err_.f("Can not use the same FnReturn for two Facets.");
+		return;
+	}
+	if (fret->getUnitPtr() == NULL) {
+		err_.f("Can not use a cleared FnReturn to build a Facet.");
+		return;
+	}
+
+	fret->setFacet(this);
+
+	for (int i = 0; i < 2; i++) {
+		if (fret->findLabel(*BeginEnd[i]) < 0) {
+			if (fret->isInitialized()) {
+				err_.f("If the FnReturn is initialized, it must already contain the %s label.", BeginEnd[i]->c_str());
+			} else {
+				fret->addLabel(*BeginEnd[i], fret->getUnitPtr()->getEmptyRowType());
+			}
+		}
+	}
+	beginIdx_ = fret->findLabel(BEGIN);
+	endIdx_ = fret->findLabel(END);
+	if (!fret->isInitialized()) {
 		fret->initialize();
+	}
 	err_.fAppend(fret->getErrors(), "Errors in the underlying FnReturn:");
 
 	if (writer_ && fret_->isFaceted()) {
@@ -36,6 +63,8 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 	writer_(writer),
 	fret_(new FnReturn(unit, asname)), // will be filled in the body
 	queueLimit_(nx->queueLimit()),
+	beginIdx_(nx->beginIdx_),
+	endIdx_(nx->endIdx_),
 	reverse_(nx->isReverse()),
 	unicast_(nx->isUnicast())
 {
@@ -46,6 +75,7 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 	const RowSetType::NameVec &rsnames = rst->getRowNames();
 	const RowSetType::RowTypeVec &rstypes = rst->getRowTypes();
 	int rsz = rsnames.size();
+	fret_->setFacet(this);
 	for (int i = 0; i < rsz; i++)
 		fret_->addLabel(rsnames[i], holder->copy(rstypes[i]));
 	fret_->initialize(); // never fails
@@ -64,6 +94,7 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 
 Facet::~Facet()
 {
+	fret_->setFacet(NULL);
 	if (writer_ && fret_->isFaceted()) {
 		Autoref<Xtray> xtr(NULL);
 		fret_->swapXtray(xtr);

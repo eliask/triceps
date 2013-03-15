@@ -18,6 +18,8 @@ Nexus::Nexus(const string &tname, Facet *facet):
 	name_(facet->getShortName()),
 	// the "no limit" for reverse nexus translates to a very large limit
 	queueLimit_(facet->isReverse()? Xtray::QUE_ID_MAX: facet->queueLimit()),
+	beginIdx_(facet->beginIdx_),
+	endIdx_(facet->endIdx_),
 	reverse_(facet->isReverse()),
 	unicast_(facet->isUnicast())
 { 

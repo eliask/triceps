@@ -143,6 +143,7 @@ UTESTCASE x_data(Utest *utest)
 	fd1.push_back(Fdata(true, &v_string, sizeof(v_string)));
 
 	Rowref r1(rt1,  rt1->makeRow(fd1));
+	UT_ASSERT(!rt1->isRowEmpty(r1));
 
 	Rowref r2(rt1,  fd1);
 
@@ -174,6 +175,10 @@ UTESTCASE x_data(Utest *utest)
 	fd4.push_back(fdtmp);
 
 	Rowref r4(rt4,  fd4);
+
+	FdataVec fd5; // all empty
+	Rowref r5(rt1,  fd5);
+	UT_ASSERT(rt1->isRowEmpty(r5));
 }
 
 UTESTCASE parse_err(Utest *utest)

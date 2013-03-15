@@ -150,6 +150,8 @@ protected:
 	int nread_; // number of reader facets
 
 	int queueLimit_; // the queue size limit for the nexus
+	int beginIdx_; // index of the _BEGIN_ label
+	int endIdx_; // index of the _END_ label
 
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
 	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers

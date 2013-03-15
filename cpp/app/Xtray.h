@@ -96,6 +96,20 @@ public:
 		return ops_[idx];
 	}
 
+	// Get the idx of the first Op in the Xtray.
+	// May not be used if the Xtray is empty.
+	int frontIdx() const
+	{
+		return ops_.front().idx_;
+	}
+
+	// Get the idx of the last Op in the Xtray.
+	// May not be used if the Xtray is empty.
+	int backIdx() const
+	{
+		return ops_.back().idx_;
+	}
+
 protected:
 	Autoref<RowSetType> type_; // type of the nexus, also row types from it are used
 		// to un-reference the Rows and destroy them if needed

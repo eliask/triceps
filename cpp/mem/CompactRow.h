@@ -60,7 +60,7 @@ public:
 
 	// Calculate the pointer to payload, for the given number of fields
 	// @param numf - number of fields in this record
-	char *payloadPtrW(int numf)
+	char *payloadPtrW(int numf) const
 	{
 		return ((char *)off_) + payloadOffset(numf);
 	}
@@ -75,10 +75,21 @@ public:
 	}
 
 	// this is mostly for debugging
-	const int32_t &getOffset(int n)
+	const int32_t &getOffset(int n) const
 	{
 		return off_[n];
 	}
+
+	// Check whether the row is all empty, by checking that the total
+	// length of the payload is 0. Technically, the fields don't have to be
+	// marked as null for the row to be empty.
+	// @param numf - number of fields in this record
+	bool isRowEmpty(int numf) const
+	{
+		// the past-the-end offset never has the NULLMASK in it
+		return (off_[numf] == payloadOffset(numf));
+	}
+
 protected:
 	friend class CompactRowType;
 

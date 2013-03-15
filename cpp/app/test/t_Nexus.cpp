@@ -40,6 +40,9 @@ UTESTCASE make_facet(Utest *utest)
 	// this initializes the fret
 	UT_ASSERT(fret1->isInitialized());
 	UT_ASSERT(!fa1->isWriter());
+	// and adds the _BEGIN_/_END_ labels
+	UT_ASSERT(fret1->findLabel("_BEGIN_") >= 0);
+	UT_ASSERT(fret1->findLabel("_END_") >= 0);
 
 	UT_IS(fa1->getFnReturn(), fret1);
 	UT_IS(fa1->getShortName(), "fret1");
@@ -146,6 +149,8 @@ UTESTCASE make_facet(Utest *utest)
 		Erref err;
 
 		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("_BEGIN_", rt1)
+			->addLabel("_END_", rt1)
 			->addLabel("one", rt1)
 			->addLabel("two", rt1)
 		;
@@ -153,6 +158,7 @@ UTESTCASE make_facet(Utest *utest)
 		UT_ASSERT(!err->hasError());
 
 		fretbad->initialize();
+
 		Autoref<Xtray> xt1 = new Xtray(fretbad->getType());
 		FnReturnGuts::swapXtray(fretbad, xt1);
 		UT_ASSERT(fretbad->isFaceted());
@@ -192,32 +198,66 @@ UTESTCASE make_facet(Utest *utest)
 		UT_ASSERT(fretbad->isFaceted());
 	}
 
+	// an initialized FnReturn with no _BEGIN_ and _END_
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		fretbad->initialize();
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
+		UT_ASSERT(fabad->getErrors()->hasError());
+		UT_IS(fabad->getErrors()->print(),
+			"If the FnReturn is initialized, it must already contain the _BEGIN_ label.\n"
+			"If the FnReturn is initialized, it must already contain the _END_ label.\n");
+	}
+
 	// rowType failures
 	{
-		Autoref<Facet> fabad;
-
-		fabad = Facet::make(fret1, true);
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		UT_IS(fabad->exportRowType("rta", NULL), fabad);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not export a NULL row type with name 'rta'.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		fabad->exportRowType("", rt1);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not export a row type with an empty name.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		fabad->setQueueLimit(0);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not set the queue size limit to 0, must be greater than 0.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		fabad->exportRowType("rt1", rt1); // this one is OK
 		fabad->exportRowType("rt1", rt1);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not export a duplicate row type name 'rt1'.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		RowType::FieldVec fld;
 		mkfields(fld);
 		fld[1].name_ = "a"; // a duplicate name
@@ -232,25 +272,41 @@ UTESTCASE make_facet(Utest *utest)
 
 	// tableType failures
 	{
-		Autoref<Facet> fabad;
-
-		fabad = Facet::make(fret1, true);
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		UT_IS(fabad->exportTableType("tta", NULL), fabad);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not export a NULL table type with name 'tta'.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		fabad->exportTableType("", tt1);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not export a table type with an empty name.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		fabad->exportTableType("tt1", tt1); // this one is OK
 		fabad->exportTableType("tt1", tt1);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), "Can not export a duplicate table type name 'tt1'.\n");
+	}
 
-		fabad = Facet::make(fret1, true);
+	{
+		Autoref<FnReturn> fretbad = FnReturn::make(unit1, "fretbad")
+			->addLabel("one", rt1)
+		;
+		Autoref<Facet> fabad = Facet::make(fretbad, true);
 		RowType::FieldVec fld;
 		mkfields(fld);
 		fld[1].name_ = "a"; // a duplicate name
@@ -569,6 +625,8 @@ UTESTCASE export_import(Utest *utest)
 		{
 			// basic export of a reader with reimport works fine even if the FnReturn is faceted
 			Autoref<FnReturn> fret7 = FnReturn::make(unit1, "fret7")
+				->addLabel("_BEGIN_", rt1)
+				->addLabel("_END_", rt1)
 				->addLabel("one", rt1)
 			;
 			fret7->initialize();
@@ -585,7 +643,6 @@ UTESTCASE export_import(Utest *utest)
 			Autoref<FnReturn> fret8 = FnReturn::make(unit1, "fret8")
 				->addLabel("one", rt1)
 			;
-			fret8->initialize();
 			UT_ASSERT(!fret8->isFaceted());
 
 			Autoref<Facet> fa8 = Facet::makeWriter(fret8);
@@ -598,7 +655,6 @@ UTESTCASE export_import(Utest *utest)
 			Autoref<FnReturn> fret9 = FnReturn::make(unit1, "fret9")
 				->addLabel("one", rt1)
 			;
-			fret9->initialize();
 			UT_ASSERT(!fret9->isFaceted());
 
 			Autoref<Facet> fa9 = Facet::makeWriter(fret9);
@@ -1711,3 +1767,144 @@ UTESTCASE pass_data(Utest *utest)
 	restore_uncatchable();
 }
 
+// sending to the _BEGIN_ and _END_ labels
+UTESTCASE pass_begin_end(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+
+	// prepare fragments
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	FdataVec dv;
+	Rowref r0(rt1,  rt1->makeRow(dv)); // an empty row
+	mkfdata(dv);
+	int32_t val = 2;
+	dv[1].setPtr(true, &val, sizeof(val));
+	Rowref r1(rt1,  rt1->makeRow(dv)); // a non-empty row
+
+	Autoref<Unit> unit1 = ow1->unit();
+	Autoref<Unit> unit2 = ow2->unit();
+	Autoref<Unit::Tracer> trace2 = new Unit::StringNameTracer(false, printB);
+	unit2->setTracer(trace2);
+	Autoref<Unit> unit3 = ow3->unit();
+	Autoref<Unit::Tracer> trace3 = new Unit::StringNameTracer(false, printB);
+	unit3->setTracer(trace3);
+
+	// start with a writer
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("_BEGIN_", rt1)
+		->addLabel("_END_", rt1)
+		->addLabel("one", rt1)
+		->complete()
+	;
+	// Nexus *nxa = fa1a->nexus();
+
+	ow1->markReady(); // make the nexus visible for import
+
+	// add a reader
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+	ReaderQueue *far2a = FacetGuts::readerQueue(fa2a);
+	UT_ASSERT(far2a != NULL);
+
+	ow2->markReady(); // make the nexus visible for import
+
+	// add a reader
+	Autoref<Facet> fa3a = ow3->importReader("t1", "nxa", "");
+	ReaderQueue *far3a = FacetGuts::readerQueue(fa3a);
+	UT_ASSERT(far3a != NULL);
+
+	// in t3 add the begin/end label chainings
+	Autoref<Label> lb3begin = new DummyLabel(unit3, rt1, "begin");
+	fa3a->getFnReturn()->getLabel("_BEGIN_")->chain(lb3begin);
+	Autoref<Label> lb3end = new DummyLabel(unit3, rt1, "end");
+	fa3a->getFnReturn()->getLabel("_END_")->chain(lb3end);
+
+	ow3->markReady(); // make the nexus visible for import
+
+	// ----------------------------------------------------------------------
+
+	// sending the BEGIN with no data and OP_INSERT puts nothing into the Xdata
+	// XXXXXXXXX continue the test from here
+#if 0 // {
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, r1));
+	unit1->call(new Rowop(fa1b->getFnReturn()->getLabel("data"), 
+		Rowop::OP_INSERT, r1));
+	ow1->flushWriters();
+
+	// check that it arrived
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 1);
+
+	// check that flushing a facet with no data is a no-op
+	fa1a->flushWriter();
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
+	
+	// check that flushing a reader facet is a no-op
+	fa2a->flushWriter();
+	
+	// ----------------------------------------------------------------------
+
+	// read and process the data
+	UT_ASSERT(ow2->nextXtray());
+	// this must have picked the high-priority message from fa2b
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
+
+	UT_ASSERT(ow2->nextXtray());
+	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 0);
+	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
+
+	UT_ASSERT(!ow2->nextXtray(false)); // nothing else to read
+
+	string tlog = trace2->getBuffer()->print();
+	string expect1 =
+		"unit 't2' before label 'nxb.data' op OP_INSERT b=2\n"
+		"unit 't2' before label 'nxc.one' (chain 'nxb.data') op OP_INSERT b=2\n"
+		"unit 't2' before label 'nxa.one' op OP_INSERT b=2\n"
+		"unit 't2' before label 'nxc.one' (chain 'nxa.one') op OP_INSERT b=2\n"
+	;
+	if (UT_IS(tlog, expect1)) printf("Expected: \"%s\"\n", expect1.c_str());
+	
+	// and the records should make it through
+	UT_IS(ReaderQueueGuts::writeq(far3c).size(), 2);
+
+	// ----------------------------------------------------------------------
+
+	// test the priority handling in ow3:
+	// the rowops will be looped through the high-priority facet, so they
+	// will be read first
+	
+	while (ow3->nextXtray(false));
+	tlog = trace3->getBuffer()->print();
+	string expect2 =
+		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"
+		"unit 't3' before label 'rwl' (chain 'nxc.one') op OP_INSERT b=2\n"
+		"unit 't3' before label 'nxd.data' op OP_INSERT b=1\n"
+		"unit 't3' before label 'rwl' (chain 'nxd.data') op OP_INSERT b=1\n"
+		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"
+		"unit 't3' before label 'rwl' (chain 'nxc.one') op OP_INSERT b=2\n"
+		"unit 't3' before label 'nxd.data' op OP_INSERT b=1\n"
+		"unit 't3' before label 'rwl' (chain 'nxd.data') op OP_INSERT b=1\n"
+	;
+	if (UT_IS(tlog, expect2)) printf("Expected: \"%s\"\n", expect2.c_str());
+#endif // }
+
+	// ----------------------------------------------------------------------
+
+	// clean-up, since the apps catalog is global
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+	a1->harvester();
+
+	restore_uncatchable();
+}

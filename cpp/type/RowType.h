@@ -174,6 +174,12 @@ public:
 	// @parem row2 - another row to compare
 	// @return - true if the rows contain the same data.
 	virtual bool equalRows(const Row *row1, const Row *row2) const = 0;
+
+	// Check whether the row has no payload, i.e. all the fields in it are empty.
+	// Technically, the fields don't have to be null, any 0-length fields are
+	// considered empty.
+	// @return - true if all the fields are empty
+	virtual bool isRowEmpty(const Row *row) const = 0;
 	// }
 	
 	// {
@@ -214,6 +220,7 @@ private:
 class Rowref
 {
 public:
+	// XXX add the convenience wrappers for all the RowType's methods on rows
 	typedef Row *RowPtr;
 
 	Rowref() :
