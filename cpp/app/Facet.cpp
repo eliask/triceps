@@ -33,8 +33,6 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 		return;
 	}
 
-	fret->setFacet(this);
-
 	for (int i = 0; i < 2; i++) {
 		if (fret->findLabel(*BeginEnd[i]) < 0) {
 			if (fret->isInitialized()) {
@@ -175,6 +173,8 @@ void Facet::assertNotImported() const
 
 void Facet::reimport(Nexus *nexus, const string &tname)
 {
+	fret_->setFacet(this);
+
 	if (writer_) { // set the initial xtray, and thus mark fret_ with it
 		if (fret_->isFaceted()) {
 			// this has been already checked in the constructor,

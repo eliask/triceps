@@ -1124,4 +1124,3 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 // XXX add threads that get completely thrown away when dead, group them into fragments
 // XXX add adopting of nexuses from another app
 // XXX always do the exclusive drains through TrieadOwner?
-// XXX the _BEGIN_ and _END_ labels

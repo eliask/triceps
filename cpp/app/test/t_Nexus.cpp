@@ -1792,10 +1792,10 @@ UTESTCASE pass_begin_end(Utest *utest)
 
 	Autoref<Unit> unit1 = ow1->unit();
 	Autoref<Unit> unit2 = ow2->unit();
-	Autoref<Unit::Tracer> trace2 = new Unit::StringNameTracer(false, printB);
+	Autoref<Unit::Tracer> trace2 = new Unit::StringNameTracer(false);
 	unit2->setTracer(trace2);
 	Autoref<Unit> unit3 = ow3->unit();
-	Autoref<Unit::Tracer> trace3 = new Unit::StringNameTracer(false, printB);
+	Autoref<Unit::Tracer> trace3 = new Unit::StringNameTracer(false);
 	unit3->setTracer(trace3);
 
 	// start with a writer
@@ -1829,74 +1829,208 @@ UTESTCASE pass_begin_end(Utest *utest)
 
 	ow3->markReady(); // make the nexus visible for import
 
+	ow1->readyReady();
+	ow2->readyReady();
+	ow3->readyReady();
+
 	// ----------------------------------------------------------------------
 
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+
 	// sending the BEGIN with no data and OP_INSERT puts nothing into the Xdata
-	// XXXXXXXXX continue the test from here
-#if 0 // {
+	
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_BEGIN_"), 
+		Rowop::OP_INSERT, r0));
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+	UT_ASSERT(!ow2->nextXtray(false));
+
+	// sending the END with no data and OP_INSERT puts nothing into the Xdata
+
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_END_"), 
+		Rowop::OP_INSERT, r0));
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+	UT_ASSERT(!ow2->nextXtray(false));
+
+	// ----------------------------------------------------------------------
+
+	// send a row through without an explicit BEGIN/END
+
 	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
-		Rowop::OP_INSERT, r1));
-	unit1->call(new Rowop(fa1b->getFnReturn()->getLabel("data"), 
 		Rowop::OP_INSERT, r1));
 	ow1->flushWriters();
 
-	// check that it arrived
-	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
-	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 1);
-
-	// check that flushing a facet with no data is a no-op
-	fa1a->flushWriter();
-	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
-	
-	// check that flushing a reader facet is a no-op
-	fa2a->flushWriter();
-	
-	// ----------------------------------------------------------------------
-
-	// read and process the data
 	UT_ASSERT(ow2->nextXtray());
-	// this must have picked the high-priority message from fa2b
-	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 1);
-	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
+	{
+		string tlog = trace2->getBuffer()->print();
+		trace2->clearBuffer();
+		string expect =
+			"unit 't2' before label 'nxa.one' op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
 
-	UT_ASSERT(ow2->nextXtray());
-	UT_IS(ReaderQueueGuts::writeq(far2a).size(), 0);
-	UT_IS(ReaderQueueGuts::writeq(far2b).size(), 0);
-
-	UT_ASSERT(!ow2->nextXtray(false)); // nothing else to read
-
-	string tlog = trace2->getBuffer()->print();
-	string expect1 =
-		"unit 't2' before label 'nxb.data' op OP_INSERT b=2\n"
-		"unit 't2' before label 'nxc.one' (chain 'nxb.data') op OP_INSERT b=2\n"
-		"unit 't2' before label 'nxa.one' op OP_INSERT b=2\n"
-		"unit 't2' before label 'nxc.one' (chain 'nxa.one') op OP_INSERT b=2\n"
-	;
-	if (UT_IS(tlog, expect1)) printf("Expected: \"%s\"\n", expect1.c_str());
-	
-	// and the records should make it through
-	UT_IS(ReaderQueueGuts::writeq(far3c).size(), 2);
+	// when the handlers are chained, begin/end get called
+	UT_ASSERT(ow3->nextXtray());
+	{
+		string tlog = trace3->getBuffer()->print();
+		trace3->clearBuffer();
+		string expect =
+			"unit 't3' before label 'nxa._BEGIN_' op OP_INSERT\n"
+			"unit 't3' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+			"unit 't3' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't3' before label 'nxa._END_' op OP_INSERT\n"
+			"unit 't3' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
 
 	// ----------------------------------------------------------------------
 
-	// test the priority handling in ow3:
-	// the rowops will be looped through the high-priority facet, so they
-	// will be read first
-	
-	while (ow3->nextXtray(false));
-	tlog = trace3->getBuffer()->print();
-	string expect2 =
-		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"
-		"unit 't3' before label 'rwl' (chain 'nxc.one') op OP_INSERT b=2\n"
-		"unit 't3' before label 'nxd.data' op OP_INSERT b=1\n"
-		"unit 't3' before label 'rwl' (chain 'nxd.data') op OP_INSERT b=1\n"
-		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"
-		"unit 't3' before label 'rwl' (chain 'nxc.one') op OP_INSERT b=2\n"
-		"unit 't3' before label 'nxd.data' op OP_INSERT b=1\n"
-		"unit 't3' before label 'rwl' (chain 'nxd.data') op OP_INSERT b=1\n"
-	;
-	if (UT_IS(tlog, expect2)) printf("Expected: \"%s\"\n", expect2.c_str());
-#endif // }
+	// send a row through with the BEGIN/END that become implicit
+
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_BEGIN_"), 
+		Rowop::OP_INSERT, r0));
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, r1));
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_END_"), 
+		Rowop::OP_INSERT, r0));
+	// _END_ flushes the writer
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+
+	UT_ASSERT(ow2->nextXtray());
+	{
+		string tlog = trace2->getBuffer()->print();
+		trace2->clearBuffer();
+		string expect =
+			"unit 't2' before label 'nxa.one' op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	// when the handlers are chained, begin/end get called
+	UT_ASSERT(ow3->nextXtray());
+	{
+		string tlog = trace3->getBuffer()->print();
+		trace3->clearBuffer();
+		string expect =
+			"unit 't3' before label 'nxa._BEGIN_' op OP_INSERT\n"
+			"unit 't3' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+			"unit 't3' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't3' before label 'nxa._END_' op OP_INSERT\n"
+			"unit 't3' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	// ----------------------------------------------------------------------
+
+	// send a row through with an explicit BEGIN/END
+
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_BEGIN_"), 
+		Rowop::OP_NOP, r0));
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, r1));
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_END_"), 
+		Rowop::OP_NOP, r0));
+	// _END_ flushes the writer
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+
+	UT_ASSERT(ow2->nextXtray());
+	{
+		string tlog = trace2->getBuffer()->print();
+		trace2->clearBuffer();
+		string expect =
+			"unit 't2' before label 'nxa._BEGIN_' op OP_NOP\n"
+			"unit 't2' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't2' before label 'nxa._END_' op OP_NOP\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	UT_ASSERT(ow3->nextXtray());
+	{
+		string tlog = trace3->getBuffer()->print();
+		trace3->clearBuffer();
+		string expect =
+			"unit 't3' before label 'nxa._BEGIN_' op OP_NOP\n"
+			"unit 't3' before label 'begin' (chain 'nxa._BEGIN_') op OP_NOP\n"
+			"unit 't3' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't3' before label 'nxa._END_' op OP_NOP\n"
+			"unit 't3' before label 'end' (chain 'nxa._END_') op OP_NOP\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	// ----------------------------------------------------------------------
+
+	// send a row through with the BEGIN/END that carry data
+
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_BEGIN_"), 
+		Rowop::OP_INSERT, r1));
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
+		Rowop::OP_INSERT, r1));
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_END_"), 
+		Rowop::OP_INSERT, r1));
+	// _END_ flushes the writer
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+
+	UT_ASSERT(ow2->nextXtray());
+	{
+		string tlog = trace2->getBuffer()->print();
+		trace2->clearBuffer();
+		string expect =
+			"unit 't2' before label 'nxa._BEGIN_' op OP_INSERT\n"
+			"unit 't2' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't2' before label 'nxa._END_' op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	UT_ASSERT(ow3->nextXtray());
+	{
+		string tlog = trace3->getBuffer()->print();
+		trace3->clearBuffer();
+		string expect =
+			"unit 't3' before label 'nxa._BEGIN_' op OP_INSERT\n"
+			"unit 't3' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+			"unit 't3' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't3' before label 'nxa._END_' op OP_INSERT\n"
+			"unit 't3' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	// ----------------------------------------------------------------------
+
+	// send just an END with data
+
+	unit1->call(new Rowop(fa1a->getFnReturn()->getLabel("_END_"), 
+		Rowop::OP_INSERT, r1));
+	// _END_ flushes the writer
+	UT_ASSERT(FnReturnGuts::isXtrayEmpty(fa1a->getFnReturn()));
+
+	UT_ASSERT(ow2->nextXtray());
+	{
+		string tlog = trace2->getBuffer()->print();
+		trace2->clearBuffer();
+		string expect =
+			"unit 't2' before label 'nxa._END_' op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
+	UT_ASSERT(ow3->nextXtray());
+	{
+		string tlog = trace3->getBuffer()->print();
+		trace3->clearBuffer();
+		string expect =
+			"unit 't3' before label 'nxa._BEGIN_' op OP_INSERT\n"
+			"unit 't3' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+			"unit 't3' before label 'nxa._END_' op OP_INSERT\n"
+			"unit 't3' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
 
 	// ----------------------------------------------------------------------
 

@@ -411,7 +411,7 @@ public:
 	// Will throw an exception if attempted to call recursively.
 	// 
 	// @param wait - flag: when the queue is consumed, wait for more
-	// @return - true normally, false when there no more active readers
+	// @return - true normally, false when the thread was requested to die
 	//         (or with wait==false, when no more data in the queues)
 	bool nextXtray(bool wait = true);
 
