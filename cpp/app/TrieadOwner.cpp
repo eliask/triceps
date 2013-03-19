@@ -33,9 +33,7 @@ void TrieadOwner::markDead()
 		(*it)->clearLabels();
 	units_.clear();
 	mainUnit_ = NULL;
-	// XXX should also drop references to the app and thread?
-	// triead_ = NULL;
-	// app_ = NULL;
+	// The references app_ and triead_ don't need to be cleared.
 }
 
 void TrieadOwner::readyReady()

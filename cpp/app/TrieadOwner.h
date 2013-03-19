@@ -220,7 +220,6 @@ public:
 
 	// Abort the thread and with it the whole app.
 	// Typically used if a fatal error is found during initialization.
-	// XXX reconcile with markDead()
 	// @param msg - message that can communicate the reason fo abort
 	void abort(const string &msg) const
 	{

@@ -8,10 +8,7 @@
 
 #include <app/QueFacet.h>
 
-// XXX work in progress
-
 namespace TRICEPS_NS {
-
 
 //-------------------------- QueEvent -----------------------------------
 

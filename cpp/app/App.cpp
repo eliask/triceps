@@ -479,7 +479,7 @@ void App::markTrieadReadyL(TrieadUpd *upd, Triead *t)
 		}
 		if (--unreadyCnt_ == 0) {
 			ready_.signal();
-			// XXX if the error is in a fragment, this would still aborth the whole app
+			// XXX if the error is in a fragment, this would still abort the whole app
 			checkLoopsL(t->getName());
 		}
 	}

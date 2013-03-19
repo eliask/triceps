@@ -1,6 +1,5 @@
 Things that need to be done:
-* need a separate Rowop representation for passing the data between the threads
-* check the labels for belonging to a right unit when enqueueing
+* check the labels for belonging to a right unit when enqueueing?
 * in Rowop construction replace asserts with exceptions
 * redo the errors to confess
 * change the typemap to confess
@@ -84,19 +83,22 @@ Things that need to be done:
 * in BasicAggregator add a storage for one previous result row (or make a separate
   type with it)
 * export the AggregatorType::setRowType() to Perl initialization
+* transient thread: after it exits, delete it and its nexuses
+* adopt a nexus from another app, for inter-app communication
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 * doc: perl Label::isCleared()
 * doc: in types construction throw instead of abort()
-* doc: the templates for initialize(), initializeOrThrow(), checkOrThrow()
 * doc: HoldRowTypes
 * doc: RowType::copy(), RowSetType::deepCopy()
 * doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
 * doc: Autoref::swap()
+* doc: RowType::isRowEmpty()
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
 * distributed cron
 * data cache
+* the challenges from http://www.orgs.ttu.edu/debs2013/
 

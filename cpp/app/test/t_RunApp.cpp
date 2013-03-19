@@ -1247,5 +1247,3 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 	restore_uncatchable();
 }
 
-// XXX add adopting of nexuses from another app
-// XXX always do the exclusive drains through TrieadOwner?
