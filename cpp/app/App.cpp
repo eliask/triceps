@@ -187,13 +187,55 @@ void App::shutdownL()
 	}
 }
 
+void App::shutdownFragment(const string &fragname)
+{
+	pw::lockmutex lm(mutex_);
+	shutdownFragmentL(fragname);
+}
+
+void App::shutdownFragmentL(const string &fragname)
+{
+	// first check that all the threads in the fragment are ready, or a real bad
+	// race would result with possibly other threads waiting on these threads...
+	for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+		Triead *t = it->second->t_;
+		if (t->fragment() == fragname && !t->isReady())
+			throw Exception::fTrace("Can not shut down the application '%s' fragment '%s': its thread '%s' is not ready yet.",
+				name_.c_str(), fragname.c_str(), it->first.c_str());
+	}
+	TrieadUpdMap::iterator itnext;
+	for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); it = itnext) {
+		Triead *t = it->second->t_;
+		itnext = it;
+		++itnext; // because the entry at iterator might get disposed of
+		if (t->fragment() == fragname) {
+			it->second->dispose_ = true;
+			t->requestDead();
+			if (it->second->j_) // interrupt in case if it's sleeping on input
+				it->second->j_->interrupt();
+			else if (t->isDead()) // already marked dead and joined
+				disposeL(t->getName());
+		}
+	}
+}
+
+void App::disposeL(const string &tname)
+{
+	TrieadUpdMap::iterator it = threads_.find(tname);
+	if (it == threads_.end())
+		return;
+	if (!it->second->dispose_)
+		return; // another thread created with the same name?
+	threads_.erase(it); // dispose of it
+}
+
 bool App::isShutdown()
 {
 	pw::lockmutex lm(mutex_);
 	return shutdown_;
 }
 
-Onceref<TrieadOwner> App::makeTriead(const string &tname)
+Onceref<TrieadOwner> App::makeTriead(const string &tname, const string &fragname)
 {
 	if (tname.empty())
 		throw Exception::fTrace("Empty thread name is not allowed, in application '%s'.", name_.c_str());
@@ -216,7 +258,7 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname)
 				tname.c_str(), name_.c_str());
 	}
 
-	Triead *th = new Triead(tname, drain_);
+	Triead *th = new Triead(tname, fragname, drain_);
 	TrieadOwner *ow = new TrieadOwner(this, th);
 	upd->t_ = th;
 
@@ -249,6 +291,18 @@ void App::defineJoin(const string &tname, Onceref<TrieadJoin> j)
 			name_.c_str(), tname.c_str());
 	}
 	it->second->j_ = j;
+}
+
+void App::getTrieads(TrieadMap &ret) const
+{
+	if (!ret.empty())
+		ret.clear();
+
+	pw::lockmutex lm(mutex_);
+
+	for (TrieadUpdMap::const_iterator it = threads_.begin(); it != threads_.end(); ++it) {
+		ret[it->first] = it->second->t_;
+	}
 }
 
 void App::assertNotAbortedL() const
@@ -331,6 +385,11 @@ Onceref<Triead> App::findTriead(TrieadOwner *to, const string &tname, bool immed
 			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
 
 	Autoref <TrieadUpd> upd = it->second;
+
+	if (upd->dispose_) // disposed is the same as non-existing
+		throw Exception::fTrace("In Triceps application '%s' thread '%s' is referring to a non-existing thread '%s'.",
+			name_.c_str(), to->get()->getName().c_str(), tname.c_str());
+
 	Triead *t = upd->t_;
 	if (t != NULL && (immed || t->isConstructed()))
 		return t;
@@ -420,6 +479,7 @@ void App::markTrieadReadyL(TrieadUpd *upd, Triead *t)
 		}
 		if (--unreadyCnt_ == 0) {
 			ready_.signal();
+			// XXX if the error is in a fragment, this would still aborth the whole app
 			checkLoopsL(t->getName());
 		}
 	}
@@ -430,10 +490,17 @@ void App::markTrieadDead(TrieadOwner *to)
 	pw::lockmutex lm(mutex_);
 
 	Triead *t = to->get();
-	TrieadUpd *upd = assertTrieadL(t);
+
+	TrieadUpdMap::const_iterator it = threads_.find(t->getName());
+	if (it == threads_.end())
+		return; // silently ignore because might be already disposed of
+	TrieadUpd *upd = it->second;
+	if (upd->t_.get() != t)
+		return; // silently ignore because might be already disposed of
 
 	markTrieadConstructedL(upd, t);
 	try {
+		// XXX if aborting on exception, the catch won't help
 		markTrieadReadyL(upd, t);
 	} catch (Exception e) {
 		// Just ignore, marking the App aborted is good enough.
@@ -456,6 +523,9 @@ void App::markTrieadDeadL(TrieadUpd *upd, Triead *t)
 		if (upd->j_) {
 			zombies_.push_back(upd);
 			needHarvest_.signal();
+		} else {
+			if (upd->dispose_)
+				disposeL(upd->t_->getName());
 		}
 	}
 }
@@ -463,6 +533,7 @@ void App::markTrieadDeadL(TrieadUpd *upd, Triead *t)
 bool App::harvestOnce()
 {
 	while(true) {
+		TrieadUpd *upd;
 		Autoref<TrieadJoin> j;
 		{
 			pw::lockmutex lm(mutex_);
@@ -472,13 +543,16 @@ bool App::harvestOnce()
 					needHarvest_.reset();
 				return dead;
 			}
-			TrieadUpd *upd = zombies_.front();
+			upd = zombies_.front();
 			j = upd->j_;
 			upd->j_ = NULL; // guarantees that will be joined only once
 			zombies_.pop_front();
 		}
-		if (!j.isNull()) // should never be NULL, but just in case
+		if (!j.isNull()) { // should never be NULL, but just in case
 			j->join();
+			if (upd->dispose_)
+				disposeL(upd->t_->getName());
+		}
 	}
 }
 

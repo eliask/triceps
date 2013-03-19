@@ -97,7 +97,9 @@ public:
 	// Throws an Exception if the name is empty or not unique.
 	//
 	// @param tname - name of the thread to create. Must be unique in the App.
-	Onceref<TrieadOwner> makeTriead(const string &tname);
+	// @param fragname - name of the disposable fragment where the thread belongs
+	//        (an empty string for no fragment)
+	Onceref<TrieadOwner> makeTriead(const string &tname, const string &fragname = "");
 
 	// Declare a thread's name.
 	// After that the thread can be found: it will wait for the thread's
@@ -190,6 +192,18 @@ public:
 	// requested to die. Any new threads will be requested to die
 	// when they become ready.
 	void shutdown();
+
+	// Request a fragment to shut down. All the threads from this
+	// fragment will be requested to die and unreferenced by the
+	// App. All of them must be ready, or the call will throw an
+	// Exception (this basically means that the fragment must be fully
+	// initialized, and waited for the readiness of the App before this
+	// call can be made). The threads outside the fragment are not
+	// affected. If there are no threads left in this fragment,
+	// the call has no effect.
+	//
+	// @param fragname - name of the fragment to shutdown
+	void shutdownFragment(const string &fragname);
 
 	// Returns, whether the App is shutting down.
 	bool isShutdown();
@@ -393,6 +407,7 @@ protected:
 		// The mutex would be normally the App object's mutex.
 		TrieadUpd(pw::pmutex &mutex):
 			waitFor_(NULL),
+			dispose_(false),
 			cond_(mutex)
 		{ }
 
@@ -424,6 +439,8 @@ protected:
 		Autoref<TrieadJoin> j_; // the joiner object, may be NULL for detached or already joined threads
 
 		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL), for deadlock detection
+
+		bool dispose_; // the fragment of this thread has been shut down, dispose of it when dead
 	protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_
@@ -447,6 +464,16 @@ protected:
 
 	// Internal version that relies on mutex_ being already locked.
 	void shutdownL();
+	void shutdownFragmentL(const string &fragname);
+
+	// Dispose of the reference to a thread. After that, it could not
+	// be found any more. This is intended only for the threads in the
+	// named fragments.
+	// Relies on mutex_ being already locked.
+	// The thread must be already dead and joined.
+	// An unknown name will be silently ignored.
+	// @param tname - name of the thread to dispose
+	void disposeL(const string &tname);
 
 	// Check whether the app was marked as aborted.
 	// Relies on mutex_ being already locked.

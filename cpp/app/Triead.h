@@ -92,6 +92,13 @@ public:
 		return inputOnly_;
 	}
 
+	// Get the fragment name where this thread belongs.
+	// @return - the name, or empty if in no fragment
+	const string &fragment() const
+	{
+		return frag_;
+	}
+
 	// List all the defined Nexuses, for introspection.
 	// @param - a map where all the defined Nexuses will be returned.
 	//     It will be cleared before placing any data into it.
@@ -116,9 +123,10 @@ public:
 
 protected:
 	// Called through App::makeThriead().
-	// @param name - Name of this thread (within the App).
-	// @param drain - The drain state of the App.
-	Triead(const string &name, DrainApp *drain);
+	// @param name - name of this thread (within the App).
+	// @param fragname - name of the app fragment where the threda belongs.
+	// @param drain - the drain state of the App.
+	Triead(const string &name, const string &fragname, DrainApp *drain);
 
 	// Clear all the direct or indirect references to the other threads.
 	// Called by the App at the destruction time.
@@ -230,6 +238,7 @@ protected:
 	void setAppReady();
 	
 	string name_; // name of the thread, read-only
+	string frag_; // name of the fragment, read-only
 	mutable pw::pmutex mutex_; // mutex synchronizing this Triead
 	NexusMap exports_; // the nexuses exported from this thread
 	Autoref<QueEvent> qev_; // the thread's queue notification

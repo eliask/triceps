@@ -294,7 +294,7 @@ public:
 	AtomicInt forward_; // flag: forward the data
 };
 
-// s set of threads that will be used for multiple tests
+// a set of threads that will be used for multiple tests
 class TestThreads1
 {
 public:
@@ -627,6 +627,132 @@ UTESTCASE drain_unready(Utest *utest)
 	a1->shutdown(); // request all the threads to die, and draining doesn't stop it
 
 	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// check that the drain feels OK when a fragment gets shut down
+UTESTCASE drain_frag(Utest *utest)
+{
+	make_catchable();
+
+	App::TrieadMap tm;
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	Autoref<TrieadOwner> ow4 = tt.a1->makeTriead("t4", "frag1");
+	Autoref<Facet> fa4b = ow4->importReader("t2", "nxb", "");
+	Autoref<Facet> fa4c = ow4->importWriter("t2", "nxc", "");
+	ow4->readyReady();
+
+	Autoref<Nexus> nxb = fa4b->nexus();
+	Autoref<Nexus> nxc = fa4c->nexus();
+
+	UT_IS(NexusGuts::readers(nxb)->v().size(), 2);
+	UT_IS(NexusGuts::writers(nxc)->size(), 2);
+	
+	// ----------------------------------------------------------------------
+
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(tt.ow3);
+	Autoref<LoopPthread> pt4 = new LoopPthread("t4");
+	pt4->start(ow4);
+
+	// do a drain
+	UT_ASSERT(!tt.a1->isDrained());
+	tt.a1->drain();
+
+	// shutdown the frag
+	tt.a1->shutdownFragment("frag1");
+	while(!ow4->get()->isDead()) // will make the thread exit
+		sched_yield();
+
+	sched_yield();
+	sched_yield();
+	sched_yield();
+
+	// make sure that the thread is not disposed of yet
+	tt.a1->getTrieads(tm);
+	UT_IS(tm.size(), 4);
+
+	// harvest the thread
+	UT_ASSERT(!tt.a1->harvestOnce());
+	tt.a1->getTrieads(tm);
+	UT_IS(tm.size(), 3);
+
+	// check that it got disconnected from the nexuses
+	UT_IS(NexusGuts::readers(nxb)->v().size(), 1);
+	UT_IS(NexusGuts::writers(nxc)->size(), 1);
+	
+	// ----------------------------------------------------------------------
+
+	tt.ow1->markDead(); // ow1 is controlled manually
+	tt.a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	tt.a1->harvester();
+
+	restore_uncatchable();
+}
+
+// check that the drain feels OK if a fragment was already drained
+UTESTCASE drain_after_frag(Utest *utest)
+{
+	make_catchable();
+
+	App::TrieadMap tm;
+	TestThreads1 tt(utest);
+
+	tt.ow1->readyReady();
+	tt.ow2->readyReady();
+	tt.ow3->readyReady();
+
+	Autoref<TrieadOwner> ow4 = tt.a1->makeTriead("t4", "frag1");
+	ow4->importReader("t2", "nxb", "");
+	ow4->importWriter("t2", "nxc", "");
+	ow4->readyReady();
+	
+	// ----------------------------------------------------------------------
+
+	Autoref<LoopPthread> pt2 = new LoopPthread("t2");
+	pt2->start(tt.ow2);
+	Autoref<LoopPthread> pt3 = new LoopPthread("t3");
+	pt3->start(tt.ow3);
+	Autoref<LoopPthread> pt4 = new LoopPthread("t4");
+	pt4->start(ow4);
+
+	// shutdown the frag
+	tt.a1->shutdownFragment("frag1");
+	while(!ow4->get()->isDead()) // will make the thread exit
+		sched_yield();
+
+	sched_yield();
+	sched_yield();
+	sched_yield();
+
+	// make sure that the thread is not disposed of yet
+	tt.a1->getTrieads(tm);
+	UT_IS(tm.size(), 4);
+
+	// do a drain
+	UT_ASSERT(!tt.a1->isDrained());
+	tt.a1->drain();
+
+	// harvest the thread
+	UT_ASSERT(!tt.a1->harvestOnce());
+	tt.a1->getTrieads(tm);
+	UT_IS(tm.size(), 3);
+
+	// ----------------------------------------------------------------------
+
+	tt.ow1->markDead(); // ow1 is controlled manually
+	tt.a1->shutdown(); // request all the threads to die, and draining doesn't stop it
+
+	tt.a1->harvester();
 
 	restore_uncatchable();
 }
@@ -1121,6 +1247,5 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 	restore_uncatchable();
 }
 
-// XXX add threads that get completely thrown away when dead, group them into fragments
 // XXX add adopting of nexuses from another app
 // XXX always do the exclusive drains through TrieadOwner?

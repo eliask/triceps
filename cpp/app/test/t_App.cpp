@@ -112,6 +112,7 @@ UTESTCASE basic_trieads(Utest *utest)
 	UT_ASSERT(!AppGuts::gutsIsReady(a1));
 	UT_ASSERT(!a1->isAborted());
 	UT_ASSERT(!a1->isDead());
+	UT_IS(ow1->get()->fragment(), "");
 
 	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 	UT_ASSERT(!AppGuts::gutsIsReady(a1));
@@ -235,6 +236,106 @@ UTESTCASE basic_trieads(Utest *utest)
 	ow4->markDead();
 	UT_ASSERT(AppGuts::gutsIsReady(a1)); // all threads are ready now
 	UT_ASSERT(!a1->isAborted());
+	UT_ASSERT(a1->isDead()); // all threads are dead now
+
+	// clean-up, since the apps catalog is global
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
+// basic Triead creation with fragments
+UTESTCASE basic_frags(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	// successful creation
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1", "frag1");
+	UT_ASSERT(!AppGuts::gutsIsReady(a1));
+	UT_ASSERT(!a1->isAborted());
+	UT_ASSERT(!a1->isDead());
+	UT_IS(ow1->get()->fragment(), "frag1");
+
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2", "frag1");
+	UT_ASSERT(!AppGuts::gutsIsReady(a1));
+	UT_ASSERT(!a1->isAborted());
+	UT_ASSERT(!a1->isDead());
+	UT_IS(ow2->get()->fragment(), "frag1");
+
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3", "frag2");
+	UT_ASSERT(!AppGuts::gutsIsReady(a1));
+	UT_ASSERT(!a1->isAborted());
+	UT_ASSERT(!a1->isDead());
+	UT_IS(ow3->get()->fragment(), "frag2");
+
+	App::TrieadMap tm;
+	App::TrieadMap::iterator tmit;
+
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 3);
+
+	tmit = tm.find("t1");
+	UT_ASSERT(tmit != tm.end() && tmit->second.get() == ow1->get());
+	tmit = tm.find("t2");
+	UT_ASSERT(tmit != tm.end() && tmit->second.get() == ow2->get());
+	tmit = tm.find("t3");
+	UT_ASSERT(tmit != tm.end() && tmit->second.get() == ow3->get());
+
+	ow1->markReady();
+
+	// can not shut down a frag until all the threads in it are ready
+	{
+		string msg;
+		try {
+			a1->shutdownFragment("frag1");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "Can not shut down the application 'a1' fragment 'frag1': its thread 't2' is not ready yet.\n");
+	}
+
+	a1->shutdownFragment("frag_unknown"); // a call for unknown frag is OK
+
+	ow2->markReady();
+	ow3->markReady();
+
+	ow1->readyReady();
+
+	a1->shutdownFragment("frag1");
+	a1->shutdownFragment("frag1"); // a repeated call is OK
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 3); // still there
+
+	ow2->readyReady(); // after the frag is shut down
+
+	ow3->readyReady();
+
+	ow1->markDead();
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 2); // t1 got disposed of
+	tmit = tm.find("t1");
+	UT_ASSERT(tmit == tm.end());
+
+	ow2->markDead();
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 1); // t2 got disposed of
+	tmit = tm.find("t2");
+	UT_ASSERT(tmit == tm.end());
+
+	a1->shutdownFragment("frag1"); // a call after all disposed of is OK
+	ow1->markDead(); // OK to mark dead even after disposed of
+
+	ow3->markDead();
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 1); // t3 is dead but still here
+
+	a1->shutdownFragment("frag2");
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 0); // t3 get disposed of right away
+
+	// mark the last thread dead
 	UT_ASSERT(a1->isDead()); // all threads are dead now
 
 	// clean-up, since the apps catalog is global
