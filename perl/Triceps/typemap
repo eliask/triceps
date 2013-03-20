@@ -24,6 +24,8 @@ WrapRowHandle *	O_WRAP_OBJECT
 WrapAggregatorType *	O_WRAP_OBJECT
 WrapAggregatorContext *	O_WRAP_INVALIDABLE_OBJECT
 
+WrapApp *	O_WRAP_OBJECT
+
 OUTPUT
 # The Perl object is blessed into 'CLASS', which should be a
 # char* having the name of the package for the blessing.

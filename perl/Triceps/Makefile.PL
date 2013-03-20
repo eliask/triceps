@@ -34,7 +34,7 @@ WriteMakefile(
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Triceps.pm', # retrieve abstract from module
        AUTHOR         => 'Sergey Babkin <babkin@users.sf.net>') : ()),
-    LIBS              => [split(/\s+/, $TRICEPS_XLIB)], # e.g., '-lm'
+    LIBS              => [$TRICEPS_XLIB], # e.g., '-lm'
     DEFINE            => $TRICEPS_CONF, # e.g., '-DHAVE_SOMETHING'
     INC               => '-I../../cpp', # e.g., '-I. -I/usr/include/other'
 	# Un-comment this if you add C files to link with later:

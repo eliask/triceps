@@ -31,4 +31,6 @@ WrapMagic magicWrapTable = { "Table" };
 WrapMagic magicWrapIndex = { "Index" };
 WrapMagic magicWrapRowHandle = { "RowHand" };
 
+WrapMagic magicWrapApp = { "App" };
+
 }; // TRICEPS_NS

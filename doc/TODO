@@ -85,6 +85,8 @@ Things that need to be done:
 * export the AggregatorType::setRowType() to Perl initialization
 * transient thread: after it exits, delete it and its nexuses
 * adopt a nexus from another app, for inter-app communication
+* before adding a frag, set the new app timeout, when wait times out, check that
+  the timeout hasn't changed
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 

@@ -14,6 +14,7 @@
 #include <sched/FnReturn.h>
 #include <table/Table.h>
 #include <mem/Rhref.h>
+#include <app/App.h>
 
 namespace TRICEPS_NS {
 
@@ -197,6 +198,8 @@ DEFINE_WRAP(AutoFnBind);
 DEFINE_WRAP(Table);
 DEFINE_WRAP(Index);
 DEFINE_WRAP2(Table, Rhref, RowHandle);
+
+DEFINE_WRAP(App);
 
 #undef DEFINE_WRAP
 #undef DEFINE_WRAP2
