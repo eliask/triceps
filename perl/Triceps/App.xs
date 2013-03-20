@@ -17,6 +17,13 @@
 MODULE = Triceps::App		PACKAGE = Triceps::App
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapApp *self)
 	CODE:
@@ -94,3 +101,15 @@ same(WrapApp *self, WrapApp *other)
 	OUTPUT:
 		RETVAL
 
+# create a duplicate reference
+WrapApp *
+dup(WrapApp *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::App";
+
+		clearErrMsg();
+
+		RETVAL = new WrapApp(self->get());
+	OUTPUT:
+		RETVAL

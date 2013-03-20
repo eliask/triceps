@@ -14,9 +14,10 @@
 
 use ExtUtils::testlib;
 use strict;
+use threads;
 
 use Test;
-BEGIN { plan tests => 4 };
+BEGIN { plan tests => 11 };
 use Triceps;
 ok(4); # If we made it this far, we're ok.
 
@@ -31,4 +32,29 @@ ok(4); # If we made it this far, we're ok.
 	my $a1x = Triceps::App::find("a1");
 	ok(ref $a1x, "Triceps::App");
 	ok($a1->same($a1x));
+
+	my @apps;
+	@apps = Triceps::App::listApps();
+	ok($#apps, 1);
+	ok($apps[0], "a1");
+	ok($a1->same($apps[1]));
+	undef @apps;
+
+	my $t1 = threads->create(
+		sub {
+			my $tname = shift;
+			my $a1z = Triceps::App::find($tname);
+			ok(ref $a1z, "Triceps::App");
+		}, "a1");
+	$t1->join();
+
+	$Test::ntest = 9; # include the tests in the thread
+
+	# check that the references still work
+	ok(ref $a1, "Triceps::App");
+	ok($a1->same($a1x));
+
+	Triceps::App::drop($a1);
+	@apps = Triceps::App::listApps();
+	ok($#apps, -1);
 }
