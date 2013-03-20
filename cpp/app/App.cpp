@@ -26,14 +26,22 @@ void App::TrieadUpd::broadcastL(const string &appname)
 
 void App::TrieadUpd::waitL(const string &appname, const string &tname, const timespec &abstime)
 {
-	int err = cond_.timedwait(abstime);
-	if (err != 0) {
-		if (err == ETIMEDOUT)
-			throw Exception::fTrace("Thread '%s' in application '%s' did not initialize within the deadline.", 
-				tname.c_str(), appname.c_str());
-		else 
-			throw Exception::fTrace("Internal error: condvar wait for thread '%s' in application '%s' failed, errno=%d: %s.", 
-				tname.c_str(), appname.c_str(), err, strerror(err));
+	while (true) {
+		// abstime is a reference to the App::dealine_, so if it changes, the
+		// new value will be seen at the reference
+		timespec limit = abstime;
+		int err = cond_.timedwait(limit);
+		if (err != 0) {
+			if (err == ETIMEDOUT) {
+				if (memcmp(&abstime, &limit, sizeof(timespec)))
+					continue; // the deadline has been updated
+				throw Exception::fTrace("Thread '%s' in application '%s' did not initialize within the deadline.", 
+					tname.c_str(), appname.c_str());
+			} else 
+				throw Exception::fTrace("Internal error: condvar wait for thread '%s' in application '%s' failed, errno=%d: %s.", 
+					tname.c_str(), appname.c_str(), err, strerror(err));
+		}
+		break;
 	}
 }
 
@@ -592,29 +600,35 @@ void App::waitReady()
 		assertNotAbortedL();
 	}
 
-	int err = ready_.timedwait(deadline_);
-	if (err != 0) {
-		if (err == ETIMEDOUT) {
-			Erref lags;
-			{
-				pw::lockmutex lm(mutex_); // reading the list must be protected
-				for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
-					Triead *t = it->second->t_;
-					if (t == NULL) {
-						lags.f("%s: not defined", it->first.c_str());
-					} else if (!t->isConstructed()) {
-						lags.f("%s: not constructed", it->first.c_str());
-					} else if (!t->isReady()) {
-						lags.f("%s: not ready", it->first.c_str());
+	while (true) {
+		timespec limit = deadline_;
+		int err = ready_.timedwait(limit);
+		if (err != 0) {
+			if (err == ETIMEDOUT) {
+				if (memcmp(&deadline_, &limit, sizeof(timespec)))
+					continue; // the deadline has changed, try again
+				Erref lags;
+				{
+					pw::lockmutex lm(mutex_); // reading the list must be protected
+					for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
+						Triead *t = it->second->t_;
+						if (t == NULL) {
+							lags.f("%s: not defined", it->first.c_str());
+						} else if (!t->isConstructed()) {
+							lags.f("%s: not constructed", it->first.c_str());
+						} else if (!t->isReady()) {
+							lags.f("%s: not ready", it->first.c_str());
+						}
 					}
 				}
+				throw Exception::fTrace(lags,
+					"Application '%s' did not initialize within the deadline.\nThe lagging threads are:", name_.c_str());
+			} else  {
+				throw Exception::fTrace("Internal error: condvar wait for all-ready in application '%s' failed, errno=%d: %s.", 
+					name_.c_str(), err, strerror(err));
 			}
-			throw Exception::fTrace(lags,
-				"Application '%s' did not initialize within the deadline.\nThe lagging threads are:", name_.c_str());
-		} else  {
-			throw Exception::fTrace("Internal error: condvar wait for all-ready in application '%s' failed, errno=%d: %s.", 
-				name_.c_str(), err, strerror(err));
 		}
+		break;
 	}
 
 	{
