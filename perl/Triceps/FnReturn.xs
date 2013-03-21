@@ -74,6 +74,13 @@ void PerlFnContext::call(const FnReturn *fret, PerlCallback *cb, const char *whi
 MODULE = Triceps::FnReturn		PACKAGE = Triceps::FnReturn
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapFnReturn *self)
 	CODE:

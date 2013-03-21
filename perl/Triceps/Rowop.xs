@@ -19,6 +19,13 @@ MODULE = Triceps::Rowop		PACKAGE = Triceps::Rowop
 BOOT:
 // fprintf(stderr, "DEBUG Rowop items=%d sp=%p mark=%p\n", items, sp, mark);
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapRowop *self)
 	CODE:

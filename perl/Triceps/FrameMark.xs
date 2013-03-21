@@ -16,6 +16,13 @@
 MODULE = Triceps::FrameMark		PACKAGE = Triceps::FrameMark
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapFrameMark *self)
 	CODE:

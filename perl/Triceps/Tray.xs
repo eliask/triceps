@@ -16,6 +16,13 @@
 MODULE = Triceps::Tray		PACKAGE = Triceps::Tray
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapTray *self)
 	CODE:

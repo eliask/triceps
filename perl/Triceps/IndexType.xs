@@ -19,6 +19,13 @@
 MODULE = Triceps::IndexType		PACKAGE = Triceps::IndexType
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapIndexType *self)
 	CODE:

@@ -19,6 +19,13 @@ MODULE = Triceps::RowType		PACKAGE = Triceps::RowType
 BOOT:
 // fprintf(stderr, "DEBUG RowType items=%d sp=%p mark=%p\n", items, sp, mark);
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 WrapRowType *
 Triceps::RowType::new(...)
 	CODE:

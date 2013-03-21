@@ -19,6 +19,13 @@
 MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracer
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapUnitTracer *self)
 	CODE:

@@ -17,6 +17,13 @@
 MODULE = Triceps::TableType		PACKAGE = Triceps::TableType
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapTableType *self)
 	CODE:

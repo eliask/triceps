@@ -16,6 +16,13 @@
 MODULE = Triceps::RowHandle		PACKAGE = Triceps::RowHandle
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapRowHandle *self)
 	CODE:

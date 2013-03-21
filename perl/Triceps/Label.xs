@@ -21,6 +21,13 @@ MODULE = Triceps::Label		PACKAGE = Triceps::Label
 BOOT:
 // fprintf(stderr, "DEBUG Label items=%d sp=%p mark=%p\n", items, sp, mark);
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapLabel *self)
 	CODE:

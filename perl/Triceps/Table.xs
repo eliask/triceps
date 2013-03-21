@@ -77,6 +77,13 @@ RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 MODULE = Triceps::Table		PACKAGE = Triceps::Table
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapTable *self)
 	CODE:

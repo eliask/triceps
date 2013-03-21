@@ -19,6 +19,13 @@ MODULE = Triceps::Row		PACKAGE = Triceps::Row
 BOOT:
 // fprintf(stderr, "DEBUG Row items=%d sp=%p mark=%p\n", items, sp, mark);
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapRow *self)
 	CODE:

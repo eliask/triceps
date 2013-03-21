@@ -18,6 +18,13 @@
 MODULE = Triceps::Unit		PACKAGE = Triceps::Unit
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapUnit *self)
 	CODE:
@@ -539,6 +546,13 @@ makeClearingTrigger(WrapUnit *self)
 
 MODULE = Triceps::Unit		PACKAGE = Triceps::UnitClearingTrigger
 ###################################################################################
+
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
 
 void
 DESTROY(WrapUnitClearingTrigger *self)

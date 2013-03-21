@@ -17,6 +17,13 @@
 MODULE = Triceps::AutoFnBind		PACKAGE = Triceps::AutoFnBind
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 # This one is tricky because croaking in a DESTROY doesn't work, 
 # so have to do something more horrible.
 void

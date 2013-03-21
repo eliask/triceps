@@ -23,6 +23,8 @@ sub _Triceps_X_Tql_share_safe_rowget # ($safe)
 
 package Triceps::X::Tql;
 
+sub CLONE_SKIP { 1; }
+
 our $VERSION = 'v1.0.1';
 
 use Carp;

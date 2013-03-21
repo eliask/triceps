@@ -101,15 +101,3 @@ same(WrapApp *self, WrapApp *other)
 	OUTPUT:
 		RETVAL
 
-# create a duplicate reference
-WrapApp *
-dup(WrapApp *self)
-	CODE:
-		// for casting of return value
-		static char CLASS[] = "Triceps::App";
-
-		clearErrMsg();
-
-		RETVAL = new WrapApp(self->get());
-	OUTPUT:
-		RETVAL

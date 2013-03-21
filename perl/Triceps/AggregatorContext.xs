@@ -31,6 +31,13 @@ WrapMagic magicWrapAggregatorContext = { "AggCtx" };
 MODULE = Triceps::AggregatorContext		PACKAGE = Triceps::AggregatorContext
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 # can not use the common typemap, because the destruction can be legally
 # called on an invalidated object, which would not pass the typemap
 void

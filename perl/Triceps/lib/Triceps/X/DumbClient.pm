@@ -9,6 +9,8 @@ use strict;
 
 package Triceps::X::DumbClient;
 
+sub CLONE_SKIP { 1; }
+
 our $VERSION = 'v1.0.1';
 
 use Carp;

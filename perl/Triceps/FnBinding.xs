@@ -78,6 +78,13 @@ static Onceref<FnBinding> makeBinding(const char *funcName, const string &name, 
 MODULE = Triceps::FnBinding		PACKAGE = Triceps::FnBinding
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 # The use is like this:
 #
 # $fnr = FnReturn->new(...);

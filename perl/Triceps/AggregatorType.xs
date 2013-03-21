@@ -18,6 +18,13 @@
 MODULE = Triceps::AggregatorType		PACKAGE = Triceps::AggregatorType
 ###################################################################################
 
+int
+CLONE_SKIP(...)
+	CODE:
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 DESTROY(WrapAggregatorType *self)
 	CODE:
