@@ -169,6 +169,8 @@ ok($! . "", "");
 # clearing of the objects by the default Triceps::clearArgs
 package ttt;
 
+sub CLONE_SKIP { 1; }
+
 sub new
 {
 	my $class = shift;

@@ -161,6 +161,9 @@ Unknown command 'goodbye'
 # An example of a wrapper over the table class
 
 package MyTable;
+
+sub CLONE_SKIP { 1; }
+
 our @ISA = qw(Triceps::Table);
 
 sub new # (class, unit, args of makeTable...)

@@ -76,6 +76,8 @@ if (0) {
 
 package Query1;
 
+sub CLONE_SKIP { 1; }
+
 sub new # ($class, $table, $name)
 {
 	my $class = shift;
@@ -178,6 +180,8 @@ ok(&getResultLines(), $expectQuery1);
 
 package TableQuery2;
 use Carp;
+
+sub CLONE_SKIP { 1; }
 
 sub new # ($class, $unit, $tabType, $name)
 {
@@ -320,6 +324,8 @@ window.response,OP_NOP,,,,
 
 package Query3;
 
+sub CLONE_SKIP { 1; }
+
 sub new # ($class, $optionName => $optionValue ...)
 {
 	my $class = shift;
@@ -405,6 +411,8 @@ ok(&getResultLines(), $expectQuery1);
 
 package Query4;
 use Carp;
+
+sub CLONE_SKIP { 1; }
 
 sub new # ($class, $optionName => $optionValue ...)
 {
@@ -593,6 +601,8 @@ qWindow.out,OP_NOP,,,,
 
 package Query5;
 use Carp;
+
+sub CLONE_SKIP { 1; }
 
 sub new # ($class, $optionName => $optionValue ...)
 {
@@ -817,6 +827,8 @@ qWindow.out,OP_NOP,,,,
 package Query6;
 use Carp;
 
+sub CLONE_SKIP { 1; }
+
 sub new # ($class, $optionName => $optionValue ...)
 {
 	my $class = shift;
@@ -1006,6 +1018,8 @@ qWindow.out,OP_NOP,,,,
 
 package Query7;
 
+sub CLONE_SKIP { 1; }
+
 sub new # ($class, $optionName => $optionValue ...)
 {
 	my $class = shift;
@@ -1128,6 +1142,8 @@ qWindow.out OP_NOP
 
 package ServerOutput;
 use Carp;
+
+sub CLONE_SKIP { 1; }
 
 # Sending of rows to the server output.
 sub new # ($class, $option => $value, ...)
@@ -1255,6 +1271,8 @@ out,OP_NOP,,,,
 
 package ServerOutput2;
 use Carp;
+
+sub CLONE_SKIP { 1; }
 
 # Sending of rows to the server output.
 sub new # ($class, $option => $value, ...)

@@ -179,6 +179,8 @@ ok(&dataToString(@resultData), &dataToString(@expectResultData));
 # XXX it's not good at error checking... something needs to be done...
 package vwap2;
 
+sub CLONE_SKIP { 1; }
+
 # aggregation handler: recalculate it each time the easy way
 sub vwapHandler # (table, context, aggop, opcode, rh, state, self)
 {

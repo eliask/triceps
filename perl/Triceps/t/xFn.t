@@ -1719,6 +1719,8 @@ ok(&getResultLines(),
 
 package FnCollapse;
 
+sub CLONE_SKIP { 1; }
+
 our @ISA=qw(Triceps::Collapse);
 
 sub new # ($class, $optName => $optValue, ...)
@@ -1943,6 +1945,8 @@ ok(&getResultLines(), $expectResult);
 
 package FnCollapseClose;
 
+sub CLONE_SKIP { 1; }
+
 our @ISA=qw(FnCollapse);
 
 sub new # ($class, $optName => $optValue, ...)
@@ -2072,6 +2076,8 @@ ok(&getResultLines(), $expectResult);
 # is done by chaining.
 
 package FnCollapseClose3;
+
+sub CLONE_SKIP { 1; }
 
 our @ISA=qw(FnCollapse);
 

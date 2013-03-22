@@ -31,8 +31,11 @@ use strict;
 #########################
 
 package MyCollapse;
+
 use Carp;
 use strict;
+
+sub CLONE_SKIP { 1; }
 
 # A constructor to create a Collapse template.
 # It collapses multiple changes on each key into at most one delete and one insert,

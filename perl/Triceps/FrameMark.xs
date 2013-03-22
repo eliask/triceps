@@ -51,5 +51,16 @@ getName(WrapFrameMark *self)
 	OUTPUT:
 		RETVAL
 
+# check whether both refs point to the same object
+int
+same(WrapFrameMark *self, WrapFrameMark *other)
+	CODE:
+		clearErrMsg();
+		FrameMark *mark = self->get();
+		FrameMark *omark = other->get();
+		RETVAL = (mark == omark);
+	OUTPUT:
+		RETVAL
+
 # FrameMark is a token object, so there is not much to do with it
 

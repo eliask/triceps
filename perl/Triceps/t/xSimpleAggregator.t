@@ -34,6 +34,8 @@ ok(1); # If we made it this far, we're ok.
 package MySimpleAggregator;
 use Carp;
 
+sub CLONE_SKIP { 1; }
+
 use strict;
 
 # the definition of aggregation functions

@@ -26,6 +26,8 @@ ok(1); # If we made it this far, we're ok.
 # a class defived from Triceps::Unit
 package MyUnit;
 
+sub CLONE_SKIP { 1; }
+
 @ISA = qw(Triceps::Unit);
 
 # new() and other methods get inherited

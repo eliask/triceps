@@ -88,3 +88,15 @@ clear(WrapAutoFnBind *self)
 				throw Exception(e, "Triceps::AutoFnBind::clear: encountered an FnReturn corruption");
 			}
 		} TRICEPS_CATCH_CROAK;
+
+# check whether both refs point to the same object
+int
+same(WrapAutoFnBind *self, WrapAutoFnBind *other)
+	CODE:
+		clearErrMsg();
+		AutoFnBind *fb = self->get();
+		AutoFnBind *ofb = other->get();
+		RETVAL = (fb == ofb);
+	OUTPUT:
+		RETVAL
+

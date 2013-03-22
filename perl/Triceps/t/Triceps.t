@@ -172,6 +172,8 @@ ok(&Triceps::tracerWhenIsAfter(&Triceps::TW_AFTER));
 
 package ttt;
 
+sub CLONE_SKIP { 1; }
+
 sub new
 {
 	my $class = shift;
