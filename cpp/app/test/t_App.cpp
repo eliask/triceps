@@ -631,6 +631,50 @@ UTESTCASE timeout_find(Utest *utest)
 		a1->harvester(false);
 	}
 
+	// successfully change the time as relative seconds, with separate for frags
+	{
+		Autoref<App> a1 = App::make("a1");
+
+		a1->setTimeout(100, 0); // for immediate failure
+		a1->refreshDeadline(); // uses the frag value
+
+		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+		a1->declareTriead("t3");
+
+		// check the timeout for construction
+		{
+			string msg;
+			try {
+				ow1->findTriead("t2");
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Thread 't2' in application 'a1' did not initialize within the deadline.\n");
+		}
+
+		// also check the timeout for the readiness wait
+		{
+			string msg;
+			try {
+				ow1->readyReady();
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, 
+				"Application 'a1' did not initialize within the deadline.\n"
+				"The lagging threads are:\n"
+				"  t2: not constructed\n"
+				"  t3: not defined\n");
+		}
+
+		// still have to mark them dead to harvest
+		Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+		ow1->markDead();
+		ow2->markDead();
+		ow3->markDead();
+		a1->harvester(false);
+	}
 	// successfully change the time as absolute point
 	{
 		Autoref<App> a1 = App::make("a1");

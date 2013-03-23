@@ -83,14 +83,30 @@ public:
 
 	// Set an explicit timeout (counting from now) for the initialization
 	// deadline.
+	// Since the full initial construction may take longer than the short
+	// creation of the fragments later, allows to set a separate timeout for
+	// the fragments. 
+	// This shorter frag timeout would not create a race because the full
+	// initialization should be completed before any threads go and create
+	// more fragments.
+	//
 	// Throws an Exception if any thread exists in the App.
-	// @param sec - timeout in seconds
-	void setTimeout(int sec);
+	// @param sec - timeout in seconds for the initial construction
+	// @param fragsec - timeout in seconds for the fragment construction,
+	//        if <0 then the same as for the initial
+	void setTimeout(int sec, int fragsec = -1);
 
 	// Set an explicit absolute initialization deadline.
+	// This adjusts only the initial deadline, the timeout for fragments
+	// stays unchanged.
+	//
 	// Throws an Exception if any thread exists in the App.
 	// @param dl - deadline, absolute value
 	void setDeadline(const timespec &dl);
+
+	// Refresh the deadline before creating a fragment.
+	// Uses the fragment timeout defined in setTimeout() (or default).
+	void refreshDeadline();
 
 	// Create a new thread.
 	//
@@ -503,10 +519,8 @@ protected:
 	void markTrieadDeadL(TrieadUpd *upd, Triead *t);
 
 	// Create a timestamp for the initialization deadline.
-	// Must be called only before creation of any threads, so since
-	// it's all single-threaded, there is no need for locking.
 	// @param sec - timeout in seconds from now
-	void computeDeadline(int sec);
+	void computeDeadlineL(int sec);
 
 	// Check the inter-thread connectivity for loops.
 	// The loops containing both the direct and reverse nexuses are OK,
@@ -627,6 +641,7 @@ protected:
 	pw::event2 dead_; // will be set when all the threads are dead
 	pw::event2 needHarvest_; // will be set when there are zombies to harvest
 	timespec deadline_; // deadline for the initialization, set on or soon after App creation
+	int timeout_; // the timeout that determines the deadline
 	int unreadyCnt_; // count of threads that aren't ready yet
 	int aliveCnt_; // count of threads that aren't dead yet
 	bool shutdown_; // flag: has been requested to shut down

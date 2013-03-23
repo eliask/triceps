@@ -108,6 +108,7 @@ App::App(const string &name) :
 	ready_(true), // since no threads are unready
 	dead_(true), // since no threads are alive
 	needHarvest_(true), // "dead" also implies being ready to harvest
+	timeout_(DEFAULT_TIMEOUT),
 	unreadyCnt_(0),
 	aliveCnt_(0),
 	shutdown_(false),
@@ -115,26 +116,33 @@ App::App(const string &name) :
 	drainExcept_(NULL),
 	drainCnt_(0)
 {
-	computeDeadline(DEFAULT_TIMEOUT);
+	computeDeadlineL(timeout_);
 }
 
-void App::setTimeout(int sec)
+void App::setTimeout(int sec, int fragsec)
 {
-	pw::lockmutex lm(mutex_); // needed for the thread count check
-	if (!threads_.empty())
+	pw::lockmutex lm(mutex_);
+	if (!threads_.empty()) // XXX this might be not the best idea with frags
 		throw Exception::fTrace("Triceps application '%s' deadline can not be changed after the thread creation.", name_.c_str());
-	computeDeadline(sec);
+	computeDeadlineL(sec);
+	timeout_ = fragsec < 0? sec : fragsec;
 }
 
 void App::setDeadline(const timespec &dl)
 {
-	pw::lockmutex lm(mutex_); // needed for the thread count check
-	if (!threads_.empty())
+	pw::lockmutex lm(mutex_);
+	if (!threads_.empty()) // XXX this might be not the best idea with frags
 		throw Exception::fTrace("Triceps application '%s' deadline can not be changed after the thread creation.", name_.c_str());
 	deadline_ = dl;
 }
 
-void App::computeDeadline(int sec)
+void App::refreshDeadline()
+{
+	pw::lockmutex lm(mutex_); // needed for the thread count check
+	computeDeadlineL(timeout_);
+}
+
+void App::computeDeadlineL(int sec)
 {
 	int err = clock_gettime(CLOCK_REALTIME, &deadline_); // the current time
 	if (err != 0) {
