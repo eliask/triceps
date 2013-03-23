@@ -36,6 +36,7 @@ XS(boot_Triceps__FnReturn);
 XS(boot_Triceps__FnBinding); 
 XS(boot_Triceps__AutoFnBind); 
 XS(boot_Triceps__App); 
+XS(boot_Triceps__TrieadOwner); 
 #ifdef __cplusplus
 };
 #endif

@@ -40,6 +40,8 @@ Things that need to be done:
 * rewrite makeLoop* with a Loop object
 * make the Perl tracer with row contents a standard Triceps object
 * support the row printing in Unit::Tracer in Perl similar to C++
+* in Perl move the print() and such to the base tracer
+* add the Perl interface for Errors?
 * in the C++-underlying-Perl objects have a place to keep $self,
   with $obj->getSelf()->{CLASS} containing the blessing.
 * when printing table types and such, make sure to \-escape the funny characters

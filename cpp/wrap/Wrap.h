@@ -21,6 +21,11 @@ namespace TRICEPS_NS {
 // for extra safety, add a magic in front of each wrapper
 
 struct WrapMagic {
+	~WrapMagic()
+	{
+		(*(int64_t *)v_) = 0; // makes sure that it gets invalidated
+	}
+
 	char v_[8]; // 8 bytes to make a single 64-bit comparison
 
 	bool operator!=(const WrapMagic &wm) const
@@ -200,6 +205,10 @@ DEFINE_WRAP(Index);
 DEFINE_WRAP2(Table, Rhref, RowHandle);
 
 DEFINE_WRAP(App);
+DEFINE_WRAP(Triead);
+DEFINE_WRAP(TrieadOwner);
+DEFINE_WRAP(Facet);
+DEFINE_WRAP(Nexus);
 
 #undef DEFINE_WRAP
 #undef DEFINE_WRAP2

@@ -32,5 +32,9 @@ WrapMagic magicWrapIndex = { "Index" };
 WrapMagic magicWrapRowHandle = { "RowHand" };
 
 WrapMagic magicWrapApp = { "App" };
+WrapMagic magicWrapTrieadOwner = { "TrOwner" };
+WrapMagic magicWrapTriead = { "Triead" };
+WrapMagic magicWrapFacet = { "Facet" };
+WrapMagic magicWrapNexus = { "Nexus" };
 
 }; // TRICEPS_NS
