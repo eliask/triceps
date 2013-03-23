@@ -12,6 +12,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "PerlApp.h"
 #include "app/App.h"
 
 MODULE = Triceps::App		PACKAGE = Triceps::App
@@ -39,15 +40,15 @@ make(char *name)
 		static char CLASS[] = "Triceps::App";
 
 		clearErrMsg();
-		Autoref<App> app ;
+		RETVAL = NULL; // shut up the warning
 
 		try { do {
+			Autoref<App> app ;
 			app = App::make(name);
+			// warn("Created app %s %p wrap %p", name, app.get(), wa);
+			RETVAL = new WrapApp(app);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-		WrapApp *wa = new WrapApp(app);
-		// warn("Created app %s %p wrap %p", name, app.get(), wa);
-		RETVAL = wa;
 	OUTPUT:
 		RETVAL
 
@@ -58,20 +59,28 @@ find(char *name)
 		static char CLASS[] = "Triceps::App";
 
 		clearErrMsg();
-		Autoref<App> app ;
+		RETVAL = NULL; // shut up the warning
 
 		try { do {
+			Autoref<App> app ;
 			app = App::find(name);
+			RETVAL = new WrapApp(app);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-		RETVAL = new WrapApp(app);
 	OUTPUT:
 		RETVAL
 
+# This works both as an object method on an object, or as
+# a class method with an object or name argument
 void
-drop(WrapApp *self)
+drop(SV *app)
 	CODE:
-		App::drop(self->get());
+		static char funcName[] =  "Triceps::App::drop";
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			App::drop(appv);
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 SV *
 listApps()

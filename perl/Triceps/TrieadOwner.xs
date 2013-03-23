@@ -13,6 +13,7 @@
 
 #include "TricepsPerl.h"
 #include "PerlCallback.h"
+#include "PerlApp.h"
 #include "app/TrieadOwner.h"
 
 MODULE = Triceps::TrieadOwner		PACKAGE = Triceps::TrieadOwner
@@ -34,14 +35,16 @@ DESTROY(WrapTrieadOwner *self)
 
 
 WrapTrieadOwner *
-Triceps::TrieadOwner::new(char *appname, char *tname, char *fragname)
+Triceps::TrieadOwner::new(SV *app, char *tname, char *fragname)
 	CODE:
+		static char funcName[] =  "Triceps::TrieadOwner::new";
 		clearErrMsg();
 
 		RETVAL = NULL; // shut up the compiler
 		try { do {
-			Autoref<App> app = App::find(appname);
-			Autoref<TrieadOwner> to = app->makeTriead(tname, fragname);
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			Autoref<TrieadOwner> to = appv->makeTriead(tname, fragname);
 			// XXX add a TrieadJoin
 			RETVAL = new WrapTrieadOwner(to);
 		} while(0); } TRICEPS_CATCH_CROAK;

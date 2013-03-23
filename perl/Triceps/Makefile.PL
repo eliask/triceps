@@ -78,6 +78,8 @@ TricepsPerl.o: PerlCallback.h
 
 PerlCallback.o: PerlCallback.h
 
+PerlApp.o: PerlApp.h
+
 PerlAggregator.o: PerlCallback.h PerlAggregator.h WrapAggregatorContext.h
 
 AggregatorContext.o: WrapAggregatorContext.h
@@ -85,6 +87,10 @@ AggregatorContext.o: WrapAggregatorContext.h
 FnReturn.o: PerlCallback.h
 
 FnBinding.o: PerlCallback.h
+
+App.o: PerlApp.h
+
+TrieadOwner.o: PerlApp.h PerlCallback.h
 
 ";
 }

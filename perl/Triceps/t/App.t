@@ -17,9 +17,9 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 11 };
+BEGIN { plan tests => 15 };
 use Triceps;
-ok(4); # If we made it this far, we're ok.
+ok(1); # If we made it this far, we're ok.
 
 #########################
 
@@ -51,7 +51,22 @@ ok(4); # If we made it this far, we're ok.
 	ok(ref $a1, "Triceps::App");
 	ok($a1->same($a1x));
 
-	Triceps::App::drop($a1);
+	$a1->drop();
+	@apps = Triceps::App::listApps();
+	ok($#apps, -1);
+}
+
+# test the drop by name
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my @apps;
+	@apps = Triceps::App::listApps();
+	ok($#apps, 1);
+	ok($apps[0], "a1");
+
+	Triceps::App::drop("a1");
 	@apps = Triceps::App::listApps();
 	ok($#apps, -1);
 }
