@@ -125,7 +125,7 @@ bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2);
 		PUSHMARK(SP); \
 	} while(0)
 
-// Complete the call sequence
+// Complete the call sequence returning nothing
 // @param cb - callback object pointer
 #define PerlCallbackDoCall(cb) \
 	do { \
@@ -172,7 +172,7 @@ bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2);
 // Check ERRSV for the callback execution errors.
 // If any errors found throws an Exception with the error message
 // constructed of the text of ERRSV and the arguments.
-// Since the typical situation invilve sthe stack unroll,
+// Since the typical situation involves the stack unroll,
 // the error is created not nested but first the ERRSV text,
 // then at the same level the arguments.
 //

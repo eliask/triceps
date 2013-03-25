@@ -90,7 +90,7 @@ FnBinding.o: PerlCallback.h
 
 App.o: PerlApp.h
 
-TrieadOwner.o: PerlApp.h PerlCallback.h
+TrieadOwner.o: PerlApp.h PerlTrieadJoin.h PerlCallback.h
 
 ";
 }

@@ -29,10 +29,10 @@ ok(1); # If we made it this far, we're ok.
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
 
-	my $to1 = Triceps::TrieadOwner->new($a1, "t1", "");
+	my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
 	ok(ref $to1, "Triceps::TrieadOwner");
 
-	my $to2 = Triceps::TrieadOwner->new("a1", "t2", "");
+	my $to2 = Triceps::TrieadOwner->new(undef, "a1", "t2", "");
 	ok(ref $to2, "Triceps::TrieadOwner");
 
 	$a1->drop();
