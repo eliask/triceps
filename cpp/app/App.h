@@ -235,6 +235,7 @@ public:
 	// Do one run of the harvester. Join all the threads that have
 	// died since the last run. Resets the "need harvest" flag, unless
 	// the whole App is dead.
+	//
 	// @return - whether the App is dead. Combining the check into this
 	//           method allows to avoid a race that would leave the
 	//           last thread(s) unharvested.
@@ -250,6 +251,8 @@ public:
 	// Note that the caller is expected to keep a reference to the App,
 	// so the dead App won't be actually destroyed until that reference
 	// is destroyed.
+	//
+	// May propagate an Exception from harvestOnce().
 	//
 	// @param throwAbort - flag: if an app abort is detected, propagate it by throwing
 	//         an exception after disposing of the App

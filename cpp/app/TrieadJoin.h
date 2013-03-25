@@ -38,6 +38,8 @@ public:
 	//
 	// The method will be called when the thread reports that it is
 	// about to exit.
+	//
+	// It's allowed to throw an Exception on major errors.
 	virtual void join() = 0;
 	
 	// Tell the thread that it should exit by interrupting its

@@ -565,7 +565,14 @@ bool App::harvestOnce()
 			zombies_.pop_front();
 		}
 		if (!j.isNull()) { // should never be NULL, but just in case
-			j->join();
+			try {
+				j->join();
+			} catch (Exception e) {
+				// dispose even if the join had failed
+				if (upd->dispose_)
+					disposeL(upd->t_->getName());
+				throw;
+			}
 			if (upd->dispose_)
 				disposeL(upd->t_->getName());
 		}

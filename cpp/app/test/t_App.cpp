@@ -891,6 +891,97 @@ UTESTCASE define_join(Utest *utest)
 	restore_uncatchable();
 }
 
+// one that throws on a join attempt
+class TrieadJoinThrow : public TrieadJoin
+{
+public:
+	TrieadJoinThrow(const string &msg):
+		msg_(msg)
+	{ }
+
+	virtual void join()
+	{
+		throw Exception::f("test exception: %s", msg_.c_str());
+	}
+
+	string msg_;
+};
+
+// test the exception handling in the joins
+UTESTCASE join_throw(Utest *utest)
+{
+	make_catchable();
+	
+	App::TrieadMap tm;
+	App::TrieadMap::iterator tmit;
+
+	Autoref<App> a1 = App::make("a1");
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadJoin> j1 = new TrieadJoinThrow("one");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2", "frag2");
+	Autoref<TrieadJoin> j2 = new TrieadJoinThrow("two");
+
+	// t3 doesn't throw in join
+	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
+	Autoref<TrieadJoin> j3 = new TrieadJoinEmpty();
+
+	a1->defineJoin("t1", j1);
+	UT_IS(AppGuts::gutsJoin(a1, "t1"), j1.get());
+	a1->defineJoin("t2", j2);
+	UT_IS(AppGuts::gutsJoin(a1, "t2"), j2.get());
+	a1->defineJoin("t3", j3);
+	UT_IS(AppGuts::gutsJoin(a1, "t3"), j3.get());
+
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
+
+	// exception on joining the t1
+	{
+		string msg;
+		try {
+			a1->harvestOnce();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "test exception: one\n");
+	}
+
+	// after harvest the join will be dropped
+	UT_IS(AppGuts::gutsJoin(a1, "t1"), NULL);
+
+	// t1 is not in a fragment, so it will be still present
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 3);
+	tmit = tm.find("t1");
+	UT_ASSERT(tmit != tm.end() && tmit->second.get() == ow1->get());
+
+	// shut down the fragment, making t2 disposable
+	a1->shutdownFragment("frag2");
+
+	// exception on joining the t2, all the way through harvester
+	{
+		string msg;
+		try {
+			a1->harvester(false);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "test exception: two\n");
+	}
+
+	// t2 is in a fragment, so a join will dispose of it
+	a1->getTrieads(tm);
+	UT_IS(tm.size(), 2);
+	tmit = tm.find("t2");
+	UT_ASSERT(tmit == tm.end());
+
+	// clean up t3, being able to continue after an exception
+	a1->harvester(false);
+
+	restore_uncatchable();
+}
+
 // the other error conditions in findTriead()
 UTESTCASE find_errors(Utest *utest)
 {
