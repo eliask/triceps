@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 68 };
+BEGIN { plan tests => 67 };
 use Triceps;
 ok(2); # If we made it this far, we're ok.
 
@@ -318,9 +318,10 @@ ok($reshistory,
 );
 
 # test that the remembered context is invalid
-$res = $outside_context->resultType();
-ok(!defined $res);
-ok("$!", "Triceps::AggregatorContext::resultType(): self has been already invalidated");
+eval {
+	$res = $outside_context->resultType();
+};
+ok("$@", qr/Triceps::AggregatorContext::resultType\(\): self has been already invalidated.*/);
 
 ######################### aggregation with both context and iteration  #############################
 
