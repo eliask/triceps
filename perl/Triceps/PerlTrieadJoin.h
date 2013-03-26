@@ -28,33 +28,20 @@ class PerlTrieadJoin : public TrieadJoin
 {
 public:
 	// Make the PerlTrieadJoin object.
-	// May throw an Exception if the threads are not imported in Perl
-	// (and this is the reason to why it can't be a constructor).
 	//
-	// @param fname - the calling function name, for the error message
 	// @param appname - name of the application, for error messages
 	// @param tname - name of the thread owning this object, for error messages
-	// @param joiner - the Perl function reference that performs the join (normally \&threads::join),
-	//        it will be called in the callback
-	// @param thr - the Perl thread object for joining, must be already checked that
-	//        it's a valid thread object, the joiner function will be called on it;
-	//        this object will be referred in the callback
-	// @return - the newly constructed PerlTrieadJoin object
-	static PerlTrieadJoin *make(const char *fname, const string &appname, const string &tname, SV *joiner, SV *thr);
+	// @param tid - the Perl thread id, as in $thr->tid()
+	PerlTrieadJoin(const string &appname, const string &tname, IV tid);
 
 	// from TrieadJoin
 	virtual void join();
 	// XXX add the interruption for the file reading in Perl
 
 protected:
-	// @param appname - name of the application, for error messages
-	// @param tname - name of the thread owning this object, for error messages
-	// @param cb - the call back object that performs the joining
-	PerlTrieadJoin(const string &appname, const string &tname, Onceref<PerlCallback> cb);
-
 	string appname_; // application name, for error messages
 	string tname_; // thread name, for error messages
-	Autoref<PerlCallback> cb_; // the join() callback
+	IV tid_; // thread id (used since the thread object refs can't pass between the threads)
 
 private:
 	PerlTrieadJoin();

@@ -24,35 +24,27 @@ namespace TRICEPS_NS
 namespace TricepsPerl 
 {
 
-PerlTrieadJoin *PerlTrieadJoin::make(const char *fname, const string &appname, const string &tname, SV *joiner, SV *thr)
-{
-	Onceref<PerlCallback> cb = new PerlCallback();
-	if (!cb->setCode(joiner, fname)) {
-		throw Exception::f("%s: joiner must be a reference to Perl function", fname);
-	}
-	cb->appendArg(thr);
-	fprintf(stderr, "XXX PerlTrieadJoin::make thr_arg=%s\n", SvPV_nolen(thr));
-	fprintf(stderr, "XXX PerlTrieadJoin::make thr=%s\n", SvPV_nolen(cb->args_[0]));
-
-	return new PerlTrieadJoin(appname, tname, cb);
-}
-
-PerlTrieadJoin::PerlTrieadJoin(const string &appname, const string &tname, Onceref<PerlCallback> cb):
+PerlTrieadJoin::PerlTrieadJoin(const string &appname, const string &tname, IV tid):
 	appname_(appname),
 	tname_(tname),
-	cb_(cb)
+	tid_(tid)
 { }
 
 void PerlTrieadJoin::join()
 {
 	dSP;
 
-	fprintf(stderr, "XXX PerlTrieadJoin::join thr=%s\n", SvPV_nolen(cb_->args_[0]));
+	// Can not create cb when creating the object, since that is happening in a
+	// different thread, and will cause a deadlock inside Perl when joining.
+	Autoref<PerlCallback> cb = new PerlCallback;
+	if (!cb->setCode(get_sv("Triceps::_JOIN_TID", 0), "")) {
+		throw Exception::f("In the application '%s' thread '%s' join: can not find a function reference $Triceps::_JOIN_TID",
+			appname_.c_str(), tname_.c_str());;
+	}
 
-	PerlCallbackStartCall(cb_);
-	XPUSHs(sv_2mortal(newSViv(99)));
-	XPUSHs(sv_2mortal(newSViv(88)));
-	PerlCallbackDoCall(cb_);
+	PerlCallbackStartCall(cb);
+	XPUSHs(sv_2mortal(newSViv(tid_)));
+	PerlCallbackDoCall(cb);
 	callbackSuccessOrThrow("Detected in the application '%s' thread '%s' join.", appname_.c_str(), tname_.c_str());
 }
 

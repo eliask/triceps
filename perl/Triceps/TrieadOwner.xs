@@ -36,24 +36,21 @@ DESTROY(WrapTrieadOwner *self)
 
 
 # (there is also the implicit class parameter)
-# @param joiner - the reference to the joiner function, normally \&threads::join
+# @param tid - thread id (as in $thr->tid()) where this TrieadOwner belongs, for joining 
 #        (or undef could be used for testing purposes but then you jave to join
-#        the thread yourself))
-# @param thr - threads object ref where this TrieadOwner belongs, for joining 
-#        (or undef could be used if the joiner is undef or if joiner is a closure that
-#        contains the thread reference inside)
+#        the thread yourself)
 # @param app - app object ref or name
 # @param tname - name of this thread in the app
 # @param fragname - name of the fragment in the app (or an empty string)
 WrapTrieadOwner *
-Triceps::TrieadOwner::new(SV *joiner, SV *thr, SV *app, char *tname, char *fragname)
+Triceps::TrieadOwner::new(SV *tid, SV *app, char *tname, char *fragname)
 	CODE:
 		static char funcName[] =  "Triceps::TrieadOwner::new";
 		clearErrMsg();
 
-		if (SvOK(thr) // check only if not undef
-		&& (!sv_isobject(thr) || !sv_derived_from(thr, "threads")))
-			croak("%s: thr argument must be either a threads object or an undef", funcName);
+		if (SvOK(tid) // check only if not undef
+		&& !SvIOK(tid))
+			croak("%s: tid argument must be either an int or an undef", funcName);
 
 		RETVAL = NULL; // shut up the compiler
 		try { do {
@@ -61,8 +58,8 @@ Triceps::TrieadOwner::new(SV *joiner, SV *thr, SV *app, char *tname, char *fragn
 			parseApp(funcName, "app", app, appv);
 			string tn(tname);
 			Autoref<TrieadOwner> to = appv->makeTriead(tn, fragname);
-			if (SvOK(joiner))
-				appv->defineJoin(tn, PerlTrieadJoin::make(funcName, appv->getName(), tname, joiner, thr));
+			if (SvIOK(tid))
+				appv->defineJoin(tn, new PerlTrieadJoin(appv->getName(), tname, SvIV(tid)));
 			RETVAL = new WrapTrieadOwner(to);
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:

@@ -90,6 +90,11 @@ sub clearArgs
 	}
 }
 
+# The default thread joining code, by the thread id.
+sub joinTid {
+	threads->object($_[0])->join();
+};
+
 require XSLoader;
 XSLoader::load('Triceps', $VERSION);
 
@@ -123,6 +128,7 @@ require Triceps::X::Tql;
 # The special variables.
 our $_CROAK_MSG; # used to temporarily store the croak message in the XS code
 our $_DEFAULT_CLEAR_LABEL = \&clearArgs; # used if the label's clear function is undef
+our $_JOIN_TID = \&joinTid; # used in the PerlTrieadJoin for harvesting
 
 1;
 __END__
