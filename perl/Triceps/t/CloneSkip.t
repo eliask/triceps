@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 77 };
+BEGIN { plan tests => 80 };
 use Triceps;
 ok(5); # If we made it this far, we're ok.
 
@@ -25,6 +25,9 @@ ok(5); # If we made it this far, we're ok.
 
 my $a1 = Triceps::App::make("a1");
 ok(ref $a1, "Triceps::App");
+
+my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
+ok(ref $to1, "Triceps::TrieadOwner");
 
 my $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
@@ -212,6 +215,9 @@ ok($tres[4], "SCALAR"); # tql
 
 ok(ref $a1, "Triceps::App");
 ok($a1->same($a1));
+
+ok(ref $to1, "Triceps::TrieadOwner");
+ok($a1->same($to1->app()));
 
 ok(ref $u1, "Triceps::Unit");
 ok($u1->same($u1));

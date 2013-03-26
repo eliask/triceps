@@ -53,7 +53,7 @@ bool PerlCallback::setCode(SV *code, const char *fname)
 {
 	clear();
 
-	if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
+	if (code == NULL || !SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
 		setErrMsg( string(fname) + ": code must be a reference to Perl function" );
 		return false;
 	}

@@ -36,14 +36,17 @@ DESTROY(WrapTrieadOwner *self)
 
 
 # (there is also the implicit class parameter)
-# @param thr - threads object ref where this TrieadOwner belongs, for joining 
+# @param joiner - the reference to the joiner function, normally \&threads::join
 #        (or undef could be used for testing purposes but then you jave to join
 #        the thread yourself))
+# @param thr - threads object ref where this TrieadOwner belongs, for joining 
+#        (or undef could be used if the joiner is undef or if joiner is a closure that
+#        contains the thread reference inside)
 # @param app - app object ref or name
 # @param tname - name of this thread in the app
 # @param fragname - name of the fragment in the app (or an empty string)
 WrapTrieadOwner *
-Triceps::TrieadOwner::new(SV *thr, SV *app, char *tname, char *fragname)
+Triceps::TrieadOwner::new(SV *joiner, SV *thr, SV *app, char *tname, char *fragname)
 	CODE:
 		static char funcName[] =  "Triceps::TrieadOwner::new";
 		clearErrMsg();
@@ -58,8 +61,8 @@ Triceps::TrieadOwner::new(SV *thr, SV *app, char *tname, char *fragname)
 			parseApp(funcName, "app", app, appv);
 			string tn(tname);
 			Autoref<TrieadOwner> to = appv->makeTriead(tn, fragname);
-			if (SvOK(thr))
-				appv->defineJoin(tn, PerlTrieadJoin::make(appv->getName(), tname, thr));
+			if (SvOK(joiner))
+				appv->defineJoin(tn, PerlTrieadJoin::make(funcName, appv->getName(), tname, joiner, thr));
 			RETVAL = new WrapTrieadOwner(to);
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:

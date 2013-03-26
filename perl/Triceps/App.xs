@@ -76,6 +76,7 @@ void
 drop(SV *app)
 	CODE:
 		static char funcName[] =  "Triceps::App::drop";
+		clearErrMsg();
 		try { do {
 			Autoref<App> appv;
 			parseApp(funcName, "app", app, appv);
@@ -110,3 +111,63 @@ same(WrapApp *self, WrapApp *other)
 	OUTPUT:
 		RETVAL
 
+char *
+getName(WrapApp *self)
+	CODE:
+		clearErrMsg();
+		App *a = self->get();
+		RETVAL = (char *)a->getName().c_str();
+	OUTPUT:
+		RETVAL
+
+void
+declareTriead(WrapApp *self, char *tname)
+	CODE:
+		clearErrMsg();
+		App *a = self->get();
+		try { do {
+			a->declareTriead(tname);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+int
+harvestOnce(WrapApp *self)
+	CODE:
+		clearErrMsg();
+		App *a = self->get();
+		RETVAL = 0;
+		try { do {
+			RETVAL = (int)a->harvestOnce();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+# Options:
+#
+# die_on_abort => int
+# Flag: if the App abort has been detected, will die after it disposes
+# of the App. Analog of the C++ flag throwAbort. Default: 1.
+#
+void
+harvester(WrapApp *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::App::harvester";
+		clearErrMsg();
+		App *a = self->get();
+		try { do {
+			bool throwAbort = true;
+
+			if (items % 2 != 1) {
+				throw Exception::f("Usage: %s(app, optionName, optionValue, ...), option names and values must go in pairs", funcName);
+			}
+			for (int i = 1; i < items; i += 2) {
+				const char *optname = (const char *)SvPV_nolen(ST(i));
+				SV *arg = ST(i+1);
+				if (!strcmp(optname, "die_on_abort")) {
+					throwAbort = SvTRUE(arg);
+				} else {
+					throw Exception::f("%s: unknown option '%s'", funcName, optname);
+				}
+			}
+
+			a->harvester(throwAbort);
+		} while(0); } TRICEPS_CATCH_CROAK;

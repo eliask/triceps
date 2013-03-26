@@ -17,11 +17,13 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 15 };
+BEGIN { plan tests => 21 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
+
+# declareTriead() is tested with TrieadOwner
 
 {
 	my $a1 = Triceps::App::make("a1");
@@ -29,6 +31,8 @@ ok(1); # If we made it this far, we're ok.
 	my $a1x = Triceps::App::find("a1");
 	ok(ref $a1x, "Triceps::App");
 	ok($a1->same($a1x));
+
+	ok($a1->getName(), "a1");
 
 	my @apps;
 	@apps = Triceps::App::listApps();
@@ -45,12 +49,22 @@ ok(1); # If we made it this far, we're ok.
 		}, "a1");
 	$t1->join();
 
-	$Test::ntest = 9; # include the tests in the thread
+	$Test::ntest = 10; # include the tests in the thread
 
 	# check that the references still work
 	ok(ref $a1, "Triceps::App");
 	ok($a1->same($a1x));
 
+	# check the basic harvesting (more will be used in the TrieadOwner and other tests)
+	ok($a1->harvestOnce(), 1); # no threads, means the app is dead
+	$a1->harvester();
+	$a1->harvester(die_on_abort => 0);
+	ok(!defined(eval { $a1->harvester("die_on_abort"); }));
+	ok($@, qr/^Usage: Triceps::App::harvester\(app, optionName, optionValue, ...\), option names and values must go in pairs/);
+	ok(!defined(eval { $a1->harvester(xxx => 1); }));
+	ok($@, qr/^Triceps::App::harvester: unknown option 'xxx'/);
+
+	# drop the app from the directory of all apps
 	$a1->drop();
 	@apps = Triceps::App::listApps();
 	ok($#apps, -1);

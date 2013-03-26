@@ -24,13 +24,16 @@ namespace TRICEPS_NS
 namespace TricepsPerl 
 {
 
-PerlTrieadJoin *PerlTrieadJoin::make(const string &appname, const string &tname, SV *thr)
+PerlTrieadJoin *PerlTrieadJoin::make(const char *fname, const string &appname, const string &tname, SV *joiner, SV *thr)
 {
 	Onceref<PerlCallback> cb = new PerlCallback();
-	if (!cb->setCode(get_sv("threads::join", 0), "")) {
-		throw Exception::f("Can not find the method threads::join(), probably the threads package is not imported.");
+	if (!cb->setCode(joiner, fname)) {
+		throw Exception::f("%s: joiner must be a reference to Perl function", fname);
 	}
 	cb->appendArg(thr);
+	fprintf(stderr, "XXX PerlTrieadJoin::make thr_arg=%s\n", SvPV_nolen(thr));
+	fprintf(stderr, "XXX PerlTrieadJoin::make thr=%s\n", SvPV_nolen(cb->args_[0]));
+
 	return new PerlTrieadJoin(appname, tname, cb);
 }
 
@@ -44,7 +47,11 @@ void PerlTrieadJoin::join()
 {
 	dSP;
 
+	fprintf(stderr, "XXX PerlTrieadJoin::join thr=%s\n", SvPV_nolen(cb_->args_[0]));
+
 	PerlCallbackStartCall(cb_);
+	XPUSHs(sv_2mortal(newSViv(99)));
+	XPUSHs(sv_2mortal(newSViv(88)));
 	PerlCallbackDoCall(cb_);
 	callbackSuccessOrThrow("Detected in the application '%s' thread '%s' join.", appname_.c_str(), tname_.c_str());
 }
