@@ -31,7 +31,7 @@ namespace TricepsPerl
 // @param var - variable name in the calling function, for error messages
 // @param arg - argument to be parsed
 // @param res - place to return the result
-void parseApp(char *func, char *var, SV *arg, Autoref<App> &res);
+void parseApp(const char *func, const char *var, SV *arg, Autoref<App> &res);
 
 }; // Triceps::TricepsPerl
 }; // Triceps

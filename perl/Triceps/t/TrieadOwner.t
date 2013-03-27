@@ -17,20 +17,22 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 6 };
+BEGIN { plan tests => 9 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
 
-# basic construction
+# basic construction (and along the way App::declareTriead)
 {
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
 
+	$a1->declareTriead("t1");
 	my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
 	ok(ref $to1, "Triceps::TrieadOwner");
 
+	Triceps::App::declareTriead("a1", "t1");
 	my $to2 = Triceps::TrieadOwner->new(undef, "a1", "t2", "");
 	ok(ref $to2, "Triceps::TrieadOwner");
 
@@ -57,4 +59,22 @@ ok(1); # If we made it this far, we're ok.
 
 	$a1->harvester(); # this ensures that the thread had all properly completed
 	ok(!$thr1->is_running());
+}
+
+# construction with Triead::start
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	Triceps::Triead::start(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			ok(1);
+		},
+	);
+		
+	$a1->harvester(); # this ensures that the thread had all properly completed
+	$Test::ntest = 9; # include the tests in the thread
+	ok(1);
 }

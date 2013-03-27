@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 54 };
+BEGIN { plan tests => 64 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -61,6 +61,28 @@ ok(!$@);
 ok($testobj->{mand}, 9);
 ok($testobj->{opt}, 9);
 ok(!defined $testobj->{veryopt});
+
+# accepting any options, with no actual options
+eval {
+	Triceps::Opt::parse("MYCLASS", $testobj, { %$optdef, '*' => [], },
+		mand => 9);
+};
+ok(!$@);
+ok($testobj->{mand}, 9);
+ok($testobj->{opt}, 9);
+ok(!defined $testobj->{veryopt});
+ok($#{$testobj->{'*'}}, -1);
+
+# accepting any options, with actual options
+eval {
+	Triceps::Opt::parse("MYCLASS", $testobj, { %$optdef, '*' => [], },
+		aa => 123, zz => "xx", mand => 9);
+};
+ok(!$@);
+ok($testobj->{mand}, 9);
+ok($testobj->{opt}, 9);
+ok(!defined $testobj->{veryopt});
+ok(join(',', @{$testobj->{'*'}}), "aa,123,zz,xx");
 
 eval {
 	Triceps::Opt::parse("MYCLASS", $testobj, $optdef,

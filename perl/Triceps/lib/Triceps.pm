@@ -117,6 +117,7 @@ require Triceps::SimpleAggregator;
 require Triceps::Collapse;
 require Triceps::LookupJoin;
 require Triceps::JoinTwo;
+require Triceps::Triead;
 # The X subpackages contain the eXperimental, eXample, eXtraneous code.
 require Triceps::X::SimpleServer;
 require Triceps::X::DumbClient;

@@ -17,13 +17,11 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 21 };
+BEGIN { plan tests => 23 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
-
-# declareTriead() is tested with TrieadOwner
 
 {
 	my $a1 = Triceps::App::make("a1");
@@ -84,3 +82,10 @@ ok(1); # If we made it this far, we're ok.
 	@apps = Triceps::App::listApps();
 	ok($#apps, -1);
 }
+
+# declareTriead() failure (the success is tested with TrieadOwner)
+{
+	ok(!defined(eval {Triceps::App::declareTriead("zz", "t1");}));
+	ok($@, qr/^Triceps application 'zz' is not found./);
+}
+

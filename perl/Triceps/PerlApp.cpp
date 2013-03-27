@@ -24,7 +24,7 @@ namespace TRICEPS_NS
 namespace TricepsPerl 
 {
 
-void parseApp(char *func, char *var, SV *arg, Autoref<App> &res)
+void parseApp(const char *func, const char *var, SV *arg, Autoref<App> &res)
 {
 	if ( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
 		WrapApp *wa = (WrapApp *)SvIV((SV*)SvRV( arg ));

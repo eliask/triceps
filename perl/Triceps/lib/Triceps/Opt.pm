@@ -38,25 +38,40 @@ use Scalar::Util;
 #        mand => [ undef, \&parseopt::ck_mandatory ],
 #        opt => [ 9, undef ],
 #    };
+# The special option name "*" allows to consume all the unknown options.
+# Its description is ignored as such, just use a [] for a placeholder,
+# in case if some support will be added in the future.
+# All these unknown options will be collected in an array, referenced
+# in $instance at the key "*".
 sub parse # ($class, %$instance, %$optdescr, @opts)
 {
 	my $class = shift;
 	my $instance = shift;
 	my $descr = shift; # ref to hash of optionName => defaultValue
 	my ($k, $varr, $v);
+	my $any = 0; # flag: accept any options into "*"
 
 	foreach $k (keys %$descr) { # set the defaults
-		$v = $descr->{$k}[0];
-		#print STDERR "DEBUG set $k=(", $v, ")\n";
-		$instance->{$k} = $descr->{$k}[0];
+		if ($k eq "*") {
+			$any = 1;
+			$instance->{$k} = [];
+		} else {
+			$v = $descr->{$k}[0];
+			#print STDERR "DEBUG set $k=(", $v, ")\n";
+			$instance->{$k} = $descr->{$k}[0];
+		}
 	}
 
 	while ($#_ >= 1) { # pick in pairs
 		$k = shift;
 		$v = shift;
-		Carp::confess "Unknown option '$k' for class '$class'"
-			unless exists $descr->{$k};
-		$instance->{$k} = $v;
+		if (exists $descr->{$k}) {
+			$instance->{$k} = $v;
+		} elsif ($any) {
+			push(@{$instance->{"*"}}, $k, $v);
+		} else {
+			Carp::confess "Unknown option '$k' for class '$class'";
+		}
 	}
 	Carp::confess "Last option '$k' for class '$class' is without a value"
 		unless $#_ == -1;
@@ -93,7 +108,7 @@ sub ck_mandatory
 }
 
 # check that the option value is a reference to a class
-# @param refto - class name (or ARRAY or HASH)
+# @param refto - class name (or ARRAY or HASH or CODE)
 # @param reftoref (optional) - if refto is ARRAY or HASH, can be used
 #        to specify the type of values in it
 sub ck_ref

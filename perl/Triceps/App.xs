@@ -120,13 +120,16 @@ getName(WrapApp *self)
 	OUTPUT:
 		RETVAL
 
+# the app can be used as a object or name
 void
-declareTriead(WrapApp *self, char *tname)
+declareTriead(SV *app, char *tname)
 	CODE:
+		static char funcName[] =  "Triceps::App::declareTriead";
 		clearErrMsg();
-		App *a = self->get();
 		try { do {
-			a->declareTriead(tname);
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->declareTriead(tname);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
 int
