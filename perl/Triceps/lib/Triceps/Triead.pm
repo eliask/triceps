@@ -24,6 +24,12 @@ our @startOpts = (
 	main => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
 );
 
+# The default set of options that a new thread gets from start().
+our @opts = (
+	@startOpts,
+	owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
+);
+
 # Start a new Triead.
 # Use:
 # Triceps::Triead::start(@options);
@@ -64,8 +70,9 @@ sub start { # (@opts)
 	my @args = @_;
 	@_ = (); # workaround for threads leaking objects
 	threads->create(sub {
-		push(@_, "owner",
-			Triceps::TrieadOwner->new(threads->self()->tid(), $opts->{app}, $opts->{thread}, $opts->{frag}));
-		&{$opts->{main}}(@_);
+		my $owner = Triceps::TrieadOwner->new(threads->self()->tid(), $opts->{app}, $opts->{thread}, $opts->{frag});
+		push(@_, "owner", $owner);
+		eval { &{$opts->{main}}(@_) };
+		$owner->abort($@) if ($@);
 	}, @args);
 }

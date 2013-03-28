@@ -132,6 +132,34 @@ declareTriead(SV *app, char *tname)
 			appv->declareTriead(tname);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+
+SV *
+getTrieads(SV *app)
+	PPCODE:
+		// for casting of return value
+		static char funcName[] =  "Triceps::App::getTrieads";
+		static char CLASS[] = "Triceps::Triead";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+
+			App::TrieadMap m;
+			appv->getTrieads(m);
+			for (App::TrieadMap::iterator it = m.begin(); it != m.end(); ++it) {
+				XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+				SV *sub = newSV(0); // undef by default
+				if (!it->second.isNull())
+					sv_setref_pv( sub, CLASS, (void*)(new WrapTriead(it->second)) );
+				XPUSHs(sv_2mortal(sub));
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+# The wrapper functions accept only the object to be more safe:
+# since the App gets normally dropped at the end of harvesting,
+# this safeguards from calling on another instance of an App
+# with the same name.
 int
 harvestOnce(WrapApp *self)
 	CODE:

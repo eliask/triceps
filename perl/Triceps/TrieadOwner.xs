@@ -114,3 +114,74 @@ abort(WrapTrieadOwner *self, char *msg)
 		TrieadOwner *to = self->get();
 		to->abort(msg);
 
+WrapTriead *
+get(WrapTrieadOwner *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Triead";
+
+		clearErrMsg();
+		TrieadOwner *to = self->get();
+
+		WrapTriead *wa = new WrapTriead(to->get());
+		RETVAL = wa;
+	OUTPUT:
+		RETVAL
+
+# a bunch of getters percolate from Triead
+
+char *
+getName(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		RETVAL = (char *)t->getName().c_str();
+	OUTPUT:
+		RETVAL
+
+char *
+fragment(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		RETVAL = (char *)t->fragment().c_str();
+	OUTPUT:
+		RETVAL
+
+int
+isConstructed(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		RETVAL = t->isConstructed();
+	OUTPUT:
+		RETVAL
+
+int
+isReady(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		RETVAL = t->isReady();
+	OUTPUT:
+		RETVAL
+
+int
+isDead(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		RETVAL = t->isDead();
+	OUTPUT:
+		RETVAL
+
+int
+isInputOnly(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		RETVAL = t->isInputOnly();
+	OUTPUT:
+		RETVAL
+
+# XXX test all methods

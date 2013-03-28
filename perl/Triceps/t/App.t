@@ -47,7 +47,7 @@ ok(1); # If we made it this far, we're ok.
 		}, "a1");
 	$t1->join();
 
-	$Test::ntest = 10; # include the tests in the thread
+	$Test::ntest += 1; # include the tests in the thread
 
 	# check that the references still work
 	ok(ref $a1, "Triceps::App");
@@ -89,3 +89,4 @@ ok(1); # If we made it this far, we're ok.
 	ok($@, qr/^Triceps application 'zz' is not found./);
 }
 
+# the getTrieads() is tested with TrieadOwner

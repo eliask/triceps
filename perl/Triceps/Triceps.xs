@@ -36,6 +36,7 @@ XS(boot_Triceps__FnReturn);
 XS(boot_Triceps__FnBinding); 
 XS(boot_Triceps__AutoFnBind); 
 XS(boot_Triceps__App); 
+XS(boot_Triceps__Triead); 
 XS(boot_Triceps__TrieadOwner); 
 #ifdef __cplusplus
 };
@@ -123,6 +124,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__App(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__Triead(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
