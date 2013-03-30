@@ -104,15 +104,18 @@ sub start { # (@opts)
 sub startHere { # (@opts)
 	my $myname = "Triceps::Triead::start";
 	my $opts = {};
+	my @myOpts = ( # options that don't propagate through
+		harvest => [ 1, undef ],
+	);
 
 	&Triceps::Opt::parse($myname, $opts, {
 		@startOpts,
-		harvest => [ 1, undef ],
+		@myOpts,
 		'*' => [],
 	}, @_);
 
 	@_ = &Triceps::Opt::drop({
-		harvest => 0
+		@myOpts
 	}, \@_);
 
 	# no need to declare the Triead, since all the code executes synchronously anyway
