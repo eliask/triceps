@@ -86,7 +86,7 @@ public:
 
 	// Check if this thread is input-only (i.e. has no reader facets).
 	// This flag will be valid only after the thread has been marked as
-	// constructed; before then it always shows False.
+	// ready; before then it always shows False.
 	bool isInputOnly() const
 	{
 		return inputOnly_;
