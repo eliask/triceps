@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 35 };
+BEGIN { plan tests => 43 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -152,8 +152,8 @@ ok(1); # If we made it this far, we're ok.
 		},
 	);
 
-	# the TrieadOwner destruction will mark it dead
-	$a1->harvester(); # this ensures that the thread had all properly completed
+	eval { &Triceps::App::find("a1"); };
+	ok($@, qr/^Triceps application 'a1' is not found/);
 
 	# even through a1 is dropped from the list, it's still accessible and has contents
 	my @ts = $a1->getTrieads();
@@ -162,3 +162,30 @@ ok(1); # If we made it this far, we're ok.
 	ok($ts[1]->isDead());
 }
 
+# startHere with no harvest
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			ok(ref $opts->{owner}, "Triceps::TrieadOwner");
+			ok(!$opts->{owner}->isDead());
+		},
+		harvest => 0,
+	);
+	# startHere() will mark the thread dead
+
+	# The app is still here, unharvested.
+	ok($a1->same(&Triceps::App::find("a1")));
+	my @ts = $a1->getTrieads();
+	ok($#ts, 1);
+	ok($ts[1]->getName(), "t1");
+	ok($ts[1]->isDead());
+
+	$a1->harvester(); # this ensures that the thread had all properly completed
+}

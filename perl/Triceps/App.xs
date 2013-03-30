@@ -70,6 +70,34 @@ find(char *name)
 	OUTPUT:
 		RETVAL
 
+# This is very much like find() only it can accept an App
+# reference as an argument and will then return that reference
+# back; or if it's a string, will do the usual lookup.
+# Since many Perl functions accept the App argument either
+# way, this allows to translate from either way to App.
+# On the other hand, find() preserves the strict name-to-object
+# semantics and requires that the App must not be dropped.
+#
+# @param app - App name or reference taht will be translated to
+#        a reference
+WrapApp *
+resolve(SV *app)
+	CODE:
+		// for casting of return value
+		static char funcName[] =  "Triceps::App::resolve";
+		static char CLASS[] = "Triceps::App";
+		clearErrMsg();
+		RETVAL = NULL; // shut up the warning
+
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			RETVAL = new WrapApp(appv);
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
 # This works both as an object method on an object, or as
 # a class method with an object or name argument
 void

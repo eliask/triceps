@@ -153,6 +153,67 @@ sub ck_refscalar
 }
 
 ###########
+# Drop the designated options from the option list.
+# This function is convenient to create the wrapper functions that
+# accepts a superset of options, they can then drop the options
+# they have handled themselves and pass through the rest to the
+# next layer.
+#
+# @param %$drops - reference to a hash containing the names of
+#        options to drop as their keys (the values don't matter)
+# @param @$opts - reference to the list of original options
+# @return - the list of options without the dropped ones
+sub drop($$) { # (%$drops, @$opts) -> @opts
+	my $drops = shift;
+	my $opts = shift;
+	my(@res, $o);
+	confess "The argument 1 must be a hash reference of option names"
+		unless (ref $drops eq "HASH");
+	confess "The argument 2 must be an array reference of option list"
+		unless (ref $opts eq "ARRAY");
+	while ($#{$opts} >= 0) {
+		$o = shift @$opts;
+		if (exists $$drops{$o}) {
+			shift @$opts;
+		} else {
+			push @res, $o, shift @$opts;
+		}
+	}
+	return @res;
+}
+
+###########
+# Drop the options except designated ones from the option list.
+# This function is convenient to create the wrapper functions that
+# accepts a superset of options, they can then drop the options
+# that are not handled by the next layer. 
+# In this case the argument should be the same as the mext layer
+# passes to Opt::parse() in %$optdescr.
+#
+# @param %$except - reference to a hash containing the names of
+#        options to not drop as their keys (the values don't matter)
+# @param @$opts - reference to the list of original options
+# @return - the list of options without the dropped ones
+sub dropExcept($$) { # (%$except, @$opts) -> @opts
+	my $except = shift;
+	my $opts = shift;
+	my(@res, $o);
+	confess "The argument 1 must be a hash reference of option names"
+		unless (ref $except eq "HASH");
+	confess "The argument 2 must be an array reference of option list"
+		unless (ref $opts eq "ARRAY");
+	while ($#{$opts} >= 0) {
+		$o = shift @$opts;
+		if (exists $$except{$o}) {
+			push @res, $o, shift @$opts;
+		} else {
+			shift @$opts;
+		}
+	}
+	return @res;
+}
+
+###########
 # Handling ot the typical unit-inputRowType-fromLabel triangle, where
 # the fromLabel can replace the other two.
 #

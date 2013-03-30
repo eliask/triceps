@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 23 };
+BEGIN { plan tests => 25 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -28,6 +28,10 @@ ok(1); # If we made it this far, we're ok.
 	ok(ref $a1, "Triceps::App");
 	my $a1x = Triceps::App::find("a1");
 	ok(ref $a1x, "Triceps::App");
+	ok($a1->same($a1x));
+	$a1x = Triceps::App::resolve("a1");
+	ok($a1->same($a1x));
+	$a1x = Triceps::App::resolve($a1);
 	ok($a1->same($a1x));
 
 	ok($a1->getName(), "a1");
@@ -90,3 +94,5 @@ ok(1); # If we made it this far, we're ok.
 }
 
 # the getTrieads() is tested with TrieadOwner
+
+# XXX test failures of all the calls

@@ -90,24 +90,39 @@ sub start { # (@opts)
 # and whatever needed reader facets on the output data. Then send all the
 # input data to the writer facet and read the results from the reader facet(s).
 #
-# The options are the same as for start().
-#
-# This function won't return until the pseudo-thread's main funtion
+# This function won't return until the pseudo-thread's main function
 # returns.
-# Don't forget to call the harvester after this function returns.
+#
+# The options are the same as for start() with an addition:
+#
+# harvest => 0/1
+# After the main function exits, automatically run the harvesrer.
+# If you set it to 0, don't forget to call the harvester after this 
+# function returns. Default: 1.
+# This option will not be passed to main().
+#
 sub startHere { # (@opts)
 	my $myname = "Triceps::Triead::start";
 	my $opts = {};
 
 	&Triceps::Opt::parse($myname, $opts, {
 		@startOpts,
+		harvest => [ 1, undef ],
 		'*' => [],
 	}, @_);
 
+	@_ = &Triceps::Opt::drop({
+		harvest => 0
+	}, \@_);
+
 	# no need to declare the Triead, since all the code executes synchronously anyway
-	my $owner = Triceps::TrieadOwner->new(undef, $opts->{app}, $opts->{thread}, $opts->{frag});
+	my $app = &Triceps::App::resolve($opts->{app});
+	my $owner = Triceps::TrieadOwner->new(undef, $app, $opts->{thread}, $opts->{frag});
 	push(@_, "owner", $owner);
 	eval { &{$opts->{main}}(@_) };
 	$owner->abort($@) if ($@);
 	$owner->markDead();
+	if ($opts->{harvest}) {
+		$app->harvester();
+	}
 }

@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 64 };
+BEGIN { plan tests => 78 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -302,6 +302,66 @@ ok($@ =~ /^Option 'unit' of class 'MYCLASS' must be a reference to a scalar, is 
 	ok($@ =~ /CallerMethod: must have only one of options opt1 or opt2 or opt3, got both opt1 and opt2 and opt3/);
 	$res = eval { &Triceps::Opt::checkMutuallyExclusive("CallerMethod", 1, "opt1", undef, "opt2", undef, "opt3", undef); };
 	ok($@ =~ /CallerMethod: must have exactly one of options opt1 or opt2 or opt3, got none of them/);
+}
+
+#########################
+# drop
+{
+	my @res = &Triceps::Opt::drop(
+		{ xxx => 0, yyy => 1, zzz => undef },
+		[ aaa => 1, zzz => 999, bbb => [1, 2, 3], xxx => 999 ],
+	);
+	ok($#res, 3);
+	ok($res[0], "aaa");
+	ok($res[1], 1);
+	ok($res[2], "bbb");
+	ok(join(',', @{$res[3]}), "1,2,3");
+
+	eval {
+		&Triceps::Opt::drop(
+			[ xxx => 0, yyy => 1, zzz => undef ],
+			[ aaa => 1, zzz => 999, bbb => [1, 2, 3], xxx => 999 ],
+		);
+	};
+	ok($@, qr/^The argument 1 must be a hash reference of option names/);
+
+	eval {
+		&Triceps::Opt::drop(
+			{ xxx => 0, yyy => 1, zzz => undef },
+			{ aaa => 1, zzz => 999, bbb => [1, 2, 3], xxx => 999 },
+		);
+	};
+	ok($@, qr/^The argument 2 must be an array reference of option list/);
+}
+
+#########################
+# dropExcept
+{
+	my @res = &Triceps::Opt::dropExcept(
+		{ aaa => 0, bbb => 1, ccc => undef },
+		[ aaa => 1, zzz => 999, bbb => [1, 2, 3], xxx => 999 ],
+	);
+	ok($#res, 3);
+	ok($res[0], "aaa");
+	ok($res[1], 1);
+	ok($res[2], "bbb");
+	ok(join(',', @{$res[3]}), "1,2,3");
+
+	eval {
+		&Triceps::Opt::dropExcept(
+			[ xxx => 0, yyy => 1, zzz => undef ],
+			[ aaa => 1, zzz => 999, bbb => [1, 2, 3], xxx => 999 ],
+		);
+	};
+	ok($@, qr/^The argument 1 must be a hash reference of option names/);
+
+	eval {
+		&Triceps::Opt::dropExcept(
+			{ xxx => 0, yyy => 1, zzz => undef },
+			{ aaa => 1, zzz => 999, bbb => [1, 2, 3], xxx => 999 },
+		);
+	};
+	ok($@, qr/^The argument 2 must be an array reference of option list/);
 }
 
 #print STDERR "$@\n";
