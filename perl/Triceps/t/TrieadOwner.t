@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 29 };
+BEGIN { plan tests => 35 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -135,3 +135,30 @@ ok(1); # If we made it this far, we're ok.
 	eval { $a1->harvester(); }; # this ensures that the thread had all properly completed
 	ok($@, qr/App 'a1' has been aborted by thread 't1': test error/);
 }
+
+# construction with Triead::startHere
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			ok(ref $opts->{owner}, "Triceps::TrieadOwner");
+			ok(!$opts->{owner}->isDead());
+		},
+	);
+
+	# the TrieadOwner destruction will mark it dead
+	$a1->harvester(); # this ensures that the thread had all properly completed
+
+	# even through a1 is dropped from the list, it's still accessible and has contents
+	my @ts = $a1->getTrieads();
+	ok($#ts, 1);
+	ok($ts[1]->getName(), "t1");
+	ok($ts[1]->isDead());
+}
+

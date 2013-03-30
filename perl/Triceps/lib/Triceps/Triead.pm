@@ -56,9 +56,6 @@ sub start { # (@opts)
 	my $myname = "Triceps::Triead::start";
 	my $opts = {};
 
-	# the logic works by connecting the output of each table in a
-	# LookupJoin of the other table
-
 	&Triceps::Opt::parse($myname, $opts, {
 		@startOpts,
 		'*' => [],
@@ -74,5 +71,43 @@ sub start { # (@opts)
 		push(@_, "owner", $owner);
 		eval { &{$opts->{main}}(@_) };
 		$owner->abort($@) if ($@);
+		# markDead() here is optional since it would happen anyway when the
+		# owner object gets destroyed, and the only reference to it is from
+		# this thread, so it will be destroyed when the thread exits.
+		# But better be safe than sorry.
+		$owner->markDead();
 	}, @args);
+}
+
+# Start a new Triead in the current thread, without creating a new thread.
+# This is convenient for the tests, to put this Triead at the end of
+# the pipelne and thus concentrating all the ok() calls in it, preventing
+# the races in the test results.
+# But it can also be useful in the real-world program as an anchor that
+# connectes the multithreaded Triceps model to the rest of the application.
+# An easy way to send a set of data through the model is to create a writer
+# facet on a reverse nexus (for the unliited buffering) for the input data,
+# and whatever needed reader facets on the output data. Then send all the
+# input data to the writer facet and read the results from the reader facet(s).
+#
+# The options are the same as for start().
+#
+# This function won't return until the pseudo-thread's main funtion
+# returns.
+# Don't forget to call the harvester after this function returns.
+sub startHere { # (@opts)
+	my $myname = "Triceps::Triead::start";
+	my $opts = {};
+
+	&Triceps::Opt::parse($myname, $opts, {
+		@startOpts,
+		'*' => [],
+	}, @_);
+
+	# no need to declare the Triead, since all the code executes synchronously anyway
+	my $owner = Triceps::TrieadOwner->new(undef, $opts->{app}, $opts->{thread}, $opts->{frag});
+	push(@_, "owner", $owner);
+	eval { &{$opts->{main}}(@_) };
+	$owner->abort($@) if ($@);
+	$owner->markDead();
 }
