@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 33 };
+BEGIN { plan tests => 43 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -118,6 +118,92 @@ ok(1); # If we made it this far, we're ok.
 
 	eval { $a1->harvester(); };
 	ok($@, qr/App 'a1' has been aborted by thread 'some thread': test msg/);
+
+	$a1->drop();
+}
+
+# timeouts
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	$a1->setDeadline(time() -1);
+	Triceps::App::setDeadline("a1", time() -1);
+
+	$a1->declareTriead("tx");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			eval { $opts->{owner}->readyReady(); };
+			ok($@, qr/Application 'a1' did not initialize within the deadline.\nThe lagging threads are:\n  tx: not defined/);
+		},
+		harvest => 0,
+	);
+
+	eval { $a1->setDeadline(time() -1); };
+	ok($@, qr/Triceps application 'a1' deadline can not be changed after the thread creation/);
+
+	$a1->drop();
+}
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	$a1->setTimeout(0);
+	Triceps::App::setTimeout("a1", 0);
+
+	$a1->declareTriead("tx");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			eval { $opts->{owner}->readyReady(); };
+			ok($@, qr/Application 'a1' did not initialize within the deadline.\nThe lagging threads are:\n  tx: not defined/);
+		},
+		harvest => 0,
+	);
+
+	eval { $a1->setTimeout(0); };
+	ok($@, qr/Triceps application 'a1' deadline can not be changed after the thread creation/);
+
+	$a1->drop();
+}
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	$a1->setTimeout(30, 0);
+	Triceps::App::setTimeout("a1", 30, 0);
+
+	eval { $a1->setTimeout(30, 0, 1); };
+	ok($@, qr/Usage: Triceps::App::setTimeout\(app, main_to, \[frag_to\]\), too many argument/);
+
+	$a1->refreshDeadline();
+	Triceps::App::refreshDeadline("a1");
+
+	$a1->declareTriead("tx");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			eval { $opts->{owner}->readyReady(); };
+			ok($@, qr/Application 'a1' did not initialize within the deadline.\nThe lagging threads are:\n  tx: not defined/);
+		},
+		harvest => 0,
+	);
+
+	eval { $a1->setTimeout(0); };
+	ok($@, qr/Triceps application 'a1' deadline can not be changed after the thread creation/);
 
 	$a1->drop();
 }

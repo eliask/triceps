@@ -200,6 +200,54 @@ abortBy(SV *app, char *tname, char *msg)
 			appv->abortBy(tname, msg);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+# the deadline is in seconds since Unix epoch
+void
+setDeadline(SV *app, int deadline)
+	CODE:
+		static char funcName[] =  "Triceps::App::setDeadline";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+
+			timespec dl;
+			dl.tv_sec = deadline;
+			dl.tv_nsec = 0;
+			appv->setDeadline(dl);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+setTimeout(SV *app, int main_to, ...)
+	CODE:
+		static char funcName[] =  "Triceps::App::setTimeout";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+
+			if (items > 3) {
+				throw Exception::f("Usage: %s(app, main_to, [frag_to]), too many arguments", funcName);
+			}
+
+			int frag_to = -1;
+			if (items == 3) {
+				frag_to = SvIV(ST(2));
+			}
+
+			appv->setTimeout(main_to, frag_to);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+refreshDeadline(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::refreshDeadline";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->refreshDeadline();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
 # the app can be used as a object or name
 void
 declareTriead(SV *app, char *tname)

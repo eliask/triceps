@@ -84,35 +84,45 @@ markConstructed(WrapTrieadOwner *self)
 	CODE:
 		clearErrMsg();
 		TrieadOwner *to = self->get();
-		to->markConstructed();
+		try { do {
+			to->markConstructed();
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 void
 markReady(WrapTrieadOwner *self)
 	CODE:
 		clearErrMsg();
 		TrieadOwner *to = self->get();
-		to->markReady();
+		try { do {
+			to->markReady();
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 void
 readyReady(WrapTrieadOwner *self)
 	CODE:
 		clearErrMsg();
 		TrieadOwner *to = self->get();
-		to->readyReady();
+		try { do {
+			to->readyReady();
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 void
 markDead(WrapTrieadOwner *self)
 	CODE:
 		clearErrMsg();
 		TrieadOwner *to = self->get();
-		to->markDead();
+		try { do {
+			to->markDead();
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 void
 abort(WrapTrieadOwner *self, char *msg)
 	CODE:
 		clearErrMsg();
 		TrieadOwner *to = self->get();
-		to->abort(msg);
+		try { do {
+			to->abort(msg);
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 WrapTriead *
 get(WrapTrieadOwner *self)
