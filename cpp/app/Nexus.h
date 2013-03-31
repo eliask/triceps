@@ -82,11 +82,13 @@ public:
 		return reverse_;
 	}
 
+#if 0  // {
 	// Check whether the nexus is unicast.
 	bool isUnicast() const
 	{
 		return unicast_;
 	}
+#endif // }
 
 	// Get the queue size limit.
 	int queueLimit() const
@@ -154,7 +156,9 @@ protected:
 	int endIdx_; // index of the _END_ label
 
 	bool reverse_; // Flag: this nexus's main queue is pointed upwards
+#if 0  // {
 	bool unicast_; // Flag: each row goes to only one reader, as opposed to copied to all readers
+#endif // }
 
 private:
 	Nexus();

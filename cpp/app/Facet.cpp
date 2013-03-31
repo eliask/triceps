@@ -21,7 +21,9 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 	fret_(fret),
 	queueLimit_(DEFAULT_QUEUE_LIMIT),
 	reverse_(false),
+#if 0  // {
 	unicast_(false),
+#endif // }
 	appReady_(false)
 { 
 	if (fret->facet_ != NULL) {
@@ -63,8 +65,10 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 	queueLimit_(nx->queueLimit()),
 	beginIdx_(nx->beginIdx_),
 	endIdx_(nx->endIdx_),
-	reverse_(nx->isReverse()),
+	reverse_(nx->isReverse())
+#if 0  // {
 	unicast_(nx->isUnicast())
+#endif // }
 {
 	Autoref<HoldRowTypes> holder = new HoldRowTypes;
 
@@ -106,12 +110,14 @@ Facet *Facet::setReverse(bool on)
 	return this;
 }
 
+#if 0  // {
 Facet *Facet::setUnicast(bool on)
 {
 	assertNotImported();
 	unicast_ = on;
 	return this;
 }
+#endif // }
 
 Facet *Facet::setQueueLimit(int limit)
 {

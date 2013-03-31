@@ -116,6 +116,7 @@ public:
 	// @return - the same Facet
 	Facet *setReverse(bool on = true);
 
+#if 0  // {
 	// Mark the future Nexus as unicast. The normal ("multicast") nexuses
 	// send all the data passing through them to all the readers.
 	// The unicast nexuses send each piece of the input to one
@@ -126,6 +127,7 @@ public:
 	// @param on - flag: the unicast mode is on
 	// @return - the same Facet
 	Facet *setUnicast(bool on = true);
+#endif // }
 
 	// Set the nexus queue limit.
 	// @param limit - the new limit value (make sure to keep it >0).
@@ -168,11 +170,13 @@ public:
 		return reverse_;
 	}
 
+#if 0  // {
 	// Check whether the underlying nexus is unicast.
 	bool isUnicast() const
 	{
 		return unicast_;
 	}
+#endif // }
 
 	// Get the queue size limit.
 	int queueLimit() const
@@ -324,7 +328,9 @@ protected:
 	int beginIdx_; // index of the _BEGIN_ label
 	int endIdx_; // index of the _END_ label
 	bool reverse_; // flag: this nexus's main queue is pointed upwards
+#if 0  // {
 	bool unicast_; // flag: each row goes to only one reader, as opposed to copied to all readers
+#endif // }
 	bool appReady_; // flag: the App is ready, so the data passing can be done
 
 private:

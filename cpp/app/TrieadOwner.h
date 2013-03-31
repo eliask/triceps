@@ -90,12 +90,16 @@ protected:
 			facet_->setReverse(on);
 			return this;
 		}
+
+#if 0  // {
 		NexusMaker *setUnicast(bool on = true)
 		{
 			mkfacet();
 			facet_->setUnicast(on);
 			return this;
 		}
+#endif // }
+
 		NexusMaker *setQueueLimit(int limit)
 		{
 			mkfacet();

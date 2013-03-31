@@ -20,8 +20,10 @@ Nexus::Nexus(const string &tname, Facet *facet):
 	queueLimit_(facet->isReverse()? Xtray::QUE_ID_MAX: facet->queueLimit()),
 	beginIdx_(facet->beginIdx_),
 	endIdx_(facet->endIdx_),
-	reverse_(facet->isReverse()),
+	reverse_(facet->isReverse())
+#if 0  // {
 	unicast_(facet->isUnicast())
+#endif // }
 { 
 	// deep-copy the types
 	Autoref<HoldRowTypes> holder = new HoldRowTypes;

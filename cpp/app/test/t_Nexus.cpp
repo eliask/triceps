@@ -58,17 +58,21 @@ UTESTCASE make_facet(Utest *utest)
 	Autoref<Facet> fa2 = Facet::make(fret1, true); // writer
 	UT_ASSERT(fa2->isWriter());
 
+#if 0  // {
 	UT_ASSERT(!fa2->isUnicast());
 	fa2->setUnicast();
 	UT_ASSERT(fa2->isUnicast());
+#endif // }
 
 	UT_ASSERT(!fa2->isReverse());
 	fa2->setReverse();
 	UT_ASSERT(fa2->isReverse());
 
+#if 0  // {
 	UT_ASSERT(fa2->isUnicast());
 	fa2->setUnicast(false);
 	UT_ASSERT(!fa2->isUnicast());
+#endif // }
 
 	UT_ASSERT(fa2->isReverse());
 	fa2->setReverse(false);
@@ -334,6 +338,7 @@ UTESTCASE make_facet(Utest *utest)
 		}
 		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
+#if 0  // {
 	{
 		string msg;
 		try {
@@ -343,6 +348,7 @@ UTESTCASE make_facet(Utest *utest)
 		}
 		UT_IS(msg, "Can not modify an imported facet 't1/fret1'.\n");
 	}
+#endif // }
 	{
 		string msg;
 		try {
@@ -738,8 +744,10 @@ UTESTCASE mknexus(Utest *utest)
 			->addLabel("one", rt1)
 			->addFromLabel("two", lb1)
 			->setContext(ctx1)
+#if 0  // {
 			->setUnicast()
 			->setUnicast(true)
+#endif // }
 			->setReverse()
 			->setReverse(true)
 			->setQueueLimit(3)
@@ -747,7 +755,9 @@ UTESTCASE mknexus(Utest *utest)
 
 		UT_ASSERT(fa1->isImported());
 		UT_ASSERT(fa1->isWriter());
+#if 0  // {
 		UT_ASSERT(fa1->isUnicast());
+#endif // }
 		UT_ASSERT(fa1->isReverse());
 		UT_IS(fa1->queueLimit(), Xtray::QUE_ID_MAX); // auto-set for reverse
 		UT_IS(fa1->getShortName(), "nx1");
@@ -791,7 +801,7 @@ UTESTCASE mknexus(Utest *utest)
 		string msg;
 		try {
 			Autoref<Facet> fa1 = ow1->makeNexusWriter("nx4")
-				->setUnicast()
+				->setReverse()
 				->addLabel("one", rt1)
 				->complete();
 		} catch(Exception e) {
