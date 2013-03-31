@@ -141,7 +141,6 @@ new(char *CLASS, ...)
 		Autoref<FnReturn> fretret;
 		clearErrMsg();
 		try {
-			clearErrMsg();
 			int len, i;
 			Unit *u = NULL;
 			AV *labels = NULL;
@@ -172,38 +171,7 @@ new(char *CLASS, ...)
 			// parse and do the basic checks of the labels
 			if (labels == NULL)
 				throw Exception(strprintf("%s: missing mandatory option 'labels'", funcName), false);
-			len = av_len(labels)+1; // av_len returns the index of last element
-			if (len % 2 != 0 || len == 0)
-				throw Exception(strprintf("%s: option 'labels' must contain elements in pairs, has %d elements", funcName, len), false);
-			for (i = 0; i < len; i+=2) {
-				SV *svname, *svval;
-				WrapLabel *wl;
-				WrapRowType *wrt;
-				svname = *av_fetch(labels, i, 0);
-				svval = *av_fetch(labels, i+1, 0);
-
-				if (!SvPOK(svname))
-					throw Exception(strprintf("%s: in option 'labels' element %d name must be a string", funcName, i/2+1), false);
-
-				TRICEPS_GET_WRAP2(Label, wl, RowType, wrt, svval, "%s: in option 'labels' element %d with name '%s'", 
-					funcName, i/2+1, SvPV_nolen(svname));
-
-				if (wl != NULL) {
-					Label *lb = wl->get();
-					Unit *lbu = lb->getUnitPtr();
-
-					if (lbu == NULL)
-						throw Exception(strprintf("%s: a cleared label in option 'labels' element %d with name '%s' can not be used", 
-							funcName, i/2+1, SvPV_nolen(svname)), false);
-
-					if (u == NULL)
-						u = lbu;
-					else if (u != lbu)
-						throw Exception(strprintf(
-							"%s: label in option 'labels' element %d with name '%s' has a mismatching unit '%s', previously seen unit '%s'", 
-							funcName, i/2+1, SvPV_nolen(svname), lbu->getName().c_str(), u->getName().c_str()), false);
-				}
-			}
+			checkLabelList(funcName, "labels", u, labels);
 
 			if (u == NULL)
 				throw Exception(strprintf("%s: the unit can not be auto-deduced, must use an explicit option 'unit'", funcName), false);
@@ -213,28 +181,7 @@ new(char *CLASS, ...)
 			// now finally start building the object
 			Autoref<FnReturn> fret = new FnReturn(u, name);
 
-			len = av_len(labels)+1; // av_len returns the index of last element
-			for (i = 0; i < len; i+=2) {
-				SV *svname, *svval;
-				WrapRowType *wrt;
-				WrapLabel *wl;
-				svname = *av_fetch(labels, i, 0);
-				svval = *av_fetch(labels, i+1, 0);
-
-				string lbname;
-				GetSvString(lbname, svname, "%s: option 'label' element %d name", funcName, i+1);
-
-				TRICEPS_GET_WRAP2(Label, wl, RowType, wrt, svval, "%s: in option 'labels' element %d with name '%s'", 
-					funcName, i/2+1, SvPV_nolen(svname));
-
-				if (wl != NULL) {
-					Label *lb = wl->get();
-					fret->addFromLabel(lbname, lb);
-				} else {
-					RowType *rt = wrt->get();
-					fret->addLabel(lbname, rt);
-				}
-			}
+			addFnReturnLabels(funcName, "labels", u, labels, fret);
 
 			if (!onPush.isNull() || !onPop.isNull()) {
 				fret->setContext(new PerlFnContext(onPush, onPop));

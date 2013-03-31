@@ -194,4 +194,52 @@ isInputOnly(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
+void
+makeNexusNoImport(WrapTrieadOwner *self, ...)
+	CODE:
+		static char funcName[] =  "Triceps::TrieadOwner::makeNexusNoImport";
+		clearErrMsg();
+		try { do {
+			int len, i;
+			FnReturn *fret = NULL;
+			// Unit *u = NULL;
+			AV *labels = NULL;
+			AV *rowts = NULL;
+			AV *tablets = NULL;
+			string name;
+			bool reverse = false;
+			int qlimit = -1; // "default"
+
+			if (items % 2 != 1)
+				throw Exception::f("Usage: %s(self, optionName, optionValue, ...), option names and values must go in pairs", funcName);
+
+			for (int i = 1; i < items; i += 2) {
+				const char *optname = (const char *)SvPV_nolen(ST(i));
+				SV *arg = ST(i+1);
+				if (!strcmp(optname, "fn_return")) {
+					fret = TRICEPS_GET_WRAP(FnReturn, arg, "%s: option '%s'", funcName, optname)->get();
+				} else if (!strcmp(optname, "name")) {
+					GetSvString(name, arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "labels")) {
+					labels = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "row_types")) {
+					rowts = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "table_types")) {
+					tablets = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "reverse")) {
+					reverse = SvTRUE(arg);
+				} else if (!strcmp(optname, "queue_limit")) {
+					qlimit = GetSvInt(arg, "%s: option '%s'", funcName, optname);
+					if (qlimit <= 0)
+						throw Exception::f("%s: option '%s' must be >0, got %d", funcName, optname, qlimit);
+				} else {
+					throw Exception::f("%s: unknown option '%s'", funcName, optname);
+				}
+			}
+			if (fret != NULL && labels != NULL)
+				throw Exception::f("%s: options 'fn_return' and 'labels' are mutually exclusive", funcName);
+			if (fret == NULL && labels == NULL)
+				throw Exception::f("%s: one of the options 'fnreturn' or  'labels' must be present", funcName);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
 # XXX test all methods

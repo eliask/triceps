@@ -84,13 +84,15 @@ PerlAggregator.o: PerlCallback.h PerlAggregator.h WrapAggregatorContext.h
 
 AggregatorContext.o: WrapAggregatorContext.h
 
-FnReturn.o: PerlCallback.h
+TricepsOpt.o: TricepsOpt.h
+
+FnReturn.o: PerlCallback.h TricepsOpt.h
 
 FnBinding.o: PerlCallback.h
 
 App.o: PerlApp.h
 
-TrieadOwner.o: PerlApp.h PerlTrieadJoin.h PerlCallback.h
+TrieadOwner.o: PerlApp.h PerlTrieadJoin.h PerlCallback.h TricepsOpt.h
 
 ";
 }

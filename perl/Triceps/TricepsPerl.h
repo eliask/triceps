@@ -313,6 +313,15 @@ void GetSvWrap2(WrapClass1 *&wrap1, WrapClass2 *&wrap2, SV *svptr, const char *c
 void GetSvString(string &res, SV *svptr, const char *fmt, ...)
 	__attribute__((format(printf, 3, 4)));
 
+// Extract an int from a Perl SV value.
+// Throws a Triceps::Exception if the value is not SvIOK().
+//
+// @param svptr - the Perl SV* from which the value will be extracted
+// @param fmt, ... - the prefix for the error message
+// @return - the int value
+IV GetSvInt(SV *svptr, const char *fmt, ...)
+	__attribute__((format(printf, 2, 3)));
+
 // Extract an array reference from a Perl SV value.
 // Throws a Triceps::Exception if the value is not an array reference.
 //

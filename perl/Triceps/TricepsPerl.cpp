@@ -485,6 +485,18 @@ void GetSvString(string &res, SV *svptr, const char *fmt, ...)
 	res.assign(nn, slen);
 }
 
+IV GetSvInt(SV *svptr, const char *fmt, ...)
+{
+	if (!SvIOK(svptr)) {
+		va_list ap;
+		va_start(ap, fmt);
+		string s = vstrprintf(fmt, ap);
+		va_end(ap);
+		throw Exception(strprintf("%s value must be an int", s.c_str()), false);
+	}
+	return SvIV(svptr);
+}
+
 AV *GetSvArray(SV *svptr, const char *fmt, ...)
 {
 	if (!SvROK(svptr) || SvTYPE(SvRV(svptr)) != SVt_PVAV) {
