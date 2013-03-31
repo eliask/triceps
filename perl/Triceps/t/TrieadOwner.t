@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 43 };
+BEGIN { plan tests => 65 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -163,27 +163,63 @@ ok(1); # If we made it this far, we're ok.
 }
 
 # startHere with no harvest
+# And along the way test the Triead state changes.
 {
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
 
+	my $t; # will contain the Triead created
 	Triceps::Triead::startHere(
 		app => "a1",
 		thread => "t1",
+		fragment => "frag",
 		main => sub {
 			my $opts = {};
 			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
-			ok(ref $opts->{owner}, "Triceps::TrieadOwner");
-			ok(!$opts->{owner}->isDead());
+			my $ow = $opts->{owner};
+			ok(ref $ow, "Triceps::TrieadOwner");
+			ok($ow->getName(), "t1");
+			ok($ow->fragment(), "frag");
+			ok(!$ow->isConstructed());
+			ok(!$ow->isReady());
+			ok(!$ow->isDead());
+			ok(!$ow->isInputOnly()); # false before the Triead is constructed
+
+			$t = $ow->get();
+			ok(ref $t, "Triceps::Triead");
+			ok($t->getName(), "t1");
+			ok($t->fragment(), "frag");
+			ok(!$t->isConstructed());
+			ok(!$t->isReady());
+			ok(!$t->isDead());
+			ok(!$t->isInputOnly()); # false before the Triead is constructed
+
+			$ow->markConstructed();
+			ok($ow->isConstructed());
+			ok($t->isConstructed());
+
+			$ow->markReady();
+			ok($ow->isReady());
+			ok($t->isReady());
+
+			ok($ow->isInputOnly()); # no reader facets
+			ok($t->isInputOnly());
+
+			$ow->readyReady(); # since no other threads, will succeed
+
+			$ow->markDead();
+			ok($ow->isDead());
+			ok($t->isDead());
 		},
 		harvest => 0,
 	);
-	# startHere() will mark the thread dead
+	ok(ref $t, "Triceps::Triead");
 
 	# The app is still here, unharvested.
 	ok($a1->same(&Triceps::App::find("a1")));
 	my @ts = $a1->getTrieads();
 	ok($#ts, 1);
+	ok($t->same($ts[1]));
 	ok($ts[1]->getName(), "t1");
 	ok($ts[1]->isDead());
 

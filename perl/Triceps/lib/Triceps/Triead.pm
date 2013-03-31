@@ -20,7 +20,7 @@ use strict;
 our @startOpts = (
 	app => [ undef, \&Triceps::Opt::ck_mandatory ],
 	thread => [ undef, \&Triceps::Opt::ck_mandatory ],
-	frag => [ "", undef ],
+	fragment => [ "", undef ],
 	main => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
 );
 
@@ -43,7 +43,7 @@ our @opts = (
 # thread => $threadname
 # Name for this thread.
 #
-# frag => $fragname
+# fragment => $fragname
 # Name of the fragment (default: "").
 #
 # main => \&function
@@ -67,7 +67,7 @@ sub start { # (@opts)
 	my @args = @_;
 	@_ = (); # workaround for threads leaking objects
 	threads->create(sub {
-		my $owner = Triceps::TrieadOwner->new(threads->self()->tid(), $opts->{app}, $opts->{thread}, $opts->{frag});
+		my $owner = Triceps::TrieadOwner->new(threads->self()->tid(), $opts->{app}, $opts->{thread}, $opts->{fragment});
 		push(@_, "owner", $owner);
 		eval { &{$opts->{main}}(@_) };
 		$owner->abort($@) if ($@);
@@ -120,7 +120,7 @@ sub startHere { # (@opts)
 
 	# no need to declare the Triead, since all the code executes synchronously anyway
 	my $app = &Triceps::App::resolve($opts->{app});
-	my $owner = Triceps::TrieadOwner->new(undef, $app, $opts->{thread}, $opts->{frag});
+	my $owner = Triceps::TrieadOwner->new(undef, $app, $opts->{thread}, $opts->{fragment});
 	push(@_, "owner", $owner);
 	eval { &{$opts->{main}}(@_) };
 	$owner->abort($@) if ($@);
