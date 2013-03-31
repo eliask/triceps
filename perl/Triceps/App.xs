@@ -299,6 +299,15 @@ harvestOnce(WrapApp *self)
 	OUTPUT:
 		RETVAL
 
+void
+waitNeedHarvest(WrapApp *self)
+	CODE:
+		clearErrMsg();
+		App *a = self->get();
+		try { do {
+			a->waitNeedHarvest();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
 # Options:
 #
 # die_on_abort => int

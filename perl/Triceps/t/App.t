@@ -59,6 +59,7 @@ ok(1); # If we made it this far, we're ok.
 	ok($a1->same($a1x));
 
 	# check the basic harvesting (more will be used in the TrieadOwner and other tests)
+	$a1->waitNeedHarvest();
 	ok($a1->harvestOnce(), 1); # no threads, means the app is dead
 	$a1->harvester();
 	$a1->harvester(die_on_abort => 0);
