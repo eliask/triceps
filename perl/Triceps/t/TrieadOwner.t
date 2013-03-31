@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 65 };
+BEGIN { plan tests => 67 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -210,6 +210,10 @@ ok(1); # If we made it this far, we're ok.
 			$ow->markDead();
 			ok($ow->isDead());
 			ok($t->isDead());
+
+			# test the abort
+			$ow->abort("test msg");
+			ok($ow->app()->isAborted());
 		},
 		harvest => 0,
 	);
@@ -223,5 +227,6 @@ ok(1); # If we made it this far, we're ok.
 	ok($ts[1]->getName(), "t1");
 	ok($ts[1]->isDead());
 
-	$a1->harvester(); # this ensures that the thread had all properly completed
+	eval { $a1->harvester(); };
+	ok($@, qr/^App 'a1' has been aborted by thread 't1': test msg/);
 }

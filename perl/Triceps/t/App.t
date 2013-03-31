@@ -17,12 +17,13 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 25 };
+BEGIN { plan tests => 33 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
 #########################
 
+# basic creation, look-up
 {
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
@@ -94,5 +95,31 @@ ok(1); # If we made it this far, we're ok.
 }
 
 # the getTrieads() is tested with TrieadOwner
+
+# abort
+{
+	my ($t, $m);
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	ok(!$a1->isAborted);
+	($t, $m) = $a1->getAborted();
+	ok(!defined $t);
+	ok(!defined $m);
+
+	$a1->abortBy("some thread", "test msg");
+	ok(Triceps::App::isAborted("a1"));
+	($t, $m) = Triceps::App::getAborted("a1");
+	ok($t, "some thread");
+	ok($m, "test msg");
+
+	# the second abort has no effect but doesn't fail either
+	Triceps::App::abortBy("a1", "other thread", "other msg");
+
+	eval { $a1->harvester(); };
+	ok($@, qr/App 'a1' has been aborted by thread 'some thread': test msg/);
+
+	$a1->drop();
+}
 
 # XXX test failures of all the calls

@@ -148,6 +148,58 @@ getName(WrapApp *self)
 	OUTPUT:
 		RETVAL
 
+int
+isAborted(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::isAborted";
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			RETVAL = appv->isAborted();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+# returns a list of (triead name, message),
+# and if not aborted then both will be undef
+SV *
+getAborted(SV *app)
+	PPCODE:
+		// for casting of return value
+		static char funcName[] =  "Triceps::App::getAborted";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+
+			if (!appv->isAborted()) {
+				XPUSHs(sv_2mortal(newSV(0)));
+				XPUSHs(sv_2mortal(newSV(0)));
+			} else {
+				string t = appv->getAbortedBy();
+				string m = appv->getAbortedMsg();
+
+				XPUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
+				XPUSHs(sv_2mortal(newSVpvn(m.c_str(), m.size())));
+
+				SV *sub = newSV(0); // undef by default
+				XPUSHs(sv_2mortal(sub));
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+abortBy(SV *app, char *tname, char *msg)
+	CODE:
+		static char funcName[] =  "Triceps::App::abortBy";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->abortBy(tname, msg);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
 # the app can be used as a object or name
 void
 declareTriead(SV *app, char *tname)
@@ -159,7 +211,6 @@ declareTriead(SV *app, char *tname)
 			parseApp(funcName, "app", app, appv);
 			appv->declareTriead(tname);
 		} while(0); } TRICEPS_CATCH_CROAK;
-
 
 SV *
 getTrieads(SV *app)
