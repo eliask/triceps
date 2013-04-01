@@ -17,9 +17,25 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 73 };
 use Triceps;
+use Carp;
 ok(1); # If we made it this far, we're ok.
+
+#########################
+# stuff that will be used repeatedly
+
+my @def1 = (
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+my $rt1 = Triceps::RowType->new( # used later
+	@def1
+);
+ok(ref $rt1, "Triceps::RowType");
 
 #########################
 
@@ -43,6 +59,9 @@ ok(1); # If we made it this far, we're ok.
 	my $t1 = $to1->get();
 	ok(ref $t1, "Triceps::Triead");
 	ok($t1->getName(), "t1");
+
+	my $unit = $to1->unit();
+	ok(ref $unit, "Triceps::Unit");
 
 	my $to2 = Triceps::TrieadOwner->new(undef, "a1", "t2", "");
 	ok(ref $to2, "Triceps::TrieadOwner");
@@ -229,4 +248,44 @@ ok(1); # If we made it this far, we're ok.
 
 	eval { $a1->harvester(); };
 	ok($@, qr/^App 'a1' has been aborted by thread 't1': test msg/);
+}
+
+# makeNexus
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
+	ok(ref $to1, "Triceps::TrieadOwner");
+	my $t1 = $to1->get();
+	ok(ref $t1, "Triceps::Triead");
+
+	my $lb = $to1->unit()->makeDummyLabel($rt1, "lb");
+	my $tt = Triceps::TableType->new($rt1)
+		->addSubIndex("by_b", 
+			Triceps::IndexType->newHashed(key => [ "b" ])
+		)
+	or confess "$!";
+
+	my $fa;
+
+	$fa = $to1->makeNexus(
+		name => "nx1",
+		labels => [
+			one => $rt1,
+			two => $lb,
+		],
+	    row_types => [
+			one => $rt1,
+		],
+	    table_types => [
+			one => $tt,
+		],
+		reverse => 0,
+		queue_limit => 100,
+		import => "writer",
+	);
+	ok(ref $fa, "Triceps::Facet");
+
+	$a1->drop();
 }

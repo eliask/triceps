@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 80 };
+BEGIN { plan tests => 83 };
 use Triceps;
 ok(5); # If we made it this far, we're ok.
 
@@ -28,6 +28,11 @@ ok(ref $a1, "Triceps::App");
 
 my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
 ok(ref $to1, "Triceps::TrieadOwner");
+
+my $tri1 = $to1->get();
+ok(ref $tri1, "Triceps::Triead");
+
+# XXX add facet
 
 my $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
@@ -218,6 +223,9 @@ ok($a1->same($a1));
 
 ok(ref $to1, "Triceps::TrieadOwner");
 ok($a1->same($to1->app()));
+
+ok(ref $tri1, "Triceps::Triead");
+ok($tri1->same($tri1));
 
 ok(ref $u1, "Triceps::Unit");
 ok($u1->same($u1));

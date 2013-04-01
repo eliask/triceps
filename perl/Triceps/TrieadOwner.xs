@@ -5,6 +5,8 @@
 //
 // The wrapper for TrieadOwner.
 
+#include <algorithm>
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -12,10 +14,11 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include "TricepsOpt.h"
 #include "PerlCallback.h"
 #include "PerlApp.h"
 #include "PerlTrieadJoin.h"
-#include "app/TrieadOwner.h"
+#include <app/TrieadOwner.h>
 
 MODULE = Triceps::TrieadOwner		PACKAGE = Triceps::TrieadOwner
 ###################################################################################
@@ -74,8 +77,20 @@ app(WrapTrieadOwner *self)
 		clearErrMsg();
 		TrieadOwner *to = self->get();
 
-		WrapApp *wa = new WrapApp(to->app());
-		RETVAL = wa;
+		RETVAL = new WrapApp(to->app());
+	OUTPUT:
+		RETVAL
+
+WrapUnit *
+unit(WrapTrieadOwner *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Unit";
+
+		clearErrMsg();
+		TrieadOwner *to = self->get();
+
+		RETVAL = new WrapUnit(to->unit());
 	OUTPUT:
 		RETVAL
 
@@ -194,21 +209,26 @@ isInputOnly(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
-void
-makeNexusNoImport(WrapTrieadOwner *self, ...)
+WrapFacet *
+makeNexus(WrapTrieadOwner *self, ...)
 	CODE:
 		static char funcName[] =  "Triceps::TrieadOwner::makeNexusNoImport";
+		static char CLASS[] = "Triceps::Facet";
+		bool do_import = false; // whether to reimport the nexus after exporting it
 		clearErrMsg();
+		TrieadOwner *to = self->get();
+		RETVAL = NULL;
 		try { do {
 			int len, i;
-			FnReturn *fret = NULL;
 			// Unit *u = NULL;
 			AV *labels = NULL;
-			AV *rowts = NULL;
-			AV *tablets = NULL;
+			AV *row_types = NULL;
+			AV *table_types = NULL;
 			string name;
 			bool reverse = false;
 			int qlimit = -1; // "default"
+			string import; // the import type
+			bool writer;
 
 			if (items % 2 != 1)
 				throw Exception::f("Usage: %s(self, optionName, optionValue, ...), option names and values must go in pairs", funcName);
@@ -216,30 +236,110 @@ makeNexusNoImport(WrapTrieadOwner *self, ...)
 			for (int i = 1; i < items; i += 2) {
 				const char *optname = (const char *)SvPV_nolen(ST(i));
 				SV *arg = ST(i+1);
-				if (!strcmp(optname, "fn_return")) {
-					fret = TRICEPS_GET_WRAP(FnReturn, arg, "%s: option '%s'", funcName, optname)->get();
-				} else if (!strcmp(optname, "name")) {
+				if (!strcmp(optname, "name")) {
 					GetSvString(name, arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "labels")) {
 					labels = GetSvArray(arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "row_types")) {
-					rowts = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+					row_types = GetSvArray(arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "table_types")) {
-					tablets = GetSvArray(arg, "%s: option '%s'", funcName, optname);
+					table_types = GetSvArray(arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "reverse")) {
 					reverse = SvTRUE(arg);
 				} else if (!strcmp(optname, "queue_limit")) {
 					qlimit = GetSvInt(arg, "%s: option '%s'", funcName, optname);
 					if (qlimit <= 0)
 						throw Exception::f("%s: option '%s' must be >0, got %d", funcName, optname, qlimit);
+				} else if (!strcmp(optname, "import")) {
+					GetSvString(import, arg, "%s: option '%s'", funcName, optname);
 				} else {
 					throw Exception::f("%s: unknown option '%s'", funcName, optname);
 				}
 			}
+#if 0 // { for now don't construct from FnReturn
 			if (fret != NULL && labels != NULL)
 				throw Exception::f("%s: options 'fn_return' and 'labels' are mutually exclusive", funcName);
 			if (fret == NULL && labels == NULL)
 				throw Exception::f("%s: one of the options 'fnreturn' or  'labels' must be present", funcName);
+#endif // }
+			Unit *u = to->unit();
+			if (labels == NULL)
+				throw Exception::f("%s: missing mandatory option 'labels'", funcName);
+			checkLabelList(funcName, "labels", u, labels);
+
+			if (name.empty())
+				throw Exception::f("%s: must specify a non-empty name with option 'name'", funcName);
+
+			std::transform(import.begin(), import.end(), import.begin(), ::tolower);
+			if (import.compare(0, 5, "write") == 0) {
+				writer = true; do_import = true;
+			} else if (import.compare(0, 4, "read") == 0) {
+				writer = false; do_import = true;
+			} else if (import.compare(0, 2, "no") == 0) {
+				writer = false; do_import = false;
+			} else {
+				throw Exception::f("%s: the option 'import' must have the value one of 'writer', 'reader', 'no'", funcName);
+			}
+
+			// start by building the FnReturn
+			Autoref<FnReturn> fret = new FnReturn(u, name);
+
+			addFnReturnLabels(funcName, "labels", u, labels, fret);
+
+			// now make the Facet out it
+			Autoref<Facet> fa = new Facet(fret, writer);
+			fa->setReverse(reverse);
+			if (qlimit)
+				fa->setQueueLimit(qlimit);
+
+			if (row_types) {
+				len = av_len(row_types)+1; // av_len returns the index of last element
+				for (i = 0; i < len; i+=2) {
+					SV *svname, *svval;
+					svname = *av_fetch(row_types, i, 0);
+					svval = *av_fetch(row_types, i+1, 0);
+
+					string elname;
+					GetSvString(elname, svname, "%s: option 'row_types' element %d name", funcName, i+1);
+
+					RowType *rt = TRICEPS_GET_WRAP(RowType, svval, 
+						"%s: in option 'row_types' element %d with name '%s'", funcName, i/2+1, SvPV_nolen(svname)
+					)->get();
+
+					fa->exportRowType(elname, rt);
+				}
+			}
+
+			if (table_types) {
+				len = av_len(table_types)+1; // av_len returns the index of last element
+				for (i = 0; i < len; i+=2) {
+					SV *svname, *svval;
+					svname = *av_fetch(table_types, i, 0);
+					svval = *av_fetch(table_types, i+1, 0);
+
+					string elname;
+					GetSvString(elname, svname, "%s: option 'table_types' element %d name", funcName, i+1);
+
+					TableType *tt = TRICEPS_GET_WRAP(TableType, svval, 
+						"%s: in option 'table_types' element %d with name '%s'", funcName, i/2+1, SvPV_nolen(svname)
+					)->get();
+
+					fa->exportTableType(elname, tt);
+				}
+			}
+
+			try {
+				to->exportNexus(fa, do_import); // this checks the facet for errors
+			} catch (Exception e) {
+				throw Exception(e, strprintf("%s: invalid arguments:", funcName));
+			}
+
+			if (do_import)
+				RETVAL = new WrapFacet(fa);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-# XXX test all methods
+		if (!do_import)
+			XSRETURN_UNDEF; // NOT an error, just nothing to return
+	OUTPUT:
+		RETVAL
+

@@ -38,6 +38,7 @@ XS(boot_Triceps__AutoFnBind);
 XS(boot_Triceps__App); 
 XS(boot_Triceps__Triead); 
 XS(boot_Triceps__TrieadOwner); 
+XS(boot_Triceps__Facet); 
 #ifdef __cplusplus
 };
 #endif
@@ -132,6 +133,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__TrieadOwner(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__Facet(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Triceps items=%d sp=%p mark=%p\n", items, sp, mark);
