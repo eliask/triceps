@@ -434,6 +434,11 @@ UTESTCASE export_import(Utest *utest)
 		ow1->get()->imports(exp); // test the list of imports from Triead
 		UT_IS(exp.size(), 1);
 		UT_IS(exp["t1/fret1"].get(), fa1->nexus());
+		ow1->get()->readerImports(exp);
+		UT_IS(exp.size(), 1);
+		UT_IS(exp["t1/fret1"].get(), fa1->nexus());
+		ow1->get()->writerImports(exp);
+		UT_ASSERT(exp.empty());
 
 		ow1->exports(exp);
 		UT_IS(exp.size(), 1);
@@ -476,6 +481,12 @@ UTESTCASE export_import(Utest *utest)
 		ow1->imports(imp);
 		UT_IS(imp.size(), 2);
 		UT_IS(imp["t1/fret2"], fa3);
+		ow1->get()->readerImports(exp);
+		UT_IS(exp.size(), 1);
+		UT_IS(exp["t1/fret1"].get(), fa1->nexus());
+		ow1->get()->writerImports(exp);
+		UT_IS(exp.size(), 1);
+		UT_IS(exp["t1/fret2"].get(), fa3->nexus());
 
 		// an import into another thread would wait for thread to be fully constructed
 		// (and in this case fail on timeout)

@@ -105,9 +105,20 @@ public:
 	void exports(NexusMap &ret) const;
 
 	// List all the imported Nexuses, for introspection.
-	// @param - a map where all the imported Facets will be returned.
+	// This doesn't differentiate between readers and writers.
+	// @param - a map where all the imported Nexuses will be returned.
 	//     It will be cleared before placing any data into it.
 	void imports(NexusMap &ret) const;
+
+	// List all the Nexuses imported for reading, for introspection.
+	// @param - a map where all the imported Nexuses will be returned.
+	//     It will be cleared before placing any data into it.
+	void readerImports(NexusMap &ret) const;
+
+	// List all the Nexuses imported for writing, for introspection.
+	// @param - a map where all the imported Nexuses will be returned.
+	//     It will be cleared before placing any data into it.
+	void writerImports(NexusMap &ret) const;
 
 #if 0 // {
 	// Get the count of exports.

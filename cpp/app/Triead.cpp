@@ -102,6 +102,34 @@ void Triead::imports(NexusMap &ret) const
 		ret[it->first] = it->second->nexus();
 }
 
+void Triead::readerImports(NexusMap &ret) const
+{
+	pw::lockmutex lm(mutex_);
+
+	if (!ret.empty())
+		ret.clear();
+
+	// copy a snapshot of the exports map to the return value
+	for (FacetMap::const_iterator it = imports_.begin(); it != imports_.end(); ++it) {
+		if (!it->second->isWriter())
+			ret[it->first] = it->second->nexus();
+	}
+}
+
+void Triead::writerImports(NexusMap &ret) const
+{
+	pw::lockmutex lm(mutex_);
+
+	if (!ret.empty())
+		ret.clear();
+
+	// copy a snapshot of the exports map to the return value
+	for (FacetMap::const_iterator it = imports_.begin(); it != imports_.end(); ++it) {
+		if (it->second->isWriter())
+			ret[it->first] = it->second->nexus();
+	}
+}
+
 void Triead::facets(FacetMap &ret) const
 {
 	pw::lockmutex lm(mutex_);
