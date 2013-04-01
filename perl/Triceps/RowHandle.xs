@@ -29,7 +29,7 @@ DESTROY(WrapRowHandle *self)
 		// warn("RowHandle destroyed!");
 		delete self;
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapRowHandle *self, WrapRowHandle *other)
 	CODE:
@@ -40,9 +40,9 @@ same(WrapRowHandle *self, WrapRowHandle *other)
 	OUTPUT:
 		RETVAL
 
-# A special thing about WrapRowHandles is that for the convenience of comparing
-# iterators, they may contain the NULL pointers. So wherever they are used, must
-# check for NULL.
+#// A special thing about WrapRowHandles is that for the convenience of comparing
+#// iterators, they may contain the NULL pointers. So wherever they are used, must
+#// check for NULL.
 
 WrapRow *
 getRow(WrapRowHandle *self)
@@ -77,7 +77,7 @@ isInTable(WrapRowHandle *self)
 	OUTPUT:
 		RETVAL
 
-# check for NULL, which means the end() iterator
+#// check for NULL, which means the end() iterator
 int
 isNull(WrapRowHandle *self)
 	CODE:
@@ -87,8 +87,8 @@ isNull(WrapRowHandle *self)
 	OUTPUT:
 		RETVAL
 
-# methods that duplicate the table's navigation, done more straightforward:
-# with the table reference taken from the WrapRowHandle
+#// methods that duplicate the table's navigation, done more straightforward:
+#// with the table reference taken from the WrapRowHandle
 
 WrapRowHandle *
 next(WrapRowHandle *self)
@@ -169,4 +169,4 @@ nextGroupIdx(WrapRowHandle *self, WrapIndexType *widx)
 	OUTPUT:
 		RETVAL
 		
-# tested in Table.t
+#// tested in Table.t

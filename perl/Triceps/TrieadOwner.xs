@@ -38,13 +38,13 @@ DESTROY(WrapTrieadOwner *self)
 		delete self;
 
 
-# (there is also the implicit class parameter)
-# @param tid - thread id (as in $thr->tid()) where this TrieadOwner belongs, for joining 
-#        (or undef could be used for testing purposes but then you jave to join
-#        the thread yourself)
-# @param app - app object ref or name
-# @param tname - name of this thread in the app
-# @param fragname - name of the fragment in the app (or an empty string)
+#// (there is also the implicit class parameter)
+#// @param tid - thread id (as in $thr->tid()) where this TrieadOwner belongs, for joining 
+#//        (or undef could be used for testing purposes but then you jave to join
+#//        the thread yourself)
+#// @param app - app object ref or name
+#// @param tname - name of this thread in the app
+#// @param fragname - name of the fragment in the app (or an empty string)
 WrapTrieadOwner *
 Triceps::TrieadOwner::new(SV *tid, SV *app, char *tname, char *fragname)
 	CODE:
@@ -153,7 +153,7 @@ get(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
-# a bunch of getters percolate from Triead
+#// a bunch of getters percolate from Triead
 
 char *
 getName(WrapTrieadOwner *self)
@@ -343,7 +343,7 @@ makeNexus(WrapTrieadOwner *self, ...)
 	OUTPUT:
 		RETVAL
 
-# same as Triead::exports(), for convenience
+#// same as Triead::exports(), for convenience
 SV *
 exports(WrapTrieadOwner *self)
 	PPCODE:

@@ -31,10 +31,10 @@ DESTROY(WrapTriead *self)
 		// warn("TrieadOwner %s %p wrap %p destroyed!", to->get()->getName().c_str(), to, self);
 		delete self;
 
-# The Triead objects don't get constructed from Perl, they can only be
-# extracted from the TrieadOwner or App.
+#// The Triead objects don't get constructed from Perl, they can only be
+#// extracted from the TrieadOwner or App.
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapTriead *self, WrapTriead *other)
 	CODE:
@@ -133,5 +133,5 @@ imports(WrapTriead *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-# XXX add Nexus methods
-# XXX test all methods
+#// XXX add Nexus methods
+#// XXX test all methods

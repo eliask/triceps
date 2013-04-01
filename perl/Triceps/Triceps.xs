@@ -176,8 +176,8 @@ isNop(int op)
 		RETVAL
 
 ############ conversions of strings to enum constants #############################
-# (this duplicates the Triceps:: constant definitions but comes useful once in a while
-# the error values are converted to undefs
+#// (this duplicates the Triceps:: constant definitions but comes useful once in a while
+#// the error values are converted to undefs
 
 int
 stringOpcode(char *val)
@@ -334,7 +334,7 @@ aggOpString(int val)
 	OUTPUT:
 		RETVAL
 
-# Works only on the constant, not on the string value.
+#// Works only on the constant, not on the string value.
 int
 tracerWhenIsBefore(int val)
 	CODE:
@@ -343,7 +343,7 @@ tracerWhenIsBefore(int val)
 	OUTPUT:
 		RETVAL
 
-# Works only on the constant, not on the string value.
+#// Works only on the constant, not on the string value.
 int
 tracerWhenIsAfter(int val)
 	CODE:

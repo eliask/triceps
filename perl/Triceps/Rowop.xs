@@ -32,7 +32,7 @@ DESTROY(WrapRowop *self)
 		// warn("Rowop destroyed!");
 		delete self;
 
-# make a copy of Rowop
+#// make a copy of Rowop
 WrapRowop *
 copy(WrapRowop *self)
 	CODE:
@@ -44,7 +44,7 @@ copy(WrapRowop *self)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same type object
+#// check whether both refs point to the same type object
 int
 same(WrapRowop *self, WrapRowop *other)
 	CODE:
@@ -64,7 +64,7 @@ getOpcode(WrapRowop *self)
 	OUTPUT:
 		RETVAL
 
-# the static isInsert() etc are in the base Triceps:: class
+#// the static isInsert() etc are in the base Triceps:: class
 
 int
 isInsert(WrapRowop *self)

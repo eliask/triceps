@@ -33,7 +33,7 @@ DESTROY(WrapUnitTracer *self)
 		delete self;
 
 
-# to test a common call
+#// to test a common call
 int
 __testSuperclassCall(WrapUnitTracer *self)
 	CODE:
@@ -41,7 +41,7 @@ __testSuperclassCall(WrapUnitTracer *self)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapUnitTracer *self, WrapUnitTracer *other)
 	CODE:
@@ -55,7 +55,7 @@ same(WrapUnitTracer *self, WrapUnitTracer *other)
 MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracerStringName
 ###################################################################################
 
-# args are a hash of options
+#// args are a hash of options
 WrapUnitTracer *
 new(char *CLASS, ...)
 	CODE:
@@ -82,7 +82,7 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
-# getBuffer() would imply getting the error buffer, so call it just print()
+#// getBuffer() would imply getting the error buffer, so call it just print()
 char *
 print(WrapUnitTracer *self)
 	CODE:
@@ -105,7 +105,7 @@ clearBuffer(WrapUnitTracer *self)
 		if (sntr != NULL)
 			sntr->clearBuffer();
 
-# to test a subclass call
+#// to test a subclass call
 char *
 __testSubclassCall(WrapUnitTracer *self)
 	CODE:
@@ -136,7 +136,7 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
-# to test a subclass call
+#// to test a subclass call
 char *
 __testSubclassCall(WrapUnitTracer *self)
 	CODE:
@@ -149,5 +149,5 @@ __testSubclassCall(WrapUnitTracer *self)
 	OUTPUT:
 		RETVAL
 
-# XXX add getCode
-# XXX getCode should return an array?
+#// XXX add getCode
+#// XXX getCode should return an array?

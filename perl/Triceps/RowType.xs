@@ -75,7 +75,7 @@ DESTROY(WrapRowType *self)
 		// warn("RowType destroyed!");
 		delete self;
 
-# get back the type definition
+#// get back the type definition
 SV *
 getdef(WrapRowType *self)
 	PPCODE:
@@ -92,10 +92,10 @@ getdef(WrapRowType *self)
 			XPUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
 		}
 
-# the following methods break up the type definitions for the convenience
-# of row type manipulation from Perl
+#// the following methods break up the type definitions for the convenience
+#// of row type manipulation from Perl
 
-# get back the field names only (left side of the definition)
+#// get back the field names only (left side of the definition)
 SV *
 getFieldNames(WrapRowType *self)
 	PPCODE:
@@ -108,7 +108,7 @@ getFieldNames(WrapRowType *self)
 			XPUSHs(sv_2mortal(newSVpvn(fld[i].name_.c_str(), fld[i].name_.size())));
 		}
 
-# get back the field types only (right side of the definition)
+#// get back the field types only (right side of the definition)
 SV *
 getFieldTypes(WrapRowType *self)
 	PPCODE:
@@ -124,8 +124,8 @@ getFieldTypes(WrapRowType *self)
 			XPUSHs(sv_2mortal(newSVpvn(t.c_str(), t.size())));
 		}
 
-# get back the mapping of field names to their indexes in row type
-# i.e. (field0 => 0, field1 => 1, ...)
+#// get back the mapping of field names to their indexes in row type
+#// i.e. (field0 => 0, field1 => 1, ...)
 SV *
 getFieldMapping(WrapRowType *self)
 	PPCODE:
@@ -140,8 +140,8 @@ getFieldMapping(WrapRowType *self)
 		}
 
 
-# the row factory, from a hash-style name-value list
-# XXX add a version that ignores unknown fields, useful for row type conversions
+#// the row factory, from a hash-style name-value list
+#// XXX add a version that ignores unknown fields, useful for row type conversions
 WrapRow *
 makeRowHash(WrapRowType *self, ...)
 	CODE:
@@ -196,8 +196,8 @@ makeRowHash(WrapRowType *self, ...)
 	OUTPUT:
 		RETVAL
 
-# the row factory, from an array of values in the exact order (like CSV files),
-# filling the missing values at the end with nulls
+#// the row factory, from an array of values in the exact order (like CSV files),
+#// filling the missing values at the end with nulls
 WrapRow *
 makeRowArray(WrapRowType *self, ...)
 	CODE:
@@ -239,7 +239,7 @@ makeRowArray(WrapRowType *self, ...)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same type object
+#// check whether both refs point to the same type object
 int
 same(WrapRowType *self, WrapRowType *other)
 	CODE:
@@ -270,9 +270,9 @@ match(WrapRowType *self, WrapRowType *other)
 	OUTPUT:
 		RETVAL
 
-# print(self, [ indent, [ subindent ] ])
-#   indent - default "", undef means "print everything in a signle line
-#   subindent - default "  "
+#// print(self, [ indent, [ subindent ] ])
+#//   indent - default "", undef means "print everything in a signle line
+#//   subindent - default "  "
 SV *
 print(WrapRowType *self, ...)
 	PPCODE:

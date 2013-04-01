@@ -70,16 +70,16 @@ find(char *name)
 	OUTPUT:
 		RETVAL
 
-# This is very much like find() only it can accept an App
-# reference as an argument and will then return that reference
-# back; or if it's a string, will do the usual lookup.
-# Since many Perl functions accept the App argument either
-# way, this allows to translate from either way to App.
-# On the other hand, find() preserves the strict name-to-object
-# semantics and requires that the App must not be dropped.
-#
-# @param app - App name or reference taht will be translated to
-#        a reference
+#// This is very much like find() only it can accept an App
+#// reference as an argument and will then return that reference
+#// back; or if it's a string, will do the usual lookup.
+#// Since many Perl functions accept the App argument either
+#// way, this allows to translate from either way to App.
+#// On the other hand, find() preserves the strict name-to-object
+#// semantics and requires that the App must not be dropped.
+#//
+#// @param app - App name or reference taht will be translated to
+#//        a reference
 WrapApp *
 resolve(SV *app)
 	CODE:
@@ -98,8 +98,8 @@ resolve(SV *app)
 	OUTPUT:
 		RETVAL
 
-# This works both as an object method on an object, or as
-# a class method with an object or name argument
+#// This works both as an object method on an object, or as
+#// a class method with an object or name argument
 void
 drop(SV *app)
 	CODE:
@@ -128,7 +128,7 @@ listApps()
 			XPUSHs(sv_2mortal(sub));
 		}
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapApp *self, WrapApp *other)
 	CODE:
@@ -162,8 +162,8 @@ isAborted(SV *app)
 	OUTPUT:
 		RETVAL
 
-# returns a list of (triead name, message),
-# and if not aborted then both will be undef
+#// returns a list of (triead name, message),
+#// and if not aborted then both will be undef
 SV *
 getAborted(SV *app)
 	PPCODE:
@@ -200,7 +200,7 @@ abortBy(SV *app, char *tname, char *msg)
 			appv->abortBy(tname, msg);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-# the deadline is in seconds since Unix epoch
+#// the deadline is in seconds since Unix epoch
 void
 setDeadline(SV *app, int deadline)
 	CODE:
@@ -248,7 +248,7 @@ refreshDeadline(SV *app)
 			appv->refreshDeadline();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-# the app can be used as a object or name
+#// the app can be used as a object or name
 void
 declareTriead(SV *app, char *tname)
 	CODE:
@@ -283,10 +283,10 @@ getTrieads(SV *app)
 			}
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-# The wrapper functions accept only the object to be more safe:
-# since the App gets normally dropped at the end of harvesting,
-# this safeguards from calling on another instance of an App
-# with the same name.
+#// The wrapper functions accept only the object to be more safe:
+#// since the App gets normally dropped at the end of harvesting,
+#// this safeguards from calling on another instance of an App
+#// with the same name.
 int
 harvestOnce(WrapApp *self)
 	CODE:
@@ -308,12 +308,12 @@ waitNeedHarvest(WrapApp *self)
 			a->waitNeedHarvest();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-# Options:
-#
-# die_on_abort => int
-# Flag: if the App abort has been detected, will die after it disposes
-# of the App. Analog of the C++ flag throwAbort. Default: 1.
-#
+#// Options:
+#//
+#// die_on_abort => int
+#// Flag: if the App abort has been detected, will die after it disposes
+#// of the App. Analog of the C++ flag throwAbort. Default: 1.
+#//
 void
 harvester(WrapApp *self, ...)
 	CODE:

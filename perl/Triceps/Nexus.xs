@@ -31,7 +31,7 @@ DESTROY(WrapNexus *self)
 		// warn("Nexus %s %p wrap %p destroyed!", nx->getName().c_str(), to, self);
 		delete self;
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapNexus *self, WrapNexus *other)
 	CODE:

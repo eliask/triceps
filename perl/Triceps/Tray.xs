@@ -29,12 +29,12 @@ DESTROY(WrapTray *self)
 		// warn("Tray destroyed!");
 		delete self;
 
-# Since in C++ a tray is simply a deque, instead of providing all the methods, just
-# provide a conversion to and from array
+#// Since in C++ a tray is simply a deque, instead of providing all the methods, just
+#// provide a conversion to and from array
 
-# Constructed in Unit::makeTray
+#// Constructed in Unit::makeTray
 
-# check whether both refs point to the same type object
+#// check whether both refs point to the same type object
 int
 same(WrapTray *self, WrapTray *other)
 	CODE:
@@ -56,7 +56,7 @@ getUnit(WrapTray *self)
 	OUTPUT:
 		RETVAL
 
-# make a copy 
+#// make a copy 
 WrapTray *
 copy(WrapTray *self)
 	CODE:
@@ -84,7 +84,7 @@ toArray(WrapTray *self)
 			XPUSHs(ropv);
 		}
 
-# gets the size without a full conversion to array
+#// gets the size without a full conversion to array
 IV 
 size(WrapTray *self)
 	CODE:
@@ -103,8 +103,8 @@ clear(WrapTray *self)
 		Tray *t = self->get();
 		t->clear();
 
-# returns itself (or undef on error)
-# (the code is almost the same as Triceps::Unit::makeTray)
+#// returns itself (or undef on error)
+#// (the code is almost the same as Triceps::Unit::makeTray)
 SV *
 push(WrapTray *self, ...)
 	CODE:
@@ -145,4 +145,4 @@ push(WrapTray *self, ...)
 	OUTPUT:
 		RETVAL
 
-# XXX allow and ignore undefs when converting from Perl, and NULLs when converting from C++
+#// XXX allow and ignore undefs when converting from Perl, and NULLs when converting from C++

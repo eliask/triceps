@@ -51,7 +51,7 @@ getName(WrapFrameMark *self)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapFrameMark *self, WrapFrameMark *other)
 	CODE:
@@ -62,5 +62,5 @@ same(WrapFrameMark *self, WrapFrameMark *other)
 	OUTPUT:
 		RETVAL
 
-# FrameMark is a token object, so there is not much to do with it
+#// FrameMark is a token object, so there is not much to do with it
 

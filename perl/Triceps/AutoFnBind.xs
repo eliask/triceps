@@ -24,8 +24,8 @@ CLONE_SKIP(...)
 	OUTPUT:
 		RETVAL
 
-# This one is tricky because croaking in a DESTROY doesn't work, 
-# so have to do something more horrible.
+#// This one is tricky because croaking in a DESTROY doesn't work, 
+#// so have to do something more horrible.
 void
 DESTROY(WrapAutoFnBind *self)
 	CODE:
@@ -42,10 +42,10 @@ DESTROY(WrapAutoFnBind *self)
 		}
 		delete self;
 
-# A scoped binding for multiple FnReturns.
-# The FnReturns and FnBindings go in pairs.
-#
-# $ab = AutoFnBind->new($ret1 => $binding1, ...)
+#// A scoped binding for multiple FnReturns.
+#// The FnReturns and FnBindings go in pairs.
+#//
+#// $ab = AutoFnBind->new($ret1 => $binding1, ...)
 WrapAutoFnBind *
 new(char *CLASS, ...)
 	CODE:
@@ -74,9 +74,9 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
-# An explicit clearing of the auto-scope, without waiting for it to
-# be destroyed. This allows to confess properly, since Perl ignores
-# any attempts to die in DESTROY().
+#// An explicit clearing of the auto-scope, without waiting for it to
+#// be destroyed. This allows to confess properly, since Perl ignores
+#// any attempts to die in DESTROY().
 void
 clear(WrapAutoFnBind *self)
 	CODE:
@@ -89,7 +89,7 @@ clear(WrapAutoFnBind *self)
 			}
 		} TRICEPS_CATCH_CROAK;
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapAutoFnBind *self, WrapAutoFnBind *other)
 	CODE:

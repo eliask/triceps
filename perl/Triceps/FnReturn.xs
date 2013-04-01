@@ -87,7 +87,7 @@ DESTROY(WrapFnReturn *self)
 		// warn("FnReturn destroyed!");
 		delete self;
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapFnReturn *self, WrapFnReturn *other)
 	CODE:
@@ -98,42 +98,42 @@ same(WrapFnReturn *self, WrapFnReturn *other)
 	OUTPUT:
 		RETVAL
 
-# Args are the option pairs. The options are:
-#
-# name => $name
-# The name of the object.
-#
-# unit => $unit
-# Defines the unit where this FnReturn belongs. If at least one of the labels in
-# this object (see option "labels") is built by chaining from another label,
-# the unit can be implicitly taken from there, and the option "unit" becomes
-# optional. All the labels must belong to the same unit.
-#
-# labels => [ 
-#   name => $rowType,
-#   name => $fromLabel,
-# ]
-# Defines the labels of this return in a referenced array. The array contains
-# the pairs of (label_name, label_definition). The definition may be either
-# a RowType, and then a label of this row type will be created, or a Label,
-# and then a label of the same row type will be created and chained from that
-# original label. The created label objects can be later found, and used
-# like normal labels, by chaining them or sending rowops to them (but
-# chaining _from_ them is probably not the best idea, although it works anyway).
-# At least one definition pair must be present.
-#
-# onPush => $code
-# onPush => [$code, @args]
-# Defines a function and possibly arguments to be executed when a new 
-# FnBinding is pushed onto this return. The function is called:
-#   &$code($thisFnReturn, @args)
-#
-# onPop => $code
-# onPop => [$code, @args]
-# Defines a function and possibly arguments to be executed when a 
-# FnBinding is popped from this return. The function is called:
-#   &$code($thisFnReturn, @args)
-#
+#// Args are the option pairs. The options are:
+#//
+#// name => $name
+#// The name of the object.
+#//
+#// unit => $unit
+#// Defines the unit where this FnReturn belongs. If at least one of the labels in
+#// this object (see option "labels") is built by chaining from another label,
+#// the unit can be implicitly taken from there, and the option "unit" becomes
+#// optional. All the labels must belong to the same unit.
+#//
+#// labels => [ 
+#//   name => $rowType,
+#//   name => $fromLabel,
+#// ]
+#// Defines the labels of this return in a referenced array. The array contains
+#// the pairs of (label_name, label_definition). The definition may be either
+#// a RowType, and then a label of this row type will be created, or a Label,
+#// and then a label of the same row type will be created and chained from that
+#// original label. The created label objects can be later found, and used
+#// like normal labels, by chaining them or sending rowops to them (but
+#// chaining _from_ them is probably not the best idea, although it works anyway).
+#// At least one definition pair must be present.
+#//
+#// onPush => $code
+#// onPush => [$code, @args]
+#// Defines a function and possibly arguments to be executed when a new 
+#// FnBinding is pushed onto this return. The function is called:
+#//   &$code($thisFnReturn, @args)
+#//
+#// onPop => $code
+#// onPop => [$code, @args]
+#// Defines a function and possibly arguments to be executed when a 
+#// FnBinding is popped from this return. The function is called:
+#//   &$code($thisFnReturn, @args)
+#//
 WrapFnReturn *
 new(char *CLASS, ...)
 	CODE:
@@ -201,7 +201,7 @@ new(char *CLASS, ...)
 		RETVAL
 
 
-# Push the binding onto a return.
+#// Push the binding onto a return.
 void 
 push(WrapFnReturn *self, WrapFnBinding *arg)
 	CODE:
@@ -217,8 +217,8 @@ push(WrapFnReturn *self, WrapFnBinding *arg)
 			}
 		} TRICEPS_CATCH_CROAK;
 
-# Pop the binding from a return. If the binding argument is specfied,
-# this will assert that it's the binding being popped.
+#// Pop the binding from a return. If the binding argument is specfied,
+#// this will assert that it's the binding being popped.
 void 
 pop(WrapFnReturn *self, ...)
 	CODE:
@@ -252,7 +252,7 @@ getName(WrapFnReturn *self)
 	OUTPUT:
 		RETVAL
 
-# Get the stack size.
+#// Get the stack size.
 int 
 bindingStackSize(WrapFnReturn *self)
 	CODE:
@@ -261,8 +261,8 @@ bindingStackSize(WrapFnReturn *self)
 	OUTPUT:
 		RETVAL
 
-# Get the stack contents. Used mostly for diagnostics.
-# Returns an array of FnBindings with the top of stack on the right.
+#// Get the stack contents. Used mostly for diagnostics.
+#// Returns an array of FnBindings with the top of stack on the right.
 SV *
 bindingStack(WrapFnReturn *self)
 	PPCODE:
@@ -279,8 +279,8 @@ bindingStack(WrapFnReturn *self)
 			XPUSHs(bindv);
 		}
 
-# Get the names of bindings in the contents. Useful for printing the contents.
-# Returns an array of strings with the top of stack on the right.
+#// Get the names of bindings in the contents. Useful for printing the contents.
+#// Returns an array of strings with the top of stack on the right.
 SV *
 bindingStackNames(WrapFnReturn *self)
 	PPCODE:
@@ -296,7 +296,7 @@ bindingStackNames(WrapFnReturn *self)
 			XPUSHs(sv_2mortal(newSVpvn(name.c_str(), name.size())));
 		}
 
-# Comparison of the underlying RowSetTypes.
+#// Comparison of the underlying RowSetTypes.
 int
 equals(WrapFnReturn *self, SV *other)
 	CODE:
@@ -331,7 +331,7 @@ match(WrapFnReturn *self, SV *other)
 	OUTPUT:
 		RETVAL
 
-# number of labels in the return
+#// number of labels in the return
 int 
 size(WrapFnReturn *self)
 	CODE:
@@ -340,7 +340,7 @@ size(WrapFnReturn *self)
 	OUTPUT:
 		RETVAL
 
-# get the names of the labels (not of labels themselves but of logical names in return)
+#// get the names of the labels (not of labels themselves but of logical names in return)
 SV *
 getLabelNames(WrapFnReturn *self)
 	PPCODE:
@@ -353,8 +353,8 @@ getLabelNames(WrapFnReturn *self)
 			XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
 		}
 
-# get the actual labels (NOT the ones used as the constructor
-# arguments, these are used for chaining from)
+#// get the actual labels (NOT the ones used as the constructor
+#// arguments, these are used for chaining from)
 SV *
 getLabels(WrapFnReturn *self)
 	PPCODE:
@@ -371,8 +371,8 @@ getLabels(WrapFnReturn *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-# get the pairs of (name1, label1, ..., nameN, labelN) in the correct order,
-# and also suitable for the assignment to a hash
+#// get the pairs of (name1, label1, ..., nameN, labelN) in the correct order,
+#// and also suitable for the assignment to a hash
 SV *
 getLabelHash(WrapFnReturn *self)
 	PPCODE:
@@ -391,8 +391,8 @@ getLabelHash(WrapFnReturn *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-# get the pairs of (name1, rt1, ..., nameN, rtN) in the correct order,
-# and also suitable for the assignment to a hash
+#// get the pairs of (name1, rt1, ..., nameN, rtN) in the correct order,
+#// and also suitable for the assignment to a hash
 SV *
 getRowTypeHash(WrapFnReturn *self)
 	PPCODE:
@@ -411,7 +411,7 @@ getRowTypeHash(WrapFnReturn *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-# get the mapping of the label names to indexes
+#// get the mapping of the label names to indexes
 SV *
 getLabelMapping(WrapFnReturn *self)
 	PPCODE:
@@ -425,7 +425,7 @@ getLabelMapping(WrapFnReturn *self)
 			XPUSHs(sv_2mortal(newSViv(i)));
 		}
 
-# Get a label by name. Confesses on the unknown names.
+#// Get a label by name. Confesses on the unknown names.
 WrapLabel *
 getLabel(WrapFnReturn *self, char *name)
 	CODE:
@@ -443,7 +443,7 @@ getLabel(WrapFnReturn *self, char *name)
 	OUTPUT:
 		RETVAL
 
-# Get a label by index. Confesses on the indexes out of range.
+#// Get a label by index. Confesses on the indexes out of range.
 WrapLabel *
 getLabelAt(WrapFnReturn *self, int idx)
 	CODE:
@@ -461,7 +461,7 @@ getLabelAt(WrapFnReturn *self, int idx)
 	OUTPUT:
 		RETVAL
 
-# Translate a label name to index. Confesses on the unknown names
+#// Translate a label name to index. Confesses on the unknown names
 int
 findLabel(WrapFnReturn *self, char *name)
 	CODE:

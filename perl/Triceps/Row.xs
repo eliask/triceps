@@ -32,7 +32,7 @@ DESTROY(WrapRow *self)
 		// warn("Row destroyed!");
 		delete self;
 
-# for debugging, make a hex dump
+#// for debugging, make a hex dump
 char *
 hexdump(WrapRow *self)
 	CODE:
@@ -45,7 +45,7 @@ hexdump(WrapRow *self)
 	OUTPUT:
 		RETVAL
 
-# convert to an array of name-value pairs, suitable for setting into a hash
+#// convert to an array of name-value pairs, suitable for setting into a hash
 SV *
 toHash(WrapRow *self)
 	PPCODE:
@@ -64,7 +64,7 @@ toHash(WrapRow *self)
 			XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 		}
 
-# convert to an array of data values, like CSV
+#// convert to an array of data values, like CSV
 SV *
 toArray(WrapRow *self)
 	PPCODE:
@@ -81,7 +81,7 @@ toArray(WrapRow *self)
 			XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 		}
 
-# copy the row and modify the specified fields when copying
+#// copy the row and modify the specified fields when copying
 WrapRow *
 copymod(WrapRow *self, ...)
 	CODE:
@@ -139,7 +139,7 @@ copymod(WrapRow *self, ...)
 	OUTPUT:
 		RETVAL
 
-# get the value of one field by name
+#// get the value of one field by name
 SV *
 get(WrapRow *self, char *fname)
 	PPCODE:
@@ -159,7 +159,7 @@ get(WrapRow *self, char *fname)
 		bool notNull = t->getField(r, i, data, dlen);
 		XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
 
-# get the type of the row
+#// get the type of the row
 WrapRowType*
 getType(WrapRow *self)
 	CODE:
@@ -172,7 +172,7 @@ getType(WrapRow *self)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapRow *self, WrapRow *other)
 	CODE:

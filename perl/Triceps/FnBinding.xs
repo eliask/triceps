@@ -85,55 +85,55 @@ CLONE_SKIP(...)
 	OUTPUT:
 		RETVAL
 
-# The use is like this:
-#
-# $fnr = FnReturn->new(...);
-# $bind = FnBinding->new(
-#     name => "bind1", # used for diagnostics and the names of direct Perl labels
-#     on => $fnr, # determines the type of return
-#     unit => $unit, # needed only for the direct Perl code
-#     withTray => 1, # default is 0
-#     clearLabels => 1, # default is 0, affects only $labels, the ones created from subs are always cleared
-#     labels => [
-#         "name" => $label,
-#         "name" => sub { ... }, # will directly create a Perl label
-#     ]
-# );
-#
-# $bind->withTray($on); # can change later
-# $sz = $bind->getTraySize(); # 0 if  either no tray or tray is empty
-# $tray = $bind->swapTray(); # undef if no tray or empty, error if a mix of units in the tray
-# $bind->callTray(); # can handle a mix of units in the tray
-#
-# $fnr->push($bind);
-# $fnr->pop($bind);
-# $fnr->pop();
-# {
-#     $auto = AutoFnBind->new($fnr => $bind, ...);
-#     $unit->call(...);
-# }
-# $unit->callBound( # pushes all the bindings, does the call, pops
-#     $rowop, # or $tray, or [ @rowops ]
-#     $fnr => $bind, ...
-# );
-# Create a binding on the fly and call with it:
-# FnBinding::call( # create and push/call/pop right away
-#     name => "bind1", # used for diagnostics and the names of direct Perl labels
-#     on => $fnr, # determines the type of return
-#     unit => $unit, # needed only for the direct Perl code in labels or for auto-creation of rowops
-#     clearLabels => 1, # default is 0, affects only $labels, the ones created from subs are always cleared
-#     delayed => 1, # default is 0, causes the data to be collected in a tray and then executed
-#     labels => [
-#         "name" => $label,
-#         "name" => sub { ... }, # will directly create a Perl label
-#     ]
-#     rowop => $rowop, # what to call can be a rowop
-#     tray => $tray, # or a tray
-#     rowops => \@rowops, # or an array of rowops
-#     code => \$code, # or a procedural function to call
-# );
-#     
-# 
+#// The use is like this:
+#//
+#// $fnr = FnReturn->new(...);
+#// $bind = FnBinding->new(
+#//     name => "bind1", # used for diagnostics and the names of direct Perl labels
+#//     on => $fnr, # determines the type of return
+#//     unit => $unit, # needed only for the direct Perl code
+#//     withTray => 1, # default is 0
+#//     clearLabels => 1, # default is 0, affects only $labels, the ones created from subs are always cleared
+#//     labels => [
+#//         "name" => $label,
+#//         "name" => sub { ... }, # will directly create a Perl label
+#//     ]
+#// );
+#//
+#// $bind->withTray($on); # can change later
+#// $sz = $bind->getTraySize(); # 0 if  either no tray or tray is empty
+#// $tray = $bind->swapTray(); # undef if no tray or empty, error if a mix of units in the tray
+#// $bind->callTray(); # can handle a mix of units in the tray
+#//
+#// $fnr->push($bind);
+#// $fnr->pop($bind);
+#// $fnr->pop();
+#// {
+#//     $auto = AutoFnBind->new($fnr => $bind, ...);
+#//     $unit->call(...);
+#// }
+#// $unit->callBound( # pushes all the bindings, does the call, pops
+#//     $rowop, # or $tray, or [ @rowops ]
+#//     $fnr => $bind, ...
+#// );
+#// Create a binding on the fly and call with it:
+#// FnBinding::call( # create and push/call/pop right away
+#//     name => "bind1", # used for diagnostics and the names of direct Perl labels
+#//     on => $fnr, # determines the type of return
+#//     unit => $unit, # needed only for the direct Perl code in labels or for auto-creation of rowops
+#//     clearLabels => 1, # default is 0, affects only $labels, the ones created from subs are always cleared
+#//     delayed => 1, # default is 0, causes the data to be collected in a tray and then executed
+#//     labels => [
+#//         "name" => $label,
+#//         "name" => sub { ... }, # will directly create a Perl label
+#//     ]
+#//     rowop => $rowop, # what to call can be a rowop
+#//     tray => $tray, # or a tray
+#//     rowops => \@rowops, # or an array of rowops
+#//     code => \$code, # or a procedural function to call
+#// );
+#//     
+#// 
 
 void
 DESTROY(WrapFnBinding *self)
@@ -141,7 +141,7 @@ DESTROY(WrapFnBinding *self)
 		// warn("FnBinding destroyed!");
 		delete self;
 
-# check whether both refs point to the same object
+#// check whether both refs point to the same object
 int
 same(WrapFnBinding *self, WrapFnBinding *other)
 	CODE:
@@ -152,9 +152,9 @@ same(WrapFnBinding *self, WrapFnBinding *other)
 	OUTPUT:
 		RETVAL
 
-# Args are the option pairs. The options are:
-#
-# XXX describe options, from the sample above
+#// Args are the option pairs. The options are:
+#//
+#// XXX describe options, from the sample above
 WrapFnBinding *
 new(char *CLASS, ...)
 	CODE:
@@ -209,10 +209,10 @@ new(char *CLASS, ...)
 	OUTPUT:
 		RETVAL
 
-# Args are the option pairs. The options are:
-#
-# XXX describe options, from the sample above
-# Always returns 1.
+#// Args are the option pairs. The options are:
+#//
+#// XXX describe options, from the sample above
+#// Always returns 1.
 int
 call(...)
 	CODE:
@@ -334,9 +334,9 @@ getName(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
-# returns whether previously was with tray
-# The optional argument: 
-#    int on - enables or disables the tray
+#// returns whether previously was with tray
+#// The optional argument: 
+#//    int on - enables or disables the tray
 int
 withTray(WrapFnBinding *self, ...)
 	CODE:
@@ -352,8 +352,8 @@ withTray(WrapFnBinding *self, ...)
 	OUTPUT:
 		RETVAL
 
-# always returns 1;
-# handles properly a mix of units
+#// always returns 1;
+#// handles properly a mix of units
 int
 callTray(WrapFnBinding *self)
 	CODE:
@@ -365,7 +365,7 @@ callTray(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
-# with no tray, returns 0
+#// with no tray, returns 0
 IV
 traySize(WrapFnBinding *self)
 	CODE:
@@ -375,7 +375,7 @@ traySize(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
-# returns 1 if tre tray is empty or not present, 0 if not
+#// returns 1 if tre tray is empty or not present, 0 if not
 IV
 trayEmpty(WrapFnBinding *self)
 	CODE:
@@ -385,8 +385,8 @@ trayEmpty(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
-# no tray or an empty tray returns an undef;
-# a mix of units in the labels in the tray is an error
+#// no tray or an empty tray returns an undef;
+#// a mix of units in the labels in the tray is an error
 WrapTray *
 swapTray(WrapFnBinding *self)
 	CODE:
@@ -426,7 +426,7 @@ swapTray(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
-# Comparison of the underlying RowSetTypes.
+#// Comparison of the underlying RowSetTypes.
 int
 equals(WrapFnBinding *self, SV *other)
 	CODE:
@@ -461,8 +461,8 @@ match(WrapFnBinding *self, SV *other)
 	OUTPUT:
 		RETVAL
 
-# number of labels in the binding type (that can be defined, not that are actually
-# defined in this binding)
+#// number of labels in the binding type (that can be defined, not that are actually
+#// defined in this binding)
 int 
 size(WrapFnBinding *self)
 	CODE:
@@ -471,8 +471,8 @@ size(WrapFnBinding *self)
 	OUTPUT:
 		RETVAL
 
-# get the names of the labels (not of labels themselves but if logical names in binding);
-# all thos that could be defined
+#// get the names of the labels (not of labels themselves but if logical names in binding);
+#// all thos that could be defined
 SV *
 getLabelNames(WrapFnBinding *self)
 	PPCODE:
@@ -485,7 +485,7 @@ getLabelNames(WrapFnBinding *self)
 			XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
 		}
 
-# like getLabelNames() but skip those that are not define din the binding
+#// like getLabelNames() but skip those that are not define din the binding
 SV *
 getDefinedLabelNames(WrapFnBinding *self)
 	PPCODE:
@@ -499,9 +499,9 @@ getDefinedLabelNames(WrapFnBinding *self)
 				XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
 		}
 
-# get the actual labels (NOT the ones used as the constructor
-# arguments, these are used for chaining from);
-# when some label is not defined, its value will be undef
+#// get the actual labels (NOT the ones used as the constructor
+#// arguments, these are used for chaining from);
+#// when some label is not defined, its value will be undef
 SV *
 getLabels(WrapFnBinding *self)
 	PPCODE:
@@ -523,9 +523,9 @@ getLabels(WrapFnBinding *self)
 			}
 		}
 
-# get the pairs of (name1, label1, ..., nameN, labelN) in the correct order,
-# and also suitable for the assignment to a hash;
-# when some label is not defined, its value will be undef
+#// get the pairs of (name1, label1, ..., nameN, labelN) in the correct order,
+#// and also suitable for the assignment to a hash;
+#// when some label is not defined, its value will be undef
 SV *
 getLabelHash(WrapFnBinding *self)
 	PPCODE:
@@ -549,8 +549,8 @@ getLabelHash(WrapFnBinding *self)
 			}
 		}
 
-# get the pairs of (name1, rt1, ..., nameN, rtN) in the correct order,
-# and also suitable for the assignment to a hash
+#// get the pairs of (name1, rt1, ..., nameN, rtN) in the correct order,
+#// and also suitable for the assignment to a hash
 SV *
 getRowTypeHash(WrapFnBinding *self)
 	PPCODE:
@@ -569,7 +569,7 @@ getRowTypeHash(WrapFnBinding *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-# get the mapping of the label names to indexes
+#// get the mapping of the label names to indexes
 SV *
 getLabelMapping(WrapFnBinding *self)
 	PPCODE:
@@ -583,9 +583,9 @@ getLabelMapping(WrapFnBinding *self)
 			XPUSHs(sv_2mortal(newSViv(i)));
 		}
 
-# Get a label by name. Confesses on the unknown names.
-# Returns undef on undefined labels for known names.
-# Would it be better to confess on undefined labels too?
+#// Get a label by name. Confesses on the unknown names.
+#// Returns undef on undefined labels for known names.
+#// Would it be better to confess on undefined labels too?
 WrapLabel *
 getLabel(WrapFnBinding *self, char *name)
 	CODE:
@@ -605,9 +605,9 @@ getLabel(WrapFnBinding *self, char *name)
 	OUTPUT:
 		RETVAL
 
-# Get a label by index. Confesses on the indexes out of range.
-# Returns undef on undefined labels for known names.
-# Would it be better to confess on undefined labels too?
+#// Get a label by index. Confesses on the indexes out of range.
+#// Returns undef on undefined labels for known names.
+#// Would it be better to confess on undefined labels too?
 WrapLabel *
 getLabelAt(WrapFnBinding *self, int idx)
 	CODE:
@@ -626,7 +626,7 @@ getLabelAt(WrapFnBinding *self, int idx)
 	OUTPUT:
 		RETVAL
 
-# Translate a label name to index. Confesses on the unknown names
+#// Translate a label name to index. Confesses on the unknown names
 int
 findLabel(WrapFnBinding *self, char *name)
 	CODE:

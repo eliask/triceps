@@ -91,7 +91,7 @@ DESTROY(WrapTable *self)
 		delete self;
 
 
-# The table gets created by Unit::makeTable
+#// The table gets created by Unit::makeTable
 
 WrapLabel *
 getInputLabel(WrapTable *self)
@@ -105,8 +105,8 @@ getInputLabel(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
-# since the C++ inheritance doesn't propagate to Perl, the inherited call getLabel()
-# becomes an explicit getOutputLabel()
+#// since the C++ inheritance doesn't propagate to Perl, the inherited call getLabel()
+#// becomes an explicit getOutputLabel()
 WrapLabel *
 getOutputLabel(WrapTable *self)
 	CODE:
@@ -185,7 +185,7 @@ getUnit(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
-# check whether both refs point to the same type object
+#// check whether both refs point to the same type object
 int
 same(WrapTable *self, WrapTable *other)
 	CODE:
@@ -217,7 +217,7 @@ getName(WrapTable *self)
 	OUTPUT:
 		RETVAL
 
-# this may be 64-bit, and IV is guaranteed to be pointer-sized
+#// this may be 64-bit, and IV is guaranteed to be pointer-sized
 IV
 size(WrapTable *self)
 	CODE:
@@ -269,7 +269,7 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 	OUTPUT:
 		RETVAL
 
-# I'm not sure if there is much use for it, but just in case...
+#// I'm not sure if there is much use for it, but just in case...
 WrapRowHandle *
 makeNullRowHandle(WrapTable *self)
 	CODE:
@@ -284,7 +284,7 @@ makeNullRowHandle(WrapTable *self)
 		RETVAL
 
 
-# returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
+#// returns: 1 on success, 0 if the policy didn't allow the insert, undef on an error
 int
 insert(WrapTable *self, SV *rowarg)
 	CODE:
@@ -303,7 +303,7 @@ insert(WrapTable *self, SV *rowarg)
 	OUTPUT:
 		RETVAL
 
-# returns 1 normally, or undef on incorrect arguments
+#// returns 1 normally, or undef on incorrect arguments
 int
 remove(WrapTable *self, WrapRowHandle *wrh)
 	CODE:
@@ -329,8 +329,8 @@ remove(WrapTable *self, WrapRowHandle *wrh)
 	OUTPUT:
 		RETVAL
 
-# version that takes a Row as an argument and acts as a combination of find/remove
-# returns 1 if deleted, 0 if not found, undef on incorrect arguments
+#// version that takes a Row as an argument and acts as a combination of find/remove
+#// returns 1 if deleted, 0 if not found, undef on incorrect arguments
 int
 deleteRow(WrapTable *self, WrapRow *wr)
 	CODE:
@@ -358,7 +358,7 @@ deleteRow(WrapTable *self, WrapRow *wr)
 	OUTPUT:
 		RETVAL
 
-# RowHandle with NULL pointer in it is used for the end-iterator
+#// RowHandle with NULL pointer in it is used for the end-iterator
 
 WrapRowHandle *
 begin(WrapTable *self)
@@ -562,9 +562,9 @@ groupSizeIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 	OUTPUT:
 		RETVAL
 
-# Clear the table. If the limit is specified, will clear no more than
-# this many rows. The rows are removed in the order of the first leaf index.
-# @param limit - (int, optional) maximal number of rows to delete.
+#// Clear the table. If the limit is specified, will clear no more than
+#// this many rows. The rows are removed in the order of the first leaf index.
+#// @param limit - (int, optional) maximal number of rows to delete.
 void
 clear(WrapTable *self, ...)
 	CODE:

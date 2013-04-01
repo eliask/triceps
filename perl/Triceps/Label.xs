@@ -46,8 +46,8 @@ getType(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
-# a complete synonym of getType(), with the name more consistent
-# with the other objects' similar methods
+#// a complete synonym of getType(), with the name more consistent
+#// with the other objects' similar methods
 WrapRowType*
 getRowType(WrapLabel *self)
 	CODE:
@@ -77,7 +77,7 @@ getUnit(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
-# returns 1 on success, undef on error
+#// returns 1 on success, undef on error
 int
 chain(WrapLabel *self, WrapLabel *other)
 	CODE:
@@ -102,7 +102,7 @@ clearChained(WrapLabel *self)
 		Label *lab = self->get();
 		lab->clearChained();
 
-# returns an array of references to chained objects
+#// returns an array of references to chained objects
 SV *
 getChain(WrapLabel *self)
 	PPCODE:
@@ -149,7 +149,7 @@ setName(WrapLabel *self, char *name)
 		Label *lab = self->get();
 		lab->setName(name);
 
-# Set the non-reentrant flag.
+#// Set the non-reentrant flag.
 void
 setNonReentrant(WrapLabel *self)
 	CODE:
@@ -157,7 +157,7 @@ setNonReentrant(WrapLabel *self)
 		Label *lab = self->get();
 		lab->setNonReentrant();
 
-# check whether both refs point to the same type object
+#// check whether both refs point to the same type object
 int
 same(WrapLabel *self, WrapLabel *other)
 	CODE:
@@ -168,7 +168,7 @@ same(WrapLabel *self, WrapLabel *other)
 	OUTPUT:
 		RETVAL
 
-# factory for Rowops
+#// factory for Rowops
 WrapRowop *
 makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 	CODE:
@@ -212,8 +212,8 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 	OUTPUT:
 		RETVAL
 
-# adopt a rowop from another label (of a matching type) by making
-# a copy of it for this label
+#// adopt a rowop from another label (of a matching type) by making
+#// a copy of it for this label
 WrapRowop *
 adopt(WrapLabel *self, WrapRowop *wrop)
 	CODE:
@@ -247,8 +247,8 @@ adopt(WrapLabel *self, WrapRowop *wrop)
 		RETVAL
 
 
-# for PerlLabel, returns the reference to code
-# XXX should return code and all paremeters
+#// for PerlLabel, returns the reference to code
+#// XXX should return code and all paremeters
 SV *
 getCode(WrapLabel *self)
 	CODE:
@@ -268,7 +268,7 @@ getCode(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
-# clear the label, not to be taken lightly
+#// clear the label, not to be taken lightly
 void
 clear(WrapLabel *self)
 	CODE:
@@ -276,7 +276,7 @@ clear(WrapLabel *self)
 		Label *lab = self->get();
 		lab->clear();
 
-# check if the label is cleared
+#// check if the label is cleared
 int
 isCleared(WrapLabel *self)
 	CODE:
@@ -286,7 +286,7 @@ isCleared(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
-# check if the label is non-reentrant
+#// check if the label is non-reentrant
 int
 isNonReentrant(WrapLabel *self)
 	CODE:

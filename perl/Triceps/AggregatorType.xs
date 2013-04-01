@@ -32,13 +32,13 @@ DESTROY(WrapAggregatorType *self)
 		delete self;
 
 
-# @param CLASS - name of type being constructed
-# @param wrt - row type of the aggregation result
-# @param name - name that will be used to create the aggregator gadget in the table
-# @param constructor - function reference, called to create the state of aggregator
-#        for each index (may be undef)
-# @param handler - function reference used to react to strings being added and removed
-# @param ... - extra args used for both constructor and handler
+#// @param CLASS - name of type being constructed
+#// @param wrt - row type of the aggregation result
+#// @param name - name that will be used to create the aggregator gadget in the table
+#// @param constructor - function reference, called to create the state of aggregator
+#//        for each index (may be undef)
+#// @param handler - function reference used to react to strings being added and removed
+#// @param ... - extra args used for both constructor and handler
 WrapAggregatorType *
 new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...)
 	CODE:
@@ -64,7 +64,7 @@ new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...
 	OUTPUT:
 		RETVAL
 
-# make an uninitialized copy
+#// make an uninitialized copy
 WrapAggregatorType *
 copy(WrapAggregatorType *self)
 	CODE:
@@ -87,7 +87,7 @@ same(WrapAggregatorType *self, WrapAggregatorType *other)
 	OUTPUT:
 		RETVAL
 
-# get back the row type
+#// get back the row type
 WrapRowType *
 getRowType(WrapAggregatorType *self)
 	CODE:
@@ -100,15 +100,15 @@ getRowType(WrapAggregatorType *self)
 	OUTPUT:
 		RETVAL
 
-# print(self, [ indent, [ subindent ] ])
-#   indent - default "", undef means "print everything in a signle line"
-#   subindent - default "  "
+#// print(self, [ indent, [ subindent ] ])
+#//   indent - default "", undef means "print everything in a signle line"
+#//   subindent - default "  "
 SV *
 print(WrapAggregatorType *self, ...)
 	PPCODE:
 		GEN_PRINT_METHOD(PerlAggregatorType)
 
-# type comparisons
+#// type comparisons
 int
 equals(WrapAggregatorType *self, WrapAggregatorType *other)
 	CODE:
