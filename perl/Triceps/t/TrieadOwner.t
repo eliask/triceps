@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 73 };
+BEGIN { plan tests => 83 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -291,6 +291,13 @@ ok(ref $rt1, "Triceps::RowType");
 	ok($fa->getFullName(), "t1/nx1");
 
 	@exp = $t1->exports(); # the C++ map imposes the order
+	ok($#exp, 1);
+	ok($exp[0], "nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+
+	# TrieadOwner::exports produced the same result as its Triead::exports
+	@exp = $to1->exports(); # the C++ map imposes the order
 	ok($#exp, 1);
 	ok($exp[0], "nx1");
 	ok(ref $exp[1], "Triceps::Nexus");

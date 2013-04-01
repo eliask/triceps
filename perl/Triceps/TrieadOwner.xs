@@ -343,3 +343,21 @@ makeNexus(WrapTrieadOwner *self, ...)
 	OUTPUT:
 		RETVAL
 
+# same as Triead::exports(), for convenience
+SV *
+exports(WrapTrieadOwner *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Nexus";
+		clearErrMsg();
+		Triead *t = self->get()->get();
+		Triead::NexusMap m;
+		t->exports(m);
+		for (Triead::NexusMap::iterator it = m.begin(); it != m.end(); ++it) {
+			XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapNexus(it->second)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
