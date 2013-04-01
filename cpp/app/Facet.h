@@ -218,6 +218,18 @@ public:
 		return tableTypes_;
 	}
 
+	// Get/import a row type by name.
+	// (Unlike RowSetType, here is no order of the types, so no indexes).
+	// @param name - the name of the row type, as was specified in exportRowType()
+	// @return - the row type, or NULL if not found
+	RowType *impRowType(const string &name) const;
+
+	// Get/import a table type by name.
+	// (Unlike RowSetType, here is no order of the types, so no indexes).
+	// @param name - the name of the table type, as was specified in exportTableType()
+	// @return - the table type, or NULL if not found
+	TableType *impTableType(const string &name) const;
+
 	// Get back the nexus.
 	Nexus *nexus() const
 	{

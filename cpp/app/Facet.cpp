@@ -170,6 +170,24 @@ Facet *Facet::exportTableType(const string &name, Onceref<TableType> tt)
 	return this;
 }
 
+RowType *Facet::impRowType(const string &name) const
+{
+	RowTypeMap::const_iterator it = rowTypes_.find(name);
+	if (it == rowTypes_.end())
+		return NULL;
+	else
+		return it->second;
+}
+
+TableType *Facet::impTableType(const string &name) const
+{
+	TableTypeMap::const_iterator it = tableTypes_.find(name);
+	if (it == tableTypes_.end())
+		return NULL;
+	else
+		return it->second;
+}
+
 void Facet::assertNotImported() const
 {
 	if (isImported())

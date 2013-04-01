@@ -96,6 +96,9 @@ UTESTCASE make_facet(Utest *utest)
 	UT_IS(fa1->rowTypes().at("rt1"), rt1);
 	UT_IS(fa1->rowTypes().at("rt2"), rt1);
 
+	UT_IS(fa1->impRowType("rt1"), rt1.get());
+	UT_IS(fa1->impRowType("zzz"), NULL);
+
 	// add more table types
 	Autoref<TableType> tt1 = TableType::make(rt1)
 		->addSubIndex("primary", HashedIndexType::make(
@@ -107,6 +110,9 @@ UTESTCASE make_facet(Utest *utest)
 	UT_IS(fa1->tableTypes().size(), 2);
 	UT_IS(fa1->tableTypes().at("tt1"), tt1);
 	UT_IS(fa1->tableTypes().at("tt2"), tt1);
+
+	UT_IS(fa1->impTableType("tt1"), tt1.get());
+	UT_IS(fa1->impTableType("zzz"), NULL);
 
 	// the basic export with reimport sets a bunch of things
 	Autoref<Facet> fa1im = ow1->exportNexus(fa1);
