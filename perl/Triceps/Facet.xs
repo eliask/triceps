@@ -119,9 +119,10 @@ endIdx(WrapFacet *self)
 	OUTPUT:
 		RETVAL
 
-#// XXX add methods to get only the names or only types
 #// renamed from rowTypes() to be consistent with FnReturn
 #// "imp" stands for "import"
+#// Unlike FnReturn, there is no order defined on the entries here, so no point
+#// in methods that return separately the names and values.
 SV *
 impRowTypesHash(WrapFacet *self)
 	PPCODE:
@@ -138,9 +139,27 @@ impRowTypesHash(WrapFacet *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-#// XXX add methods to get only the names or only types
+WrapRowType *
+impRowType(WrapFacet *self, char *name)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::RowType";
+		clearErrMsg();
+		RETVAL = NULL;
+		try {
+			Facet *obj = self->get();
+			RowType *rt = obj->impRowType(name);
+			if (rt == NULL) // XXX add list of valid names in the error message?
+				throw Exception::f("Triceps::Facet::impRowType: unknown row type name '%s'", name);
+			RETVAL = new WrapRowType(rt);
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
 #// renamed from tableTypes() to be consistent with FnReturn
 #// "imp" stands for "import"
+#// Unlike FnReturn, there is no order defined on the entries here, so no point
+#// in methods that return separately the names and values.
 SV *
 impTableTypesHash(WrapFacet *self)
 	PPCODE:
@@ -156,4 +175,21 @@ impTableTypesHash(WrapFacet *self)
 			sv_setref_pv( sub, CLASS, (void*)(new WrapTableType(it->second)) );
 			XPUSHs(sv_2mortal(sub));
 		}
+
+WrapTableType *
+impTableType(WrapFacet *self, char *name)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::TableType";
+		clearErrMsg();
+		RETVAL = NULL;
+		try {
+			Facet *obj = self->get();
+			TableType *tt = obj->impTableType(name);
+			if (tt == NULL) // XXX add list of valid names in the error message?
+				throw Exception::f("Triceps::Facet::impTableType: unknown table type name '%s'", name);
+			RETVAL = new WrapTableType(tt);
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
 

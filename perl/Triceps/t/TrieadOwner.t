@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 100 };
+BEGIN { plan tests => 104 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -289,6 +289,9 @@ ok(ref $rt1, "Triceps::RowType");
 		import => "Writer",
 	);
 	ok(ref $fa, "Triceps::Facet");
+
+	#########
+	# Test of Facet methods
 	ok($fa->same($fa));
 	ok($fa->getShortName(), "nx1");
 	ok($fa->getFullName(), "t1/nx1");
@@ -304,16 +307,25 @@ ok(ref $rt1, "Triceps::RowType");
 	ok(ref $exp[1], "Triceps::RowType");
 	ok($rt1->same($exp[1])); # since it's a reimport, the type will stay the same
 
+	ok($rt1->same($fa->impRowType("one")));
+	eval { $fa->impRowType("zzz"); };
+	ok($@, qr/^Triceps::Facet::impRowType: unknown row type name 'zzz'/);
+
 	@exp = $fa->impTableTypesHash();
 	ok($#exp, 1);
 	ok($exp[0], "one");
 	ok(ref $exp[1], "Triceps::TableType");
 	ok($tt->same($exp[1])); # since it's a reimport, the type will stay the same
 
+	ok($tt->same($fa->impTableType("one")));
+	eval { $fa->impTableType("zzz"); };
+	ok($@, qr/^Triceps::Facet::impTableType: unknown table type name 'zzz'/);
+
 	$fret = $fa->getFnReturn();
 	ok(ref $fret, "Triceps::FnReturn");
 	ok($fret->getName(), "nx1");
 
+	#########
 	@exp = $t1->exports(); # the C++ map imposes the order
 	ok($#exp, 1);
 	ok($exp[0], "nx1");
