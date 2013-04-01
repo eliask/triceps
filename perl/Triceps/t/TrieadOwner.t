@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 104 };
+BEGIN { plan tests => 105 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -324,6 +324,9 @@ ok(ref $rt1, "Triceps::RowType");
 	$fret = $fa->getFnReturn();
 	ok(ref $fret, "Triceps::FnReturn");
 	ok($fret->getName(), "nx1");
+
+	eval { $fa->flushWriter(); };
+	ok($@, qr/^Can not flush the facet 't1\/nx1' before waiting for App readiness/);
 
 	#########
 	@exp = $t1->exports(); # the C++ map imposes the order

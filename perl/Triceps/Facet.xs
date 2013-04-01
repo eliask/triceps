@@ -193,3 +193,14 @@ impTableType(WrapFacet *self, char *name)
 	OUTPUT:
 		RETVAL
 
+int
+flushWriter(WrapFacet *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try {
+			RETVAL = self->get()->flushWriter();
+		} TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
