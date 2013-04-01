@@ -268,6 +268,7 @@ ok(ref $rt1, "Triceps::RowType");
 	or confess "$!";
 
 	my $fa;
+	my @exp;
 
 	$fa = $to1->makeNexus(
 		name => "nx1",
@@ -283,9 +284,19 @@ ok(ref $rt1, "Triceps::RowType");
 		],
 		reverse => 0,
 		queue_limit => 100,
-		import => "writer",
+		import => "Writer",
 	);
 	ok(ref $fa, "Triceps::Facet");
+	ok($fa->getShortName(), "nx1");
+	ok($fa->getFullName(), "t1/nx1");
+
+	@exp = $t1->exports(); # the C++ map imposes the order
+	ok($#exp, 1);
+	ok($exp[0], "nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+
+	# XXX test all cases and errors
 
 	$a1->drop();
 }

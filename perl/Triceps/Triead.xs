@@ -99,5 +99,39 @@ isInputOnly(WrapTriead *self)
 	OUTPUT:
 		RETVAL
 
+SV *
+exports(WrapTriead *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Nexus";
+		clearErrMsg();
+		Triead *t = self->get();
+		Triead::NexusMap m;
+		t->exports(m);
+		for (Triead::NexusMap::iterator it = m.begin(); it != m.end(); ++it) {
+			XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapNexus(it->second)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+SV *
+imports(WrapTriead *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Nexus";
+		clearErrMsg();
+		Triead *t = self->get();
+		Triead::NexusMap m;
+		t->imports(m);
+		for (Triead::NexusMap::iterator it = m.begin(); it != m.end(); ++it) {
+			XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapNexus(it->second)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
 # XXX add Nexus methods
 # XXX test all methods

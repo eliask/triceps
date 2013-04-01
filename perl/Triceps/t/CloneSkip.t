@@ -32,7 +32,7 @@ ok(ref $to1, "Triceps::TrieadOwner");
 my $tri1 = $to1->get();
 ok(ref $tri1, "Triceps::Triead");
 
-# XXX add facet
+# XXX add Facet, Nexus
 
 my $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");

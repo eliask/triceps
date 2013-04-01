@@ -60,3 +60,4 @@ getFullName(WrapFacet *self)
 	OUTPUT:
 		RETVAL
 
+# XXX test all the methods
