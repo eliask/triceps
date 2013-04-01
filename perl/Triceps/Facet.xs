@@ -60,4 +60,100 @@ getFullName(WrapFacet *self)
 	OUTPUT:
 		RETVAL
 
-# XXX test all the methods
+int
+isWriter(WrapFacet *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->isWriter();
+	OUTPUT:
+		RETVAL
+
+int
+isReverse(WrapFacet *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->isReverse();
+	OUTPUT:
+		RETVAL
+
+int
+queueLimit(WrapFacet *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->queueLimit();
+	OUTPUT:
+		RETVAL
+
+#// XXX propagate the FnReturn methods that get the labels and such
+WrapFnReturn *
+getFnReturn(WrapFacet *self)
+	CODE:
+		static char CLASS[] = "Triceps::FnReturn";
+		clearErrMsg();
+		RETVAL = new WrapFnReturn(self->get()->getFnReturn());
+	OUTPUT:
+		RETVAL
+
+WrapNexus *
+nexus(WrapFacet *self)
+	CODE:
+		static char CLASS[] = "Triceps::Nexus";
+		clearErrMsg();
+		RETVAL = new WrapNexus(self->get()->nexus());
+	OUTPUT:
+		RETVAL
+
+int
+beginIdx(WrapFacet *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->beginIdx();
+	OUTPUT:
+		RETVAL
+
+int
+endIdx(WrapFacet *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->endIdx();
+	OUTPUT:
+		RETVAL
+
+#// XXX add methods to get only the names or only types
+#// renamed from rowTypes() to be consistent with FnReturn
+#// "imp" stands for "import"
+SV *
+impRowTypesHash(WrapFacet *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::RowType";
+		clearErrMsg();
+		Facet *fa = self->get();
+		const Facet::RowTypeMap &m = fa->rowTypes();
+		for (Facet::RowTypeMap::const_iterator it = m.begin(); it != m.end(); ++it) {
+			XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapRowType(it->second)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+#// XXX add methods to get only the names or only types
+#// renamed from tableTypes() to be consistent with FnReturn
+#// "imp" stands for "import"
+SV *
+impTableTypesHash(WrapFacet *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::TableType";
+		clearErrMsg();
+		Facet *fa = self->get();
+		const Facet::TableTypeMap &m = fa->tableTypes();
+		for (Facet::TableTypeMap::const_iterator it = m.begin(); it != m.end(); ++it) {
+			XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapTableType(it->second)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+

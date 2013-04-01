@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 83 };
+BEGIN { plan tests => 100 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -251,6 +251,7 @@ ok(ref $rt1, "Triceps::RowType");
 }
 
 # makeNexus
+# this one also tests Facet
 {
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
@@ -268,6 +269,7 @@ ok(ref $rt1, "Triceps::RowType");
 	or confess "$!";
 
 	my $fa;
+	my $fret;
 	my @exp;
 
 	$fa = $to1->makeNexus(
@@ -287,14 +289,37 @@ ok(ref $rt1, "Triceps::RowType");
 		import => "Writer",
 	);
 	ok(ref $fa, "Triceps::Facet");
+	ok($fa->same($fa));
 	ok($fa->getShortName(), "nx1");
 	ok($fa->getFullName(), "t1/nx1");
+	ok($fa->isWriter());
+	ok(!$fa->isReverse());
+	ok($fa->queueLimit(), 100);
+	ok($fa->beginIdx(), 2);
+	ok($fa->endIdx(), 3);
+
+	@exp = $fa->impRowTypesHash();
+	ok($#exp, 1);
+	ok($exp[0], "one");
+	ok(ref $exp[1], "Triceps::RowType");
+	ok($rt1->same($exp[1])); # since it's a reimport, the type will stay the same
+
+	@exp = $fa->impTableTypesHash();
+	ok($#exp, 1);
+	ok($exp[0], "one");
+	ok(ref $exp[1], "Triceps::TableType");
+	ok($tt->same($exp[1])); # since it's a reimport, the type will stay the same
+
+	$fret = $fa->getFnReturn();
+	ok(ref $fret, "Triceps::FnReturn");
+	ok($fret->getName(), "nx1");
 
 	@exp = $t1->exports(); # the C++ map imposes the order
 	ok($#exp, 1);
 	ok($exp[0], "nx1");
 	ok(ref $exp[1], "Triceps::Nexus");
 	ok($exp[1]->getName(), "nx1");
+	ok($fa->nexus()->same($exp[1]));
 
 	# TrieadOwner::exports produced the same result as its Triead::exports
 	@exp = $to1->exports(); # the C++ map imposes the order
