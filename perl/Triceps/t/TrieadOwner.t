@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 105 };
+BEGIN { plan tests => 192 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -250,6 +250,30 @@ ok(ref $rt1, "Triceps::RowType");
 	ok($@, qr/^App 'a1' has been aborted by thread 't1': test msg/);
 }
 
+sub badNexus # (trieadOwner, optName, optValue, ...)
+{
+	my $to = shift;
+	my %opt = (
+		name => "nx",
+		labels => [
+			one => $rt1,
+		],
+		import => "NO",
+	);
+	while ($#_ >= 1) {
+		if (defined $_[1]) {
+			$opt{$_[0]} = $_[1];
+		} else {
+			delete $opt{$_[0]};
+		}
+		shift; shift;
+	}
+	my $res = eval {
+		$to->makeNexus(%opt);
+	};
+	ok(!defined $res);
+}
+
 # makeNexus
 # this one also tests Facet
 {
@@ -286,7 +310,7 @@ ok(ref $rt1, "Triceps::RowType");
 		],
 		reverse => 0,
 		queue_limit => 100,
-		import => "Writer",
+		import => "writer",
 	);
 	ok(ref $fa, "Triceps::Facet");
 
@@ -336,6 +360,23 @@ ok(ref $rt1, "Triceps::RowType");
 	ok($exp[1]->getName(), "nx1");
 	ok($fa->nexus()->same($exp[1]));
 
+	@exp = $t1->imports();
+	ok($#exp, 1);
+	ok($exp[0], "t1/nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+	ok($fa->nexus()->same($exp[1]));
+
+	@exp = $t1->writerImports();
+	ok($#exp, 1);
+	ok($exp[0], "t1/nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+	ok($fa->nexus()->same($exp[1]));
+
+	@exp = $t1->readerImports();
+	ok($#exp, -1);
+
 	# TrieadOwner::exports produced the same result as its Triead::exports
 	@exp = $to1->exports(); # the C++ map imposes the order
 	ok($#exp, 1);
@@ -343,7 +384,151 @@ ok(ref $rt1, "Triceps::RowType");
 	ok(ref $exp[1], "Triceps::Nexus");
 	ok($exp[1]->getName(), "nx1");
 
-	# XXX test all cases and errors
+	@exp = $to1->imports();
+	ok($#exp, 1);
+	ok($exp[0], "t1/nx1");
+	ok(ref $exp[1], "Triceps::Facet");
+	ok($fa->same($exp[1]));
+
+	#########
+	# minimum of options
+	$fa = $to1->makeNexus(
+		name => "nx2",
+		labels => [
+			one => $rt1,
+			two => $lb,
+		],
+		import => "reader",
+	);
+	ok(ref $fa, "Triceps::Facet");
+	ok(!$fa->isWriter());
+
+	#########
+	@exp = $t1->exports(); # the C++ map imposes the order
+	ok($#exp, 3);
+	ok($exp[0], "nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+	ok($exp[2], "nx2");
+	ok(ref $exp[3], "Triceps::Nexus");
+	ok($exp[3]->getName(), "nx2");
+	ok($fa->nexus()->same($exp[3]));
+
+	@exp = $t1->imports();
+	ok($#exp, 3);
+	ok($exp[0], "t1/nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+	ok($exp[2], "t1/nx2");
+	ok(ref $exp[3], "Triceps::Nexus");
+	ok($exp[3]->getName(), "nx2");
+
+	@exp = $t1->writerImports();
+	ok($#exp, 1);
+	ok($exp[0], "t1/nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+
+	@exp = $t1->readerImports();
+	ok($#exp, 1);
+	ok($exp[0], "t1/nx2");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx2");
+	ok($fa->nexus()->same($exp[1]));
+
+	# TrieadOwner::exports produced the same result as its Triead::exports
+	@exp = $to1->exports(); # the C++ map imposes the order
+	ok($#exp, 3);
+	ok($exp[0], "nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+	ok($exp[2], "nx2");
+	ok(ref $exp[3], "Triceps::Nexus");
+	ok($exp[3]->getName(), "nx2");
+
+	@exp = $to1->imports();
+	ok($#exp, 3);
+	ok($exp[0], "t1/nx1");
+	ok(ref $exp[1], "Triceps::Facet");
+	ok($exp[2], "t1/nx2");
+	ok(ref $exp[3], "Triceps::Facet");
+	ok($fa->same($exp[3]));
+
+	#########
+	# minimum of options
+	$fa = $to1->makeNexus(
+		name => "nx3",
+		labels => [
+			one => $rt1,
+			two => $lb,
+		],
+		import => "none",
+	);
+	ok(!defined $fa);
+
+	#########
+	@exp = $t1->exports(); # the C++ map imposes the order
+	ok($#exp, 5);
+	ok($exp[0], "nx1");
+	ok(ref $exp[1], "Triceps::Nexus");
+	ok($exp[1]->getName(), "nx1");
+	ok($exp[2], "nx2");
+	ok(ref $exp[3], "Triceps::Nexus");
+	ok($exp[3]->getName(), "nx2");
+	ok($exp[4], "nx3");
+	ok(ref $exp[5], "Triceps::Nexus");
+	ok($exp[5]->getName(), "nx3");
+
+	#########
+	# short versions of the import values
+	$to1->makeNexus(
+		name => "nx4",
+		labels => [
+			one => $rt1,
+			two => $lb,
+		],
+		import => "WRITE",
+	);
+	$to1->makeNexus(
+		name => "nx5",
+		labels => [
+			one => $rt1,
+			two => $lb,
+		],
+		import => "READ",
+	);
+	$to1->makeNexus(
+		name => "nx6",
+		labels => [
+			one => $rt1,
+			two => $lb,
+		],
+		import => "NO",
+	);
+
+	# the errors
+	&badNexus($to1, name => "nx1");
+	ok($@, qr/Triceps::TrieadOwner::makeNexus: invalid arguments:\n  Can not export the nexus with duplicate name 'nx1' in app 'a1' thread 't1'/);
+	&badNexus($to1, name => undef);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: must specify a non-empty name with option 'name'/);
+	&badNexus($to1, labels => undef);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: missing mandatory option 'labels'/);
+	&badNexus($to1, import => undef);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: the option 'import' must have the value one of 'writer', 'reader', 'no'; got ''/);
+	&badNexus($to1, labels => {a => 9});
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'labels' value must be a reference to array/);
+	&badNexus($to1, labels => [a => 9]);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'labels' element 1 with name 'a' value must be a blessed SV reference to Triceps::Label or Triceps::RowType/);
+	&badNexus($to1, import => "xxx");
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: the option 'import' must have the value one of 'writer', 'reader', 'no'; got 'xxx'/);
+	&badNexus($to1, row_types => {a => $rt1});
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'row_types' value must be a reference to array/);
+	&badNexus($to1, row_types => [a => $tt]);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'row_types' element 1 with name 'a' value has an incorrect magic/);
+	&badNexus($to1, table_types => {a => $tt});
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'table_types' value must be a reference to array/);
+	&badNexus($to1, table_types => [a => $rt1]);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'table_types' element 1 with name 'a' value has an incorrect magic for Triceps::TableType/);
 
 	$a1->drop();
 }

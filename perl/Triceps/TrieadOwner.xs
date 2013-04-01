@@ -212,7 +212,7 @@ isInputOnly(WrapTrieadOwner *self)
 WrapFacet *
 makeNexus(WrapTrieadOwner *self, ...)
 	CODE:
-		static char funcName[] =  "Triceps::TrieadOwner::makeNexusNoImport";
+		static char funcName[] =  "Triceps::TrieadOwner::makeNexus";
 		static char CLASS[] = "Triceps::Facet";
 		bool do_import = false; // whether to reimport the nexus after exporting it
 		clearErrMsg();
@@ -278,7 +278,7 @@ makeNexus(WrapTrieadOwner *self, ...)
 			} else if (import.compare(0, 2, "no") == 0) {
 				writer = false; do_import = false;
 			} else {
-				throw Exception::f("%s: the option 'import' must have the value one of 'writer', 'reader', 'no'", funcName);
+				throw Exception::f("%s: the option 'import' must have the value one of 'writer', 'reader', 'no'; got '%s'", funcName, import.c_str());
 			}
 
 			// start by building the FnReturn
@@ -289,7 +289,7 @@ makeNexus(WrapTrieadOwner *self, ...)
 			// now make the Facet out it
 			Autoref<Facet> fa = new Facet(fret, writer);
 			fa->setReverse(reverse);
-			if (qlimit)
+			if (qlimit > 0)
 				fa->setQueueLimit(qlimit);
 
 			if (row_types) {
@@ -358,6 +358,26 @@ exports(WrapTrieadOwner *self)
 
 			SV *sub = newSV(0);
 			sv_setref_pv( sub, CLASS, (void*)(new WrapNexus(it->second)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
+#// unlike Triead::imports(), lists facets, which also have in them
+#// the information of whether they are readers or writers, so no need
+#// for the separate calls
+SV *
+imports(WrapTrieadOwner *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Facet";
+		clearErrMsg();
+		TrieadOwner *to = self->get();
+		TrieadOwner::FacetMap m;
+		to->imports(m);
+		for (TrieadOwner::FacetMap::iterator it = m.begin(); it != m.end(); ++it) {
+			XPUSHs(sv_2mortal(newSVpvn(it->first.c_str(), it->first.size())));
+
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapFacet(it->second)) );
 			XPUSHs(sv_2mortal(sub));
 		}
 
