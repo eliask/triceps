@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 192 };
+BEGIN { plan tests => 194 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -529,6 +529,10 @@ sub badNexus # (trieadOwner, optName, optValue, ...)
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'tableTypes' value must be a reference to array/);
 	&badNexus($to1, tableTypes => [a => $rt1]);
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'tableTypes' element 1 with name 'a' value has an incorrect magic for Triceps::TableType/);
+
+	$to1->markConstructed();
+	&badNexus($to1);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: invalid arguments:\n  Can not export the nexus 'nx' in app 'a1' thread 't1' that is already marked as constructed/);
 
 	$a1->drop();
 }
