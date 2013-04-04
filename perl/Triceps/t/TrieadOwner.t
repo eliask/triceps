@@ -302,14 +302,14 @@ sub badNexus # (trieadOwner, optName, optValue, ...)
 			one => $rt1,
 			two => $lb,
 		],
-	    row_types => [
+	    rowTypes => [
 			one => $rt1,
 		],
-	    table_types => [
+	    tableTypes => [
 			one => $tt,
 		],
 		reverse => 0,
-		queue_limit => 100,
+		queueLimit => 100,
 		import => "writer",
 	);
 	ok(ref $fa, "Triceps::Facet");
@@ -521,14 +521,14 @@ sub badNexus # (trieadOwner, optName, optValue, ...)
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'labels' element 1 with name 'a' value must be a blessed SV reference to Triceps::Label or Triceps::RowType/);
 	&badNexus($to1, import => "xxx");
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: the option 'import' must have the value one of 'writer', 'reader', 'no'; got 'xxx'/);
-	&badNexus($to1, row_types => {a => $rt1});
-	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'row_types' value must be a reference to array/);
-	&badNexus($to1, row_types => [a => $tt]);
-	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'row_types' element 1 with name 'a' value has an incorrect magic/);
-	&badNexus($to1, table_types => {a => $tt});
-	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'table_types' value must be a reference to array/);
-	&badNexus($to1, table_types => [a => $rt1]);
-	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'table_types' element 1 with name 'a' value has an incorrect magic for Triceps::TableType/);
+	&badNexus($to1, rowTypes => {a => $rt1});
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'rowTypes' value must be a reference to array/);
+	&badNexus($to1, rowTypes => [a => $tt]);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'rowTypes' element 1 with name 'a' value has an incorrect magic/);
+	&badNexus($to1, tableTypes => {a => $tt});
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: option 'tableTypes' value must be a reference to array/);
+	&badNexus($to1, tableTypes => [a => $rt1]);
+	ok($@, qr/^Triceps::TrieadOwner::makeNexus: in option 'tableTypes' element 1 with name 'a' value has an incorrect magic for Triceps::TableType/);
 
 	$a1->drop();
 }

@@ -28,6 +28,7 @@ our @startOpts = (
 our @opts = (
 	@startOpts,
 	owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
+	immediate => [ 0, undef ],
 );
 
 # Start a new Triead.
@@ -49,8 +50,9 @@ our @opts = (
 # main => \&function
 # The main function of the thread that will be called with &ll the options
 # plus some more:
-#     &$func(@opts, owner => $ownerObj )
+#     &$func(@opts, owner => $ownerObj, immediate => $imm )
 # owner: the TrieadOwner object constructed for this thread
+# immediate: passed through, flag for use in the nexus imports (default: 0)
 #
 sub start { # (@opts)
 	my $myname = "Triceps::Triead::start";
