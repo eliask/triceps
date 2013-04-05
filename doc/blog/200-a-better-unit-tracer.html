@@ -1,0 +1,36 @@
+a better unit tracer
+
+I've done a few small improvements to the Unit::Tracer in the C++ code.
+
+The first one, I've moved the message buffer support from Unit::StringTracer into the base class Unit::Tracer. The buffer is used in pretty much any tracer, so it looks like a good idea. And if some subclass doesn't want to use it, it doesn't have to.
+
+So, now in Unit::Tracer is a protected element for the use of subclasses:
+
+Erref buffer_;
+
+And a couple of methods for manipulating this buffer:
+
+virtual Erref getBuffer();
+virtual void clearBuffer();
+
+They are virtual to let the subclasses do whatever they please, but the default implementation is exactly as it was in the StringTracer: return the buffer_ element, and put a new clean Errors object into the buffer_ reference.
+
+The next improvement allows to add a custom row printer. Now not only the Perl code but also C++ code can print the rows in tracing (though you have to provide that C++ code that prints the interesting portion of the row or the whole row). This separation of the general trace logic and of the row printing will eventually make it to Perl too , but not yet.
+
+There are two ways to do it. First, there is a virtual method
+
+virtual void printRow(string &res, const RowType *rt, const Row *row);
+
+You can re-define it in your subclass and do the printing. The job of this method is to append the information from the row row of the type rt to the result string res. Append, not replace.
+
+The second way is by providing a pointer to a simple C-style function of the type:
+
+typedef void RowPrinter(string &res, const RowType *rt, const Row *row);
+
+The arguments are exactly the same as for the method. This pointer can be given to the Tracer constructor:
+
+Tracer(RowPrinter *rp = NULL);
+StringTracer(bool verbose = false, RowPrinter *rp = NULL);
+StringNameTracer(bool verbose = false, RowPrinter *rp = NULL);
+
+The default implementation of the method printRow() simply calls the function at this pointer if it's not NULL. So if you redefine this method in your subclass, the row printer function pointer will stop working. 

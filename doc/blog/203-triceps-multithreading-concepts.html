@@ -1,0 +1,31 @@
+Triceps Multithreading Concepts
+
+The multithreading support has solidified to the point where I can start documenting it. The full description will have to wait until I finalize the Perl API but the concepts are pretty much settled.
+
+The idea of the multithreading support in Triceps is to make writing the multithreaded model easier. To make writing the good code easy and writing the bad code hard. But of course you don't have to use it, you can always make your own if you wish (just as you could before now).
+
+Without the further ado, the diagram of a multithreaded Triceps application:
+
+<table cellpadding="0" cellspacing="0" class="tr-caption-container"><tbody>
+<tr><td style="text-align: left;"><a href="http://triceps.sourceforge.net/docs-1.1.0/fig/thread-010-over.lowres.png" imageanchor="1" style="clear: left; margin-bottom: 1em; margin-left: auto; margin-right: auto;"><img border="0" src="http://triceps.sourceforge.net/docs-1.1.0/fig/thread-010-over.lowres.png" width="600" /></a></td></tr>
+<tr><td class="tr-caption" style="text-align: center;">Fig. 1. Triceps application.</td></tr>
+</tbody></table>
+Fig. 1. Triceps application.
+
+The Triceps application is embodied in the class App. It's possible to have multiple Apps in one program.
+
+Each thread has multiple parts to it. First, of course, there is the OS-level (or, technically, library-level, or Perl-level) thread where the code executes. And then there is a class that represents this thread and its place in the App. To reduce the naming conflict, this class is creatively named Triead (pronounced still "thread"). In the discussion I use the word "thread" for both concepts, the OS-level thread and the Triead, and it's usually clear from the context which one I mean. But sometimes it's particularly important to make the distinction, and then I name one or the other explicitly.
+
+The class Triead itself is largely opaque, allowing only a few methods for introspection. But there is a control interface to it, called TrieadOwner. The Triead is visible from the outside, the TrieadOwner object is visible only in the OS thread that owns the Triead. The TrieadOwner manages the thread state and acts as the intermediary in the thread's communications with the App.
+
+The data is passed between the threads through the Nexuses. A Nexus is unidirectional, with data going only one way, however it may have multiple writers and multiple readers. All the readers see the exact same data, with rowops going in the exact same order (well, there will be other policies in the future as well, but for now there is only one policy).
+
+A Nexus passes through the data for multiple labels, very much like an FnReturn does (and indeed there is a special connection between them). A Nexus also allows to export the row types and table types from one thread to another.
+
+A Nexus gets connected to the Trieads to though the Facets. A Facet is a connection point between the Nexus and the Triead. Each Facet is for either reading or writing. And there may be only one Facet between a given Nexus and a given Triead, you can't make multiple connections between them. As a consequence, a thread can't both write and read to the same Nexus, it can do only one thing. This might actually be an overly restrictive limitation and might change in the future but that's how things work now.
+
+Each Nexus also has a direction: either direct ("downwards") or reverse ("upwards").  And yes, the reverse Nexuses allow to build the models with loops. However the loops consisting of only the direct Nexuses are not allowed, nor of only reverse Nexuses. They would mess up the flow control. The proper loops must contain a mix of direct and reverse Nexuses.
+
+The direct Nexuses have a limited queue size and stop the writers when the queue fills up, until the data gets consumed, thus providing the flow control. The reverse Nexuses have an unlimited queue size, which allows to avoid the circular deadlocks.
+
+Normally an App is built once and keeps running in this configuration until it stops. But there is a strong need to have the threads dynamically added and deleted too. For example, if the App running as a server and clients connect to it, each client needs to have its thread(s) added on connection and then deleted when the client disconnects. This is handled through the concept of fragments. There is no Fragment class but when you create a Triead, you can specify a fragment name for it. Then it becomes possible to shut down and dispose the threads in a fragment after the fragment's work is done. 

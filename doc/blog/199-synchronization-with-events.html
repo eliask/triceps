@@ -1,0 +1,9 @@
+synchronization with events
+
+The events feel like an easier form of synchronization to use than dealing directly with the condition variables, and for the simple cases they are. However once you try to do something real-sized, it always turns out that you want to do something more while holding that mutex, not just set a flag and sleep (or the other way around, not just wake up) as the internals of an event do. And no, holding a separate mutex and waiting for an event with it doesn't work, because the separate mutex doesn't get unlocked when the thread goes to sleep.
+
+And so far in Triceps always, always, every single time an event had become some handcrafted logic around a mutex and condition variable. There is one event in it now but it's about to be split up and converted.
+
+Perhaps a good solution to make the events more general and more usable would be to split the mutex from the rest of the event logic, make it like the mutex-condvar pair that is sometimes called a monitor (or in the Ptwrap library term, a pmcond). Or, to turn the same idea sideways, make public not only the combined API but also the constituent parts, the mutex and the logic that is protected behind the mutex.
+
+It has also turned out that for the auto-reset events the ability to read the event state without resetting it comes quite handy. 

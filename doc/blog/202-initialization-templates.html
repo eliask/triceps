@@ -1,0 +1,33 @@
+initialization templates
+
+Some of the helper initialization templates have been already shown in the examples, and here finally is the systematic description.
+
+Trices has the common approach of the building of the complex objects by the chained mehod calls (shown on a fictional class Object):
+
+Autoref<Object> o = Object::make()->addOption1(arg)->addOption2(arg);
+
+Here Object::make() is a convenience wrapper for "new Object", because new has an inconvenient priority. The new or make() returns a pointer to the newly constructed object, and then each method in the chain returns the same pointer (this, from its standpoint) to facilitate the chaining.
+
+While the chain executes, the pointer stays a simple pointer, not a reference. So the methods in the chain can't throw any exceptions, or the memory will leak. Instead they collect the error messages in an Errors object that has to be checked afterwards, like:
+
+if (o->getErrors()->hasError()) ...
+
+Note that the object gets a reference to it created first, so that on an error it would be properly destroyed.
+
+The convenience template checkOrThrow() allows to do the check along with the chain, and if an error is found, convert it to an exception:
+
+Autoref<Object> o = checkOrThrow(Object::make()->addOption1(arg)->addOption2(arg));
+
+It does all the right things with the references.
+
+Some objects  need to be initialized after all the options have been set, since it's much easier to check things once and get the interaction of the options right rather than check on every option. And since the initialization might create the references to the object, to get it right, it has to be done after the "main" reference is created.
+
+The template initialize() takes care of it:
+
+Autoref<Object> o = initialize(Object::make()->addOption1(arg)->addOption2(arg));
+
+For some objects the initialization can't fail (nor any other errors can be created by the options). For the others, the error needs to be checked afterwards. The template initializeOrThrow() takes care of both the initialization, the check, and exception throwing on errors:
+
+Autoref<Object> o = initializeOrThrow(Object::make()->addOption1(arg)->addOption2(arg));
+
+That's basically it. All these templates are defined in common/Initialize.h. 

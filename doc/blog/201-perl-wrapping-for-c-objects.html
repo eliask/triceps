@@ -1,0 +1,120 @@
+perl wrapping for the C++ objects
+
+There is one more item in the C++ part of Triceps that I haven't touched upon yet. It's not a part of the C++ API as such but the connection between the C++ and Perl APIs. You need to bother about it if you want to write more of the components in C++ and export them into Perl.
+
+When exporting the C++ (or any compiled language) API into Perl (or into any scripting language) there are two things to consider:
+
+1. The script must never crash the interpterer. The interpreted program might die but the interpreter itself must never crash. If you've ever deal with wksh, you know how horrible is the debugging of such crashes.
+
+2. Perl has its memory management by reference counting, which needs to be married with the memory management at the C++ level.
+
+The solution to the second problem is fairly straightforward: have an intermediate wrapper structure. Perl has its reference counting for the pointer to this structure.  When you construct a Perl object, return the pointer to a newly allocated instance of this structure. When the Perl reference count gows down to zero, if calls the method DESTROY for this object, and then you destroy this structure.
+
+And inside this structure will be the C++ reference to the actual object. When the wrapper structure gets created, it gets a new reference and when the wrapper structure gets destroyed, it releases this reference.
+
+Here is a small example of how the RowType object gets created and destroyed:
+
+
+WrapRowType *
+Triceps::RowType::new(...)
+    CODE:
+        RowType::FieldVec fld;
+
+        .....
+
+        Onceref<RowType> rt = new CompactRowType(fld);
+        Erref err = rt->getErrors();
+        if (!err.isNull() && !err->isEmpty()) {
+            setErrMsg("Triceps::RowType::new: " + err->print());
+            XSRETURN_UNDEF;
+        }
+
+        RETVAL = new WrapRowType(rt);
+    OUTPUT:
+        RETVAL
+
+void
+DESTROY(WrapRowType *self)
+    CODE:
+        delete self;
+
+Now to the first problem. How does Perl know to call a particular XS method for a object? From the package this object is blessed to. If the package happens to be an XS package, the XS method will be called. However it's entirely possible to re-bless the object to a completely different package. If the user does this, a completely wrong method may be called and will crash when it tries to reach a wrong object at the pointer.
+
+
+Things get even worse for the other arguments of the methods. For example, the argument "other" here:
+
+int
+equals(WrapRowType *self, WrapRowType *other)
+
+Well, Perl lets you provide a code snippet that would check that the object is as expected in the typemap file. But how would that snipped know? Going just by the blessed package is unreliable.
+
+
+Triceps solves this problem by placing an 8-byte magic code at the front of every wrap object. Each class has its own magic value for this field. 8 bytes allows to have great many unique codes, and is quick to check because it's just one CPU word.
+
+
+This magic code is defined as:
+
+
+
+struct WrapMagic {
+    char v_[8]; // 8 bytes to make a single 64-bit comparison
+    bool operator!=(const WrapMagic &wm) const
+    {
+        return (*(int64_t *)v_) != (*(int64_t *)wm.v_);
+    }
+};
+
+
+Then the wrapper contains the fields:
+
+    WrapMagic magic_;
+    Autoref<Class> ref_; // referenced value
+
+    static WrapMagic classMagic_;
+
+The check is done with:
+
+    // returns true if the magic value is bad
+    bool badMagic() const
+    {
+        return magic_ != magic;
+    }
+
+And the typemap entry is:
+
+O_WRAP_OBJECT
+    if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
+        $var = ($type)SvIV((SV*)SvRV( $arg ));
+        if ($var == 0 || $var->badMagic()) {
+            setErrMsg( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
+            XSRETURN_UNDEF;
+        }
+    } else{
+        setErrMsg( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
+        XSRETURN_UNDEF;
+    }
+
+It checks that this is an object, of an XS package, and then that the pointer to the C/C++ object is not NULL, and that the value at this pointer starts with the right magic.
+
+setErrMsg() is the Triceps finction for setting its error code, and will soon be replaced with a Perl error indication.
+
+The repeatable build of the wrapper object is handled in Triceps with a template that you don't need to use directly and a macro that you do use. For example,  the definition for the RowType wrap in wrap/Wrap.h is:
+
+DEFINE_WRAP(RowType);
+
+The second component, the magic definition goes into Wrap.cpp:
+
+WrapMagic magicWrapRowType = { "RowType" };
+
+Just make sure that the string contains no more than 7 characters.
+
+Some objects in Triceps are reached through the special references that know both the object and its type (such as rows and row handles). For them there is a separate macro:
+
+DEFINE_WRAP2(const RowType, Rowref, Row);
+DEFINE_WRAP2(Table, Rhref, RowHandle);
+
+The arguments are the type class, the reference class and finally the object class itself.
+
+And there is one more twist: sometimes the object are self-contained but when you use them, you must use them only with a correct parent object. Right now there is only one such class: the Tray must be used with its correct Unit, and the Perl code checks it. In this case the wrapper has the reference to both Tray and the Unit, and is defined as:
+
+DEFINE_WRAP_IDENT(Unit, Tray); 

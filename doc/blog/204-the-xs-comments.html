@@ -1,0 +1,8 @@
+The XS comments
+
+The comments are treated in a funny way in the Perl XS files. Well, inside functions they are the normal C/C++ comments. But if you want to put a block comment before a function, XS won't let you just use "//" for its lines. It will say that it's a syntax error.
+
+If you use "#" there, XS doesn't complain. It's a little funny, having two styles of comments in the same file but it kind of works. But only kind of. As it turns out, XS sees these lines simply as the preprocessor lines, and feeds them to the preprocessor. Which in turn happily ignores them. Until one of your lines happens to start with "if" or another preprocessor keywords. Then the preprocessor complains.
+
+The complete solution here is to use "#//". This first makes XS send the line to the preprocessor, which then finds a C-style comment and ignores it.
+
