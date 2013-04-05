@@ -1,0 +1,31 @@
+the Triead lifecycle
+
+Each Triead goes through a few stages in its life:
+
+    declared
+    defined
+    constructed
+    ready
+    waited ready
+    requested dead
+    dead
+
+Note by the way that it's the stages of the Triead object, the OS-level thread as such doesn't know much about them, even though these stages do have some connections to its state.
+
+These stages always go in order and can not be skipped. However for convenience you can move directly to a further stage, this will just automatically pass through all the intermediate stages. Although, well, there is one exception: the "waited ready" and "requested dead" stages can get skipped on the way to "dead". Other than that, there is always the sequence, so if you find out that a Triead is dead, you can be sure that it's also declared, defined, constructed and ready. The attempts to go to a previous stage are silently ignored.
+
+Now, what do these stages mean?
+
+Declared: The App knows the name of the thread and that this thread will eventually exist. When an App is asked to find the resources from this thread (such as Nexuses, and by the way, the nexuses are associated with the threads that created them) it will know to wait until this thread becomes constructed, and then look for the resources. It closes an important race condition: the code that defines the Triead normally runs in a new OS thread but there is no way to tell when exactly will it run and do its work. If you spawned a new thread and then attempted to get a nexus from it before it actually runs, the App would tell you that there is no such thread and fail. To get around it, you declare the thread first and then start it. Most of the time there is no need to declare explicitly, the library code that wraps the thread creation does it for you.
+
+Defined: The Triead object has been created and connected to the App. Since this is normally done from the new OS thread, it also implies that the thread is running and is busy about constructing the nexuses and whatever its own internal resources.
+
+Constructed: The Triead had constructed and exported all the nexuses that it planned to. This means that now these nexuses can be imported by the other threads (i.e. connected to the other threads). After this point the thread can not construct any more nexuses. However it can keep importing the nexuses from the other threads. It's actually a good idea to do all your exports, mark the thread constructed, and only then start importing. This order guarantees the absence of deadlocks (which would be detected and will cause the App to be aborted). There are some special cases when you need to import a nexus from a thread that is not fully constructed yet, and it's possible, but requires more attention and a special override. I'll talk about it in more detail later.
+
+Ready: The thread had imported all the nexuses it wanted and fully initialized all its internals (for example, if it needs to load data from a file, it would do that before telling that it's ready). After this point no more nexuses can be imported. A fine point is that the other threads may still be created, and they may do their exporting and importing, but once a thread is marked as ready, it's cast in bronze. And in the simple cases you don't need to worry about separating the constructed and ready stages, just initialize everything and mark the thread as ready.
+
+Waited ready: Before proceeding further, the thread has to wait for all the threads in App to be ready, or it would lose data when it tries to communicate with them. It's essentially a barrier. Normally both the stages "ready" and "waited ready" are advanced to with a single call readyReady(), the thread says "I'm ready, and let me continue when everyone is ready". After that the actual work can begin. It's still possible to create more threads after that (normally parts of the transient fragments), and until they all become ready, the App may temporarily become unready again, but that's a whole separate advanced topic.
+
+Requested dead: This is a way to request a thread to exit. Normally some control thread will decide that the App needs to exit and will request all its threads to die. The threads will get these requests, perform their last rites and exit. The threads don't have to get this request to exit, that can also always decide to exit on their own. When a thread is requested to die, all the data communication with it stops. No more data will get to it through the nexuses and any data it sends will be discarded. It might churn a little bit through the data in its input buffers but any results produced will be discarded. The good practice is to make sure that all the data is drained before requesting a thread to die. Note that the nexuses created by this thread aren't affected at all, they keep working as usual. It's the data connections between this thread and any nexuses that get broken.
+
+Dead: The thread had completed its execution and exited. Normally you don't need to mark this explicitly. When the thread's main function exits, the library will do it for you. Marking the thread dead also drives the harvesting of the OS threads: the harvesting logic will perform a join() (not to be confused with SQL join) of the thread and thus free the OS resources. The dead Trieads are still visible in the App (except for some special cases with the fragments), and their nexuses continue working as usual (even including the special cases with the fragments), the other threads can keep communicating through them for as long as they want. 
