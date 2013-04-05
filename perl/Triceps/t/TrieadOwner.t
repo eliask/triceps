@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 220 };
+BEGIN { plan tests => 221 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -122,13 +122,14 @@ ok(ref $rt1, "Triceps::RowType");
 			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
 			ok(ref $opts->{owner}, "Triceps::TrieadOwner");
 			ok(!$opts->{owner}->isDead());
+			ok(!$opts->{owner}->isRqDead());
 		},
 	);
 
 	# the TrieadOwner destruction will mark it dead
 	$a1->harvester(); # this ensures that the thread had all properly completed
 
-	$Test::ntest += 2; # include the tests in the thread
+	$Test::ntest += 3; # include the tests in the thread
 
 	# even through a1 is dropped from the list, it's still accessible and has contents
 	my @ts = $a1->getTrieads();

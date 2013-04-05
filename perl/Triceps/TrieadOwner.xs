@@ -153,6 +153,14 @@ get(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
+int
+isRqDead(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->isRqDead();
+	OUTPUT:
+		RETVAL
+
 #// a bunch of getters percolate from Triead
 
 char *
