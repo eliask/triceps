@@ -1768,7 +1768,7 @@ UTESTCASE pass_data(Utest *utest)
 	// the rowops will be looped through the high-priority facet, so they
 	// will be read first
 	
-	while (ow3->nextXtray(false));
+	while (ow3->nextXtrayNoWait());
 	tlog = trace3->getBuffer()->print();
 	string expect2 =
 		"unit 't3' before label 'nxc.one' op OP_INSERT b=2\n"

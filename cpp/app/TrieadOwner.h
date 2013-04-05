@@ -419,6 +419,12 @@ public:
 	//         (or with wait==false, when no more data in the queues)
 	bool nextXtray(bool wait = true);
 
+	// A convenience wrapper.
+	bool nextXtrayNoWait()
+	{
+		return nextXtray(false);
+	}
+
 	// The easy way to process all the input data until the thread
 	// is requested to die.
 	// Calls nextXtray() repeatedly until it returns false. Then marks
