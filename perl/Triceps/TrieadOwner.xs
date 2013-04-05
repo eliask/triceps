@@ -445,7 +445,7 @@ makeNexus(WrapTrieadOwner *self, ...)
 #//   writer (or anything starting from "write") - import for writing
 #// The upper/lowercase doesn't matter. 
 #// 
-#// immediate => 0/1
+#// immed => 0/1
 #// Flag: do not wait for the exporter thread to be fully constructed.
 #// Waiting synchronizes with the exporter and prevents a race of an import
 #// attempt trying to find a nexus before it is made and failing. However

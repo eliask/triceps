@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 194 };
+BEGIN { plan tests => 219 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -274,7 +274,28 @@ sub badNexus # (trieadOwner, optName, optValue, ...)
 	ok(!defined $res);
 }
 
-# makeNexus
+sub badFacet # (trieadOwner, optName, optValue, ...)
+{
+	my $to = shift;
+	my %opt = (
+		from => "t1/nx1",
+		import => "reader",
+	);
+	while ($#_ >= 1) {
+		if (defined $_[1]) {
+			$opt{$_[0]} = $_[1];
+		} else {
+			delete $opt{$_[0]};
+		}
+		shift; shift;
+	}
+	my $res = eval {
+		$to->importNexus(%opt);
+	};
+	ok(!defined $res);
+}
+
+# makeNexus and importNexus
 # this one also tests Facet
 {
 	my $a1 = Triceps::App::make("a1");
@@ -313,6 +334,15 @@ sub badNexus # (trieadOwner, optName, optValue, ...)
 		import => "writer",
 	);
 	ok(ref $fa, "Triceps::Facet");
+
+	{
+		# another import returns the same facet
+		my $fa2 = $to1->importNexus(
+			from => "t1/nx1",
+			import => "writer"
+		);
+		ok($fa->same($fa2));
+	}
 
 	#########
 	# Test of Facet methods
@@ -533,6 +563,69 @@ sub badNexus # (trieadOwner, optName, optValue, ...)
 	$to1->markConstructed();
 	&badNexus($to1);
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: invalid arguments:\n  Can not export the nexus 'nx' in app 'a1' thread 't1' that is already marked as constructed/);
+
+	#### import 
+	my $to2 = Triceps::TrieadOwner->new(undef, $a1, "t2", "");
+	ok(ref $to2, "Triceps::TrieadOwner");
+	my $t2 = $to2->get();
+	ok(ref $t2, "Triceps::Triead");
+
+	$fa = $to2->importNexus(
+		from => "t1/nx1",
+		import => "READ",
+	);
+	ok(ref $fa, "Triceps::Facet");
+	ok($fa->getShortName(), "nx1");
+	ok($fa->getFullName(), "t1/nx1");
+	# it's not the same row type but an equal one
+	ok($fa->impRowType("one")->print(), $rt1->print());
+
+	$fa = $to2->importNexus(
+		fromTriead => "t1",
+		fromNexus => "nx3",
+		as => "zzz3",
+		import => "WRITE",
+		immed => 1,
+	);
+	ok(ref $fa, "Triceps::Facet");
+	ok($fa->getShortName(), "zzz3");
+	ok($fa->getFullName(), "t1/nx3");
+
+	# this tests the nexus namespaces, and also will be
+	# used to test an immediate import
+	$to2->makeNexus(
+		name => "nx1",
+		labels => [
+			one => $rt1,
+		],
+		import => "WRITE",
+	);
+
+	my $to3 = Triceps::TrieadOwner->new(undef, $a1, "t3", "");
+	ok(ref $to3, "Triceps::TrieadOwner");
+	my $t3 = $to3->get();
+	ok(ref $t3, "Triceps::Triead");
+
+	$fa = $to3->importNexus( # a real immediate import from an unconstructed thread
+		from => "t2/nx1",
+		import => "READ",
+		immed => 1,
+	);
+	ok(ref $fa, "Triceps::Facet");
+
+	# the import errors
+	badFacet($to3, from => "xxx");
+	ok($@, qr/^Triceps::TrieadOwner::importNexus: option 'from' must contain the thread and nexus names separated by '\/', got 'xxx'/);
+	badFacet($to3, from => undef);
+	ok($@, qr/^Triceps::TrieadOwner::importNexus: one of options 'from' or 'fromNexus' must be not empty/);
+	badFacet($to3, fromNexus => "xxx");
+	ok($@, qr/^Triceps::TrieadOwner::importNexus: options 'fromTriead' and 'fromNexus' must be both either empty or not/);
+	badFacet($to3, from =>undef, fromNexus => "xxx");
+	ok($@, qr/^Triceps::TrieadOwner::importNexus: options 'fromTriead' and 'fromNexus' must be both either empty or not/);
+	badFacet($to3, import => "no");
+	ok($@, qr/^Triceps::TrieadOwner::importNexus: the option 'import' must have the value one of 'writer', 'reader'; got 'no'/);
+	badFacet($to3, from => "xxx/xxx");
+	ok($@, qr/^Triceps::TrieadOwner::importNexus: invalid arguments:\n  In Triceps application 'a1' thread 't3' is referring to a non-existing thread 'xxx'/);
 
 	$a1->drop();
 }
