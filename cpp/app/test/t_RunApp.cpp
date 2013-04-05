@@ -327,6 +327,7 @@ public:
 
 		// check that isDrained() works even when the app is not ready
 		UT_ASSERT(!a1->isDrained());
+		UT_ASSERT(!ow1->isDrained());
 
 		ow1->markReady(); // ---
 		UT_ASSERT(ow1->get()->isInputOnly());
