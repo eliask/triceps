@@ -611,3 +611,96 @@ flushWriters(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
+#// XXX test all below here
+
+int
+nextXtray(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			RETVAL = self->get()->nextXtray();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+int
+nextXtrayNoWait(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			RETVAL = self->get()->nextXtrayNoWait();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+void
+mainLoop(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->mainLoop();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+requestDrainShared(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->requestDrainShared();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+requestDrainExclusive(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->requestDrainExclusive();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+waitDrain(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->waitDrain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+bool
+isDrained(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			RETVAL = self->get()->isDrained();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+void
+drainShared(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->drainShared();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+drainExclusive(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->drainExclusive();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+undrain(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->undrain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+#// XXX add addUnit() etc
+#// XXX add the scoped drain

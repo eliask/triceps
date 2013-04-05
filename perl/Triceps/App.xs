@@ -338,3 +338,135 @@ harvester(WrapApp *self, ...)
 
 			a->harvester(throwAbort);
 		} while(0); } TRICEPS_CATCH_CROAK;
+
+#// XXX test all below here
+
+#// returns the constant value
+int 
+DEFAULT_TIMEOUT()
+	CODE:
+		RETVAL = App::DEFAULT_TIMEOUT;
+	OUTPUT:
+		RETVAL
+
+int
+isDead(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::isDead";
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			RETVAL = appv->isDead();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+int
+isShutdown(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::isShutdown";
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			RETVAL = appv->isShutdown();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+#// by design works with a reference only, since the App
+#// could be harvested and dropped
+void
+waitDead(WrapApp *self)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->waitDead();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+shutdown(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::shutdown";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->shutdown();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+shutdownFragment(SV *app, char *fragname)
+	CODE:
+		static char funcName[] =  "Triceps::App::shutdownFragment";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->shutdownFragment(fragname);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+#// no requestDrainExclusive(), that is done in the Perl API
+#// only through a TrieadOwner method
+void
+requestDrain(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::requestDrain";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->requestDrain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+waitDrain(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::waitDrain";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->waitDrain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+drain(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::drain";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->drain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void
+undrain(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::undrain";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			appv->undrain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+int
+isDrained(SV *app)
+	CODE:
+		static char funcName[] =  "Triceps::App::isDrained";
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			RETVAL = appv->isDrained();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+#// XXX add the scoped drain
