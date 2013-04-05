@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 219 };
+BEGIN { plan tests => 220 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -381,6 +381,9 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 
 	eval { $fa->flushWriter(); };
 	ok($@, qr/^Can not flush the facet 't1\/nx1' before waiting for App readiness/);
+
+	eval { $to1->flushWriters(); };
+	ok($@, qr/^Can not flush the thread 't1' before waiting for App readiness/);
 
 	#########
 	@exp = $t1->exports(); # the C++ map imposes the order

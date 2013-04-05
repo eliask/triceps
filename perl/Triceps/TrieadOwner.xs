@@ -592,3 +592,14 @@ imports(WrapTrieadOwner *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
+int
+flushWriters(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			RETVAL = self->get()->flushWriters();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
