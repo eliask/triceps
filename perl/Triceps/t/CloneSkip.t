@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 83 };
+BEGIN { plan tests => 89 };
 use Triceps;
 ok(5); # If we made it this far, we're ok.
 
@@ -31,8 +31,6 @@ ok(ref $to1, "Triceps::TrieadOwner");
 
 my $tri1 = $to1->get();
 ok(ref $tri1, "Triceps::Triead");
-
-# XXX add Facet, Nexus
 
 my $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
@@ -139,6 +137,20 @@ my $ab1 = Triceps::AutoFnBind->new(
 	$fret1 => $fbind1,
 );
 ok(ref $ab1, "Triceps::AutoFnBind");
+
+my $fa1 = $to1->makeNexus(
+	name => "nx1",
+	labels => [
+		one => $rt1,
+	],
+	import => "writer",
+);
+ok(ref $fa1, "Triceps::Facet");
+
+my $nx1 = $fa1->nexus();
+ok(ref $nx1, "Triceps::Nexus");
+
+# XXX add AutoDrain
 
 my $collapse = Triceps::Collapse->new(
 	unit => $u1,
@@ -279,6 +291,12 @@ ok($fbind1->same($fbind1));
 
 ok(ref $ab1, "Triceps::AutoFnBind");
 ok($ab1->same($ab1));
+
+ok(ref $fa1, "Triceps::Facet");
+ok($fa1->same($fa1));
+
+ok(ref $nx1, "Triceps::Nexus");
+ok($nx1->same($nx1));
 
 ok(ref $collapse, "Triceps::Collapse");
 ok(ref ($collapse->getInputLabel("idata")), "Triceps::Label");
