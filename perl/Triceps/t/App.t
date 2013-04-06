@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 77 };
+BEGIN { plan tests => 79 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -440,7 +440,7 @@ ok(ref $rt1, "Triceps::RowType");
 					);
 					$to->readyReady();
 
-					while($to->nextXtray()) { }
+					while ($to->nextXtray()) { }
 				},
 			);
 
@@ -479,6 +479,111 @@ ok(ref $rt1, "Triceps::RowType");
 	);
 	ok($res, "sink.one OP_INSERT b=\"0\" \n");
 	# app gets harvested in startHere()
+}
+
+# the situation when the same thread serves as both the 
+# source and sink; and also tests shutdownFragment()
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $tharvest;
+
+	my $res;
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			# this is a little perverse but more convenient to run the
+			# harvest in the new thread while the original thread
+			# can call ok() without any races
+			$tharvest = async {
+				my $a1 = Triceps::App::find("a1");
+				$a1->harvester();
+			};
+
+			my $faOut = $to->makeNexus(
+				name => "source",
+				labels => [
+					one => $rt1,
+				],
+				import => "writer",
+			);
+
+			my $faIn = $to->makeNexus(
+				name => "sink",
+				labels => [
+					one => $rt1,
+				],
+				reverse => 1,
+				import => "reader",
+			);
+
+			# XXX make a convenience method for making this kind of labels
+			$faIn->getLabel("one")->chain($to->unit()->makeLabel($rt1, "lbtest", undef, sub {
+				my $rop = $_[1]; 
+				$res .= $rop->printP();
+				$res .= "\n";
+			}));
+
+			$to->markConstructed();
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t2",
+				fragment => "f1",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+
+					my $faIn = $to->importNexus(
+						from => "t1/source",
+						import => "reader",
+					);
+					my $faOut = $to->importNexus(
+						from => "t1/sink",
+						import => "writer",
+					);
+					$faIn->getLabel("one")->chain($faOut->getLabel("one"));
+					$to->readyReady();
+
+					$to->mainLoop();
+				},
+			);
+
+			$to->readyReady();
+
+			$to->drainExclusive();
+			$to->unit()->makeHashCall($faOut->getLabel("one"), "OP_INSERT",
+				b => 99,
+			);
+			$to->flushWriters(); # must not get stuck on an exclusive drain
+			$to->waitDrain();
+			# now our buffer must be populated
+			
+			$app->shutdownFragment("f1");
+
+			# check that t2 exits and disappears from the App because
+			# it's in a fragment, have to busy-wait
+			while (1) {
+				my %ts = $a1->getTrieads();
+				last if (!defined $ts{"t2"});
+			}
+
+			$to->undrain();
+			# read the collected buffer
+			while ($to->nextXtrayNoWait()) { }
+		},
+		harvest => 0,
+	);
+	$tharvest->join();
+	ok($res, "sink.one OP_INSERT b=\"99\" \n");
 }
 
 # XXX test failures of all the calls

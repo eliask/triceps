@@ -620,6 +620,8 @@ requestMyselfDead(WrapTrieadOwner *self)
 			to->requestMyselfDead();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+#// XXX maybe add a version of nextXtray() and mainLoop() that calls
+#// a given label after each iteration, before flushWriters()?
 int
 nextXtray(WrapTrieadOwner *self)
 	CODE:
