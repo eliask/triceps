@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 79 };
+BEGIN { plan tests => 81 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -584,6 +584,66 @@ ok(ref $rt1, "Triceps::RowType");
 	);
 	$tharvest->join();
 	ok($res, "sink.one OP_INSERT b=\"99\" \n");
+}
+
+# the topology check error, and also the error catch in the startHere during harvesting
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	eval { Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+
+			my $faOut = $to->makeNexus(
+				name => "source",
+				labels => [
+					one => $rt1,
+				],
+				import => "writer",
+			);
+
+			my $faIn = $to->makeNexus(
+				name => "sink",
+				labels => [
+					one => $rt1,
+				],
+				import => "reader",
+			);
+
+			$to->markConstructed();
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t2",
+				fragment => "f1",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+
+					my $faIn = $to->importNexus(
+						from => "t1/source",
+						import => "reader",
+					);
+					my $faOut = $to->importNexus(
+						from => "t1/sink",
+						import => "writer",
+					);
+					$to->readyReady();
+
+				},
+			);
+
+			$to->readyReady();
+
+		},
+	); };
+	ok($@, qr/^App 'a1' has been aborted by thread 't.': In application 'a1' detected an illegal direct loop:\n  thread 't1'\n  nexus 't1\/source'\n  thread 't2'\n  nexus 't1\/sink'\n  thread 't1'/);
 }
 
 # XXX test failures of all the calls
