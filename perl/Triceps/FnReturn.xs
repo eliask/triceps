@@ -474,3 +474,12 @@ findLabel(WrapFnReturn *self, char *name)
 		} TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
+
+int 
+isFaceted(WrapFnReturn *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->isFaceted();
+	OUTPUT:
+		RETVAL
+

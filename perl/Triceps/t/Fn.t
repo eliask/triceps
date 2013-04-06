@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 389 };
+BEGIN { plan tests => 390 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -73,6 +73,7 @@ my $fret1 = Triceps::FnReturn->new(
 );
 ok(ref $fret1, "Triceps::FnReturn");
 ok($fret1->getName(), "fret1");
+ok(!$fret1->isFaceted()); # see that in TrieadOwner.t
 
 # without explict unit, two labels
 my $fret2 = Triceps::FnReturn->new(

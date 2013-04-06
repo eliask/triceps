@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 224 };
+BEGIN { plan tests => 225 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -381,6 +381,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	$fret = $fa->getFnReturn();
 	ok(ref $fret, "Triceps::FnReturn");
 	ok($fret->getName(), "nx1");
+	ok($fret->isFaceted());
 
 	my $lbone = $fa->getLabel("one");
 	ok(ref $lbone, "Triceps::Label");
