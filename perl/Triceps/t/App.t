@@ -17,16 +17,39 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 43 };
+BEGIN { plan tests => 75 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
+
+#########################
+# stuff that will be used repeatedly
+
+my @def1 = (
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	e => "string",
+);
+my $rt1 = Triceps::RowType->new( # used later
+	@def1
+);
+ok(ref $rt1, "Triceps::RowType");
 
 #########################
 
 # basic creation, look-up
 {
+	ok(&Triceps::App::DEFAULT_TIMEOUT(), 30);
+
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
+
+	# no threads means dead
+	ok($a1->isDead());
+	$a1->waitDead();
+	ok(!$a1->isShutdown());
+
 	my $a1x = Triceps::App::find("a1");
 	ok(ref $a1x, "Triceps::App");
 	ok($a1->same($a1x));
@@ -207,6 +230,130 @@ ok(1); # If we made it this far, we're ok.
 	ok($@, qr/Triceps application 'a1' deadline can not be changed after the thread creation/);
 
 	$a1->drop();
+}
+
+# shutdown and drain touch-test
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	# this thread is for waiting for readiness only
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t2",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			my $fa = $to->makeNexus(
+				name => "nx1",
+				labels => [
+					one => $rt1,
+				],
+				import => "none",
+			);
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t1",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+					$to->importNexus(
+						from => "t2/nx1",
+						import => "reader",
+					);
+					$to->readyReady();
+					$to->mainLoop(); # will exit when the app is shut down
+				},
+			);
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t3",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t3 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+					$to->importNexus(
+						from => "t2/nx1",
+						import => "reader",
+					);
+					$to->readyReady();
+					$to->mainLoop(); # will exit when the app is shut down
+				},
+			);
+
+			$to->readyReady();
+
+			ok(!$to->isRqDrain());
+			$app->requestDrain();
+			ok($to->isRqDrain());
+			$app->waitDrain();
+			ok($app->isDrained());
+			$app->undrain();
+
+			ok(!$to->isRqDrain());
+			Triceps::App::requestDrain("a1");
+			ok($to->isRqDrain());
+			Triceps::App::waitDrain("a1");
+			ok(Triceps::App::isDrained("a1"));
+			Triceps::App::undrain("a1");
+
+			ok(!$to->isRqDrain());
+			$app->drain();
+			ok($to->isRqDrain());
+			$app->undrain();
+
+			ok(!$to->isRqDrain());
+			Triceps::App::drain("a1");
+			ok($to->isRqDrain());
+			Triceps::App::undrain("a1");
+
+			ok(!$to->isRqDrain());
+			$to->requestDrainShared();
+			ok($to->isRqDrain());
+			$to->waitDrain();
+			ok($to->isDrained());
+			$to->undrain();
+
+			ok(!$to->isRqDrain());
+			$to->requestDrainExclusive();
+			ok(!$to->isRqDrain());
+			$to->waitDrain();
+			ok($to->isDrained());
+			$to->undrain();
+
+			ok(!$to->isRqDrain());
+			$to->drainShared();
+			ok($to->isRqDrain());
+			ok($to->isDrained());
+			$to->undrain();
+
+			ok(!$to->isRqDrain());
+			$to->drainExclusive();
+			ok(!$to->isRqDrain());
+			ok($to->isDrained());
+			$to->undrain();
+
+		},
+		harvest => 0,
+	);
+
+	ok(!$a1->isShutdown());
+	ok(!Triceps::App::isShutdown("a1"));
+	ok(!Triceps::App::isDead("a1"));
+
+	$a1->shutdown();
+	ok($a1->isShutdown());
+	Triceps::App::shutdown("a1");
+	$a1->waitDead();
+	ok($a1->isDead());
+
+	$a1->harvester();
 }
 
 # XXX test failures of all the calls

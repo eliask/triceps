@@ -339,8 +339,6 @@ harvester(WrapApp *self, ...)
 			a->harvester(throwAbort);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
-#// XXX test all below here
-
 #// returns the constant value
 int 
 DEFAULT_TIMEOUT()
@@ -470,3 +468,4 @@ isDrained(SV *app)
 		RETVAL
 
 #// XXX add the scoped drain
+#// XXX add a more convenient way to start the 1st level of threads

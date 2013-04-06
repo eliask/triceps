@@ -611,7 +611,16 @@ flushWriters(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
-#// XXX test all below here
+#// XXX test these {
+
+void
+requestMyselfDead(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		TrieadOwner *to = self->get();
+		try { do {
+			to->requestMyselfDead();
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 int
 nextXtray(WrapTrieadOwner *self)
@@ -635,6 +644,8 @@ nextXtrayNoWait(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
+#// XXX }
+
 void
 mainLoop(WrapTrieadOwner *self)
 	CODE:
@@ -642,6 +653,17 @@ mainLoop(WrapTrieadOwner *self)
 		try { do {
 			self->get()->mainLoop();
 		} while(0); } TRICEPS_CATCH_CROAK;
+
+bool
+isRqDrain(WrapTrieadOwner *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			RETVAL = self->get()->isRqDrain();
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
 
 void
 requestDrainShared(WrapTrieadOwner *self)
@@ -667,6 +689,7 @@ waitDrain(WrapTrieadOwner *self)
 			self->get()->waitDrain();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+#// checks whether the app is drained, not just this thread!
 bool
 isDrained(WrapTrieadOwner *self)
 	CODE:
