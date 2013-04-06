@@ -84,6 +84,14 @@ queueLimit(WrapFacet *self)
 	OUTPUT:
 		RETVAL
 
+#// the constant
+int
+DEFAULT_QUEUE_LIMIT()
+	CODE:
+		RETVAL = Facet::DEFAULT_QUEUE_LIMIT;
+	OUTPUT:
+		RETVAL
+
 #// XXX propagate more of the FnReturn methods like getLabel()?
 WrapFnReturn *
 getFnReturn(WrapFacet *self)

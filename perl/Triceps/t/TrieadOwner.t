@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 223 };
+BEGIN { plan tests => 224 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -301,6 +301,8 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 {
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
+
+	ok(&Triceps::Facet::DEFAULT_QUEUE_LIMIT(), 500);
 
 	my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
 	ok(ref $to1, "Triceps::TrieadOwner");
