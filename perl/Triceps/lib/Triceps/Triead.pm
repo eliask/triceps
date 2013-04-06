@@ -116,15 +116,16 @@ sub startHere { # (@opts)
 		'*' => [],
 	}, @_);
 
-	@_ = &Triceps::Opt::drop({
+	my @args = &Triceps::Opt::drop({
 		@myOpts
 	}, \@_);
+	@_ = (); # workaround for threads leaking objects
 
 	# no need to declare the Triead, since all the code executes synchronously anyway
 	my $app = &Triceps::App::resolve($opts->{app});
 	my $owner = Triceps::TrieadOwner->new(undef, $app, $opts->{thread}, $opts->{fragment});
-	push(@_, "owner", $owner);
-	eval { &{$opts->{main}}(@_) };
+	push(@args, "owner", $owner);
+	eval { &{$opts->{main}}(@args) };
 	$owner->abort($@) if ($@);
 	$owner->markDead();
 	if ($opts->{harvest}) {
