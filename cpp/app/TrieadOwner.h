@@ -543,6 +543,4 @@ private:
 
 }; // TRICEPS_NS
 
-// XXX add the scoped drain class
-
 #endif // __Triceps_TrieadOwner_h__

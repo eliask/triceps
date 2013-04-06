@@ -20,16 +20,24 @@ class AutoDrainShared: public Starget
 {
 public:
 	// @param app - the App to drain
-	AutoDrainShared(App *app):
+	// @param wait - flag: right away wait for the drain to complete
+	AutoDrainShared(App *app, bool wait = true):
 		app_(app)
 	{
-		app_->drain();
+		if (wait)
+			app_->drain();
+		else
+			app_->requestDrain();
 	}
 	// @param to - any AppDrain belonging to the App to drain
-	AutoDrainShared(TrieadOwner *to):
+	// @param wait - flag: right away wait for the drain to complete
+	AutoDrainShared(TrieadOwner *to, bool wait = true):
 		app_(to->app())
 	{
-		app_->drain();
+		if (wait)
+			app_->drain();
+		else
+			app_->requestDrain();
 	}
 
 	~AutoDrainShared()
@@ -37,18 +45,35 @@ public:
 		app_->undrain();
 	}
 
+	// Wait for the drain to complete. May be used repeatedly inside
+	// the scope, since it's possible for the drain owner to insert
+	// more data and wait for it to be drained again.
+	void wait()
+	{
+		app_->waitDrain();
+	}
+
 protected:
 	Autoref<App> app_;
+
+private:
+	AutoDrainShared();
+	AutoDrainShared(const AutoDrainShared&);
+	void operator=(const AutoDrainShared &);
 };
 
 class AutoDrainExclusive: public Starget
 {
 public:
 	// @param to - the AppDrain that is excepted from the drain
-	AutoDrainExclusive(TrieadOwner *to):
+	// @param wait - flag: right away wait for the drain to complete
+	AutoDrainExclusive(TrieadOwner *to, bool wait = true):
 		to_(to)
 	{
-		to_->drainExclusive();
+		if (wait)
+			to_->drainExclusive();
+		else
+			to_->requestDrainExclusive();
 	}
 
 	~AutoDrainExclusive()
@@ -56,8 +81,21 @@ public:
 		to_->undrain();
 	}
 
+	// Wait for the drain to complete. May be used repeatedly inside
+	// the scope, since it's possible for the drain owner to insert
+	// more data and wait for it to be drained again.
+	void wait()
+	{
+		to_->waitDrain();
+	}
+
 protected:
 	Autoref<TrieadOwner> to_;
+
+private:
+	AutoDrainExclusive();
+	AutoDrainExclusive(const AutoDrainExclusive&);
+	void operator=(const AutoDrainExclusive &);
 };
 
 }; // TRICEPS_NS

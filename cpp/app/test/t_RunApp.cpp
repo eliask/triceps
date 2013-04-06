@@ -840,9 +840,8 @@ public:
 
 	virtual void *execute()
 	{
-		to_->drainExclusive();
+		AutoDrainExclusive adx(to_);
 		drained_ = true;
-		to_->undrain();
 		return NULL;
 	}
 
@@ -877,7 +876,8 @@ UTESTCASE drain_parallel(Utest *utest)
 	{
 		// do it recursevly a couple more times, with scoped varieties
 		Autoref<AutoDrainShared> ad1 = new AutoDrainShared(tt.a1);
-		AutoDrainShared ad2(tt.ow1);
+		AutoDrainShared ad2(tt.ow1, false);
+		ad2.wait();
 
 		// an exclusive drain will wait
 		dt0->start();
@@ -905,7 +905,8 @@ UTESTCASE drain_parallel(Utest *utest)
 	Autoref<DrainParallelT> dt4 = new DrainParallelT(tt.a1);
 	{
 		// get an exclusive drain with a scope
-		AutoDrainExclusive ad3(tt.ow1);
+		AutoDrainExclusive ad3(tt.ow1, false);
+		ad3.wait();
 
 		// an exclusive drain will wait
 		dt3->start();
