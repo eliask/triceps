@@ -16,7 +16,7 @@
 #include <common/Common.h>
 #include <app/Triead.h>
 #include <app/TrieadJoin.h>
-#include <app/QueFacet.h>
+#include <app/QueHelpers.h>
 
 namespace TRICEPS_NS {
 

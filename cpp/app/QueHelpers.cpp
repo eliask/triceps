@@ -6,7 +6,7 @@
 //
 // Various bits and pieces for the facet queues.
 
-#include <app/QueFacet.h>
+#include <app/QueHelpers.h>
 
 namespace TRICEPS_NS {
 

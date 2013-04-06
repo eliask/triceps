@@ -17,7 +17,7 @@
 #include <mem/Mtarget.h>
 #include <type/RowSetType.h>
 #include <type/TableType.h>
-#include <app/QueFacet.h>
+#include <app/QueHelpers.h>
 
 namespace TRICEPS_NS {
 

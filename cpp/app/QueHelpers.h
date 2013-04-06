@@ -6,8 +6,8 @@
 //
 // Various bits and pieces for the facet queues.
 
-#ifndef __Triceps_QueFacet_h__
-#define __Triceps_QueFacet_h__
+#ifndef __Triceps_QueHelpers_h__
+#define __Triceps_QueHelpers_h__
 
 #include <deque>
 #include <common/Common.h>
@@ -527,4 +527,4 @@ private:
 
 }; // TRICEPS_NS
 
-#endif // __Triceps_QueFacet_h__
+#endif // __Triceps_QueHelpers_h__
