@@ -279,6 +279,14 @@ public:
 			drain_->drainedOne();
 	}
 
+	// Check if a drain is currently requested.
+	// It allows the thread code to stop generating the data
+	// out of nowhere when the drain is requested.
+	bool isRqDrain()
+	{
+		return rqDrain_;
+	}
+
 protected:
 	// The thread is considered drained when it sits and waits
 	// for more input on the QueEvent. If it gets more input, it

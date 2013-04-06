@@ -187,7 +187,7 @@ UTESTCASE create_basics_die(Utest *utest)
 	// make sure that there is some data in the write queue before shutdown
 	// to test that it will be ignored
 	UT_IS(ReaderQueueGuts::writeq(rq2c).size(), 2);
-	TrieadGuts::requestDead(ow2->get());
+	ow2->requestMyselfDead();
 
 	// writing to the requested-dead ow2 is still queuing more data
 	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 0);
@@ -222,6 +222,7 @@ UTESTCASE create_basics_die(Utest *utest)
 	// now drain and request t1 dead when drained
 
 	a1->drain();
+	UT_ASSERT(ow1->isRqDrain());
 	TrieadGuts::requestDead(ow1->get());
 	UT_ASSERT(ow1->isRqDead());
 	a1->undrain();
@@ -255,6 +256,7 @@ public:
 			cnt_.inc();
 			ev_.wait();
 		}
+		to->requestMyselfDead(); // just to see that it doesn't break anything
 		to->markDead();
 	}
 
@@ -873,7 +875,7 @@ UTESTCASE drain_parallel(Utest *utest)
 	tt.a1->drain();
 	Autoref<DrainExclusiveT> dt0 = new DrainExclusiveT(tt.ow1);
 	{
-		// do it recursevly a coule more times, with scoped varieties
+		// do it recursevly a couple more times, with scoped varieties
 		Autoref<AutoDrainShared> ad1 = new AutoDrainShared(tt.a1);
 		AutoDrainShared ad2(tt.ow1);
 

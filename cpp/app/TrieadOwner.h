@@ -169,6 +169,19 @@ public:
 		return triead_->rqDead_;
 	}
 
+	// The way to disconnect from the nexuses while the thread is
+	// exiting on its own. For example, if it's going to dump its
+	// data to a large file that takes half an hour to write,
+	// it's a bad practice to keep the other threads stuck due to the
+	// overflowing buffers. Marking the thread dead before writing
+	// is also not a good idea beceuse it will keep the join() stuck.
+	// So this call provides the solution.
+	// XXX test that if the writer is already stuck, it wakes up
+	void requestMyselfDead()
+	{
+		triead_->requestDead();
+	}
+
 	// Get the main unit that get created with the thread and shares its name.
 	// Assumes that TrieadOwner won't be destroyed while the result is used.
 	Unit *unit() const
@@ -430,6 +443,14 @@ public:
 	// Calls nextXtray() repeatedly until it returns false. Then marks
 	// the thread as dead.
 	void mainLoop();
+
+	// Check if the drain is currently requested.
+	// It allows the thread code to stop generating the data
+	// out of nowhere when the drain is requested.
+	bool isRqDrain()
+	{
+		return triead_->qev_->isRqDrain();
+	}
 
 	// The convenience wrapper interface for drains. 
 	// See the long descriptions in App.
