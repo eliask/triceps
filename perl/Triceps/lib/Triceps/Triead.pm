@@ -73,6 +73,10 @@ sub start { # (@opts)
 		push(@_, "owner", $owner);
 		eval { &{$opts->{main}}(@_) };
 		$owner->abort($@) if ($@);
+		# In case if the thread just wrote some rows outside of nextXtray()
+		# and exited, flush to get the rows through. Otherwise things might
+		# get stuck in a somewhat surprising way.
+		eval { $owner->flushWriters(); };
 		# markDead() here is optional since it would happen anyway when the
 		# owner object gets destroyed, and the only reference to it is from
 		# this thread, so it will be destroyed when the thread exits.
@@ -127,6 +131,10 @@ sub startHere { # (@opts)
 	push(@args, "owner", $owner);
 	eval { &{$opts->{main}}(@args) };
 	$owner->abort($@) if ($@);
+	# In case if the thread just wrote some rows outside of nextXtray()
+	# and exited, flush to get the rows through. Otherwise things might
+	# get stuck in a somewhat surprising way.
+	eval { $owner->flushWriters(); };
 	$owner->markDead();
 	if ($opts->{harvest}) {
 		$app->harvester();

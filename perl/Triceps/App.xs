@@ -396,6 +396,7 @@ shutdown(SV *app)
 			appv->shutdown();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+#// XXX test shutdownFragment
 void
 shutdownFragment(SV *app, char *fragname)
 	CODE:

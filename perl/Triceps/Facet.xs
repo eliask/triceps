@@ -84,7 +84,7 @@ queueLimit(WrapFacet *self)
 	OUTPUT:
 		RETVAL
 
-#// XXX propagate the FnReturn methods that get the labels and such
+#// XXX propagate more of the FnReturn methods like getLabel()?
 WrapFnReturn *
 getFnReturn(WrapFacet *self)
 	CODE:
@@ -116,6 +116,25 @@ endIdx(WrapFacet *self)
 	CODE:
 		clearErrMsg();
 		RETVAL = self->get()->endIdx();
+	OUTPUT:
+		RETVAL
+
+#// Get a label by name. Confesses on the unknown names.
+#// A convenience to skip over getting the FnReturn.
+WrapLabel *
+getLabel(WrapFacet *self, char *name)
+	CODE:
+		// for casting of return valus
+		static char CLASS[] = "Triceps::Label";
+		clearErrMsg();
+		RETVAL = NULL;
+		try {
+			Facet *obj = self->get();
+			Label *lb = obj->getFnReturn()->getLabel(name);
+			if (lb == NULL)
+				throw Exception::f("Triceps::Facet::getLabel: unknown label name '%s'.", name);
+			RETVAL = new WrapLabel(lb);
+		} TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 

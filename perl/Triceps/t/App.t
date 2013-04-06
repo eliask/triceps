@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 75 };
+BEGIN { plan tests => 77 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -354,6 +354,131 @@ ok(ref $rt1, "Triceps::RowType");
 	ok($a1->isDead());
 
 	$a1->harvester();
+}
+
+# pass around some data
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	# this thread will read the final result
+	my $res;
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "main",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("main main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			my $faDummy = $to->makeNexus(
+				name => "dummy",
+				labels => [
+					one => $rt1,
+				],
+				rowTypes => [
+					rt1 => $rt1,
+				],
+				import => "none",
+			);
+
+			my $faIn = $to->makeNexus(
+				name => "sink",
+				labels => [
+					one => $rt1,
+				],
+				import => "reader",
+			);
+
+			$to->markConstructed();
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t1",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+					my $faDummy = $to->importNexus(
+						from => "main/dummy",
+						import => "reader",
+					);
+					my $faOut = $to->makeNexus(
+						name => "out",
+						labels => [
+							one => $faDummy->impRowType("rt1"),
+						],
+						import => "writer",
+					);
+					$to->readyReady();
+
+					my $x = $to->nextXtrayNoWait();
+					$to->unit()->makeHashCall($faOut->getLabel("one"), "OP_INSERT",
+						b => $x,
+					);
+				},
+			);
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t2",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+					my $faIn = $to->importNexus(
+						from => "t1/out",
+						import => "reader",
+					);
+					my $faOut = $to->makeNexus(
+						name => "out",
+						labels => [
+							one => $faIn->getLabel("one"),
+						],
+						import => "writer",
+					);
+					$to->readyReady();
+
+					while($to->nextXtray()) { }
+				},
+			);
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t3",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t3 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+					my $faIn = $to->importNexus(
+						from => "t2/out",
+						import => "reader",
+					);
+					my $faOut = $to->importNexus(
+						from => "main/sink",
+						import => "writer",
+					);
+					$faIn->getLabel("one")->chain($faOut->getLabel("one"));
+					$to->readyReady();
+
+					$to->mainLoop();
+				},
+			);
+
+			$faIn->getLabel("one")->chain($to->unit()->makeLabel($rt1, "lbtest", undef, sub {
+				my $rop = $_[1]; 
+				$res .= $rop->printP();
+				$res .= "\n";
+			}));
+			$to->readyReady();
+
+			$to->nextXtray();
+			$to->app()->shutdown();
+		},
+	);
+	ok($res, "sink.one OP_INSERT b=\"0\" \n");
+	# app gets harvested in startHere()
 }
 
 # XXX test failures of all the calls

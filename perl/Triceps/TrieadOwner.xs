@@ -611,8 +611,6 @@ flushWriters(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
-#// XXX test these {
-
 void
 requestMyselfDead(WrapTrieadOwner *self)
 	CODE:
@@ -643,8 +641,6 @@ nextXtrayNoWait(WrapTrieadOwner *self)
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
-
-#// XXX }
 
 void
 mainLoop(WrapTrieadOwner *self)

@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 221 };
+BEGIN { plan tests => 223 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -379,6 +379,10 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	$fret = $fa->getFnReturn();
 	ok(ref $fret, "Triceps::FnReturn");
 	ok($fret->getName(), "nx1");
+
+	my $lbone = $fa->getLabel("one");
+	ok(ref $lbone, "Triceps::Label");
+	ok($lbone->getName(), "nx1.one");
 
 	eval { $fa->flushWriter(); };
 	ok($@, qr/^Can not flush the facet 't1\/nx1' before waiting for App readiness/);
