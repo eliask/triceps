@@ -225,6 +225,7 @@ public:
 	bool isShutdown();
 
 	// The harvester API.
+	// XXX should harvester be renamed "reaper"?
 	// The harvester would normally run in a "master" thread. It would
 	// join the threads as they die, and after all of them are dead,
 	// drop the App.

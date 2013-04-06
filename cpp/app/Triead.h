@@ -157,6 +157,12 @@ protected:
 	// This disables the reading of any further Xtrays from the input
 	// queues (though whatever has been moved to the read side of the
 	// queues will still be consumed).
+	//
+	// It also disconnects the facets from the nexuses and prevents the
+	// new facets if any from being connected to the nexuses. The 
+	// disconnection causes the writer-side queue in the nexus to
+	// be cleared and if there are writers waiting for the flow control,
+	// they will wake up.
 	void requestDead();
 
 	// The TrieadOwner API.
@@ -254,10 +260,29 @@ protected:
 	NexusMap exports_; // the nexuses exported from this thread
 	Autoref<QueEvent> qev_; // the thread's queue notification
 
-	// The imports are modified only by the TrieadOwner, so the
-	// owner thread may read it without locking. However any
-	// modifications and reading by anyone else have to be
-	// synchronized by the mutex.
+	// The set of imports is modified only by the TrieadOwner, so the owner
+	// thread may read it without locking.  However the imports themselves may
+	// be disconnected from their nexuses by the other threads when they
+	// request this one dead, so any modifications of the list or the
+	// connection/disconnection must be done under lock.  Any other
+	// modifications and reading by anyone else also have to be done under
+	// lock. However the good news is that the disconnection request doesn't
+	// touch the state of the Facet itself in any way other than passing the
+	// disconnection request to the Nexus. So any other work can be done by the
+	// owner of this thread without locking.
+	//
+	// This all also means that any work with writers_ and writers_ doesn't
+	// have to be protected by a mutex, since technically it doesn't change
+	// the imports_ object, and any other threads can't change the object
+	// itself either (they just pass through it and through facets to the nexuses).
+	//
+	// Just to make exra sure that this disconnection by the other threads
+	// never blocks for a long time, imports are protected by a separate
+	// mutex that has no other dependencies. This lock has to be used 
+	// when either changing the imports_ object itself or when connecting/
+	// disconnecting the facets in it. If you need to lock both
+	// mutex_ and imports_mutex_, lock the mutex_ first.
+	mutable pw::pmutex imports_mutex_; // mutex for synchronizing imports_
 	FacetMap imports_; // the imported facets
 
 	// All these are duplicates from references in imports_, so

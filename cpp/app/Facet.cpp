@@ -24,7 +24,8 @@ Facet::Facet(Onceref<FnReturn> fret, bool writer):
 #if 0  // {
 	unicast_(false),
 #endif // }
-	appReady_(false)
+	appReady_(false),
+	connected_(false)
 { 
 	if (fret->facet_ != NULL) {
 		err_.f("Can not use the same FnReturn for two Facets.");
@@ -65,10 +66,12 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 	queueLimit_(nx->queueLimit()),
 	beginIdx_(nx->beginIdx_),
 	endIdx_(nx->endIdx_),
-	reverse_(nx->isReverse())
+	reverse_(nx->isReverse()),
 #if 0  // {
 	unicast_(nx->isUnicast())
 #endif // }
+	appReady_(false),
+	connected_(false)
 {
 	Autoref<HoldRowTypes> holder = new HoldRowTypes;
 
@@ -215,28 +218,36 @@ void Facet::reimport(Nexus *nexus, const string &tname)
 	queueLimit_ = nexus->queueLimit(); // might have been adjusted for reverse nexus
 }
 
-void Facet::connectToNexus(QueEvent *qev)
+void Facet::connectToNexus(QueEvent *qev, bool fake)
 {
 	qev_ = qev;
 	if (writer_) {
 		wr_ = new NexusWriter;
-		nexus_->addWriter(wr_);
+		if (!fake) {
+			nexus_->addWriter(wr_);
+			connected_ = true;
+		}
 	} else {
 		rd_ = new ReaderQueue(qev, queueLimit_);
-		nexus_->addReader(rd_);
+		if (!fake) {
+			nexus_->addReader(rd_);
+			connected_ = true;
+		}
 	}
 }
 
 void Facet::disconnectFromNexus()
 {
-	if (wr_) {
-		nexus_->deleteWriter(wr_);
-		wr_ = NULL; // the reader logic checks for NULL, so can as wel unreference it
-	}
-	if (rd_) {
-		nexus_->deleteReader(rd_);
-		// don't set rd_ to NULL, in case if anyone by mistake calls the
-		// reading (since the reading doesn't check it for NULL)
+	if (connected_) {
+		// don't set rd_ and wr_to NULL, in case if the owner thread is in the middle
+		// of reading
+		if (wr_) {
+			nexus_->deleteWriter(wr_);
+		}
+		if (rd_) {
+			nexus_->deleteReader(rd_);
+		}
+		connected_ = false;
 	}
 }
 

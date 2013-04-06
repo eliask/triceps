@@ -58,9 +58,13 @@ void Triead::markDead()
 	markReady();
 	dead_ = true;
 	qev_->markDead();
-	// and disconnect all the nexuses, clearing their queues
-	for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
-		it->second->disconnectFromNexus();
+
+	{
+		pw::lockmutex lm(imports_mutex_);
+		// and disconnect all the nexuses, clearing their queues
+		for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
+			it->second->disconnectFromNexus();
+	}
 }
 
 void Triead::exportNexus(const string &appName, Nexus *nexus)
@@ -92,7 +96,7 @@ void Triead::exports(NexusMap &ret) const
 
 void Triead::imports(NexusMap &ret) const
 {
-	pw::lockmutex lm(mutex_);
+	pw::lockmutex lm(imports_mutex_);
 
 	if (!ret.empty())
 		ret.clear();
@@ -104,7 +108,7 @@ void Triead::imports(NexusMap &ret) const
 
 void Triead::readerImports(NexusMap &ret) const
 {
-	pw::lockmutex lm(mutex_);
+	pw::lockmutex lm(imports_mutex_);
 
 	if (!ret.empty())
 		ret.clear();
@@ -118,7 +122,7 @@ void Triead::readerImports(NexusMap &ret) const
 
 void Triead::writerImports(NexusMap &ret) const
 {
-	pw::lockmutex lm(mutex_);
+	pw::lockmutex lm(imports_mutex_);
 
 	if (!ret.empty())
 		ret.clear();
@@ -132,7 +136,7 @@ void Triead::writerImports(NexusMap &ret) const
 
 void Triead::facets(FacetMap &ret) const
 {
-	pw::lockmutex lm(mutex_);
+	pw::lockmutex lm(imports_mutex_);
 
 	if (!ret.empty())
 		ret.clear();
@@ -156,9 +160,9 @@ Onceref<Nexus> Triead::findNexus(const string &srcName, const string &appName, c
 
 void Triead::importFacet(Onceref<Facet> facet)
 {
-	pw::lockmutex lm(mutex_);
+	pw::lockmutex lm(imports_mutex_);
 
-	facet->connectToNexus(qev_);
+	facet->connectToNexus(qev_, rqDead_);
 
 	if (facet->isWriter())
 		writers_.push_back(facet.get());
@@ -199,6 +203,16 @@ void Triead::requestDead()
 		// this might mark it as undrained but after the thread 
 		// dies, it will be drained again
 		qev_->signal(); 
+	{
+		pw::lockmutex lm(imports_mutex_);
+		// and disconnect all the nexuses, clearing their queues;
+		// this complicates the Facet logic by allowing the disconnectFromNexus()
+		// to be called from other threads but overall is useful because
+		// it prevents the nexuses from being stuck on the filled queue of 
+		// a thread requested to die until it actually dies
+		for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
+			it->second->disconnectFromNexus();
+	}
 }
 
 bool Triead::flushWriters()

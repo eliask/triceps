@@ -286,6 +286,11 @@ public:
 	// Throws an Exception on any errors are found (such as errors in the
 	// facet or a duplicate name).
 	//
+	// If this thread was already requested to die, the facet will
+	// be left in a semi-imported state: it will be marked as imported for
+	// the thread's code benefit but won't actually be connected to the
+	// nexus nor show in the list of imports nor facets.
+	//
 	// @param facet - Facet used to create the Nexus. Its name will also
 	//        determine the Nexus'es name in the thread.
 	// @param import - flag: import the nexus right back through the
@@ -308,6 +313,11 @@ public:
 	// Import a nexus from a thread by name, producing its local facet.
 	//
 	// The facet will have its FnReturn created in the thread's main unit.
+	//
+	// If this thread was already requested to die, the facet will
+	// be left in a semi-imported state: it will be marked as imported for
+	// the thread's code benefit but won't actually be connected to the
+	// nexus nor show in the list of imports nor facets.
 	//
 	// If this nexus has been already imported, will return the previously
 	// imported copy. The as-name and the direction (read or write) must match

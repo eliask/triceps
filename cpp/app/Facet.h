@@ -289,10 +289,20 @@ protected:
 	// Normally called from Triead::importFacet().
 	// @param qev - queue event for the thread notification if this is
 	//        a reader (ignored for a writer)
-	void connectToNexus(QueEvent *qev);
+	// @param fake - flag: create the reader or writer interface as a
+	//        placeholder but don't actually connect it to the nexus;
+	//        used when the thread is requested dead before it's fully
+	//        constructed
+	void connectToNexus(QueEvent *qev, bool fake);
 
 	// When the thread is marked dead, it disconnects from all the nexuses,
 	// and clears its input queues.
+	// 
+	// THIS METHOD MAY BE CALLED FROM THE OTHER THREADS. These calls
+	// will be synchronized between themselves, and between calls to
+	// connectToNexus() with no more than one
+	// at a time, but may happen in parallel with the calls of the
+	// other methods.
 	void disconnectFromNexus();
 
 	// The internal version of flushWriter that bypasses the 
@@ -344,6 +354,7 @@ protected:
 	bool unicast_; // flag: each row goes to only one reader, as opposed to copied to all readers
 #endif // }
 	bool appReady_; // flag: the App is ready, so the data passing can be done
+	bool connected_; // flag: the facet is connected to the nexus
 
 private:
 	Facet();

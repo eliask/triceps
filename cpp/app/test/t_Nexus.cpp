@@ -402,6 +402,7 @@ UTESTCASE export_import(Utest *utest)
 		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 		Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
 		Autoref<TrieadOwner> ow4 = a1->makeTriead("t3/a"); // with a screwy name
+		Autoref<TrieadOwner> ow5 = a1->makeTriead("t5"); // will be dead right away
 
 		Triead::NexusMap exp;
 		Triead::FacetMap imp;
@@ -539,6 +540,50 @@ UTESTCASE export_import(Utest *utest)
 
 		UT_ASSERT(fa6->getFnReturn()->isFaceted()); // writer adds xtray to the FnReturn
 
+		// ----------------------------------------------------------------------
+		// import/export on a thread that is already requested dead
+		TrieadGuts::requestDead(ow5->get());
+
+		Autoref<Facet> fa5b = ow5->importReaderImmed("t1", "fret2", "");
+		UT_ASSERT(!fa5b.isNull());
+		ReaderQueue *far5b = FacetGuts::readerQueue(fa5b);
+		UT_ASSERT(far5b != NULL);
+
+		// this uses a newer API than the rest of this function...
+		Autoref<Facet> fa5m = ow5->makeNexusWriter("nxm")
+			->addLabel("one", rt1)
+			->complete()
+		;
+		UT_ASSERT(!fa5m.isNull());
+		NexusWriter *faw5m = FacetGuts::nexusWriter(fa5m);
+		UT_ASSERT(faw5m!= NULL);
+
+		// Check that the exports and imports still show in the thread
+		ow5->get()->exports(exp);
+		UT_IS(exp.size(), 1);
+
+		ow5->get()->imports(exp);
+		UT_IS(exp.size(), 2);
+
+		ow5->get()->readerImports(exp);
+		UT_IS(exp.size(), 1);
+		ow5->get()->writerImports(exp);
+		UT_IS(exp.size(), 1);
+
+		ow5->imports(imp);
+		UT_IS(imp.size(), 2);
+
+		// but don't show in the nexus
+		ReaderVec *rv5b = NexusGuts::readers(fa5b->nexus());
+		for (int i = 0; i < rv5b->v().size(); i++)
+			UT_ASSERT(rv5b->v()[i].get() != far5b);
+
+		Nexus::WriterVec *wv5m = NexusGuts::writers(fa5m->nexus());
+		UT_ASSERT(wv5m->empty());
+		
+		ow5->markDead();
+
+		// ----------------------------------------------------------------------
 		// errors
 		// exporting a facet with an error already tested in make_facet()
 		{
@@ -692,6 +737,7 @@ UTESTCASE export_import(Utest *utest)
 		ow2->markDead();
 		ow3->markDead();
 		ow4->markDead();
+		ow5->markDead();
 		a1->harvester();
 	}
 

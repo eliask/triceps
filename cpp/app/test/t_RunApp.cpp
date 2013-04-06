@@ -189,12 +189,12 @@ UTESTCASE create_basics_die(Utest *utest)
 	UT_IS(ReaderQueueGuts::writeq(rq2c).size(), 2);
 	ow2->requestMyselfDead();
 
-	// writing to the requested-dead ow2 is still queuing more data
+	// writing to the requested-dead ow2 is not queuing data any more
 	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 0);
 	ow1->unit()->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), 
 		Rowop::OP_INSERT, r1));
 	UT_ASSERT(ow1->flushWriters());
-	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 1);
+	UT_IS(ReaderQueueGuts::writeq(rq2a).size(), 0);
 
 	// the attempts to read will fail after request dead
 	UT_ASSERT(!ow2->nextXtray());
@@ -308,7 +308,7 @@ public:
 		ow2 = a1->makeTriead("t2"); // t2 and t3 will form a loop
 		ow3 = a1->makeTriead("t3");
 
-		// prepare fragments
+		// prepare elements
 		mkfields(fld);
 		rt1 = new CompactRowType(fld);
 
@@ -1250,3 +1250,88 @@ UTESTCASE shutdown_on_abort(Utest *utest)
 	restore_uncatchable();
 }
 
+class WriteTransT: public Mtarget, public pw::pwthread
+{
+public:
+	// will write this xtray to this queue at this id
+	WriteTransT(TrieadOwner *to, Rowop *op, int count):
+		to_(to),
+		op_(op),
+		count_(count),
+		written_(0)
+	{ }
+
+	virtual void *execute()
+	{
+		for (written_ = 0; written_ < count_; written_++) {
+			to_->unit()->call(op_);
+			to_->flushWriters();
+		}
+		return NULL;
+	}
+
+	Autoref<TrieadOwner> to_;
+	Autoref<Rowop> op_; // rowop to send in every transaction
+	int count_; // number of transactions to write
+	int written_; // number of transactiond written
+};
+
+
+// requesting a thread dead disconnects it from the nexuses, and wakes up
+// any other threads trying to write there
+UTESTCASE shutdown_disconnects(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+
+	// prepare elements
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  dv);
+
+	// low queue limit, to make sure that the writer gets stuck
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->setQueueLimit(1)
+		->complete()
+	;
+	ow1->markReady();
+
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+	Autoref<ReaderQueue> rq2a = FacetGuts::readerQueue(fa2a);
+	UT_ASSERT(!rq2a.isNull());
+	ow2->markReady();
+	
+	ow1->readyReady();
+	ow2->readyReady();
+
+	Autoref<WriteTransT> wt1 = new WriteTransT(ow1,
+		new Rowop(fa1a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r1), 
+		100);
+
+	wt1->start();
+
+	// make sure that the write gets stuck on a full buffer
+	ReaderQueueGuts::waitCondfullSleep(rq2a, 1);
+
+	// now request the t2 dead
+	TrieadGuts::requestDead(ow2->get());
+
+	// the writer should wake up and continue to the end
+	wt1->join();
+
+	ow1->markDead();
+	ow2->markDead();
+
+	a1->harvester();
+
+	restore_uncatchable();
+}
