@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <utest/Utest.h>
 #include <type/AllTypes.h>
-#include <app/AppDrain.h>
+#include <app/AutoDrain.h>
 #include "AppTest.h"
 
 // Call the nextXtray() recursive to test the exception.

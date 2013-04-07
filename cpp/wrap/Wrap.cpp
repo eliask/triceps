@@ -36,5 +36,6 @@ WrapMagic magicWrapTrieadOwner = { "TrOwner" };
 WrapMagic magicWrapTriead = { "Triead" };
 WrapMagic magicWrapFacet = { "Facet" };
 WrapMagic magicWrapNexus = { "Nexus" };
+WrapMagic magicWrapAutoDrain = { "AuDrain" };
 
 }; // TRICEPS_NS

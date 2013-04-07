@@ -15,6 +15,7 @@
 #include <table/Table.h>
 #include <mem/Rhref.h>
 #include <app/App.h>
+#include <app/AutoDrain.h>
 
 namespace TRICEPS_NS {
 
@@ -209,6 +210,7 @@ DEFINE_WRAP(Triead);
 DEFINE_WRAP(TrieadOwner);
 DEFINE_WRAP(Facet);
 DEFINE_WRAP(Nexus);
+DEFINE_WRAP(AutoDrain);
 
 #undef DEFINE_WRAP
 #undef DEFINE_WRAP2

@@ -6,8 +6,8 @@
 //
 // The scoped App drains.
 
-#ifndef __Triceps_AppDrain_h__
-#define __Triceps_AppDrain_h__
+#ifndef __Triceps_AutoDrain_h__
+#define __Triceps_AutoDrain_h__
 
 #include <app/TrieadOwner.h>
 
@@ -64,7 +64,7 @@ public:
 		else
 			app_->requestDrain();
 	}
-	// @param to - any AppDrain belonging to the App to drain
+	// @param to - any AutoDrain belonging to the App to drain
 	// @param wait - flag: right away wait for the drain to complete
 	AutoDrainShared(TrieadOwner *to, bool wait = true):
 		AutoDrain(to->app())
@@ -84,7 +84,7 @@ private:
 class AutoDrainExclusive: public AutoDrain
 {
 public:
-	// @param to - the AppDrain that is excepted from the drain
+	// @param to - the AutoDrain that is excepted from the drain
 	// @param wait - flag: right away wait for the drain to complete
 	AutoDrainExclusive(TrieadOwner *to, bool wait = true):
 		AutoDrain(to->app())
@@ -103,4 +103,4 @@ private:
 
 }; // TRICEPS_NS
 
-#endif // __Triceps_AppDrain_h__
+#endif // __Triceps_AutoDrain_h__
