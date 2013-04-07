@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 89 };
+BEGIN { plan tests => 92 };
 use Triceps;
 ok(5); # If we made it this far, we're ok.
 
@@ -31,6 +31,9 @@ ok(ref $to1, "Triceps::TrieadOwner");
 
 my $tri1 = $to1->get();
 ok(ref $tri1, "Triceps::Triead");
+
+my $drain = Triceps::AutoDrain::makeSharedNoWait($a1);
+ok(ref $drain, "Triceps::AutoDrain");
 
 my $u1 = Triceps::Unit->new("u1");
 ok(ref $u1, "Triceps::Unit");
@@ -239,6 +242,9 @@ ok($a1->same($to1->app()));
 ok(ref $tri1, "Triceps::Triead");
 ok($tri1->same($tri1));
 
+ok(ref $drain, "Triceps::AutoDrain");
+ok($drain->same($drain));
+
 ok(ref $u1, "Triceps::Unit");
 ok($u1->same($u1));
 
@@ -306,3 +312,4 @@ ok(ref $jointwo, "Triceps::JoinTwo");
 ok(ref $lookupjoin, "Triceps::LookupJoin");
 
 ok(ref $tql, "Triceps::X::Tql");
+

@@ -725,3 +725,4 @@ undrain(WrapTrieadOwner *self)
 
 #// XXX add addUnit() etc
 #// XXX add the scoped drain
+#// XXX add interruption of the file reads

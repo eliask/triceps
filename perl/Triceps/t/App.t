@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 81 };
+BEGIN { plan tests => 111 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -644,6 +644,135 @@ ok(ref $rt1, "Triceps::RowType");
 		},
 	); };
 	ok($@, qr/^App 'a1' has been aborted by thread 't.': In application 'a1' detected an illegal direct loop:\n  thread 't1'\n  nexus 't1\/source'\n  thread 't2'\n  nexus 't1\/sink'\n  thread 't1'/);
+}
+
+# the scoped auto-drain, exclusive or with no wait
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $res;
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			my $faOut = $to->makeNexus(
+				name => "source",
+				labels => [
+					one => $rt1,
+				],
+				import => "writer",
+			);
+
+			my $faIn = $to->makeNexus(
+				name => "sink",
+				labels => [
+					one => $rt1,
+				],
+				reverse => 1,
+				import => "reader",
+			);
+
+			$to->readyReady();
+
+			{
+				# by TrieadOwner
+				my $drain = Triceps::AutoDrain::makeSharedNoWait($to);
+				ok(ref $drain, "Triceps::AutoDrain");
+				# can't wait for draining itself because has a reader facet
+				ok(!$app->isDrained());
+			}
+			{
+				my $drain = Triceps::AutoDrain::makeExclusive($to);
+				ok(ref $drain, "Triceps::AutoDrain");
+				ok($app->isDrained());
+			}
+			{
+				# intersperse to clear the drained condition
+				# by App
+				my $drain = Triceps::AutoDrain::makeSharedNoWait($app);
+				ok(ref $drain, "Triceps::AutoDrain");
+				ok(!$app->isDrained());
+			}
+			{
+				my $drain = Triceps::AutoDrain::makeExclusiveNoWait($to);
+				ok(ref $drain, "Triceps::AutoDrain");
+				$drain->wait();
+				ok($app->isDrained());
+			}
+			{
+				# intersperse to clear the drained condition
+				# by App name
+				my $drain = Triceps::AutoDrain::makeSharedNoWait("a1");
+				ok(ref $drain, "Triceps::AutoDrain");
+				ok(!$app->isDrained());
+			}
+
+			# test the errors
+			ok(! defined eval { Triceps::AutoDrain::makeShared("a2"); });
+			ok($@, qr/^Triceps application 'a2' is not found/);
+			ok(! defined eval { Triceps::AutoDrain::makeShared($to->get()); });
+			ok($@, qr/^Triceps::AutoDrain::makeShared: argument has an incorrect magic for App or TrieadOwner/);
+			ok(! defined eval { Triceps::AutoDrain::makeSharedNoWait("a2"); });
+			ok($@, qr/^Triceps application 'a2' is not found/);
+			ok(! defined eval { Triceps::AutoDrain::makeSharedNoWait($to->get()); });
+			ok($@, qr/^Triceps::AutoDrain::makeSharedNoWait: argument has an incorrect magic for App or TrieadOwner/);
+			ok(! defined eval { Triceps::AutoDrain::makeExclusive($app); });
+			ok($@, qr/^Triceps::AutoDrain::makeExclusive\(\): wto has an incorrect magic for WrapTrieadOwnerPtr/);
+			ok(! defined eval { Triceps::AutoDrain::makeExclusiveNoWait($app); });
+			ok($@, qr/^Triceps::AutoDrain::makeExclusiveNoWait\(\): wto has an incorrect magic for WrapTrieadOwnerPtr/);
+		},
+	);
+}
+
+# the scoped auto-drain, shared with wait
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $res;
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			# with no readers, this will be input-only
+			my $faOut = $to->makeNexus(
+				name => "source",
+				labels => [
+					one => $rt1,
+				],
+				import => "writer",
+			);
+
+			$to->readyReady();
+
+			{
+				my $drain = Triceps::AutoDrain::makeShared($to);
+				ok(ref $drain, "Triceps::AutoDrain");
+				ok($app->isDrained());
+			}
+			{
+				my $drain = Triceps::AutoDrain::makeShared($app);
+				ok(ref $drain, "Triceps::AutoDrain");
+				ok($app->isDrained());
+			}
+			{
+				my $drain = Triceps::AutoDrain::makeShared("a1");
+				ok(ref $drain, "Triceps::AutoDrain");
+				ok($app->isDrained());
+			}
+		},
+	);
 }
 
 # XXX test failures of all the calls

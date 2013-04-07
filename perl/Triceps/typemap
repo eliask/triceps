@@ -29,6 +29,7 @@ WrapTrieadOwner *	O_WRAP_OBJECT
 WrapTriead *	O_WRAP_OBJECT
 WrapFacet *	O_WRAP_OBJECT
 WrapNexus *	O_WRAP_OBJECT
+WrapAutoDrain *	O_WRAP_OBJECT
 
 OUTPUT
 # The Perl object is blessed into 'CLASS', which should be a
