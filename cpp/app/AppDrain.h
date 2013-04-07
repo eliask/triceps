@@ -16,31 +16,15 @@ namespace TRICEPS_NS {
 // The scoped drains. Can be created directly as a scoped
 // variable of be kept in a scoped reference.
 
-class AutoDrainShared: public Starget
+// The common base for both types of drains. The wait and undrain
+// code is all common, and it also makes things easier for the
+// Perl wrapping.
+class AutoDrain: public Starget
 {
 public:
-	// @param app - the App to drain
-	// @param wait - flag: right away wait for the drain to complete
-	AutoDrainShared(App *app, bool wait = true):
-		app_(app)
-	{
-		if (wait)
-			app_->drain();
-		else
-			app_->requestDrain();
-	}
-	// @param to - any AppDrain belonging to the App to drain
-	// @param wait - flag: right away wait for the drain to complete
-	AutoDrainShared(TrieadOwner *to, bool wait = true):
-		app_(to->app())
-	{
-		if (wait)
-			app_->drain();
-		else
-			app_->requestDrain();
-	}
+	// Can not be constructed directly, only through a subclass.
 
-	~AutoDrainShared()
+	~AutoDrain()
 	{
 		app_->undrain();
 	}
@@ -54,7 +38,42 @@ public:
 	}
 
 protected:
+	// @param app - the App that has been drained by subclass
+	AutoDrain(App *app):
+		app_(app)
+	{ }
+
 	Autoref<App> app_;
+
+private:
+	AutoDrain();
+	AutoDrain(const AutoDrain&);
+	void operator=(const AutoDrain &);
+};
+
+class AutoDrainShared: public AutoDrain
+{
+public:
+	// @param app - the App to drain
+	// @param wait - flag: right away wait for the drain to complete
+	AutoDrainShared(App *app, bool wait = true):
+		AutoDrain(app)
+	{
+		if (wait)
+			app_->drain();
+		else
+			app_->requestDrain();
+	}
+	// @param to - any AppDrain belonging to the App to drain
+	// @param wait - flag: right away wait for the drain to complete
+	AutoDrainShared(TrieadOwner *to, bool wait = true):
+		AutoDrain(to->app())
+	{
+		if (wait)
+			app_->drain();
+		else
+			app_->requestDrain();
+	}
 
 private:
 	AutoDrainShared();
@@ -62,35 +81,19 @@ private:
 	void operator=(const AutoDrainShared &);
 };
 
-class AutoDrainExclusive: public Starget
+class AutoDrainExclusive: public AutoDrain
 {
 public:
 	// @param to - the AppDrain that is excepted from the drain
 	// @param wait - flag: right away wait for the drain to complete
 	AutoDrainExclusive(TrieadOwner *to, bool wait = true):
-		to_(to)
+		AutoDrain(to->app())
 	{
 		if (wait)
-			to_->drainExclusive();
+			to->drainExclusive();
 		else
-			to_->requestDrainExclusive();
+			to->requestDrainExclusive();
 	}
-
-	~AutoDrainExclusive()
-	{
-		to_->undrain();
-	}
-
-	// Wait for the drain to complete. May be used repeatedly inside
-	// the scope, since it's possible for the drain owner to insert
-	// more data and wait for it to be drained again.
-	void wait()
-	{
-		to_->waitDrain();
-	}
-
-protected:
-	Autoref<TrieadOwner> to_;
 
 private:
 	AutoDrainExclusive();
