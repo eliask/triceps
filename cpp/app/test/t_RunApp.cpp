@@ -977,6 +977,8 @@ public:
 		readyOpen_.signal();
 		mayOpen_.wait();
 
+		// the interruption actually works because the write-side fd gets closed
+		// too, otherwise the pipe read doesn't get interrupted by dup2()
 		fi_->openFd(fd_[0]);
 		fi_->openFd(fd_[1]);
 
