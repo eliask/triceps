@@ -731,6 +731,28 @@ undrain(WrapTrieadOwner *self)
 			self->get()->undrain();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+#// {
+#// The FileInterrupt API
+
+void 
+openFd(WrapTrieadOwner *self, int fd)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->fileInterrupt_->openFd(fd);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+void 
+closeFd(WrapTrieadOwner *self, int fd)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->fileInterrupt_->closeFd(fd);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+#// }
+
 #// XXX add addUnit() etc
-#// XXX add interruption of the file reads
 #// in the thread handler define a confess wrapper
+#// XXX support arbitrary interruptors?
+#// XXX add an interruptor for accept() by connecting to it?

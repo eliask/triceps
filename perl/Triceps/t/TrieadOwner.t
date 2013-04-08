@@ -17,9 +17,15 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 225 };
+BEGIN { plan tests => 226 };
 use Triceps;
 use Carp;
+# for the file interruption test
+use IO::Socket;
+use IO::Socket::INET;
+use Errno qw(EINTR EAGAIN);
+use IO::Poll qw(POLLIN POLLOUT POLLHUP POLLERR);
+
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -639,4 +645,86 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok($@, qr/^Triceps::TrieadOwner::importNexus: invalid arguments:\n  In Triceps application 'a1' thread 't3' is referring to a non-existing thread 'xxx'/);
 
 	$a1->drop();
+}
+
+# the interruption of the file read
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+
+			$to->markConstructed();
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t2",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+
+if (0) {
+					# this doesn't work because accept() in Linux doesn't wake
+					# up when its descriptor gets closed, nor does poll() on it
+					my $srvsock = IO::Socket::INET->new(
+						Proto => "tcp",
+						LocalPort => 0,
+						Listen => 10,
+					) or confess "socket failed: $!" ;
+
+					printf "socket %d\n", fileno($srvsock);
+					$to->openFd(fileno($srvsock));
+
+					$to->readyReady();
+
+					printf "polling\n";
+					eval {
+						my $poll = IO::Poll->new();
+						$poll->mask($srvsock => POLLIN|POLLOUT|POLLHUP|POLLERR);
+						$poll->poll();
+					};
+					printf "poll returned\n";
+
+					$to->closeFd(fileno($srvsock));
+					close($srvsock);
+}
+					# There is a problem with pipes: dup2() to a pipe doesn't
+					# interrupt a read on it. So register both read and write sides
+					# and let the interruption close both, this does the trick.
+					pipe RD, WR;
+					$to->openFd(fileno(RD));
+					$to->openFd(fileno(WR));
+
+					$to->readyReady();
+
+					my $data = <RD>;
+
+					$to->closeFd(fileno(RD));
+					close(RD);
+					close(WR);
+				},
+			);
+
+			$to->readyReady();
+			# give the other thread a chance to start reading
+			threads->yield();
+			threads->yield();
+			threads->yield();
+			threads->yield();
+			threads->yield();
+			threads->yield();
+			threads->yield();
+			threads->yield();
+			threads->yield();
+
+			$to->app()->shutdown();
+		},
+	);
 }
