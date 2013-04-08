@@ -31,17 +31,22 @@ public:
 	//
 	// @param appname - name of the application, for error messages
 	// @param tname - name of the thread owning this object, for error messages
-	// @param tid - the Perl thread id, as in $thr->tid()
-	PerlTrieadJoin(const string &appname, const string &tname, IV tid);
+	// @param tid - the Perl thread id, as in $thr->tid(); if tid is -1 then
+	//        no join will be made but the file interruption will still work
+	// @param istest - flag: false normally, true to artificially generate exceptions
+	//        for a test of their catching
+	PerlTrieadJoin(const string &appname, const string &tname, IV tid, bool istest = false);
+
+	// Make 
 
 	// from TrieadJoin
 	virtual void join();
-	// XXX add the interruption for the file reading in Perl
+	virtual void interrupt();
 
 protected:
 	string appname_; // application name, for error messages
-	string tname_; // thread name, for error messages
 	IV tid_; // thread id (used since the thread object refs can't pass between the threads)
+	bool testFail_; // flag: this is a test instance that generates exceptions
 
 private:
 	PerlTrieadJoin();

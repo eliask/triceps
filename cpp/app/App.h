@@ -207,6 +207,9 @@ public:
 	// Request the App to shut down. All the ready thread will be
 	// requested to die. Any new threads will be requested to die
 	// when they become ready.
+	//
+	// May throw an Exception if the iterrupt or join logic
+	// fails.
 	void shutdown();
 
 	// Request a fragment to shut down. All the threads from this
@@ -217,6 +220,8 @@ public:
 	// call can be made). The threads outside the fragment are not
 	// affected. If there are no threads left in this fragment,
 	// the call has no effect.
+	//
+	// May throw an Exception if a thread iterruption fails.
 	//
 	// @param fragname - name of the fragment to shutdown
 	void shutdownFragment(const string &fragname);
@@ -236,6 +241,8 @@ public:
 	// Do one run of the harvester. Join all the threads that have
 	// died since the last run. Resets the "need harvest" flag, unless
 	// the whole App is dead.
+	//
+	// May throw an Exception if a thread join fails.
 	//
 	// @return - whether the App is dead. Combining the check into this
 	//           method allows to avoid a race that would leave the

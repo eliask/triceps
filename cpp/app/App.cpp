@@ -190,17 +190,26 @@ void App::shutdown()
 
 void App::shutdownL()
 {
+	Erref err;
 	if (!shutdown_) {
 		shutdown_ = true;
 		for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
 			Triead *t = it->second->t_;
 			if (t->isReady()) {
 				t->requestDead();
-				if (it->second->j_) // interrupt in case if it's sleeping on input
-					it->second->j_->interrupt();
+				if (it->second->j_) { // interrupt in case if it's sleeping on input
+					try {
+						it->second->j_->interrupt();
+					} catch (Exception e) {
+						err.fAppend(e.getErrors(), "Failed to interrupt the thread '%s' of application '%s':",
+							it->first.c_str(), name_.c_str());
+					}
+				}
 			}
 		}
 	}
+	if (!err.isNull())
+		throw Exception(err, false);
 }
 
 void App::shutdownFragment(const string &fragname)
@@ -211,6 +220,7 @@ void App::shutdownFragment(const string &fragname)
 
 void App::shutdownFragmentL(const string &fragname)
 {
+	Erref err;
 	// first check that all the threads in the fragment are ready, or a real bad
 	// race would result with possibly other threads waiting on these threads...
 	for (TrieadUpdMap::iterator it = threads_.begin(); it != threads_.end(); ++it) {
@@ -227,12 +237,19 @@ void App::shutdownFragmentL(const string &fragname)
 		if (t->fragment() == fragname) {
 			it->second->dispose_ = true;
 			t->requestDead();
-			if (it->second->j_) // interrupt in case if it's sleeping on input
-				it->second->j_->interrupt();
-			else if (t->isDead()) // already marked dead and joined
+			if (it->second->j_) { // interrupt in case if it's sleeping on input
+				try {
+					it->second->j_->interrupt();
+				} catch (Exception e) {
+					err.fAppend(e.getErrors(), "Failed to interrupt the thread '%s' of application '%s':",
+						it->first.c_str(), name_.c_str());
+				}
+			} else if (t->isDead()) // already marked dead and joined
 				disposeL(t->getName());
 		}
 	}
+	if (!err.isNull())
+		throw Exception(err, false);
 }
 
 void App::disposeL(const string &tname)
@@ -571,7 +588,8 @@ bool App::harvestOnce()
 				// dispose even if the join had failed
 				if (upd->dispose_)
 					disposeL(upd->t_->getName());
-				throw;
+				throw Exception::f(e.getErrors(), "Failed to join the thread '%s' of application '%s':",
+							j->getName().c_str(), name_.c_str());
 			}
 			if (upd->dispose_)
 				disposeL(upd->t_->getName());

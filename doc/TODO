@@ -87,8 +87,8 @@ Things that need to be done:
 * export the AggregatorType::setRowType() to Perl initialization
 * transient thread: after it exits, delete it and its nexuses
 * adopt a nexus from another app, for inter-app communication
-* before adding a frag, set the new app timeout, when wait times out, check that
-  the timeout hasn't changed
+* when a thread in a fragment aborts, shut down and abort only that fragment
+* get rid of periods at the end of error messages
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -99,6 +99,9 @@ Things that need to be done:
 * doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
 * doc: Autoref::swap()
 * doc: RowType::isRowEmpty()
+* doc: croak() in typemap
+* doc: the "*" placeholder in Opt, Opt::drop, Opt::dropExcept
+* doc: FnReturn::isFaceted()
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

@@ -10,7 +10,8 @@
 
 namespace TRICEPS_NS {
 
-TrieadJoin::TrieadJoin():
+TrieadJoin::TrieadJoin(const string &name):
+	name_(name),
 	fi_(new FileInterrupt)
 { }
 

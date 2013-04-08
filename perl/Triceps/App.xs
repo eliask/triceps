@@ -467,5 +467,4 @@ isDrained(SV *app)
 	OUTPUT:
 		RETVAL
 
-#// XXX add the scoped drain
-#// XXX add a more convenient way to start the 1st level of threads
+#// XXX add a more convenient way to start the 1st level of threads?

@@ -51,9 +51,15 @@ Triceps::TrieadOwner::new(SV *tid, SV *app, char *tname, char *fragname)
 		static char funcName[] =  "Triceps::TrieadOwner::new";
 		clearErrMsg();
 
+		bool testfail = false;
 		if (SvOK(tid) // check only if not undef
-		&& !SvIOK(tid))
-			croak("%s: tid argument must be either an int or an undef", funcName);
+		&& !SvIOK(tid)) {
+			// a special hidden case to test the failure handling
+			if (SvPOK(tid) && !strcmp(SvPV_nolen(tid), "__test_fail__"))
+				testfail = true;
+			else
+				croak("%s: tid argument must be either an int or an undef", funcName);
+		}
 
 		RETVAL = NULL; // shut up the compiler
 		try { do {
@@ -61,8 +67,10 @@ Triceps::TrieadOwner::new(SV *tid, SV *app, char *tname, char *fragname)
 			parseApp(funcName, "app", app, appv);
 			string tn(tname);
 			Autoref<TrieadOwner> to = appv->makeTriead(tn, fragname);
-			if (SvIOK(tid))
-				appv->defineJoin(tn, new PerlTrieadJoin(appv->getName(), tname, SvIV(tid)));
+			PerlTrieadJoin *tj = new PerlTrieadJoin(appv->getName(), tname, 
+				SvIOK(tid)? SvIV(tid): -1, testfail);
+			to->fileInterrupt_ = tj->fileInterrupt();
+			appv->defineJoin(tn, tj);
 			RETVAL = new WrapTrieadOwner(to);
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
@@ -724,5 +732,5 @@ undrain(WrapTrieadOwner *self)
 		} while(0); } TRICEPS_CATCH_CROAK;
 
 #// XXX add addUnit() etc
-#// XXX add the scoped drain
 #// XXX add interruption of the file reads
+#// in the thread handler define a confess wrapper

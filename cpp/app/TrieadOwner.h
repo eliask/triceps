@@ -12,6 +12,7 @@
 #include <app/Triead.h>
 #include <app/App.h>
 #include <app/Facet.h>
+#include <app/FileInterrupt.h>
 
 namespace TRICEPS_NS {
 
@@ -492,6 +493,12 @@ public:
 	{
 		app_->undrain();
 	}
+
+public:
+	// A convenient place to store the file interruptor.
+	// Feel free to use it. The TrieadOwner itself doesn't care
+	// about it in any way.
+	Autoref<FileInterrupt> fileInterrupt_;
 
 protected:
 	// Called through App::makeTriead().

@@ -78,11 +78,6 @@ protected:
 	// The mutex_ must be already locked.
 	void startL(Autoref<App> app, Autoref<TrieadOwner> to);
 
-
-	// Arguments passed to the thread. Add more in your
-	// subclass as needed.
-	string name_; // name of the app
-
 	// Mutex used to synchronize the start of the thread.
 	pw::pmutex startMutex_;
 	// The temporary self-reference used to pass this object to the thread.

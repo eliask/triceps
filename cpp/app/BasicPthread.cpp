@@ -12,7 +12,7 @@
 namespace TRICEPS_NS {
 
 BasicPthread::BasicPthread(const string &name):
-	name_(name),
+	TrieadJoin(name),
 	id_(0)
 { }
 

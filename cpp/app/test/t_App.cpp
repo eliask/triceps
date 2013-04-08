@@ -845,7 +845,8 @@ UTESTCASE any_abort(Utest *utest)
 class TrieadJoinEmpty : public TrieadJoin
 {
 public:
-	TrieadJoinEmpty():
+	TrieadJoinEmpty(const string &name):
+		TrieadJoin(name),
 		s_("abcd")
 	{ }
 
@@ -862,7 +863,7 @@ UTESTCASE define_join(Utest *utest)
 	
 	Autoref<App> a1 = App::make("a1");
 	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
-	Autoref<TrieadJoin> j1 = new TrieadJoinEmpty();
+	Autoref<TrieadJoin> j1 = new TrieadJoinEmpty("t1");
 
 	{
 		string msg;
@@ -895,7 +896,8 @@ UTESTCASE define_join(Utest *utest)
 class TrieadJoinThrow : public TrieadJoin
 {
 public:
-	TrieadJoinThrow(const string &msg):
+	TrieadJoinThrow(const string &name, const string &msg):
+		TrieadJoin(name),
 		msg_(msg)
 	{ }
 
@@ -917,13 +919,13 @@ UTESTCASE join_throw(Utest *utest)
 
 	Autoref<App> a1 = App::make("a1");
 	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
-	Autoref<TrieadJoin> j1 = new TrieadJoinThrow("one");
+	Autoref<TrieadJoin> j1 = new TrieadJoinThrow("t1", "one");
 	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2", "frag2");
-	Autoref<TrieadJoin> j2 = new TrieadJoinThrow("two");
+	Autoref<TrieadJoin> j2 = new TrieadJoinThrow("t2", "two");
 
 	// t3 doesn't throw in join
 	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
-	Autoref<TrieadJoin> j3 = new TrieadJoinEmpty();
+	Autoref<TrieadJoin> j3 = new TrieadJoinEmpty("t3");
 
 	a1->defineJoin("t1", j1);
 	UT_IS(AppGuts::gutsJoin(a1, "t1"), j1.get());
@@ -944,7 +946,7 @@ UTESTCASE join_throw(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "test exception: one\n");
+		UT_IS(msg, "Failed to join the thread 't1' of application 'a1':\n  test exception: one\n");
 	}
 
 	// after harvest the join will be dropped
@@ -967,7 +969,7 @@ UTESTCASE join_throw(Utest *utest)
 		} catch(Exception e) {
 			msg = e.getErrors()->print();
 		}
-		UT_IS(msg, "test exception: two\n");
+		UT_IS(msg, "Failed to join the thread 't2' of application 'a1':\n  test exception: two\n");
 	}
 
 	// t2 is in a fragment, so a join will dispose of it

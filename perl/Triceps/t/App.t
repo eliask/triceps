@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 111 };
+BEGIN { plan tests => 118 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -773,6 +773,44 @@ ok(ref $rt1, "Triceps::RowType");
 			}
 		},
 	);
+}
+
+# the error propagation from the file interruption and joiner
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $to1 = Triceps::TrieadOwner->new("__test_fail__", $a1, "t1", "frag1");
+	ok(ref $to1, "Triceps::TrieadOwner");
+	
+	$to1->markReady(); # to allow the fragment shutdown to work
+
+	eval { $a1->shutdownFragment("frag1"); };
+	ok($@, qr/^Failed to interrupt the thread 't1' of application 'a1':\n  PerlTrieadJoin::interrupt test of error catching app 'a1' thread 't1'/);
+
+	$to1->markDead();
+
+	eval { $a1->harvester(); };
+	ok($@, qr/^Failed to join the thread 't1' of application 'a1':\n  PerlTrieadJoin::join test of error catching app 'a1' thread 't1'/);
+	$a1->drop();
+}
+
+# an error throwing from joiner (should never happen but still...)
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $realJoiner = $Triceps::_JOIN_TID;
+	$Triceps::_JOIN_TID = sub { die "test error"; }; # will fail on an attempts to call
+
+	my $to1 = Triceps::TrieadOwner->new(9999, $a1, "t1", "");
+	ok(ref $to1, "Triceps::TrieadOwner");
+	$to1->markDead();
+
+	eval { $a1->harvester(); };
+	ok($@, qr/^Failed to join the thread 't1' of application 'a1':\n  test error/);
+
+	$Triceps::_JOIN_TID = $realJoiner;
 }
 
 # XXX test failures of all the calls

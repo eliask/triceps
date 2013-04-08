@@ -27,7 +27,8 @@ class TrieadJoin: public Mtarget
 {
 public:
 	// Creates and remembers a file interruptor object.
-	TrieadJoin();
+	// @param tname - thread name, for error reporting if any
+	TrieadJoin(const string &name);
 
 	virtual ~TrieadJoin();
 
@@ -54,8 +55,18 @@ public:
 		return fi_.get();
 	}
 
+	// Get the therad name, for error reporting.
+	const string &getName() const
+	{
+		return name_;
+	}
+
 protected:
+	string name_; // thread name, to report errors if any
 	Autoref<FileInterrupt> fi_; // may be NULL
+
+private:
+	TrieadJoin();
 };
 
 }; // TRICEPS_NS
