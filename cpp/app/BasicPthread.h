@@ -69,6 +69,9 @@ public:
 
 	// from TrieadJoin
 	virtual void join();
+	// after closing the file descriptors, also sends SIGUSR2 to the thread,
+	// since not all the file operations are interruptable by a simple dup2()
+	virtual void interrupt();
 
 protected:
 	// The function that will be passed to Posix.
@@ -78,8 +81,12 @@ protected:
 	// The mutex_ must be already locked.
 	void startL(Autoref<App> app, Autoref<TrieadOwner> to);
 
-	// Mutex used to synchronize the start of the thread.
-	pw::pmutex startMutex_;
+	// Mutex used for 2 purposes:
+	// 1. To synchronize the start of the thread.
+	// 2. To synchronized the access to id_ between join() and interrupt().
+	pw::pmutex mutex_;
+	// Mutex used to synchronize the access to id_
+	pw::pmutex idMutex_;
 	// The temporary self-reference used to pass this object to the thread.
 	// Will be reset once the thread starts and creates its stack-based
 	// reference. This makes sure that this object won't get destroyed

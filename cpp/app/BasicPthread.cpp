@@ -7,7 +7,9 @@
 // A basic OS-level Posix thread implementation for Triceps.
 
 #include <string.h>
+#include <signal.h>
 #include <app/BasicPthread.h>
+#include <app/Sigusr2.h>
 
 namespace TRICEPS_NS {
 
@@ -18,13 +20,15 @@ BasicPthread::BasicPthread(const string &name):
 
 void BasicPthread::start(Autoref<App> app)
 {
-	pw::lockmutex lm(startMutex_);
+	Sigusr2::setup();
+	pw::lockmutex lm(mutex_);
 	startL(app, app->makeTriead(name_)); // makeTriead might throw
 }
 
 void BasicPthread::start(Autoref<TrieadOwner> to)
 {
-	pw::lockmutex lm(startMutex_);
+	Sigusr2::setup();
+	pw::lockmutex lm(mutex_);
 	startL(to->app(), to);
 }
 
@@ -42,14 +46,31 @@ void BasicPthread::startL(Autoref<App> app, Autoref<TrieadOwner> to)
 		throw Exception::fTrace("In Triceps app '%s' failed to start thread '%s': err=%d %s",
 			app->getName().c_str(), name_.c_str(), err, strerror(err));
 	}
+	// There is no race between defineJoin() and shutdown() because the
+	// shutdown flag gets checked when the thread calls markReady().
 	app->defineJoin(name_, this);
 }
 
 void BasicPthread::join()
 {
-	if (id_ != 0) {
-		pthread_join(id_, NULL);
+	pthread_t tid;
+	{
+		pw::lockmutex lm(mutex_);
+		tid = id_;
 		id_ = 0;
+	}
+	if (tid != 0)
+		pthread_join(tid, NULL);
+}
+
+void BasicPthread::interrupt()
+{
+	TrieadJoin::interrupt();
+	{
+		pw::lockmutex lm(mutex_);
+		if (id_ != 0) {
+			pthread_kill(id_, SIGUSR2);
+		}
 	}
 }
 
@@ -61,8 +82,8 @@ void *BasicPthread::run_it(void *arg)
 	Autoref<TrieadOwner> to = self->to_;
 	self->to_ = NULL;
 
-	self->startMutex_.lock(); // makes sure that defineJoin() is completed
-	self->startMutex_.unlock();
+	self->mutex_.lock(); // makes sure that defineJoin() is completed
+	self->mutex_.unlock();
 
 	try {
 		self->execute(to);

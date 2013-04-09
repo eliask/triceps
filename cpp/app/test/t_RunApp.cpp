@@ -12,6 +12,7 @@
 #include <app/AutoDrain.h>
 #include "AppTest.h"
 
+
 // Call the nextXtray() recursive to test the exception.
 class NextXtLabel: public Label
 {
@@ -977,10 +978,7 @@ public:
 		readyOpen_.signal();
 		mayOpen_.wait();
 
-		// the interruption actually works because the write-side fd gets closed
-		// too, otherwise the pipe read doesn't get interrupted by dup2()
 		fi_->openFd(fd_[0]);
-		fi_->openFd(fd_[1]);
 
 		readyLoop_.signal();
 		mayLoop_.signal();
@@ -1002,7 +1000,6 @@ public:
 		}
 
 		fi_->closeFd(fd_[0]);
-		fi_->closeFd(fd_[1]);
 
 		readyClose_.signal();
 		mayClose_.signal();
