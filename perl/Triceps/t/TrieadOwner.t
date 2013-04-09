@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 226 };
+BEGIN { plan tests => 227 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -58,7 +58,7 @@ ok(ref $rt1, "Triceps::RowType");
 	ok($ts[0], "t1");
 	ok(!defined $ts[1]); # declared but not defined, so returns an undef
 
-	my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
+	my $to1 = Triceps::TrieadOwner->new(undef, undef, $a1, "t1", "");
 	ok(ref $to1, "Triceps::TrieadOwner");
 	Triceps::App::declareTriead("a1", "t1"); # repeat
 
@@ -69,7 +69,7 @@ ok(ref $rt1, "Triceps::RowType");
 	my $unit = $to1->unit();
 	ok(ref $unit, "Triceps::Unit");
 
-	my $to2 = Triceps::TrieadOwner->new(undef, "a1", "t2", "");
+	my $to2 = Triceps::TrieadOwner->new(undef, undef, "a1", "t2", "");
 	ok(ref $to2, "Triceps::TrieadOwner");
 
 	my $t2 = $to2->get();
@@ -102,7 +102,7 @@ ok(ref $rt1, "Triceps::RowType");
 	my $thr1 = async {
 		my $self = threads->self();
 		my $tid = $self->tid();
-		my $to1 = Triceps::TrieadOwner->new($tid, "a1", "t1", "");
+		my $to1 = Triceps::TrieadOwner->new($tid, $self->_handle(), "a1", "t1", "");
 
 		# go through all the markings
 		$to1->markConstructed();
@@ -310,7 +310,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 
 	ok(&Triceps::Facet::DEFAULT_QUEUE_LIMIT(), 500);
 
-	my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
+	my $to1 = Triceps::TrieadOwner->new(undef, undef, $a1, "t1", "");
 	ok(ref $to1, "Triceps::TrieadOwner");
 	my $t1 = $to1->get();
 	ok(ref $t1, "Triceps::Triead");
@@ -582,7 +582,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: invalid arguments:\n  Can not export the nexus 'nx' in app 'a1' thread 't1' that is already marked as constructed/);
 
 	#### import 
-	my $to2 = Triceps::TrieadOwner->new(undef, $a1, "t2", "");
+	my $to2 = Triceps::TrieadOwner->new(undef, undef, $a1, "t2", "");
 	ok(ref $to2, "Triceps::TrieadOwner");
 	my $t2 = $to2->get();
 	ok(ref $t2, "Triceps::Triead");
@@ -618,7 +618,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 		import => "WRITE",
 	);
 
-	my $to3 = Triceps::TrieadOwner->new(undef, $a1, "t3", "");
+	my $to3 = Triceps::TrieadOwner->new(undef, undef, $a1, "t3", "");
 	ok(ref $to3, "Triceps::TrieadOwner");
 	my $t3 = $to3->get();
 	ok(ref $t3, "Triceps::Triead");
@@ -670,56 +670,51 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 					&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
 					my $to = $opts->{owner};
 
-if (0) {
-					# this doesn't work because accept() in Linux doesn't wake
-					# up when its descriptor gets closed, nor does poll() on it
+					# test of socket accept interruption
 					my $srvsock = IO::Socket::INET->new(
 						Proto => "tcp",
 						LocalPort => 0,
 						Listen => 10,
 					) or confess "socket failed: $!" ;
 
-					printf "socket %d\n", fileno($srvsock);
+					#printf "socket %d\n", fileno($srvsock);
 					$to->openFd(fileno($srvsock));
 
 					$to->readyReady();
 
-					printf "polling\n";
-					eval {
-						my $poll = IO::Poll->new();
-						$poll->mask($srvsock => POLLIN|POLLOUT|POLLHUP|POLLERR);
-						$poll->poll();
-					};
-					printf "poll returned\n";
+					my $client = $srvsock->accept();
+					#print "client $client $! $@\n";
+					if ($client) {
+						close($client);
+					}
 
 					$to->closeFd(fileno($srvsock));
 					close($srvsock);
-}
-					# There is a problem with pipes: dup2() to a pipe doesn't
-					# interrupt a read on it. So register both read and write sides
-					# and let the interruption close both, this does the trick.
+
+					# this tests an attempt to register a file descriptor
+					# after the thread was requested dead;
+					# and does the pipe example
 					pipe RD, WR;
 					$to->openFd(fileno(RD));
-					$to->openFd(fileno(WR));
+					# $to->openFd(fileno(WR));
 
 					$to->readyReady();
 
+					#printf "reading...\n";
 					my $data = <RD>;
+					#printf "woke up...\n";
 
 					$to->closeFd(fileno(RD));
+					# $to->closeFd(fileno(WR));
 					close(RD);
 					close(WR);
 				},
 			);
 
 			$to->readyReady();
-			# give the other thread a chance to start reading
-			threads->yield();
-			threads->yield();
-			threads->yield();
-			threads->yield();
-			threads->yield();
-			threads->yield();
+			# give the other thread a chance to start reading;
+			# use select() as a short timeout
+			select(undef, undef, undef, 0.1);
 			threads->yield();
 			threads->yield();
 			threads->yield();
@@ -727,4 +722,5 @@ if (0) {
 			$to->app()->shutdown();
 		},
 	);
+	ok(1); # didn't get stuck
 }

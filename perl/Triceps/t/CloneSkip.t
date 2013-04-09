@@ -26,7 +26,7 @@ ok(5); # If we made it this far, we're ok.
 my $a1 = Triceps::App::make("a1");
 ok(ref $a1, "Triceps::App");
 
-my $to1 = Triceps::TrieadOwner->new(undef, $a1, "t1", "");
+my $to1 = Triceps::TrieadOwner->new(undef, undef, $a1, "t1", "");
 ok(ref $to1, "Triceps::TrieadOwner");
 
 my $tri1 = $to1->get();

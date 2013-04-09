@@ -69,7 +69,8 @@ sub start { # (@opts)
 	my @args = @_;
 	@_ = (); # workaround for threads leaking objects
 	threads->create(sub {
-		my $owner = Triceps::TrieadOwner->new(threads->self()->tid(), $opts->{app}, $opts->{thread}, $opts->{fragment});
+		my $owner = Triceps::TrieadOwner->new(threads->self()->tid(), threads->self()->_handle(), 
+			$opts->{app}, $opts->{thread}, $opts->{fragment});
 		push(@_, "owner", $owner);
 		eval { &{$opts->{main}}(@_) };
 		$owner->abort($@) if ($@);
@@ -127,7 +128,7 @@ sub startHere { # (@opts)
 
 	# no need to declare the Triead, since all the code executes synchronously anyway
 	my $app = &Triceps::App::resolve($opts->{app});
-	my $owner = Triceps::TrieadOwner->new(undef, $app, $opts->{thread}, $opts->{fragment});
+	my $owner = Triceps::TrieadOwner->new(undef, undef, $app, $opts->{thread}, $opts->{fragment});
 	push(@args, "owner", $owner);
 	eval { &{$opts->{main}}(@args) };
 	$owner->abort($@) if ($@);

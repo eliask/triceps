@@ -3,11 +3,19 @@
 # This file is a part of Triceps.
 # See the file COPYRIGHT for the copyright notice and license information
 #
-package Triceps;
 
 use 5.008000;
 use strict;
 use warnings;
+
+package main;
+
+# Triceps uses SIGUSR2 to interrupt the threads reading from file descriptors,
+# so start by setting a dummy handler on it. It gets inherited by all the threads.
+$SIG{USR2} = sub {};
+
+package Triceps;
+
 use Carp;
 
 require Exporter;

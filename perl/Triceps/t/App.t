@@ -780,7 +780,7 @@ ok(ref $rt1, "Triceps::RowType");
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
 
-	my $to1 = Triceps::TrieadOwner->new("__test_fail__", $a1, "t1", "frag1");
+	my $to1 = Triceps::TrieadOwner->new("__test_fail__", undef, $a1, "t1", "frag1");
 	ok(ref $to1, "Triceps::TrieadOwner");
 	
 	$to1->markReady(); # to allow the fragment shutdown to work
@@ -803,7 +803,7 @@ ok(ref $rt1, "Triceps::RowType");
 	my $realJoiner = $Triceps::_JOIN_TID;
 	$Triceps::_JOIN_TID = sub { die "test error"; }; # will fail on an attempts to call
 
-	my $to1 = Triceps::TrieadOwner->new(9999, $a1, "t1", "");
+	my $to1 = Triceps::TrieadOwner->new(9999, undef, $a1, "t1", "");
 	ok(ref $to1, "Triceps::TrieadOwner");
 	$to1->markDead();
 

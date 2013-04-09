@@ -42,11 +42,13 @@ DESTROY(WrapTrieadOwner *self)
 #// @param tid - thread id (as in $thr->tid()) where this TrieadOwner belongs, for joining 
 #//        (or undef could be used for testing purposes but then you jave to join
 #//        the thread yourself)
+#// @param handle - the thread's low-level handle (as returned by thr()->handle_()), or undef;
+#//        this is a dangerous argument, and passing a wrong value here may cause a crash
 #// @param app - app object ref or name
 #// @param tname - name of this thread in the app
 #// @param fragname - name of the fragment in the app (or an empty string)
 WrapTrieadOwner *
-Triceps::TrieadOwner::new(SV *tid, SV *app, char *tname, char *fragname)
+Triceps::TrieadOwner::new(SV *tid, SV *handle, SV *app, char *tname, char *fragname)
 	CODE:
 		static char funcName[] =  "Triceps::TrieadOwner::new";
 		clearErrMsg();
@@ -68,7 +70,9 @@ Triceps::TrieadOwner::new(SV *tid, SV *app, char *tname, char *fragname)
 			string tn(tname);
 			Autoref<TrieadOwner> to = appv->makeTriead(tn, fragname);
 			PerlTrieadJoin *tj = new PerlTrieadJoin(appv->getName(), tname, 
-				SvIOK(tid)? SvIV(tid): -1, testfail);
+				SvIOK(tid)? SvIV(tid): -1, 
+				SvIOK(handle)? SvIV(handle): 0, 
+				testfail);
 			to->fileInterrupt_ = tj->fileInterrupt();
 			appv->defineJoin(tn, tj);
 			RETVAL = new WrapTrieadOwner(to);
