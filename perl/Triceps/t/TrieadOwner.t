@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 229 };
+BEGIN { plan tests => 227 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -527,20 +527,15 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok($exp[5]->getName(), "nx3");
 
 	#########
-	# short versions of the import values
+	# short versions of the import values, and along the way
+	# test the no-label variants
 	$to1->makeNexus(
 		name => "nx4",
-		labels => [
-			one => $rt1,
-			two => $lb,
-		],
 		import => "WRITE",
 	);
 	$to1->makeNexus(
 		name => "nx5",
 		labels => [
-			one => $rt1,
-			two => $lb,
 		],
 		import => "READ",
 	);
@@ -558,8 +553,6 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok($@, qr/Triceps::TrieadOwner::makeNexus: invalid arguments:\n  Can not export the nexus with duplicate name 'nx1' in app 'a1' thread 't1'/);
 	&badNexus($to1, name => undef);
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: must specify a non-empty name with option 'name'/);
-	&badNexus($to1, labels => undef);
-	ok($@, qr/^Triceps::TrieadOwner::makeNexus: missing mandatory option 'labels'/);
 	&badNexus($to1, import => undef);
 	ok($@, qr/^Triceps::TrieadOwner::makeNexus: the option 'import' must have the value one of 'writer', 'reader', 'no'; got ''/);
 	&badNexus($to1, labels => {a => 9});

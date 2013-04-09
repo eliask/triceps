@@ -250,8 +250,7 @@ isInputOnly(WrapTrieadOwner *self)
 #// original label. The created label objects can be later found from Facets, and used
 #// like normal labels, by chaining them or sending rowops to them (but
 #// chaining _from_ them is probably not the best idea, although it works anyway).
-#// At least one definition pair must be present (if you don't need any, you
-#// can always explicitly define _BEGIN_ and/or _END_ as placeholders).
+#// (Optional and may be empty; the implicit labels _BEGIN_ and _END_ will allways be added).
 #//
 #// The labels are used to construct an implicit FnReturn in the current
 #// thread's main unit, and this is the FnReturn that will be visible in the
@@ -341,16 +340,10 @@ makeNexus(WrapTrieadOwner *self, ...)
 					throw Exception::f("%s: unknown option '%s'", funcName, optname);
 				}
 			}
-#if 0 // { for now don't construct from FnReturn
-			if (fret != NULL && labels != NULL)
-				throw Exception::f("%s: options 'fn_return' and 'labels' are mutually exclusive", funcName);
-			if (fret == NULL && labels == NULL)
-				throw Exception::f("%s: one of the options 'fnreturn' or  'labels' must be present", funcName);
-#endif // }
+
 			Unit *u = to->unit();
-			if (labels == NULL)
-				throw Exception::f("%s: missing mandatory option 'labels'", funcName);
-			checkLabelList(funcName, "labels", u, labels);
+			if (labels != NULL && av_len(labels) != -1)
+				checkLabelList(funcName, "labels", u, labels);
 
 			if (name.empty())
 				throw Exception::f("%s: must specify a non-empty name with option 'name'", funcName);
@@ -369,7 +362,8 @@ makeNexus(WrapTrieadOwner *self, ...)
 			// start by building the FnReturn
 			Autoref<FnReturn> fret = new FnReturn(u, name);
 
-			addFnReturnLabels(funcName, "labels", u, labels, fret);
+			if (labels != NULL)
+				addFnReturnLabels(funcName, "labels", u, labels, fret);
 
 			// now make the Facet out it
 			Autoref<Facet> fa = new Facet(fret, writer);
