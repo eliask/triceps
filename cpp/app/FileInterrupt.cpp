@@ -17,7 +17,7 @@ FileInterrupt::FileInterrupt():
 	interrupted_(false)
 { }
 
-void FileInterrupt::openFd(int fd)
+void FileInterrupt::trackFd(int fd)
 {
 	pw::lockmutex lm(mutex_);
 	fds_.insert(fd);
@@ -26,7 +26,7 @@ void FileInterrupt::openFd(int fd)
 		interruptL();
 }
 
-void FileInterrupt::closeFd(int fd)
+void FileInterrupt::forgetFd(int fd)
 {
 	pw::lockmutex lm(mutex_);
 	fds_.erase(fd);

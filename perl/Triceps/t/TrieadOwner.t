@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 227 };
+BEGIN { plan tests => 229 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -647,7 +647,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	$a1->drop();
 }
 
-# the interruption of the file read
+# the interruption of the file read by descriptor
 {
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
@@ -678,7 +678,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 					) or confess "socket failed: $!" ;
 
 					#printf "socket %d\n", fileno($srvsock);
-					$to->openFd(fileno($srvsock));
+					$to->trackFd(fileno($srvsock));
 
 					$to->readyReady();
 
@@ -688,15 +688,14 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 						close($client);
 					}
 
-					$to->closeFd(fileno($srvsock));
+					$to->forgetFd(fileno($srvsock));
 					close($srvsock);
 
 					# this tests an attempt to register a file descriptor
 					# after the thread was requested dead;
 					# and does the pipe example
 					pipe RD, WR;
-					$to->openFd(fileno(RD));
-					# $to->openFd(fileno(WR));
+					$to->trackFd(fileno(RD));
 
 					$to->readyReady();
 
@@ -704,9 +703,83 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 					my $data = <RD>;
 					#printf "woke up...\n";
 
-					$to->closeFd(fileno(RD));
-					# $to->closeFd(fileno(WR));
+					$to->forgetFd(fileno(RD));
 					close(RD);
+					close(WR);
+				},
+			);
+
+			$to->readyReady();
+			# give the other thread a chance to start reading;
+			# use select() as a short timeout
+			select(undef, undef, undef, 0.1);
+			threads->yield();
+			threads->yield();
+			threads->yield();
+
+			$to->app()->shutdown();
+		},
+	);
+	ok(1); # didn't get stuck
+}
+
+# the interruption of the file read by object
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+
+			$to->markConstructed();
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t2",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+
+					# test of socket accept interruption
+					my $srvsock = IO::Socket::INET->new(
+						Proto => "tcp",
+						LocalPort => 0,
+						Listen => 10,
+					) or confess "socket failed: $!" ;
+
+					#printf "socket %d\n", fileno($srvsock);
+					$to->track($srvsock);
+
+					$to->readyReady();
+
+					my $client = $srvsock->accept();
+					#print "client $client $! $@\n";
+					if ($client) {
+						close($client);
+					}
+
+					$to->forget($srvsock);
+					close($srvsock);
+
+					# this tests an attempt to register a file descriptor
+					# after the thread was requested dead;
+					# and does the pipe example
+					pipe RD, WR;
+					$to->track(*RD);
+
+					$to->readyReady();
+
+					#printf "reading...\n";
+					my $data = <RD>;
+					#printf "woke up...\n";
+
+					$to->close(*RD);
 					close(WR);
 				},
 			);

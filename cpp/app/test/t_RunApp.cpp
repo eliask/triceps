@@ -978,7 +978,7 @@ public:
 		readyOpen_.signal();
 		mayOpen_.wait();
 
-		fi_->openFd(fd_[0]);
+		fi_->trackFd(fd_[0]);
 
 		readyLoop_.signal();
 		mayLoop_.signal();
@@ -999,7 +999,7 @@ public:
 			}
 		}
 
-		fi_->closeFd(fd_[0]);
+		fi_->forgetFd(fd_[0]);
 
 		readyClose_.signal();
 		mayClose_.signal();

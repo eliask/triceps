@@ -739,24 +739,23 @@ undrain(WrapTrieadOwner *self)
 #// The FileInterrupt API
 
 void 
-openFd(WrapTrieadOwner *self, int fd)
+trackFd(WrapTrieadOwner *self, int fd)
 	CODE:
 		clearErrMsg();
 		try { do {
-			self->get()->fileInterrupt_->openFd(fd);
+			self->get()->fileInterrupt_->trackFd(fd);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
 void 
-closeFd(WrapTrieadOwner *self, int fd)
+forgetFd(WrapTrieadOwner *self, int fd)
 	CODE:
 		clearErrMsg();
 		try { do {
-			self->get()->fileInterrupt_->closeFd(fd);
+			self->get()->fileInterrupt_->forgetFd(fd);
 		} while(0); } TRICEPS_CATCH_CROAK;
 
 #// }
 
 #// XXX add addUnit() etc
-#// in the thread handler define a confess wrapper
+#// XXX in the thread handler define a confess wrapper
 #// XXX support arbitrary interruptors?
-#// XXX add an interruptor for accept() by connecting to it?

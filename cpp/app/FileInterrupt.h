@@ -25,13 +25,13 @@ public:
 
 	// Add a file descriptor to the set for interrupting.
 	// @param fd - file descriptor to use for interrupting
-	void openFd(int fd);
+	void trackFd(int fd);
 
 	// Remove a file descriptor from the set for interrupting.
 	// Call this before calling the actual close()!
 	//
 	// @param fd - file descriptor that was listed for interrupting
-	void closeFd(int fd);
+	void forgetFd(int fd);
 
 	// Revoke the file descriptors.
 	//
