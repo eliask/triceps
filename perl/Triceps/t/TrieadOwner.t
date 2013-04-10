@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 230 };
+BEGIN { plan tests => 232 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -844,7 +844,9 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 			# use select() as a short timeout
 			select(undef, undef, undef, 0.1);
 			
+			ok(!$to->isRqDead());
 			$to->requestMyselfDead();
+			ok($to->isRqDead());
 			# this should let the other thread continue and be harvestable
 			$app->waitNeedHarvest();
 			ok($app->harvestOnce(), 0); # app is not dead yet
@@ -852,3 +854,5 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	);
 	ok(1); # if it got here, a success
 }
+
+# the requestDrain* stuff is tested in the App

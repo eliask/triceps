@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 132 };
+BEGIN { plan tests => 156 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -816,6 +816,26 @@ ok(ref $rt1, "Triceps::RowType");
 eval { Triceps::App::find("a1"); };
 ok($@, qr/^Triceps application 'a1' is not found/);
 
+# error catching in harvestOnce()
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $realJoiner = $Triceps::_JOIN_TID;
+	$Triceps::_JOIN_TID = sub { die "test error"; }; # will fail on an attempts to call
+
+	my $to1 = Triceps::TrieadOwner->new(9999, undef, $a1, "t1", "");
+	ok(ref $to1, "Triceps::TrieadOwner");
+	$to1->markDead();
+
+	eval { $a1->harvestOnce(); };
+	ok($@, qr/^Failed to join the thread 't1' of application 'a1':\n  test error/);
+
+	$Triceps::_JOIN_TID = $realJoiner;
+
+	$a1->harvester(); # dispose of the App
+}
+
 # an error throwing from joiner with also an abort report
 {
 	my $a1 = Triceps::App::make("a1");
@@ -885,4 +905,47 @@ ok(!defined $Triceps::App::global);
 eval { Triceps::App::find("a1"); };
 ok($@, qr/^Triceps application 'a1' is not found/);
 
-# XXX test failures of all the calls
+# test failures of all the references to a non-existing App
+eval { Triceps::App::resolve(9); };
+ok($@, qr/^Triceps::App::resolve: app is not an App reference nor a string/);
+eval { Triceps::App::resolve($rt1); };
+ok($@, qr/^Triceps::App::resolve: app has an incorrect magic for App/);
+eval { Triceps::App::resolve("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::drop("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::isAborted("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::getAborted("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::abortBy("zzz", "t1", "msg"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::setDeadline("zzz", 10); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::setTimeout("zzz", 10); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::refreshDeadline("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::declareTriead("zzz", "t1"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::getTrieads("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::isDead("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::isShutdown("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::shutdown("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::shutdownFragment("zzz", "xxx"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::requestDrain("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::waitDrain("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::drain("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::undrain("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+eval { Triceps::App::isDrained("zzz"); };
+ok($@, qr/^Triceps application 'zzz' is not found/);
+
