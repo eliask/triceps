@@ -177,7 +177,6 @@ public:
 	// overflowing buffers. Marking the thread dead before writing
 	// is also not a good idea beceuse it will keep the join() stuck.
 	// So this call provides the solution.
-	// XXX test that if the writer is already stuck, it wakes up
 	void requestMyselfDead()
 	{
 		triead_->requestDead();
