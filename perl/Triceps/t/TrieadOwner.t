@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 227 };
+BEGIN { plan tests => 230 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -791,3 +791,64 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok(1); # didn't get stuck
 }
 
+# test of requestMyselfDead()
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "main",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("main main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			my $faIn = $to->makeNexus(
+				name => "sink",
+				labels => [
+					one => $rt1,
+				],
+				queueLimit => 1, # so that the writer will get stuck
+				import => "reader",
+			);
+
+			$to->markConstructed();
+
+			Triceps::Triead::start(
+				app => "a1",
+				thread => "t1",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+					my $faSink = $to->importNexus(
+						from => "main/sink",
+						import => "writer",
+					);
+					$to->readyReady();
+
+					for (my $i = 0; $i < 1000; $i++) {
+						$to->unit()->makeHashCall($faSink->getLabel("one"), "OP_INSERT",
+							b => $i,
+						);
+						$to->flushWriters();
+					}
+				},
+			);
+
+			$to->readyReady();
+
+			# give the other thread a chance to start reading;
+			# use select() as a short timeout
+			select(undef, undef, undef, 0.1);
+			
+			$to->requestMyselfDead();
+			# this should let the other thread continue and be harvestable
+			$app->waitNeedHarvest();
+			ok($app->harvestOnce(), 0); # app is not dead yet
+		},
+	);
+	ok(1); # if it got here, a success
+}
