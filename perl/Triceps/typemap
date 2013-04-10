@@ -40,26 +40,31 @@ O_WRAP_OBJECT
 O_WRAP_INVALIDABLE_OBJECT
 	sv_setref_pv( $arg, CLASS, (void*)$var );
 
+# The roundabout way to croak provides the stack trace, like confess().
+# This still doesn't solve the problem with the other code auto-generated
+# by XS, such as for checking the argument count or converting char*,
+# but those are pretty crude errors, and something is better than
+# nothing.
 INPUT
 O_WRAP_OBJECT
 	if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
 		$var = ($type)SvIV((SV*)SvRV( $arg ));
 		if ($var == 0 || $var->badMagic()) {
-			croak( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
+			croakWithMsg( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
 		}
 	} else{
-		croak( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
+		croakWithMsg( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
 	}
 
 O_WRAP_INVALIDABLE_OBJECT
 	if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
 		$var = ($type)SvIV((SV*)SvRV( $arg ));
 		if ($var == 0 || $var->badMagic()) {
-			croak( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
+			croakWithMsg( \"${Package}::$func_name(): $var has an incorrect magic for $ntype\" );
 		}
 		if (!$var->isValid()) {
-			croak( \"${Package}::$func_name(): $var has been already invalidated\" );
+			croakWithMsg( \"${Package}::$func_name(): $var has been already invalidated\" );
 		}
 	} else{
-		croak( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
+		croakWithMsg( \"${Package}::$func_name(): $var is not a blessed SV reference to $ntype\" );
 	}

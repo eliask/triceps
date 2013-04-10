@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 126 };
+BEGIN { plan tests => 127 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -210,3 +210,16 @@ ok(!defined $scalar);
 ok(!(@array));
 ok(!(%hash));
 ok(!exists $rclasscopy->{a});
+
+#########################
+# croaking with stack trace on object conversion
+
+sub sub1 {
+	Triceps::Unit::schedule(9);
+}
+sub sub2 {
+	&sub1;
+}
+
+eval { &sub2; };
+ok($@, qr/^Triceps::Unit::schedule\(\): self is not a blessed SV reference to WrapUnitPtr at \S+ line \d+\n\tmain::sub1 called at \S+ line \d+\n\tmain::sub2 called at \S+ line \d+\n\teval {...} called at \S+ line \d+/);

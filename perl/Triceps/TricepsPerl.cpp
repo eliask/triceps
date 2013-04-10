@@ -99,6 +99,16 @@ void croakIfSet()
 	}
 }
 
+void croakWithMsg(const char *msg)
+{
+	{
+		setCroakMsg(msg);
+	}
+	croakIfSet();
+	// if something failed, as a last resort croak without the stack trace
+	Perl_croak(aTHX_ "%s", msg);
+}
+
 void clearErrMsg()
 {
 	{
@@ -134,7 +144,7 @@ void setErrMsg(const std::string &msg)
 		warn("Triceps: can not set $! with error: %s", msg.c_str());
 	}
 
-	// in case if the function checks for exceptions, check the corak message too
+	// in case if the function checks for exceptions, check the croak message too
 	// XXX in the future there will probably be just exceptions, no setErrMsg()
 	setCroakMsg(msg);
 }

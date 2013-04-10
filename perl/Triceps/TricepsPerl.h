@@ -33,7 +33,16 @@ void setCroakMsg(const std::string &msg);
 const char *getCroakMsg();
 
 // Check the contents of the croak message, and if it's set then croak.
+// Make sure that no C++ objects requiring destruction are in scope
+// when calling this, to avoid the memory leaks.
 void croakIfSet();
+
+// Unconditionally croak with the stack trace.
+// The message must be a plain pointer to avoid the memory leaks.
+// Make sure that no C++ objects requiring destruction are in scope
+// when calling this, to avoid the memory leaks.
+void croakWithMsg(const char *msg)
+	__attribute__noreturn__;
 
 // Clear the perl $! variable and the Triceps::_CROAK_MSG.
 void clearErrMsg();
