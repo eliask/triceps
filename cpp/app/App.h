@@ -260,7 +260,10 @@ public:
 	// so the dead App won't be actually destroyed until that reference
 	// is destroyed.
 	//
-	// May propagate an Exception from harvestOnce().
+	// The exceptions from harvestOnce() will be caught and collected
+	// until the harvesting completes. Then a single exception with the
+	// combined text will be rethrown. If throwAbort is true and an abort
+	// is detected, its message will be merged into the same exception.
 	//
 	// @param throwAbort - flag: if an app abort is detected, propagate it by throwing
 	//         an exception after disposing of the App
