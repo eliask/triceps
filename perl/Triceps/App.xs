@@ -467,4 +467,3 @@ isDrained(SV *app)
 	OUTPUT:
 		RETVAL
 
-#// XXX add a more convenient way to start the 1st level of threads?

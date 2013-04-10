@@ -790,3 +790,4 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	);
 	ok(1); # didn't get stuck
 }
+

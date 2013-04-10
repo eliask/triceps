@@ -751,5 +751,4 @@ forgetFd(WrapTrieadOwner *self, int fd)
 #// }
 
 #// XXX add addUnit() etc
-#// XXX in the thread handler define a confess wrapper
 #// XXX support arbitrary interruptors?

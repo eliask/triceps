@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 118 };
+BEGIN { plan tests => 132 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -812,5 +812,77 @@ ok(ref $rt1, "Triceps::RowType");
 
 	$Triceps::_JOIN_TID = $realJoiner;
 }
+# check that the harvester completed its work before rethrowing
+eval { Triceps::App::find("a1"); };
+ok($@, qr/^Triceps application 'a1' is not found/);
+
+# an error throwing from joiner with also an abort report
+{
+	my $a1 = Triceps::App::make("a1");
+	ok(ref $a1, "Triceps::App");
+
+	my $realJoiner = $Triceps::_JOIN_TID;
+	$Triceps::_JOIN_TID = sub { die "test error"; }; # will fail on an attempts to call
+
+	my $to1 = Triceps::TrieadOwner->new(9999, undef, $a1, "t1", "");
+	ok(ref $to1, "Triceps::TrieadOwner");
+	$to1->abort("abort msg");
+
+	eval { $a1->harvester(); };
+	ok($@, qr/^Failed to join the thread 't1' of application 'a1':\n  test error at [^\n]*\n  Detected in the application 'a1' thread 't1' join.\nApp 'a1' has been aborted by thread 't1': abort msg/);
+
+	$Triceps::_JOIN_TID = $realJoiner;
+}
+# check that the harvester completed its work before rethrowing
+eval { Triceps::App::find("a1"); };
+ok($@, qr/^Triceps application 'a1' is not found/);
+
+# the app build
+Triceps::App::build "a1", sub {
+	Triceps::App::globalNexus(
+		name => "types",
+		rowTypes => [
+			rt1 => $rt1,
+		],
+	);
+	Triceps::Triead::start(
+		app => $Triceps::App::name,
+		thread => "t1",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			$to->importNexus(
+				from => "global/types",
+				import => "reader",
+			);
+			$to->readyReady();
+		},
+	);
+};
+ok(!defined $Triceps::App::name);
+ok(!defined $Triceps::App::app);
+ok(!defined $Triceps::App::global);
+eval { Triceps::App::find("a1"); };
+ok($@, qr/^Triceps application 'a1' is not found/);
+
+# the error catch in app build
+eval {
+	Triceps::App::build "a1", sub {
+		Triceps::App::globalNexus(
+			name => "types",
+			rowTypes => [
+				rt1 => $rt1,
+			],
+		);
+		die "test error";
+	};
+};
+ok($@, qr/App 'a1' has been aborted by thread 'global': test error/);
+ok(!defined $Triceps::App::name);
+ok(!defined $Triceps::App::app);
+ok(!defined $Triceps::App::global);
+eval { Triceps::App::find("a1"); };
+ok($@, qr/^Triceps application 'a1' is not found/);
 
 # XXX test failures of all the calls
