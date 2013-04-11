@@ -81,7 +81,7 @@ sub ReaderMain # (@opts)
 	while(&readLine) {
 		chomp;
 		# print the input line, as a debugging exercise
-		$unit->makeArrayCall($lbPrint, "OP_INSERT", "> $_\n");
+		$unit->makeArrayCall($lbPrint, "OP_INSERT", "! $_\n");
 
 		my @data = split(/,/); # starts with a command, then string opcode
 		my $type = shift @data;
@@ -116,7 +116,6 @@ sub hourStamp # (time)
 # The output is sent to the nexus "data".
 # The added labels in the nexus:
 #   hourly - the aggregated hourly data
-#   dumpPacket - dump of the kept raw packet data
 #
 # Options are inherited from Triead::start, plus:
 #   from => "thread/nexus"
@@ -241,7 +240,6 @@ sub dayStamp # (time)
 # The output is sent to the nexus "data".
 # The added labels in the nexus:
 #   daily - the aggregated daily data
-#   dumpHourly - dump of the kept hourly data
 #
 # Options are inherited from Triead::start, plus:
 #   from => "thread/nexus"
@@ -350,6 +348,75 @@ sub HourlyToDailyMain # (@opts)
 	$owner->mainLoop(); # all driven by the reader
 }
 
+# Read and pass through all the inputs, also:
+#   * keep the daily data
+#   * send the dump of the kept daily data on request
+# The output is sent to the nexus "data".
+#
+# Options are inherited from Triead::start, plus:
+#   from => "thread/nexus"
+#   The input nexus name.
+sub StoreDailyMain # (@opts)
+{
+	my $opts = {};
+	Triceps::Opt::parse("traffic main", $opts, {
+		@Triceps::Triead::opts,
+		from => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	my $faIn = $owner->importNexus(
+		from => $opts->{from},
+		as => "input",
+		import => "reader",
+	);
+
+	# the daily stats for the recent time, this time no further aggregation
+	my $ttDaily = Triceps::TableType->new($faIn->getLabel("daily")->getRowType())
+		->addSubIndex("byDay", 
+			Triceps::SimpleOrderedIndex->new(time => "ASC",)
+			->addSubIndex("byIP", 
+				Triceps::IndexType->newHashed(key => [ "local_ip", "remote_ip" ])
+			)
+		)
+	or confess "$!";
+
+	$ttDaily->initialize() or confess "$!";
+	my $tDaily = $unit->makeTable($ttDaily, 
+		&Triceps::EM_CALL, "tDaily") or confess "$!";
+
+	# It's important to connect the pass-through data first,
+	# before chaining anything to the labels of the faIn, to
+	# make sure that any requests and raw inputs get through before
+	# our reactions to them.
+	my $faOut = $owner->makeNexus(
+		name => "data",
+		labels => [
+			$faIn->getFnReturn()->getLabelHash(),
+		],
+		import => "writer",
+	);
+
+	my $lbPrint = $faOut->getLabel("print");
+
+	# the daily updates can be chained directly
+	$faIn->getLabel("daily")->chain($tDaily->getInputLabel());
+
+	# the dump request processing
+	$tDaily->getDumpLabel()->makeChained("printDump", undef, sub {
+		$unit->makeArrayCall($lbPrint, "OP_INSERT", $_[1]->getRow()->printP() . "\n");
+	});
+	$faIn->getLabel("dumprq")->makeChained("daily", undef, sub {
+		if ($_[1]->getRow()->get("what") eq "daily") {
+			$tDaily->dumpAll();
+		}
+	});
+
+	$owner->readyReady();
+	$owner->mainLoop(); # all driven by the reader
+}
+
 # Create all the other threads and then read the tail of the
 # pipeline and print the data from it.
 # Options inherited from Triead::start.
@@ -377,17 +444,15 @@ sub PrintMain # (@opts)
 		main => \&HourlyToDailyMain,
 		from => "raw_hour/data",
 	);
-if (0) {
 	Triceps::Triead::start(
 		app => $opts->{app},
 		thread => "day",
 		main => \&StoreDailyMain,
 		from => "hour_day/data",
 	);
-}
 
 	my $faIn = $owner->importNexus(
-		from => "hour_day/data",
+		from => "day/data",
 		as => "input",
 		import => "reader",
 	);
@@ -425,26 +490,27 @@ setInputLines(
 	"new,OP_INSERT,1331145211000000\n",
 	"dump,packets\n",
 	"dump,hourly\n",
+	"dump,daily\n",
 );
 &Traffic1::RUN();
 #print &getResultLines();
 ok(&getResultLines(), 
-'> new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100
+'! new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100
 input.packet OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
 input.hourly OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
-> new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50
+! new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50
 input.packet OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
 input.hourly OP_DELETE time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
 input.hourly OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
-> new,OP_INSERT,1330889612000000,1.2.3.4,5.6.7.8,2000,80,150
+! new,OP_INSERT,1330889612000000,1.2.3.4,5.6.7.8,2000,80,150
 input.packet OP_INSERT time="1330889612000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="150" 
 input.hourly OP_INSERT time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
-> new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300
+! new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300
 input.packet OP_INSERT time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
 input.hourly OP_DELETE time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
@@ -452,22 +518,25 @@ input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.
 input.hourly OP_INSERT time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="450" 
 input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="600" 
-> new,OP_INSERT,1330972411000000,1.2.3.5,5.6.7.9,3000,80,200
+! new,OP_INSERT,1330972411000000,1.2.3.5,5.6.7.9,3000,80,200
 input.packet OP_INSERT time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
 input.hourly OP_INSERT time="1330970400000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
 input.daily OP_INSERT time="1330905600000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
-> new,OP_INSERT,1331058811000000
+! new,OP_INSERT,1331058811000000
 input.packet OP_INSERT time="1331058811000000" 
-> new,OP_INSERT,1331145211000000
+! new,OP_INSERT,1331145211000000
 input.packet OP_INSERT time="1331145211000000" 
-> dump,packets
+! dump,packets
 time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
 time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
 time="1330889612000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="150" 
 time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
 time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
-> dump,hourly
+! dump,hourly
 time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
 time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="450" 
 time="1330970400000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+! dump,daily
+time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="600" 
+time="1330905600000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
 ');
