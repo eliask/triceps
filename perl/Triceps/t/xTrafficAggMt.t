@@ -196,18 +196,26 @@ sub RawToHourlyMain # (@opts)
 		labels => [
 			$faIn->getFnReturn()->getLabelHash(),
 			hourly => $lbHourlyFiltered,
-			dumpPackets => $tPackets->getDumpLabel(),
 		],
 		import => "writer",
 	);
 
+	my $lbPrint = $faOut->getLabel("print");
+
 	# update the notion of the current hour before the table
-	$faIn->getLabel("packet")->makeChained("updateHour", undef, sub {
-		$currentHour = &hourStamp($_[1]->getRow()->get("time"));
+	$faIn->getLabel("packet")->makeChained("processPackets", undef, sub {
+		my $row = $_[1]->getRow();
+		$currentHour = &hourStamp($row->get("time"));
+		# skip the timestamp updates without data
+		if (defined $row->get("bytes")) {
+			$unit->call($tPackets->getInputLabel()->adopt($_[1]));
+		}
 	});
-	$faIn->getLabel("packet")->chain($tPackets->getInputLabel());
 
 	# the dump request processing
+	$tPackets->getDumpLabel()->makeChained("printDump", undef, sub {
+		$unit->makeArrayCall($lbPrint, "OP_INSERT", $_[1]->getRow()->printP() . "\n");
+	});
 	$faIn->getLabel("dumprq")->makeChained("dump", undef, sub {
 		if ($_[1]->getRow()->get("what") eq "packets") {
 			$tPackets->dumpAll();
@@ -263,7 +271,7 @@ if (0) {
 	$faIn->getLabel("print")->makeChained("print", undef, sub {
 		&send($_[1]->getRow()->get("text"));
 	});
-	for my $tag ("packet", "hourly", "dumpPackets") {
+	for my $tag ("packet", "hourly") {
 		makePrintLabel($tag, $faIn->getLabel($tag));
 	}
 
@@ -310,15 +318,11 @@ input.packet OP_INSERT time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6
 input.hourly OP_INSERT time="1330970400000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
 > new,OP_INSERT,1331058811000000
 input.packet OP_INSERT time="1331058811000000" 
-input.hourly OP_INSERT time="1331056800000000" bytes="0" 
 > new,OP_INSERT,1331145211000000
 input.packet OP_INSERT time="1331145211000000" 
-input.hourly OP_INSERT time="1331143200000000" bytes="0" 
 > dump,packets
-input.dumpPackets OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
-input.dumpPackets OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
-input.dumpPackets OP_INSERT time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
-input.dumpPackets OP_INSERT time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
-input.dumpPackets OP_INSERT time="1331058811000000" 
-input.dumpPackets OP_INSERT time="1331145211000000" 
+time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
 ');
