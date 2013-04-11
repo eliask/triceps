@@ -16,7 +16,8 @@ use strict;
 # Remember a file that has been just opened. This file will be revoked when
 # the thread is requested dead.
 # @param $file - the file glob object (such as *STDIN or one returned by IO::Socket::INET->new())
-sub track(*) { # ($self, $file)
+sub track(*) # ($self, $file)
+{
 	my $fd = fileno($_[1]) or confess "Triceps::TrieadOwner::open(): can not get the file descriptor";
 	$_[0]->trackFd($fd);
 }
@@ -25,14 +26,16 @@ sub track(*) { # ($self, $file)
 # closing a file descriptor, the thread shutdown will corrupt a random file descriptor
 # that happens to have the same id. Better yet, use the TrieadOwner::close().
 # @param $file - the file glob object (such as *STDIN or one returned by IO::Socket::INET->new())
-sub forget(*) { # ($self, $file)
+sub forget(*) # ($self, $file)
+{
 	my $fd = fileno($_[1]) or confess "Triceps::TrieadOwner::forget(): can not get the file descriptor";
 	$_[0]->forgetFd($fd);
 }
 
 # Forget a file and close it conveniently.
 # @param $file - the file glob object (such as *STDIN or one returned by IO::Socket::INET->new())
-sub close(*) { # ($self, $file)
+sub close(*) # ($self, $file)
+{
 	my $fd = fileno($_[1]) or confess "Triceps::TrieadOwner::forget(): can not get the file descriptor";
 	$_[0]->forgetFd($fd);
 	close($_[1]);

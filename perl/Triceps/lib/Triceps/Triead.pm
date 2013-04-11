@@ -55,7 +55,8 @@ our @opts = (
 # owner: the TrieadOwner object constructed for this thread
 # immediate: passed through, flag for use in the nexus imports (default: 0)
 #
-sub start { # (@opts)
+sub start # (@opts)
+{
 	my $myname = "Triceps::Triead::start";
 	my $opts = {};
 
@@ -115,7 +116,8 @@ sub start { # (@opts)
 # threads.
 # (Default: 1)
 #
-sub startHere { # (@opts)
+sub startHere # (@opts)
+{
 	my $myname = "Triceps::Triead::start";
 	my $opts = {};
 	my @myOpts = ( # options that don't propagate through

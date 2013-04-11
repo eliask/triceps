@@ -23,7 +23,8 @@ our $global; # the "global" thread owner
 # It creates a temporary service thread "global" that holds the
 # app until all the first-level threads are defined. It can
 # also be used to export the nexuses with row types and even labels.
-sub build($&) { # ($appname, &builder)
+sub build($&) # ($appname, &builder)
+{
 	$name = shift; # package var!
 	my $code = shift;
 	$app = &make($name);
@@ -43,7 +44,8 @@ sub build($&) { # ($appname, &builder)
 # except that 
 #   import => "none"
 # is always implicitly added. And the facet is never returned.
-sub globalNexus { # (@opts)
+sub globalNexus # (@opts)
+{
 	$global->makeNexus(@_, import => "none");
 	return undef;
 }
