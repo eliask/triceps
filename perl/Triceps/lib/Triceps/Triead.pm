@@ -106,14 +106,21 @@ sub start { # (@opts)
 # harvest => 0/1
 # After the main function exits, automatically run the harvesrer.
 # If you set it to 0, don't forget to call the harvester after this 
-# function returns. Default: 1.
+# function returns. (Default: 1)
 # This option will not be passed to main().
+#
+# makeApp => 0/1
+# Before doing anything, create the App. This is convenient because typically
+# this thread becomes the "anchor" of the App that creates all the other
+# threads.
+# (Default: 1)
 #
 sub startHere { # (@opts)
 	my $myname = "Triceps::Triead::start";
 	my $opts = {};
 	my @myOpts = ( # options that don't propagate through
 		harvest => [ 1, undef ],
+		makeApp => [ 1, undef ],
 	);
 
 	&Triceps::Opt::parse($myname, $opts, {
@@ -128,7 +135,12 @@ sub startHere { # (@opts)
 	@_ = (); # workaround for threads leaking objects
 
 	# no need to declare the Triead, since all the code executes synchronously anyway
-	my $app = &Triceps::App::resolve($opts->{app});
+	my $app;
+	if ($opts->{makeApp}) {
+		$app = &Triceps::App::make($opts->{app});
+	} else {
+		$app = &Triceps::App::resolve($opts->{app});
+	}
 	my $owner = Triceps::TrieadOwner->new(undef, undef, $app, $opts->{thread}, $opts->{fragment});
 	push(@args, "owner", $owner);
 	eval { &{$opts->{main}}(@args) };

@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 232 };
+BEGIN { plan tests => 229 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -164,8 +164,7 @@ ok(ref $rt1, "Triceps::RowType");
 
 # construction with Triead::startHere
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
+	my $a1;
 
 	Triceps::Triead::startHere(
 		app => "a1",
@@ -175,6 +174,8 @@ ok(ref $rt1, "Triceps::RowType");
 			&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
 			ok(ref $opts->{owner}, "Triceps::TrieadOwner");
 			ok(!$opts->{owner}->isDead());
+			$a1 = $opts->{owner}->app();
+			ok(ref $a1, "Triceps::App");
 		},
 	);
 
@@ -188,7 +189,7 @@ ok(ref $rt1, "Triceps::RowType");
 	ok($ts[1]->isDead());
 }
 
-# startHere with no harvest
+# startHere with no harvest and no app making
 # And along the way test the Triead state changes.
 {
 	my $a1 = Triceps::App::make("a1");
@@ -196,6 +197,7 @@ ok(ref $rt1, "Triceps::RowType");
 
 	my $t; # will contain the Triead created
 	Triceps::Triead::startHere(
+		makeApp => 0,
 		app => "a1",
 		thread => "t1",
 		fragment => "frag",
@@ -642,9 +644,6 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 
 # the interruption of the file read by descriptor
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	Triceps::Triead::startHere(
 		app => "a1",
 		thread => "t1",
@@ -718,9 +717,6 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 
 # the interruption of the file read by object
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	Triceps::Triead::startHere(
 		app => "a1",
 		thread => "t1",
@@ -793,9 +789,6 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 
 # test of requestMyselfDead()
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	Triceps::Triead::startHere(
 		app => "a1",
 		thread => "main",

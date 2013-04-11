@@ -751,4 +751,3 @@ forgetFd(WrapTrieadOwner *self, int fd)
 #// }
 
 #// XXX add addUnit() etc
-#// XXX in startHere() add an option newApp => 1 to create a new app right there

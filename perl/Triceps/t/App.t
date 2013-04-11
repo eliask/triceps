@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 156 };
+BEGIN { plan tests => 151 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -157,6 +157,7 @@ ok(ref $rt1, "Triceps::RowType");
 	$a1->declareTriead("tx");
 
 	Triceps::Triead::startHere(
+		makeApp => 0,
 		app => "a1",
 		thread => "t1",
 		main => sub {
@@ -183,6 +184,7 @@ ok(ref $rt1, "Triceps::RowType");
 	$a1->declareTriead("tx");
 
 	Triceps::Triead::startHere(
+		makeApp => 0,
 		app => "a1",
 		thread => "t1",
 		main => sub {
@@ -215,6 +217,7 @@ ok(ref $rt1, "Triceps::RowType");
 	$a1->declareTriead("tx");
 
 	Triceps::Triead::startHere(
+		makeApp => 0,
 		app => "a1",
 		thread => "t1",
 		main => sub {
@@ -239,6 +242,7 @@ ok(ref $rt1, "Triceps::RowType");
 
 	# this thread is for waiting for readiness only
 	Triceps::Triead::startHere(
+		makeApp => 0,
 		app => "a1",
 		thread => "t2",
 		main => sub {
@@ -358,9 +362,6 @@ ok(ref $rt1, "Triceps::RowType");
 
 # pass around some data
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	# this thread will read the final result
 	my $res;
 	Triceps::Triead::startHere(
@@ -484,9 +485,6 @@ ok(ref $rt1, "Triceps::RowType");
 # the situation when the same thread serves as both the 
 # source and sink; and also tests shutdownFragment()
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	my $tharvest;
 
 	my $res;
@@ -503,8 +501,8 @@ ok(ref $rt1, "Triceps::RowType");
 			# harvest in the new thread while the original thread
 			# can call ok() without any races
 			$tharvest = async {
-				my $a1 = Triceps::App::find("a1");
-				$a1->harvester();
+				my $app = Triceps::App::find("a1");
+				$app->harvester();
 			};
 
 			my $faOut = $to->makeNexus(
@@ -572,7 +570,7 @@ ok(ref $rt1, "Triceps::RowType");
 			# check that t2 exits and disappears from the App because
 			# it's in a fragment, have to busy-wait
 			while (1) {
-				my %ts = $a1->getTrieads();
+				my %ts = $app->getTrieads();
 				last if (!defined $ts{"t2"});
 			}
 
@@ -588,9 +586,6 @@ ok(ref $rt1, "Triceps::RowType");
 
 # the topology check error, and also the error catch in the startHere during harvesting
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	eval { Triceps::Triead::startHere(
 		app => "a1",
 		thread => "t1",
@@ -648,9 +643,6 @@ ok(ref $rt1, "Triceps::RowType");
 
 # the scoped auto-drain, exclusive or with no wait
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	my $res;
 	Triceps::Triead::startHere(
 		app => "a1",
@@ -732,9 +724,6 @@ ok(ref $rt1, "Triceps::RowType");
 
 # the scoped auto-drain, shared with wait
 {
-	my $a1 = Triceps::App::make("a1");
-	ok(ref $a1, "Triceps::App");
-
 	my $res;
 	Triceps::Triead::startHere(
 		app => "a1",
