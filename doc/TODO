@@ -89,6 +89,12 @@ Things that need to be done:
 * adopt a nexus from another app, for inter-app communication
 * when a thread in a fragment aborts, shut down and abort only that fragment
 * get rid of periods at the end of error messages
+* support arbitrary Perl interruptors for the threads
+* a structured option-based way to build a Table
+* a structured option-based way to build a Label (or maybe better a Compute
+  element with an input and output Label)
+* generalize a way to describe the building of a row type from other
+  row types, like the joins do, to be shared by Joins and Compute
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -99,7 +105,7 @@ Things that need to be done:
 * doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
 * doc: Autoref::swap()
 * doc: RowType::isRowEmpty()
-* doc: croak() in typemap
+* doc: croak() in typemap, it croak nicely, with a stack trace
 * doc: the "*" placeholder in Opt, Opt::drop, Opt::dropExcept
 * doc: FnReturn::isFaceted()
 
