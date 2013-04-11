@@ -38,73 +38,120 @@ use Triceps::X::TestFeed qw(:all);
 #   print - strings for printing at the end of pipeline
 #   dumprq - dump requests to the elements of the pipeline
 # Options inherited from Triead::start.
-sub ReaderThread # (@opts)
+sub ReaderMain # (@opts)
 {
-	Triceps::Triead::start(
-		@_,
-		main => sub {
-			my $opts = {};
-			Triceps::Opt::parse("traffic main", $opts, {@Triceps::Triead::opts}, @_);
-			my $owner = $opts->{owner};
-			my $unit = $owner->unit();
+	my $opts = {};
+	Triceps::Opt::parse("traffic main", $opts, {@Triceps::Triead::opts}, @_);
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
 
-			my $rtPacket = Triceps::RowType->new(
-				time => "int64", # packet's timestamp, microseconds
-				local_ip => "string", # string to make easier to read
-				remote_ip => "string", # string to make easier to read
-				local_port => "int32", 
-				remote_port => "int32",
-				bytes => "int32", # size of the packet
-			) or confess "$!";
+	my $rtPacket = Triceps::RowType->new(
+		time => "int64", # packet's timestamp, microseconds
+		local_ip => "string", # string to make easier to read
+		remote_ip => "string", # string to make easier to read
+		local_port => "int32", 
+		remote_port => "int32",
+		bytes => "int32", # size of the packet
+	) or confess "$!";
 
-			my $rtPrint = Triceps::RowType->new(
-				text => "string", # the text to print (including \n)
-			) or confess "$!";
+	my $rtPrint = Triceps::RowType->new(
+		text => "string", # the text to print (including \n)
+	) or confess "$!";
 
-			my $rtDumprq = Triceps::RowType->new(
-				what => "string", # identifies, what to dump
-			) or confess "$!";
+	my $rtDumprq = Triceps::RowType->new(
+		what => "string", # identifies, what to dump
+	) or confess "$!";
 
-			my $faData = $owner->makeNexus(
-				name => "data",
-				labels => [
-					packet => $rtPacket,
-					print => $rtPrint,
-					dumprq => $rtDumprq,
-				],
-				import => "writer",
-			);
-
-			my $lbPacket = $faData->getLabel("packet");
-			my $lbPrint = $faData->getLabel("print");
-			my $lbDumprq = $faData->getLabel("dumprq");
-
-			$owner->readyReady();
-
-			while(&readLine) {
-				chomp;
-				# print the input line, as a debugging exercise
-				$unit->makeArrayCall($lbPrint, "OP_INSERT", "> $_\n");
-
-				my @data = split(/,/); # starts with a command, then string opcode
-				my $type = shift @data;
-				if ($type eq "new") {
-					$unit->makeArrayCall($lbPacket, @data);
-				} elsif ($type eq "dump") {
-					$unit->makeArrayCall($lbDumprq, "OP_INSERT", $data[0]);
-				} else {
-					$unit->makeArrayCall($lbPrint, "OP_INSERT", "Unknown command '$type'\n");
-				}
-				$owner->flushWriters();
-			}
-
-			{
-				# drain the pipeline before shutting down
-				my $ad = Triceps::AutoDrain::makeShared($owner);
-				$owner->app()->shutdown();
-			}
-		},
+	my $faData = $owner->makeNexus(
+		name => "data",
+		labels => [
+			packet => $rtPacket,
+			print => $rtPrint,
+			dumprq => $rtDumprq,
+		],
+		import => "writer",
 	);
+
+	my $lbPacket = $faData->getLabel("packet");
+	my $lbPrint = $faData->getLabel("print");
+	my $lbDumprq = $faData->getLabel("dumprq");
+
+	$owner->readyReady();
+
+	while(&readLine) {
+		chomp;
+		# print the input line, as a debugging exercise
+		$unit->makeArrayCall($lbPrint, "OP_INSERT", "> $_\n");
+
+		my @data = split(/,/); # starts with a command, then string opcode
+		my $type = shift @data;
+		if ($type eq "new") {
+			$unit->makeArrayCall($lbPacket, @data);
+		} elsif ($type eq "dump") {
+			$unit->makeArrayCall($lbDumprq, "OP_INSERT", $data[0]);
+		} else {
+			$unit->makeArrayCall($lbPrint, "OP_INSERT", "Unknown command '$type'\n");
+		}
+		$owner->flushWriters();
+	}
+
+	{
+		# drain the pipeline before shutting down
+		my $ad = Triceps::AutoDrain::makeShared($owner);
+		$owner->app()->shutdown();
+	}
+}
+
+# Create all the other threads and then read the tail of the
+# pipeline and print the data from it.
+# Options inherited from Triead::start.
+sub PrintMain # (@opts)
+{
+	my $opts = {};
+	Triceps::Opt::parse("traffic main", $opts, {@Triceps::Triead::opts}, @_);
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "read",
+		main => \&ReaderMain,
+	);
+if (0) {
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "raw_hour",
+		main => \&RawToHourlyMain,
+		from => "read/data",
+	);
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "hour_day",
+		main => \&HourlyToDailyMain,
+		from => "raw_hour/data",
+	);
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "day",
+		main => \&StoreDailyMain,
+		from => "hour_day/data",
+	);
+}
+
+	$owner->markConstructed();
+
+	my $faData = $owner->importNexus(
+		from => "read/data",
+		import => "reader",
+	);
+
+	$faData->getLabel("print")->makeChained("print", undef, sub {
+		&send($_[1]->getRow()->get("text"));
+	});
+	makePrintLabel("packet", $faData->getLabel("packet"));
+
+	$owner->readyReady();
+	$owner->mainLoop(); # all driven by the reader
 }
 
 sub RUN {
@@ -112,49 +159,7 @@ sub RUN {
 Triceps::Triead::startHere(
 	app => "traffic",
 	thread => "print",
-	main => sub {
-		my $opts = {};
-		Triceps::Opt::parse("traffic main", $opts, {@Triceps::Triead::opts}, @_);
-		my $owner = $opts->{owner};
-		my $unit = $owner->unit();
-
-		ReaderThread(
-			app => $opts->{app},
-			thread => "read",
-		);
-if (0) {
-		RawToHourlyThread(
-			app => $opts->{app},
-			thread => "raw_hour",
-			from => "read/data",
-		);
-		HourlyToDailyThread(
-			app => $opts->{app},
-			thread => "hour_day",
-			from => "raw_hour/data",
-		);
-		StoreDailyThread(
-			app => $opts->{app},
-			thread => "day",
-			from => "hour_day/data",
-		);
-}
-
-		$owner->markConstructed();
-
-		my $faData = $owner->importNexus(
-			from => "read/data",
-			import => "reader",
-		);
-
-		$faData->getLabel("print")->makeChained("print", undef, sub {
-			&send($_[1]->getRow()->get("text"));
-		});
-		makePrintLabel("packet", $faData->getLabel("packet"));
-
-		$owner->readyReady();
-		$owner->mainLoop(); # all driven by the reader
-	},
+	main => \&PrintMain,
 );
 
 };
