@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 53 };
+BEGIN { plan tests => 65 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -216,5 +216,47 @@ package main;
 
 	# clearing calls clearArgs() which will wipe out the object
 	ok(!exists $tcopy->{a});
+}
+
+######################### makeChained ###################################
+
+{
+	my $res;
+	my $olb = $u1->makeDummyLabel($rt1, "lbOrig");
+	ok(ref $olb, "Triceps::Label");
+	my $clb = $olb->makeChained("lbChained", sub {
+		$res = "cleared";
+	} , sub {
+		my $label = shift;
+		my $rowop = shift;
+		$res .= $rowop->printP();
+		$res .= sprintf("\nArgs: %s\n", join(' ', @_));
+	}, 1, 2, 3);
+	ok(ref $clb, "Triceps::Label");
+
+	@chain = $olb->getChain();
+	ok($#chain, 0);
+	ok($clb->same($chain[0]));
+
+	$u1->makeHashCall($olb, "OP_INSERT", b => 1);
+	ok($res, "lbOrig OP_INSERT b=\"1\" \nArgs: 1 2 3\n");
+
+	$clb->clear();
+	ok($res, "cleared");
+
+	# test errors
+	ok(!defined eval {
+		$olb->makeChained("lbChained", 1, 2);
+	});
+	ok($@, qr/^Triceps::Unit::makeLabel\(clear\): code must be a reference to Perl function/);
+	ok(!defined eval {
+		$olb->makeChained("lbChained", undef);
+	});
+	ok($@, qr/^Use: Label::makeChained\(self, name, clear, exec, ...\)/);
+	ok(!defined eval {
+		$olb->clear();
+		$olb->makeChained("lbChained", undef, undef);
+	});
+	ok($@, qr/^Triceps::Label::getUnit: label has been already cleared at \S+ line \d+\n\tTriceps::Label::makeChained/);
 }
 

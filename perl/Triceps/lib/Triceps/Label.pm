@@ -41,4 +41,28 @@ sub makeRowopArray # (self, opcode, fieldValue, ...)
 	return $rop;
 }
 
+# Make a label chained from this one.
+# Automatically picks up the row type and unit from this label.
+# The arguments are the same as for makeLabel() except that the
+# row type gets skipped.
+# Confesses on any error.
+# @param name - name of the new label
+# @param clear - the clear function
+# @param exec - the label execution function
+# @param args - arguments for the clear and exec functions
+sub makeChained # ($self, $name, &$clear, &$exec, @args)
+{
+	confess "Use: Label::makeChained(self, name, clear, exec, ...)"
+		unless ($#_ >= 3);
+	my $self = shift;
+	my $name = shift;
+	my $clear = shift;
+	my $exec = shift;
+	my $rt = $self->getRowType() or confess "$!";
+	my $unit = $self->getUnit() or confess "$!";
+	my $lb = $unit->makeLabel($rt, $name, $clear, $exec, @_) or confess "$!";
+	$self->chain($lb) or confess "$!";
+	return $lb;
+}
+
 1;
