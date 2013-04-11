@@ -863,7 +863,7 @@ Triceps::App::build "a1", sub {
 			my $to = $opts->{owner};
 			$to->importNexus(
 				from => "global/types",
-				import => "reader",
+				import => "writer", # if importing just for the types, use "writer"!
 			);
 			$to->readyReady();
 		},
