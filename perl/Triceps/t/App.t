@@ -524,7 +524,7 @@ ok(ref $rt1, "Triceps::RowType");
 				import => "reader",
 			);
 
-			# XXX make a convenience method for making this kind of labels
+			# XXX make a convenience method for making this kind of labels Label::make(from => ...)
 			$faIn->getLabel("one")->chain($to->unit()->makeLabel($rt1, "lbtest", undef, sub {
 				my $rop = $_[1]; 
 				$res .= $rop->printP();

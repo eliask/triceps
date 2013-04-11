@@ -751,4 +751,4 @@ forgetFd(WrapTrieadOwner *self, int fd)
 #// }
 
 #// XXX add addUnit() etc
-#// XXX support arbitrary interruptors?
+#// XXX in startHere() add an option newApp => 1 to create a new app right there
