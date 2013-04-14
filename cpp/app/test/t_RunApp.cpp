@@ -1335,3 +1335,71 @@ UTESTCASE shutdown_disconnects(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// check that flushWriters() still works (by doing nothing) after abort()
+// and does not get stuck
+UTESTCASE flush_after_abort(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
+
+	// prepare elements
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  dv);
+
+	// a reader has to be present to properly test the interaction
+	Autoref<Facet> fa1a = ow1->makeNexusReader("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+	ow1->markReady();
+
+	// the facet used for the test
+	Autoref<Facet> fa2a = ow2->importWriter("t1", "nxa", "");
+
+	// just to mark ow2 as not input-only, since that changes the logic
+	Autoref<Facet> fa2b = ow2->makeNexusReader("nxb")
+		->addLabel("one", rt1)
+		->complete()
+	;
+
+	ow2->markReady();
+	
+	ow1->readyReady();
+	ow2->readyReady();
+
+	// the actual test
+	// first do a proper write, to let the writer discover the readers
+	ow2->unit()->call(new Rowop(fa2a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r1) );
+	ow2->flushWriters();
+
+	// this tests that as abort() calls shutdown() and thus disconnects the writers and readers,
+	// the writer would not get stuck forever retrying a dead reader
+	ow2->unit()->call(new Rowop(fa2a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r1) );
+	ow2->abort("test error");
+	ow2->flushWriters();
+
+	ow1->markDead();
+	ow2->markDead();
+
+	{
+		string msg;
+		try {
+			a1->harvester();
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "App 'a1' has been aborted by thread 't2': test error\n");
+	}
+
+	restore_uncatchable();
+}

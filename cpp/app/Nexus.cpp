@@ -141,16 +141,19 @@ void Nexus::addWriter(NexusWriter *wr)
 
 void Nexus::deleteWriter(NexusWriter *wr)
 {
-	pw::lockmutex lm(mutex_);
-	int sz = writers_.size();
-	for (int i = 0; i< sz; i++)
-		if (writers_[i].get() == wr) {
-			// replace this element with the last one, and discard the last one
-			if (i != sz-1)
-				writers_[i] = writers_[sz-1];
-			writers_.pop_back();
-			break;
-		}
+	{
+		pw::lockmutex lm(mutex_);
+		int sz = writers_.size();
+		for (int i = 0; i< sz; i++)
+			if (writers_[i].get() == wr) {
+				// replace this element with the last one, and discard the last one
+				if (i != sz-1)
+					writers_[i] = writers_[sz-1];
+				writers_.pop_back();
+				break;
+			}
+	}
+	wr->setReaderVec(NULL); // it won't be writing anything any more
 }
 
 }; // TRICEPS_NS
