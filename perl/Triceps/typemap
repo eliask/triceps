@@ -31,6 +31,8 @@ WrapFacet *	O_WRAP_OBJECT
 WrapNexus *	O_WRAP_OBJECT
 WrapAutoDrain *	O_WRAP_OBJECT
 
+WrapPerlValue *	O_WRAP_OBJECT
+
 OUTPUT
 # The Perl object is blessed into 'CLASS', which should be a
 # char* having the name of the package for the blessing.

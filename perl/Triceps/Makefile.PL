@@ -80,6 +80,8 @@ PerlCallback.o: PerlCallback.h
 
 PerlApp.o: PerlApp.h
 
+PerlValue.o: PerlValue.h
+
 PerlAggregator.o: PerlCallback.h PerlAggregator.h WrapAggregatorContext.h
 
 AggregatorContext.o: WrapAggregatorContext.h
