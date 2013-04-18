@@ -8,6 +8,16 @@ use 5.008000;
 use strict;
 use warnings;
 
+# This function must be outside the package.
+sub _Triceps_eval_ {
+	# print "DBG code:\n$_[0]\n";
+	my $c = eval $_[0];
+	# print "DBG compiled $c\n";
+	# print "DBG error $@\n";
+	die $@ if ($@);
+	return $c;
+}
+
 package main;
 
 # Triceps uses SIGUSR2 to interrupt the threads reading from file descriptors,

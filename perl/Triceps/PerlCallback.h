@@ -13,6 +13,7 @@
 #define __TricepsPerl_PerlCallback_h__
 
 #include <common/Conf.h>
+#include "PerlValue.h" // XXX add dependencies in Makefile.PL
 
 using namespace TRICEPS_NS;
 
@@ -33,7 +34,10 @@ namespace TricepsPerl
 class  PerlCallback : public Starget
 {
 public:
-	PerlCallback();
+	// @param threadable - will try to keep a copy of the code and
+	//        arguments in the C++ form, suitable for copying to
+	//        another thread, if possible.
+	PerlCallback(bool threadable = false);
 	~PerlCallback(); // clears
 
 	// Clear the contents, decrementing the references to objects.
@@ -43,21 +47,39 @@ public:
 	// @param code - Perl code reference for processing the rows; will check
 	//               for correctness; will make a copy of it (because if keeping a reference,
 	//               SV may change later, a copy is guaranteed to stay the same).
+	//               OR a string with the code: it will be remembered and also 
+	//               compiled into a sub {}. If the code is not a string, will
+	//               reset the threadable_ flag.
 	// @param fname - caller function name, for error messages
 	// @return - true on success, false (and error code) on failure.
 	bool setCode(SV *code, const char *fname);
 
 	// Append another argument to args_.
 	// @param arg - argument value to append; will make a copy of it.
+	//        If the code is a string and all the args can be represented
+	//        as PerlValues, they will be preserved. Otherwise the threadable_
+	//        flag will be reset.
 	void appendArg(SV *arg);
 
 	// Check that the value of the code and args are the same
 	bool equals(const PerlCallback *other) const;
 
+	// Whether can still be threadable, as limited by the currently
+	// set code and arguments.
+	bool isThreadable() const
+	{
+		return threadable_;
+	}
+
 public:
 	// for macros, the internals must be public
+	bool threadinit_; // the initial state of threadable stat, to be used after clearing, as came from the constructor
+	bool threadable_; // try to preserve the args in the form suitable for copying to another thread
 	SV *code_; // the code reference
 	vector<SV *> args_; // optional arguments for the code
+	vector<Autoref<PerlValue> > argst_; // optional arguments in thread-copyable format
+	string codestr_; // the source code string representation
+	Erref errt_; // errors of parsing into the threadable format, if any
 
 private:
 	PerlCallback(const PerlCallback &);

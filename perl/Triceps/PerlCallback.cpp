@@ -26,7 +26,9 @@ namespace TricepsPerl
 
 ///////////////////////// PerlCallback ///////////////////////////////////////////////
 
-PerlCallback::PerlCallback() :
+PerlCallback::PerlCallback(bool threadable) :
+	threadinit_(threadable),
+	threadable_(threadable),
 	code_(NULL)
 { }
 
@@ -47,11 +49,86 @@ void PerlCallback::clear()
 		}
 		args_.clear();
 	}
+	codestr_.clear();
+	argst_.clear();
+	threadable_ = threadinit_;
+	errt_ = NULL;
 }
 
 bool PerlCallback::setCode(SV *code, const char *fname)
 {
 	clear();
+
+	if (threadable_) {
+		// printf("DBG %s: threadable\n", fname);
+		if (code != NULL && SvPOK(code)) {
+			// printf("DBG %s: source code\n", fname);
+			// try to compile the code from a string
+			Erref err;
+			STRLEN len;
+			char *s = SvPV(code, len);
+			codestr_.assign(s, len);
+
+			// XXX should it check for an empty string?
+
+			string subcode = "sub {\n";
+			subcode += codestr_;
+			subcode += "}\n";
+
+			dSP;
+
+			ENTER; SAVETMPS; 
+
+			PUSHMARK(SP);
+			XPUSHs( sv_2mortal(newSVpv(subcode.c_str(), subcode.size())) );
+			PUTBACK; 
+
+			// eval_pv() and eval_sv() don't report the errors properly
+			int nv = call_pv("::_Triceps_eval_", G_SCALAR|G_EVAL);
+
+			if (SvTRUE(ERRSV)) {
+				// printf("DBG compilation got an error\n");
+				err.f("%s: failed to compile the source code", fname);
+				err.f("Compilation error: %s", SvPV_nolen(ERRSV));
+			}
+
+			SPAGAIN;
+			if (nv < 1) { 
+				err.f("%s: source code compulation returned nothing", fname);
+			} else {
+				for (; nv > 1; nv--)
+					POPs;
+				code = POPs;
+			}
+			PUTBACK; 
+
+			if (code != NULL)
+				SvREFCNT_inc(code); // to get over the LEAVE
+
+			FREETMPS; LEAVE;
+
+			if (err->hasError()) {
+				// nothing, already produced a message
+			} else if (code == NULL) {
+				err.f("%s: internal error: the source code compilation returned NULL", fname);
+			} else if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
+				err.f("%s: the source code compilation returned not a code object", fname);
+			} else {
+				sv_2mortal(code); // make it mortal in the original frame
+			}
+
+			if (err->hasError()) {
+				err.fAppend(new Errors(subcode), "The source code was:");
+				setErrMsg(err->print());
+				return false;
+			}
+
+			// and the rest of the logic will pick up the compiled code
+		} else {
+			threadable_ = false;
+			errt_.f("the code is not a source code string");
+		}
+	}
 
 	if (code == NULL || !SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
 		setErrMsg( string(fname) + ": code must be a reference to Perl function" );
@@ -70,10 +147,20 @@ void PerlCallback::appendArg(SV *arg)
 	SV *argcp = newSV(0);
 	sv_setsv(argcp, arg);
 	args_.push_back(argcp);
+
+	if (threadable_) {
+		try {
+			argst_.push_back(PerlValue::make(arg));
+		} catch(Exception e) {
+			threadable_ = false;
+			errt_.fAppend(e.getErrors(), "argument %d is not threadable:", (int)args_.size()-1);
+		}
+	}
 }
 
 bool PerlCallback::equals(const PerlCallback *other) const
 {
+	// XXX compare the threadable versions if available
 	if (args_.size() != other->args_.size())
 		return false;
 	if ((code_ == NULL) ^ (other->code_ == NULL))
