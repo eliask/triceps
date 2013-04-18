@@ -39,6 +39,19 @@ PerlSortCondition::PerlSortCondition(const PerlSortCondition &other) :
 	name_(other.name_) // name stays the same!
 { }
 
+PerlSortCondition::PerlSortCondition(const PerlSortCondition *other, Table *t) :
+	SortedIndexCondition(this, t),
+	cbInitialize_(other->cbInitialize_), 
+	cbCompare_(other->cbCompare_),
+	initialized_(other->initialized_),
+	svRowType_(other->svRowType_),
+	tabType_(other->tabType_),
+	name_(other->name_)
+{
+	if (svRowType_ != NULL)
+		SvREFCNT_inc(svRowType_);
+}
+
 PerlSortCondition::~PerlSortCondition()
 {
 	if (svRowType_ != NULL)
@@ -73,6 +86,11 @@ void PerlSortCondition::printTo(string &res, const string &indent, const string 
 SortedIndexCondition *PerlSortCondition::copy() const
 {
 	return new PerlSortCondition(*this);
+}
+
+TreeIndexType::Less *PerlSortCondition::tableCopy(Table *t) const
+{
+	return new PerlSortCondition(this, t);
 }
 
 bool PerlSortCondition::operator() (const RowHandle *r1, const RowHandle *r2) const

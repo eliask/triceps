@@ -95,6 +95,8 @@ Things that need to be done:
   element with an input and output Label)
 * generalize a way to describe the building of a row type from other
   row types, like the joins do, to be shared by Joins and Compute
+* maybe there is a point to import nexuses for neither reading nor writing,
+  purely for type definitions (currently they are imported as writers)
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -107,7 +109,8 @@ Things that need to be done:
 * doc: RowType::isRowEmpty()
 * doc: croak() in typemap, it croak nicely, with a stack trace
 * doc: the "*" placeholder in Opt, Opt::drop, Opt::dropExcept
-* doc: FnReturn::isFaceted()
+* doc: FnReturn::isFaceted() in Perl
+* doc: Label::makeChained() in Perl
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

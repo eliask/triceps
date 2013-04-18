@@ -47,6 +47,15 @@ class MySortB : public SortedIndexCondition
 {
 public:
 	// no internal configuration, all copies are the same
+	MySortB()
+	{ }
+	MySortB(const MySortB *other, Table *t) :
+		SortedIndexCondition(other, t)
+	{ }
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new MySortB(this, t);
+	}
 	virtual bool equals(const SortedIndexCondition *sc) const
 	{
 		return true;
@@ -77,6 +86,15 @@ class MySortC : public SortedIndexCondition
 {
 public:
 	// no internal configuration, all copies are the same
+	MySortC()
+	{ }
+	MySortC(const MySortC *other, Table *t) :
+		SortedIndexCondition(other, t)
+	{ }
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new MySortC(this, t);
+	}
 	virtual bool equals(const SortedIndexCondition *sc) const
 	{
 		return true;

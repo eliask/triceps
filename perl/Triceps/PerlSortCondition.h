@@ -45,6 +45,11 @@ public:
 		Onceref<PerlCallback> cbCompare);
 	// always makes an uninitialized copy!
 	PerlSortCondition(const PerlSortCondition &other);
+
+	// Constructor for tableCopy().
+	// Called with an initialized argumetn and produces an initialzied copy.
+	PerlSortCondition(const PerlSortCondition *other, Table *t);
+	
 	~PerlSortCondition();
 
 	// base class methods
@@ -52,6 +57,7 @@ public:
 	virtual bool match(const SortedIndexCondition *sc) const;
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 	virtual SortedIndexCondition *copy() const;
+	virtual TreeIndexType::Less *tableCopy(Table *t) const;
 	virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const;
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype);
 

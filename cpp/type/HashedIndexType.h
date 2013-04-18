@@ -64,9 +64,13 @@ protected:
 		Less(const RowType *rt, intptr_t rhOffset, const vector<int32_t> &keyFld);
 
 		// from TreeIndexType::Less
+		virtual TreeIndexType::Less *tableCopy(Table *t) const;
 		virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const;
 
 	protected:
+		// Internals of the tableCopy();
+		Less(const Less *other, Table *t);
+
 		const vector<int32_t> &keyFld_; // indexes of key fields in the record
 		intptr_t rhOffset_; // offset of this index's data in table's row handle
 

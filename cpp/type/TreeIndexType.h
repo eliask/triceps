@@ -15,6 +15,7 @@
 namespace TRICEPS_NS {
 
 class RowType;
+class Table;
 
 class TreeIndexType : public IndexType
 {
@@ -39,22 +40,48 @@ protected:
 public:
 	// index instance interface: the part made public for the sorted indexes
 	
-	// Comparator base class for the row objects
+	// Comparator base class for the row objects.
+	// Fundamentally, there is only one object needed per IndexType.
+	// But since fatal errors might happen in the comparator (especially
+	// the ones involving user Perl code), there is a necessity to report these
+	// errors back to the table. Throwing exceptions would complicate things
+	// a lot, so instead a side-channel is created, with a table pointer in
+	// the Less object. But then it means creating a Less object for each Index,
+	// not IndexType. So, the initial object is created per IndexType with the
+	// Table pointer as NULL, and then per-Index copies are made with the
+	// real Table pointers.
 	class Less : public Mtarget
 	{
 	public:
 		// Creates and keeps the reference to rt.
+		// The table_ pointer is set to NULL, since the original copy of Less
+		// in the IndexType has no table. That get added when a specialized
+		// per-table instance is copied.
 		Less(const RowType *rt) :
-			rt_(rt)
+			rt_(rt),
+			table_(NULL)
+		{ }
+
+		// The constructor for making a per-Index copy.
+		// @param other - the original object to copy from
+		// @param t - Table pointer to set in the copy
+		Less(const Less *other, Table *t) :
+			rt_(other->rt_),
+			table_(t)
 		{ }
 
 		virtual ~Less();
+
+		// Creates a per-Index copy of this object with a connection to a concrete Table.
+		// @param t - Table pointer to set in the copied object
+		virtual TreeIndexType::Less *tableCopy(Table *t) const = 0;
 
 		// To be redefined by the concrete comparators. 
 		virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const = 0;
 
 	protected:
 		Autoref<const RowType> rt_;
+		Table *table_; // can be used to report the errors from operator()
 
 	private:
 		Less();

@@ -33,6 +33,14 @@ public:
 		rhOffset_(0) // a placeholder value
 	{ }
 
+	// Constructor for tableCopy().
+	// This is called with an initialized argument and produces an
+	// initialized copy.
+	SortedIndexCondition(const SortedIndexCondition *other, Table *t) :
+		TreeIndexType::Less(other, t),
+		rhOffset_(other->rhOffset_)
+	{ }
+
 	// Will be called at the table type initialization time.
 	// By default does nothing.
 	//
@@ -43,6 +51,10 @@ public:
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype);
 
 	// from TreeIndexType::Less
+	//
+	// Redefine this method to create a per-Index copy with Table link.
+	// virtual TreeIndexType::Less *tableCopy(Table *t) const;
+	//
 	// Redefine this method to perform the actual comparison of Less.
 	// Must return true if r1 is less than r2, false if r1 ir greater or equal to r2.
 	// virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const = 0;

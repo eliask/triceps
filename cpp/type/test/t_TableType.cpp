@@ -724,6 +724,16 @@ public:
 		returnError_(returnError)
 	{ }
 
+	MySortCondition(const MySortCondition *other, Table *t) :
+		SortedIndexCondition(other, t),
+		returnError_(other->returnError_)
+	{ }
+
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new MySortCondition(this, t);
+	}
+
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
 	{
 		if (rt_.isNull())

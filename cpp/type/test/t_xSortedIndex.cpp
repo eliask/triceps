@@ -54,6 +54,16 @@ public:
 		idx_(idx)
 	{ }
 
+	Int32SortCondition(const Int32SortCondition *other, Table *t) :
+		SortedIndexCondition(other, t),
+		idx_(other->idx_)
+	{ }
+
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new Int32SortCondition(this, t);
+	}
+
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
 	{
 		SortedIndexCondition::initialize(errors, tabtype, indtype);
@@ -216,6 +226,17 @@ public:
 	MultiInt32SortCondition(NameSet *key):
 		key_(key)
 	{ }
+
+	MultiInt32SortCondition(const MultiInt32SortCondition *other, Table *t) :
+		SortedIndexCondition(other, t),
+		idxs_(other->idxs_),
+		key_(other->key_)
+	{ }
+
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new MultiInt32SortCondition(this, t);
+	}
 
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
 	{
@@ -469,6 +490,16 @@ public:
 	SeqSortCondition() :
 		seq_(0)
 	{ }
+
+	SeqSortCondition(const SeqSortCondition *other, Table *t) :
+		SortedIndexCondition(other, t),
+		seq_(other->seq_)
+	{ }
+
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new SeqSortCondition(this, t);
+	}
 
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype)
 	{

@@ -23,6 +23,17 @@ HashedIndexType::Less::Less(const RowType *rt, intptr_t rhOffset, const vector<i
 	rhOffset_(rhOffset)
 { }
 
+HashedIndexType::Less::Less(const Less *other, Table *t) :
+	TreeIndexType::Less(other, t),
+	keyFld_(other->keyFld_),
+	rhOffset_(other->rhOffset_)
+{ }
+
+TreeIndexType::Less *HashedIndexType::Less::tableCopy(Table *t) const
+{
+	return new Less(this, t);
+}
+
 bool HashedIndexType::Less::operator() (const RowHandle *r1, const RowHandle *r2) const 
 {
 	RhSection *rs1 = r1->get<RhSection>(rhOffset_);
