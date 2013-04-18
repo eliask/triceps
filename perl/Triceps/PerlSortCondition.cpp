@@ -40,7 +40,7 @@ PerlSortCondition::PerlSortCondition(const PerlSortCondition &other) :
 { }
 
 PerlSortCondition::PerlSortCondition(const PerlSortCondition *other, Table *t) :
-	SortedIndexCondition(this, t),
+	SortedIndexCondition(other, t),
 	cbInitialize_(other->cbInitialize_), 
 	cbCompare_(other->cbCompare_),
 	initialized_(other->initialized_),

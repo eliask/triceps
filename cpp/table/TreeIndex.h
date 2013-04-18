@@ -27,7 +27,9 @@ public:
 	// @param tabtype - type of table where this index belongs
 	// @param table - the actual table where this index belongs
 	// @param mytype - type that created this index
-	// @param lessop - less functor class for the key, this index assumes is ownership
+	// @param lessop - less functor class for the key, this index will keep a reference
+	//        (it should be a private copy created from the IndexType's functor and knowing
+	//        about the table, if it ever wants to report any errors)
 	TreeIndex(const TableType *tabtype, Table *table, const TreeIndexType *mytype, Less *lessop);
 	~TreeIndex();
 
@@ -52,7 +54,7 @@ public:
 protected:
 	Set data_; // the data store
 	Autoref<const TreeIndexType> type_; // type of this index
-	Less *less_; // the comparator object, owned by the type
+	Autoref<Less> less_; // the comparator object, index's own copy
 };
 
 }; // TRICEPS_NS

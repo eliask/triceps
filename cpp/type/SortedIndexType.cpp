@@ -160,10 +160,14 @@ Index *SortedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	if (!isInitialized() 
 	|| errors_->hasError())
 		return NULL; 
+
+	// give the index a custom copy of the comparator that can report
+	// errors to the table
+	TreeIndexType::Less *less = sc_->tableCopy(table);
 	if (nested_.empty())
-		return new TreeIndex(tabtype, table, this, sc_);
+		return new TreeIndex(tabtype, table, this, less);
 	else
-		return new TreeNestedIndex(tabtype, table, this, sc_);
+		return new TreeNestedIndex(tabtype, table, this, less);
 }
 
 void SortedIndexType::initRowHandleSection(RowHandle *rh) const

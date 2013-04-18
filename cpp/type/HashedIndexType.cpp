@@ -259,6 +259,8 @@ Index *HashedIndexType::makeIndex(const TableType *tabtype, Table *table) const
 	if (!isInitialized() 
 	|| errors_->hasError())
 		return NULL; 
+	// no need to report the errors, so can just use the same less_,
+	// without creating a copy with the table pointer
 	if (nested_.empty())
 		return new TreeIndex(tabtype, table, this, less_);
 	else
