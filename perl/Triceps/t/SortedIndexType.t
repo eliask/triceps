@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 165 };
+BEGIN { plan tests => 172 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -299,12 +299,12 @@ ok($res, "index PerlSortedIndex(basic)");
 # test the catching of errors in comparator
 # with no initializer, only comparator
 
+# @param comp - the comparator function
+# @return - a pair of error messages from two attempts to insert
+sub testCompError # ($&comp)
 {
-	my $comp; # pointer to the actual comparator
-	my $it3 = Triceps::IndexType->newPerlSorted("bad", undef, sub {
-		return unless defined $comp; # with no value
-		return &$comp(@_);
-	});
+	my $comp = shift; # pointer to the actual comparator
+	my $it3 = Triceps::IndexType->newPerlSorted("bad", undef, $comp);
 	ok(ref $it1, "Triceps::IndexType");
 
 	$tt1 = Triceps::TableType->new($rt1)
@@ -326,25 +326,28 @@ ok($res, "index PerlSortedIndex(basic)");
 	ok($res = $t1->insert($r12));
 	# insert 2nd row, to trigger the error messages
 
-	# a death in comparator
-	$comp = sub {
+	eval { $t1->insert($r11); };
+	my $msg1 = $@;
+	eval { $t1->insert($r11); };
+	my $msg2 = $@;
+	return ($msg1, $msg2);
+}
+
+# test the errors
+{
+	# an outright death in comparator
+	($res1, $res2) = testCompError(sub {
 		die "test a death in PerlSortedIndex comparator\n";
-	};
-	print STDERR "\nExpect message(s) like: Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator\n";
-	ok($res = $t1->insert($r11));
+	});
+	ok($res1, qr/^Error in PerlSortedIndex\(bad\) comparator: test a death in PerlSortedIndex comparator/);
+	ok($res2, qr/^Table is disabled due to the previous error:\n  Error in PerlSortedIndex\(bad\) comparator: test a death in PerlSortedIndex comparator/);
 
 	# a string return value in comparator
-	$comp = sub {
+	($res1, $res2) = testCompError(sub {
 		return "zzz";
-	};
-	print STDERR "\nExpect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
-	ok($res = $t1->insert($r11));
-
-	# no return value in comparator - same error message as before, plus a cmplaint from Perl test, so comment it out
-	#$comp = undef;
-	#print STDERR "\nExpect message(s) like: Error in PerlSortedIndex(bad) comparator: comparator returned a non-integer value\n";
-	#ok($res = $t1->insert($r11));
-
+	});
+	ok($res1, qr/^Error in PerlSortedIndex\(bad\) comparator: comparator returned a non-integer value/);
+	ok($res2, qr/^Table is disabled due to the previous error:\n  Error in PerlSortedIndex\(bad\) comparator: comparator returned a non-integer value/);
 };
 
 #########################

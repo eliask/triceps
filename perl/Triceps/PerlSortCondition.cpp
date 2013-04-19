@@ -123,17 +123,23 @@ bool PerlSortCondition::operator() (const RowHandle *r1, const RowHandle *r2) co
 	bool result = false; // the safe default, collapses all keys into one
 
 	if (SvTRUE(ERRSV)) {
-		// Would exit(1) be better?
-		warn("Error in PerlSortedIndex(%s) comparator: %s", 
+		Erref err;
+		err.f("Error in PerlSortedIndex(%s) comparator: %s", 
 			name_.c_str(), SvPV_nolen(ERRSV));
+		// XXX print the source code of comparator is available
+		table_->setStickyError(err);
 	} else if (svrcode == NULL) {
-		// Would exit(1) be better?
-		warn("Error in PerlSortedIndex(%s) comparator: comparator returned no value", 
+		Erref err;
+		err.f("Error in PerlSortedIndex(%s) comparator: comparator returned no value", 
 			name_.c_str());
+		// XXX print the source code of comparator is available
+		table_->setStickyError(err);
 	} else if (!SvIOK(svrcode)) {
-		// Would exit(1) be better?
-		warn("Error in PerlSortedIndex(%s) comparator: comparator returned a non-integer value '%s'", 
+		Erref err;
+		err.f("Error in PerlSortedIndex(%s) comparator: comparator returned a non-integer value '%s'", 
 			name_.c_str(), SvPV_nolen(svrcode));
+		// XXX print the source code of comparator is available
+		table_->setStickyError(err);
 	} else {
 		result = (SvIV(svrcode) < 0); // the Less
 	}
