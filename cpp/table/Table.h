@@ -133,22 +133,26 @@ public:
 	// A random index will be used for iteration. Usually this will be
 	// the first index, but the table may decide to pick a more efficient one
 	// if it can.
+	// May throw an Exception if the table has a sticky error.
 	// @return - the handle, or NULL if the table is empty
 	RowHandle *begin() const;
 
 	// Get the handle of the first record in this table, according to a specific index.
+	// May throw an Exception if the table has a sticky error.
 	// @param ixt - index type from this table's type (if not leaf then will mean
 	//        the same as it's first nested leaf)
 	// @return - the handle, or NULL if the table is empty
 	RowHandle *beginIdx(IndexType *ixt) const;
 
 	// Return the next row in this table.
+	// May throw an Exception if the table has a sticky error.
 	// @param cur - the current handle
 	// @return - the next row's handle, or NULL if the current one was the last one,
 	//       or not in the table or NULL
 	RowHandle *next(const RowHandle *cur) const;
 
 	// Return the next row in this table, according to a specific index.
+	// May throw an Exception if the table has a sticky error.
 	// @param ixt - index type from this table's type (if not leaf then will mean
 	//        the same as it's first nested leaf)
 	// @param cur - the current handle
@@ -158,6 +162,7 @@ public:
 
 	// Return the first row in the same group (according to this index)
 	// as the current row.
+	// May throw an Exception if the table has a sticky error.
 	// @param ixt - index type from this table's type (may be not leaf)
 	// @param cur - the current handle
 	// @return - handle of the first row in the same group (if the current group
@@ -166,6 +171,7 @@ public:
 
 	// Return the last row in the same group (according to this index)
 	// as the current row.
+	// May throw an Exception if the table has a sticky error.
 	// @param ixt - index type from this table's type (may be not leaf)
 	// @param cur - the current handle
 	// @return - handle of the last row in the same group (if the current group
@@ -175,6 +181,7 @@ public:
 	// Return the first row of the next group (according to this index).
 	// For the nested indexes, a way to skip over all the
 	// remaining records in the current group.
+	// May throw an Exception if the table has a sticky error.
 	// @param ixt - index type from this table's type (may be not leaf)
 	// @param cur - the current handle
 	// @return - handle of the first row in the next group, or NULL if the 
@@ -186,6 +193,8 @@ public:
 	// there is no sense in calling find() because it already represents
 	// an iterator in the table. This finds a row in the table with the
 	// key matching one in a freshly made RowHandle (with Table::makeRowHandle()).
+	//
+	// May throw an Exception.
 	//
 	// If the index is leaf, finds the matching row. If the index is non-leaf,
 	// finds the first row in the matching group (first according to the first
@@ -200,12 +209,14 @@ public:
 	RowHandle *findIdx(IndexType *ixt, const RowHandle *what) const;
 
 	// Find the matching element using the default (first leaf) index.
+	// May throw an Exception.
 	RowHandle *find(const RowHandle *what) const
 	{
 		return findIdx(firstLeaf_, what);
 	}
 
 	// The same but creates RowHandle from a Row internally.
+	// May throw an Exception.
 	RowHandle *findRowIdx(IndexType *ixt, const Row *what) const;
 	RowHandle *findRow(const Row *what) const
 	{
@@ -224,6 +235,8 @@ public:
 	// findIdx() would first be performed internally to find the group.
 	// If it's in the table, the group will be found directly from it.
 	// If the group is not found, returns 0.
+	//
+	// May throw an Exception if the table has a sticky error.
 	//
 	// @param ixt - index type from this table's type
 	// @param what - the pattern row handle
@@ -249,10 +262,12 @@ public:
 	
 	// Send the whole contents of the table to the dump label.
 	// The first leaf index is used to determine the order of the rows sent.
+	// May throw an Exception.
 	// @param op - Opcode to use for sending (INSERT by default).
 	void dumpAll(Rowop::Opcode op = Rowop::OP_INSERT) const;
 
 	// Send the whole contents of the table to the dump label, in a specific order.
+	// May throw an Exception.
 	// @param ixt - Index type that determines the ordering of the rows.
 	//        If NULL then the default first leaf index is used.
 	//        The index type must belong to this table's type.
@@ -261,7 +276,37 @@ public:
 
 	// } The dump interface.
 
+	// { The index interface.
+
+	// Set the sticky error from a location where an exception can not
+	// be thrown, such as from the comparators in the indexes.
+	// Only the first error sticks, all the others are ignored since
+	// (a) the table will be dead and throwing this error in exceptions
+	// from this poin on anyway and (b) the comparator is likely to
+	// report the same erro repeatedly and there is no point in seeing
+	// multiple copies.
+	//
+	// @param err - error to stick
+	void setStickyError(Erref err);
+	// }
+
+	// Normally there is no point in calling this, since the table
+	// will throw an Exception on any operations anyway, but just
+	// in case.
+	Errors *getStickyError() const
+	{
+		return stickyErr_.get();
+	}
+
+	// Throw an Exception if a sticky error has been set.
+	void checkStickyError() const;
+	
 protected:
+	// A check at the end of Table operations: if a sticky
+	// error has been set, throw it as an Exception without
+	// the wrapper message.
+	void checkStickyErrorAfter() const;
+	
 	friend class TableType;
 	// A Table is normally created by a TableType as a factory.
 	//
@@ -322,6 +367,7 @@ protected:
 	mutable Autoref<FnReturn> fnReturn_; // the FnReturn object for table results
 	AggGadgetVec aggs_; // gadgets for all aggregators, matching the order in TableType
 	string name_; // base name of the table
+	Erref stickyErr_; // errors from the indexes, that make the table dead
 	bool busy_; // flag: an operation is in progress on the table
 
 private:

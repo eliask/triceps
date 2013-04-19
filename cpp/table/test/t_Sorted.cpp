@@ -9,6 +9,7 @@
 #include <utest/Utest.h>
 #include <string.h>
 
+#include <common/Common.h>
 #include <type/AllTypes.h>
 #include <common/StringUtil.h>
 #include <table/Table.h>
@@ -40,6 +41,20 @@ void mkfdata(FdataVec &fd)
 	fd[3].setPtr(true, &v_float64, sizeof(v_float64));
 	// test the constructor
 	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
+}
+
+// make the exceptions catchable
+void make_catchable()
+{
+	Exception::abort_ = false; // make them catchable
+	Exception::enableBacktrace_ = false; // make the error messages predictable
+}
+
+// restore the exceptions back to the uncatchable state
+void restore_uncatchable()
+{
+	Exception::abort_ = true;
+	Exception::enableBacktrace_ = true;
 }
 
 // sort by field "b"
@@ -295,3 +310,355 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(!t->deleteRow(r3)); // already removed, not found any more
 }
 
+bool sortFail = true; // controls whether the sorter fails
+// set a sticky error on each call when sortFail is true, otherwise sort on "b"
+class MySortError : public SortedIndexCondition
+{
+public:
+	// no internal configuration, all copies are the same
+	MySortError()
+	{ }
+	MySortError(const MySortError *other, Table *t) :
+		SortedIndexCondition(other, t)
+	{ }
+	virtual TreeIndexType::Less *tableCopy(Table *t) const
+	{
+		return new MySortError(this, t);
+	}
+	virtual bool equals(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual bool match(const SortedIndexCondition *sc) const
+	{
+		return true;
+	}
+	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
+	{
+		res.append("MySortError()");
+	}
+	virtual SortedIndexCondition *copy() const
+	{
+		return new MySortError(*this);
+	}
+
+	virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const
+	{
+		if (sortFail) {
+			table_->setStickyError(new Errors("test error"));
+			return false;
+		}
+		// like MySortB
+		int32_t a = rt_->getInt32(r1->getRow(), 1);
+		int32_t b = rt_->getInt32(r2->getRow(), 1);
+		return (a < b);
+	}
+};
+
+UTESTCASE tableops_exception(Utest *utest)
+{
+	make_catchable();
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = (new TableType(rt1))
+		->addSubIndex("primary", new SortedIndexType(new MySortError())
+		);
+
+	UT_ASSERT(tt);
+	tt->initialize();
+	UT_ASSERT(tt->getErrors().isNull());
+	UT_ASSERT(!tt->getErrors()->hasError());
+
+	IndexType *prim = tt->findSubIndex("primary");
+	UT_ASSERT(prim != NULL);
+
+	FdataVec dv;
+	mkfdata(dv);
+	int32_t one = 1, two = 2, three = 3;
+	dv[1].setPtr(true, &one, sizeof(one));
+	Rowref r1(rt1,  rt1->makeRow(dv));
+	dv[1].setPtr(true, &two, sizeof(one));
+	Rowref r2(rt1,  rt1->makeRow(dv));
+	dv[1].setPtr(true, &three, sizeof(one));
+	Rowref r3(rt1,  rt1->makeRow(dv));
+
+	// just set and check the error manually
+	{
+		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		UT_ASSERT(!t.isNull());
+
+		// no error yet
+		UT_IS(t->getStickyError(), NULL);
+		t->checkStickyError();
+
+		// now add the error
+		t->setStickyError(new Errors("error 1"));
+		Erref err = t->getStickyError();
+		UT_IS(err->print(), "error 1\n");
+
+		{
+			string msg;
+			try {
+				t->checkStickyError();
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "Table is disabled due to the previous error:\n  error 1\n");
+		}
+	}
+
+	// set the error on insert and test that everything stops after that
+	{
+		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		UT_ASSERT(!t.isNull());
+
+		Rhref rh1(t, t->makeRowHandle(r1));
+		Rhref rh2(t, t->makeRowHandle(r2));
+
+		{
+			string msg;
+			try {
+				// the first insert might involve no comparison, so do it
+				// twice to cause the error for sure
+				t->insert(rh1);
+				t->insert(rh2);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "test error\n");
+		}
+
+		// making and destroying a row handle still works
+		{
+			Rhref rh3(t, t->makeRowHandle(r1));
+		}
+
+		// after that all the calls that involve an index return en error
+		static char expect[] = "Table is disabled due to the previous error:\n  test error\n";
+		{
+			string msg;
+			try {
+				t->insert(rh1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->insertRow(r1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->remove(rh1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->deleteRow(r1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->begin();
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->beginIdx(prim);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->next(NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->nextIdx(prim, NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->firstOfGroupIdx(prim, NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->nextGroupIdx(prim, NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->lastOfGroupIdx(prim, NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->findIdx(prim, NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->findRowIdx(prim, r1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->groupSizeIdx(prim, NULL);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->groupSizeRowIdx(prim, r1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->clear(0);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->dumpAll(Rowop::OP_INSERT);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+		{
+			string msg;
+			try {
+				t->dumpAllIdx(prim, Rowop::OP_INSERT);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, expect);
+		}
+	}
+
+	// triggering an error on remove() seems impossible, so give up on that,
+	// the same goes for firstOfGroupIdx(), nextGroupIdx(), lastOfGroupIdx()
+	
+	// error on deleteRow
+	{
+		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		UT_ASSERT(!t.isNull());
+
+		Rhref rh1(t, t->makeRowHandle(r1));
+		Rhref rh2(t, t->makeRowHandle(r2));
+		Rhref rh3(t, t->makeRowHandle(r3));
+
+		sortFail = false;
+		t->insert(rh1);
+		t->insert(rh2);
+		t->insert(rh3);
+		sortFail = true;
+
+		{
+			string msg;
+			try {
+				t->deleteRow(r1);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "test error\n");
+		}
+	}
+	
+	// error on findRowIdx() (propagated from findIdx())
+	{
+		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		UT_ASSERT(!t.isNull());
+
+		Rhref rh1(t, t->makeRowHandle(r1));
+		Rhref rh2(t, t->makeRowHandle(r2));
+		Rhref rh3(t, t->makeRowHandle(r3));
+
+		sortFail = false;
+		t->insert(rh1);
+		t->insert(rh2);
+		t->insert(rh3);
+		sortFail = true;
+
+		{
+			string msg;
+			try {
+				t->findRowIdx(prim, r2);
+			} catch(Exception e) {
+				msg = e.getErrors()->print();
+			}
+			UT_IS(msg, "test error\n");
+		}
+	}
+
+	restore_uncatchable();
+}
