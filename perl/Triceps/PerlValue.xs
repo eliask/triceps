@@ -151,7 +151,7 @@ SV *PerlValue::restore(HoldRowTypes *holder) const
 	case ROW:
 		{
 			SV *val = newSV(0);
-			sv_setref_pv(val, "Triceps::Row", new WrapRow(row_.getType(), row_.get()));
+			sv_setref_pv(val, "Triceps::Row", new WrapRow(holder->copy(row_.getType()), row_.get()));
 			return val;
 		}
 		break;

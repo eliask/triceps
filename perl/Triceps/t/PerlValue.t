@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 41 };
+BEGIN { plan tests => 43 };
 use Triceps;
 use Carp;
 use strict;
@@ -79,6 +79,8 @@ $v = Triceps::PerlValue->new($r1);
 $res = $v->get();
 ok(ref $res, "Triceps::Row");
 ok($res->same($r1));
+ok($res->getType()->equals($rt1));
+ok(!$res->getType()->same($rt1));
 
 $v = Triceps::PerlValue->new([]);
 $res = $v->get();
