@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 36 };
+BEGIN { plan tests => 41 };
 use Triceps;
 use Carp;
 use strict;
@@ -34,6 +34,16 @@ my $rt1 = Triceps::RowType->new( # used later
 	@def1
 );
 ok(ref $rt1, "Triceps::RowType");
+
+my @dataset1 = (
+	a => "uint8",
+	b => 123,
+	c => 3e15+0,
+	d => 3.14,
+	e => "string",
+);
+my $r1 = $rt1->makeRowHash( @dataset1);
+ok(ref $r1, "Triceps::Row");
 
 #########################
 
@@ -65,6 +75,11 @@ ok(ref $res, "Triceps::RowType");
 ok($res->equals($rt1));
 ok(!$res->same($rt1));
 
+$v = Triceps::PerlValue->new($r1);
+$res = $v->get();
+ok(ref $res, "Triceps::Row");
+ok($res->same($r1));
+
 $v = Triceps::PerlValue->new([]);
 $res = $v->get();
 ok(ref $res, "ARRAY");
@@ -92,15 +107,17 @@ ok($$res{b}, 1.5);
 ok($$res{c}, "xxx");
 
 # double-nested
-$v = Triceps::PerlValue->new([$rt1, { a => 1,  b=> 1.5,  c => "xxx" }]);
+$v = Triceps::PerlValue->new([$rt1, $r1, { a => 1,  b=> 1.5,  c => "xxx" }]);
 $res = $v->get();
 ok(ref $res, "ARRAY");
-ok($#$res, 1);
+ok($#$res, 2);
 ok(ref $$res[0], "Triceps::RowType");
 ok($$res[0]->equals($rt1));
-ok(join(' ', sort(keys %{$$res[1]})), "a b c");
+ok(ref $$res[1], "Triceps::Row");
+ok($$res[1]->same($r1));
+ok(join(' ', sort(keys %{$$res[2]})), "a b c");
 
-# multiple row references preserve the commonality
+# multiple row type references preserve the commonality
 $v = Triceps::PerlValue->new([$rt1, $rt1, $rt1]);
 $res = $v->get();
 ok($$res[0]->equals($rt1));

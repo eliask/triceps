@@ -37,6 +37,7 @@ Erref PerlValue::parse(SV *v)
 {
 	static char msg[] = "to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array of hash thereof";
 	WrapRowType *wrt;
+	WrapRow *wr;
 
 	if (choice_ != UNDEF)
 		return new Errors("Internal error: trying to parse another value into the same PerlValue.");
@@ -88,6 +89,10 @@ Erref PerlValue::parse(SV *v)
 		&& (wrt = (WrapRowType *)SvIV(ref)) != NULL && !wrt->badMagic()) {
 			choice_ = ROW_TYPE;
 			rowType_ = wrt->get();
+		} else if (sv_isobject(v) && SvTYPE(ref) == SVt_PVMG
+		&& (wr = (WrapRow *)SvIV(ref)) != NULL && !wr->badMagic()) {
+			choice_ = ROW;
+			row_ = wr->ref_;
 		} else {
 			return new Errors(msg);
 		}
@@ -140,6 +145,13 @@ SV *PerlValue::restore(HoldRowTypes *holder) const
 		{
 			SV *val = newSV(0);
 			sv_setref_pv(val, "Triceps::RowType", new WrapRowType(holder->copy(rowType_)));
+			return val;
+		}
+		break;
+	case ROW:
+		{
+			SV *val = newSV(0);
+			sv_setref_pv(val, "Triceps::Row", new WrapRow(row_.getType(), row_.get()));
 			return val;
 		}
 		break;

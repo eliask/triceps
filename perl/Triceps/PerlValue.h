@@ -38,6 +38,7 @@ public:
 		ARRAY, // really an array reference
 		HASH, // really a hash reference
 		ROW_TYPE,
+		ROW,
 	};
 
 	Choice choice_;
@@ -49,6 +50,7 @@ public:
 	vector<Autoref<PerlValue> > v_; // ARRAY and the values for HASH
 	vector<string> k_; // keys for HASH
 	Autoref<RowType> rowType_; // ROW_TYPE
+	Rowref row_;
 
 	// The default constructor sets the choice_ to UNDEF,
 	// then a value can be parsed into it with parse().
