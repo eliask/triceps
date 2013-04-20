@@ -97,14 +97,13 @@ public:
 	// by the other threads.
 	//
 	// If the Facet is imported, this will throw an Exception.
-	// Also throws Exception on other errors.
 	//
 	// @param name - name of the table type, these are in a separate namespace from
 	//         the row types
-	// @param tt - table type to export; if not initialized then this call
-	//        will initialize it
+	// @param tt - table type to export; if not correct or can not be correctly
+	//        deep-copied, will record an error to be checked on export
 	// @return - the same Facet
-	Facet *exportTableType(const string &name, Onceref<TableType> tt);
+	Facet *exportTableType(const string &name, Autoref<TableType> tt);
 
 	// Mark the future Nexus as going in the reverse direction ("upwards").
 	// This has two implications:
