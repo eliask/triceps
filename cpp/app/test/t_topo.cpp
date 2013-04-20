@@ -1152,9 +1152,9 @@ UTESTCASE check_dead(Utest *utest)
 	ow3->importReaderImmed("t4", "nx3");
 
 	// clean-up, since the apps catalog is global
-	ow1->markDead();
-	ow2->markDead();
-	ow3->markDead();
+	ow1->markReady();
+	ow2->markReady();
+	ow3->markReady();
 	ow4->markDead(); // does NOT throw!!!
 	UT_IS(a1->getAbortedBy(), "t4");
 	UT_IS(a1->getAbortedMsg(),
@@ -1165,6 +1165,9 @@ UTESTCASE check_dead(Utest *utest)
 		"  nexus 't2/nx2'\n"
 		"  thread 't1'\n"
 		);
+	ow1->markDead();
+	ow2->markDead();
+	ow3->markDead();
 	a1->harvester(false);
 
 	restore_uncatchable();

@@ -64,6 +64,15 @@ void Triead::markDead()
 		// and disconnect all the nexuses, clearing their queues
 		for (FacetMap::iterator it = imports_.begin(); it != imports_.end(); ++it)
 			it->second->disconnectFromNexus();
+
+		// and get rid of all the facet references; this is important for Perl:
+		// otherwise the facets won't be freed until after the Triead object
+		// is freed, and thay would happen only after join() and in a different
+		// thread, which drives the Perl memory management crazy
+		readersHi_.clear();
+		readersLo_.clear();
+		writers_.clear();
+		imports_.clear();
 	}
 }
 
