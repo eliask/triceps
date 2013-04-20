@@ -329,7 +329,7 @@ UTESTCASE make_facet(Utest *utest)
 		fabad->exportTableType("ttb", ttbad);
 		UT_ASSERT(fabad->getErrors()->hasError());
 		UT_IS(fabad->getErrors()->print(), 
-			"Can not export a table type 'ttb' containing errors:\n"
+			"Can not export the table type 'ttb' containing errors:\n"
 			"  row type error:\n"
 			"    duplicate field name 'a' for fields 2 and 1\n");
 	}

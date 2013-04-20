@@ -131,11 +131,11 @@ ok($$res[0]->same($$res[2]));
 # test the errors
 
 eval { Triceps::PerlValue->new(sub {}); };
-ok($@, qr/^to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array of hash thereof/);
+ok($@, qr/^to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array or hash thereof/);
 
 eval { Triceps::PerlValue->new([sub {}]); };
-ok($@, qr/^invalid value at array index 0:\n  to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array of hash thereof/);
+ok($@, qr/^invalid value at array index 0:\n  to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array or hash thereof/);
 
 eval { Triceps::PerlValue->new({ a => sub {}}); };
-ok($@, qr/^invalid value at hash key 'a':\n  to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array of hash thereof/);
+ok($@, qr/^invalid value at hash key 'a':\n  to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array or hash thereof/);
 

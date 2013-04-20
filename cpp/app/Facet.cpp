@@ -162,7 +162,7 @@ Facet *Facet::exportTableType(const string &name, Autoref<TableType> tt)
 	{
 		Autoref<TableType> copytt = tt->deepCopy(NULL); // no holder doesn't matter here
 		copytt->initialize();
-		if (err_.fAppend(copytt->getErrors(), "Can not export a table type '%s' containing errors:", name.c_str()))
+		if (err_.fAppend(copytt->getErrors(), "Can not export the table type '%s' containing errors:", name.c_str()))
 			return this;
 	}
 

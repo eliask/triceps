@@ -129,7 +129,7 @@ void PerlCallback::appendArg(SV *arg)
 			argst_.push_back(PerlValue::make(arg));
 		} catch(Exception e) {
 			threadable_ = false;
-			errt_.fAppend(e.getErrors(), "argument %d is not threadable:", (int)args_.size()-1);
+			errt_.fAppend(e.getErrors(), "argument %d is not threadable:", (int)args_.size()); // args counted from 1
 		}
 	}
 }
