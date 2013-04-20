@@ -46,7 +46,7 @@ ok(ref $rt1, "Triceps::RowType");
 #########################
 # create an index with no initializer, only comparator
 
-$it1 = Triceps::IndexType->newPerlSorted("basic", undef, sub {
+$it1 = Triceps::IndexType->newPerlSorted("basic", undef, '
 	#print STDERR "comparing\n";
 	#print STDERR "      ", $_[0]->printP(), "\n";
 	#print STDERR "      ", $_[1]->printP(), "\n";
@@ -54,7 +54,7 @@ $it1 = Triceps::IndexType->newPerlSorted("basic", undef, sub {
 		|| $_[0]->get("c") <=> $_[1]->get("c"));
 	#print STDERR "      result $res\n";
 	return $res;
-});
+');
 ok(ref $it1, "Triceps::IndexType");
 $res = $it1->print();
 ok($res, "index PerlSortedIndex(basic)");
@@ -76,8 +76,8 @@ ok($res, "index PerlSortedIndex(basic)");
 			my $unit = $owner->unit();
 
 			my $tt1 = Triceps::TableType->new($rt1)
-				#->addSubIndex("primary", $it1)
-				->addSubIndex("primary", Triceps::IndexType->newHashed(key => [ "b", "c" ]))
+				->addSubIndex("primary", $it1)
+				#->addSubIndex("primary", Triceps::IndexType->newHashed(key => [ "b", "c" ]))
 			;
 			ok(ref $tt1, "Triceps::TableType");
 			$tt1->initialize() or confess "$!";
@@ -170,6 +170,14 @@ ok($res, "index PerlSortedIndex(basic)");
 		},
 	);
 	#print $res;
-	# XXX test for the real expected result
-	ok(1); # if it got here, a success
+	ok($res,
+'sink.out OP_INSERT b="2" c="2" 
+sink.out OP_INSERT b="2" c="1" 
+sink.out OP_INSERT b="1" c="2" 
+sink.out OP_INSERT b="1" c="1" 
+sink.dump OP_INSERT b="1" c="1" 
+sink.dump OP_INSERT b="1" c="2" 
+sink.dump OP_INSERT b="2" c="1" 
+sink.dump OP_INSERT b="2" c="2" 
+');
 }
