@@ -97,10 +97,13 @@ public:
 	virtual SortedIndexCondition *copy() const = 0;
 
 	// Deep-copy the condition object by calling the copy constructor,
-	// nicely cloning the row types.
+	// nicely cloning the row types. It also comes handy for the Perl
+	// indexes to re-compile the code snippets in the new thread, because
+	// the major reason for this call is for importing the table types
+	// through a nexus to another thread.
 	//
-	// The defalult implementation just calls copy() since most index
-	// conditions would not have any row types.
+	// The defalult implementation just calls copy() since most simple index
+	// conditions would not have any row types nor any Perl snippets.
 	//
 	// If redefined, the typical implementation is like this:
 	// IndexType *MySortCondition::copy(HoldRowTypes *holder) const

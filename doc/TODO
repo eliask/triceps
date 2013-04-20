@@ -111,6 +111,7 @@ Things that need to be done:
 * doc: the "*" placeholder in Opt, Opt::drop, Opt::dropExcept
 * doc: FnReturn::isFaceted() in Perl
 * doc: Label::makeChained() in Perl
+* doc: how index comparators can return errors through table->setStickyError()
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

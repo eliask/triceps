@@ -39,6 +39,16 @@ PerlSortCondition::PerlSortCondition(const PerlSortCondition &other) :
 	name_(other.name_) // name stays the same!
 { }
 
+PerlSortCondition::PerlSortCondition(const PerlSortCondition &other, HoldRowTypes *holder) :
+	cbInitialize_(other.cbInitialize_->deepCopy()), 
+	cbCompare_(other.cbCompare_->deepCopy()),
+	initialized_(false),
+	svRowType_(NULL),
+	tabType_(NULL),
+	name_(other.name_), // name stays the same!
+	hrt_(holder)
+{ }
+
 PerlSortCondition::PerlSortCondition(const PerlSortCondition *other, Table *t) :
 	SortedIndexCondition(other, t),
 	cbInitialize_(other->cbInitialize_), 
@@ -86,6 +96,11 @@ void PerlSortCondition::printTo(string &res, const string &indent, const string 
 SortedIndexCondition *PerlSortCondition::copy() const
 {
 	return new PerlSortCondition(*this);
+}
+
+SortedIndexCondition *PerlSortCondition::deepCopy(HoldRowTypes *holder) const
+{
+	return new PerlSortCondition(*this, holder);
 }
 
 TreeIndexType::Less *PerlSortCondition::tableCopy(Table *t) const
@@ -165,6 +180,23 @@ void PerlSortCondition::initialize(Erref &errors, TableType *tabtype, SortedInde
 	svRowType_ = newSV(0);
 	sv_setref_pv(svRowType_, "Triceps::RowType", (void *)wrowt);
 
+	Erref errInit, errComp;
+
+	if (!cbInitialize_.isNull()) {
+		cbInitialize_->initialize(hrt_);
+		errInit = cbInitialize_->getErrors();
+		errors.fAppend(errInit, "PerlSortedIndex(%s) initialize function is not compatible with multithreading:", name_.c_str());
+	}
+	if (!cbCompare_.isNull()) {
+		cbCompare_->initialize(hrt_);
+		errComp = cbCompare_->getErrors();
+		errors.fAppend(errComp, "PerlSortedIndex(%s) compare function is not compatible with multithreading:", name_.c_str());
+	}
+
+	if (errInit->hasError() ||  errComp->hasError()) {
+		return; // no point in going further
+	}
+
 	if (!cbInitialize_.isNull()) {
 		WrapTableType *wtabt = new WrapTableType(tabtype);
 		SV *svtabt = newSV(0);
@@ -202,6 +234,7 @@ void PerlSortCondition::initialize(Erref &errors, TableType *tabtype, SortedInde
 		errors->appendMsg(true, "the mandatory comparator Perl function is not set by PerlSortedIndex(" + name_ + ")");
 	}
 
+	hrt_ = NULL; // its work is done
 	initialized_ = true;
 }
 

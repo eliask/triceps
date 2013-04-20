@@ -14,6 +14,7 @@
 
 #include <common/Conf.h>
 #include <type/SortedIndexType.h>
+#include <type/HoldRowTypes.h>
 
 using namespace TRICEPS_NS;
 
@@ -22,7 +23,6 @@ namespace TRICEPS_NS
 namespace TricepsPerl 
 {
 
-// XXX deepCopy of this sort condition between the threads is probably a bad idea
 // because it includes Perl code
 class PerlSortCondition : public SortedIndexCondition
 {
@@ -57,6 +57,13 @@ public:
 	virtual bool match(const SortedIndexCondition *sc) const;
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 	virtual SortedIndexCondition *copy() const;
+	// The holder will be kept until the initialization time.
+	// This is needed because the RowType objects are not constructed
+	// until the initialization time, because it can not be extracted
+	// separately from the Perl objects, and extracting those would
+	// mess up the memory management, because the Nexuses are kept
+	// separate from any Perl threads.
+	virtual SortedIndexCondition *deepCopy(HoldRowTypes *holder) const;
 	virtual TreeIndexType::Less *tableCopy(Table *t) const;
 	virtual bool operator() (const RowHandle *r1, const RowHandle *r2) const;
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype);
@@ -68,6 +75,10 @@ public:
 	bool setComparator(Onceref<PerlCallback> cbComparator);
 
 protected:
+	// for deepCopy()
+	// The holder will be kept until the initialization time.
+	PerlSortCondition(const PerlSortCondition &other, HoldRowTypes *holder);
+
 	// Initialization: may be used to dynamically generate a comparator.
 	// The args are: indexType (self), rowType.
 	// On success returns undef, on failure an error message.
@@ -82,6 +93,7 @@ protected:
 	SV *svRowType_; // avoid creating the row type object on each comparison, cache it
 	TableType *tabType_; // remembered for error messages, NOT a reference!
 	string name_; // name of the sort for error messages on fatal errors in comparator
+	Autoref<HoldRowTypes> hrt_; // temporary holder between deep-copying an initialization
 };
 
 }; // Triceps::TricepsPerl

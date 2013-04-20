@@ -76,7 +76,7 @@ AggregatorType.o Label.o Unit.o UnitTracer.o IndexType.o: PerlCallback.h
 
 TricepsPerl.o: PerlCallback.h
 
-PerlCallback.o: PerlCallback.h
+PerlCallback.o: PerlCallback.h PerlValue.h
 
 PerlApp.o: PerlApp.h
 

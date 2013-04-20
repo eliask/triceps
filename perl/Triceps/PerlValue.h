@@ -74,6 +74,7 @@ public:
 	//        (unless it's NULL, which reverts to plain copying).
 	//        The caller has to keep a reference to the holder for
 	//        the duration.
+	// @return - the restored value, with the reference count of 1
 	SV *restore(HoldRowTypes *holder) const;
 
 	// Make a new PerlValue by parsing an SV.

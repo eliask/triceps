@@ -13,12 +13,17 @@
 #define __TricepsPerl_PerlCallback_h__
 
 #include <common/Conf.h>
-#include "PerlValue.h" // XXX add dependencies in Makefile.PL
+// Since the uses of PerlValue are only in the protected part, only
+// PerlCallback.cpp needs the dependency on PerlValue.h, not all its users.
+#include "PerlValue.h" 
 
 using namespace TRICEPS_NS;
 
 namespace TRICEPS_NS
 {
+
+class HoldRowTypes;
+
 namespace TricepsPerl 
 {
 
@@ -39,6 +44,23 @@ public:
 	//        another thread, if possible.
 	PerlCallback(bool threadable = false);
 	~PerlCallback(); // clears
+
+	// For deep-copying of the callbacks between threads.
+	// The callback has to be threadable for this to work properly.
+	// If not, the resulting object will be an empty placeholder
+	// with the error recorded in it.
+	//
+	// The result is always uninitialized (i.e. having empty code_ and args_), 
+	// since it may have a longer life than the thread that created it.
+	// Otherwise the Perl memory management will go haywired.
+	//
+	// The pointer to this object may be NULL, this will transparently
+	// result in NULL returned.
+	//
+	// This is an unusual deep copy since it doesn't restore
+	// the row types preserved in the PerlValues, and so it doesn't
+	// need the HoldRowTypes. Instead it's needed for initialize().
+	PerlCallback *deepCopy();
 
 	// Clear the contents, decrementing the references to objects.
 	void clear();
@@ -71,13 +93,41 @@ public:
 		return threadable_;
 	}
 
+	// If the object was not initialized yet, create the code_ and args_
+	// from the threadable format.
+	//
+	// @param holder - provides the consistency of copied row types
+	void initialize(HoldRowTypes *holder);
+
+	// Get the threading errors that have been collected when the
+	// code and args were set the first time.
+	Erref getErrors() const
+	{
+		if (deepCopied_)
+			return errt_;
+		else
+			return NULL;
+	}
+
 public:
+	// For deep-copying. Don't call directly, call deepCopy()
+	// since it can handle a NULL reference.
+	// @param other - the original object
+	PerlCallback(const PerlCallback *other);
+
+	// compile the code from codestr_; leaves the result in code_ on success
+	// @param fname - caller function name, for error messages, or a placeholder
+	// @return - the error messages, or NULL if all successful
+	Erref compileCode(const char *fname);
+
 	// for macros, the internals must be public
 	bool threadinit_; // the initial state of threadable stat, to be used after clearing, as came from the constructor
 	bool threadable_; // try to preserve the args in the form suitable for copying to another thread
+	bool deepCopied_; // flag: this object has been deep-copied and not initialized yet
 	SV *code_; // the code reference
 	vector<SV *> args_; // optional arguments for the code
-	vector<Autoref<PerlValue> > argst_; // optional arguments in thread-copyable format
+	typedef vector<Autoref<PerlValue> > PerlValueVec;
+	PerlValueVec argst_; // optional arguments in thread-copyable format
 	string codestr_; // the source code string representation
 	Erref errt_; // errors of parsing into the threadable format, if any
 
