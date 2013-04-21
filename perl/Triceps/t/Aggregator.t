@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 67 };
+BEGIN { plan tests => 95 };
 use Triceps;
 ok(2); # If we made it this far, we're ok.
 
@@ -217,7 +217,7 @@ ok($reshistory,
 
 ######################### basic aggregation, keeping the context  #############################
 
-my $outside_context;
+our $outside_context;
 
 sub aggHandler2 # (table, context, aggop, opcode, rh, state, args...)
 {
@@ -553,3 +553,171 @@ ok($reshistory,
 	. "OP_NOP  [0, 0, *undef*]\n"
 );
 
+######################### source code, basic aggregation, keeping the context  #############################
+# a variation of aggHandler2 with the code in a different format
+
+undef $outside_context;
+
+my $aggHandler2Src = '
+	# (table, context, aggop, opcode, rh, state, args...)
+	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+	our $outside_context;
+
+	#print STDERR "Got state $state " . ref($state) . "\n";
+
+	if (!$rh->isNull()) {
+		# apply the row
+
+		# for field b instead of if() could use $context->groupSize()
+		if ($aggop == &Triceps::AO_AFTER_INSERT) {
+			$state->{"b"}++;
+			$state->{"c"} += $rh->getRow()->get("c");
+		} elsif ($aggop == &Triceps::AO_AFTER_DELETE) {
+			$state->{"b"}--;
+			$state->{"c"} -= $rh->getRow()->get("c");
+		}
+		# here it uses the last seen record, not last in the group!
+		$state->{"v"} = $rh->getRow()->get("d");
+	}
+
+	# this aggregator sends a NULL record after the last delete, the other option
+	# would be to send nothing at all when $context->groupSize()==0
+
+	my $res = $context->resultType()->makeRowHash(%$state);
+	# this is weird, but provides a way to test makeArraySend()
+	$context->makeArraySend($opcode, $res->toArray());
+	#print STDERR "DEBUG sent agg result [" . join(", ", $res->toArray()) . "]\n";
+
+	$outside_context = $context; # try to access context later
+';
+
+my $aggConstructor2Src = '
+	# the state is reference to the last record sent
+	my $state = { b => 0, c => 0, v => 0 };
+	#print STDERR "Constructed state $state " . ref($state) . "\n";
+	return $state;
+';
+
+undef $reshistory;
+
+$agt2 = Triceps::AggregatorType->new($rt2, "aggr", $aggConstructor2Src, $aggHandler2Src);
+ok(ref $agt2, "Triceps::AggregatorType");
+
+$it2 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		->setAggregator($agt2)
+	);
+ok(ref $it2, "Triceps::IndexType");
+
+$tt2 = Triceps::TableType->new($rt1)
+	->addSubIndex("grouping", $it2)
+	;
+ok(ref $tt2, "Triceps::TableType");
+
+$res = $tt2->initialize();
+ok($res, 1);
+#print STDERR "$!" . "\n";
+
+$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+ok(ref $t2, "Triceps::Table");
+
+# connect the history recording label, same one as in test 1
+$res = $t2->getAggregatorLabel("aggr");
+ok(ref $res, "Triceps::Label");
+$res = $res->chain($aggreslab1);
+ok($res, 1);
+
+# send the same records 
+
+$res = $t2->insert($r1);
+#print STDERR "error: $!\n";
+ok($res == 1);
+$res = $t2->insert($r2);
+ok($res == 1);
+$res = $t2->deleteRow($r2);
+ok($res == 1);
+$res = $t2->deleteRow($r1);
+ok($res == 1);
+
+# for the results to propagate through the history label, the unit must run...
+$trsn1->clearBuffer();
+$u1->drainFrame();
+ok($u1->empty());
+#print STDERR "DEBUG trace:\n" . $trsn1->print();
+
+ok($reshistory, 
+	"OP_INSERT  [1, 3000000000000000, 3.14]\n"
+	. "OP_DELETE  [1, 3000000000000000, 3.14]\n"
+	. "OP_INSERT  [2, 6000000000000000, 2.71]\n"
+	. "OP_DELETE  [2, 6000000000000000, 2.71]\n"
+	. "OP_INSERT  [1, 3000000000000000, 2.71]\n" # here the definition of last() is different!
+	. "OP_DELETE  [1, 3000000000000000, 2.71]\n"
+	. "OP_INSERT  [0, 0, 3.14]\n" # 3.14 comes from the record being deleted
+	. "OP_NOP  [0, 0, 3.14]\n"
+);
+
+# test that the remembered context is invalid
+eval {
+	$res = $outside_context->resultType();
+};
+ok("$@", qr/Triceps::AggregatorContext::resultType\(\): self has been already invalidated.*/);
+
+######################### error handling in the constructor #############################
+
+$agt2 = Triceps::AggregatorType->new($rt2, "aggr", '
+	die "constructor test error";
+', ' ');
+ok(ref $agt2, "Triceps::AggregatorType");
+
+$it2 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		->setAggregator($agt2)
+	);
+ok(ref $it2, "Triceps::IndexType");
+
+$tt2 = Triceps::TableType->new($rt1)
+	->addSubIndex("grouping", $it2)
+	;
+ok(ref $tt2, "Triceps::TableType");
+
+$res = $tt2->initialize();
+ok($res, 1);
+#print STDERR "$!\n";
+
+$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+ok(ref $t2, "Triceps::Table");
+
+eval { $t2->insert($r1); };
+ok($@, qr/^Error in unit u1 table tab2 aggregator tab2.aggr constructor: constructor test error/);
+eval { $t2->insert($r1); };
+ok($@, qr/^Table is disabled due to the previous error:\n  Error in unit u1 table tab2 aggregator tab2.aggr constructor: constructor test error/);
+
+######################### error handling in the handler #############################
+
+$agt2 = Triceps::AggregatorType->new($rt2, "aggr", undef, '
+	die "handler test error";
+');
+ok(ref $agt2, "Triceps::AggregatorType");
+
+$it2 = Triceps::IndexType->newHashed(key => [ "b", "c" ])
+	->addSubIndex("fifo", Triceps::IndexType->newFifo()
+		->setAggregator($agt2)
+	);
+ok(ref $it2, "Triceps::IndexType");
+
+$tt2 = Triceps::TableType->new($rt1)
+	->addSubIndex("grouping", $it2)
+	;
+ok(ref $tt2, "Triceps::TableType");
+
+$res = $tt2->initialize();
+ok($res, 1);
+#print STDERR "$!\n";
+
+$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+ok(ref $t2, "Triceps::Table");
+
+eval { $t2->insert($r1); };
+ok($@, qr/^Error in unit u1 table tab2 aggregator tab2.aggr handler: handler test error/);
+eval { $t2->insert($r1); };
+ok($@, qr/^Table is disabled due to the previous error:\n  Error in unit u1 table tab2 aggregator tab2.aggr handler: handler test error/);

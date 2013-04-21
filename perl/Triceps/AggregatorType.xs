@@ -65,6 +65,60 @@ new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...
 	OUTPUT:
 		RETVAL
 
+#// The new-style constructor, with option-style arguments
+#// Confesses on errors.
+#//
+#// Options:
+#//   name => $name
+#//   Name of the aggregator.
+#//
+#//   resultRowType => $rowType
+#//   Type of the result if known. If not set, the init function may set it
+#//   later. At least one of "resultRowType" and "init" must be present.
+#//
+#//   init => 'source code'
+#//   init => $&code
+#//   init => ['source code', @args]
+#//   init => [$&code, @args]
+#//   The init function. Will be called at the table initialization time.
+#//        Args: AggregatorType aggtm TableType tabt, IndexType idxt, RowType tabrowt, RowType resrowt, @args
+#//          aggt - link back to this object (used to set the constructor and handler
+#//                 callbacks, result row type and such), DO NOT SAVE IT INSIDE THE
+#//                 AGGREGATOR'S DATA OR IT WILL BE A CIRCULAR REFERENCE.
+#//          tabt - table type that performs the initialization
+#//          idxt - link back to the index type that contains the aggregator (can be used
+#//                 to find the grouping, if possible with this index type)
+#//          tabrowt - row type of the table, passed directly as a convenience
+#//          resrowt - row type of the result as ik't known so far (may be undef if not set yet)
+#//        Returns undef on success or an error message (may freely contain \n) on error.
+#//   Optional, but at least one of "init" and "handler" must be present.
+#//
+#//   constructor => ... same value types as init...
+#//   Group constructor function, called to create the state of aggregator for each index.
+#//       Args: @args
+#//   Optional. May be set later by the init function. If not set, the group state will be undef.
+#//
+#//   handler => ... same value types as init...
+#//   Aggregation handler function, called on every change to the group.
+#//       Args: Table tab, AggregatorContext ctx, int aggop, int opcode, RowHandle rh, state, @args
+#//         tab - table owning this aggregator
+#//         ctx - the context with the rest of properties
+#//         aggop - the aggregation operation
+#//         opcode - the opcode for the group result row of this operation
+#//         rh - handle of the row that has been added or deleted for this operation
+#//         state - the group state value as returned by the constructor function 
+#//             (or undef if no constructor)
+#//    Optional. May be set later by the init function. But must be set in either way
+#//    or the table initialization will fail. At least one of "init" and "handler" must
+#//    be present.
+#//
+#// XXX TODO:
+#//   copyFrom => $aggrType
+#//   Copy the contents from another type.
+#// XXX implement
+#// WrapAggregatorType *
+#// make(...)
+
 #// make an uninitialized copy
 WrapAggregatorType *
 copy(WrapAggregatorType *self)

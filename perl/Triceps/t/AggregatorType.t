@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 55 };
+BEGIN { plan tests => 59 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -75,15 +75,15 @@ ok(ref $agt1, "Triceps::AggregatorType");
 
 $agt1 = Triceps::AggregatorType->new($rt1, "aggr", sub { }, undef);
 ok(! defined $agt1);
-ok($! . "", "Triceps::AggregatorType::new(handler): code must be a reference to Perl function");
+ok($! . "", "Triceps::AggregatorType::new(handler): code must be a source code string or a reference to Perl function");
 
 $agt1 = Triceps::AggregatorType->new($rt1, "aggr", sub { }, 3);
 ok(! defined $agt1);
-ok($! . "", "Triceps::AggregatorType::new(handler): code must be a reference to Perl function");
+ok($! . "", "Triceps::AggregatorType::new(handler): code must be a source code string or a reference to Perl function");
 
 $agt1 = Triceps::AggregatorType->new($rt1, "aggr", 4, sub { });
 ok(! defined $agt1);
-ok($! . "", "Triceps::AggregatorType::new(constructor): code must be a reference to Perl function");
+ok($! . "", "Triceps::AggregatorType::new(constructor): code must be a source code string or a reference to Perl function");
 
 ###################### copy/equality #################################
 
@@ -114,6 +114,14 @@ $agt2 = Triceps::AggregatorType->new($rt1, "aggr", undef, sub { }); # different 
 ok(ref $agt2, "Triceps::AggregatorType");
 ok(!$agt1->equals($agt2));
 ok(!$agt1->match($agt2));
+
+# source code snippets
+$agt2 = Triceps::AggregatorType->new($rt1, "aggr", ' ', ' ');
+ok(ref $agt2, "Triceps::AggregatorType");
+$agt3 = Triceps::AggregatorType->new($rt1, "aggr", ' ', ' ');
+ok(ref $agt3, "Triceps::AggregatorType");
+ok($agt3->equals($agt2));
+ok($agt3->match($agt2));
 
 # another prototype
 $agt1 = Triceps::AggregatorType->new($rt1, "aggr", \&dummyCall, \&dummyCall, 1, "2", "a");

@@ -727,9 +727,9 @@ The source code was:
 	my $it2;
 	$it2 = Triceps::IndexType->newPerlSorted("badInit", 1, undef, "a");
 	ok(!defined $it2);
-	ok("$!", "Triceps::IndexType::newPerlSorted(initialize): code must be a reference to Perl function");
+	ok("$!", "Triceps::IndexType::newPerlSorted(initialize): code must be a source code string or a reference to Perl function");
 
 	$it2 = Triceps::IndexType->newPerlSorted("badInit", undef, 1, "a");
 	ok(!defined $it2);
-	ok("$!", "Triceps::IndexType::newPerlSorted(compare): code must be a reference to Perl function");
+	ok("$!", "Triceps::IndexType::newPerlSorted(compare): code must be a source code string or a reference to Perl function");
 }

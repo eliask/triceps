@@ -97,6 +97,8 @@ Things that need to be done:
   row types, like the joins do, to be shared by Joins and Compute
 * maybe there is a point to import nexuses for neither reading nor writing,
   purely for type definitions (currently they are imported as writers)
+* finish implementing Perl AggregatorType::make, setRowType, setConstructor, setHandler
+* in all placess allow the source code snippets instead of the Perl function references
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 

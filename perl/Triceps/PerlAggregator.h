@@ -35,7 +35,7 @@ public:
 	// @param cbInit - callback that runs at the type initialization time, may be NULL, will be
 	//        referenced, may be used to check that the args make sense and
 	//        generate the constructor and handler callbacks on the fly.
-	//        Args: TableType tabt, IndexType idxt, RowType rowt
+	//        Args: AggregatorType aggtm TableType tabt, IndexType idxt, RowType tabrowt, RowType resrowt
 	//          aggt - link back to this object (used to set the constructor and handler
 	//                 callbacks, result row type and such), DO NOT SAVE IT INSIDE THE
 	//                 AGGREGATOR'S DATA OR IT WILL BE A CIRCULAR REFERENCE.

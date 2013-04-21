@@ -106,7 +106,10 @@ bool PerlCallback::setCode(SV *code, const char *fname)
 	}
 
 	if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
-		setErrMsg( string(fname) + ": code must be a reference to Perl function" );
+		if (threadinit_)
+			setErrMsg( string(fname) + ": code must be a source code string or a reference to Perl function" );
+		else
+			setErrMsg( string(fname) + ": code must be a reference to Perl function" );
 		return false;
 	}
 

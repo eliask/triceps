@@ -72,10 +72,10 @@ Aggregator *PerlAggregatorType::makeAggregator(Table *table, AggregatorGadget *g
 		PerlCallbackDoCallScalar(cbConstructor_, state);
 		
 		if (SvTRUE(ERRSV)) {
-			// If in eval, croak may cause issues by doing longjmp(), so better just warn.
-			// Would exit(1) be better?
-			warn("Error in unit %s table %s aggregator %s constructor: %s", 
+			Erref err;
+			err.f("Error in unit %s table %s aggregator %s constructor: %s", 
 				gadget->getUnit()->getName().c_str(), table->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
+			table->setStickyError(err);
 		}
 	}
 	return new PerlAggregator(table, gadget, state);
@@ -300,10 +300,10 @@ void PerlAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index
 	SvREFCNT_dec(svrh);
 
 	if (SvTRUE(ERRSV)) {
-		// If in eval, croak may cause issues by doing longjmp(), so better just warn.
-		// Would exit(1) be better?
-		warn("Error in unit %s table %s aggregator %s handler: %s", 
+		Erref err;
+		err.f("Error in unit %s table %s aggregator %s handler: %s", 
 			gadget->getUnit()->getName().c_str(), table->getName().c_str(), gadget->getName().c_str(), SvPV_nolen(ERRSV));
+		table->setStickyError(err);
 
 	}
 	// warn("DEBUG PerlAggregator::handle done");
