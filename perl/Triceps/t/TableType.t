@@ -370,7 +370,6 @@ ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can 
 	my $ttcp = $ttorig->deepCopy();
 	ok(ref $ttcp, "Triceps::TableType");
 	#printf "tt1: %s\nttcp: %s\n", $tt1->print(), $ttcp->print();
-	# XXX broken for now, since the callbacks equality after the deep copy doesn't work right yet
 	ok($ttorig->equals($ttcp));
 
 	my $cprt1 = $ttcp->getRowType();

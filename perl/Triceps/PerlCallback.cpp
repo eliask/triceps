@@ -139,7 +139,20 @@ bool PerlCallback::equals(const PerlCallback *other) const
 	if (threadable_ != other->threadable_)
 		return false;
 
-	// XXX compare the threadable versions if available
+	if (threadable_) {
+		// compare the internal representations, it's faster and better, and
+		// the Perl-exported representation might be not initialized yet
+		if (codestr_ != other->codestr_)
+			return false;
+		if (argst_.size() != other->argst_.size())
+			return false;
+		for (size_t i = 0; i < argst_.size(); ++i) {
+			if (!argst_[i]->equals(other->argst_[i]))
+				return false;
+		}
+		return true;
+	}
+
 	if (args_.size() != other->args_.size())
 		return false;
 	if ((code_ == NULL) ^ (other->code_ == NULL))
