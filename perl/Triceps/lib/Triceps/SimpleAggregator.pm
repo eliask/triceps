@@ -253,7 +253,7 @@ sub make # (optName => optValue, ...)
 	${$opts->{saveRowTypeTo}} = $rtRes if (defined($opts->{saveRowTypeTo}));
 
 	# build the computation function
-	my $compText = "sub {\n";
+	my $compText;
 	$compText .= "  use strict;\n";
 	$compText .= "  my (\$table, \$context, \$aggop, \$opcode, \$rh, \$state, \@args) = \@_;\n";
 	$compText .= "  return if (\$context->groupSize()==0 || \$opcode == &Triceps::OP_NOP);\n";
@@ -276,17 +276,12 @@ sub make # (optName => optValue, ...)
 	$compText .= "  \$context->makeArraySend(\$opcode,\n";
 	$compText .= $codeBuild;
 	$compText .= "  );\n";
-	$compText .= "}\n";
 
 	${$opts->{saveComputeTo}} = $compText if (defined($opts->{saveComputeTo}));
 
-	# compile the computation function
-	my $compFun = eval $compText
-		or confess "$myname: error in compilation of the aggregation computation:\n  $@\nfunction text:\n$compText ";
-
 	# build and add the aggregator
-	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun, @compArgs)
-		or confess "$myname: internal error: failed to build an aggregator type: $! ";
+	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compText, @compArgs)
+		or confess "$myname: failed to build an aggregator type: $! ";
 
 	$idx->setAggregator($agg)
 		or confess "$myname: failed to set the aggregator in the index type: $! ";

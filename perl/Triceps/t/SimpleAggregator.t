@@ -572,7 +572,7 @@ tryBadOptValue(
 			symbol => "string", "_defective_syntax", sub {$_[0]->get("symbol");},
 		],
 );
-ok($@ =~ /^Triceps::SimpleAggregator::make: error in compilation of the aggregation computation:/);
+ok($@, qr/^Triceps::SimpleAggregator::make: failed to build an aggregator type: Triceps::AggregatorType::new\(handler\): failed to compile the source code\nCompilation error: Bareword "XXXXXXX" not allowed while "strict subs" in use/);
 
 tryBadOptValue(
 		result => [
