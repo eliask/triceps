@@ -10,6 +10,7 @@
 // ###################################################################################
 
 #include <typeinfo>
+#include <map>
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -35,7 +36,7 @@ PerlValue::PerlValue():
 
 Erref PerlValue::parse(SV *v)
 {
-	static char msg[] = "to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array of hash thereof";
+	static char msg[] = "to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array or hash thereof";
 	WrapRowType *wrt;
 	WrapRow *wr;
 
@@ -158,6 +159,77 @@ SV *PerlValue::restore(HoldRowTypes *holder) const
 	}
 }
 
+bool PerlValue::equals(const PerlValue *other) const
+{
+	if (this == other)
+		return true;
+
+	if (choice_ != other->choice_)
+		return false;
+
+	switch(choice_) {
+	case UNDEF:
+		return true;
+		break;
+	case INT:
+		return (i_ == other->i_);
+		break;
+	case FLOAT:
+		return (f_ == other->f_);
+		break;
+	case STRING:
+		return (s_ == other->s_);
+		break;
+	case ARRAY:
+		{
+			if (v_.size() != other->v_.size())
+				return false;
+
+			int len = v_.size();
+			for (int i = 0; i < len; i++) {
+				if (!v_[i]->equals(other->v_[i]))
+					return false;
+			}
+			return true;
+		}
+		break;
+	case HASH:
+		{
+			if (v_.size() != other->v_.size())
+				return false;
+
+			int len = v_.size();
+
+			// this is tricky: the keys may go in any order, so have to map them together
+			typedef map<string, int> Kmap;
+			Kmap kmap;
+			for (int i = 0; i < len; i++) {
+				kmap[k_[i]] = i;
+			}
+
+			for (int i = 0; i < len; i++) {
+				Kmap::iterator it = kmap.find(other->k_[i]);
+				if (it == kmap.end())
+					return false; // no such key
+				int j = it->second;
+				if (k_[j] != other->k_[i] || !v_[j]->equals(other->v_[i]))
+					return false;
+			}
+			return true;
+		}
+		break;
+	case ROW_TYPE:
+		return rowType_->equals(other->rowType_);
+		break;
+	case ROW:
+		if (!row_.getType()->equals(other->row_.getType()))
+			return false;
+		return row_.getType()->equalRows(row_.get(), other->row_.get());
+		break;
+	}
+	return false; // should never happen
+}
+
 PerlValue *PerlValue::make(SV *v)
 {
 	PerlValue *pv = new PerlValue();
@@ -216,3 +288,22 @@ get(WrapPerlValue *self)
 		} TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
+
+#// check whether both refs point to the same object
+int
+same(WrapPerlValue *self, WrapPerlValue *other)
+	CODE:
+		clearErrMsg();
+		RETVAL = (self->get() == other->get());
+	OUTPUT:
+		RETVAL
+
+#// check whether both values are equal
+int
+equals(WrapPerlValue *self, WrapPerlValue *other)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->get()->equals(other->get());
+	OUTPUT:
+		RETVAL
+

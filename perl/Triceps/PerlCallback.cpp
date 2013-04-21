@@ -136,6 +136,9 @@ void PerlCallback::appendArg(SV *arg)
 
 bool PerlCallback::equals(const PerlCallback *other) const
 {
+	if (threadable_ != other->threadable_)
+		return false;
+
 	// XXX compare the threadable versions if available
 	if (args_.size() != other->args_.size())
 		return false;

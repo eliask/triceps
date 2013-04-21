@@ -77,6 +77,9 @@ public:
 	// @return - the restored value, with the reference count of 1
 	SV *restore(HoldRowTypes *holder) const;
 
+	// Compare for equality.
+	bool equals(const PerlValue *other) const;
+
 	// Make a new PerlValue by parsing an SV.
 	// 
 	// Throws an Exception if it can not be parsed.

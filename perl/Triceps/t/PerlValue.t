@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 43 };
+BEGIN { plan tests => 61 };
 use Triceps;
 use Carp;
 use strict;
@@ -35,6 +35,20 @@ my $rt1 = Triceps::RowType->new( # used later
 );
 ok(ref $rt1, "Triceps::RowType");
 
+my $rt1eq = Triceps::RowType->new( # equal to rt1
+	@def1
+);
+ok(ref $rt1eq, "Triceps::RowType");
+
+my $rt2 = Triceps::RowType->new( # matching but not equal to rt1
+	a => "uint8",
+	b => "int32",
+	c => "int64",
+	d => "float64",
+	f => "string",
+);
+ok(ref $rt2, "Triceps::RowType");
+
 my @dataset1 = (
 	a => "uint8",
 	b => 123,
@@ -45,12 +59,27 @@ my @dataset1 = (
 my $r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
+my $r1eq = $rt1eq->makeRowHash( @dataset1); # equal to r1, of an equal type
+ok(ref $r1eq, "Triceps::Row");
+
+my $r2 = $rt1->makeRowHash(a => "uint8"); # not equal to r1 but of the same type
+ok(ref $r1, "Triceps::Row");
+
+my $r3 = $rt2->makeRowHash( # contents equal to r1 but of a matching type
+	a => "uint8",
+	b => 123,
+	c => 3e15+0,
+	d => 3.14,
+	f => "string",
+);
+ok(ref $r3, "Triceps::Row");
+
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
-my($v, $res);
+my($v, $vv, $res);
 
 $v = Triceps::PerlValue->new(undef);
 ok(ref $v, "Triceps::PerlValue");
@@ -138,4 +167,58 @@ ok($@, qr/^invalid value at array index 0:\n  to allow passing between the threa
 
 eval { Triceps::PerlValue->new({ a => sub {}}); };
 ok($@, qr/^invalid value at hash key 'a':\n  to allow passing between the threads, the value must be one of undef, int, float, string, RowType, or an array or hash thereof/);
+
+#########################
+# test the equality
+
+$v = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "x" }, $rt1, $r1]);
+ok($v->equals($v));
+
+# exactly same contents
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "x" }, $rt1, $r1]);
+ok($v->equals($vv));
+
+# equal row type and row values
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "x" }, $rt1eq, $r1eq]);
+ok($v->equals($vv));
+
+# hash the same but in different order
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { b => "x", a => 1 }, $rt1, $r1]);
+ok($v->equals($vv));
+
+# different value type (and naturally a different element in an array)
+$vv = Triceps::PerlValue->new([1, 1, 1.5, "str", { a => 1, b => "x" }, $rt1, $r1]);
+ok(!$v->equals($vv));
+
+# different int
+$vv = Triceps::PerlValue->new([undef, 2, 1.5, "str", { a => 1, b => "x" }, $rt1, $r1]);
+ok(!$v->equals($vv));
+
+# different float
+$vv = Triceps::PerlValue->new([undef, 1, 2.5, "str", { a => 1, b => "x" }, $rt1, $r1]);
+ok(!$v->equals($vv));
+
+# different string
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "strx", { a => 1, b => "x" }, $rt1, $r1]);
+ok(!$v->equals($vv));
+
+# different hash key
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, c => "x" }, $rt1, $r1]);
+ok(!$v->equals($vv));
+
+# different hash value
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "y" }, $rt1, $r1]);
+ok(!$v->equals($vv));
+
+# different row type
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "x" }, $rt2, $r1]);
+ok(!$v->equals($vv));
+
+# different row of the same type
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "x" }, $rt1, $r2]);
+ok(!$v->equals($vv));
+
+# a row of the same contents but matching type
+$vv = Triceps::PerlValue->new([undef, 1, 1.5, "str", { a => 1, b => "x" }, $rt1, $r3]);
+ok(!$v->equals($vv));
 
