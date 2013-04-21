@@ -363,13 +363,14 @@ ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can 
 	# add an aggregator for the test
 	my $ttorig = $tt1->copy();
 	$ttorig->findSubIndex("primary")->setAggregator(
-		Triceps::AggregatorType->new($rt1, "aggr", sub {}, sub {})
+		Triceps::AggregatorType->new($rt1, "aggr", ' ', ' ') # use the version with source code
 	);
 
 	# now test
 	my $ttcp = $ttorig->deepCopy();
 	ok(ref $ttcp, "Triceps::TableType");
 	#printf "tt1: %s\nttcp: %s\n", $tt1->print(), $ttcp->print();
+	# XXX broken for now, since the callbacks equality after the deep copy doesn't work right yet
 	ok($ttorig->equals($ttcp));
 
 	my $cprt1 = $ttcp->getRowType();

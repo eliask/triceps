@@ -73,6 +73,7 @@ bool PerlSortCondition::equals(const SortedIndexCondition *sc) const
 {
 	const PerlSortCondition *psc = dynamic_cast<const PerlSortCondition *>(sc);
 
+	// XXX this means that it may differ before and after initialization
 	return name_ == psc->name_
 		&& callbackEquals(cbInitialize_, psc->cbInitialize_)
 		&& callbackEquals(cbCompare_, psc->cbCompare_);
@@ -82,6 +83,7 @@ bool PerlSortCondition::match(const SortedIndexCondition *sc) const
 {
 	const PerlSortCondition *psc = dynamic_cast<const PerlSortCondition *>(sc);
 
+	// XXX this means that it may differ before and after initialization
 	return callbackEquals(cbInitialize_, psc->cbInitialize_)
 		&& callbackEquals(cbCompare_, psc->cbCompare_);
 }

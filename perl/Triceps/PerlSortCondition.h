@@ -58,7 +58,7 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 	virtual SortedIndexCondition *copy() const;
 	// The holder will be kept until the initialization time.
-	// This is needed because the RowType objects are not constructed
+	// This is needed because the RowType objects in PerlCallback are not constructed
 	// until the initialization time, because it can not be extracted
 	// separately from the Perl objects, and extracting those would
 	// mess up the memory management, because the Nexuses are kept
@@ -69,8 +69,6 @@ public:
 	virtual void initialize(Erref &errors, TableType *tabtype, SortedIndexType *indtype);
 
 	// Set the comparator, could be called from the initializer.
-	// It is technically possible to have the initialization called
-	// from multiple threads, but don't do that!
 	// @return - true on success, false if the object is already initialized
 	bool setComparator(Onceref<PerlCallback> cbComparator);
 

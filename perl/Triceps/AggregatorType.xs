@@ -32,6 +32,7 @@ DESTROY(WrapAggregatorType *self)
 		delete self;
 
 
+#// The old-style constructor, with mandatory result row type and no initializer.
 #// @param CLASS - name of type being constructed
 #// @param wrt - row type of the aggregation result
 #// @param name - name that will be used to create the aggregator gadget in the table
@@ -49,18 +50,18 @@ new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...
 
 		Onceref<PerlCallback> cbconst; // defaults to NULL
 		if (SvOK(constructor)) {
-			cbconst = new PerlCallback();
+			cbconst = new PerlCallback(true);
 			PerlCallbackInitializeSplit(cbconst, "Triceps::AggregatorType::new(constructor)", constructor, 5, items-5);
 			if (cbconst->code_ == NULL)
 				XSRETURN_UNDEF; // error message is already set
 		}
 
-		Onceref<PerlCallback> cbhand = new PerlCallback();
+		Onceref<PerlCallback> cbhand = new PerlCallback(true);
 		PerlCallbackInitialize(cbhand, "Triceps::AggregatorType::new(handler)", 4, items-4);
 		if (cbhand->code_ == NULL)
 			XSRETURN_UNDEF; // error message is already set
 
-		RETVAL = new WrapAggregatorType(new PerlAggregatorType(name, rt, cbconst, cbhand));
+		RETVAL = new WrapAggregatorType(new PerlAggregatorType(name, rt, NULL, cbconst, cbhand));
 	OUTPUT:
 		RETVAL
 
