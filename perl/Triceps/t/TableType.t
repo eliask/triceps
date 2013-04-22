@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 80 };
+BEGIN { plan tests => 87 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -375,4 +375,68 @@ ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can 
 	my $cprt1 = $ttcp->getRowType();
 	my $cprt2 = $ttcp->findSubIndex("primary")->getAggregator()->getRowType();
 	ok($cprt1->same($cprt2));
+}
+
+###################### copyFundamental ################################
+
+{
+	# make a widely branching table to copy from
+	my $ttorig = Triceps::TableType->new($rt1)
+		->addSubIndex(one => Triceps::IndexType->newHashed(key => [ "b", "c" ])
+			->addSubIndex(a => Triceps::IndexType->newFifo()
+				->setAggregator(Triceps::AggregatorType->new($rt1, "ag-one-a", undef, ' '))
+			)
+			->addSubIndex(b => Triceps::IndexType->newFifo()
+				->setAggregator(Triceps::AggregatorType->new($rt1, "ag-one-b", undef, ' '))
+			)
+			->setAggregator(Triceps::AggregatorType->new($rt1, "ag-one", undef, ' '))
+		)
+		->addSubIndex(two => Triceps::SimpleOrderedIndex->new("b" => "ASC" , "c" => "ASC")
+			->addSubIndex(a => Triceps::IndexType->newFifo()
+				->setAggregator(Triceps::AggregatorType->new($rt1, "ag-two-a", undef, ' '))
+			)
+			->addSubIndex(b => Triceps::IndexType->newHashed(key => [ "d" ])
+				->setAggregator(Triceps::AggregatorType->new($rt1, "ag-two-b", undef, ' '))
+			)
+			->setAggregator(Triceps::AggregatorType->new($rt1, "ag-two", undef, ' '))
+		)
+	;
+
+	{
+		my $ttcopy = $ttorig->copyFundamental();
+		ok($ttcopy->print(undef), 'table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index HashedIndex(b, c, ) { index FifoIndex() a, } one, }');
+	}
+
+	{
+		my $ttcopy = $ttorig->copyFundamental("NO_FIRST_LEAF");
+		ok($ttcopy->print(undef), 'table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { }');
+	}
+
+	{
+		# the first leaf specified implicitly and explicitly
+		my $ttcopy = $ttorig->copyFundamental([ "one", "a" ]);
+		ok($ttcopy->print(undef), 'table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index HashedIndex(b, c, ) { index FifoIndex() a, } one, }');
+	}
+
+	{
+		# another leaf from "one"
+		my $ttcopy = $ttorig->copyFundamental([ "one", "b" ]);
+		ok($ttcopy->print(undef), 'table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index HashedIndex(b, c, ) { index FifoIndex() a, index FifoIndex() b, } one, }');
+	}
+
+	{
+		# put the second index first, also "-" under a leaf index
+		my $ttcopy = $ttorig->copyFundamental([ "two", "b" ], [ "one", "a", "-" ], "NO_FIRST_LEAF", );
+		ok($ttcopy->print(undef), 'table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index PerlSortedIndex(SimpleOrder b ASC, c ASC, ) { index HashedIndex(d, ) b, } two, index HashedIndex(b, c, ) { index FifoIndex() a, } one, }');
+	}
+
+	# errors
+	{
+		eval { $ttorig->copyFundamental("no_first_leaf") };
+		ok($@, qr/^Triceps::TableType::copyFundamental: the arguments must be either references to arrays of path strings or 'NO_FIRST_LEAF', got 'no_first_leaf'/);
+	}
+	{
+		eval { $ttorig->copyFundamental(["one", "z"]) };
+		ok($@, qr/^Triceps::TableType::copyFundamental: unable to find the index type at path 'one.z', table type is:/);
+	}
 }
