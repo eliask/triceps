@@ -39,7 +39,7 @@ public:
 
 	// from IndexType
 	virtual const_Onceref<NameSet> getKey() const;
-	virtual IndexType *copy() const;
+	virtual IndexType *copy(bool flat = false) const;
 	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
@@ -80,7 +80,7 @@ protected:
 
 protected:
 	// used by copy()
-	HashedIndexType(const HashedIndexType &orig);
+	HashedIndexType(const HashedIndexType &orig, bool flat);
 	// used by deepCopy()
 	HashedIndexType(const HashedIndexType &orig, HoldRowTypes *holder);
 

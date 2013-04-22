@@ -51,7 +51,9 @@ public:
 	IndexTypeVec();
 	IndexTypeVec(size_t size);
 	// Populate with the copy of the original types.
-	IndexTypeVec(const IndexTypeVec &orig);
+	// @param flat - flag: do not include any nested indexes, which pretty
+	//        much makes this constructor the same as the default one
+	IndexTypeVec(const IndexTypeVec &orig, bool flat);
 	// Populate with the copy of the original types, and preserve the
 	// sharedness of RowType references.
 	IndexTypeVec(const IndexTypeVec &orig, HoldRowTypes *holder);
@@ -97,6 +99,7 @@ public:
 	void clearRowHandle(RowHandle *rh) const;
 
 private:
+	IndexTypeVec(const IndexTypeVec &orig);
 	void operator=(const IndexTypeVec &);
 };
 
@@ -201,7 +204,14 @@ public:
 	// Make a copy of this type. The copy is always uninitialized, no
 	// matter whther it was made from an initialized one or not.
 	// The subclasses must define the actual copying.
-	virtual IndexType *copy() const = 0;
+	//
+	// The flat copying allows to get rid of any structure around,
+	// and do such things as rebuilding a table type with a subset of
+	// the original indexes.
+	//
+	// @param flat - flag: copy just this index, no nested contents (indexes,
+	//        aggregators etc.)
+	virtual IndexType *copy(bool flat = false) const = 0;
 	// Make a deep copy of this type. The copy is always uninitialized, no
 	// matter whther it was made from an initialized one or not.
 	// The subclasses must define the actual copying.
@@ -308,7 +318,9 @@ protected:
 	// can be constructed only from subclasses
 	IndexType(IndexId it);
 	// Copy.
-	IndexType(const IndexType &orig); 
+	// @param flat - flag: copy just this index, no nested contents (indexes,
+	//        aggregators etc.)
+	IndexType(const IndexType &orig, bool flat); 
 	// Copy and preserve the sharedness of RowType references in the copy.
 	IndexType(const IndexType &orig, HoldRowTypes *holder); 
 
@@ -635,6 +647,7 @@ protected:
 
 private:
 	IndexType();
+	IndexType(const IndexType &orig); 
 	void operator=(const IndexType &);
 };
 

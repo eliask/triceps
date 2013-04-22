@@ -19,8 +19,8 @@ RootIndexType::RootIndexType() :
 {
 }
 
-RootIndexType::RootIndexType(const RootIndexType &orig) :
-	IndexType(orig)
+RootIndexType::RootIndexType(const RootIndexType &orig, bool flat) :
+	IndexType(orig, flat)
 {
 }
 
@@ -45,9 +45,9 @@ const_Onceref<NameSet> RootIndexType::getKey() const
 	return const_Onceref<NameSet>(); // NULL, no keys
 }
 
-IndexType *RootIndexType::copy() const
+IndexType *RootIndexType::copy(bool flat) const
 {
-	return new RootIndexType(*this);
+	return new RootIndexType(*this, flat);
 }
 
 IndexType *RootIndexType::deepCopy(HoldRowTypes *holder) const

@@ -21,8 +21,8 @@ FifoIndexType::FifoIndexType(size_t limit, bool jumping, bool reverse) :
 { 
 }
 
-FifoIndexType::FifoIndexType(const FifoIndexType &orig) :
-	IndexType(orig),
+FifoIndexType::FifoIndexType(const FifoIndexType &orig, bool flat) :
+	IndexType(orig, flat),
 	limit_(orig.limit_),
 	jumping_(orig.jumping_),
 	reverse_(orig.reverse_)
@@ -97,9 +97,9 @@ void FifoIndexType::printTo(string &res, const string &indent, const string &sub
 	printSubelementsTo(res, indent, subindent);
 }
 
-IndexType *FifoIndexType::copy() const
+IndexType *FifoIndexType::copy(bool flat) const
 {
-	return new FifoIndexType(*this);
+	return new FifoIndexType(*this, flat);
 }
 
 IndexType *FifoIndexType::deepCopy(HoldRowTypes *holder) const

@@ -69,8 +69,8 @@ SortedIndexType::SortedIndexType(Onceref<SortedIndexCondition> sc) :
 	assert(sc_.get() != NULL);
 }
 
-SortedIndexType::SortedIndexType(const SortedIndexType &orig) :
-	TreeIndexType(orig),
+SortedIndexType::SortedIndexType(const SortedIndexType &orig, bool flat) :
+	TreeIndexType(orig, flat),
 	sc_(orig.sc_->copy())
 { }
 
@@ -127,9 +127,9 @@ const_Onceref<NameSet> SortedIndexType::getKey() const
 	return sc_->getKey();
 }
 
-IndexType *SortedIndexType::copy() const
+IndexType *SortedIndexType::copy(bool flat) const
 {
-	return new SortedIndexType(*this);
+	return new SortedIndexType(*this, flat);
 }
 
 IndexType *SortedIndexType::deepCopy(HoldRowTypes *holder) const

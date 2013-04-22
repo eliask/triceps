@@ -38,7 +38,7 @@ public:
 
 	// from IndexType
 	virtual const_Onceref<NameSet> getKey() const;
-	virtual IndexType *copy() const;
+	virtual IndexType *copy(bool flat = false) const;
 	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
@@ -91,7 +91,7 @@ protected:
 
 protected:
 	// used by copy()
-	FifoIndexType(const FifoIndexType &orig);
+	FifoIndexType(const FifoIndexType &orig, bool flat);
 	// used by deepCopy()
 	FifoIndexType(const FifoIndexType &orig, HoldRowTypes *holder);
 

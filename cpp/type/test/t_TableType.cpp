@@ -1202,6 +1202,7 @@ UTESTCASE copy(Utest *utest)
 			)
 		)->addSubIndex("tertiary", SortedIndexType::make(new MySortCondition(false))
 			->setAggregator(agt3)
+			->addSubIndex("level2", new FifoIndexType)
 		)
 		;
 
@@ -1248,6 +1249,31 @@ UTESTCASE copy(Utest *utest)
 		const AggregatorType *cpagt3 = tert->getAggregator();
 		UT_ASSERT(cpagt3 != NULL);
 		UT_IS(cptt->rowType(), cpagt3->getRowType());
+	}
+
+	// check the flat copy
+	{
+		IndexType *prim0 = tt->findSubIndex("primary");
+		UT_ASSERT(prim0 != NULL);
+
+		IndexType *prim1 = prim0->copy(true);
+		UT_ASSERT(prim1 != NULL);
+		UT_ASSERT(prim1->getAggregator() == NULL);
+		UT_ASSERT(prim1->isLeaf()); // all the sun-indexes are gone
+
+		IndexType *sec0 = prim0->findSubIndex("level2");
+		UT_ASSERT(sec0 != NULL);
+
+		IndexType *sec1 = sec0->copy(true);
+		UT_ASSERT(sec1 != NULL);
+
+		IndexType *tert0 = tt->findSubIndex("tertiary");
+		UT_ASSERT(tert0 != NULL);
+
+		IndexType *tert1 = tert0->copy(true);
+		UT_ASSERT(tert1 != NULL);
+		UT_ASSERT(tert1->getAggregator() == NULL);
+		UT_ASSERT(tert1->isLeaf()); // all the sun-indexes are gone
 	}
 
 	// deep copy with a holder

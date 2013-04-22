@@ -45,11 +45,13 @@ IndexTypeVec::IndexTypeVec(size_t size):
 	vector<IndexTypeRef>(size)
 { }
 
-IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig)
+IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig, bool flat)
 {
-	size_t n = orig.size();
-	for (size_t i = 0; i < n; i++) 
-		push_back(IndexTypeRef(orig[i].name_, orig[i].index_->copy()));
+	if (!flat) {
+		size_t n = orig.size();
+		for (size_t i = 0; i < n; i++) 
+			push_back(IndexTypeRef(orig[i].name_, orig[i].index_->copy()));
+	}
 }
 
 IndexTypeVec::IndexTypeVec(const IndexTypeVec &orig, HoldRowTypes *holder)
@@ -164,12 +166,12 @@ IndexType::IndexType(IndexId it) :
 	initialized_(false)
 { }
 
-IndexType::IndexType(const IndexType &orig) :
+IndexType::IndexType(const IndexType &orig, bool flat) :
 	Type(false, TT_INDEX),
-	nested_(orig.nested_),
+	nested_(orig.nested_, flat),
 	tabtype_(NULL),
 	parent_(NULL),
-	agg_(orig.agg_.isNull()? NULL : orig.agg_->copy()),
+	agg_( (flat || orig.agg_.isNull())? NULL : orig.agg_->copy()),
 	indexId_(orig.indexId_),
 	initialized_(false)
 { 

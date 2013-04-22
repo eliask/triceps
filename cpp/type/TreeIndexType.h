@@ -29,8 +29,8 @@ protected:
 	// The copied index type is alway uninitialized, so no point
 	// in copying the contents of the fields, they will be
 	// set by the subclass on initialization.
-	TreeIndexType(const TreeIndexType &orig) :
-		IndexType(orig)
+	TreeIndexType(const TreeIndexType &orig, bool flat) :
+		IndexType(orig, flat)
 	{ }
 	// used by deepCopy()
 	TreeIndexType(const TreeIndexType &orig, HoldRowTypes *holder) :

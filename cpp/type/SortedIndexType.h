@@ -210,7 +210,7 @@ public:
 
 	// from IndexType
 	virtual const_Onceref<NameSet> getKey() const;
-	virtual IndexType *copy() const;
+	virtual IndexType *copy(bool flat = false) const;
 	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();
 	virtual Index *makeIndex(const TableType *tabtype, Table *table) const;
@@ -220,7 +220,7 @@ public:
 
 protected:
 	// used by copy(), copies sc_
-	SortedIndexType(const SortedIndexType &orig);
+	SortedIndexType(const SortedIndexType &orig, bool flat);
 	// used by deepCopy(), deep-copies sc_
 	SortedIndexType(const SortedIndexType &orig, HoldRowTypes *holder);
 
