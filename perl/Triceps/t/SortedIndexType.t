@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 172 };
+BEGIN { plan tests => 174 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -248,6 +248,12 @@ ok($res, "index PerlSortedIndex(basic)");
 	my $it3 = $it2->findSubIndex("leaf");
 	ok(ref $it3, "Triceps::IndexType");
 
+	{
+		my $flat2 = $it2->flatCopy();
+		ok(ref $flat2, "Triceps::IndexType");
+		ok($flat2->isLeaf());
+	}
+	
 	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
 	ok(ref $t1, "Triceps::Table");
 

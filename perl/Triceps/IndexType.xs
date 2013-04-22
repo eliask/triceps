@@ -171,6 +171,19 @@ copy(WrapIndexType *self)
 	OUTPUT:
 		RETVAL
 
+#// make a flat (i.e. without any sub-indexes or aggregators) uninitialized copy
+WrapIndexType *
+flatCopy(WrapIndexType *self)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		RETVAL = new WrapIndexType(ixt->copy(true));
+	OUTPUT:
+		RETVAL
+
 int
 same(WrapIndexType *self, WrapIndexType *other)
 	CODE:
