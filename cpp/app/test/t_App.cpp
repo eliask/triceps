@@ -1025,3 +1025,5 @@ UTESTCASE find_errors(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// the file descriptor stuff storeFd() and such is tested in Perl

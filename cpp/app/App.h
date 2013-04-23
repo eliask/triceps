@@ -75,6 +75,8 @@ public:
 		DEFAULT_TIMEOUT = 30,
 	};
 
+	virtual ~App();
+
 	// Get the name
 	const string &getName() const
 	{
@@ -350,6 +352,41 @@ public:
 
 	// }
 	
+	// Perl has issues with passing the file descriptors between
+	// threads. So App has an API to help with this. It keeps a map
+	// of file descriptors that can be stored and loaded.
+	// If the App gets destroyed while some file descriptors are
+	// still in the map (not a normal occurrence), they will be closed.
+	// {
+
+	// Store a file descriptor.
+	//
+	// Throws an Exception if a descriptor with this name is already
+	// stored.
+	//
+	// @param name - a symbolic name
+	// @param fd - the file descriptor number
+	void storeFd(const string &name, int fd);
+
+	// Get a file descriptor back by name.
+	// This does not erase it from the kept map!
+	// @param name - a symbolic name
+	// @return - the file descriptor or -1 if the name is unknown
+	int loadFd(const string &name) const;
+
+	// Erase the file descriptor from the map.
+	// @param name - a symbolic name
+	// @return - true if erased, false if unknown to start with
+	bool forgetFd(const string &name);
+
+	// Close and erase the file descriptor from the map.
+	// On close errors will leave errno set to non-0.
+	// @param name - a symbolic name
+	// @return - true if closed and erased, false if unknown to start with
+	bool closeFd(const string &name);
+
+	// }
+
 protected:
 	// The TrieadOwner's interface. These user calls are forwarded through TrieadOwner.
 
@@ -664,6 +701,9 @@ protected:
 	pw::prwlock drainRw_; // synchronize shared/exclusive drains
 	Triead *drainExcept_; // drain all threads except this one (exclusively)
 	int drainCnt_; // count of active drain requests, the app won't be undrained until it goes to 0
+
+	typedef map<string, int> FdMap;
+	FdMap fdMap_;
 
 private:
 	App();

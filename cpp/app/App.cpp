@@ -8,6 +8,7 @@
 // Apps in one program, each with a different name.
 
 #include <string.h>
+#include <stdlib.h>
 #include <app/App.h>
 #include <app/TrieadOwner.h>
 #include <app/Nexus.h>
@@ -117,6 +118,13 @@ App::App(const string &name) :
 	drainCnt_(0)
 {
 	computeDeadlineL(timeout_);
+}
+
+App::~App()
+{
+	// avoid leaking the descriptors on App failures
+	for (FdMap::iterator it = fdMap_.begin(); it != fdMap_.end(); ++it)
+		close(it->second);
 }
 
 void App::setTimeout(int sec, int fragsec)
@@ -735,6 +743,51 @@ void App::undrain()
 		}
 	}
 	drainRw_.unlock();
+}
+
+void App::storeFd(const string &name, int fd)
+{
+	pw::lockmutex lm(mutex_);
+	
+	FdMap::iterator it = fdMap_.find(name);
+	if (it != fdMap_.end())
+		throw Exception::f("store of duplicate descriptor '%s', new fd=%d, existing fd=%d", 
+			name.c_str(), fd, it->second);
+	fdMap_[name] = fd;
+}
+
+int App::loadFd(const string &name) const
+{
+	pw::lockmutex lm(mutex_);
+	FdMap::const_iterator it = fdMap_.find(name);
+	if (it != fdMap_.end())
+		return it->second;
+	else
+		return -1;
+}
+
+bool App::forgetFd(const string &name)
+{
+	pw::lockmutex lm(mutex_);
+	FdMap::iterator it = fdMap_.find(name);
+	if (it != fdMap_.end()) {
+		fdMap_.erase(it);
+		return true;
+	} else 
+		return false;
+}
+
+bool App::closeFd(const string &name)
+{
+	pw::lockmutex lm(mutex_);
+	FdMap::iterator it = fdMap_.find(name);
+	if (it != fdMap_.end()) {
+		errno = 0;
+		close(it->second);
+		fdMap_.erase(it);
+		return true;
+	} else 
+		return false;
 }
 
 void App::checkLoopsL(const string &tname)
