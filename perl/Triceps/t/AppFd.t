@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 16 };
 use Triceps;
 use Carp;
 use IO::Socket;
@@ -277,4 +277,85 @@ if (0) {
 );
 ok(1);
 
-# XXX test the errors
+my $n1; # the first descriptor that gets dupped to
+
+# the small tests, and errors
+Triceps::Triead::startHere(
+	app => "a1",
+	thread => "t1",
+	main => sub {
+		my $opts = {};
+		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+		my $owner = $opts->{owner};
+		my $app = $owner->app();
+
+		eval { $app->storeFd("x", -1); };
+		ok($@, qr/^Triceps::App::storeFd: dup failed: Bad file descriptor/);
+
+		$app->storeFd("x", 0);
+		$n1 = $app->loadFd("x");
+		my $n2 = $n1+1;
+		eval { $app->storeFd("x", 1); };
+		ok($@, qr/^store of duplicate descriptor 'x', new fd=$n2, existing fd=$n1/);
+
+		# check that the failed descriptor got closed
+		$app->storeFd("y", 0);
+		ok($app->loadFd("y"), $n2);
+
+		my $dup = $app->loadDupFd("x");
+		ok($dup, $n2+1);
+		open(F, "<&=$dup") or die "$!";
+		close(F) or die "$!";
+
+		eval { $app->loadFd("z"); };
+		ok($@, qr/^Triceps::App::loadFd: unknown file descriptor 'z'/);
+		eval { $app->loadDupFd("z"); };
+		ok($@, qr/^Triceps::App::loadDupFd: unknown file descriptor 'z'/);
+
+		eval { $app->forgetFd("z"); };
+		ok($@, qr/^Triceps::App::forgetFd: unknown file descriptor 'z'/);
+		eval { $app->closeFd("z"); };
+		ok($@, qr/^Triceps::App::closeFd: unknown file descriptor 'z'/);
+
+		# the successfull close
+		$app->closeFd('y');
+
+		# the successful forget ($n1 still contains 'x')
+		$app->forgetFd('x');
+		open(F, "<&=$n1") or die "$!";
+		close(F) or die "$!";
+
+		# now store one more fd, to check that the App destruction closes it
+		$app->storeFd("z", 0);
+		ok($app->loadFd("z"), $n1);
+	},
+);
+
+Triceps::Triead::startHere(
+	app => "a1",
+	thread => "t1",
+	main => sub {
+		my $opts = {};
+		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+		my $owner = $opts->{owner};
+		my $app = $owner->app();
+
+		# store the file handle;
+		# along the way check that the previous App closed its fds
+		$app->storeFile("z", *STDIN);
+		ok($app->loadFd("z"), $n1);
+
+		# restore as file handles
+		my $f1 = $app->loadDupFile("z", "<", "IO::Handle") or die "$!";
+		ok(ref $f1, "IO::Handle");
+		$f1->close() or die "$!";
+
+		my $f2 = $app->loadDupIOHandle("z", "<") or die "$!";
+		ok(ref $f2, "IO::Handle");
+		$f2->close() or die "$!";
+
+		my $f3 = $app->loadDupIOSocketINET("z", "<") or die "$!";
+		ok(ref $f3, "IO::Socket::INET");
+		$f3->close() or die "$!";
+	},
+);

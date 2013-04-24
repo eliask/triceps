@@ -6,11 +6,13 @@
 # Perl hepler methods for the App.
 
 package Triceps::App;
+use strict;
 
 our $VERSION = 'v1.0.1';
 
 use Carp;
-use strict;
+use IO::Handle;
+use IO::Socket::INET;
 
 # These variables are used by build(). The user can access them too.
 # Since all the variables are local to a thread, these are too.
@@ -48,6 +50,45 @@ sub globalNexus # (@opts)
 {
 	$global->makeNexus(@_, import => "none");
 	return undef;
+}
+
+# Store the (dup of) file descriptor from a file handle.
+# @param self - the App object or app name
+# @param name - the storage name of the file descriptor
+# @param file - the handle to store from
+sub storeFile # ($self, $name, $file)
+{
+	my ($self, $name, $file) = @_;
+	
+	Triceps::App::storeFd($self, $name, fileno($file));
+}
+
+# Load a dup of file descriptor from the App into a
+# file handle object in a class that is a subclass of
+# IO::Handle or otherwise supports the method new_from_fd().
+# @param self - the App object or app name
+# @param name - the storage name of the file descriptor
+# @param mode - the file opening mode (either in r/w/a/r+/w+/a+
+#        or </>/>>/+</+>/+>> format)
+# @param class - class name to import the descriptor to
+# @return - the object of the class created with the loaded 
+#         file descriptor (a dup of it)
+sub loadDupFile # ($self, $name, $mode, $class)
+{
+	my ($self, $name, $mode, $class) = @_;
+	return $class->new_from_fd(Triceps::App::loadDupFd($self, $name), $mode);
+}
+
+# A specialization of loadDupFile that creates an IO::Handle.
+sub loadDupIOHandle # ($self, $name, $mode)
+{
+	return loadDupFile(@_, "IO::Handle");
+}
+
+# A specialization of loadDupFile that creates an IO::Socket::INET.
+sub loadDupIOSocketINET # ($self, $name, $mode)
+{
+	return loadDupFile(@_, "IO::Socket::INET");
 }
 
 1;

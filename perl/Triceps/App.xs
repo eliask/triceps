@@ -479,7 +479,12 @@ storeFd(SV *app, char *name, int fd)
 			int dupfd = dup(fd);
 			if (dupfd < 0)
 				throw Exception::f("%s: dup failed: %s", funcName, strerror(errno));
-			appv->storeFd(name, dupfd); // may throw
+			try {
+				appv->storeFd(name, dupfd); // may throw
+			} catch (Exception e) {
+				close(dupfd);
+				throw;
+			}
 		} while(0); } TRICEPS_CATCH_CROAK;
 	
 # dies on an unknown name
