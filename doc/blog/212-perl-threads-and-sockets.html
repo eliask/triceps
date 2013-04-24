@@ -1,0 +1,67 @@
+Perl, threads and sockets
+
+I've started writing an example that does a TCP server with threads and found that Perl doesn't allow to pass the file descriptors between the threads. Well, you sort of can pass them as arguments to another thread but then it ends up printing the error messages like these and corrupting the reference counts:
+
+Unbalanced string table refcount: (1) for "GEN1" during global destruction.
+Unbalanced string table refcount: (1) for "/usr/lib/perl5/5.10.0/Symbol.pm" during global destruction.
+Scalars leaked: 1
+
+If you try to pass a file descriptor through trheads::shared, it honestly won't allow you, while the thread arguments pretend that they can and then fail.
+
+So, to get around this issue I've added the file descriptor passing service to Triceps::App. The easy way to pass a socket around is:
+
+# in one thread
+$app->storeFile('name', $socket);
+$socket->close();
+
+# in another thread
+my $socket = $app->loadDupIOSocketINET('name', 'r+');
+$app->closeFd('name');
+
+The file descriptor gets extracted from the socket file handle, and its dup is stored in the App. Pick a unique name by which you can get it back. Then you can get it back and create an IO::Socket::INET object with it. When you get it back, it gets dupped again, and you can get it back multiple times, from the same or different threads. Then to avoid leaking sockets, you tell the App to close the file descriptor and forget it.
+
+A limitation is that you can't really share the same descriptor between two thread, Perl is not happy about that. So you have to dup it and have two separate file descriptors for the same socket. You still need to be careful about writing to the same socket from two threads, the best idea is to write from one thread only (and the same applies to reading, though it might be the same or different thread as the writing one).
+
+The other ways to create the file handle objects are:
+
+my $fd = $app->loadDupIOHandle('name', 'r+');
+
+Gets the basic IO::Handle.
+
+my $fd = $app-> loadDupFile('name', 'r+', $className);
+
+Get a file handle of any named subclass of the IO::Handle, for example "IO::Socket::UNIX".
+
+There is also the API for the raw file descriptors, that you can get with fileno():
+
+$app->storeFd('name', $fd);
+
+Store a dup of file descriptor. Same thing as the file handle, the original descriptor stays open and needs to be closed separately.
+
+my $fd = $app->loadDupFd('name');
+
+Get back a dup of the stored file descriptor. You can use it with IO::Handle or to open a named file descriptor in an old-fashioned way:
+
+open(MYFILE, '+<&=' . $app->loadDupFd('name'));
+
+
+Note the "=" in the opening mode, which tells open() to directly adopt the descriptor from the argument and not do another dup of it.
+
+
+my $fd = $app->loadFd('name');
+
+Get back the original file descriptor.  This is dangerous because now you'd have the same file descriptor in two places: in your thread and in the App. There are two ways out of this situation. One is to have it dupped on open:
+
+open(MYFILE, '+<&' . $app->loadFd('name'));
+
+
+Note, no "=" in this snippet's open mode, unlike the previous one.
+
+
+The other way is to open without dupping and tell the App to simply forget this descriptor:
+
+
+open(MYFILE, '+<&=' . $app->loadFd('name'));
+$app->forgetFd('name');
+
+In general, it's safer and easier stay with the dupping, and file the file handle interface instead of messing with the file descriptors.

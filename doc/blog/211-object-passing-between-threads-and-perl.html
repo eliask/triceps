@@ -1,0 +1,83 @@
+Object passing between threads, and Perl code snippets
+
+A limitation of the Perl threads is that no variables can be shared between them. When a new thread gets created, it gets a copy of all the variables of the parent. Well, of all the plain Perl variables. With the XS extensions your luck may vary: the variables might get copied, might become undef, or just become broken (if the XS module is not threads-aware). Copying the XS variables requires a quite high overhead at all the other times, so Triceps doesn't do it and all the Triceps object become undefined in the new thread.
+
+However there is a way to pass around certain objects through the Nexuses.
+
+First, obviously, the Nexuses are intended to pass through the Rowops. These Rowops coming out of a nexus are not the same Rowop objects that went in. Rowop is a single-threaded object and can not be shared by two threads. Instead it gets converted to an internal form while in the nexus, and gets re-created, pointing to the same Row object and to the correct Label in the local facet.
+
+Then, again obviously, the Facets get imported through the Nexus, together with their row types.
+
+And two more types of objects can be exported through a Nexus: the RowTypes and TableTypes. They get exported through the options as in this example:
+
+$fa = $owner->makeNexus(
+    name => "nx1",
+    labels => [
+        one => $rt1,
+        two => $lb,
+    ], 
+    rowTypes => [
+        one => $rt2,
+        two => $rt1,
+    ], 
+    tableTypes => [
+        one => $tt1,
+        two => $tt2,
+    ], 
+    import => "writer",
+); 
+
+As you can see, the namespaces for the labels, row types and table types are completely independent, and the same names can be reused in each of them for different meaning. All the three sections are optional, so if you want, you can order only the types in the nexus, without any labels.
+
+They can then be extracted from the imported facet as:
+
+$rt1 = $fa->impRowType("one");
+$tt1 = $fa->impTableType("one");
+
+
+Or the whole set of name-value pairs can be obtained with:
+
+
+@rtset = $fa->impRowTypesHash();
+@ttset = $fa->impTableTypesHash();
+
+
+The exact table types and row types (by themselves or in the table types or labels) in the importing thread will be copied. It's technically possible to share the references to the same row type in the C++ code but it's more efficient to make a separate copy for each thread, and thus the Perl API goes along the more efficient way.
+
+The import is smart in the sense that it preserves the sameness of the row types: if in the exporting thread the same row type was referred from multiple places in the labels, row types and table types sections, in the imported facet that would again be the same row type (even though of course not the one that has been exported but its copy). This again helps with the efficiency when various objects decide if the rows created by this and that type are compatible.
+
+This is all well until you want to export a table type that has an index with a Perl sort condition in it, or an aggregator with the Perl code. The Perl code objects are tricky: they get copied OK when a new thread is created but the attempts to import them through a nexus later causes a terrible memory corruption. So Triceps doesn't allow to export the table types with the function references in it. But it provides an alternative solution: the code snippets can be specified as the source code. It gets compiled when the table type gets initialized. When a table type gets imported through a nexus, it brings the source code with it. The imported table types are always uninitialized, so at initialization time the source code gets compiled in the new thread and works.
+
+It all works transparently: just specify a string instead of a function reference when creating the index, and it will be recognized and processed. For example:
+
+$it= Triceps::IndexType->newPerlSorted("b_c", undef, '
+    my $res = ($_[0]->get("b") <=> $_[1]->get("b")
+        || $_[0]->get("c") <=> $_[1]->get("c"));
+    return $res;
+    '
+);
+
+Before the code gets compiled, it gets wrapped into a 'sub { ... }', so don't write your own sub in the code string, that would be an error.
+
+There is also the issue of arguments that can be specified for these functions. Triceps is now smart enough to handle the arguments that are one of:
+
+    undef
+    integer
+    floating-point
+    string
+    Triceps::RowType object
+    Triceps::Row object
+    reference to an array or hash thereof
+
+
+It converts the data to an internal C++ representation in the nexus and then converts it back on import. So, if a TableType has all the code in it in the source form, and the arguments for this code within the limits of this format, it can be exported through the nexus. Otherwise an attempt to export it will fail.
+
+I've modified the SimpleOrderedIndex to use the source code format, and it will pass through the nexuses as well.
+
+The Aggregators have a similar problem, and I'm working on converting them to the source code format too.
+
+A little more about the differences between the code references and the source code format:
+
+When you compile a function, it carries with it the lexical context. So you can make the closures that refer to the "my" variables in their lexical scope. With the source code you can't do this. The table type compiles them at initialization time in the context of the main package, and that's all they can see. Remember also that the global variables are not shared between the threads, so if you refer to a global variable in the code snippet and rely on a value in that variable, it won't be present in the other threads (unless the other threads are direct descendants and the value was set before their creation).
+
+While working with the custom sorted indexes, I've also fixed the way the errors are reported in their Perl handlers. The errors used to be just printed on stderr. Now they propagate properly through the table, and the table operations die with the Per handler's error message. Since an error in the sorting function means that things are going very, very wrong, after that the table becomes inoperative and will die on all the subsequent operations as well. 

@@ -1,0 +1,5 @@
+file descriptor revocation
+
+In my book "The practice of parallel programming" I went through a few ways to interrupt a thread that is sleeping trying to read a file descriptor. And as it shows, the system call dup2() copying a descriptor of /dev/null over the target file descriptor is the best solution. Only it doesn't always work. I've thought that on Linux it works reliably but now I've found that it works on the sockets but not on the pipes, and even with sockets the accept() seems to ignore it.
+
+Well, I think I've found a better solution: use a dup2() but then also send a signal (SIGUSR1 or SIGUSR2) to the target thread (of course, this requires some handler registered for this signal, at least a dummy one, to avoid killing the processs). Even if dup2() gets ignored by the current system call, the signal will get through and either return EINTR to make the user code retry or cause a system call restart in the OS. In either case the new file descriptor copied by dup2() will be discovered on the next attempt and cause the desired interruption. And unlike the signal used by itself, dup2() closes the race window around the signal. 
