@@ -467,3 +467,83 @@ isDrained(SV *app)
 	OUTPUT:
 		RETVAL
 
+# Dups the descriptor before storing it.
+void 
+storeFd(SV *app, char *name, int fd)
+	CODE:
+		static char funcName[] =  "Triceps::App::storeFd";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			int dupfd = dup(fd);
+			if (dupfd < 0)
+				throw Exception::f("%s: dup failed: %s", funcName, strerror(errno));
+			appv->storeFd(name, dupfd); // may throw
+		} while(0); } TRICEPS_CATCH_CROAK;
+	
+# dies on an unknown name
+int 
+loadFd(SV *app, char *name)
+	CODE:
+		static char funcName[] =  "Triceps::App::loadFd";
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			RETVAL = appv->loadFd(name);
+			if (RETVAL < 0)
+				throw Exception::f("%s: unknown file descriptor '%s'", funcName, name);
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+	
+# returns a dup()-ed descriptor
+# dies on an unknown name
+int 
+loadDupFd(SV *app, char *name)
+	CODE:
+		static char funcName[] =  "Triceps::App::loadDupFd";
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			int fd = appv->loadFd(name);
+			if (fd < 0)
+				throw Exception::f("%s: unknown file descriptor '%s'", funcName, name);
+			RETVAL = dup(fd);
+			if (RETVAL < 0)
+				throw Exception::f("%s: dup failed: %s", funcName, strerror(errno));
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+# dies on an unknown name
+void 
+forgetFd(SV *app, char *name)
+	CODE:
+		static char funcName[] =  "Triceps::App::forgetFd";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			if (!appv->forgetFd(name))
+				throw Exception::f("%s: unknown file descriptor '%s'", funcName, name);
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+# dies on an unknown name
+void 
+closeFd(SV *app, char *name)
+	CODE:
+		static char funcName[] =  "Triceps::App::closeFd";
+		clearErrMsg();
+		try { do {
+			Autoref<App> appv;
+			parseApp(funcName, "app", app, appv);
+			if (!appv->closeFd(name))
+				throw Exception::f("%s: unknown file descriptor '%s'", funcName, name);
+			if (errno != 0)
+				throw Exception::f("%s: failed to close file descriptor '%s': %s", funcName, name, strerror(errno));
+		} while(0); } TRICEPS_CATCH_CROAK;
