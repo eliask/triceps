@@ -75,18 +75,20 @@ sub storeFile # ($self, $name, $file)
 #         file descriptor (a dup of it)
 sub loadDupFile # ($self, $name, $mode, $class)
 {
+	confess "Triceps::App::loadDupFile: wrong argument count " . ($#_+1) . ", must be 4"
+		unless ($#_ == 3);
 	my ($self, $name, $mode, $class) = @_;
 	return $class->new_from_fd(Triceps::App::loadDupFd($self, $name), $mode);
 }
 
 # A specialization of loadDupFile that creates an IO::Handle.
-sub loadDupIOHandle # ($self, $name, $mode)
+sub loadDupIOHandle($$$) # ($self, $name, $mode)
 {
 	return loadDupFile(@_, "IO::Handle");
 }
 
 # A specialization of loadDupFile that creates an IO::Socket::INET.
-sub loadDupIOSocketINET # ($self, $name, $mode)
+sub loadDupIOSocketINET($$$) # ($self, $name, $mode)
 {
 	return loadDupFile(@_, "IO::Socket::INET");
 }

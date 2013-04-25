@@ -50,6 +50,7 @@ sub makeRowopArray # (self, opcode, fieldValue, ...)
 # @param clear - the clear function
 # @param exec - the label execution function
 # @param args - arguments for the clear and exec functions
+# @return - the newly created chained label
 sub makeChained # ($self, $name, &$clear, &$exec, @args)
 {
 	confess "Use: Label::makeChained(self, name, clear, exec, ...)"
