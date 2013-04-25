@@ -147,7 +147,7 @@ void App::setDeadline(const timespec &dl)
 void App::refreshDeadline()
 {
 	pw::lockmutex lm(mutex_); // needed for the thread count check
-	computeDeadlineL(timeout_);
+	refreshDeadlineL(timeout_);
 }
 
 void App::computeDeadlineL(int sec)
@@ -158,6 +158,21 @@ void App::computeDeadlineL(int sec)
 			err, strerror(err));
 	}
 	deadline_.tv_sec += sec;
+}
+
+void App::refreshDeadlineL(int sec)
+{
+	timespec newdl;
+
+	int err = clock_gettime(CLOCK_REALTIME, &newdl); // the current time
+	if (err != 0) {
+		throw Exception::fTrace("Triceps internal error: clock_gettime() failed: err=%d %s.", 
+			err, strerror(err));
+	}
+	newdl.tv_sec += sec;
+	if (newdl.tv_sec > deadline_.tv_sec
+	|| (newdl.tv_sec == deadline_.tv_sec && newdl.tv_nsec > deadline_.tv_nsec))
+		deadline_ = newdl;
 }
 
 bool App::isAborted() const
@@ -303,6 +318,8 @@ Onceref<TrieadOwner> App::makeTriead(const string &tname, const string &fragname
 	TrieadOwner *ow = new TrieadOwner(this, th);
 	upd->t_ = th;
 
+	refreshDeadlineL(timeout_);
+
 	return ow; // the only owner API for the thread!
 }
 
@@ -319,6 +336,8 @@ void App::declareTriead(const string &tname)
 			ready_.reset();
 		if (++aliveCnt_ == 1)
 			dead_.reset();
+
+		refreshDeadlineL(timeout_);
 	} // else just do nothing
 }
 
@@ -522,6 +541,8 @@ void App::markTrieadReadyL(TrieadUpd *upd, Triead *t)
 			ready_.signal();
 			// XXX if the error is in a fragment, this would still abort the whole app
 			checkLoopsL(t->getName());
+			// since the initialization is completed, drop the deadline timeout to 0
+			computeDeadlineL(0);
 		}
 	}
 }

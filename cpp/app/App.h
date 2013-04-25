@@ -102,15 +102,22 @@ public:
 	// This adjusts only the initial deadline, the timeout for fragments
 	// stays unchanged.
 	//
+	// The use of this function has became tricky because now any thread
+	// declaration or definition refreshes the deadline, possibly delaying
+	// and overriding it.
+	//
 	// Throws an Exception if any thread exists in the App.
 	// @param dl - deadline, absolute value
 	void setDeadline(const timespec &dl);
 
 	// Refresh the deadline before creating a fragment.
 	// Uses the fragment timeout defined in setTimeout() (or default).
+	// Will never move the dealine backwards.
 	void refreshDeadline();
 
 	// Create a new thread.
+	//
+	// Also refreshes the deadline.
 	//
 	// Throws an Exception if the name is empty or not unique.
 	//
@@ -141,6 +148,8 @@ public:
 	//    parent Triead and only then starting the child thread. Otherwise a
 	//    deadlock is possible. It will be detected reliably, but then still
 	//    you would have to fix it like this.
+	//
+	// Also refreshes the deadline if this thread was not declared nor defined yet.
 	//
 	// @param tname - name of the thread to declare. If already declared, this
 	//        method will do nothing.
@@ -436,6 +445,7 @@ protected:
 	//
 	// The last thread marked ready triggers the check of the
 	// App topology that may throw an Exception.
+	// Also the last thread marked resets the deadline to 0.
 	//
 	// @param to - identity of the thread to be marked
 	void markTrieadReady(TrieadOwner *to);
@@ -572,6 +582,12 @@ protected:
 	// Create a timestamp for the initialization deadline.
 	// @param sec - timeout in seconds from now
 	void computeDeadlineL(int sec);
+
+	// The internal implementation of refreshDeadline(), with an
+	// ability to set an explicit deadline. 
+	// @param sec - timeout in seconds from now, but it won't ever
+	//        move the deadline back
+	void refreshDeadlineL(int sec);
 
 	// Check the inter-thread connectivity for loops.
 	// The loops containing both the direct and reverse nexuses are OK,

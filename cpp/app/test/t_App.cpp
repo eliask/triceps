@@ -636,9 +636,12 @@ UTESTCASE timeout_find(Utest *utest)
 		Autoref<App> a1 = App::make("a1");
 
 		a1->setTimeout(100, 0); // for immediate failure
-		a1->refreshDeadline(); // uses the frag value
 
 		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+		ow1->markReady(); // resets the deadline to 0
+
+		a1->refreshDeadline(); // uses the frag value, still 0
+
 		Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 		a1->declareTriead("t3");
 
@@ -681,6 +684,7 @@ UTESTCASE timeout_find(Utest *utest)
 
 		timespec tm;
 		clock_gettime(CLOCK_REALTIME, &tm);
+		a1->setTimeout(100, 0); // so that the refresh won't delay the deadline
 		a1->setDeadline(tm); // for immediate failure
 
 		Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
