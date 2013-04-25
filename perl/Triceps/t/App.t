@@ -151,6 +151,7 @@ ok(ref $rt1, "Triceps::RowType");
 	my $a1 = Triceps::App::make("a1");
 	ok(ref $a1, "Triceps::App");
 
+	$a1->setTimeout(100, 0); # set the frag timeout to 0, to not screw up the deadline
 	$a1->setDeadline(time() -1);
 	Triceps::App::setDeadline("a1", time() -1);
 
@@ -207,6 +208,7 @@ ok(ref $rt1, "Triceps::RowType");
 
 	$a1->setTimeout(30, 0);
 	Triceps::App::setTimeout("a1", 30, 0);
+	$a1->setDeadline(time() -1); # frag timeout can only move the deadline forward, so set it back
 
 	eval { $a1->setTimeout(30, 0, 1); };
 	ok($@, qr/Usage: Triceps::App::setTimeout\(app, main_to, \[frag_to\]\), too many argument/);
