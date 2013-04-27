@@ -82,6 +82,8 @@ PerlApp.o: PerlApp.h
 
 PerlValue.o: PerlValue.h
 
+TrackedFile.o: TrackedFile.h
+
 PerlAggregator.o: PerlCallback.h PerlAggregator.h WrapAggregatorContext.h
 
 AggregatorContext.o: WrapAggregatorContext.h
@@ -94,7 +96,7 @@ FnBinding.o: PerlCallback.h
 
 App.o: PerlApp.h
 
-TrieadOwner.o: PerlApp.h PerlTrieadJoin.h PerlCallback.h TricepsOpt.h
+TrieadOwner.o: PerlApp.h PerlTrieadJoin.h PerlCallback.h TricepsOpt.h TrackedFile.h
 
 ";
 }

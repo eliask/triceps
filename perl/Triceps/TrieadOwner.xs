@@ -18,6 +18,7 @@
 #include "PerlCallback.h"
 #include "PerlApp.h"
 #include "PerlTrieadJoin.h"
+#include "TrackedFile.h"
 #include <app/TrieadOwner.h>
 
 MODULE = Triceps::TrieadOwner		PACKAGE = Triceps::TrieadOwner
@@ -747,6 +748,19 @@ forgetFd(WrapTrieadOwner *self, int fd)
 		try { do {
 			self->get()->fileInterrupt_->forgetFd(fd);
 		} while(0); } TRICEPS_CATCH_CROAK;
+
+#// Intended to be called from the Perl-level wrapper that
+#// extracts the file descriptor from the file handle.
+WrapTrackedFile *
+makeTrackedFileFd(WrapTrieadOwner *self, SV *file, int fd)
+	CODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::TrackedFile";
+		clearErrMsg();
+
+		RETVAL = new WrapTrackedFile(self->get(), file, fd);
+	OUTPUT:
+		RETVAL
 
 #// }
 

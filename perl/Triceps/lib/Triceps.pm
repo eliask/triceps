@@ -85,6 +85,11 @@ sub _compareNumber {
 	$_[0] <=> $_[1];
 }
 
+# flie close called from the C++ code
+sub _close {
+	close($_[0]);
+}
+
 # The default label clearing code.
 # Undefines all the values referred to by the reference arguments.
 # Then undefines all the arguments.

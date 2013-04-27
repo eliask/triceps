@@ -42,6 +42,7 @@ XS(boot_Triceps__Facet);
 XS(boot_Triceps__Nexus); 
 XS(boot_Triceps__AutoDrain); 
 XS(boot_Triceps__PerlValue); 
+XS(boot_Triceps__TrackedFile); 
 #ifdef __cplusplus
 };
 #endif
@@ -152,6 +153,10 @@ BOOT:
 	//
 	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
 	boot_Triceps__PerlValue(aTHX_ cv); 
+	SPAGAIN; POPs;
+	//
+	PUSHMARK(SP); if (items >= 2) { XPUSHs(ST(0)); XPUSHs(ST(1)); } PUTBACK; 
+	boot_Triceps__TrackedFile(aTHX_ cv); 
 	SPAGAIN; POPs;
 	//
 	// fprintf(stderr, "DEBUG Triceps items=%d sp=%p mark=%p\n", items, sp, mark);

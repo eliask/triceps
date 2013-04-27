@@ -73,24 +73,25 @@ sub storeFile # ($self, $name, $file)
 # @param class - class name to import the descriptor to
 # @return - the object of the class created with the loaded 
 #         file descriptor (a dup of it)
-sub loadDupFile # ($self, $name, $mode, $class)
+sub loadDupFileClass # ($self, $name, $mode, $class)
 {
 	confess "Triceps::App::loadDupFile: wrong argument count " . ($#_+1) . ", must be 4"
 		unless ($#_ == 3);
 	my ($self, $name, $mode, $class) = @_;
+	# XXX this could leak the $fd if new_from_fd() fails
 	return $class->new_from_fd(Triceps::App::loadDupFd($self, $name), $mode);
 }
 
-# A specialization of loadDupFile that creates an IO::Handle.
-sub loadDupIOHandle($$$) # ($self, $name, $mode)
+# A specialization of loadDupFileClass that creates an IO::Handle.
+sub loadDupFile($$$) # ($self, $name, $mode)
 {
-	return loadDupFile(@_, "IO::Handle");
+	return loadDupFileClass(@_, "IO::Handle");
 }
 
-# A specialization of loadDupFile that creates an IO::Socket::INET.
-sub loadDupIOSocketINET($$$) # ($self, $name, $mode)
+# A specialization of loadDupFileClass that creates an IO::Socket::INET.
+sub loadDupSocket($$$) # ($self, $name, $mode)
 {
-	return loadDupFile(@_, "IO::Socket::INET");
+	return loadDupFileClass(@_, "IO::Socket::INET");
 }
 
 1;

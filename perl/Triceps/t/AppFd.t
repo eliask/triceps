@@ -15,9 +15,10 @@
 use ExtUtils::testlib;
 use strict;
 use threads;
+use Symbol;
 
 use Test;
-BEGIN { plan tests => 16 };
+BEGIN { plan tests => 35 };
 use Triceps;
 use Carp;
 use IO::Socket;
@@ -346,16 +347,116 @@ Triceps::Triead::startHere(
 		ok($app->loadFd("z"), $n1);
 
 		# restore as file handles
-		my $f1 = $app->loadDupFile("z", "<", "IO::Handle") or die "$!";
+		my $f1 = $app->loadDupFileClass("z", "<", "IO::Handle") or die "$!";
 		ok(ref $f1, "IO::Handle");
 		$f1->close() or die "$!";
 
-		my $f2 = $app->loadDupIOHandle("z", "<") or die "$!";
+		my $f2 = $app->loadDupFile("z", "<") or die "$!";
 		ok(ref $f2, "IO::Handle");
 		$f2->close() or die "$!";
 
-		my $f3 = $app->loadDupIOSocketINET("z", "<") or die "$!";
+		my $f3 = $app->loadDupSocket("z", "<") or die "$!";
 		ok(ref $f3, "IO::Socket::INET");
 		$f3->close() or die "$!";
 	},
 );
+
+# the loadTracked stuff
+Triceps::Triead::startHere(
+	app => "a1",
+	thread => "t1",
+	main => sub {
+		my $opts = {};
+		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+		my $owner = $opts->{owner};
+		my $app = $owner->app();
+
+		my $file = gensym();
+		open($file, '</dev/null') or die "$!";
+		my $fd = fileno($file);
+
+		{
+			my $trf = $owner->makeTrackedFile($file);
+			ok(ref $trf, "Triceps::TrackedFile");
+
+			ok($trf->fd(), $fd);
+			my $copyf = $trf->get();
+			ok(fileno($copyf), $fd);
+			ok($copyf, $file);
+			undef $file; # remove that first reference
+		}
+
+		$file = gensym();
+		open($file, '</dev/null') or die "$!";
+		my $fd2 = fileno($file);
+
+		# if the first file is closed, the second would get the same fd
+		ok($fd2, $fd);
+
+		# now repeat the same stuff, only with an explicit close
+		{
+			my $trf = $owner->makeTrackedFile($file);
+			ok(ref $trf, "Triceps::TrackedFile");
+
+			ok($trf->fd(), $fd);
+			my $copyf = $trf->get();
+			ok(fileno($copyf), $fd);
+			ok($copyf, $file);
+
+			$trf->close();
+
+			# the next file reopened should get the same fd
+			$file = gensym();
+			open($file, '</dev/null') or die "$!";
+			$fd2 = fileno($file);
+			ok($fd2, $fd);
+			close($file);
+
+			# reading from trf will return errors now
+			eval { $trf->fd(); };
+			ok($@, qr/^Triceps::TrackedFile::fd: the file is already closed/);
+			eval { $trf->get(); };
+			ok($@, qr/^Triceps::TrackedFile::get: the file is already closed/);
+		}
+
+		{
+			$app->storeFile("z", *STDIN);
+			ok($app->loadFd("z"), $n1);
+			my $trf = $owner->trackDupFile("z", "<");
+			ok(ref $trf, "Triceps::TrackedFile");
+			$app->closeFd("z");
+		}
+		{
+			my $sock = IO::Socket::INET->new(
+				Proto => "tcp",
+				LocalPort => 0,
+				Listen => 10,
+			) or confess "socket failed: $!";
+			my $port = $sock->sockport();
+
+			$app->storeFile("z", $sock);
+
+			my $trf = $owner->trackDupSocket("z", "<");
+			ok(ref $trf, "Triceps::TrackedFile");
+
+			my $port2 = $trf->get()->sockport();
+			ok($port2, $port);
+
+			$trf = $owner->trackDupClass("z", "<", "IO::Socket::INET");
+			ok(ref $trf, "Triceps::TrackedFile");
+
+			$port2 = $trf->get()->sockport();
+			ok($port2, $port);
+
+			$app->closeFd("z");
+		}
+
+		# the next file reopened should get the same fd as before
+		$file = gensym();
+		open($file, '</dev/null') or die "$!";
+		$fd2 = fileno($file);
+		ok($fd2, $fd);
+		close($file);
+	},
+);
+
