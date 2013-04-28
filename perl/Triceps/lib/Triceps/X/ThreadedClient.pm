@@ -107,22 +107,16 @@ sub collectorT # (@opts)
 
 	#### state of the clients ###
 
-	my %recv; # the received data, keyed by the client
+	my %recv; # the received data, keyed by the client, as one line
 	my %newrecv; # the latest received data, keyed by the client;
 		# this is the data since the last match requested was found,
-		# gets appended to the end of %recv and cleared after that
+		# stored as an array of lines; after it's expected,
+		# gets sent to the main thread and then thrown away;
+		# the expect walks it until the first match, and the further
+		# lines are left alone for the further expects
 	my %pattern; # the pattern to match in the received data, keyed by the client
 
 	#### local functions ###
-
-	# Move the client's data from %newrecv to %recv
-	my $catrecv = sub { # ($client)
-		my $client = shift;
-		if (exists $newrecv{$client}) {
-			$recv{$client} .= $newrecv{$client};
-			delete $newrecv{$client};
-		}
-	};
 
 	# Check if the client's new data matches its pattern, and if so then
 	# move its data to %recv and sent a reply to the global thread.
@@ -130,15 +124,24 @@ sub collectorT # (@opts)
 		my $client = shift;
 		if (exists $pattern{$client} && exists $newrecv{$client}) {
 			my $p = $pattern{$client};
-			if ($newrecv{$client} =~ /$p/) {
-				my $text = $newrecv{$client};
-				&$catrecv($client);
-				delete $pattern{$client};
-				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
-					cmd => "expect",
-					client => $client,
-					arg => $text,
-				);
+
+			for (my $i = 0; $i <= $#{$newrecv{$client}}; $i++) {
+				if ($newrecv{$client}[$i] =~ /$p/) {
+					my $text;
+					for (my $j = 0; $j <= $i; $j++) {
+						$text .= shift(@{$newrecv{$client}});
+					}
+					if ($#{$newrecv{$client}} < 0) {
+						delete $newrecv{$client};
+					}
+					delete $pattern{$client};
+					$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
+						cmd => "expect",
+						client => $client,
+						arg => $text,
+					);
+					last;
+				}
 			}
 		}
 	};
@@ -147,31 +150,16 @@ sub collectorT # (@opts)
 
 	$faRecv->getLabel("msg")->makeChained("lbRecv", undef, sub {
 		my ($client, $text) = $_[1]->getRow()->toArray();
-		$newrecv{$client} .= $text;
+		push @{$newrecv{$client}}, $text;
 		&$checkPattern($client);
 	});
 
 	$faCtl->getLabel("msg")->makeChained("lbCtl", undef, sub {
 		my ($cmd, $client, $arg) = $_[1]->getRow()->toArray();
 		if ($cmd eq "expect") {
-			# expact a certain pattern from a client
+			# expect a certain pattern from a client
 			$pattern{$client} = qr/$arg/m;
 			&$checkPattern($client); # might be already received
-		} elsif ($cmd eq "dump") {
-			# dump the data received from all clients
-			for my $client (keys(%newrecv)) {
-				&$catrecv($client);
-			}
-			for my $client (sort(keys(%recv))) {
-				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
-					cmd => "dump",
-					client => $client,
-					arg => $recv{$client},
-				);
-			}
-			$unit->makeHashCall($lbRepDone, "OP_INSERT", 
-				cmd => "dump",
-			);
 		} else {
 			confess "$myname: received an unknown command '$cmd'";
 		}
@@ -472,6 +460,12 @@ sub sendClose # ($self, $client, $how)
 	my $self = shift;
 	my $client = shift;
 	my $how = shift;
+
+	my $ptext = "> close $how $client\n";
+	$self->{protocol} .= $ptext;
+	if ($self->{debug}) {
+		print $ptext;
+	}
 
 	my $owner = $self->{owner};
 	$owner->unit()->makeHashCall($self->{faSend}->getLabel("close"), "OP_INSERT",
