@@ -26,12 +26,12 @@ exit 0; # XXX disable the logic
 #########################
 
 # Listener for connections.
-# Options:
+# Extra options:
 #
-# socket => $file
-# The socket object.
+# socketName => $name
+# The listening socket name in the App.
 #
-sub ListenerT
+sub ListenerT_1
 {
 	my $opts = {};
 	&Triceps::Opt::parse("ListenerT", $opts, {@Triceps::Triead::opts,
@@ -79,6 +79,118 @@ sub ListenerT
 		$app->closeFd($cliname);
 	}
 }
+
+# The thread-based logic to accept connections on a socket
+# and start the new threads for them.
+#
+# Options:
+# 
+# owner => $owner
+# The TrieadOwner object of the thread where this function runs.
+#
+# socket => $socket
+# The IO::Socket object on which to accept the connections.
+#
+# prefix => $prefix
+# The prefix that will be used to form the name of the created
+# handler threads, their fragments, and the socket objects passed to them.
+# The prefix will have the sequential integer values appended to it.
+#
+# handler => \&TrieadMainFunc
+# The main function for the created handler threads.
+#
+# pass => [@opts]
+# Extra options to pass to the handler threads. The default set of options is:
+#   app - the App name (found from $owner)
+#   thread - name of thread (formed from $prefix)
+#   fragment => name of fragment (same as name of the thread, formed from $prefix)
+#   main => main function (\&TrieadMainFunc)
+#   socketName => name of socket stored in the App (same as name of the thread, 
+#     formed from $prefix), the socket file descriptor will be automatically
+#     closed in the App after it becomes ready again, so the handler thread
+#     must use trackDupSocket() for it, NOT trackGetSocket().
+#
+sub ThreadListen # ($optName => $optValue, ...)
+{
+	my $opts = {};
+	&Triceps::Opt::parse("ThreadListen", $opts, {
+		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
+		socket => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "IO::Socket") } ],
+		prefix => [ undef, \&Triceps::Opt::ck_mandatory ],
+		handler => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "CODE") } ],
+		pass => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+	}, @_);
+	undef @_; # make Perl threads not leak objects
+	my $owner = $opts->{owner};
+	my $app = $owner->app();
+	my $prefix = $opts->{prefix};
+	my $sock = $opts->{socket};
+
+	my @pass;
+	if ($opts->{pass}) {
+		@pass = @{$opts->{pass}};
+	}
+
+	my $clid = 0; # client id
+
+	while(!$owner->isRqDead()) {
+		my $client = $sock->accept();
+		if (!defined $client) {
+			my $err = "$!"; # or th etext message will be reset by isRqDead()
+			if ($owner->isRqDead()) {
+				last;
+			} elsif($!{EAGAIN} || $!{EINTR}) { # numeric codes don't get reset
+				next;
+			} else {
+				confess "ThreadListen: accept failed: $err";
+			}
+		}
+		$clid++;
+		my $cliname = "$prefix$clid";
+		$app->storeCloseFile($cliname, $client);
+
+		Triceps::Triead::start(
+			app => $app->getName(),
+			thread => $cliname,
+			fragment => $cliname,
+			main => $opts->{handler},
+			socketName => $cliname,
+			@pass
+		);
+
+		$owner->readyReady();
+		# by now the file has been extracted from App
+		$app->closeFd($cliname);
+	}
+}
+
+# Listener for connections.
+# Extra options:
+#
+# socketName => $name
+# The listening socket name in the App.
+#
+sub ListenerT
+{
+	my $opts = {};
+	&Triceps::Opt::parse("ListenerT", $opts, {@Triceps::Triead::opts,
+		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	undef @_;
+	my $owner = $opts->{owner};
+
+	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, "+<");
+
+	$owner->readyReady();
+
+	ThreadListen(
+		owner => $owner,
+		socket => $sock,
+		prefix => "cliconn",
+		handler => \&ChatSockReadT,
+	);
+}
+
 
 # The socket reading side of the client connection.
 sub ChatSockReadT
@@ -288,7 +400,6 @@ Triceps::App::build "chat", sub {
 		main => \&ListenerT,
 		socketName => "global.listen",
 	);
-	close($srvsock); # reference counted, close in each thread
 
 	print "XXX port $port\n";
 };
