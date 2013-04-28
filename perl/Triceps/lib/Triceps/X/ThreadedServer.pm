@@ -197,9 +197,8 @@ sub startServer # ($optName => $optValue, ...)
 #   fragment => name of fragment (same as name of the thread, formed from $prefix)
 #   main => main function (\&TrieadMainFunc)
 #   socketName => name of socket stored in the App (same as name of the thread, 
-#     formed from $prefix), the socket file descriptor will be automatically
-#     closed in the App after it becomes ready again, so the handler thread
-#     must use trackDupSocket() for it, NOT trackGetSocket().
+#     formed from $prefix), the handler thread's responsibility is to make the
+#     app forget it, such as by using trackGetSocket().
 #
 sub listen # ($optName => $optValue, ...)
 {
@@ -250,9 +249,7 @@ sub listen # ($optName => $optValue, ...)
 			@pass
 		);
 
-		$owner->readyReady();
-		# by now the file has been extracted from App
-		$app->closeFd($cliname);
+		# Doesn't wait for the new thread(s) to become ready.
 	}
 }
 

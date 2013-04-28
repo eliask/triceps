@@ -88,6 +88,7 @@ sub chatSockReadT
 	my $unit = $owner->unit();
 	my $tname = $opts->{thread};
 
+	# only dup the socket, the writer thread will consume it
 	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, "<");
 
 	# user messages will be sent here
@@ -182,7 +183,7 @@ sub chatSockWriteT
 	my $app = $owner->app();
 	my $tname = $opts->{thread};
 
-	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, ">");
+	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, ">");
 
 	my $faChat = $owner->importNexus(
 		from => "global/chat",
