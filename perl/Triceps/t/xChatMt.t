@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 4 };
 use strict;
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
@@ -371,13 +371,15 @@ c2|__EOF__
 	waitpid($pid, 0);
 }
 
-# test that the ThreadedClient expect reads to the first match
+# test of the thread killing in the chat;
+# along the way test that the ThreadedClient expect reads to the first match;
+# and it uses the threaded server running in the same process
 {
-	my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
+	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
 			app => "chat",
 			main => \&listenerT,
 			port => 0,
-			fork => 1,
+			fork => -1, # create a thread, not a process
 	);
 
 	Triceps::App::build "client", sub {
@@ -395,11 +397,17 @@ c2|__EOF__
 		$client->startClient("c1");
 		$client->expect("c1", '!ready');
 
+		# this repetition
 		$client->send("c1", "publish,*,zzzzzz\n");
 		$client->send("c1", "publish,*,zzzzzz\n");
+		$client->expect("c1", '\*,zzzzzz');
+		$client->expect("c1", '\*,zzzzzz');
 
-		$client->expect("c1", '\*,zzzzzz');
-		$client->expect("c1", '\*,zzzzzz');
+		$client->startClient("c2");
+		$client->expect("c2", '!ready,cliconn2');
+
+		$client->send("c1", "kill,cliconn2\n");
+		$client->expect("c2", '__EOF__');
 
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__');
@@ -411,11 +419,18 @@ c1|!ready,cliconn1
 > c1|publish,*,zzzzzz
 c1|*,zzzzzz
 c1|*,zzzzzz
+> connect c2
+c2|!ready,cliconn2
+> c1|kill,cliconn2
+c2|__EOF__
 > c1|shutdown
 c1|*,server shutting down
 c1|__EOF__
 ');
 	};
 
-	waitpid($pid, 0);
+	$thread->join();
 }
+
+# check that everything completed and not died
+ok(1);
