@@ -23,6 +23,7 @@ use Carp;
 use IO::Socket;
 use IO::Socket::INET;
 use Triceps;
+use Triceps::X::ThreadedServer qw(printOrShut);
 
 # The client app has the following threads:
 # * Global/main thread: controls the execution, sends the requests to the
@@ -136,7 +137,7 @@ sub collectorT # (@opts)
 				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
 					cmd => "expect",
 					client => $client,
-					text => $text,
+					arg => $text,
 				);
 			}
 		}
@@ -186,12 +187,17 @@ sub collectorT # (@opts)
 #
 # client => $clientName
 # Name of the client.
+#
+# debug => 0/1
+# (optional) Enables the immediate printout, for debugging.
+# Default: 0.
 sub clientSendT # (@opts)
 {
 	my $myname = "Triceps::X::ThreadedClient::clientSendT";
 	my $opts = {};
 	&Triceps::Opt::parse($myname, $opts, {@Triceps::Triead::opts,
 		client => [ undef, \&Triceps::Opt::ck_mandatory ],
+		debug => [ 0, undef ],
 	}, @_);
 	undef @_;
 	my $owner = $opts->{owner};
@@ -207,12 +213,18 @@ sub clientSendT # (@opts)
 	$faSend->getLabel("msg")->makeChained("lbSend", undef, sub {
 		my ($client, $text) = $_[1]->getRow()->toArray();
 		if ($opts->{client} eq $client) {
+			if ($opts->{debug}) {
+				printf("\nclientSendT %s: %s\n", $opts->{client}, $text);
+			}
 			printOrShut($app, $opts->{fragment}, $sock, $text);
 		}
 	});
 	$faSend->getLabel("close")->makeChained("lbClose", undef, sub {
 		my ($client, $text) = $_[1]->getRow()->toArray();
 		if ($opts->{client} eq $client) {
+			if ($opts->{debug}) {
+				printf("clientSendT %s: SHUT_", $opts->{client}, $text);
+			}
 			if ($text eq "RD") {
 				$sock->shutdown(0);
 			} elsif ($text eq "WR") {
@@ -227,6 +239,10 @@ sub clientSendT # (@opts)
 
 	$owner->readyReady();
 	$owner->mainLoop();
+	if ($opts->{debug}) {
+		my ($t, $m) = $app->getAborted();
+		printf("\nclientSendT %s: exit %d %s\n", $opts->{client}, $owner->isRqDead(), $m);
+	}
 };
 
 # Thread that receives data from the socket.
@@ -235,12 +251,17 @@ sub clientSendT # (@opts)
 #
 # client => $clientName
 # Name of the client.
+#
+# debug => 0/1
+# (optional) Enables the immediate printout, for debugging.
+# Default: 0.
 sub clientRecvT # (@opts)
 {
 	my $myname = "Triceps::X::ThreadedClient::clientRecvT";
 	my $opts = {};
 	&Triceps::Opt::parse($myname, $opts, {@Triceps::Triead::opts,
 		client => [ undef, \&Triceps::Opt::ck_mandatory ],
+		debug => [ 0, undef ],
 	}, @_);
 	undef @_;
 	my $owner = $opts->{owner};
@@ -258,16 +279,22 @@ sub clientRecvT # (@opts)
 	$owner->readyReady();
 
 	while (<$sock>) {
+		if ($opts->{debug}) {
+			printf("\nclientRecvT %s: %s\n", $opts->{client}, $_);
+		}
 		$unit->makeHashCall($lbRecv, "OP_INSERT", 
 			client => $opts->{client},
 			text => $_,
 		);
 		$owner->flushWriters();
 	}
+	if ($opts->{debug}) {
+		printf("\nclientRecvT %s: __EOF__\n", $opts->{client});
+	}
 	# also explicitly mark the end of data
 	$unit->makeHashCall($lbRecv, "OP_INSERT", 
 		client => $opts->{client},
-		text => "__EOF__",
+		text => "__EOF__\n",
 	);
 }
 
@@ -283,8 +310,9 @@ sub clientRecvT # (@opts)
 # port => $port
 # Server port number, to which the clients will connect.
 #
-# debug => 0/1
+# debug => 0/1/2
 # (optional) Enable the debugging printout of the protocol as it comes in.
+# The level of 2 enables the printing of status right from the sender and received threads.
 # Default: 0.
 #
 sub new # ($class, @opts)
@@ -301,6 +329,10 @@ sub new # ($class, @opts)
 	my $owner = $self->{owner};
 
 	$self->{protocol} = ""; # protocol of all the data sent and expected
+
+	if ($self->{debug}) {
+		print "$myname: port ", $self->{port}, "\n";
+	}
 
 	# start the collector thread, it will define all the nexuses
 	Triceps::Triead::start(
@@ -347,6 +379,9 @@ sub DESTROY # ($self)
 {
 	my $myname = "Triceps::X::ThreadedClient::DESTROY";
 	my $self = shift;
+	if ($self->{debug} >= 2) {
+		print "Triceps::X::ThreadedClient::DESTROY\n";
+	}
 	$self->{owner}->app()->shutdown();
 }
 
@@ -369,6 +404,12 @@ sub startClient # ($self, $client)
 		PeerPort => $self->{port},
 	) or confess "$myname: socket failed: $!";
 
+	my $ptext = "> connect $client\n";
+	$self->{protocol} .= $ptext;
+	if ($self->{debug}) {
+		print $ptext;
+	}
+
 	# the client threads will dup; the socket name must be the
 	# same as the client name, as expected by the send/recv threads
 	$app->storeFile($client, $sock);
@@ -379,6 +420,7 @@ sub startClient # ($self, $client)
 		fragment => "client_$client",
 		main => \&clientSendT,
 		client => $client,
+		debug => ($self->{debug} >= 2),
 	);
 
 	Triceps::Triead::start(
@@ -387,6 +429,7 @@ sub startClient # ($self, $client)
 		fragment => "client_$client",
 		main => \&clientRecvT,
 		client => $client,
+		debug => ($self->{debug} >= 2),
 	);
 
 	$owner->readyReady();
@@ -450,6 +493,7 @@ sub expect # ($self, $client, $pattern)
 	my $pattern = shift;
 
 	my $owner = $self->{owner};
+	my $app = $owner->app();
 
 	$self->{expectDone} = 0;
 
@@ -460,8 +504,12 @@ sub expect # ($self, $client, $pattern)
 	);
 	$owner->flushWriters();
 
-	while(!$self->{expectDone}) {
+	while(!$self->{expectDone} && !$app->isAborted()) {
 		$owner->nextXtray();
+	}
+
+	if ($app->isAborted()) {
+		confess "$myname: app is aborted";
 	}
 }
 
