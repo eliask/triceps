@@ -30,10 +30,10 @@ ok(1); # If we made it this far, we're ok.
 # socketName => $name
 # The listening socket name in the App.
 #
-sub ListenerT
+sub listenerT
 {
 	my $opts = {};
-	&Triceps::Opt::parse("ListenerT", $opts, {@Triceps::Triead::opts,
+	&Triceps::Opt::parse("listenerT", $opts, {@Triceps::Triead::opts,
 		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 	undef @_;
@@ -70,16 +70,16 @@ sub ListenerT
 		owner => $owner,
 		socket => $sock,
 		prefix => "cliconn",
-		handler => \&ChatSockReadT,
+		handler => \&chatSockReadT,
 	);
 }
 
 
 # The socket reading side of the client connection.
-sub ChatSockReadT
+sub chatSockReadT
 {
 	my $opts = {};
-	&Triceps::Opt::parse("ListenerT", $opts, {@Triceps::Triead::opts,
+	&Triceps::Opt::parse("chatSockReadT", $opts, {@Triceps::Triead::opts,
 		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 	undef @_; # avoids a leak in threads module
@@ -112,7 +112,7 @@ sub ChatSockReadT
 		app => $opts->{app},
 		thread => "$tname.rd",
 		fragment => $opts->{fragment},
-		main => \&ChatSockWriteT,
+		main => \&chatSockWriteT,
 		socketName => $opts->{socketName},
 		ctlFrom => "$tname/ctl",
 	);
@@ -170,10 +170,10 @@ sub ChatSockReadT
 }
 
 # The socket writing side of the client connection.
-sub ChatSockWriteT
+sub chatSockWriteT
 {
 	my $opts = {};
-	&Triceps::Opt::parse("ListenerT", $opts, {@Triceps::Triead::opts,
+	&Triceps::Opt::parse("chatSockWriteT", $opts, {@Triceps::Triead::opts,
 		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
 		ctlFrom => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
@@ -232,7 +232,7 @@ sub ChatSockWriteT
 if (0) {
 	my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
 			app => "chat",
-			main => \&ListenerT,
+			main => \&listenerT,
 			port => 0,
 			fork => 1,
 	);
@@ -242,7 +242,7 @@ if (0) {
 if (0) {
 	my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
 			app => "chat",
-			main => \&ListenerT,
+			main => \&listenerT,
 			port => 12345,
 			fork => 0,
 	);
@@ -250,7 +250,7 @@ if (0) {
 if (0) {
 	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
 			app => "chat",
-			main => \&ListenerT,
+			main => \&listenerT,
 			port => 0,
 			fork => -1,
 	);
