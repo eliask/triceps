@@ -35,25 +35,24 @@ sub ListenerT
 {
 	my $opts = {};
 	&Triceps::Opt::parse("ListenerT", $opts, {@Triceps::Triead::opts,
-		socket => [ undef, \&Triceps::Opt::ck_mandatory ],
+		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 	undef @_;
 	my $owner = $opts->{owner};
 	my $app = $owner->app();
-	my $sock = $opts->{socket};
 	my $tname = $opts->{thread};
 	my $clid = 0; # client id
 
-	$owner->readyReady();
+	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, "+<");
 
-	$owner->track($sock);
+	$owner->readyReady();
 
 	while(!$owner->isRqDead()) {
 		my $client = $sock->accept();
 		if (!defined $client) {
 			my $err = $!;
 			if ($owner->isRqDead()) {
-				$owner->close($sock);
+				$tsock->close();
 				last;
 			} elsif($!{EAGAIN} || $!{EINTR}) {
 				next;
@@ -74,6 +73,7 @@ sub ListenerT
 			main => \&ChatSockReadT,
 			socketName => $cliname,
 		);
+
 		$owner->readyReady();
 		# by now that fd has been extracted
 		$app->closeFd($cliname);
@@ -93,9 +93,7 @@ sub ChatSockReadT
 	my $unit = $owner->unit();
 	my $tname = $opts->{thread};
 
-	# XXX add the load methods on the TrieadOwner, that track the fd right away
-	my $sock = $app->loadDupIOSocketINET($opts->{socketName}, "<");
-	$owner->track($sock);
+	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, "<");
 
 	# user messages will be sent here
 	my $faChat = $owner->importNexus(
@@ -172,9 +170,7 @@ sub ChatSockReadT
 		$app->shutdownFragment($opts->{fragment});
 	}
 
-	# XXX if this thread dies before close(), there is a race with fd;
-	# XXX add a scoped holder for the files
-	$owner->close($sock);
+	$tsock->close(); # not strictly necessary
 	print "XXX reader $tname exits\n";
 }
 
@@ -207,8 +203,7 @@ sub ChatSockWriteT
 	my $app = $owner->app();
 	my $tname = $opts->{thread};
 
-	my $sock = $app->loadDupIOSocketINET($opts->{socketName}, ">");
-	$owner->track($sock);
+	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, "<");
 
 	my $faChat = $owner->importNexus(
 		from => "global/chat",
@@ -251,8 +246,7 @@ sub ChatSockWriteT
 
 	$owner->mainLoop();
 
-	# XXX if this thread dies before close(), there is a race with fd
-	$owner->close($sock);
+	$tsock->close(); # not strictly necessary
 	print "XXX writer $tname exits\n";
 }
 
@@ -285,12 +279,14 @@ Triceps::App::build "chat", sub {
 		Listen => 10,
 	) or confess "socket failed: $!";
 	my $port = $srvsock->sockport() or confess "sockport failed: $!";
+	$Triceps::App::app->storeFile("global.listen", $srvsock);
+	close($srvsock);
 
 	Triceps::Triead::start(
 		app => $Triceps::App::name,
 		thread => "listener",
 		main => \&ListenerT,
-		socket => $srvsock,
+		socketName => "global.listen",
 	);
 	close($srvsock); # reference counted, close in each thread
 

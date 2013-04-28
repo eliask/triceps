@@ -18,7 +18,7 @@ use threads;
 use Symbol;
 
 use Test;
-BEGIN { plan tests => 35 };
+BEGIN { plan tests => 45 };
 use Triceps;
 use Carp;
 use IO::Socket;
@@ -422,7 +422,7 @@ Triceps::Triead::startHere(
 		{
 			$app->storeFile("z", *STDIN);
 			ok($app->loadFd("z"), $n1);
-			my $trf = $owner->trackDupFile("z", "<");
+			my ($trf, $ff) = $owner->trackDupFile("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");
 			$app->closeFd("z");
 		}
@@ -436,19 +436,52 @@ Triceps::Triead::startHere(
 
 			$app->storeFile("z", $sock);
 
-			my $trf = $owner->trackDupSocket("z", "<");
+			my ($trf, $ff) = $owner->trackDupSocket("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");
 
 			my $port2 = $trf->get()->sockport();
 			ok($port2, $port);
+			ok($ff->sockport(), $port);
 
-			$trf = $owner->trackDupClass("z", "<", "IO::Socket::INET");
+			($trf, $ff) = $owner->trackDupClass("z", "<", "IO::Socket::INET");
 			ok(ref $trf, "Triceps::TrackedFile");
 
 			$port2 = $trf->get()->sockport();
 			ok($port2, $port);
+			ok($ff->sockport(), $port);
 
 			$app->closeFd("z");
+		}
+		{
+			$app->storeFile("z", *STDIN);
+			ok($app->loadFd("z"), $n1);
+			my ($trf, $ff) = $owner->trackGetFile("z", "<");
+			ok(ref $trf, "Triceps::TrackedFile");
+		}
+		{
+			my $sock = IO::Socket::INET->new(
+				Proto => "tcp",
+				LocalPort => 0,
+				Listen => 10,
+			) or confess "socket failed: $!";
+			my $port = $sock->sockport();
+
+			$app->storeFile("z", $sock);
+			$app->storeFile("y", $sock);
+
+			my ($trf, $ff) = $owner->trackGetSocket("z", "<");
+			ok(ref $trf, "Triceps::TrackedFile");
+
+			my $port2 = $trf->get()->sockport();
+			ok($port2, $port);
+			ok($ff->sockport(), $port);
+
+			($trf, $ff) = $owner->trackGetClass("y", "<", "IO::Socket::INET");
+			ok(ref $trf, "Triceps::TrackedFile");
+
+			$port2 = $trf->get()->sockport();
+			ok($port2, $port);
+			ok($ff->sockport(), $port);
 		}
 
 		# the next file reopened should get the same fd as before
