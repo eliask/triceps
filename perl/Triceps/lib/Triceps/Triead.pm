@@ -49,7 +49,7 @@ our @opts = (
 # Name of the fragment (default: "").
 #
 # main => \&function
-# The main function of the thread that will be called with &ll the options
+# The main function of the thread that will be called with all the options
 # plus some more:
 #     &$func(@opts, owner => $ownerObj, immed => $imm )
 # owner: the TrieadOwner object constructed for this thread
