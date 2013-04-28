@@ -17,10 +17,9 @@ use strict;
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Triceps::X::ThreadedServer qw(printOrShut);
+use Triceps::X::ThreadedClient;
 use Carp;
 ok(1); # If we made it this far, we're ok.
-
-# exit 0; # XXX disable the logic
 
 #########################
 
@@ -259,188 +258,9 @@ if (0) {
 	$thread->join();
 }
 
-##############################
-# the client for automated testing
-
-package Triceps::X::ThreadedClient;
-use Carp;
-
-# The client app has the following threads:
-# * Global/main thread: controls the execution, sends the requests to the
-#   other threads, eventually collects all the inputs form the sockets.
-# * Per-client threads, as described below
-# * Collector thread that collects the inputs from the client threads
-#   and waits for patterns in it; eventually passes the collected
-#   inputs to the main thread.
-
-# Each client consists of the following threads:
-# * writer: writes to the socket
-# * reader: reads from the socket, passes data to the collector thread
-
-# Options:
-#
-# port => $port
-# Server port number, to which the clients will connect.
-sub collectorT # (@opts)
-{
-	my $myname = "Triceps::X::ThreadedClient::collectorT";
-	my $opts = {};
-	&Triceps::Opt::parse($myname, $opts, {@Triceps::Triead::opts,
-		port => [ undef, \&Triceps::Opt::ck_mandatory ],
-	}, @_);
-	undef @_;
-	my $owner = $opts->{owner};
-	my $app = $owner->app();
-	my $tname = $opts->{thread};
-	my $unit = $owner->unit();
-
-	# a message read from or to be written to a client's connection
-	my $rtMsg = Triceps::RowType->new(
-		client => "string", # client name
-		text => "string", # text of the message
-	) or confess "$!";
-
-	# a control message from the global thread
-	my $rtCtl = Triceps::RowType->new(
-		cmd => "string", # the command to execute
-		client => "string", # client on which the command applies
-		arg => "string", # the command argument
-	) or confess "$!";
-
-	my $faSend = $owner->makeNexus( # messages to be sent to the client writers
-		name => "send",
-		labels => [
-			msg => $rtMsg, # data messages
-			close => $rtMsg, # request to shut down the writing side of the socket (text is ignored)
-		],
-		import => "writer",
-	);
-	my $faRecv = $owner->makeNexus( # messages to received form the client readers
-		name => "receive",
-		labels => [
-			msg => $rtMsg,
-		],
-		import => "reader",
-	);
-
-	my $faCtl = $owner->makeNexus( # control messages to collector
-		name => "ctl",
-		labels => [
-			msg => $rtCtl,
-		],
-		import => "reader",
-	);
-	my $faReply = $owner->makeNexus( # replies to the control messages from the collector
-		name => "reply",
-		labels => [
-			msg => $rtCtl,
-			done => $rtCtl, # marks the end of multi-message responses (the contents of the row is ignored)
-		],
-		reverse => 1,
-		import => "writer",
-	);
-
-	my $lbRepMsg = $faReply->getLabel("msg");
-	my $lbRepDone = $faReply->getLabel("done");
-
-	#### state of the clients ###
-
-	my %recv; # the received data, keyed by the client
-	my %newrecv; # the latest received data, keyed by the client;
-		# this is the data since the last match requested was found,
-		# gets appended to the end of %recv and cleared after that
-	my %pattern; # the pattern to match in the received data, keyed by the client
-
-	#### local functions ###
-
-	# Move the client's data from %newrecv to %recv
-	my $catrecv = sub { # ($client)
-		my $client = shift;
-		if (exists $newrecv{$client}) {
-			$recv{$client} .= $newrecv{$client};
-			delete $newrecv{$client};
-		}
-	};
-
-	# Check if the client's new data matches its pattern, and if so then
-	# move its data to %recv and sent a reply to the global thread.
-	my $checkPattern = sub { # ($client)
-		my $client = shift;
-		if (exists $pattern{$client} && exists $newrecv{$client}) {
-			my $p = $pattern{$client};
-			if ($newrecv{$client} =~ /$p/) {
-				&$catrecv($client);
-				delete $pattern{$client};
-				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
-					cmd => "expect",
-					client => $client,
-				);
-			}
-		}
-	};
-
-	### rest of the logic ###
-
-	$faRecv->getLabel("msg")->makeChained("lbRecv", undef, sub {
-		my ($client, $text) = $_[1]->getRow()->toArray();
-		$newrecv{$client} .= $text;
-		&$checkPattern($client);
-	});
-
-	$faCtl->getLabel("ctl")->makeChained("lbCtl", undef, sub {
-		my ($cmd, $client, $arg) = $_[1]->getRow()->toArray();
-		if ($cmd eq "expect") {
-			# expact a certain pattern from a client
-			$pattern{$client} = qr/$arg/;
-			&$checkPattern($client); # might be already received
-		} elsif ($cmd eq "dump") {
-			# dump the data received from all clients
-			for my $client (keys(%newrecv)) {
-				&$catrecv($client);
-			}
-			for my $client (sort(keys(%recv))) {
-				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
-					cmd => "dump",
-					client => $client,
-					arg => $recv{$client},
-				);
-			}
-			$unit->makeHashCall($lbRepDone, "OP_INSERT", 
-				cmd => "dump",
-			);
-		} else {
-			confess "$myname: received an unknown command '$cmd'";
-		}
-	});
-
-	$owner->readyReady();
-	$owner->mainLoop();
-}
-
-# The object is instantiated in the global/main thread.
-#
-# Options:
-#
-# owner => $TrieadOwner
-# The thread owner wher this object is instantiated.
-#
-# port => $port
-# Server port number, to which the clients will connect.
-sub new # ($class, @opts)
-{
-	my $myname = "Triceps::X::ThreadedClient::new";
-	my $class = shift;
-	my $self = {};
-	&Triceps::Opt::parse($class, $self, {
-		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
-		port => [ undef, \&Triceps::Opt::ck_mandatory ],
-	}, @_);
-}
-
-package main;
+######################
 
 if (0) {
-
 my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
 		app => "chat",
 		main => \&listenerT,
@@ -453,9 +273,18 @@ Triceps::App::build "client", sub {
 	my $appname = $Triceps::App::name;
 	my $owner = $Triceps::App::global;
 
-	my %clients;
+	my $client = Triceps::X::ThreadedClient->new(
+		owner => $owner,
+		port => $port,
+		debug => 1,
+	);
+
+	$owner->readyReady();
+
+	$client->startClient("c1");
+	$client->send("c1", "shutdown");
+	$client->expect("c1", "__EOF__");
 };
 
 waitpid($pid, 0);
-
 }
