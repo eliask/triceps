@@ -434,7 +434,7 @@ Triceps::Triead::startHere(
 			) or confess "socket failed: $!";
 			my $port = $sock->sockport();
 
-			$app->storeFile("z", $sock);
+			$app->storeCloseFile("z", $sock);
 
 			my ($trf, $ff) = $owner->trackDupSocket("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");

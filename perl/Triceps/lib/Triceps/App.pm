@@ -63,6 +63,16 @@ sub storeFile # ($self, $name, $file)
 	Triceps::App::storeFd($self, $name, fileno($file));
 }
 
+# Same as storeFile() but also closes the original file
+# handle afterwards.
+sub storeCloseFile # ($self, $name, $file)
+{
+	my ($self, $name, $file) = @_;
+	
+	Triceps::App::storeFd($self, $name, fileno($file));
+	close($file);
+}
+
 # Load a dup of file descriptor from the App into a
 # file handle object in a class that is a subclass of
 # IO::Handle or otherwise supports the method new_from_fd().
