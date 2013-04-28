@@ -203,7 +203,7 @@ sub ChatSockWriteT
 	my $app = $owner->app();
 	my $tname = $opts->{thread};
 
-	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, "<");
+	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, ">");
 
 	my $faChat = $owner->importNexus(
 		from => "global/chat",
