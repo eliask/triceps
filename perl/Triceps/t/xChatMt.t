@@ -21,7 +21,7 @@ use IO::Socket;
 use IO::Socket::INET;
 ok(1); # If we made it this far, we're ok.
 
-exit 0; # XXX dissable teh logic
+exit 0; # XXX disable the logic
 
 #########################
 

@@ -758,6 +758,9 @@ makeTrackedFileFd(WrapTrieadOwner *self, SV *file, int fd)
 		static char CLASS[] = "Triceps::TrackedFile";
 		clearErrMsg();
 
+		try { do {
+			self->get()->fileInterrupt_->trackFd(fd);
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = new WrapTrackedFile(self->get(), file, fd);
 	OUTPUT:
 		RETVAL

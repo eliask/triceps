@@ -56,6 +56,8 @@ public:
 	//        (passed separately because the caller will likely have
 	//        it conveniently available, and extracting it directly
 	//        requires the cumbersome calling of the Perl code).
+	//        The file descriptor must be already tracked, because
+	//        it could throw an Exception and it's bad in a constructor.
 	WrapTrackedFile(TrieadOwner *owner, SV *svfile, int afd);
 
 	// The destrictor just forgets the Fd and drops the reference

@@ -18,7 +18,7 @@ use threads;
 use Symbol;
 
 use Test;
-BEGIN { plan tests => 45 };
+BEGIN { plan tests => 46 };
 use Triceps;
 use Carp;
 use IO::Socket;
@@ -361,7 +361,7 @@ Triceps::Triead::startHere(
 	},
 );
 
-# the loadTracked stuff
+# the load-and-track calls
 Triceps::Triead::startHere(
 	app => "a1",
 	thread => "t1",
@@ -493,3 +493,45 @@ Triceps::Triead::startHere(
 	},
 );
 
+# check that the load-and-track calls actually do track and the reads et interrupted
+Triceps::Triead::startHere(
+	app => "a1",
+	thread => "t1",
+	main => sub {
+		my $opts = {};
+		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+		my $owner = $opts->{owner};
+		my $app = $owner->app();
+
+		my $sock = IO::Socket::INET->new(
+			Proto => "tcp",
+			LocalPort => 0,
+			Listen => 10,
+		) or confess "socket failed: $!";
+
+		$app->storeCloseFile("z", $sock);
+		undef $sock;
+
+		Triceps::Triead::start(
+			app => "a1",
+			thread => "t4",
+			main => sub {
+				my $opts = {};
+				&Triceps::Opt::parse("t4 main", $opts, {@Triceps::Triead::opts}, @_);
+				my $owner = $opts->{owner};
+				my $app = $owner->app();
+
+				my ($trf, $sock) = $owner->trackGetSocket("z", "+<");
+				$owner->readyReady();
+
+				do {
+					$sock->accept(); # will be stuck here until revoked
+				} while($!{EAGAIN} || $!{EINTR}); # this ignores the signal on shutdown
+			},
+		);
+
+		$owner->readyReady();
+		$app->shutdown();
+	},
+);
+ok(1);
