@@ -189,9 +189,7 @@ sub startServer # ($optName => $optValue, ...)
 # handler => \&TrieadMainFunc
 # The main function for the created handler threads.
 #
-# pass => [@opts]
-# Extra options to pass to the handler threads. Done this way to avoid possible
-# conflicts with the names like "handler" and "prefix". The default set of options is:
+# Extra options are passed through. The default set of options is:
 #   app - the App name (found from $owner)
 #   thread - name of thread (formed from $prefix)
 #   fragment => name of fragment (same as name of the thread, formed from $prefix)
@@ -199,19 +197,23 @@ sub startServer # ($optName => $optValue, ...)
 #   socketName => name of socket stored in the App (same as name of the thread, 
 #     formed from $prefix), the handler thread's responsibility is to make the
 #     app forget it, such as by using trackGetSocket().
+# The options "prefix" and "handler" are not passed through.
 #
 sub listen # ($optName => $optValue, ...)
 {
 	my $myname = "Triceps::X::ThreadedServer::listen";
 	my $opts = {};
-	&Triceps::Opt::parse($myname, $opts, {
+	my @myOpts = (
 		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
 		socket => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "IO::Socket") } ],
 		prefix => [ undef, \&Triceps::Opt::ck_mandatory ],
 		handler => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "CODE") } ],
 		pass => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+	);
+	&Triceps::Opt::parse($myname, $opts, {
+		@myOpts,
+		'*' => [],
 	}, @_);
-	undef @_; # make Perl threads not leak objects
 	my $owner = $opts->{owner};
 	my $app = $owner->app();
 	my $prefix = $opts->{prefix};
@@ -246,7 +248,7 @@ sub listen # ($optName => $optValue, ...)
 			fragment => $cliname,
 			main => $opts->{handler},
 			socketName => $cliname,
-			@pass
+			&Triceps::Opt::drop({ @myOpts }, \@_),
 		);
 
 		# Doesn't wait for the new thread(s) to become ready.
