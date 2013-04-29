@@ -219,11 +219,6 @@ sub listen # ($optName => $optValue, ...)
 	my $prefix = $opts->{prefix};
 	my $sock = $opts->{socket};
 
-	my @pass;
-	if ($opts->{pass}) {
-		@pass = @{$opts->{pass}};
-	}
-
 	my $clid = 0; # client id
 
 	while(!$owner->isRqDead()) {
