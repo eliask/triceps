@@ -386,15 +386,15 @@ c2|__EOF__
 		my $appname = $Triceps::App::name;
 		my $owner = $Triceps::App::global;
 
+		# give the port in startClient
 		my $client = Triceps::X::ThreadedClient->new(
 			owner => $owner,
-			port => $port,
 			debug => 0,
 		);
 
 		$owner->readyReady();
 
-		$client->startClient("c1");
+		$client->startClient("c1", $port);
 		$client->expect("c1", '!ready');
 
 		# this repetition
@@ -403,7 +403,7 @@ c2|__EOF__
 		$client->expect("c1", '\*,zzzzzz');
 		$client->expect("c1", '\*,zzzzzz');
 
-		$client->startClient("c2");
+		$client->startClient("c2", $port);
 		$client->expect("c2", '!ready,cliconn2');
 
 		$client->send("c1", "kill,cliconn2\n");

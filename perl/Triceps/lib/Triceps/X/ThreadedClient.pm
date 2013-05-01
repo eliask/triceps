@@ -39,17 +39,13 @@ use Triceps::X::ThreadedServer qw(printOrShut);
 
 # The collector thread that handles the data received from the clients.
 #
-# Options:
+# Options: the standard thread set.
 #
-# port => $port
-# Server port number, to which the clients will connect.
 sub collectorT # (@opts)
 {
 	my $myname = "Triceps::X::ThreadedClient::collectorT";
 	my $opts = {};
-	&Triceps::Opt::parse($myname, $opts, {@Triceps::Triead::opts,
-		port => [ undef, \&Triceps::Opt::ck_mandatory ],
-	}, @_);
+	&Triceps::Opt::parse($myname, $opts, {@Triceps::Triead::opts}, @_);
 	undef @_;
 	my $owner = $opts->{owner};
 	my $app = $owner->app();
@@ -296,7 +292,9 @@ sub clientRecvT # (@opts)
 # The thread owner wher this object is instantiated.
 #
 # port => $port
-# Server port number, to which the clients will connect.
+# (optional) Server port number, to which the clients will connect.
+# Can be overridden in startClient(). The port must be specified in
+# at least one of two places.
 #
 # debug => 0/1/2
 # (optional) Enable the debugging printout of the protocol as it comes in.
@@ -310,7 +308,7 @@ sub new # ($class, @opts)
 	my $self = {};
 	&Triceps::Opt::parse($class, $self, {
 		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
-		port => [ undef, \&Triceps::Opt::ck_mandatory ],
+		port => [ undef, undef ],
 		debug => [ 0, undef ],
 	}, @_);
 
@@ -327,7 +325,6 @@ sub new # ($class, @opts)
 		app => $owner->app()->getName(),
 		thread => "collector",
 		main => \&collectorT,
-		port => $self->{port},
 	);
 
 	# the sending nexus will be used to send directly to clients
@@ -377,19 +374,26 @@ sub DESTROY # ($self)
 # Waits for the connection setup to complete.
 #
 # @param client - the client name
-sub startClient # ($self, $client)
+sub startClient # ($self, $client, [$port])
 {
 	my $myname = "Triceps::X::ThreadedClient::startClient";
 	my $self = shift;
 	my $client = shift;
+	my $port = shift;
 
 	my $owner = $self->{owner};
 	my $app = $owner->app();
 
+	if (!$port) {
+		$port = $self->{port};
+		confess "$myname: missing port number, must specify in either new() or startClient()" 
+			unless ($port);
+	}
+
 	my $sock = IO::Socket::INET->new(
 		Proto => "tcp",
 		PeerAddr => "localhost",
-		PeerPort => $self->{port},
+		PeerPort => $port,
 	) or confess "$myname: socket failed: $!";
 
 	my $ptext = "> connect $client\n";
