@@ -1,0 +1,73 @@
+Multithreaded socket server, part 6, a run example
+
+Hare is a protocol from a run. It has been produced with the automated testing infrastructure that I'll describe later.
+
+As usual, the lines sent from the clients to the socket server are preceded with a "> ". But since there are many clients, to tell them apart, both the sent and received lines are prefixed by the client's name and a "|". I've just picked arbitrary client names to tell them apart.
+
+I've also marked the incoming connection as "> connect client_name", and the disconnections as "__EOF__" after the client name.
+
+So, here we go.
+
+ > connect c1
+c1|!ready,cliconn1
+> connect c2
+c2|!ready,cliconn2
+
+Two clients connect.
+
+ > c1|publish,*,zzzzzz
+c1|*,zzzzzz
+c2|*,zzzzzz
+
+A message published to the topic "*" gets forwarded to all the connected clients. In reality the messages may of course be received on separate sockets in any order, but I've ordered them here for the ease of reading.
+
+> c2|garbage,trash
+c2|!invalid command,garbage,trash
+
+An invalid command gets detected in the writer thread and responded as such.
+
+> c2|subscribe,A
+c2|!subscribed,A
+> c1|publish,A,xxx
+c2|A,xxx
+
+A subscription request gets acknowledged, and after that all the messages sent to this topic get received by the client.
+
+> c1|subscribe,A
+c1|!subscribed,A
+> c1|publish,A,www
+c1|A,www
+c2|A,www
+
+If more than one client is subscribed to a topic, all of them get the messages.
+
+> c2|unsubscribe,A
+c2|!unsubscribed,A
+> c1|publish,A,vvv
+c1|A,vvv
+
+The unsubscription makes the client stop receiving messages from this topic.
+
+> connect c3
+c3|!ready,cliconn3
+> c3|exit
+c3|!exiting
+c3|__EOF__
+
+The third client connects, immediately requests an exit, gets the confirmation and gets disconnected.
+
+> connect c4
+c4|!ready,cliconn4
+> close WR c4
+c4|!exiting
+c4|__EOF__
+
+The fourth client connects and then closes its write side of the socket (that is the read side for the server). It produces the same affect as the exit command.
+
+> c1|shutdown
+c1|*,server shutting down
+c1|__EOF__
+c2|*,server shutting down
+c2|__EOF__
+
+And the shutdown command sends the notifications to all the remaining clients and closes the connections. 

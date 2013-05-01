@@ -1,0 +1,39 @@
+Multithreaded socket server, part 1, dynamic threads overview
+
+As a quick announcement, I've renamed some of the methods described in the last post, and updated the post.
+
+Now, to the new stuff. The threads can be used to run a TCP server that accepts the connections and then starts the new client communication thread(s) for each connection.  This thread can then communicate with the rest of the model, feeding and receiving data, as usual, through the nexuses.
+
+The challenge here is that there must be a way to create the threads dynamically, and later when the client closes connection, to dispose of them. There are two possible general approaches:
+
+    dynamically create and delete the threads in the same App;
+    create a new App per connection and connect it to the main App.
+
+
+Both have their own advantages  and difficulties, but the approach with the dynamic creation and deletion of threads ended up looking easier, and that's what Triceps has. The second approach is not particularly well supported yet. You can create multiple Apps in the program, and you can connect them by making two Triceps Trieads run in the same OS thread and ferry the data around. But it's extremely cumbersome. This will be improved in the future, but for now the first approach is the ticket.
+
+The dynamically created threads are grouped into the fragments. This is done by specifying the fragment name option when creating a thread. The threads in a fragment have a few special properties.
+
+One, it's possible to shut down the whole fragment in one fell swoop. There is no user-accessible way to shut down the individual threads, you can shut down either the whole App or a fragment. Shutting down individual threads is dangerous, since it can mess up the application in many non-obvious ways. But shutting down a fragment is OK, since the fragment serves a single logical function, such as service one TCP connection, and it's OK to shut down the whole logical function.
+
+Two, when a thread in the fragment exits, it's really gone, and takes all its nexuses with it. Well, technically, the nexuses continue to exist as long as there are threads connected to them, but no new connections can be created after this point. Since usually the whole fragment will be gone together, and since the nexuses defined by the fragment's thread are normally used only by the other threads of the same fragment, a fragment shutdown cleans up its state like the fragment had never existed. By contrast, when a normal thread exists, the nexuses defined by it stay present and accessible until the App shuts down.
+
+Another, somewhat surprising, challenge is the interaction of the threads and sockets (or file descriptors in general) in Perl.  I've already touched upon it, but there is a lot more.
+
+To show how all this stuff works, I've created an example of a "chat server". It's not really a human-oriented chat, it's more of a machine-oriented publish-subscribe, and specially tilted to work through the running of a socket server with threads.
+
+In this case the core logic is absolutely empty. All there is of it, is a nexus that passes messages through it. The clients read from this nexus to get the messages, and write to this nexus to send the messages.
+
+When the App starts, it has only one thread, the listener thread that listens on a socket for the incoming connections. The listener doesn't even care about the common nexus and doesn't import it. When a connection comes in, the listener creates two threads to serve it: the reader reads the socket and sends to the nexus, and the writer receives from the nexus and writes to the socket. These two threads constitute a fragment for this client. They also create their own private nexus, allowing the reader to send control messages to the writer. That could also have been done through the central common nexus, but I wanted to show that there are different ways of doing things.
+
+With a couple of clients connected, threads and sockets start looking like this:
+
+client1 reader ----> client1 control nexus ------> client1 writer
+         \                                           /
+          ----------->\          /------------------>
+                       chat nexus
+          ----------->/          \------------------>
+         /                                           \
+client2 reader ----> client2 control nexus ------> client2 writer
+
+And the listener thread still stays on the side.

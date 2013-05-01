@@ -1,0 +1,52 @@
+Multithreaded socket server, part2, starting the server
+
+Let's start with the top-level: how the server gets started. It's really the last part of the code, that brings everything together.
+
+It uses the ThreadedServer infrastructure:
+
+use Triceps::X::ThreadedServer qw(printOrShut);
+
+The X subdirectory is for the examples and experimental stuff, but the ThreadedServer is really of production quality, I just haven't written a whole set of tests for it yet.
+
+The server gets started like this:
+
+  my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
+      app => "chat",
+      main => \&listenerT,
+      port => 0,
+      fork => 1,
+  );
+
+The port option of 0 means "pick any free port", it will be returned as the result.  If you know the fixed port number in advance, use it. "chat" will be the name of the App, and listenerT is the main function of the thread that will listen for the incoming connections and start the other threads. And it's also the first thread that gets started, so it's responsible for creating the core part of the App as well (though in this case there is not a whole lot of it).
+
+The option "fork" determines how and whether the server gets started in the background. The value 1 means that a new process will be forked, and then the threads will be created there. The returned PID can be used to wait for that process to complete:
+
+waitpid($pid, 0);
+
+Of course, if you're starting a daemon, you'd probably write this PID to a file and then just exit the parent process.
+
+The fork value of 0 starts the server in the current process, and the current thread becomes the server's harvester thread (the one that joins the other threads when the App shuts down).
+
+In this case the server doesn't return until it's done, so there is not much point in the returned port value, by that time the socket is already closed. In this case you really need to either use a fixed port or write the port number to a file from your listener thread. The PID also doesn't make sense, and it's returned as undef. Here is an example of this kind of call:
+
+  my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
+      app => "chat",
+      main => \&listenerT,
+      port => 12345,
+      fork => 0,
+  );
+
+Finally, the server can be started in the current process, with a new thread created as the App's harvesteri, using the fork option -1. The original thread can then continue and do other things in parallel. It's the way I use for the unit tests.
+
+  my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
+      app => "chat",
+      main => \&listenerT,
+      port => 0,
+      fork => -1,
+  );
+
+In this case the second value returned is not a PID but the thread object for the harvester thread. You should either detach it or eventually join it:
+
+$thread->join();
+
+Perl propagates the errors in the threads through the join(), so if the harvester thread dies, that would show only in the join() call. And since Triceps propagates the errors too, any other thread dying will cause the harvester thread to die after it joins all the App's threads. 
