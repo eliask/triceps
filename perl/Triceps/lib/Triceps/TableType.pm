@@ -92,7 +92,7 @@ sub findIndexKeyPath # (self, idxName, ...)
 #        arguments, so with "NO_FIRST_LEAF" the first index specified
 #        will become the first leaf and thus the default index.
 #        The special syntax is supported for the last element in the path:
-#            "-" - copy the path to the first leaf from this level down
+#            "+" - copy the path to the first leaf from this level down
 sub copyFundamental # ($self, @paths)
 {
 	my $myname = "Triceps::TableType::copyFundamental";
@@ -113,7 +113,7 @@ sub copyFundamental # ($self, @paths)
 
 	if (!$nofirst) {
 		# The implicit first leaf amounts to prepending this.
-		unshift @extra, [ "-" ];
+		unshift @extra, [ "+" ];
 	}
 
 	my $newtt = Triceps::TableType->new($self->getRowType());
@@ -125,9 +125,9 @@ sub copyFundamental # ($self, @paths)
 		my $progress = '';
 		my $toleaf = 0;
 		foreach my $n (@$p) {
-			confess("$myname: the '-' may occur only at the end of the path, got '" . join('.', @$p) . "'")
+			confess("$myname: the '+' may occur only at the end of the path, got '" . join('.', @$p) . "'")
 				if ($toleaf);
-			if ($n eq "-") {
+			if ($n eq "+") {
 				$toleaf = 1;
 				while (1) {
 					my @allsub = $curold->getSubIndexes();

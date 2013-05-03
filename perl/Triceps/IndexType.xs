@@ -112,6 +112,7 @@ newFifo(char *CLASS, ...)
 #// that uses a Perl comparison function
 #// @param CLASS - name of type being constructed
 #// @param sortName - name of the sort condition (for messages about comparator fatal errors)
+#//        XXX now with the source-code comparators could use them?
 #// @param initialize - function reference used to perform the index type initialization,
 #//        may be undef if the compare argument is defined, may be
 #//        used to check that the args make sense and generate the compare callback on the fly.

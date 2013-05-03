@@ -425,8 +425,8 @@ ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can 
 	}
 
 	{
-		# put the second index first, also "-" under a leaf index
-		my $ttcopy = $ttorig->copyFundamental([ "two", "b" ], [ "one", "a", "-" ], "NO_FIRST_LEAF", );
+		# put the second index first, also "+" under a leaf index
+		my $ttcopy = $ttorig->copyFundamental([ "two", "b" ], [ "one", "a", "+" ], "NO_FIRST_LEAF", );
 		ok($ttcopy->print(undef), 'table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index PerlSortedIndex(SimpleOrder b ASC, c ASC, ) { index HashedIndex(d, ) b, } two, index HashedIndex(b, c, ) { index FifoIndex() a, } one, }');
 	}
 
