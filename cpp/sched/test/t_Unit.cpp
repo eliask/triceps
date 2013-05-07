@@ -95,6 +95,7 @@ UTESTCASE mklabel(Utest *utest)
 
 	Autoref<Label> lab11 = new DummyLabel(unit1, rt1, "lab11");
 	Autoref<Label> lab12 = new DummyLabel(unit1, rt1, "lab12");
+	Autoref<Label> lab13 = new DummyLabel(unit1, rt1, "lab13");
 
 	UT_IS(lab1->getType(), rt1.get());
 	UT_IS(lab2->getType(), rt2.get());
@@ -154,6 +155,17 @@ UTESTCASE mklabel(Utest *utest)
 	UT_IS(lab1->getChain().size(), 2);
 	UT_ASSERT(lab1->getChain()[0] == lab11);
 	UT_ASSERT(lab1->getChain()[1] == lab12);
+
+	lab1->clearChained(); // clear again and chain from the front
+	UT_ASSERT(!lab1->hasChained());
+	UT_IS(lab1->getChain().size(), 0);
+	UT_ASSERT(!lab1->chain(lab11, true)->hasError());
+	UT_ASSERT(!lab1->chain(lab12, true)->hasError());
+	UT_ASSERT(!lab1->chain(lab13, true)->hasError());
+	UT_IS(lab1->getChain().size(), 3);
+	UT_ASSERT(lab1->getChain()[0] == lab13);
+	UT_ASSERT(lab1->getChain()[1] == lab12);
+	UT_ASSERT(lab1->getChain()[2] == lab11);
 
 	// play with names
 	UT_IS(lab1->getName(), "lab1");

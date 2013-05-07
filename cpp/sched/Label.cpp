@@ -39,7 +39,7 @@ const string &Label::getUnitName() const
 	return cleared_? placeholderUnitName : unit_->getName();
 }
 
-Erref Label::chain(Onceref<Label> lab)
+Erref Label::chain(Onceref<Label> lab, bool front)
 {
 	assert(this != NULL);
 	assert(!lab.isNull());
@@ -66,7 +66,16 @@ Erref Label::chain(Onceref<Label> lab)
 		return err;
 	}
 
-	chained_.push_back(lab);
+	if (front && !chained_.empty()) {
+		// free space in the front by shifting all the contents
+		chained_.push_back(chained_.back());
+		for (int i = chained_.size() - 2; i > 0; i--)
+			chained_[i] = chained_[i-1];
+		// and then prepend the new reference
+		chained_[0] = lab;
+	} else {
+		chained_.push_back(lab);
+	}
 	return NULL;
 }
 

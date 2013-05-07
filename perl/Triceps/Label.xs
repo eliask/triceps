@@ -95,6 +95,25 @@ chain(WrapLabel *self, WrapLabel *other)
 	OUTPUT:
 		RETVAL
 
+#// put a label at the front of the chain;
+#// returns 1 on success, undef on error
+int
+chainFront(WrapLabel *self, WrapLabel *other)
+	CODE:
+		clearErrMsg();
+		Label *lab = self->get();
+		Label *olab = other->get();
+
+		Erref err = lab->chain(olab, true);
+		if (!err.isNull() && !err->isEmpty()) {
+			setErrMsg("Triceps::Label::chainFront: " + err->print());
+		}
+		if (err->hasError())
+			XSRETURN_UNDEF;
+		RETVAL = 1;
+	OUTPUT:
+		RETVAL
+
 void
 clearChained(WrapLabel *self)
 	CODE:

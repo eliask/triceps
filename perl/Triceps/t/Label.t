@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 65 };
+BEGIN { plan tests => 74 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -127,6 +127,33 @@ ok($! . "", "Triceps::Label::chain: labels must not be chained in a loop\n  xxx_
 # see that it's unchanged
 @chain = $lb->getChain();
 ok(join(", ", map {$_->getName()} @chain), "tab1.in, tab1.in");
+
+# clear the chaining
+$lb->clearChained();
+@chain = $lb->getChain();
+ok($#chain, -1);
+
+######################### chainFront ##################################
+
+$res = $lb->chainFront($t1->getInputLabel());
+ok($res);
+ok($! . "", "");
+
+$res = $lb->chainFront($t1->getPreLabel());
+ok($res);
+ok($! . "", "");
+
+@chain = $lb->getChain();
+ok(join(", ", map {$_->getName()} @chain), "tab1.pre, tab1.in");
+
+# incorrect chaining
+$res = $lb->chainFront($lb);
+ok(! defined $res);
+ok($! . "", "Triceps::Label::chainFront: labels must not be chained in a loop\n  xxx_tab1.out->xxx_tab1.out");
+
+# see that it's unchanged
+@chain = $lb->getChain();
+ok(join(", ", map {$_->getName()} @chain), "tab1.pre, tab1.in");
 
 # clear the chaining
 $lb->clearChained();

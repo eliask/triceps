@@ -70,8 +70,10 @@ public:
 	// and output labels of a table or such.
 	//
 	// @param lab - other label to chain here
+	// @param front - flag: put this label to the front of the chain (to make it
+	//        chain-called first)
 	// @return - NULL ref if chained successfully, otherwise an error indication
-	Erref chain(Onceref<Label> lab);
+	Erref chain(Onceref<Label> lab, bool front = false);
 
 	// Clear the chain leading from this label.
 	void clearChained();
