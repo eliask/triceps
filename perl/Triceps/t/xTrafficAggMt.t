@@ -186,10 +186,19 @@ sub rawToHourlyT # (@opts)
 		}
 	});
 
-	# It's important to connect the pass-through data first,
-	# before chaining anything to the labels of the faIn, to
-	# make sure that any requests and raw inputs get through before
-	# our reactions to them.
+	# update the notion of the current hour before the table
+	$faIn->getLabel("packet")->makeChained("processPackets", undef, sub {
+		my $row = $_[1]->getRow();
+		$currentHour = &hourStamp($row->get("time"));
+		# skip the timestamp updates without data
+		if (defined $row->get("bytes")) {
+			$unit->call($tPackets->getInputLabel()->adopt($_[1]));
+		}
+	});
+
+	# The makeNexus default option chainFront => 1 will make
+	# sure that the pass-through data propagates first, before the
+	# processed data.
 	my $faOut = $owner->makeNexus(
 		name => "data",
 		labels => [
@@ -200,16 +209,6 @@ sub rawToHourlyT # (@opts)
 	);
 
 	my $lbPrint = $faOut->getLabel("print");
-
-	# update the notion of the current hour before the table
-	$faIn->getLabel("packet")->makeChained("processPackets", undef, sub {
-		my $row = $_[1]->getRow();
-		$currentHour = &hourStamp($row->get("time"));
-		# skip the timestamp updates without data
-		if (defined $row->get("bytes")) {
-			$unit->call($tPackets->getInputLabel()->adopt($_[1]));
-		}
-	});
 
 	# the dump request processing
 	$tPackets->getDumpLabel()->makeChained("printDump", undef, sub {
@@ -310,10 +309,18 @@ sub hourlyToDailyT # (@opts)
 		}
 	});
 
-	# It's important to connect the pass-through data first,
-	# before chaining anything to the labels of the faIn, to
-	# make sure that any requests and raw inputs get through before
-	# our reactions to them.
+	# update the notion of the current day from the Packets, because
+	# only they would contain the time updates even when no data is coming in
+	$faIn->getLabel("packet")->makeChained("processPackets", undef, sub {
+		my $row = $_[1]->getRow();
+		$currentDay = &dayStamp($row->get("time"));
+	});
+	# the hourly updates can be chained directly
+	$faIn->getLabel("hourly")->chain($tHourly->getInputLabel()) or confess "$!";
+
+	# The makeNexus default option chainFront => 1 will make
+	# sure that the pass-through data propagates first, before the
+	# processed data.
 	my $faOut = $owner->makeNexus(
 		name => "data",
 		labels => [
@@ -324,15 +331,6 @@ sub hourlyToDailyT # (@opts)
 	);
 
 	my $lbPrint = $faOut->getLabel("print");
-
-	# update the notion of the current day from the Packets, because
-	# only they would contain the time updates even when no data is coming in
-	$faIn->getLabel("packet")->makeChained("processPackets", undef, sub {
-		my $row = $_[1]->getRow();
-		$currentDay = &dayStamp($row->get("time"));
-	});
-	# the hourly updates can be chained directly
-	$faIn->getLabel("hourly")->chain($tHourly->getInputLabel()) or confess "$!";
 
 	# the dump request processing
 	$tHourly->getDumpLabel()->makeChained("printDump", undef, sub {
@@ -386,10 +384,12 @@ sub storeDailyT # (@opts)
 	my $tDaily = $unit->makeTable($ttDaily, 
 		&Triceps::EM_CALL, "tDaily") or confess "$!";
 
-	# It's important to connect the pass-through data first,
-	# before chaining anything to the labels of the faIn, to
-	# make sure that any requests and raw inputs get through before
-	# our reactions to them.
+	# the daily updates can be chained directly
+	$faIn->getLabel("daily")->chain($tDaily->getInputLabel()) or confess "$!";
+
+	# The makeNexus default option chainFront => 1 will make
+	# sure that the pass-through data propagates first, before the
+	# processed data.
 	my $faOut = $owner->makeNexus(
 		name => "data",
 		labels => [
@@ -399,9 +399,6 @@ sub storeDailyT # (@opts)
 	);
 
 	my $lbPrint = $faOut->getLabel("print");
-
-	# the daily updates can be chained directly
-	$faIn->getLabel("daily")->chain($tDaily->getInputLabel()) or confess "$!";
 
 	# the dump request processing
 	$tDaily->getDumpLabel()->makeChained("printDump", undef, sub {
@@ -943,7 +940,7 @@ setInputLines(
 	"user,OP_INSERT,1.2.3.4,defg\n",
 );
 &Traffic2::RUN();
-print &getResultLines();
+#print &getResultLines();
 ok(&getResultLines(), 
 '> packet,OP_INSERT,2012,10,30,12,10,11.,1.2.3.4,5.6.7.8,2000,80,100
 input.packet OP_INSERT year="2012" month="10" day="30" hour="12" min="10" sec="11" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 

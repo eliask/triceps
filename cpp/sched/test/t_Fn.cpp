@@ -508,17 +508,24 @@ UTESTCASE call_bindings(Utest *utest)
 	Autoref<Label> lb1 = new DummyLabel(unit1, rt1, "lb1");
 	Autoref<Label> lb1x = new DummyLabel(unit2, rt1, "lb1x");
 	Autoref<Label> lb1a = new DummyLabel(unit1, rt1, "lb1a");
+	Autoref<Label> lb1z = new DummyLabel(unit1, rt1, "lb1z");
 	Autoref<Label> lb2 = new DummyLabel(unit1, rt2, "lb2");
 	Autoref<Label> lb2a = new DummyLabel(unit1, rt2, "lb2a");
+	Autoref<Label> lb2z = new DummyLabel(unit1, rt2, "lb2z");
 	Autoref<Label> lb3 = new DummyLabel(unit1, rt3, "lb3");
 	Autoref<Label> lb3a = new DummyLabel(unit1, rt3, "lb3a");
+
+	// to test the chaining order, chain lb[12]z first, and then
+	// it will get displaced
+	UT_ASSERT(!lb1->chain(lb1z)->hasError());
+	UT_ASSERT(!lb2->chain(lb2z)->hasError());
 
 	// make the return
 	Autoref<MyFnCtx> ctx1 = new MyFnCtx;
 	Autoref<FnReturn> fret1 = initialize(FnReturn::make(unit1, "fret1")
 		->setContext(ctx1)
 		->addFromLabel("one", lb1)
-		->addFromLabel("two", lb2)
+		->addFromLabel("two", lb2, false)
 	);
 	UT_ASSERT(fret1->getErrors().isNull());
 	UT_ASSERT(fret1->isInitialized());
@@ -581,6 +588,8 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' before label 'lb1z' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' after label 'lb1z' (chain 'lb1') op OP_INSERT }\n"
 		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
@@ -596,6 +605,8 @@ UTESTCASE call_bindings(Utest *utest)
 	UT_IS(msg, 
 		"unit 'u' before label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
+		"unit 'u' before label 'lb2z' (chain 'lb2') op OP_INSERT {\n"
+		"unit 'u' after label 'lb2z' (chain 'lb2') op OP_INSERT }\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 
 		"unit 'u' before label 'lb3a' (chain 'fret1.two') op OP_INSERT {\n"
@@ -618,6 +629,8 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' before label 'lb1z' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' after label 'lb1z' (chain 'lb1') op OP_INSERT }\n"
 		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
@@ -658,6 +671,8 @@ UTESTCASE call_bindings(Utest *utest)
 		"unit 'u' before-chained label 'lb1' op OP_INSERT {\n"
 		"unit 'u' before label 'fret1.one' (chain 'lb1') op OP_INSERT {\n"
 		"unit 'u' after label 'fret1.one' (chain 'lb1') op OP_INSERT }\n"
+		"unit 'u' before label 'lb1z' (chain 'lb1') op OP_INSERT {\n"
+		"unit 'u' after label 'lb1z' (chain 'lb1') op OP_INSERT }\n"
 		"unit 'u' after-chained label 'lb1' op OP_INSERT }\n"
 		"unit 'u' after label 'lb1' op OP_INSERT }\n"
 	);
@@ -673,6 +688,8 @@ UTESTCASE call_bindings(Utest *utest)
 	UT_IS(msg, 
 		"unit 'u' before label 'lb2' op OP_INSERT {\n"
 		"unit 'u' before-chained label 'lb2' op OP_INSERT {\n"
+		"unit 'u' before label 'lb2z' (chain 'lb2') op OP_INSERT {\n"
+		"unit 'u' after label 'lb2z' (chain 'lb2') op OP_INSERT }\n"
 		"unit 'u' before label 'fret1.two' (chain 'lb2') op OP_INSERT {\n"
 
 		"unit 'u' before label 'lb3a' (chain 'fret1.two') op OP_INSERT {\n"

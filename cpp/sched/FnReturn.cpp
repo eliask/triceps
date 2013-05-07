@@ -39,7 +39,7 @@ const string &FnReturn::getUnitName() const
 	return unit_? unit_->getName() : placeholderUnitName;
 }
 
-FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
+FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from, bool front)
 {
 	if (initialized_)
 		throw Exception::fTrace("Attempted to add label '%s' to an initialized FnReturn '%s'.", lname.c_str(), name_.c_str());
@@ -57,7 +57,7 @@ FnReturn *FnReturn::addFromLabel(const string &lname, Autoref<Label>from)
 			// type detected no error
 			Autoref<RetLabel> lb = new RetLabel(unit_, rtype, name_ + "." + lname, this, szpre);
 			labels_.push_back(lb);
-			Erref cherr = from->chain(lb);
+			Erref cherr = from->chain(lb, front);
 			if (cherr->hasError())
 				type_->appendErrors()->append("Failed the chaining of label '" + lname + "':", cherr);
 		}

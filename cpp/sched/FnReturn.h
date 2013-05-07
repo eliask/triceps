@@ -167,8 +167,10 @@ public:
 	// @param from - a label, from which the row type will be taken, 
 	//        and to which the result label will be chained.
 	//        Must belong to the same unit (or error will be remembered).
+	// @param front - flag: chain this label at the front of the "from" label
+	//        Is true by default, matching Perl!
 	// @return - the same FnReturn object, for chained calls.
-	FnReturn *addFromLabel(const string &lname, Autoref<Label>from);
+	FnReturn *addFromLabel(const string &lname, Autoref<Label>from, bool front = true);
 	
 	// Add a RetLabel to the result. Any errors will be remembered and
 	// reported during initialization.

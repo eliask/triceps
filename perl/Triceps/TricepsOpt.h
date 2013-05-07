@@ -44,8 +44,9 @@ void checkLabelList(const char *funcName, const char *optName, Unit *&u, AV *lab
 // @param optName - name of the function's option being checked
 // @param u - the unit for automatic construction of labels from row types
 // @param labels - the label array to construct from
+// @param front - flag: when creating labels from other labels, chain at the front
 // @param fret - FnReturn where to add the labels
-void addFnReturnLabels(const char *funcName, const char *optName, Unit *u, AV *labels, FnReturn *fret);
+void addFnReturnLabels(const char *funcName, const char *optName, Unit *u, AV *labels, bool front, FnReturn *fret);
 
 }; // Triceps::TricepsPerl
 }; // Triceps

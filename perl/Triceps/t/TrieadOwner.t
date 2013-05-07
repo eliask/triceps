@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 229 };
+BEGIN { plan tests => 230 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -504,7 +504,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok($fa->same($exp[3]));
 
 	#########
-	# minimum of options
+	# minimum of options but test chainFront
 	$fa = $to1->makeNexus(
 		name => "nx3",
 		labels => [
@@ -512,8 +512,12 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 			two => $lb,
 		],
 		import => "none",
+		chainFront => 0,
 	);
 	ok(!defined $fa);
+
+	# check the chaining order 
+	ok(join(", ", map {$_->getName()} $lb->getChain()), "nx2.two, nx1.two, nx3.two");
 
 	#########
 	@exp = $t1->exports(); # the C++ map imposes the order

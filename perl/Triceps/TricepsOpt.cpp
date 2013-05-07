@@ -61,7 +61,7 @@ void checkLabelList(const char *funcName, const char *optName, Unit *&u, AV *lab
 	}
 }
 
-void addFnReturnLabels(const char *funcName, const char *optName, Unit *u, AV *labels, FnReturn *fret)
+void addFnReturnLabels(const char *funcName, const char *optName, Unit *u, AV *labels, bool front, FnReturn *fret)
 {
 	int len, i;
 
@@ -81,7 +81,7 @@ void addFnReturnLabels(const char *funcName, const char *optName, Unit *u, AV *l
 
 		if (wl != NULL) {
 			Label *lb = wl->get();
-			fret->addFromLabel(lbname, lb);
+			fret->addFromLabel(lbname, lb, front);
 		} else {
 			RowType *rt = wrt->get();
 			fret->addLabel(lbname, rt);

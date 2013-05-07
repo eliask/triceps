@@ -244,14 +244,14 @@ isInputOnly(WrapTrieadOwner *self)
 #//   name => $rowType,
 #//   name => $fromLabel,
 #// ]
-#// Defines the labels similarly to FnReturn in a referenced array. The array contains
+#// (optional) Defines the labels similarly to FnReturn in a referenced array. The array contains
 #// the pairs of (label_name, label_definition). The definition may be either
 #// a RowType, and then a label of this row type will be created, or a Label,
 #// and then a label of the same row type will be created and chained from that
 #// original label. The created label objects can be later found from Facets, and used
 #// like normal labels, by chaining them or sending rowops to them (but
 #// chaining _from_ them is probably not the best idea, although it works anyway).
-#// (Optional and may be empty; the implicit labels _BEGIN_ and _END_ will allways be added).
+#// May be empty; the implicit labels _BEGIN_ and _END_ will allways be added.
 #//
 #// The labels are used to construct an implicit FnReturn in the current
 #// thread's main unit, and this is the FnReturn that will be visible in the
@@ -265,17 +265,21 @@ isInputOnly(WrapTrieadOwner *self)
 #// rowTypes => [ 
 #//   name => $rowType,
 #// ]
-#// Defines the row types exported in this Nexusm also as a referenced array
-#// of name-value pairs. (Optional and may be empty).
+#// (optional) Defines the row types exported in this Nexusm also as a referenced array
+#// of name-value pairs. May be empty.
 #//
 #// tableTypes => [ 
 #//   name => $tableType,
 #// ]
-#// Defines the row types exported in this Nexusm also as a referenced array
-#// of name-value pairs. (Optional and may be empty).
+#// (optional) Defines the row types exported in this Nexusm also as a referenced array
+#// of name-value pairs. May be empty.
 #//
 #// reverse => 0/1
-#// Flag: this Nexus goes in the reverse direction. (default: 0)
+#// (optional) Flag: this Nexus goes in the reverse direction. Default: 0.
+#//
+#// chainFront => 0/1
+#// (optional) Flag: when the labels are specified as $fromLabel, chain them
+#// at the front. Default: 1.
 #//
 #// queueLimit => $number
 #// Defines the size limit after which the writes to the queue of this Nexus block.
@@ -311,6 +315,7 @@ makeNexus(WrapTrieadOwner *self, ...)
 			AV *tableTypes = NULL;
 			string name;
 			bool reverse = false;
+			bool chainFront = true;
 			int qlimit = -1; // "default"
 			string import; // the import type
 			bool writer;
@@ -331,6 +336,8 @@ makeNexus(WrapTrieadOwner *self, ...)
 					tableTypes = GetSvArray(arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "reverse")) {
 					reverse = SvTRUE(arg);
+				} else if (!strcmp(optname, "chainFront")) {
+					chainFront = SvTRUE(arg);
 				} else if (!strcmp(optname, "queueLimit")) {
 					qlimit = GetSvInt(arg, "%s: option '%s'", funcName, optname);
 					if (qlimit <= 0)
@@ -364,7 +371,7 @@ makeNexus(WrapTrieadOwner *self, ...)
 			Autoref<FnReturn> fret = new FnReturn(u, name);
 
 			if (labels != NULL)
-				addFnReturnLabels(funcName, "labels", u, labels, fret);
+				addFnReturnLabels(funcName, "labels", u, labels, chainFront, fret);
 
 			// now make the Facet out it
 			Autoref<Facet> fa = new Facet(fret, writer);

@@ -146,6 +146,7 @@ new(char *CLASS, ...)
 			AV *labels = NULL;
 			string name;
 			Autoref<PerlCallback> onPush, onPop;
+			bool chainFront = true;
 
 			if (items % 2 != 1) {
 				throw Exception("Usage: Triceps::FnReturn::new(CLASS, optionName, optionValue, ...), option names and values must go in pairs", false);
@@ -163,6 +164,8 @@ new(char *CLASS, ...)
 					onPush = GetSvCall(arg, "%s: option '%s'", funcName, optname);
 				} else if (!strcmp(optname, "onPop")) {
 					onPop = GetSvCall(arg, "%s: option '%s'", funcName, optname);
+				} else if (!strcmp(optname, "chainFront")) {
+					chainFront = SvTRUE(arg);
 				} else {
 					throw Exception(strprintf("%s: unknown option '%s'", funcName, optname), false);
 				}
@@ -181,7 +184,7 @@ new(char *CLASS, ...)
 			// now finally start building the object
 			Autoref<FnReturn> fret = new FnReturn(u, name);
 
-			addFnReturnLabels(funcName, "labels", u, labels, fret);
+			addFnReturnLabels(funcName, "labels", u, labels, chainFront, fret);
 
 			if (!onPush.isNull() || !onPop.isNull()) {
 				fret->setContext(new PerlFnContext(onPush, onPop));
