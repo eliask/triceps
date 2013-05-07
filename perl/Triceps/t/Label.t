@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 74 };
+BEGIN { plan tests => 63 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -102,7 +102,6 @@ ok($#chain, -1);
 # but here it doesn't matter
 $res = $lb->chain($t1->getInputLabel());
 ok($res);
-ok($! . "", "");
 
 $res = $lb->hasChained();
 ok($res, 1);
@@ -114,15 +113,13 @@ ok($v);
 # yes, the same chaining can be repeated!
 $res = $lb->chain($t1->getInputLabel());
 ok($res);
-ok($! . "", "");
 
 @chain = $lb->getChain();
 ok(join(", ", map {$_->getName()} @chain), "tab1.in, tab1.in");
 
 # incorrect chaining
-$res = $lb->chain($lb);
-ok(! defined $res);
-ok($! . "", "Triceps::Label::chain: labels must not be chained in a loop\n  xxx_tab1.out->xxx_tab1.out");
+eval { $lb->chain($lb); };
+ok($@, qr/^Triceps::Label::chain: failed\n  labels must not be chained in a loop\n    xxx_tab1.out->xxx_tab1.out/);
 
 # see that it's unchanged
 @chain = $lb->getChain();
@@ -137,19 +134,16 @@ ok($#chain, -1);
 
 $res = $lb->chainFront($t1->getInputLabel());
 ok($res);
-ok($! . "", "");
 
 $res = $lb->chainFront($t1->getPreLabel());
 ok($res);
-ok($! . "", "");
 
 @chain = $lb->getChain();
 ok(join(", ", map {$_->getName()} @chain), "tab1.pre, tab1.in");
 
 # incorrect chaining
-$res = $lb->chainFront($lb);
-ok(! defined $res);
-ok($! . "", "Triceps::Label::chainFront: labels must not be chained in a loop\n  xxx_tab1.out->xxx_tab1.out");
+eval { $lb->chainFront($lb); };
+ok($@, qr/^Triceps::Label::chainFront: failed\n  labels must not be chained in a loop\n    xxx_tab1.out->xxx_tab1.out/);
 
 # see that it's unchanged
 @chain = $lb->getChain();
@@ -183,15 +177,12 @@ ok($res, \&plab_exec);
 
 ok(!$plab->isCleared());
 $plab->clear();
-ok($! . "", "");
 ok($plab->isCleared());
 
-$res = $lb->getCode();
-ok(! defined $res);
-ok($! . "", "Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
+eval { $res = $lb->getCode(); };
+ok($@, qr/^Triceps::Label::getCode: label is not a Perl Label, has no Perl code/);
 
 $lb->clear(); # even a non-Perl label can be cleared
-ok($! . "", "");
 
 # clearing of the objects by the default Triceps::clearArgs
 package ttt;
@@ -218,7 +209,6 @@ package main;
 	ok(ref $plab, "Triceps::Label");
 
 	$plab->clear();
-	ok($! . "", "");
 
 	# the undefuned clearSub equals to clearArgs() which will wipe out the object
 	ok(!exists $tcopy->{a});
@@ -239,7 +229,6 @@ package main;
 	ok($clab->getName(), "clab");
 
 	$clab->clear();
-	ok($! . "", "");
 
 	# clearing calls clearArgs() which will wipe out the object
 	ok(!exists $tcopy->{a});

@@ -98,7 +98,7 @@ or confess "$!";
 $ttJoin1->initialize() or confess "$!";
 our $tJoin1 = $uArb->makeTable($ttJoin1,
 	&Triceps::EM_CALL, "tJoin1") or confess "$!";
-$join1->getOutputLabel()->chain($tJoin1->getInputLabel()) or confess "$!";
+$join1->getOutputLabel()->chain($tJoin1->getInputLabel());
 
 our $join2 = Triceps::JoinTwo->new(
 	name => "join2",
@@ -132,7 +132,7 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 			&send("__", $rowop->printP(), "looprate=$looprate \n"); # for debugging
 	}
 }) or confess "$!";
-$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
+$join2->getOutputLabel()->chain($lbCompute);
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbResult);
@@ -286,7 +286,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 		}
 	}
 }) or confess "$!";
-$tRate->getOutputLabel()->chain($lbCompute) or confess "$!";
+$tRate->getOutputLabel()->chain($lbCompute);
 makePrintLabel("lbPrint", $lbResult);
 
 while(&readLine) {
@@ -429,7 +429,7 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 		&send("__", $result->printP(), "\n"); # for debugging
 	}
 }) or confess "$!";
-$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
+$join2->getOutputLabel()->chain($lbCompute);
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbResult);

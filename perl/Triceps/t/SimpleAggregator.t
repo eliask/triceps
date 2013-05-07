@@ -45,7 +45,7 @@ sub runExample($$$) # ($unit, $tabType, $aggName)
 			&send($_[1]->printP(), "\n");
 		}) or confess "$!";
 
-	$lbAgg->chain($lbPrint) or confess "$!";
+	$lbAgg->chain($lbPrint);
 
 	while(&readLine) {
 		chomp;

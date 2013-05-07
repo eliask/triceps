@@ -819,7 +819,7 @@ our $lbPositionFilter = $uJoin->makeLabel($tPosition->getRowType,
 			$uJoin->call($lbPositionCurrent->adopt($_[1]));
 		}
 	}) or confess "$!";
-$tPosition->getOutputLabel()->chain($lbPositionFilter) or confess "$!";
+$tPosition->getOutputLabel()->chain($lbPositionFilter);
 
 our $lbToUsdCurrent = $uJoin->makeDummyLabel(
 	$tToUsd->getRowType, "lbToUsdCurrent") or confess "$!";
@@ -829,7 +829,7 @@ our $lbToUsdFilter = $uJoin->makeLabel($tToUsd->getRowType,
 			$uJoin->call($lbToUsdCurrent->adopt($_[1]));
 		}
 	}) or confess "$!";
-$tToUsd->getOutputLabel()->chain($lbToUsdFilter) or confess "$!";
+$tToUsd->getOutputLabel()->chain($lbToUsdFilter);
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",

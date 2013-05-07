@@ -63,17 +63,20 @@ getRowType(WrapLabel *self)
 WrapUnit*
 getUnit(WrapLabel *self)
 	CODE:
-		clearErrMsg();
-		Label *lab = self->get();
-		Unit *unit = lab->getUnitPtr();
-		if (unit == NULL) {
-			setErrMsg("Triceps::Label::getUnit: label has been already cleared");
-			XSRETURN_UNDEF;
-		}
-
 		// for casting of return value
 		static char CLASS[] = "Triceps::Unit";
-		RETVAL = new WrapUnit(unit);
+		clearErrMsg();
+		RETVAL = NULL; // shut up the compiler
+
+		try { do {
+			Label *lab = self->get();
+			Unit *unit = lab->getUnitPtr();
+
+			if (unit == NULL)
+				throw Exception::f("Triceps::Label::getUnit: label has been already cleared");
+
+			RETVAL = new WrapUnit(unit);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -85,12 +88,11 @@ chain(WrapLabel *self, WrapLabel *other)
 		Label *lab = self->get();
 		Label *olab = other->get();
 
-		Erref err = lab->chain(olab);
-		if (!err.isNull() && !err->isEmpty()) {
-			setErrMsg("Triceps::Label::chain: " + err->print());
-		}
-		if (err->hasError())
-			XSRETURN_UNDEF;
+		try { do {
+			Erref err = lab->chain(olab);
+			if (err->hasError())
+				throw Exception::f(err, "Triceps::Label::chain: failed");
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
 		RETVAL
@@ -104,12 +106,11 @@ chainFront(WrapLabel *self, WrapLabel *other)
 		Label *lab = self->get();
 		Label *olab = other->get();
 
-		Erref err = lab->chain(olab, true);
-		if (!err.isNull() && !err->isEmpty()) {
-			setErrMsg("Triceps::Label::chainFront: " + err->print());
-		}
-		if (err->hasError())
-			XSRETURN_UNDEF;
+		try { do {
+			Erref err = lab->chain(olab, true);
+			if (err->hasError())
+				throw Exception::f(err, "Triceps::Label::chainFront: failed");
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
 		RETVAL
@@ -197,37 +198,39 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 		static char funcName[] =  "Triceps::Label::makeRowop";
 
 		clearErrMsg();
-		Label *lab = self->get();
-		const RowType *lt = lab->getType();
-		const RowType *rt = row->ref_.getType();
-		Row *r = row->ref_.get();
+		RETVAL = NULL; // shut up the compiler
 
-		if ((lt != rt) && !lt->match(rt)) {
-			setErrMsg(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
-				+ lt->print("    ") + "\n  Row:\n    " + rt->print("    ")
-			);
-			XSRETURN_UNDEF;
-		}
+		try { do {
+			Label *lab = self->get();
+			const RowType *lt = lab->getType();
+			const RowType *rt = row->ref_.getType();
+			Row *r = row->ref_.get();
 
-		Rowop::Opcode op;
-		if (!parseOpcode(funcName, opcode, op))
-			XSRETURN_UNDEF;
+			if ((lt != rt) && !lt->match(rt)) {
+				throw Exception(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
+						+ lt->print("    ") + "\n  Row:\n    " + rt->print("    "),
+					false
+				);
+			}
 
-		Autoref<Rowop> rop;
-		if (items == 3) {
-			rop = new Rowop(lab, op, r);
-		} else if (items == 4) {
-			Gadget::EnqMode em;
-			if (!parseEnqMode(funcName, ST(3), em))
-				XSRETURN_UNDEF;
+			Rowop::Opcode op;
+			if (!parseOpcode(funcName, opcode, op))
+				break; // sets the error in the function
 
-			rop = new Rowop(lab, op, r, em);
-		} else {
-			setErrMsg("Usage: Triceps::Label::makeRowop(label, opcode, row [, enqMode]), received too many arguments");
-			XSRETURN_UNDEF;
-		}
+			Autoref<Rowop> rop;
+			if (items == 3) {
+				rop = new Rowop(lab, op, r);
+			} else if (items == 4) {
+				Gadget::EnqMode em;
+				if (!parseEnqMode(funcName, ST(3), em))
+					break; // sets the error in the function
 
-		RETVAL = new WrapRowop(rop);
+				rop = new Rowop(lab, op, r, em);
+			} else {
+				throw Exception::f("Usage: %s(label, opcode, row [, enqMode]), received too many arguments", funcName);
+			}
+			RETVAL = new WrapRowop(rop);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -242,26 +245,28 @@ adopt(WrapLabel *self, WrapRowop *wrop)
 		static char funcName[] =  "Triceps::Label::adopt";
 
 		clearErrMsg();
-		Label *lab = self->get();
-		Rowop *orop = wrop->get();
-		const Label *olab = orop->getLabel();
+		RETVAL = NULL; // shut up the compiler
 
-		if (lab->getUnitPtr() != olab->getUnitPtr()) {
-			setErrMsg(strprintf("%s: label units do not match, '%s' vs '%s'", funcName,
-				lab->getUnitName().c_str(), olab->getUnitName().c_str()));
-			XSRETURN_UNDEF;
-		}
+		try { do {
+			Label *lab = self->get();
+			Rowop *orop = wrop->get();
+			const Label *olab = orop->getLabel();
 
-		if (!lab->getType()->match(olab->getType())) {
-			setErrMsg(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
-				+ lab->getType()->print("    ") + "\n  Row:\n    " + olab->getType()->print("    ")
-			);
-			XSRETURN_UNDEF;
-		}
+			if (lab->getUnitPtr() != olab->getUnitPtr()) {
+				throw Exception::f("%s: label units do not match, '%s' vs '%s'", funcName,
+					lab->getUnitName().c_str(), olab->getUnitName().c_str());
+			}
 
-		Autoref<Rowop> rop = new Rowop(lab, orop);
+			if (!lab->getType()->match(olab->getType())) {
+				throw Exception(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
+						+ lab->getType()->print("    ") + "\n  Row:\n    " + olab->getType()->print("    "),
+					false
+				);
+			}
 
-		RETVAL = new WrapRowop(rop);
+			Autoref<Rowop> rop = new Rowop(lab, orop);
+			RETVAL = new WrapRowop(rop);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -272,18 +277,22 @@ SV *
 getCode(WrapLabel *self)
 	CODE:
 		clearErrMsg();
-		Label *lab = self->get();
-		PerlLabel *plab = dynamic_cast<PerlLabel *>(lab);
-		if (plab == NULL) {
-			setErrMsg("Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
-			XSRETURN_UNDEF; 
-		}
-		SV *code = plab->getCode();
-		if (code == NULL)
-			XSRETURN_UNDEF; 
-		SV *ret = newSV(0);
-		sv_setsv(ret, code);
-		RETVAL = ret;
+		RETVAL = NULL; // shut up the compiler
+
+		try { do {
+			Label *lab = self->get();
+			PerlLabel *plab = dynamic_cast<PerlLabel *>(lab);
+			if (plab == NULL) {
+				throw Exception::f("Triceps::Label::getCode: label is not a Perl Label, has no Perl code");
+			}
+			SV *code = plab->getCode();
+			if (code == NULL)
+				break; // sets the error in the function
+
+			SV *ret = newSV(0);
+			sv_setsv(ret, code);
+			RETVAL = ret;
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 

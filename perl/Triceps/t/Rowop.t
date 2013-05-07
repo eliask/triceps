@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 80 };
+BEGIN { plan tests => 76 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -131,9 +131,8 @@ ok($rop1->printP(), "tab1.in OP_INSERT a=\"123\" b=\"456\" c=\"3000000000000000\
 $rop = $lb->makeRowop(&Triceps::OP_INSERT, $row1);
 ok(ref $rop, "Triceps::Rowop");
 
-$rop = $lb->makeRowop("OCF_INSERT", $row1);
-ok(!defined $rop);
-ok($! . "", "Triceps::Label::makeRowop: unknown opcode string 'OCF_INSERT', if integer was meant, it has to be cast");
+eval { $lb->makeRowop("OCF_INSERT", $row1); };
+ok($@, qr/^Triceps::Label::makeRowop: unknown opcode string 'OCF_INSERT', if integer was meant, it has to be cast/);
 
 $rop = $lb->makeRowop("OP_INSERT", $row1, "EM_CALL");
 ok(ref $rop, "Triceps::Rowop");
@@ -141,13 +140,11 @@ ok(ref $rop, "Triceps::Rowop");
 $rop = $lb->makeRowop("OP_INSERT", $row1, &Triceps::EM_CALL);
 ok(ref $rop, "Triceps::Rowop");
 
-$rop = $lb->makeRowop("OP_INSERT", $row1, "something");
-ok(!defined $rop);
-ok($! . "", "Triceps::Label::makeRowop: unknown enqueuing mode string 'something', if integer was meant, it has to be cast");
+eval { $lb->makeRowop("OP_INSERT", $row1, "something"); };
+ok($@, qr/^Triceps::Label::makeRowop: unknown enqueuing mode string 'something', if integer was meant, it has to be cast/);
 
-$rop = $lb->makeRowop("OP_INSERT", $row1, "EM_CALL", 9);
-ok(!defined $rop);
-ok($! . "", "Usage: Triceps::Label::makeRowop(label, opcode, row [, enqMode]), received too many arguments");
+eval { $lb->makeRowop("OP_INSERT", $row1, "EM_CALL", 9); };
+ok($@, qr/^Usage: Triceps::Label::makeRowop\(label, opcode, row \[, enqMode\]\), received too many arguments/);
 
 # a matching row type is OK
 # (and as printP shows, the row will be logically cast to our row type)
@@ -155,9 +152,8 @@ $rop2 = $lb->makeRowop("OP_DELETE", $row2, "EM_CALL");
 ok(ref $rop2, "Triceps::Rowop");
 ok($rop2->printP(), "tab1.in OP_DELETE a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
 
-$rop = $lb->makeRowop("OP_INSERT", $row3, "EM_CALL");
-ok(!defined $rop);
-ok($! . "", "Triceps::Label::makeRowop: row types do not match\n  Label:\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  Row:\n    row {\n      string e,\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n    }");
+eval { $lb->makeRowop("OP_INSERT", $row3, "EM_CALL"); };
+ok($@, qr/^Triceps::Label::makeRowop: row types do not match\n  Label:\n    row {\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n      string e,\n    }\n  Row:\n    row {\n      string e,\n      uint8 a,\n      int32 b,\n      int64 c,\n      float64 d,\n    }/);
 
 ####
 # convenience factories
@@ -290,10 +286,10 @@ $ropx1 = $labx2->adopt($rop1);
 ok(ref $ropx1, "Triceps::Rowop");
 
 # an unmatching type is not OK
-$ropx1 = $labx3->adopt($rop1);
+$ropx1 = eval { $labx3->adopt($rop1); };
 ok(!defined $ropx1);
-ok("$!", 
-"Triceps::Label::adopt: row types do not match
+ok($@, 
+qr/^Triceps::Label::adopt: row types do not match
   Label:
     row {
       string e,
@@ -309,9 +305,9 @@ ok("$!",
       int64 c,
       float64 d,
       string e,
-    }");
+    }/);
 
 # an unmatching unit is not OK
-$ropx1 = $laby1->adopt($rop1);
+$ropx1 = eval { $laby1->adopt($rop1); };
 ok(!defined $ropx1);
-ok("$!", "Triceps::Label::adopt: label units do not match, 'u2' vs 'u1'");
+ok($@, qr/^Triceps::Label::adopt: label units do not match, 'u2' vs 'u1'/);

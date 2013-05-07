@@ -912,9 +912,9 @@ $v = $xlab2->getUnit();
 ok($u1->same($v));
 $u1->clearLabels();
 ok($clearlog, "clear xlab2 args=[a,b]\n");
-$v = $xlab2->getUnit();
+$v = eval { $xlab2->getUnit(); };
 ok(!defined $v);
-ok("$!", "Triceps::Label::getUnit: label has been already cleared");
+ok($@, qr/^Triceps::Label::getUnit: label has been already cleared/);
 
 # with a trigger object
 $u2lab1 = $u2->makeDummyLabel($rt1, "u2lab1");
@@ -926,6 +926,6 @@ ok(ref $u2lab1, "Triceps::Label");
 	ok($u2->same($v));
 }
 # now the label on u2 should be cleared
-$v = $u2lab1->getUnit();
+$v = eval { $u2lab1->getUnit(); };
 ok(!defined $v);
-ok("$!", "Triceps::Label::getUnit: label has been already cleared");
+ok($@, qr/^Triceps::Label::getUnit: label has been already cleared/);

@@ -91,8 +91,8 @@ sub new # ($class, $optName => $optValue, ...)
 			
 	# chain the input label, if any
 	if (defined $lbFrom) {
-		$lbFrom->chain($dataset->{lbIn})
-			or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
+		$lbFrom->chain($dataset->{lbIn});
+		# or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
 		delete $dataset->{fromLabel}; # no need to keep the reference any more, avoid a reference cycle
 	}
 

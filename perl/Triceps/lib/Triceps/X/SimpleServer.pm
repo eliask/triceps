@@ -300,7 +300,7 @@ sub makeServerOutLabel # ($fromLabel)
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
 		});
-	$fromLabel->chain($lbOut) or confess "$!";
+	$fromLabel->chain($lbOut);
 	return $lbOut;
 }
 

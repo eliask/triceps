@@ -61,7 +61,7 @@ our $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n"); # print the change
 	}) or confess "$!";
-$tWindow->getOutputLabel()->chain($lbWindowPrint) or confess "$!";
+$tWindow->getOutputLabel()->chain($lbWindowPrint);
 
 while(&readLine) {
 	chomp;
@@ -173,7 +173,7 @@ our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
 	}) or confess "$!";
-$tWindow->getOutputLabel()->chain($lbRememberLastMod) or confess "$!";
+$tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 # Print the average price of the symbol in the last modified row
 sub printAverage # (row)
@@ -299,7 +299,7 @@ our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
 	}) or confess "$!";
-$tWindow->getOutputLabel()->chain($lbRememberLastMod) or confess "$!";
+$tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 #####
 # a manual aggregation: average price
@@ -431,7 +431,7 @@ our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
 	}) or confess "$!";
-$tWindow->getOutputLabel()->chain($lbRememberLastMod) or confess "$!";
+$tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 #####
 # a manual aggregation: average price

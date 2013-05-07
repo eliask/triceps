@@ -2417,7 +2417,7 @@ sub makePipePrintLabel($$$) # ($print_label_name, $parent_label, $out_label)
 			$unit->makeArrayCall(
 				$lbOutput, "OP_INSERT", $_[1]->printP());
 		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
+	$lbParent->chain($lb);
 	return $lb;
 }
 

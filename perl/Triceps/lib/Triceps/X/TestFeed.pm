@@ -86,7 +86,7 @@ sub makePrintLabel($$) # ($print_label_name, $parent_label)
 		undef, sub { # (label, rowop)
 			&send($_[1]->printP(), "\n");
 		}) or confess "$!";
-	$lbParent->chain($lb) or confess "$!";
+	$lbParent->chain($lb);
 	return $lb;
 }
 

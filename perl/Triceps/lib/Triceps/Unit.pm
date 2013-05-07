@@ -163,7 +163,7 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 	my $lbWrapNext = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
 		$self->setMark($mark);
 	}) or confess "$!";
-	$lbWrapNext->chain($lbFirst) or confess "$!";
+	$lbWrapNext->chain($lbFirst);
 
 	return ($lbWrapNext, $mark);
 }

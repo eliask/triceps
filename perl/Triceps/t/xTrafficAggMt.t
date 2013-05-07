@@ -316,7 +316,7 @@ sub hourlyToDailyT # (@opts)
 		$currentDay = &dayStamp($row->get("time"));
 	});
 	# the hourly updates can be chained directly
-	$faIn->getLabel("hourly")->chain($tHourly->getInputLabel()) or confess "$!";
+	$faIn->getLabel("hourly")->chain($tHourly->getInputLabel());
 
 	# The makeNexus default option chainFront => 1 will make
 	# sure that the pass-through data propagates first, before the
@@ -385,7 +385,7 @@ sub storeDailyT # (@opts)
 		&Triceps::EM_CALL, "tDaily") or confess "$!";
 
 	# the daily updates can be chained directly
-	$faIn->getLabel("daily")->chain($tDaily->getInputLabel()) or confess "$!";
+	$faIn->getLabel("daily")->chain($tDaily->getInputLabel());
 
 	# The makeNexus default option chainFront => 1 will make
 	# sure that the pass-through data propagates first, before the
@@ -786,7 +786,7 @@ sub rawToHourlyT # (@opts)
 		import => "writer",
 	);
 
-	$faIn->getLabel("packet")->chain($tPackets->getInputLabel()) or confess "$!";
+	$faIn->getLabel("packet")->chain($tPackets->getInputLabel());
 
 	my $lbPrint = $faOut->getLabel("print");
 
@@ -867,8 +867,8 @@ sub joinUsersT # (@opts)
 		import => "writer",
 	);
 
-	$faIn->getLabel("hourly")->chain($tHourly->getInputLabel()) or confess "$!";
-	$faIn->getLabel("user")->chain($tUsers->getInputLabel()) or confess "$!";
+	$faIn->getLabel("hourly")->chain($tHourly->getInputLabel());
+	$faIn->getLabel("user")->chain($tUsers->getInputLabel());
 
 	$owner->readyReady();
 	$owner->mainLoop(); # all driven by the reader

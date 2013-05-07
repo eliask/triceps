@@ -62,7 +62,7 @@ sub makeChained # ($self, $name, &$clear, &$exec, @args)
 	my $rt = $self->getRowType() or confess "$!";
 	my $unit = $self->getUnit() or confess "$!";
 	my $lb = $unit->makeLabel($rt, $name, $clear, $exec, @_) or confess "$!";
-	$self->chain($lb) or confess "$!";
+	$self->chain($lb);
 	return $lb;
 }
 

@@ -1111,8 +1111,7 @@ my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
 	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage);
 
 while(&readLine) {
 	chomp;
@@ -1205,8 +1204,7 @@ my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
 	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage);
 
 while(&readLine) {
 	chomp;
@@ -1357,8 +1355,7 @@ my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
 	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage);
 
 while(&readLine) {
 	chomp;

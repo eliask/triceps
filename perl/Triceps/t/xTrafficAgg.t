@@ -136,8 +136,7 @@ our $tHourly = $uTraffic->makeTable($ttHourly,
 	&Triceps::EM_CALL, "tHourly") or confess "$!";
 
 # connect the tables
-$tPackets->getAggregatorLabel("aggrHourly")->chain($tHourly->getInputLabel()) 
-	or confess "$!";
+$tPackets->getAggregatorLabel("aggrHourly")->chain($tHourly->getInputLabel());
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrintPackets", $tPackets->getOutputLabel());
@@ -408,8 +407,7 @@ our $tDaily = $uTraffic->makeTable($ttDaily,
 	&Triceps::EM_CALL, "tDaily") or confess "$!";
 
 # connect the tables (but not the daily one)
-$tPackets->getAggregatorLabel("aggrHourly")->chain($tHourly->getInputLabel()) 
-	or confess "$!";
+$tPackets->getAggregatorLabel("aggrHourly")->chain($tHourly->getInputLabel());
 
 # reuse the same sub makePrintLabel
 

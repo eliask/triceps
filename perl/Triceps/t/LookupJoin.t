@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 260 };
+BEGIN { plan tests => 228 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -303,12 +303,12 @@ ok(ref $join2ab->getInputLabel(), "Triceps::Label");
 ok(ref $join2ab->getOutputLabel(), "Triceps::Label");
 
 # the output
-ok($join2ab->getOutputLabel()->chain($outlab2b));
+$join2ab->getOutputLabel()->chain($outlab2b);
 
 # this is purely to keep track of the input in the log
 my $inlab2b = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2b, "Triceps::Label");
-ok($inlab2b->chain($join2ab->getInputLabel()));
+$inlab2b->chain($join2ab->getInputLabel());
 
 
 ###############################################################
@@ -397,12 +397,12 @@ ok(ref $join2xab->getInputLabel(), "Triceps::Label");
 ok(ref $join2xab->getOutputLabel(), "Triceps::Label");
 
 # the output
-ok($join2xab->getOutputLabel()->chain($outlab2xb));
+$join2xab->getOutputLabel()->chain($outlab2xb);
 
 # this is purely to keep track of the input in the log
 my $inlab2xb = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2xb, "Triceps::Label");
-ok($inlab2xb->chain($join2xab->getInputLabel()));
+$inlab2xb->chain($join2xab->getInputLabel());
 
 
 
@@ -457,12 +457,12 @@ ok(ref $join2c->getInputLabel(), "Triceps::Label");
 ok(ref $join2c->getOutputLabel(), "Triceps::Label");
 
 # the output
-ok($join2c->getOutputLabel()->chain($outlab2c));
+$join2c->getOutputLabel()->chain($outlab2c);
 
 # this is purely to keep track of the input in the log
 my $inlab2c = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2c, "Triceps::Label");
-ok($inlab2c->chain($join2c->getInputLabel()));
+$inlab2c->chain($join2c->getInputLabel());
 
 undef $result2;
 # feed the data
@@ -545,12 +545,12 @@ my $outlab2d = $vu2->makeLabel($join2d->getResultRowType(), "out", undef, sub { 
 ok(ref $outlab2d, "Triceps::Label");
 
 # the output
-ok($join2d->getOutputLabel()->chain($outlab2d));
+$join2d->getOutputLabel()->chain($outlab2d);
 
 # this is purely to keep track of the input in the log
 my $inlab2d = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2d, "Triceps::Label");
-ok($inlab2d->chain($join2d->getInputLabel()));
+$inlab2d->chain($join2d->getInputLabel());
 
 undef $result2;
 # feed the data
@@ -608,12 +608,12 @@ my $outlab2e = $vu2->makeLabel($join2e->getResultRowType(), "out", undef, sub { 
 ok(ref $outlab2e, "Triceps::Label");
 
 # the output
-ok($join2e->getOutputLabel()->chain($outlab2e));
+$join2e->getOutputLabel()->chain($outlab2e);
 
 # this is purely to keep track of the input in the log
 my $inlab2e = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2e, "Triceps::Label");
-ok($inlab2e->chain($join2e->getInputLabel()));
+$inlab2e->chain($join2e->getInputLabel());
 
 undef $result2;
 # feed the data
@@ -678,7 +678,7 @@ my $outlab2f = $vu2->makeLabel($join2f->getResultRowType(), "out", undef, sub { 
 ok(ref $outlab2f, "Triceps::Label");
 
 # the output
-ok($join2f->getOutputLabel()->chain($outlab2f));
+$join2f->getOutputLabel()->chain($outlab2f);
 
 undef $result2;
 # feed the data
@@ -760,12 +760,12 @@ ok(ref $join2xc->getInputLabel(), "Triceps::Label");
 ok(ref $join2xc->getOutputLabel(), "Triceps::Label");
 
 # the output
-ok($join2xc->getOutputLabel()->chain($outlab2xc));
+$join2xc->getOutputLabel()->chain($outlab2xc);
 
 # this is purely to keep track of the input in the log
 my $inlab2xc = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2xc, "Triceps::Label");
-ok($inlab2xc->chain($join2xc->getInputLabel()));
+$inlab2xc->chain($join2xc->getInputLabel());
 
 undef $result2;
 # feed the data
@@ -848,12 +848,12 @@ my $outlab2xd = $vu2->makeLabel($join2xd->getResultRowType(), "out", undef, sub 
 ok(ref $outlab2xd, "Triceps::Label");
 
 # the output
-ok($join2xd->getOutputLabel()->chain($outlab2xd));
+$join2xd->getOutputLabel()->chain($outlab2xd);
 
 # this is purely to keep track of the input in the log
 my $inlab2xd = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2xd, "Triceps::Label");
-ok($inlab2xd->chain($join2xd->getInputLabel()));
+$inlab2xd->chain($join2xd->getInputLabel());
 
 undef $result2;
 # feed the data
@@ -911,12 +911,12 @@ my $outlab2xe = $vu2->makeLabel($join2xe->getResultRowType(), "out", undef, sub 
 ok(ref $outlab2xe, "Triceps::Label");
 
 # the output
-ok($join2xe->getOutputLabel()->chain($outlab2xe));
+$join2xe->getOutputLabel()->chain($outlab2xe);
 
 # this is purely to keep track of the input in the log
 my $inlab2xe = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
 ok(ref $inlab2xe, "Triceps::Label");
-ok($inlab2xe->chain($join2xe->getInputLabel()));
+$inlab2xe->chain($join2xe->getInputLabel());
 
 undef $result2;
 # feed the data
@@ -981,7 +981,7 @@ my $outlab2xf = $vu2->makeLabel($join2xf->getResultRowType(), "out", undef, sub 
 ok(ref $outlab2xf, "Triceps::Label");
 
 # the output
-ok($join2xf->getOutputLabel()->chain($outlab2xf));
+$join2xf->getOutputLabel()->chain($outlab2xf);
 
 undef $result2;
 # feed the data

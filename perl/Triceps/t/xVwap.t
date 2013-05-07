@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 20 };
+BEGIN { plan tests => 18 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
@@ -162,7 +162,7 @@ ok(ref $tAggr1, "Triceps::Table");
 # the label that processes the results of aggregation
 $resLabel1 = $vu1->makeLabel($rtVwap, "collect", undef, \&collectOutput);
 ok(ref $resLabel1, "Triceps::Label");
-ok($tAggr1->getAggregatorLabel("aggrVwap")->chain($resLabel1));
+$tAggr1->getAggregatorLabel("aggrVwap")->chain($resLabel1);
 
 # now reset the output and feed the input
 @resultData = ();
@@ -338,7 +338,7 @@ ok(ref $vwapper2, "vwap2");
 # the label that processes the results of aggregation
 $resLabel2 = $vu2->makeLabel($vwapper2->getOutputRowType(), "collect", undef, \&collectOutput);
 ok(ref $resLabel2, "Triceps::Label");
-ok($vwapper2->getOutputLabel()->chain($resLabel2));
+$vwapper2->getOutputLabel()->chain($resLabel2);
 
 # now reset the output and feed the input
 @resultData = ();
@@ -418,8 +418,7 @@ my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
 	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint)
-	or confess "$!";
+$tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint);
 
 while(&readLine) {
 	chomp;

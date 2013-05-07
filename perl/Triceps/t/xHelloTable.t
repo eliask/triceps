@@ -223,7 +223,7 @@ sub helloWorldLabels()
 			&send(&Triceps::opcodeString($rowop->getOpcode), " '", 
 				$row->get("address"), "', count ", $row->get("count"), "\n");
 		} ) or confess "$!";
-	$tCount->getOutputLabel()->chain($lbPrintCount) or confess "$!";
+	$tCount->getOutputLabel()->chain($lbPrintCount);
 
 	# the updates will be sent here, for the tables to process
 	my $lbTableInput = $tCount->getInputLabel();

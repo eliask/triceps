@@ -1109,7 +1109,7 @@ my $srvout = $uTrades->makeLabel($query->getOutputLabel()->getType(),
 	$query->getOutputLabel()->getName() . ".serverOut", undef, sub {
 		&Triceps::X::SimpleServer::outCurBuf($_[1]->printP() . "\n");
 	});
-$query->getOutputLabel()->chain($srvout) or confess "$!";
+$query->getOutputLabel()->chain($srvout);
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
@@ -1183,7 +1183,7 @@ sub new # ($class, $option => $value, ...)
 	);
 	$self->{inLabel} = $lb;
 	if (defined $fromLabel) {
-		$fromLabel->chain($lb) or confess "$!";
+		$fromLabel->chain($lb);
 	}
 
 	bless $self, $class;
@@ -1238,8 +1238,7 @@ my $srvout = ServerOutput->new(
 	unit => $uTrades,
 	rowType => $tWindow->getRowType(),
 );
-$query->getOutputLabel()->chain($srvout->getInputLabel())
-	or confess "$!";
+$query->getOutputLabel()->chain($srvout->getInputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
@@ -1314,7 +1313,7 @@ sub new # ($class, $option => $value, ...)
 	);
 	$self->{inLabel} = $lb;
 	if (defined $fromLabel) {
-		$fromLabel->chain($lb) or confess "$!";
+		$fromLabel->chain($lb);
 	}
 
 	bless $self, $class;
@@ -1372,8 +1371,7 @@ my $srvout = ServerOutput2->new(
 	unit => $uTrades,
 	rowType => $tWindow->getRowType(),
 );
-$query->getOutputLabel()->chain($srvout->getInputLabel())
-	or confess "$!";
+$query->getOutputLabel()->chain($srvout->getInputLabel());
 
 my %dispatch;
 $dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
