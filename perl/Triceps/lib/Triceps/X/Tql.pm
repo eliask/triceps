@@ -159,8 +159,9 @@ sub _dumpTable # ($label, $rowop, $self, $table)
 	my ($label, $rop, $self, $table) = @_;
 	my $unit = $label->getUnit();
 	# pass through the client id to the dump
-	$unit->call($self->{beginOut}->adopt($rop)); # XXX not right
+	$unit->call($self->{beginDump}->adopt($rop));
 	$table->dumpAll();
+	$unit->call($self->{endDump}->adopt($rop));
 	$self->{faOut}->flushWriter();
 }
 
@@ -177,9 +178,11 @@ sub initialize # ($self)
 		my @labels;
 		my @tabtypes;
 
-		# row type carrying the client id
-		my $rtClient = Triceps::RowType->new(
-			client => "string",
+		# row type for dump requests and responses
+		my $rtRequest = Triceps::RowType->new(
+			client => "string", #requesting client
+			id => "string", # request id
+			name => "string", # the table name, for conveniend of requestor
 		) or confess "$!";
 
 		# row type for the communication between the client reader
@@ -203,7 +206,9 @@ sub initialize # ($self)
 			push @labels, "t.out." . $name, $table->getOutputLabel();
 			push @labels, "t.dump." . $name, $table->getDumpLabel();
 		}
-		push @labels, "control", $rtControl;
+		push @labels, "control", $rtControl; # pass-through from in to out
+		push @labels, "beginDump", $rtRequest; # framing for the table dumps
+		push @labels, "endDump", $rtRequest;
 
 		$self->{faOut} = $owner->makeNexus(
 			name => $self->{nxprefix} . "out",
@@ -211,9 +216,8 @@ sub initialize # ($self)
 			tableTypes => [ @tabtypes ],
 			import => "writer",
 		);
-		# XXX use the control labels, since _BEGIN_ will create extra transactions?
-		$self->{beginOut} = $self->{faOut}->getLabel("_BEGIN_");
-		$self->{endOut} = $self->{faOut}->getLabel("_END_");
+		$self->{beginDump} = $self->{faOut}->getLabel("beginDump");
+		$self->{endDump} = $self->{faOut}->getLabel("endDump");
 
 		# build the input side
 		undef @labels;
@@ -246,7 +250,7 @@ sub initialize # ($self)
 			my $name = $self->{tableNames}[$i]; 
 			my $table = $self->{tables}[$i];
 
-			push @labels, "t.rqdump." . $name, $rtClient;
+			push @labels, "t.rqdump." . $name, $rtRequest;
 		}
 		$self->{faRqDump} = $owner->makeNexus(
 			name => $self->{nxprefix} . "rqdump",
@@ -885,11 +889,14 @@ sub readT
 # The command confirmation lines are:
 #
 # command,id,[label]
+# startdump,id,label
 # error,id,user_text,type,value....
 #
 # The command confirmation name is generally the same as command name. Whether the
 # label will be present in it, depends on whether the label is present in the 
 # original command.
+#
+# The startdump confirmation is sent before the requested dump starts.
 #
 # The error report may have the real or empty id, depending on whether it was
 # present in the original command. The error report contains the user-readable
@@ -908,8 +915,9 @@ sub writeT
 	undef @_;
 	my $owner = $opts->{owner};
 	my $app = $owner->app();
-	my $tname = $opts->{thread};
+	my $unit = $owner->unit();
 	my $fragment = $opts->{fragment}; # this is the client name
+	my @labels;
 
 	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, ">");
 
@@ -934,7 +942,33 @@ sub writeT
 		error => 1,
 	);
 
-	my %subscr; # the currently active subscriptions
+	my %subscr; # the currently active subscriptions, maps to constant 1
+	my %dumps; # the currently active dumps, maps to command info
+	my %queued_dumps; # the dump requests that arrive before the previous dump
+		# is completed, they are queued. The entries are arrays of command info.
+
+	# to avoid filtering every dump row, its handling is done in an FnBinding
+	# that's get pushed at the start of the dump and popped at the end of it
+	my $subDump = sub { # ($label, $rowop, $dumpname)
+		printOrShut($app, $fragment, $sock, 
+			"d,", $_[2], ",", Triceps::opcodeString($_[1]->getOpcode()), ",",
+			join(",", $_[1]->getRow()->toArray()), "\n");
+	};
+	my $fretOut = $faOut->getFnReturn();
+	undef @labels;
+	foreach my $lbn ($fretOut->getLabelNames()) {
+		next unless ($lbn =~ /^t\.dump\.(.*)$/);
+		my $name = $1;
+		my $lb = $unit->makeLabel(
+			$fretOut->getLabel($lbn)->getRowType(), "dump.$name",
+			undef, $subDump, $name);
+		push @labels, $lbn, $lb;
+	}
+	my $bindDump = Triceps::FnBinding->new(
+		on => $fretOut,
+		name => "bindDump",
+		labels => [ @labels ],
+	);
 
 	$faOut->getLabel("control")->makeChained("lbCtl", undef, sub {
 		my $row = $_[1]->getRow();
@@ -942,6 +976,7 @@ sub writeT
 
 		if ($client eq $fragment || $cmd eq "shutdown") {
 			if (exists $passcmds{$cmd}) {
+				no warnings; # shut up the warnings about undefs in join()
 				printOrShut($app, $fragment, $sock, join(',', $cmd, $id, @args), "\n");
 			} elsif ($cmd eq "subscribe") {
 				if (!exists $subscr{$args[0]}) {
@@ -950,7 +985,7 @@ sub writeT
 					};
 					if (!$lbsrc) {
 						printOrShut($app, $fragment, $sock,
-							"error,$id,Bad label: '$cmd',bad_label," . $args[0] . "\n");
+							"error,$id,Bad label for subscribe: '", $args[0], "',bad_label,", $args[0], "\n");
 						return;
 					}
 					$lbsrc->makeChained("lbOut." . $args[0], undef, sub {
@@ -961,10 +996,52 @@ sub writeT
 					$subscr{$args[0]} = 1;
 				}
 				printOrShut($app, $fragment, $sock, join(',', $cmd, $id, $args[0]), "\n");
+			} elsif ($cmd eq "dump") {
+				my $info = [ $cmd, $id, $args[0] ];
+				if (exists $dumps{$args[0]}) {
+					# a dump on this table is already in progress, queue it up
+					push @{$queued_dumps{$args[0]}}, $info;
+					return;
+				}
+				my $lbrq = eval {
+					$faRqDump->getLabel("t.rqdump." . $args[0]);
+				};
+				if (!$lbrq) {
+					printOrShut($app, $fragment, $sock,
+						"error,$id,Bad label for dump: '", $args[0], "',bad_label,", $args[0], "\n");
+					return;
+				}
+				$dumps{$args[0]} = $info;
+				$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $id, name => $args[0]);
 			} else {
 				printOrShut($app, $fragment, $sock,
 					"error,$id,Bad command: '$cmd',bad_command,$cmd\n");
 			}
+		}
+	});
+
+	$faOut->getLabel("beginDump")->makeChained("lbBeginDump", undef, sub {
+		my $row = $_[1]->getRow();
+		my ($client, $id, $name) = $row->toArray();
+		return unless ($client eq $fragment && exists $dumps{$name});
+		printOrShut($app, $fragment, $sock,
+			"startdump,$id,$name\n");
+		$fretOut->push($bindDump);
+	});
+	$faOut->getLabel("endDump")->makeChained("lbBeginDump", undef, sub {
+		my $row = $_[1]->getRow();
+		my ($client, $id, $name) = $row->toArray();
+		return unless ($client eq $fragment && exists $dumps{$name});
+		$fretOut->pop($bindDump);
+		printOrShut($app, $fragment, $sock, join(',', @{$dumps{$name}}), "\n");
+		delete $dumps{$name};
+		# now, there might be more requests queued up, follow up on the next one
+		my $info = shift @{$queued_dumps{$name}};
+		if (defined $info) {
+			# presumably, this already worked before, so no need to eval
+			my $lbrq = $faRqDump->getLabel("t.rqdump." . $name);
+			$dumps{$name} = $info;
+			$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $$info[1], name => $$info[2]);
 		}
 	});
 

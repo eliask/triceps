@@ -11,7 +11,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 1 };
+BEGIN { plan tests => 2 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Triceps::X::Tql;
@@ -72,7 +72,7 @@ sub appCoreT # (@opts)
 
 	my $ttSymbol = Triceps::TableType->new($rtSymbol)
 		->addSubIndex("bySymbol", 
-			Triceps::IndexType->newHashed(key => [ "symbol" ])
+			Triceps::SimpleOrderedIndex->new(symbol => "ASC")
 		)
 		or confess "$!";
 	$ttSymbol->initialize() or confess "$!";
@@ -114,35 +114,42 @@ sub appCoreT # (@opts)
 			fork => -1, # create a thread, not a process
 	);
 
-	Triceps::App::build "client", sub {
-		my $appname = $Triceps::App::name;
-		my $owner = $Triceps::App::global;
+	eval {
+		Triceps::App::build "client", sub {
+			my $appname = $Triceps::App::name;
+			my $owner = $Triceps::App::global;
 
-		# give the port in startClient
-		my $client = Triceps::X::ThreadedClient->new(
-			owner => $owner,
-			debug => 1,
-		);
+			# give the port in startClient
+			my $client = Triceps::X::ThreadedClient->new(
+				owner => $owner,
+				debug => 1,
+			);
 
-		$owner->readyReady();
+			$owner->readyReady();
 
-		$client->startClient("c1", $port);
-		$client->expect("c1", 'ready');
+			$client->startClient(c1 => $port);
+			$client->expect(c1 => 'ready');
 
-		$client->send("c1", "subscribe,s1,symbol\n");
-		$client->expect("c1", 'subscribe,s1');
+			$client->send(c1 => "subscribe,s1,symbol\n");
+			$client->expect(c1 => 'subscribe,s1');
 
-		$client->send("c1", "d,symbol,OP_INSERT,ABC,ABC Corp,1.0\n");
-		$client->expect("c1", 'd,symbol,OP_INSERT,ABC,ABC Corp,1$');
+			$client->send(c1 => "d,symbol,OP_INSERT,ABC,ABC Corp,1.0\n");
+			$client->expect(c1 => 'd,symbol,OP_INSERT,ABC,ABC Corp,1$');
 
-		$client->send("c1", "shutdown\n");
-		$client->expect("c1", '__EOF__');
+			$client->send(c1 => "dump,d2,symbol\n");
+			$client->expect(c1 => "^dump,d2,symbol");
 
-		print $client->protocol();
-		#ok($client->protocol(), '');
+			$client->send(c1 => "shutdown\n");
+			$client->expect(c1 => '__EOF__');
+
+			print $client->protocol();
+			#ok($client->protocol(), '');
+		};
 	};
 
+	# let the errors from the server to be printed first
 	$thread->join();
+	die $@ if $@;
 }
 
 # check that everything completed and not died
