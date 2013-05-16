@@ -121,7 +121,9 @@ sub collectorT # (@opts)
 		if (exists $pattern{$client} && exists $newrecv{$client}) {
 			my $p = $pattern{$client};
 
-			for (my $i = 0; $i <= $#{$newrecv{$client}}; $i++) {
+			my $sz = $#{$newrecv{$client}};
+			my $i;
+			for ($i = 0; $i <= $sz; $i++) {
 				if ($newrecv{$client}[$i] =~ /$p/) {
 					my $text;
 					for (my $j = 0; $j <= $i; $j++) {
@@ -139,6 +141,8 @@ sub collectorT # (@opts)
 					last;
 				}
 			}
+			confess "Unexpected __EOF__ while waiting for $p "
+				if ($i > $sz && $newrecv{$client}[$sz] eq "__EOF__\n");
 		}
 	};
 
@@ -316,10 +320,6 @@ sub new # ($class, @opts)
 
 	$self->{protocol} = ""; # protocol of all the data sent and expected
 
-	if ($self->{debug}) {
-		print "$myname: port ", $self->{port}, "\n";
-	}
-
 	# start the collector thread, it will define all the nexuses
 	Triceps::Triead::start(
 		app => $owner->app()->getName(),
@@ -388,6 +388,9 @@ sub startClient # ($self, $client, [$port])
 		$port = $self->{port};
 		confess "$myname: missing port number, must specify in either new() or startClient()" 
 			unless ($port);
+	}
+	if ($self->{debug}) {
+		print "$myname: port ", $port, "\n";
 	}
 
 	my $sock = IO::Socket::INET->new(
