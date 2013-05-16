@@ -100,7 +100,11 @@ Things that need to be done:
 * finish implementing Perl AggregatorType::make, setRowType, setConstructor, setHandler
 * in all placess allow the source code snippets instead of the Perl function references
 * T::Reflector - forwards all data from one nexus to another, a way to have a shared
-  bus that is read-writable to all the threads
+  bus that is read-writable to all the threads; or maybe add a special case for
+  importing a reverse facet for both reading and writing
+* in TrieadOwner::nextXtray allow a timeout
+* in ThreadedClient allow a timeout, and return 0 on expect on unexpected EOF
+  or timeout
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -118,8 +122,6 @@ Things that need to be done:
 * doc: how index comparators can return errors through table->setStickyError()
 * doc: in docbook update the source code produced by SimpleAggregator
 * doc: flat copying of indexes (C++ and Perl)
-* doc: TableType::copyFundamental() in Perl
-* doc: threaded chat example, easier than Tql
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
