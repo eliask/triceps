@@ -366,3 +366,16 @@ tracerWhenIsAfter(int val)
 		RETVAL = Unit::tracerWhenIsAfter(val);
 	OUTPUT:
 		RETVAL
+
+############ time in high resolution #############################################
+
+# Get the current timestamp in high resolution.
+double
+now()
+	CODE:
+		timespec tm;
+		clock_gettime(CLOCK_REALTIME, &tm);
+		RETVAL = (double)tm.tv_sec + (double)tm.tv_nsec / 1000000000.;
+	OUTPUT:
+		RETVAL
+

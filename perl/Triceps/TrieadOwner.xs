@@ -658,6 +658,35 @@ nextXtrayNoWait(WrapTrieadOwner *self)
 	OUTPUT:
 		RETVAL
 
+#// @param limit - the absolute timestamp limit for the call
+int
+nextXtrayTimeLimit(WrapTrieadOwner *self, double limit)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			timespec tm;
+			tm.tv_sec = (int)limit;
+			tm.tv_nsec = (limit - (int)limit)*1000000;
+			RETVAL = self->get()->nextXtray(true, tm);
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+#// @param timeout - the maximum length of the call
+int
+nextXtrayTimeout(WrapTrieadOwner *self, double tout)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			int64_t sec = (int)tout;
+			int32_t nsec = (tout - (int)tout)*1000000000;
+			RETVAL = self->get()->nextXtrayTimeout(sec, nsec);
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
 void
 mainLoop(WrapTrieadOwner *self)
 	CODE:

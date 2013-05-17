@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 127 };
+BEGIN { plan tests => 129 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -166,6 +166,14 @@ ok(&Triceps::tracerWhenIsBefore(&Triceps::TW_BEFORE));
 ok(!&Triceps::tracerWhenIsBefore(&Triceps::TW_AFTER));
 ok(!&Triceps::tracerWhenIsAfter(&Triceps::TW_BEFORE));
 ok(&Triceps::tracerWhenIsAfter(&Triceps::TW_AFTER));
+
+#########################
+# test of time
+
+my $t1 = Triceps::now();
+my $t2 = time();
+ok(int($t1) <= $t2);
+ok($t2 - $t1 < 1);
 
 #########################
 # clearArgs

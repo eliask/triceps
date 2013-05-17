@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 230 };
+BEGIN { plan tests => 231 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -847,6 +847,37 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 			# this should let the other thread continue and be harvestable
 			$app->waitNeedHarvest();
 			ok($app->harvestOnce(), 0); # app is not dead yet
+		},
+	);
+	ok(1); # if it got here, a success
+}
+
+# test of nextXtray with timeouts
+{
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "main",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("main main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+			my $app = $to->app();
+
+			my $faIn = $to->makeNexus(
+				name => "sink",
+				labels => [
+					one => $rt1,
+				],
+				import => "reader",
+			);
+
+			$to->readyReady();
+
+			my $tm1 = Triceps::now();
+			$to->nextXtrayTimeout(0.1);
+			my $tm2 = Triceps::now();
+
+			$to->nextXtrayTimeLimit($tm1 + 0.1); # this hould have no extra delay
 		},
 	);
 	ok(1); # if it got here, a success
