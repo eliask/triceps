@@ -458,7 +458,7 @@ public:
 	// @param nsec - the nanoseconds part of the timeout
 	// @return - true normally, false when the thread was requested to die
 	//         or when timeout has expired
-	bool nextXtrayTimeout(int sec, int nsec);
+	bool nextXtrayTimeout(int64_t sec, int32_t nsec);
 
 	// The easy way to process all the input data until the thread
 	// is requested to die.

@@ -243,14 +243,14 @@ bool TrieadOwner::nextXtray(bool wait, const struct timespec &abstime)
 	}
 }
 
-bool TrieadOwner::nextXtrayTimeout(int sec, int nsec)
+bool TrieadOwner::nextXtrayTimeout(int64_t sec, int32_t nsec)
 {
 	timespec tm;
 	clock_gettime(CLOCK_REALTIME, &tm);
 	tm.tv_sec += sec;
 	tm.tv_nsec += nsec;
-	if (tm.tv_nsec >= 1000000) {
-		tm.tv_nsec -= 1000000;
+	if (tm.tv_nsec >= 1000000000) {
+		tm.tv_nsec -= 1000000000;
 		tm.tv_sec++;
 	}
 	return nextXtray(true, tm);
