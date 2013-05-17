@@ -438,15 +438,27 @@ public:
 	// Will throw an exception if attempted to call recursively.
 	// 
 	// @param wait - flag: when the queue is consumed, wait for more
+	// @param abstime - the time limit, passing a NULL address disables the
+	//        time limit; wait==false returns immediately irrespective of
+	//        the time limit
 	// @return - true normally, false when the thread was requested to die
-	//         (or with wait==false, when no more data in the queues)
-	bool nextXtray(bool wait = true);
+	//         (or with wait==false, when no more data in the queues, or
+	//         with the time limit when the limit has expired)
+	bool nextXtray(bool wait = true, 
+		const struct timespec &abstime = *(const struct timespec *)NULL);
 
 	// A convenience wrapper.
 	bool nextXtrayNoWait()
 	{
 		return nextXtray(false);
 	}
+
+	// Wrapper that invokes nextXtray() with a relative timeout limit.
+	// @param sec - the whole seconds part of the timeout
+	// @param nsec - the nanoseconds part of the timeout
+	// @return - true normally, false when the thread was requested to die
+	//         or when timeout has expired
+	bool nextXtrayTimeout(int sec, int nsec);
 
 	// The easy way to process all the input data until the thread
 	// is requested to die.

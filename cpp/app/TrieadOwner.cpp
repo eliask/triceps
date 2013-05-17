@@ -167,7 +167,7 @@ bool TrieadOwner::refillRound(Triead::FacetPtrRound &vec)
 	return found;
 }
 
-bool TrieadOwner::nextXtray(bool wait)
+bool TrieadOwner::nextXtray(bool wait, const struct timespec &abstime)
 {
 	if (!appReady_)
 		throw Exception::fTrace("Can not read the facets in thread '%s' before waiting for App readiness.",
@@ -231,12 +231,29 @@ bool TrieadOwner::nextXtray(bool wait)
 		if (wait) {
 			if (triead_->rqDead_)
 				return false;
-			triead_->qev_->wait(); // wait for more data
+			if (&abstime == NULL)
+				triead_->qev_->wait(); // wait for more data
+			else 
+				if (triead_->qev_->timedwait(abstime) == ETIMEDOUT)
+					return false;
 			if (triead_->rqDead_)
 				return false;
 		} else
 			return false;
 	}
+}
+
+bool TrieadOwner::nextXtrayTimeout(int sec, int nsec)
+{
+	timespec tm;
+	clock_gettime(CLOCK_REALTIME, &tm);
+	tm.tv_sec += sec;
+	tm.tv_nsec += nsec;
+	if (tm.tv_nsec >= 1000000) {
+		tm.tv_nsec -= 1000000;
+		tm.tv_sec++;
+	}
+	return nextXtray(true, tm);
 }
 
 void TrieadOwner::mainLoop()

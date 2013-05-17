@@ -1403,3 +1403,36 @@ UTESTCASE flush_after_abort(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// check the timeout in nextXtray
+UTESTCASE nextXtray_timeout(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+	a1->setTimeout(0); // will replace all waits with an Exception
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1");
+
+	// prepare elements
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	// a reader has to be present to properly test the interaction
+	Autoref<Facet> fa1a = ow1->makeNexusReader("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+	ow1->readyReady();
+
+	timespec tm;
+	tm.tv_sec = 0;
+	tm.tv_nsec = 0;
+
+	UT_ASSERT(!ow1->nextXtray(true, tm));
+	UT_ASSERT(!ow1->nextXtrayTimeout(0, 1)); // 1 nsec is short enough
+
+	ow1->markDead();
+
+	restore_uncatchable();
+}
