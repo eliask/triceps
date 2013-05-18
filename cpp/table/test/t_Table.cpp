@@ -181,21 +181,21 @@ UTESTCASE preLabel(Utest *utest)
 	tlog = trace->getBuffer()->print();
 	UT_IS(tlog, 
 		"unit 'u' before label 't.pre' op OP_DELETE\n"
+		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_DELETE\n"
 		"unit 'u' before label 'lsize' (chain 't.pre') op OP_DELETE\n"
 		"table size 2\n"
-		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_DELETE\n"
 		"unit 'u' before label 't.out' op OP_DELETE\n"
+		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_DELETE\n"
 		"unit 'u' before label 'lsize' (chain 't.out') op OP_DELETE\n"
 		"table size 1\n"
-		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_DELETE\n"
 		"unit 'u' before label 't.pre' op OP_INSERT\n"
+		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_INSERT\n"
 		"unit 'u' before label 'lsize' (chain 't.pre') op OP_INSERT\n"
 		"table size 1\n"
-		"unit 'u' before label 't.fret.pre' (chain 't.pre') op OP_INSERT\n"
 		"unit 'u' before label 't.out' op OP_INSERT\n"
+		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_INSERT\n"
 		"unit 'u' before label 'lsize' (chain 't.out') op OP_INSERT\n"
 		"table size 2\n"
-		"unit 'u' before label 't.fret.out' (chain 't.out') op OP_INSERT\n"
 	);
 }
 
