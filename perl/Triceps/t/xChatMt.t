@@ -12,7 +12,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 6 };
 use strict;
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
@@ -269,66 +269,65 @@ if (0) {
 			fork => 1,
 	);
 
-	eval {
-		Triceps::App::build "client", sub {
-			my $appname = $Triceps::App::name;
-			my $owner = $Triceps::App::global;
+	Triceps::App::build "client", sub {
+		my $appname = $Triceps::App::name;
+		my $owner = $Triceps::App::global;
 
-			my $client = Triceps::X::ThreadedClient->new(
-				owner => $owner,
-				port => $port,
-				debug => 0,
-			);
+		my $client = Triceps::X::ThreadedClient->new(
+			owner => $owner,
+			port => $port,
+			debug => 0,
+		);
 
-			$owner->readyReady();
+		$owner->readyReady();
 
-			$client->startClient("c1");
-			$client->expect("c1", '!ready');
+		$client->startClient("c1");
+		$client->expect("c1", '!ready');
 
-			$client->startClient("c2");
-			$client->expect("c2", '!ready');
+		$client->startClient("c2");
+		$client->expect("c2", '!ready');
 
-			$client->send("c1", "publish,*,zzzzzz\n");
-			$client->expect("c1", '\*,zzzzzz');
-			$client->expect("c2", '\*,zzzzzz');
+		$client->send("c1", "publish,*,zzzzzz\n");
+		$client->expect("c1", '\*,zzzzzz');
+		$client->expect("c2", '\*,zzzzzz');
 
-			$client->send("c2", "garbage,trash\n");
-			$client->expect("c2", '!invalid command,garbage,trash');
+		$client->send("c2", "garbage,trash\n");
+		$client->expect("c2", '!invalid command,garbage,trash');
 
-			$client->send("c2", "subscribe,A\n");
-			$client->expect("c2", '!subscribed,A');
+		$client->send("c2", "subscribe,A\n");
+		$client->expect("c2", '!subscribed,A');
 
-			$client->send("c1", "publish,A,xxx\n");
-			$client->expect("c2", 'A,xxx');
+		$client->send("c1", "publish,A,xxx\n");
+		$client->expect("c2", 'A,xxx');
 
-			$client->send("c1", "subscribe,A\n");
-			$client->expect("c1", '!subscribed,A');
+		$client->send("c1", "subscribe,A\n");
+		$client->expect("c1", '!subscribed,A');
 
-			$client->send("c1", "publish,A,www\n");
-			$client->expect("c1", 'A,www');
-			$client->expect("c2", 'A,www');
+		$client->send("c1", "publish,A,www\n");
+		$client->expect("c1", 'A,www');
+		$client->expect("c2", 'A,www');
 
-			$client->send("c2", "unsubscribe,A\n");
-			$client->expect("c2", '!unsubscribed,A');
+		$client->send("c2", "unsubscribe,A\n");
+		$client->expect("c2", '!unsubscribed,A');
 
-			$client->send("c1", "publish,A,vvv\n");
-			$client->expect("c1", 'A,vvv');
+		$client->send("c1", "publish,A,vvv\n");
+		$client->expect("c1", 'A,vvv');
 
-			$client->startClient("c3");
-			$client->expect("c3", '!ready');
-			$client->send("c3", "exit\n");
-			$client->expect("c3", '__EOF__');
+		$client->startClient("c3");
+		$client->expect("c3", '!ready');
+		$client->send("c3", "exit\n");
+		$client->expect("c3", '__EOF__');
 
-			$client->startClient("c4");
-			$client->expect("c4", '!ready');
-			$client->sendClose("c4", "WR");
-			$client->expect("c4", '__EOF__');
+		$client->startClient("c4");
+		$client->expect("c4", '!ready');
+		$client->sendClose("c4", "WR");
+		$client->expect("c4", '__EOF__');
 
-			$client->send("c1", "shutdown\n");
-			$client->expect("c1", '__EOF__');
-			$client->expect("c2", '__EOF__');
+		$client->send("c1", "shutdown\n");
+		$client->expect("c1", '__EOF__');
+		$client->expect("c2", '__EOF__');
 
-			ok($client->protocol(),
+		ok($client->recording(),
 '> connect c1
 c1|!ready,cliconn1
 > connect c2
@@ -367,13 +366,13 @@ c1|__EOF__
 c2|*,server shutting down
 c2|__EOF__
 ');
-		};
+		if ($@) {
+			kill 9, $pid;
+			die $@;
+		}
+
 	};
 
-	if ($@) {
-		kill 9, $pid;
-		die $@;
-	}
 	waitpid($pid, 0);
 }
 
@@ -388,38 +387,37 @@ c2|__EOF__
 			fork => -1, # create a thread, not a process
 	);
 
-	eval {
-		Triceps::App::build "client", sub {
-			my $appname = $Triceps::App::name;
-			my $owner = $Triceps::App::global;
+	Triceps::App::build "client", sub {
+		my $appname = $Triceps::App::name;
+		my $owner = $Triceps::App::global;
 
-			# give the port in startClient
-			my $client = Triceps::X::ThreadedClient->new(
-				owner => $owner,
-				debug => 0,
-			);
+		# give the port in startClient
+		my $client = Triceps::X::ThreadedClient->new(
+			owner => $owner,
+			debug => 0,
+		);
 
-			$owner->readyReady();
+		$owner->readyReady();
 
-			$client->startClient("c1", $port);
-			$client->expect("c1", '!ready');
+		$client->startClient("c1", $port);
+		$client->expect("c1", '!ready');
 
-			# this repetition tests the expecting to the first match
-			$client->send("c1", "publish,*,zzzzzz\n");
-			$client->send("c1", "publish,*,zzzzzz\n");
-			$client->expect("c1", '\*,zzzzzz');
-			$client->expect("c1", '\*,zzzzzz');
+		# this repetition tests the expecting to the first match
+		$client->send("c1", "publish,*,zzzzzz\n");
+		$client->send("c1", "publish,*,zzzzzz\n");
+		$client->expect("c1", '\*,zzzzzz');
+		$client->expect("c1", '\*,zzzzzz');
 
-			$client->startClient("c2", $port);
-			$client->expect("c2", '!ready,cliconn2');
+		$client->startClient("c2", $port);
+		$client->expect("c2", '!ready,cliconn2');
 
-			$client->send("c1", "kill,cliconn2\n");
-			$client->expect("c2", '__EOF__');
+		$client->send("c1", "kill,cliconn2\n");
+		$client->expect("c2", '__EOF__');
 
-			$client->send("c1", "shutdown\n");
-			$client->expect("c1", '__EOF__');
+		$client->send("c1", "shutdown\n");
+		$client->expect("c1", '__EOF__');
 
-			ok($client->protocol(),
+		ok($client->recording(),
 '> connect c1
 c1|!ready,cliconn1
 > c1|publish,*,zzzzzz
@@ -434,12 +432,14 @@ c2|__EOF__
 c1|*,server shutting down
 c1|__EOF__
 ');
-		};
 	};
 
 	$thread->join();
 	die $@ if $@;
 }
+
+######################
+# Tests of ThreadedClient (conveniently using the chat server as a dummy).
 
 # test of the client unexpectedly closing the socket
 {
@@ -450,27 +450,69 @@ c1|__EOF__
 			fork => -1, # create a thread, not a process
 	);
 
-	eval {
-		Triceps::App::build "client", sub {
-			my $appname = $Triceps::App::name;
-			my $owner = $Triceps::App::global;
+	Triceps::App::build "client", sub {
+		my $appname = $Triceps::App::name;
+		my $owner = $Triceps::App::global;
 
-			# give the port in startClient
-			my $client = Triceps::X::ThreadedClient->new(
-				owner => $owner,
-				debug => 0,
-			);
+		# give the port in startClient
+		my $client = Triceps::X::ThreadedClient->new(
+			owner => $owner,
+			debug => 0,
+		);
 
-			$owner->readyReady();
+		$owner->readyReady();
 
-			$client->startClient("c1", $port);
-			$client->expect("c1", '!ready');
+		$client->startClient("c1", $port);
+		$client->expect("c1", '!ready');
 
-			$client->send("c1", "shutdown\n");
-			$client->expect("c1", 'zzz'); # will die here on an unexpected EOF
-		};
+		$client->send("c1", "shutdown\n");
+		$client->expect("c1", 'zzz'); # will die here on an unexpected EOF
+		ok($client->recording(),
+'> connect c1
+c1|!ready,cliconn1
+> c1|shutdown
+c1|Unexpected EOF when expecting (?m-xis:zzz)
+');
 	};
-	ok($@, qr/^App 'client' has been aborted by thread 'collector': Unexpected __EOF__ while waiting for \(\?m-xis:zzz\)/);
+
+	$thread->join();
+}
+
+# test of the timeout in expect
+{
+	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
+			app => "chat",
+			main => \&listenerT,
+			port => 0,
+			fork => -1, # create a thread, not a process
+	);
+
+	Triceps::App::build "client", sub {
+		my $appname = $Triceps::App::name;
+		my $owner = $Triceps::App::global;
+
+		# give the port in startClient
+		my $client = Triceps::X::ThreadedClient->new(
+			owner => $owner,
+			debug => 0,
+		);
+
+		$owner->readyReady();
+
+		$client->startClient("c1", $port);
+		$client->expect("c1", 'zzz', 0.1);
+		$client->send("c1", "shutdown\n");
+		$client->expect("c1", '__EOF__'); # makes sure of flusing the socket
+
+		ok($client->recording(),
+'> connect c1
+c1|Timed out when expecting (?m-xis:zzz)
+> c1|shutdown
+c1|!ready,cliconn1
+c1|*,server shutting down
+c1|__EOF__
+');
+	};
 
 	$thread->join();
 }

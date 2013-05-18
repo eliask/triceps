@@ -142,8 +142,8 @@ sub appCoreT # (@opts)
 			$client->send(c1 => "shutdown\n");
 			$client->expect(c1 => '__EOF__');
 
-			print $client->protocol();
-			#ok($client->protocol(), '');
+			print $client->recording();
+			#ok($client->recording(), '');
 		};
 	};
 

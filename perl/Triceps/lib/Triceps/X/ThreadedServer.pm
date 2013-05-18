@@ -28,6 +28,17 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
+# For whatever reason, Linux signals SIGPIPE when writing on a closed
+# socket (and it's not a pipe). So intercept it.
+sub interceptSigPipe
+{
+	if (!$SIG{PIPE}) {
+		$SIG{PIPE} = sub {};
+	}
+}
+
+# and intercept SIGPIPE by default on import
+&interceptSigPipe();
 
 # Start a threaded server listening on a socket, with a given or automatically
 # allocated port number. It's the automatic port number allocation and the
@@ -272,3 +283,4 @@ sub printOrShut # ($app, $fragment, $sock, @text)
 	}
 }
 
+1;

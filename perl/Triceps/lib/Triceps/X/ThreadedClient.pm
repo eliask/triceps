@@ -25,6 +25,18 @@ use IO::Socket::INET;
 use Triceps;
 use Triceps::X::ThreadedServer qw(printOrShut);
 
+# For whatever reason, Linux signals SIGPIPE when writing on a closed
+# socket (and it's not a pipe). So intercept it.
+sub interceptSigPipe
+{
+	if (!$SIG{PIPE}) {
+		$SIG{PIPE} = sub {};
+	}
+}
+
+# and intercept SIGPIPE by default on import
+&interceptSigPipe();
+
 # The client app has the following threads:
 # * Global/main thread: controls the execution, sends the requests to the
 #   other threads, eventually collects all the inputs from the sockets.
@@ -141,8 +153,15 @@ sub collectorT # (@opts)
 					last;
 				}
 			}
-			confess "Unexpected __EOF__ while waiting for $p "
-				if ($i > $sz && $newrecv{$client}[$sz] eq "__EOF__\n");
+			# If received an EOF, report an error immediately.
+			if ($i > $sz && $newrecv{$client}[$sz] eq "__EOF__\n") {
+				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
+					cmd => "error",
+					client => $client,
+					arg => "Unexpected EOF when expecting " . $pattern{$client},
+				);
+				delete $pattern{$client};
+			}
 		}
 	};
 
@@ -160,6 +179,16 @@ sub collectorT # (@opts)
 			# expect a certain pattern from a client
 			$pattern{$client} = qr/$arg/m;
 			&$checkPattern($client); # might be already received
+		} elsif ($cmd eq "cancel") {
+			# if not replied already, confirm the cancellation
+			if (exists $pattern{$client}) {
+				$unit->makeHashCall($lbRepMsg, "OP_INSERT", 
+					cmd => "error",
+					client => $client,
+					arg => "Timed out when expecting " . $pattern{$client},
+				);
+				delete $pattern{$client};
+			}
 		} else {
 			confess "$myname: received an unknown command '$cmd'";
 		}
@@ -300,8 +329,13 @@ sub clientRecvT # (@opts)
 # Can be overridden in startClient(). The port must be specified in
 # at least one of two places.
 #
+# timeout => $float
+# The defalut timeout for expect() calls, in seconds (possibly fractional).
+# 0 or undef means "unlimited".
+# Default: undef.
+#
 # debug => 0/1/2
-# (optional) Enable the debugging printout of the protocol as it comes in.
+# (optional) Enable the debugging printout of the recording as it comes in.
 # The level of 2 enables the printing of status right from the sender and received threads.
 # Default: 0.
 #
@@ -313,12 +347,16 @@ sub new # ($class, @opts)
 	&Triceps::Opt::parse($class, $self, {
 		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
 		port => [ undef, undef ],
+		timeout => [ undef, undef ],
 		debug => [ 0, undef ],
 	}, @_);
 
 	my $owner = $self->{owner};
 
-	$self->{protocol} = ""; # protocol of all the data sent and expected
+	$self->{recording} = ""; # recording of all the data sent and expected
+	$self->{expectDone} = 0; # not done yet
+	$self->{error} = undef; # no error yet
+	$self->{errorRecording} = undef; # errors-only recording; no error yet
 
 	# start the collector thread, it will define all the nexuses
 	Triceps::Triead::start(
@@ -347,10 +385,22 @@ sub new # ($class, @opts)
 		if ($cmd eq "expect") {
 			my $ptext = $arg;
 			$ptext =~ s/^/$client|/gm;
-			$self->{protocol} .= $ptext;
+			$self->{recording} .= $ptext;
 			if ($self->{debug}) {
 				print $ptext;
 			}
+			$self->{expectDone} = 1;
+		} elsif ($cmd eq "error") {
+			# save the error in recording, so that it will be easily printed.
+			my $ptext = $arg . "\n";
+			$ptext =~ s/^/$client|/gm;
+			$self->{recording} .= $ptext;
+			$self->{errorRecording} .= $ptext;
+			if ($self->{debug}) {
+				print $ptext;
+			}
+
+			$self->{error} = $arg;
 			$self->{expectDone} = 1;
 		}
 	});
@@ -400,7 +450,7 @@ sub startClient # ($self, $client, [$port])
 	) or confess "$myname: socket failed: $!";
 
 	my $ptext = "> connect $client\n";
-	$self->{protocol} .= $ptext;
+	$self->{recording} .= $ptext;
 	if ($self->{debug}) {
 		print $ptext;
 	}
@@ -444,7 +494,7 @@ sub send # ($self, $client, $text)
 
 	my $ptext = $text;
 	$ptext =~ s/^/> $client|/gm;
-	$self->{protocol} .= $ptext;
+	$self->{recording} .= $ptext;
 	if ($self->{debug}) {
 		print $ptext;
 	}
@@ -469,7 +519,7 @@ sub sendClose # ($self, $client, $how)
 	my $how = shift;
 
 	my $ptext = "> close $how $client\n";
-	$self->{protocol} .= $ptext;
+	$self->{recording} .= $ptext;
 	if ($self->{debug}) {
 		print $ptext;
 	}
@@ -486,17 +536,30 @@ sub sendClose # ($self, $client, $how)
 #
 # @param client - the client name
 # @param pattern - string containing a regexp pattern to expect
-sub expect # ($self, $client, $pattern)
+# @param timeout - the timeout for this call; if not defined then use default
+#        as specified in new(); if <= 0 then unlimited
+# @return - undef on success, error string on error
+sub expect # ($self, $client, $pattern, [$timeout])
 {
 	my $myname = "Triceps::X::ThreadedClient::expect";
 	my $self = shift;
 	my $client = shift;
 	my $pattern = shift;
+	my $timeout = shift;
+
+	if (!defined $timeout) {
+		$timeout = $self->{timeout};
+	}
 
 	my $owner = $self->{owner};
 	my $app = $owner->app();
 
+	$self->{error} = undef;
 	$self->{expectDone} = 0;
+
+	if ($self->{debug} > 1) {
+		print "expect: $pattern\n"
+	}
 
 	$owner->unit()->makeHashCall($self->{faCtl}->getLabel("msg"), "OP_INSERT",
 		cmd => "expect",
@@ -505,21 +568,44 @@ sub expect # ($self, $client, $pattern)
 	);
 	$owner->flushWriters();
 
-	while(!$self->{expectDone} && !$app->isAborted()) {
-		$owner->nextXtray();
+	if (defined($timeout) && $timeout > 0) {
+		my $limit = Triceps::now() + $timeout;
+		while(!$self->{expectDone} && $owner->nextXtrayTimeLimit($limit)) { }
+		# on timeout reset the expect and have that confirmed
+		if (!$self->{expectDone}) {
+			$owner->unit()->makeHashCall($self->{faCtl}->getLabel("msg"), "OP_INSERT",
+				cmd => "cancel",
+				client => $client,
+			);
+			$owner->flushWriters();
+			# wait for confirmation
+			while(!$self->{expectDone} && $owner->nextXtray()) { }
+		}
+	} else {
+		while(!$self->{expectDone} && $owner->nextXtray()) { }
 	}
+
 
 	if ($app->isAborted()) {
 		confess "$myname: app is aborted";
 	}
+	return $self->{error};
 }
 
-# Get the collected protocol.
-# @return - the protocol text
-sub protocol # ($self)
+# Get the collected recording.
+# @return - the recording text
+sub recording # ($self)
 {
 	my $self = shift;
-	return $self->{protocol};
+	return $self->{recording};
+}
+
+# Get the collected recording of errors only.
+# @return - the error recording text
+sub errorRecording # ($self)
+{
+	my $self = shift;
+	return $self->{errorRecording};
 }
 
 1;
