@@ -615,13 +615,17 @@ bool App::harvestOnce()
 				j->join();
 			} catch (Exception e) {
 				// dispose even if the join had failed
-				if (upd->dispose_)
+				if (upd->dispose_) {
+					pw::lockmutex lm(mutex_);
 					disposeL(upd->t_->getName());
+				}
 				throw Exception::f(e.getErrors(), "Failed to join the thread '%s' of application '%s':",
 							j->getName().c_str(), name_.c_str());
 			}
-			if (upd->dispose_)
+			if (upd->dispose_) {
+				pw::lockmutex lm(mutex_);
 				disposeL(upd->t_->getName());
+			}
 		}
 	}
 }
