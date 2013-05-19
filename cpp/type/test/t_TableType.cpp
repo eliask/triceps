@@ -1256,22 +1256,22 @@ UTESTCASE copy(Utest *utest)
 		IndexType *prim0 = tt->findSubIndex("primary");
 		UT_ASSERT(prim0 != NULL);
 
-		IndexType *prim1 = prim0->copy(true);
-		UT_ASSERT(prim1 != NULL);
+		Autoref<IndexType> prim1 = prim0->copy(true);
+		UT_ASSERT(!prim1.isNull());
 		UT_ASSERT(prim1->getAggregator() == NULL);
 		UT_ASSERT(prim1->isLeaf()); // all the sun-indexes are gone
 
-		IndexType *sec0 = prim0->findSubIndex("level2");
-		UT_ASSERT(sec0 != NULL);
+		Autoref<IndexType> sec0 = prim0->findSubIndex("level2");
+		UT_ASSERT(!sec0.isNull());
 
-		IndexType *sec1 = sec0->copy(true);
-		UT_ASSERT(sec1 != NULL);
+		Autoref<IndexType> sec1 = sec0->copy(true);
+		UT_ASSERT(!sec1.isNull());
 
-		IndexType *tert0 = tt->findSubIndex("tertiary");
-		UT_ASSERT(tert0 != NULL);
+		Autoref<IndexType> tert0 = tt->findSubIndex("tertiary");
+		UT_ASSERT(!tert0.isNull());
 
-		IndexType *tert1 = tert0->copy(true);
-		UT_ASSERT(tert1 != NULL);
+		Autoref<IndexType> tert1 = tert0->copy(true);
+		UT_ASSERT(!tert1.isNull());
 		UT_ASSERT(tert1->getAggregator() == NULL);
 		UT_ASSERT(tert1->isLeaf()); // all the sun-indexes are gone
 	}
