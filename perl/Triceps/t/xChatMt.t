@@ -4,6 +4,8 @@
 # See the file COPYRIGHT for the copyright notice and license information
 #
 # The example of a chat with multithreading.
+# Also contains the tests of ThreadedClient that use the chat app
+# as a placeholder.
 
 #########################
 
@@ -12,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 6 };
+BEGIN { plan tests => 9 };
 use strict;
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
@@ -511,6 +513,52 @@ c1|Timed out when expecting (?m-xis:zzz)
 c1|!ready,cliconn1
 c1|*,server shutting down
 c1|__EOF__
+');
+		ok($client->errorRecording(),
+'c1|Timed out when expecting (?m-xis:zzz)
+');
+	};
+
+	$thread->join();
+}
+
+# the same timeout but specified as the default when creating the client
+{
+	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
+			app => "chat",
+			main => \&listenerT,
+			port => 0,
+			fork => -1, # create a thread, not a process
+	);
+
+	Triceps::App::build "client", sub {
+		my $appname = $Triceps::App::name;
+		my $owner = $Triceps::App::global;
+
+		# give the port in startClient
+		my $client = Triceps::X::ThreadedClient->new(
+			owner => $owner,
+			timeout => 0.1,
+			debug => 0,
+		);
+
+		$owner->readyReady();
+
+		$client->startClient("c1", $port);
+		$client->expect("c1", 'zzz');
+		$client->send("c1", "shutdown\n");
+		$client->expect("c1", '__EOF__', 0); # 0 disables the timeout
+
+		ok($client->recording(),
+'> connect c1
+c1|Timed out when expecting (?m-xis:zzz)
+> c1|shutdown
+c1|!ready,cliconn1
+c1|*,server shutting down
+c1|__EOF__
+');
+		ok($client->errorRecording(),
+'c1|Timed out when expecting (?m-xis:zzz)
 ');
 	};
 
