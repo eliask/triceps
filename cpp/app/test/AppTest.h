@@ -96,6 +96,36 @@ public:
 		return it->second->j_;
 	}
 
+	// Check that the thread is marked as joined
+	static bool gutsIsJoined(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		pw::lockmutex lm(ag->mutex_);
+		TrieadUpdMap::iterator it = ag->threads_.find(tname);
+		assert(it != ag->threads_.end());
+		return it->second->joined_;
+	}
+
+	// Check that the thread is marked as joining
+	static bool gutsIsJoining(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		pw::lockmutex lm(ag->mutex_);
+		TrieadUpdMap::iterator it = ag->threads_.find(tname);
+		assert(it != ag->threads_.end());
+		return it->second->joining_;
+	}
+
+	// Check that the thread is marked as interrupted
+	static bool gutsIsInterrupted(App *a, const string &tname)
+	{
+		AppGuts *ag = ((AppGuts *)a); // shut up the compiler
+		pw::lockmutex lm(ag->mutex_);
+		TrieadUpdMap::iterator it = ag->threads_.find(tname);
+		assert(it != ag->threads_.end());
+		return it->second->interrupted_;
+	}
+
 	void checkLoopsL(const string &tname)
 	{
 		App::checkLoopsL(tname);

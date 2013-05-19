@@ -48,7 +48,7 @@ public:
 	// The exception will keep the err reference.
 	// @param err - the ready Errors reference
 	// @param trace - flag: if true, add a stack backtrace as nested Errors
-	explicit Exception(Onceref<Errors> err, bool trace);
+	explicit Exception(Autoref<Errors> err, bool trace);
 	// A new Errors object will be constructed from the message.
 	// @param err - the error message, may be multiline
 	// @param trace - flag: if true, add a stack backtrace as nested Errors
@@ -63,9 +63,9 @@ public:
 	//
 	// @param msg - the error message, may be multiline
 	// @param err - the nested Errors reference
-	explicit Exception(Onceref<Errors> err, const string &msg);
+	explicit Exception(Autoref<Errors> err, const string &msg);
 	// needed to prevent the auto-casting of char* to bool
-	explicit Exception(Onceref<Errors> err, const char *msg);
+	explicit Exception(Autoref<Errors> err, const char *msg);
 	// Similar but the nested errors will be taken from
 	// another exception.
 	explicit Exception(const Exception &exc, const string &msg);
@@ -85,11 +85,11 @@ public:
 
 	// Build from an error buffer and a message.
 	// The message will go _before_ the error buffer.
-	static Exception f(Onceref<Errors> err, const char *fmt, ...)
+	static Exception f(Autoref<Errors> err, const char *fmt, ...)
 		__attribute__((format(printf, 2, 3)));
 	// The version with trace is used when the error buffer is a plain one
 	// and doesn't come from a nested exception.
-	static Exception fTrace(Onceref<Errors> err, const char *fmt, ...)
+	static Exception fTrace(Autoref<Errors> err, const char *fmt, ...)
 		__attribute__((format(printf, 2, 3)));
 
 	// Build from an error buffer from an exception and a message.

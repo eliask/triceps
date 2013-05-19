@@ -167,6 +167,9 @@ UTESTCASE basic_trieads(Utest *utest)
 	UT_ASSERT(t1->isConstructed());
 	UT_ASSERT(t1->isReady());
 	UT_ASSERT(t1->isDead());
+	// with no join defined, the thread will be immediately marked as joined
+	UT_ASSERT(AppGuts::gutsIsJoining(a1, "t1"));
+	UT_ASSERT(AppGuts::gutsIsJoined(a1, "t1"));
 
 	// signal thread ready, implying constructed
 	ow2->markReady();
@@ -886,9 +889,21 @@ UTESTCASE define_join(Utest *utest)
 	UT_IS(AppGuts::gutsJoin(a1, "t1"), j1.get());
 
 	ow1->markDead();
-	// after harvest the join will be dropped
+	// after harvest the thread will be marked as joined
 	a1->harvestOnce();
+	UT_ASSERT(AppGuts::gutsIsJoining(a1, "t1"));
+	UT_ASSERT(AppGuts::gutsIsJoined(a1, "t1"));
 	UT_IS(AppGuts::gutsJoin(a1, "t1"), NULL);
+
+	{
+		string msg;
+		try {
+			a1->defineJoin("t1", j1);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "In Triceps application 'a1' can not define a join for thread 't1' after it has been already joined.\n");
+	}
 
 	// clean-up, since the apps catalog is global
 	a1->harvester(false);
@@ -964,6 +979,7 @@ UTESTCASE join_throw(Utest *utest)
 
 	// shut down the fragment, making t2 disposable
 	a1->shutdownFragment("frag2");
+	UT_ASSERT(AppGuts::gutsIsInterrupted(a1, "t2"));
 
 	// exception on joining the t2, all the way through harvester
 	{

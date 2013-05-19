@@ -46,6 +46,25 @@ void App::TrieadUpd::waitL(const string &appname, const string &tname, const tim
 	}
 }
 
+Erref App::TrieadUpd::interruptL()
+{
+	Erref err;
+
+	if (interrupted_)
+		return err;
+
+	if (j_) { // interrupt in case if it's sleeping on input
+		try {
+			j_->interrupt();
+		} catch (Exception e) {
+			err = e.getErrors();
+		}
+	}
+
+	interrupted_ = true;
+	return err;
+}
+
 int App::TrieadUpd::_countSleepersL()
 {
 	return cond_.sleepers_;
@@ -220,14 +239,9 @@ void App::shutdownL()
 			Triead *t = it->second->t_;
 			if (t->isReady()) {
 				t->requestDead();
-				if (it->second->j_) { // interrupt in case if it's sleeping on input
-					try {
-						it->second->j_->interrupt();
-					} catch (Exception e) {
-						err.fAppend(e.getErrors(), "Failed to interrupt the thread '%s' of application '%s':",
-							it->first.c_str(), name_.c_str());
-					}
-				}
+				err.fAppend(it->second->interruptL(), 
+					"Failed to interrupt the thread '%s' of application '%s':",
+					it->first.c_str(), name_.c_str());
 			}
 		}
 	}
@@ -260,14 +274,10 @@ void App::shutdownFragmentL(const string &fragname)
 		if (t->fragment() == fragname) {
 			it->second->dispose_ = true;
 			t->requestDead();
-			if (it->second->j_) { // interrupt in case if it's sleeping on input
-				try {
-					it->second->j_->interrupt();
-				} catch (Exception e) {
-					err.fAppend(e.getErrors(), "Failed to interrupt the thread '%s' of application '%s':",
-						it->first.c_str(), name_.c_str());
-				}
-			} else if (t->isDead()) // already marked dead and joined
+			err.fAppend(it->second->interruptL(), 
+				"Failed to interrupt the thread '%s' of application '%s':",
+				it->first.c_str(), name_.c_str());
+			if (it->second->joined_) // already marked dead and joined
 				disposeL(t->getName());
 		}
 	}
@@ -350,7 +360,12 @@ void App::defineJoin(const string &tname, Onceref<TrieadJoin> j)
 		throw Exception::fTrace("In Triceps application '%s' can not define a join for an unknown thread '%s'.", 
 			name_.c_str(), tname.c_str());
 	}
-	it->second->j_ = j;
+	TrieadUpd *upd = it->second.get();
+	if (upd->joining_ || upd->joined_) {
+		throw Exception::fTrace("In Triceps application '%s' can not define a join for thread '%s' after it has been already joined.", 
+			name_.c_str(), tname.c_str());
+	}
+	upd->j_ = j;
 }
 
 void App::getTrieads(TrieadMap &ret) const
@@ -532,12 +547,21 @@ void App::markTrieadReadyL(TrieadUpd *upd, Triead *t)
 		t->markReady();
 		if (drainCnt_ && t != drainExcept_)
 			t->drain();
+
+		--unreadyCnt_;
+
 		if (shutdown_) {
 			t->requestDead(); // this thread was too late to the party
-			if (upd->j_)
-				upd->j_->interrupt();
+
+			Erref err;
+			err.fAppend(upd->interruptL(), 
+				"Failed to interrupt the thread '%s' of application '%s':",
+				t->getName().c_str(), name_.c_str());
+			if (err->hasError())
+				throw Exception(err, false);
 		}
-		if (--unreadyCnt_ == 0) {
+
+		if (unreadyCnt_ == 0) {
 			ready_.signal();
 			// XXX if the error is in a fragment, this would still abort the whole app
 			checkLoopsL(t->getName());
@@ -586,6 +610,7 @@ void App::markTrieadDeadL(TrieadUpd *upd, Triead *t)
 			zombies_.push_back(upd);
 			needHarvest_.signal();
 		} else {
+			upd->joined_ = upd->joining_ = true;
 			if (upd->dispose_)
 				disposeL(upd->t_->getName());
 		}
@@ -595,7 +620,7 @@ void App::markTrieadDeadL(TrieadUpd *upd, Triead *t)
 bool App::harvestOnce()
 {
 	while(true) {
-		TrieadUpd *upd;
+		Autoref<TrieadUpd> upd;
 		Autoref<TrieadJoin> j;
 		{
 			pw::lockmutex lm(mutex_);
@@ -607,26 +632,34 @@ bool App::harvestOnce()
 			}
 			upd = zombies_.front();
 			j = upd->j_;
-			upd->j_ = NULL; // guarantees that will be joined only once
+
+			if (j.isNull() || upd->joining_) // j should never be NULL but just in case
+				continue; // a duplicate, ignore it
+
+			upd->joining_ = true;
 			zombies_.pop_front();
 		}
-		if (!j.isNull()) { // should never be NULL, but just in case
-			try {
-				j->join();
-			} catch (Exception e) {
-				// dispose even if the join had failed
-				if (upd->dispose_) {
-					pw::lockmutex lm(mutex_);
-					disposeL(upd->t_->getName());
-				}
-				throw Exception::f(e.getErrors(), "Failed to join the thread '%s' of application '%s':",
-							j->getName().c_str(), name_.c_str());
-			}
-			if (upd->dispose_) {
-				pw::lockmutex lm(mutex_);
-				disposeL(upd->t_->getName());
-			}
+
+		// this part must happen outside mutex
+		Erref err;
+		try {
+			j->join();
+		} catch (Exception e) {
+			err = e.getErrors();
 		}
+
+		{
+			pw::lockmutex lm(mutex_);
+			upd->joined_ = true;
+			upd->j_ = NULL; // drop the reference
+			if (upd->dispose_)
+				disposeL(upd->t_->getName());
+		}
+		
+		if (err->hasError())
+			// j still keeps a reference, so it's OK to refer by it
+			throw Exception::f(err, "Failed to join the thread '%s' of application '%s':",
+						j->getName().c_str(), name_.c_str());
 	}
 }
 

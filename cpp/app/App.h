@@ -485,6 +485,9 @@ protected:
 		TrieadUpd(pw::pmutex &mutex):
 			waitFor_(NULL),
 			dispose_(false),
+			interrupted_(false),
+			joining_(false),
+			joined_(false),
 			cond_(mutex)
 		{ }
 
@@ -507,6 +510,12 @@ protected:
 		// @param abstime - the time limit
 		void waitL(const string &appname, const string &tname, const timespec &abstime);
 
+		// If has a joiner, call the interrupt() on it, and mark as
+		// interrupted. If already interrupted, does nothing.
+		// @return - the error if the interruptor throws an Exception,
+		//           otherwise NULL
+		Erref interruptL();
+
 		// For testing: returns the current count of sleepers.
 		// This allows the busy-wait until the sleepers get into position.
 		// The mutex should be already locked.
@@ -518,6 +527,10 @@ protected:
 		TrieadUpd *waitFor_; // what thread is this one waiting for (or NULL), for deadlock detection
 
 		bool dispose_; // the fragment of this thread has been shut down, dispose of it when dead
+		bool interrupted_; // this thread has been interrupted
+		bool joining_; // this thread's join has been started
+		bool joined_; // this thread has been joined
+
 	protected:
 		// Condvar for waiting for any updates in the Triead status.
 		pw::pchaincond cond_; // all chained from the App's mutex_
