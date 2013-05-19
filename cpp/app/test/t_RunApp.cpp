@@ -1434,5 +1434,178 @@ UTESTCASE nextXtray_timeout(Utest *utest)
 
 	ow1->markDead();
 
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// Counts the calls to the join/interrupt
+class CountJoin : public TrieadJoin
+{
+public:
+	CountJoin(const string &name):
+		TrieadJoin(name),
+		n_interrupt_(0),
+		n_join_(0)
+	{ }
+
+	virtual void join()
+	{
+		++n_join_;
+	}
+
+	virtual void interrupt()
+	{
+		++n_interrupt_;
+	}
+
+	int n_interrupt_;
+	int n_join_;
+};
+
+// test that no matter how many shutdowns, the thread interruption is
+// called only once
+UTESTCASE interrupt_once(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1", "frag1");
+	Autoref<CountJoin> j1 = new CountJoin("t1");
+	a1->defineJoin("t1", j1);
+	ow1->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	UT_IS(j1->n_interrupt_, 0);
+	UT_IS(j1->n_join_, 0);
+	a1->shutdownFragment("frag1");
+	UT_IS(j1->n_interrupt_, 1);
+	a1->shutdownFragment("frag1");
+	UT_IS(j1->n_interrupt_, 1);
+
+	a1->shutdown();
+	UT_IS(j1->n_interrupt_, 1);
+	UT_IS(j1->n_join_, 0);
+
+	ow1->markDead();
+	
+	a1->harvester();
+	UT_IS(j1->n_join_, 1);
+
+	restore_uncatchable();
+}
+
+// a way to artificially slow down the joiner and
+// test for a race
+class WaitJoin : public TrieadJoin
+{
+public:
+	WaitJoin(const string &name):
+		TrieadJoin(name),
+		cnt_(0)
+	{ }
+
+	virtual void join()
+	{
+		cnt_.inc();
+		evCont_.reset();
+		evJoining_.signal();
+		evCont_.wait();
+	}
+
+	void waitJoin()
+	{
+		evJoining_.wait();
+	}
+
+	void contJoin() // let join continue
+	{
+		evJoining_.reset();
+		evCont_.signal();
+	}
+
+	AtomicInt cnt_; 
+	pw::event2 evJoining_; // the join had started
+	pw::event2 evCont_; // the join is allowed to continue
+};
+
+class HarvesterT: public Mtarget, public pw::pwthread
+{
+public:
+	// will write this xtray to this queue at this id
+	HarvesterT(App *app):
+		app_(app)
+	{ }
+
+	virtual void *execute()
+	{
+		app_->harvester();
+		return NULL;
+	}
+
+	Autoref<App> app_;
+};
+
+// test that there is no race between disposal of the threads
+// on the fragment shutdown between the shutdown call and the
+// harvester thread
+UTESTCASE dispose_once(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1", "frag1");
+	Autoref<WaitJoin> j1 = new WaitJoin("t1");
+	a1->defineJoin("t1", j1);
+
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2", "frag1");
+	Autoref<WaitJoin> j2 = new WaitJoin("t2");
+	a1->defineJoin("t2", j2);
+
+	ow1->markReady();
+	ow2->markReady();
+
+	ow1->readyReady();
+	ow2->readyReady();
+
+	Autoref<HarvesterT> ht1 = new HarvesterT(a1);
+	ht1->start();
+
+	// ----------------------------------------------------------------------
+
+	ow1->markDead(); // mark one thread dead in advance
+
+	a1->shutdownFragment("frag1");
+
+	j1->waitJoin();
+
+	// this should not be causing a race
+	a1->shutdownFragment("frag1");
+
+	// nor this
+	a1->shutdown();
+
+	j1->contJoin();
+
+	// ----------------------------------------------------------------------
+
+	ow2->markDead(); // mark the other thread dead after shutdown
+	j2->waitJoin();
+
+	// this should not be causing a race
+	a1->shutdownFragment("frag1");
+
+	// nor this
+	a1->shutdown();
+
+	j2->contJoin();
+
+	// ----------------------------------------------------------------------
+
+	ht1->join();
+
 	restore_uncatchable();
 }
