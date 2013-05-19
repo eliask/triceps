@@ -335,7 +335,7 @@ sub clientRecvT # (@opts)
 # Default: undef.
 #
 # debug => 0/1/2
-# (optional) Enable the debugging printout of the recording as it comes in.
+# (optional) Enable the debugging printout of the trace as it comes in.
 # The level of 2 enables the printing of status right from the sender and received threads.
 # Default: 0.
 #
@@ -353,10 +353,10 @@ sub new # ($class, @opts)
 
 	my $owner = $self->{owner};
 
-	$self->{recording} = ""; # recording of all the data sent and expected
+	$self->{trace} = ""; # trace of all the data sent and expected
 	$self->{expectDone} = 0; # not done yet
 	$self->{error} = undef; # no error yet
-	$self->{errorRecording} = undef; # errors-only recording; no error yet
+	$self->{errorTrace} = undef; # errors-only trace; no error yet
 
 	# start the collector thread, it will define all the nexuses
 	Triceps::Triead::start(
@@ -385,17 +385,17 @@ sub new # ($class, @opts)
 		if ($cmd eq "expect") {
 			my $ptext = $arg;
 			$ptext =~ s/^/$client|/gm;
-			$self->{recording} .= $ptext;
+			$self->{trace} .= $ptext;
 			if ($self->{debug}) {
 				print $ptext;
 			}
 			$self->{expectDone} = 1;
 		} elsif ($cmd eq "error") {
-			# save the error in recording, so that it will be easily printed.
+			# save the error in trace, so that it will be easily printed.
 			my $ptext = $arg . "\n";
 			$ptext =~ s/^/$client|/gm;
-			$self->{recording} .= $ptext;
-			$self->{errorRecording} .= $ptext;
+			$self->{trace} .= $ptext;
+			$self->{errorTrace} .= $ptext;
 			if ($self->{debug}) {
 				print $ptext;
 			}
@@ -450,7 +450,7 @@ sub startClient # ($self, $client, [$port])
 	) or confess "$myname: socket failed: $!";
 
 	my $ptext = "> connect $client\n";
-	$self->{recording} .= $ptext;
+	$self->{trace} .= $ptext;
 	if ($self->{debug}) {
 		print $ptext;
 	}
@@ -494,7 +494,7 @@ sub send # ($self, $client, $text)
 
 	my $ptext = $text;
 	$ptext =~ s/^/> $client|/gm;
-	$self->{recording} .= $ptext;
+	$self->{trace} .= $ptext;
 	if ($self->{debug}) {
 		print $ptext;
 	}
@@ -519,7 +519,7 @@ sub sendClose # ($self, $client, $how)
 	my $how = shift;
 
 	my $ptext = "> close $how $client\n";
-	$self->{recording} .= $ptext;
+	$self->{trace} .= $ptext;
 	if ($self->{debug}) {
 		print $ptext;
 	}
@@ -538,7 +538,6 @@ sub sendClose # ($self, $client, $how)
 # @param pattern - string containing a regexp pattern to expect
 # @param timeout - the timeout for this call; if not defined then use default
 #        as specified in new(); if <= 0 then unlimited
-# @return - undef on success, error string on error
 sub expect # ($self, $client, $pattern, [$timeout])
 {
 	my $myname = "Triceps::X::ThreadedClient::expect";
@@ -589,23 +588,23 @@ sub expect # ($self, $client, $pattern, [$timeout])
 	if ($app->isAborted()) {
 		confess "$myname: app is aborted";
 	}
-	return $self->{error};
+	$@ = $self->{error};
 }
 
-# Get the collected recording.
-# @return - the recording text
-sub recording # ($self)
+# Get the collected trace.
+# @return - the trace text
+sub getTrace # ($self)
 {
 	my $self = shift;
-	return $self->{recording};
+	return $self->{trace};
 }
 
-# Get the collected recording of errors only.
-# @return - the error recording text
-sub errorRecording # ($self)
+# Get the collected trace of errors only.
+# @return - the error trace text
+sub getErrorTrace # ($self)
 {
 	my $self = shift;
-	return $self->{errorRecording};
+	return $self->{errorTrace};
 }
 
 1;

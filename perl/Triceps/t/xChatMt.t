@@ -14,7 +14,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 9 };
+BEGIN { plan tests => 12 };
 use strict;
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
@@ -329,7 +329,7 @@ if (0) {
 		$client->expect("c1", '__EOF__');
 		$client->expect("c2", '__EOF__');
 
-		ok($client->recording(),
+		ok($client->getTrace(),
 '> connect c1
 c1|!ready,cliconn1
 > connect c2
@@ -419,7 +419,7 @@ c2|__EOF__
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__');
 
-		ok($client->recording(),
+		ok($client->getTrace(),
 '> connect c1
 c1|!ready,cliconn1
 > c1|publish,*,zzzzzz
@@ -469,7 +469,8 @@ c1|__EOF__
 
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", 'zzz'); # will die here on an unexpected EOF
-		ok($client->recording(),
+		ok($@, "Unexpected EOF when expecting (?m-xis:zzz)");
+		ok($client->getTrace(),
 '> connect c1
 c1|!ready,cliconn1
 > c1|shutdown
@@ -503,10 +504,11 @@ c1|Unexpected EOF when expecting (?m-xis:zzz)
 
 		$client->startClient("c1", $port);
 		$client->expect("c1", 'zzz', 0.1);
+		ok($@, "Timed out when expecting (?m-xis:zzz)");
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__'); # makes sure of flusing the socket
 
-		ok($client->recording(),
+		ok($client->getTrace(),
 '> connect c1
 c1|Timed out when expecting (?m-xis:zzz)
 > c1|shutdown
@@ -514,7 +516,7 @@ c1|!ready,cliconn1
 c1|*,server shutting down
 c1|__EOF__
 ');
-		ok($client->errorRecording(),
+		ok($client->getErrorTrace(),
 'c1|Timed out when expecting (?m-xis:zzz)
 ');
 	};
@@ -546,10 +548,11 @@ c1|__EOF__
 
 		$client->startClient("c1", $port);
 		$client->expect("c1", 'zzz');
+		ok($@, "Timed out when expecting (?m-xis:zzz)");
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__', 0); # 0 disables the timeout
 
-		ok($client->recording(),
+		ok($client->getTrace(),
 '> connect c1
 c1|Timed out when expecting (?m-xis:zzz)
 > c1|shutdown
@@ -557,7 +560,7 @@ c1|!ready,cliconn1
 c1|*,server shutting down
 c1|__EOF__
 ');
-		ok($client->errorRecording(),
+		ok($client->getErrorTrace(),
 'c1|Timed out when expecting (?m-xis:zzz)
 ');
 	};
