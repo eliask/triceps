@@ -667,7 +667,7 @@ nextXtrayTimeLimit(WrapTrieadOwner *self, double limit)
 		try { do {
 			timespec tm;
 			tm.tv_sec = (int)limit;
-			tm.tv_nsec = (limit - (int)limit)*1000000;
+			tm.tv_nsec = (limit - (int)limit)*1000000000;
 			RETVAL = self->get()->nextXtray(true, tm);
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:

@@ -330,8 +330,12 @@ sub clientRecvT # (@opts)
 # at least one of two places.
 #
 # timeout => $float
-# The defalut timeout for expect() calls, in seconds (possibly fractional).
+# (optional) The defalut timeout for expect() calls, in seconds (possibly fractional).
 # 0 or undef means "unlimited".
+# Default: undef.
+#
+# totalTimeout => $float
+# (optional) The timeout for the whole connection.
 # Default: undef.
 #
 # debug => 0/1/2
@@ -348,6 +352,7 @@ sub new # ($class, @opts)
 		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
 		port => [ undef, undef ],
 		timeout => [ undef, undef ],
+		totalTimeout => [ undef, undef ],
 		debug => [ 0, undef ],
 	}, @_);
 
@@ -357,6 +362,10 @@ sub new # ($class, @opts)
 	$self->{expectDone} = 0; # not done yet
 	$self->{error} = undef; # no error yet
 	$self->{errorTrace} = undef; # errors-only trace; no error yet
+
+	if (defined $self->{totalTimeout} && $self->{totalTimeout} > 0) {
+		$self->{deadline} = &Triceps::now() + $self->{totalTimeout};
+	}
 
 	# start the collector thread, it will define all the nexuses
 	Triceps::Triead::start(
@@ -537,7 +546,8 @@ sub sendClose # ($self, $client, $how)
 # @param client - the client name
 # @param pattern - string containing a regexp pattern to expect
 # @param timeout - the timeout for this call; if not defined then use default
-#        as specified in new(); if <= 0 then unlimited
+#        as specified in new(); if <= 0 then unlimited; the expllicit timeout
+#        overrides both the timeout and totalTimeout from new()
 sub expect # ($self, $client, $pattern, [$timeout])
 {
 	my $myname = "Triceps::X::ThreadedClient::expect";
@@ -545,9 +555,33 @@ sub expect # ($self, $client, $pattern, [$timeout])
 	my $client = shift;
 	my $pattern = shift;
 	my $timeout = shift;
+	my $limit = 0.;
 
-	if (!defined $timeout) {
+	if (defined $timeout) {
+		if ($timeout > 0.) {
+			$limit = Triceps::now() + $timeout;
+		}
+	} else {
 		$timeout = $self->{timeout};
+		if (defined $timeout) {
+			$limit = Triceps::now() + $timeout;
+		}
+		if (defined $self->{deadline}) {
+			if ($limit == 0. || $limit > $self->{deadline}) {
+				$limit = $self->{deadline};
+				my $now = &Triceps::now();
+				if ($now >= $limit) {
+					$@ = "Total timeout exceeded";
+					my $ptext = "$client|$@\n";
+					$self->{trace} .= $ptext;
+					$self->{errorTrace} .= $ptext;
+					if ($self->{debug}) {
+						print $ptext;
+					}
+					return;
+				}
+			}
+		}
 	}
 
 	my $owner = $self->{owner};
@@ -567,8 +601,7 @@ sub expect # ($self, $client, $pattern, [$timeout])
 	);
 	$owner->flushWriters();
 
-	if (defined($timeout) && $timeout > 0) {
-		my $limit = Triceps::now() + $timeout;
+	if ($limit > 0.) {
 		while(!$self->{expectDone} && $owner->nextXtrayTimeLimit($limit)) { }
 		# on timeout reset the expect and have that confirmed
 		if (!$self->{expectDone}) {
