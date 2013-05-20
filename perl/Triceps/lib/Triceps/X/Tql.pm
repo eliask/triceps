@@ -787,7 +787,6 @@ sub readT
 
 	my %passcmd = ( # these commands are treated all the same, by passing to the writeT
 		confirm => 1,
-		drain => 1,
 		subscribe => 1,
 		dump => 1,
 		dumpsub => 1,

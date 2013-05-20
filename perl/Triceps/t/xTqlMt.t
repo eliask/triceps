@@ -138,13 +138,21 @@ sub appCoreT # (@opts)
 			$client->send(c1 => "d,symbol,OP_INSERT,ABC,ABC Corp,1.0\n");
 			$client->expect(c1 => 'd,symbol,OP_INSERT,ABC,ABC Corp,1$');
 
+			$client->send(c1 => "confirm,cf1\n");
+			$client->expect(c1 => '^confirm,cf1,');
+
+			# on this simple model the drain command is really impossible
+			# to tell apart from confirm since evrything is synchronous anyway
+			$client->send(c1 => "drain,dr1\n");
+			$client->expect(c1 => '^drain,dr1,');
+
 			$client->send(c1 => "dump,d2,symbol\n");
-			$client->expect(c1 => "^dump,d2,symbol");
+			$client->expect(c1 => '^dump,d2,symbol$');
 
 			# this is dump with a duplicate subscription, so the
 			# subscription part is really redundant
 			$client->send(c1 => "dumpsub,ds3,symbol\n");
-			$client->expect(c1 => "^dumpsub,ds3,symbol");
+			$client->expect(c1 => '^dumpsub,ds3,symbol$');
 
 			$client->send(c1 => "d,symbol,OP_INSERT,DEF,Defense Corp,2.0\n");
 			$client->expect(c1 => 'd,symbol,OP_INSERT,DEF,Defense Corp,2$');
@@ -154,7 +162,7 @@ sub appCoreT # (@opts)
 
 			# this is dump with a new subscription
 			$client->send(c1 => "dumpsub,ds4,window\n");
-			$client->expect(c1 => "^dumpsub,ds4,window");
+			$client->expect(c1 => '^dumpsub,ds4,window$');
 
 			$client->send(c1 => "d,window,OP_INSERT,2,ABC,102,12\n");
 			$client->expect(c1 => 'd,window,OP_INSERT,2,ABC,102,12$');
@@ -170,6 +178,10 @@ c1|ready
 c1|subscribe,s1,symbol
 > c1|d,symbol,OP_INSERT,ABC,ABC Corp,1.0
 c1|d,symbol,OP_INSERT,ABC,ABC Corp,1
+> c1|confirm,cf1
+c1|confirm,cf1,,,
+> c1|drain,dr1
+c1|drain,dr1,,,
 > c1|dump,d2,symbol
 c1|startdump,d2,symbol
 c1|d,symbol,OP_INSERT,ABC,ABC Corp,1
@@ -201,3 +213,5 @@ c1|__EOF__
 
 # check that everything completed and not died
 ok(1);
+
+# XXX test the error handling
