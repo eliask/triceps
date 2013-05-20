@@ -596,14 +596,14 @@ c1|__EOF__
 		$client->expect("c1", 'zzz');
 		ok($@, "Timed out when expecting (?m-xis:zzz)");
 		$client->expect("c1", 'yyy');
-		ok($@, "Total timeout exceeded");
+		ok($@, "Timed out when expecting (?m-xis:yyy)");
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__', 0); # 0 disables the timeout
 
 		ok($client->getTrace(),
 '> connect c1
 c1|Timed out when expecting (?m-xis:zzz)
-c1|Total timeout exceeded
+c1|Timed out when expecting (?m-xis:yyy)
 > c1|shutdown
 c1|!ready,cliconn1
 c1|*,server shutting down
@@ -611,7 +611,7 @@ c1|__EOF__
 ');
 		ok($client->getErrorTrace(),
 'c1|Timed out when expecting (?m-xis:zzz)
-c1|Total timeout exceeded
+c1|Timed out when expecting (?m-xis:yyy)
 ');
 	};
 

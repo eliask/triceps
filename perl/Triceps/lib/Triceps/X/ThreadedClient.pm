@@ -569,17 +569,6 @@ sub expect # ($self, $client, $pattern, [$timeout])
 		if (defined $self->{deadline}) {
 			if ($limit == 0. || $limit > $self->{deadline}) {
 				$limit = $self->{deadline};
-				my $now = &Triceps::now();
-				if ($now >= $limit) {
-					$@ = "Total timeout exceeded";
-					my $ptext = "$client|$@\n";
-					$self->{trace} .= $ptext;
-					$self->{errorTrace} .= $ptext;
-					if ($self->{debug}) {
-						print $ptext;
-					}
-					return;
-				}
 			}
 		}
 	}
