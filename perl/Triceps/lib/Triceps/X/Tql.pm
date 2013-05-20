@@ -954,6 +954,30 @@ sub writeT
 			"d,", $_[2], ",", Triceps::opcodeString($_[1]->getOpcode()), ",",
 			join(",", $_[1]->getRow()->toArray()), "\n");
 	};
+
+	# The subscription logic that is shared between "subscribe" and "dumpsub".
+	my $subscribe = sub { # ($cmd, $id, $lbname)
+		my ($cmd, $id, $lbname) = @_;
+
+		if (!exists $subscr{$lbname}) {
+			my $lbsrc = eval {
+				$faOut->getLabel("t.out.$lbname");
+			};
+			if (!$lbsrc) {
+				printOrShut($app, $fragment, $sock,
+					"error,$id,Bad label for subscribe: '$lbname',bad_label,", $lbname, "\n");
+				return;
+			}
+			$lbsrc->makeChained("lbOut.$lbname", undef, sub {
+				printOrShut($app, $fragment, $sock, 
+					"d,", $_[2], ",", Triceps::opcodeString($_[1]->getOpcode()), ",",
+					join(",", $_[1]->getRow()->toArray()), "\n");
+			}, $lbname);
+			$subscr{$lbname} = 1;
+		}
+		printOrShut($app, $fragment, $sock, join(',', $cmd, $id, $lbname), "\n");
+	};
+
 	my $fretOut = $faOut->getFnReturn();
 	undef @labels;
 	foreach my $lbn ($fretOut->getLabelNames()) {
@@ -979,24 +1003,8 @@ sub writeT
 				no warnings; # shut up the warnings about undefs in join()
 				printOrShut($app, $fragment, $sock, join(',', $cmd, $id, @args), "\n");
 			} elsif ($cmd eq "subscribe") {
-				if (!exists $subscr{$args[0]}) {
-					my $lbsrc = eval {
-						$faOut->getLabel("t.out." . $args[0]);
-					};
-					if (!$lbsrc) {
-						printOrShut($app, $fragment, $sock,
-							"error,$id,Bad label for subscribe: '", $args[0], "',bad_label,", $args[0], "\n");
-						return;
-					}
-					$lbsrc->makeChained("lbOut." . $args[0], undef, sub {
-						printOrShut($app, $fragment, $sock, 
-							"d,", $_[2], ",", Triceps::opcodeString($_[1]->getOpcode()), ",",
-							join(",", $_[1]->getRow()->toArray()), "\n");
-					}, $args[0]);
-					$subscr{$args[0]} = 1;
-				}
-				printOrShut($app, $fragment, $sock, join(',', $cmd, $id, $args[0]), "\n");
-			} elsif ($cmd eq "dump") {
+				&$subscribe($cmd, $id, $args[0]);
+			} elsif ($cmd eq "dump" || $cmd eq "dumpsub") {
 				my $info = [ $cmd, $id, $args[0] ];
 				if (exists $dumps{$args[0]}) {
 					# a dump on this table is already in progress, queue it up
@@ -1028,15 +1036,21 @@ sub writeT
 			"startdump,$id,$name\n");
 		$fretOut->push($bindDump);
 	});
-	$faOut->getLabel("endDump")->makeChained("lbBeginDump", undef, sub {
+	$faOut->getLabel("endDump")->makeChained("lbEndDump", undef, sub {
 		my $row = $_[1]->getRow();
 		my ($client, $id, $name) = $row->toArray();
 		return unless ($client eq $fragment && exists $dumps{$name});
 		$fretOut->pop($bindDump);
-		printOrShut($app, $fragment, $sock, join(',', @{$dumps{$name}}), "\n");
+		my $info = $dumps{$name};
+		if ($$info[0] eq "dumpsub") {
+			&$subscribe(@$info);
+		} else {
+			printOrShut($app, $fragment, $sock, join(',', @$info), "\n");
+		}
 		delete $dumps{$name};
+
 		# now, there might be more requests queued up, follow up on the next one
-		my $info = shift @{$queued_dumps{$name}};
+		$info = shift @{$queued_dumps{$name}};
 		if (defined $info) {
 			# presumably, this already worked before, so no need to eval
 			my $lbrq = $faRqDump->getLabel("t.rqdump." . $name);

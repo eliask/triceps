@@ -11,7 +11,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 2 };
+BEGIN { plan tests => 3 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Triceps::X::Tql;
@@ -31,6 +31,7 @@ use strict;
 # The simple App example.
 
 package App1;
+use Test;
 use Carp;
 
 sub appCoreT # (@opts)
@@ -122,7 +123,8 @@ sub appCoreT # (@opts)
 			# give the port in startClient
 			my $client = Triceps::X::ThreadedClient->new(
 				owner => $owner,
-				debug => 1,
+				totalTimeout => 10.,
+				debug => 2,
 			);
 
 			$owner->readyReady();
@@ -139,11 +141,56 @@ sub appCoreT # (@opts)
 			$client->send(c1 => "dump,d2,symbol\n");
 			$client->expect(c1 => "^dump,d2,symbol");
 
+			# this is dump with a duplicate subscription, so the
+			# subscription part is really redundant
+			$client->send(c1 => "dumpsub,ds3,symbol\n");
+			$client->expect(c1 => "^dumpsub,ds3,symbol");
+
+			$client->send(c1 => "d,symbol,OP_INSERT,DEF,Defense Corp,2.0\n");
+			$client->expect(c1 => 'd,symbol,OP_INSERT,DEF,Defense Corp,2$');
+
+			# this one is not echoed, becuase not subscribed yet
+			$client->send(c1 => "d,window,OP_INSERT,1,ABC,101,10\n");
+
+			# this is dump with a new subscription
+			$client->send(c1 => "dumpsub,ds4,window\n");
+			$client->expect(c1 => "^dumpsub,ds4,window");
+
+			$client->send(c1 => "d,window,OP_INSERT,2,ABC,102,12\n");
+			$client->expect(c1 => 'd,window,OP_INSERT,2,ABC,102,12$');
+
 			$client->send(c1 => "shutdown\n");
 			$client->expect(c1 => '__EOF__');
 
 			print $client->getTrace();
-			#ok($client->getTrace(), '');
+			ok($client->getTrace(), 
+'> connect c1
+c1|ready
+> c1|subscribe,s1,symbol
+c1|subscribe,s1,symbol
+> c1|d,symbol,OP_INSERT,ABC,ABC Corp,1.0
+c1|d,symbol,OP_INSERT,ABC,ABC Corp,1
+> c1|dump,d2,symbol
+c1|startdump,d2,symbol
+c1|d,symbol,OP_INSERT,ABC,ABC Corp,1
+c1|dump,d2,symbol
+> c1|dumpsub,ds3,symbol
+c1|startdump,ds3,symbol
+c1|d,symbol,OP_INSERT,ABC,ABC Corp,1
+c1|dumpsub,ds3,symbol
+> c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
+c1|d,symbol,OP_INSERT,DEF,Defense Corp,2
+> c1|d,window,OP_INSERT,1,ABC,101,10
+> c1|dumpsub,ds4,window
+c1|startdump,ds4,window
+c1|d,window,OP_INSERT,1,ABC,101,10
+c1|dumpsub,ds4,window
+> c1|d,window,OP_INSERT,2,ABC,102,12
+c1|d,window,OP_INSERT,2,ABC,102,12
+> c1|shutdown
+c1|shutdown,,,,
+c1|__EOF__
+');
 		};
 	};
 
@@ -153,4 +200,4 @@ sub appCoreT # (@opts)
 }
 
 # check that everything completed and not died
-::ok(1);
+ok(1);
