@@ -581,6 +581,17 @@ our %tqlDispatch = (
 	where => \&_tqlWhere,
 );
 
+# Print an error for the SimpleServer.
+# Arguments as described in compileQuery option subError.
+sub simpleServerError # ($id, $q, $msg, $error_code, $error_val)
+{
+	my ($id, $q, $msg, $error_code, $error_val) = @_;
+	chomp $msg;
+	$msg =~ s/\n/\\n/g; # no real newlines in the output
+	$msg =~ s/,/;/g; # no confusing commas in the output
+	&Triceps::X::SimpleServer::outCurBuf("+ERROR,OP_INSERT,$q: $msg\n");
+}
+
 # Perform a query in the context of a SimpleServer.
 # The $argline is the full line received by the server and forwarded here;
 # it still includes the query command on it.
@@ -597,31 +608,98 @@ sub query # ($self, $argline)
 
 	$argline =~ s/^([^,]*)(,|$)//; # skip the name of the label
 	my $q = $1; # the name of the query itself
+
 	#&Triceps::X::SimpleServer::outCurBuf("+DEBUGquery: $argline\n");
-	my @cmds = split_braced($argline);
-	if ($argline ne '') {
-		# Presumably, the argument line should contain no line feeds, so it should be safe to send back.
-		&Triceps::X::SimpleServer::outCurBuf("+ERROR,OP_INSERT,$q: mismatched braces in the trailing $argline\n");
-		return
+
+	my $ctx = $self->compileQuery(
+		qname => $q,
+		text => $argline,
+		subError => \&simpleServerError,
+	);
+	if ($ctx) { # otherwise the error is already reported
+		if (! eval {
+			# Run the pipeline
+			foreach my $code (@{$ctx->{actions}}) {
+				&$code;
+			}
+
+			1; # means that everything went OK
+		}) {
+			&simpleServerError('', $q, "query run error: $@", '', '');
+		}
+	}
+}
+
+# The common query compilation for the single-threaded and multi-threaded versions.
+#
+# The options are:
+#
+# id => $id
+# (optional) The query id that will be used to report any service information
+# such as errors, end of dump portion and such.
+# Default: ''.
+#
+# qname => $name
+# The query name that will be used as a label name for all the
+# produced data, and for the service information too.
+#
+# nxprefix => $name
+# (optional) Prefix for the created unit name.
+# Default: ''.
+#
+# text => $query_text
+# Text of the query, in the braced format.
+#
+# subError => \&error($id, $qname, $msg, $error_code, $error_val)
+# The function that will handle the error reporting. The args are:
+#   $id and $qname as received in the options
+#   $msg - the full human-readable message
+#   $error_code - the string identifying the error
+#   $error_val - the particular value that caused the error
+#
+# @return - undef on error, the compiled context object on success
+#           (see the definition of its contents inside the function)
+sub compileQuery # ($self, @opts)
+{
+	my $myname = "Triceps::X::Tql::compileQuery";
+	my $self = shift;
+	my $opts = {};
+	&Triceps::Opt::parse("chatSockWriteT", $opts, {
+		id => [ '', undef ],
+		qname => [ undef, \&Triceps::Opt::ck_mandatory ],
+		nxprefix => [ '', undef ],
+		text => [ undef, \&Triceps::Opt::ck_mandatory ],
+		subError => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "CODE") } ],
+	}, @_);
+
+
+	confess "$myname: may be used only on an initialized object"
+		unless ($self->{initialized});
+
+	my $q = $opts->{qname}; # the name of the query itself
+
+	my @cmds = split_braced($opts->{text});
+	if ($opts->{text} ne '') {
+		&{$opts->{subError}}($opts->{id}, $q, "mismatched braces in the trailing " . $opts->{text},
+			'query_syntax', $opts->{text});
+		return undef;
 	}
 
 	# The context for the commands to build up an execution of a query.
 	# Unlike $self, the context is created afresh for every query.
 	my $ctx = {};
 	# The query will be built in a separate unit
-	$ctx->{tables} = $self->{dispatch};
-	$ctx->{fretDumps} = $self->{fret};
-	$ctx->{u} = Triceps::Unit->new("${q}.unit");
+	$ctx->{tables} = $self->{dispatch}; # XXX not with threads
+	$ctx->{fretDumps} = $self->{fret}; # XXX not with threads
+	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
 	$ctx->{prev} = undef; # will contain the output of the previous command in the pipeline
 	$ctx->{actions} = []; # code that will run the pipeline
 	$ctx->{id} = 0; # a unique id for auto-generated objects
+	# deletion of the context will cause the unit in it to clean
+	$ctx->{cleaner} = $ctx->{u}->makeClearingTrigger();
 
-	# It's important to place the clearing trigger outside eval {}. Otherwise the
-	# clearing will erase any errors in $@ returned from eval.
-	my $cleaner = $ctx->{u}->makeClearingTrigger();
 	if (! eval {
 		foreach my $cmd (@cmds) {
-			#&Triceps::X::SimpleServer::outCurBuf("+DEBUGcmd, $cmd\n");
 			my @args = split_braced($cmd);
 			my $argv0 = bunquote(shift @args);
 			# The rest of @args do not get unquoted here!
@@ -641,18 +719,13 @@ sub query # ($self, $argline)
 			&{$tqlDispatch{"print"}}($ctx);
 		}
 
-		# Now run the pipeline
-		foreach my $code (@{$ctx->{actions}}) {
-			&$code;
-		}
-
-		# Now run the pipeline
 		1; # means that everything went OK
 	}) {
-		# XXX this won't work well with the multi-line errors
-		&Triceps::X::SimpleServer::outCurBuf("+ERROR,OP_INSERT,$q: error: $@\n");
-		return
+		&{$opts->{subError}}($opts->{id}, $q, "query error: $@", 'bad_query', '');
+		return undef;
 	}
+
+	return $ctx;
 }
 
 # Listener for connections.
@@ -1020,6 +1093,8 @@ sub writeT
 				}
 				$dumps{$args[0]} = $info;
 				$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $id, name => $args[0]);
+			} elsif ($cmd eq "querysub") {
+				# XXXX
 			} else {
 				printOrShut($app, $fragment, $sock,
 					"error,$id,Bad command: '$cmd',bad_command,$cmd\n");

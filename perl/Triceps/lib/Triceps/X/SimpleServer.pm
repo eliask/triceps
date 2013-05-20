@@ -198,8 +198,10 @@ sub mainLoop # ($srvsock, $%labels)
 			while($inbufs{$id} =~ s/^(.*)\n//) {
 				my $line = $1;
 				chomp $line;
-				local $/ = "\r"; # take care of a possible CR-LF
-				chomp $line;
+				{
+					local $/ = "\r"; # take care of a possible CR-LF in this block
+					chomp $line;
+				}
 				my @data = split(/,/, $line);
 				my $lname = shift @data;
 				my $label = $labels->{$lname};
