@@ -611,10 +611,12 @@ sub query # ($self, $argline)
 
 	#&Triceps::X::SimpleServer::outCurBuf("+DEBUGquery: $argline\n");
 
-	my $ctx = $self->compileQuery(
+	my $ctx = compileQuery(
 		qname => $q,
 		text => $argline,
 		subError => \&simpleServerError,
+		tables => $self->{dispatch},
+		fretDumps => $self->{fret},
 	);
 	if ($ctx) { # otherwise the error is already reported
 		if (! eval {
@@ -657,24 +659,29 @@ sub query # ($self, $argline)
 #   $error_code - the string identifying the error
 #   $error_val - the particular value that caused the error
 #
+# tables => { $name => $table, ... }
+# The tables list for the single-threaded version.
+# Not used with the multithreaded version.
+#
+# fretDumps => $fnReturn
+# The FnReturn object for dumps in the single-threaded version.
+# Not used with the multithreaded version.
+#
 # @return - undef on error, the compiled context object on success
 #           (see the definition of its contents inside the function)
-sub compileQuery # ($self, @opts)
+sub compileQuery # (@opts)
 {
 	my $myname = "Triceps::X::Tql::compileQuery";
-	my $self = shift;
 	my $opts = {};
 	&Triceps::Opt::parse("chatSockWriteT", $opts, {
 		id => [ '', undef ],
 		qname => [ undef, \&Triceps::Opt::ck_mandatory ],
 		nxprefix => [ '', undef ],
 		text => [ undef, \&Triceps::Opt::ck_mandatory ],
-		subError => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "CODE") } ],
+		subError => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "CODE"); } ],
+		tables => [ undef, sub { &Triceps::Opt::ck_ref(@_, "HASH", "Triceps::Table"); } ],
+		fretDumps => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::FnReturn"); } ],
 	}, @_);
-
-
-	confess "$myname: may be used only on an initialized object"
-		unless ($self->{initialized});
 
 	my $q = $opts->{qname}; # the name of the query itself
 
@@ -689,8 +696,8 @@ sub compileQuery # ($self, @opts)
 	# Unlike $self, the context is created afresh for every query.
 	my $ctx = {};
 	# The query will be built in a separate unit
-	$ctx->{tables} = $self->{dispatch}; # XXX not with threads
-	$ctx->{fretDumps} = $self->{fret}; # XXX not with threads
+	$ctx->{tables} = $opts->{tables}; # XXX not with threads
+	$ctx->{fretDumps} = $opts->{fretDumps}; # XXX not with threads
 	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
 	$ctx->{prev} = undef; # will contain the output of the previous command in the pipeline
 	$ctx->{actions} = []; # code that will run the pipeline
@@ -1094,7 +1101,37 @@ sub writeT
 				$dumps{$args[0]} = $info;
 				$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $id, name => $args[0]);
 			} elsif ($cmd eq "querysub") {
-				# XXXX
+				my $ctx = compileQuery(
+					id => $id,
+					qname => $args[0],
+					text => $args[1],
+					subError => sub {
+						chomp $_[2];
+						$_[2] =~ s/\n/\\n/g; # no real newlines in the output
+						$_[2] =~ s/,/;/g; # no confusing commas in the output
+						printOrShut($app, $fragment, $sock, "error,", join(',', @_), "\n");
+					},
+					faOut => $faOut,
+					faRqDump => $faRqDump,
+				);
+				if ($ctx) { # otherwise the error is already reported
+					if (! eval {
+						# Run the pipeline
+						foreach my $code (@{$ctx->{subscriptions}}) {
+							# XXXX
+						}
+
+						# confirm success
+						printOrShut($app, $fragment, $sock, join(',', $cmd, $id, $args[0]), "\n");
+						1; # means that everything went OK
+					}) {
+						chomp $@;
+						$@ =~ s/\n/\\n/g; # no real newlines in the output
+						$@ =~ s/,/;/g; # no confusing commas in the output
+						printOrShut($app, $fragment, $sock,
+							"error,$id,query run error: $@,bad_query,\n");
+					}
+				}
 			} else {
 				printOrShut($app, $fragment, $sock,
 					"error,$id,Bad command: '$cmd',bad_command,$cmd\n");
