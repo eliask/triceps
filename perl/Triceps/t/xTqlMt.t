@@ -242,11 +242,29 @@ c1|__EOF__
 			# no expect, because not subscribed yet
 
 			$client->send(c1 => "querysub,q1,query1,{read table symbol}{print tokenized 0}\n");
-			$client->expect(c1 => 'd,query1,OP_INSERT,ABC,ABC Corp,1$');
-			$client->expect(c1 => 'querysub,q1,query1');
+			$client->expect(c1 => '^d,query1,OP_INSERT,ABC,ABC Corp,1$');
+			$client->expect(c1 => '^querysub,q1,query1');
 
 			$client->send(c1 => "d,symbol,OP_INSERT,DEF,Defense Corp,2.0\n");
-			$client->expect(c1 => 'd,query1,OP_INSERT,DEF,Defense Corp,2$');
+			$client->expect(c1 => '^d,query1,OP_INSERT,DEF,Defense Corp,2$');
+
+			# do another one, with a projection, filter, and tokenized format in implicit print
+			$client->send(c1 => "querysub,q2,query2,"
+				. '{read table symbol}'
+				. '{where istrue {$%symbol =~ /^A/}}'
+				. '{project fields {symbol eps}}'
+				. "\n");
+			$client->expect(c1 => '^t,query2,query2 OP_INSERT symbol="ABC" eps="1" $');
+			$client->expect(c1 => '^querysub,q2,query2');
+
+			$client->send(c1 => "d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0\n");
+			# the parallel results will go in the order they were subscribed, due to the
+			# chaining order in the model
+			$client->expect(c1 => '^d,query1,OP_INSERT,AAA,Absolute Auto Analytics Inc,3$');
+			$client->expect(c1 => '^t,query2,query2 OP_INSERT symbol="AAA" eps="3" $');
+
+			$client->send(c1 => "d,symbol,OP_DELETE,DEF,Defense Corp,2.0\n");
+			$client->expect(c1 => '^d,query1,OP_DELETE,DEF,Defense Corp,2$');
 
 			$client->send(c1 => "shutdown\n");
 			$client->expect(c1 => '__EOF__');
@@ -261,6 +279,14 @@ c1|d,query1,OP_INSERT,ABC,ABC Corp,1
 c1|querysub,q1,query1
 > c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
 c1|d,query1,OP_INSERT,DEF,Defense Corp,2
+> c1|querysub,q2,query2,{read table symbol}{where istrue {$%symbol =~ /^A/}}{project fields {symbol eps}}
+c1|t,query2,query2 OP_INSERT symbol="ABC" eps="1" 
+c1|querysub,q2,query2
+> c1|d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0
+c1|d,query1,OP_INSERT,AAA,Absolute Auto Analytics Inc,3
+c1|t,query2,query2 OP_INSERT symbol="AAA" eps="3" 
+> c1|d,symbol,OP_DELETE,DEF,Defense Corp,2.0
+c1|d,query1,OP_DELETE,DEF,Defense Corp,2
 > c1|shutdown
 c1|shutdown,,,,
 c1|__EOF__
