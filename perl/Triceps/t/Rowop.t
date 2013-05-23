@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 76 };
+BEGIN { plan tests => 77 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -127,6 +127,7 @@ ok(ref $row3, "Triceps::Row");
 $rop1 = $lb->makeRowop("OP_INSERT", $row1);
 ok(ref $rop1, "Triceps::Rowop");
 ok($rop1->printP(), "tab1.in OP_INSERT a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
+ok($rop1->printP("data"), "data OP_INSERT a=\"123\" b=\"456\" c=\"3000000000000000\" d=\"3.14\" e=\"text\" ");
 
 $rop = $lb->makeRowop(&Triceps::OP_INSERT, $row1);
 ok(ref $rop, "Triceps::Rowop");

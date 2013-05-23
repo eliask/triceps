@@ -393,28 +393,41 @@ sub _tqlPrint # ($ctx, @args)
 		tokenized => [ 1, undef ],
 	}, @_);
 	my $tokenized = bunquote($opts->{tokenized}) + 0;
-
-	# XXX This gets the printed label name from the auto-generated label name,
-	# which is not a good practice.
-	# XXX Should have a custom query name somewhere in the context?
 	my $prev = $ctx->{prev};
-	if ($tokenized) {
-		# print in the tokenized format
-		my $lab = $ctx->{u}->makeLabel($prev->getRowType(), 
-			"lb" . $ctx->{id} . "print", undef, sub {
+
+	if ($ctx->{faOut}) {
+		if ($tokenized) {
+			# print in the tokenized format
+			$prev->makeChained("lb" . $ctx->{id} . "print", undef, sub {
+				&{$_[3]}("t,", $_[2], ",", $_[1]->printP($_[2]), "\n");
+			}, $ctx->{qname}, $ctx->{subPrint});
+		} else {
+			$prev->makeChained("lb" . $ctx->{id} . "print", undef, sub {
+				&{$_[3]}(
+					"d,", $_[2], ",", Triceps::opcodeString($_[1]->getOpcode()), ",",
+					join(",", $_[1]->getRow()->toArray()), "\n");
+			}, $ctx->{qname}, $ctx->{subPrint});
+		}
+	} else {
+		# XXX This gets the printed label name from the auto-generated label name,
+		# which is not a good practice.
+		# XXX Should have a custom query name somewhere in the context?
+		if ($tokenized) {
+			# print in the tokenized format
+			$prev->makeChained("lb" . $ctx->{id} . "print", undef, sub {
 				&Triceps::X::SimpleServer::outCurBuf($_[1]->printP() . "\n");
 			});
-		$prev->chain($lab);
-	} else {
-		my $lab = Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev});
-	}
+		} else {
+			Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev});
+		}
 
-	# The end-of-data notification. It will run after the current pipeline
-	# finishes.
-	my $prevname = $prev->getName();
-	push @{$ctx->{actions}}, sub {
-		&Triceps::X::SimpleServer::outCurBuf("+EOD,OP_NOP,$prevname\n");
-	};
+		# The end-of-data notification. It will run after the current pipeline
+		# finishes.
+		my $prevname = $prev->getName();
+		push @{$ctx->{actions}}, sub {
+			&Triceps::X::SimpleServer::outCurBuf("+EOD,OP_NOP,$prevname\n");
+		};
+	}
 
 	$ctx->{next} = undef; # end of the pipeline
 }
@@ -636,7 +649,7 @@ sub query # ($self, $argline)
 #
 # The options are:
 #
-# id => $id
+# qid => $id
 # (optional) The query id that will be used to report any service information
 # such as errors, end of dump portion and such.
 # Default: ''.
@@ -667,6 +680,18 @@ sub query # ($self, $argline)
 # The FnReturn object for dumps in the single-threaded version.
 # Not used with the multithreaded version.
 #
+# faOut => $facet
+# The facet used to send the data to the Tql thread.
+# Not used with the single-threaded version.
+#
+# faRqDump => $facet
+# The facet used to send the table dump requests back to the app core.
+# Not used with the single-threaded version.
+#
+# subPrint => \&print($text)
+# The function that prints the text back to the socket.
+# Not used with the single-threaded version.
+#
 # @return - undef on error, the compiled context object on success
 #           (see the definition of its contents inside the function)
 sub compileQuery # (@opts)
@@ -674,20 +699,25 @@ sub compileQuery # (@opts)
 	my $myname = "Triceps::X::Tql::compileQuery";
 	my $opts = {};
 	&Triceps::Opt::parse("chatSockWriteT", $opts, {
-		id => [ '', undef ],
+		qid => [ '', undef ],
 		qname => [ undef, \&Triceps::Opt::ck_mandatory ],
 		nxprefix => [ '', undef ],
 		text => [ undef, \&Triceps::Opt::ck_mandatory ],
 		subError => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "CODE"); } ],
 		tables => [ undef, sub { &Triceps::Opt::ck_ref(@_, "HASH", "Triceps::Table"); } ],
 		fretDumps => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::FnReturn"); } ],
+		faOut => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Facet"); } ],
+		faRqDump => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Facet"); } ],
+		subPrint => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE"); } ],
 	}, @_);
+
+	# XXX check the mutually exclusive options
 
 	my $q = $opts->{qname}; # the name of the query itself
 
 	my @cmds = split_braced($opts->{text});
 	if ($opts->{text} ne '') {
-		&{$opts->{subError}}($opts->{id}, $q, "mismatched braces in the trailing " . $opts->{text},
+		&{$opts->{subError}}($opts->{qid}, $q, "mismatched braces in the trailing " . $opts->{text},
 			'query_syntax', $opts->{text});
 		return undef;
 	}
@@ -695,12 +725,21 @@ sub compileQuery # (@opts)
 	# The context for the commands to build up an execution of a query.
 	# Unlike $self, the context is created afresh for every query.
 	my $ctx = {};
+	$ctx->{qid} = $opts->{qid};
+	$ctx->{qname} = $opts->{qname};
+
+	$ctx->{tables} = $opts->{tables};
+	$ctx->{fretDumps} = $opts->{fretDumps};
+	$ctx->{actions} = []; # code that will run the pipeline
+
+	$ctx->{faOut} = $opts->{faOut};
+	$ctx->{faRqDump} = $opts->{faRqDump};
+	$ctx->{subPrint} = $opts->{subPrint};
+	$ctx->{requests} = []; # dump and subscribe requests that will run the pipeline
+
 	# The query will be built in a separate unit
-	$ctx->{tables} = $opts->{tables}; # XXX not with threads
-	$ctx->{fretDumps} = $opts->{fretDumps}; # XXX not with threads
 	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
 	$ctx->{prev} = undef; # will contain the output of the previous command in the pipeline
-	$ctx->{actions} = []; # code that will run the pipeline
 	$ctx->{id} = 0; # a unique id for auto-generated objects
 	# deletion of the context will cause the unit in it to clean
 	$ctx->{cleaner} = $ctx->{u}->makeClearingTrigger();
@@ -728,7 +767,7 @@ sub compileQuery # (@opts)
 
 		1; # means that everything went OK
 	}) {
-		&{$opts->{subError}}($opts->{id}, $q, "query error: $@", 'bad_query', '');
+		&{$opts->{subError}}($opts->{qid}, $q, "query error: $@", 'bad_query', '');
 		return undef;
 	}
 
@@ -964,6 +1003,9 @@ sub readT
 # The output is either a data line or command confirmation line. The data lines are:
 #
 # d,label,opcode,fields...
+# t,label,tokenized string...
+#
+# The tokenized format may be used to produce the result of the queries.
 #
 # The command confirmation lines are:
 #
@@ -1102,7 +1144,7 @@ sub writeT
 				$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $id, name => $args[0]);
 			} elsif ($cmd eq "querysub") {
 				my $ctx = compileQuery(
-					id => $id,
+					qid => $id,
 					qname => $args[0],
 					text => $args[1],
 					subError => sub {
@@ -1113,6 +1155,9 @@ sub writeT
 					},
 					faOut => $faOut,
 					faRqDump => $faRqDump,
+					subPrint => sub {
+						printOrShut($app, $fragment, $sock, @_);
+					},
 				);
 				if ($ctx) { # otherwise the error is already reported
 					if (! eval {

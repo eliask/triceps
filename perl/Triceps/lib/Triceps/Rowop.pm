@@ -12,10 +12,14 @@ our $VERSION = 'v1.0.1';
 # convert a rowop to a printable string, with name-value pairs
 # (printP stands for "print in Perl")
 package  Triceps::Rowop;
-sub printP # ($self)
+
+# @param name - override for the name of the label
+sub printP # ($self, [$name])
 {
 	my $self = shift;
-	return $self->getLabel()->getName() . " " . Triceps::opcodeString($self->getOpcode()) . " " . $self->getRow()->printP();
+	my $name = shift;
+	$name = $self->getLabel()->getName() unless ($name);
+	return $name . " " . Triceps::opcodeString($self->getOpcode()) . " " . $self->getRow()->printP();
 }
 
 1;
