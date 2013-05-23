@@ -182,7 +182,8 @@ sub initialize # ($self)
 		my $rtRequest = Triceps::RowType->new(
 			client => "string", #requesting client
 			id => "string", # request id
-			name => "string", # the table name, for conveniend of requestor
+			name => "string", # the table name, for convenience of requestor
+			cmd => "string", # for convenience of requestor, the command that it is executing
 		) or confess "$!";
 
 		# row type for the communication between the client reader
@@ -317,30 +318,74 @@ sub _tqlRead # ($ctx, @args)
 		table => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 
-	my $fret = $ctx->{fretDumps};
 	my $tabname = bunquote($opts->{table});
-
-	die ("Read found no such table '$tabname'\n")
-		unless (exists $ctx->{tables}{$tabname});
 	my $unit = $ctx->{u};
-	my $table = $ctx->{tables}{$tabname};
-	my $lab = $unit->makeDummyLabel($table->getRowType(), "lb" . $ctx->{id} . "read");
-	$ctx->{next} = $lab;
 
-	my $code = sub {
-		Triceps::FnBinding::call(
-			name => "bind" . $ctx->{id} . "read",
-			unit => $unit,
-			on => $fret,
-			labels => [
-				$tabname => $lab,
-			],
-			code => sub {
-				$table->dumpAll();
-			},
+	if ($ctx->{faOut}) {
+		my $lbrq = eval {
+			$ctx->{faRqDump}->getLabel("t.rqdump.$tabname");
+		};
+		my $lbsrc = eval {
+			$ctx->{faOut}->getLabel("t.out.$tabname");
+		};
+		die ("Read found no such table '$tabname'\n") unless ($lbrq && $lbsrc);
+
+		# compute the binding for the data dumps, that would be a cross-unit
+		# binding to the original faOut but it's OK
+		my $fretOut = $ctx->{faOut}->getFnReturn();
+		my $dumpname = "t.dump.$tabname";
+		# the dump and following subscription data will merge on this label
+		my $lbNext = $unit->makeDummyLabel(
+			$lbsrc->getRowType(), "lb" . $ctx->{id} . "out");
+
+		my $bindDump = Triceps::FnBinding->new(
+			on => $fretOut,
+			name => "bind" . $ctx->{id} . "dump",
+			labels => [ $dumpname => $lbNext ],
 		);
-	};
-	push @{$ctx->{actions}}, $code;
+
+		# This request is not combined with any other table dump;
+		# if the query does a self-join, the table will be independently
+		# dumped twice.
+		# XXX For now the result of "read" is not saved in any local table
+		# copy, so it can not be used with a JoinTwo, only with a LookupJoin
+		# (which is consistent with the single-threaded Tql).
+		#
+		# qdumpsub:
+		#   * label where to send the dump request to
+		#   * source output label, from which a subscription will be set up
+		#     at the end of the dump
+		#   * target label in the query that will be tied to the source label
+		#   * binding to be used during the dump, which also directs the data
+		#     to the same target label
+		my $request = [ "qdumpsub", $lbrq, $lbsrc, $lbNext, $bindDump ];
+		push @{$ctx->{requests}}, $request;
+
+		$ctx->{next} = $lbNext;
+	} else {
+		my $fret = $ctx->{fretDumps};
+
+		die ("Read found no such table '$tabname'\n")
+			unless (exists $ctx->{tables}{$tabname});
+		my $table = $ctx->{tables}{$tabname};
+		my $lab = $unit->makeDummyLabel($table->getRowType(), "lb" . $ctx->{id} . "read");
+		$ctx->{next} = $lab;
+
+		my $code = sub {
+			Triceps::FnBinding::call(
+				name => "bind" . $ctx->{id} . "read",
+				unit => $unit,
+				on => $fret,
+				labels => [
+					$tabname => $lab,
+				],
+				code => sub {
+					$table->dumpAll();
+				},
+			);
+		};
+		push @{$ctx->{actions}}, $code;
+	}
 }
 
 # "project" command. Projects (and possibly renames) a subset of fields
@@ -408,6 +453,8 @@ sub _tqlPrint # ($ctx, @args)
 					join(",", $_[1]->getRow()->toArray()), "\n");
 			}, $ctx->{qname}, $ctx->{subPrint});
 		}
+		# no need for end-of-data notification, the framework code will
+		# take care of it (and it's not end-of-data but end-of-dump)
 	} else {
 		# XXX This gets the printed label name from the auto-generated label name,
 		# which is not a good practice.
@@ -736,6 +783,7 @@ sub compileQuery # (@opts)
 	$ctx->{faRqDump} = $opts->{faRqDump};
 	$ctx->{subPrint} = $opts->{subPrint};
 	$ctx->{requests} = []; # dump and subscribe requests that will run the pipeline
+	$ctx->{copyTabs} = {}; # information on table copies that have been set up
 
 	# The query will be built in a separate unit
 	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
@@ -1067,6 +1115,8 @@ sub writeT
 	my %dumps; # the currently active dumps, maps to command info
 	my %queued_dumps; # the dump requests that arrive before the previous dump
 		# is completed, they are queued. The entries are arrays of command info.
+	my %queries; # query contexts, keyed by id
+	my $fretOut = $faOut->getFnReturn();
 
 	# to avoid filtering every dump row, its handling is done in an FnBinding
 	# that's get pushed at the start of the dump and popped at the end of it
@@ -1099,7 +1149,46 @@ sub writeT
 		printOrShut($app, $fragment, $sock, join(',', $cmd, $id, $lbname), "\n");
 	};
 
-	my $fretOut = $faOut->getFnReturn();
+	# The requests from a query context get sent one by one, and
+	# after one is done, the next is sent until they all are done.
+	my $runNextRequest = sub { # ($ctx)
+		my $ctx = shift;
+		my $requests = $ctx->{requests};
+		undef $ctx->{curRequest}; # clear the info of the previous request
+		my $r = shift @$requests;
+		if (!defined $r) {
+			# all done, now just need to pump the data through
+			printOrShut($app, $fragment, $sock,
+				"querysub,$ctx->{qid},$ctx->{qname}\n");
+			return;
+		}
+		$ctx->{curRequest} = $r; # remember until completed
+		my $cmd = $$r[0];
+		if ($cmd eq "qdumpsub") {
+			# qdumpsub:
+			#   * label where to send the dump request to
+			#   * source output label, from which a subscription will be set up
+			#     at the end of the dump
+			#   * target label in the query that will be tied to the source label
+			#   * binding to be used during the dump, which also directs the data
+			#     to the same target label
+			my $lbrq = $$r[1];
+			# this code very specifically ignores %dump, doing its requests
+			# independently for each query, and showing off another way to
+			# do things
+			$unit->makeHashCall($lbrq, "OP_INSERT", 
+				client => $fragment, id => $ctx->{qid}, name => $ctx->{qname}, cmd => $cmd);
+		} else {
+			printOrShut($app, $fragment, $sock,
+				"error,", $ctx->{qid}, ",Internal error: unknown request '$cmd',internal,", $cmd, "\n");
+			$ctx->{requests} = [];
+			undef $ctx->{curRequest};
+			# and this will leave the query partially initialized,
+			# but it should never happen
+			return;
+		}
+	};
+
 	undef @labels;
 	foreach my $lbn ($fretOut->getLabelNames()) {
 		next unless ($lbn =~ /^t\.dump\.(.*)$/);
@@ -1141,8 +1230,14 @@ sub writeT
 					return;
 				}
 				$dumps{$args[0]} = $info;
-				$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $id, name => $args[0]);
+				$unit->makeHashCall($lbrq, "OP_INSERT", 
+					client => $fragment, id => $id, name => $args[0], cmd => $cmd);
 			} elsif ($cmd eq "querysub") {
+				if ($id eq "" || exists $queries{$id}) {
+					printOrShut($app, $fragment, $sock,
+						"error,$id,Duplicate id '$id': query ids must be unique,bad_id,$id\n");
+					next;
+				}
 				my $ctx = compileQuery(
 					qid => $id,
 					qname => $args[0],
@@ -1160,22 +1255,8 @@ sub writeT
 					},
 				);
 				if ($ctx) { # otherwise the error is already reported
-					if (! eval {
-						# Run the pipeline
-						foreach my $code (@{$ctx->{subscriptions}}) {
-							# XXXX
-						}
-
-						# confirm success
-						printOrShut($app, $fragment, $sock, join(',', $cmd, $id, $args[0]), "\n");
-						1; # means that everything went OK
-					}) {
-						chomp $@;
-						$@ =~ s/\n/\\n/g; # no real newlines in the output
-						$@ =~ s/,/;/g; # no confusing commas in the output
-						printOrShut($app, $fragment, $sock,
-							"error,$id,query run error: $@,bad_query,\n");
-					}
+					$queries{$id} = $ctx;
+					&$runNextRequest($ctx);
 				}
 			} else {
 				printOrShut($app, $fragment, $sock,
@@ -1186,32 +1267,61 @@ sub writeT
 
 	$faOut->getLabel("beginDump")->makeChained("lbBeginDump", undef, sub {
 		my $row = $_[1]->getRow();
-		my ($client, $id, $name) = $row->toArray();
-		return unless ($client eq $fragment && exists $dumps{$name});
-		printOrShut($app, $fragment, $sock,
-			"startdump,$id,$name\n");
-		$fretOut->push($bindDump);
+		my ($client, $id, $name, $cmd) = $row->toArray();
+		return unless ($client eq $fragment);
+		if ($cmd eq "qdumpsub") {
+			return unless(exists $queries{$id});
+			my $ctx = $queries{$id};
+			$fretOut->push($ctx->{curRequest}[4]); # the binding for the dump
+		} else {
+			return unless (exists $dumps{$name});
+			printOrShut($app, $fragment, $sock,
+				"startdump,$id,$name\n");
+			$fretOut->push($bindDump);
+		}
 	});
 	$faOut->getLabel("endDump")->makeChained("lbEndDump", undef, sub {
 		my $row = $_[1]->getRow();
-		my ($client, $id, $name) = $row->toArray();
-		return unless ($client eq $fragment && exists $dumps{$name});
-		$fretOut->pop($bindDump);
-		my $info = $dumps{$name};
-		if ($$info[0] eq "dumpsub") {
-			&$subscribe(@$info);
-		} else {
-			printOrShut($app, $fragment, $sock, join(',', @$info), "\n");
-		}
-		delete $dumps{$name};
+		my ($client, $id, $name, $cmd) = $row->toArray();
+		return unless ($client eq $fragment);
 
-		# now, there might be more requests queued up, follow up on the next one
-		$info = shift @{$queued_dumps{$name}};
-		if (defined $info) {
-			# presumably, this already worked before, so no need to eval
-			my $lbrq = $faRqDump->getLabel("t.rqdump." . $name);
-			$dumps{$name} = $info;
-			$unit->makeHashCall($lbrq, "OP_INSERT", client => $fragment, id => $$info[1], name => $$info[2]);
+		if ($cmd eq "qdumpsub") {
+			return unless(exists $queries{$id});
+			my $ctx = $queries{$id};
+			$fretOut->pop($ctx->{curRequest}[4]); # the binding for the dump
+			# and chain together all the following updates
+			$ctx->{curRequest}[2]->makeChained(
+				"qsub$id." . $ctx->{curRequest}[3]->getName(), undef,
+				sub {
+					# cross-unit forward to the subscribed label (and can't just adopt the
+					# rowop because it will complain about different units)
+					# XXX should have a method for cross-unit call?
+					$_[2]->call($_[3]->makeRowop($_[1]->getOpcode(), $_[1]->getRow()));
+				},
+				$ctx->{u}, $ctx->{curRequest}[3]
+			);
+
+			&$runNextRequest($ctx);
+		} else {
+			return unless (exists $dumps{$name});
+			$fretOut->pop($bindDump);
+			my $info = $dumps{$name};
+			if ($cmd eq "dumpsub") {
+				&$subscribe(@$info);
+			} else {
+				printOrShut($app, $fragment, $sock, join(',', @$info), "\n");
+			}
+			delete $dumps{$name};
+
+			# now, there might be more requests queued up, follow up on the next one
+			$info = shift @{$queued_dumps{$name}};
+			if (defined $info) {
+				# presumably, this already worked before, so no need to eval
+				my $lbrq = $faRqDump->getLabel("t.rqdump." . $name);
+				$dumps{$name} = $info;
+				$unit->makeHashCall($lbrq, "OP_INSERT", 
+					client => $fragment, id => $$info[1], name => $$info[2], cmd => $$info[0]);
+			}
 		}
 	});
 

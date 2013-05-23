@@ -11,7 +11,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 3 };
+BEGIN { plan tests => 4 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Triceps::X::Tql;
@@ -107,6 +107,7 @@ sub appCoreT # (@opts)
 	$owner->mainLoop();
 }
 
+# the basic table dumps-subscribes
 {
 	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
 			app => "appTql",
@@ -124,7 +125,7 @@ sub appCoreT # (@opts)
 			my $client = Triceps::X::ThreadedClient->new(
 				owner => $owner,
 				totalTimeout => 10.,
-				debug => 2,
+				debug => 0,
 			);
 
 			$owner->readyReady();
@@ -170,7 +171,7 @@ sub appCoreT # (@opts)
 			$client->send(c1 => "shutdown\n");
 			$client->expect(c1 => '__EOF__');
 
-			print $client->getTrace();
+			#print $client->getTrace();
 			ok($client->getTrace(), 
 '> connect c1
 c1|ready
@@ -199,6 +200,67 @@ c1|d,window,OP_INSERT,1,ABC,101,10
 c1|dumpsub,ds4,window
 > c1|d,window,OP_INSERT,2,ABC,102,12
 c1|d,window,OP_INSERT,2,ABC,102,12
+> c1|shutdown
+c1|shutdown,,,,
+c1|__EOF__
+');
+		};
+	};
+
+	# let the errors from the server to be printed first
+	$thread->join();
+	die $@ if $@;
+}
+
+# the simple query subscription
+{
+	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
+			app => "appTql",
+			main => \&appCoreT,
+			port => 0,
+			fork => -1, # create a thread, not a process
+	);
+
+	eval {
+		Triceps::App::build "client", sub {
+			my $appname = $Triceps::App::name;
+			my $owner = $Triceps::App::global;
+
+			# give the port in startClient
+			my $client = Triceps::X::ThreadedClient->new(
+				owner => $owner,
+				totalTimeout => 10.,
+				debug => 0,
+			);
+
+			$owner->readyReady();
+
+			$client->startClient(c1 => $port);
+			$client->expect(c1 => 'ready');
+
+			$client->send(c1 => "d,symbol,OP_INSERT,ABC,ABC Corp,1.0\n");
+			# no expect, because not subscribed yet
+
+			$client->send(c1 => "querysub,q1,query1,{read table symbol}{print tokenized 0}\n");
+			$client->expect(c1 => 'd,query1,OP_INSERT,ABC,ABC Corp,1$');
+			$client->expect(c1 => 'querysub,q1,query1');
+
+			$client->send(c1 => "d,symbol,OP_INSERT,DEF,Defense Corp,2.0\n");
+			$client->expect(c1 => 'd,query1,OP_INSERT,DEF,Defense Corp,2$');
+
+			$client->send(c1 => "shutdown\n");
+			$client->expect(c1 => '__EOF__');
+
+			#print $client->getTrace();
+			ok($client->getTrace(), 
+'> connect c1
+c1|ready
+> c1|d,symbol,OP_INSERT,ABC,ABC Corp,1.0
+> c1|querysub,q1,query1,{read table symbol}{print tokenized 0}
+c1|d,query1,OP_INSERT,ABC,ABC Corp,1
+c1|querysub,q1,query1
+> c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
+c1|d,query1,OP_INSERT,DEF,Defense Corp,2
 > c1|shutdown
 c1|shutdown,,,,
 c1|__EOF__
