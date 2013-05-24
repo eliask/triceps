@@ -490,7 +490,8 @@ sub _tqlPrint # ($ctx, @args)
 # rightIdxPath (optional) - path name of the table's index on which to join.
 #   (As usual, the path is an array of nested names). By default is
 #   computed automatically from options by or byLeft. If it can not be
-#   found automatically, it's an error.
+#   found automatically, or the explicitly specified index doesn't
+#   exist or has incorrect key fields, it's an error.
 # by (semi-optional) - the join equality condition specified as
 #   pairs of fields. Similarly to JoinTwo, it's a single-level array
 #   with the fields logically paired:
@@ -536,7 +537,10 @@ sub _tqlJoin # ($ctx, @args)
 	my $by = split_braced_final($opts->{by});
 	my $byLeft = split_braced_final($opts->{byLeft});
 
-	my $rightIdxPath = split_braced_final($opts->{rightIdxPath});
+	my $rightIdxPath;
+	if (defined $opts->{rightIdxPath}) { # propagate the undef
+		$rightIdxPath = split_braced_final($opts->{rightIdxPath});
+	}
 
 	my $isLeft = 0; # default for inner join
 	my $type = $opts->{type};

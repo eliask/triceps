@@ -99,6 +99,7 @@ my @inputQuery1 = (
 	"query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}\n",
 	"query,{read table tWindow} {project fields {symbol price}}\n",
 	"query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}\n",
+	"query,{read table tWindow} {join table tSymbol byLeft {symbol}}\n",
 	"query,{read table tWindow} {where istrue {\$%price == 20}}\n",
 );
 my $expectQuery1 = 
@@ -110,6 +111,7 @@ my $expectQuery1 =
 > query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
 > query,{read table tWindow} {project fields {symbol price}}
 > query,{read table tWindow} {join table tSymbol rightIdxPath bySymbol byLeft {symbol}}
+> query,{read table tWindow} {join table tSymbol byLeft {symbol}}
 > query,{read table tWindow} {where istrue {$%price == 20}}
 lb1read OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,lb1read
@@ -119,6 +121,9 @@ lb2project,OP_INSERT,AAA,30
 lb2project OP_INSERT symbol="AAA" price="20" 
 lb2project OP_INSERT symbol="AAA" price="30" 
 +EOD,OP_NOP,lb2project
+join2.out OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5" 
+join2.out OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5" 
++EOD,OP_NOP,join2.out
 join2.out OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5" 
 join2.out OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5" 
 +EOD,OP_NOP,join2.out
