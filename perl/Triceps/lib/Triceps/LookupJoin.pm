@@ -23,8 +23,11 @@ use strict;
 #    be used for lookup
 # rightTable - table object where to do the look-ups
 # rightIdxPath (optional) - array reference containing the path name of index type 
-#    in table used for look-up (default: first top-level Hash),
-#    index absolutely must be a Hash (leaf or not), not of any other kind
+#    in table used for look-up (default: will be automatically found by the
+#    set of keys specified in "by" or "byLeft", if possible),
+#    index absolutely must be a Hash (leaf or not), not of any other kind;
+#    if the index is not found automatically or the explicitly specified index
+#    doesn't match, it's an error
 # leftFields (optional) - reference to array of patterns for left fields to pass through,
 #    syntax as described in Triceps::Fields::filter(), if not defined then pass everything
 # rightFields (optional) - reference to array of patterns for right fields to pass through,
@@ -186,13 +189,23 @@ sub new # (class, optionName => optionValue ...)
 		my $ixid  = $self->{rightIdxType}->getIndexId();
 		Carp::confess("The index '" . join('.', @{$self->{rightIdxPath}}) . "' is of kind '" . &Triceps::indexIdString($ixid) . "', not the required 'IT_HASHED'")
 			unless ($ixid == &Triceps::IT_HASHED);
-		@idxkeys = sort @idxkeys;
 	} else {
-		$self->{rightIdxType} = $self->{rightTable}->getType()->findSubIndexById(&Triceps::IT_HASHED);
-		Carp::confess("The rightTable does not have a top-level Hash index for joining")
-			unless defined $self->{rightIdxType};
-		@idxkeys = sort $self->{rightIdxType}->getKey();
+		# try to find the index by keys automatically;
+		# start by extracting the right side of "by"
+		my $by = $self->{by};
+		for (my $i = 1; $i <= $#$by; $i+= 2) {
+			push @idxkeys, $by->[$i];
+		}
+		
+		$self->{rightIdxPath} = [ $self->{rightTable}->getType()->findIndexPathForKeys(@idxkeys) ];
+		Carp::confess("The rightTable does not have an index that matches the key set\n  right key: ("
+				. join(", ", @idxkeys) . ")\n  by: ("
+				. join(", ", @{$self->{by}}) . ")\n  right table type:\n    "
+				. $self->{rightTable}->getType()->print("    ") . "\n ")
+			unless $#{$self->{rightIdxPath}} >= 0;
+		$self->{rightIdxType} = $self->{rightTable}->getType()->findIndexPath(@{$self->{rightIdxPath}});
 	}
+	@idxkeys = sort @idxkeys;
 	my %idxkeymap;
 	foreach my $i (@idxkeys) {
 		$idxkeymap{$i} = 1;

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 228 };
+BEGIN { plan tests => 238 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -712,6 +712,55 @@ join2f.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 ';
 ok($result2, $expect2f);
 
+#########
+# (2g) Use an automatically-found index that is not the first one.
+# The "by" condition is really a weird abuse here, used simple because
+# the types of these fields match.
+
+# this is purely to keep track of the input in the log
+my $inlab2g = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2g, "Triceps::Label");
+
+$join2g = Triceps::LookupJoin->new(
+	name => "join2g",
+	leftFromLabel => $inlab2g,
+	rightTable => $tAccounts,
+	byLeft => [ "amount/internal" ],
+	isLeft => 1,
+	automatic => $auto,
+);
+ok(ref $join2g, "Triceps::LookupJoin");
+
+my $outlab2g = $vu2->makeLabel($join2g->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2g, "Triceps::Label");
+
+# the output
+$join2g->getOutputLabel()->chain($outlab2g);
+
+undef $result2;
+# feed the data
+@incomingData2g = (
+	[ "source1", "999", 1 ], 
+	[ "source2", "ABCD", 2 ], 
+	[ "source3", "ZZZZ", 3 ], 
+);
+&feedInput($inlab2g, &Triceps::OP_INSERT, \@incomingData2g);
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2g = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="1" 
+join2g.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="1" source="source1" external="999" internal="1" 
+join2g.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="1" source="source2" external="ABCD" internal="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="2" 
+join2g.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="2" source="source1" external="2011" internal="2" 
+join2g.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="2" source="source2" external="QWERTY" internal="2" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="3" 
+join2g.out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="3" source="source1" external="42" internal="3" 
+';
+ok($result2, $expect2g);
+
 ###############################################################
 # Now repeat all the same but with fieldsMirrorKey==1, and 
 # to see its result with a copy of all the fields on the right.
@@ -1276,7 +1325,11 @@ ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupI
 
 {
 	my $tt = Triceps::TableType->new($rtAccounts)
-		->addSubIndex("lookupInt", Triceps::IndexType->newFifo());
+		->addSubIndex("lookupSrcExt", # quick look-up by source and external id
+			Triceps::IndexType->newHashed(key => [ "source", "external" ])
+			->addSubIndex("fifo", Triceps::IndexType->newFifo())
+		)
+	;
 	ok(ref $tt, "Triceps::TableType");
 	$res = $tt->initialize();
 	ok($res, 1);
@@ -1290,12 +1343,12 @@ ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupI
 			leftRowType => $rtInTrans,
 			rightTable => $t,
 			rightFields => [ "internal/acct" ],
-			by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+			by => [ "acctSrc" => "source", "acctXtrId" => "internal" ], # "internal" is not in the index on the right side
 			isLeft => 1,
 			automatic => 1,
 		);
 	};
-	ok($@ =~ /^The rightTable does not have a top-level Hash index for joining/);
+	ok($@, qr/^The rightTable does not have an index that matches the key set\n  right key: \(source, internal\)\n  by: \(acctSrc, source, acctXtrId, internal\)\n  right table type:\n    table \(\n      row {\n        string source,\n        string external,\n        int32 internal,\n      }\n    \) {\n      index HashedIndex\(source, external, \) {\n        index FifoIndex\(\) fifo,\n      } lookupSrcExt,\n    }\n  at/);
 }
 
 &tryBadOptValue(rightFields => [ "internal/acct", "duck" ]),
@@ -1343,33 +1396,29 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 	ok(ref $t, "Triceps::Table");
 
 	my $j;
-	$j = eval {
-		Triceps::LookupJoin->new(
-			unit => $vu2,
-			name => "join",
-			leftRowType => $rtInTrans,
-			rightTable => $t,
-			rightFields => [ "notArr1" ],
-			by => [ "acctSrc" => "notArr1" ],
-			isLeft => 1,
-			automatic => 1,
-		);
-	};
+	$j = Triceps::LookupJoin->new(
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $t,
+		rightFields => [ "notArr1" ],
+		by => [ "acctSrc" => "notArr1" ],
+		isLeft => 1,
+		automatic => 1,
+	);
 	ok(ref $j, "Triceps::LookupJoin");
 
-	$j = eval {
-		Triceps::LookupJoin->new(
-			unit => $vu2,
-			name => "join",
-			leftRowType => $rtInTrans,
-			rightTable => $t,
-			rightIdxPath => ["byNotArr2"],
-			rightFields => [ "notArr1" ],
-			by => [ "acctSrc" => "notArr2" ],
-			isLeft => 1,
-			automatic => 1,
-		);
-	};
+	$j = Triceps::LookupJoin->new(
+		unit => $vu2,
+		name => "join",
+		leftRowType => $rtInTrans,
+		rightTable => $t,
+		rightIdxPath => ["byNotArr2"],
+		rightFields => [ "notArr1" ],
+		by => [ "acctSrc" => "notArr2" ],
+		isLeft => 1,
+		automatic => 1,
+	);
 	ok(ref $j, "Triceps::LookupJoin");
 
 	$j = eval {
