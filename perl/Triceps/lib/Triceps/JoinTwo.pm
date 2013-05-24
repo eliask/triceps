@@ -27,12 +27,19 @@ use strict;
 #    right side (default: rightTable's output label), can be used to filter
 #    out some of the input. THIS IS DANGEROUS! To preserve consistency, always
 #    filter by key field(s) only, and the same condition on the left and right.
-# leftIdxPath - array reference containing the path name of index type 
-#    in the left table used for look-up,
-#    index absolutely must be a Hash (leaf or not), not of any other kind
-# rightIdxPath - array reference containing the path name of index type 
+# leftIdxPath (optional) - array reference containing the path name of index type 
 #    in the left table used for look-up,
 #    index absolutely must be a Hash (leaf or not), not of any other kind;
+#    if not present, will be found (if possible) by the list of fields from
+#    the options "by" or "byLeft", so at least one of the explicit path or the "by"
+#    varieties must be present
+# rightIdxPath (optional) - array reference containing the path name of index type 
+#    in the left table used for look-up,
+#    index absolutely must be a Hash (leaf or not), not of any other kind;
+#    if not present, will be found (if possible) by the list of fields from
+#    the options "by" or "byLeft", so at least one of the explicit path or the "by"
+#    varieties must be present;
+#    if the options "by" and "byLeft" are not present,
 #    the number and order of fields in left and right indexes must match
 #    since indexes define the fields used for the join; the types of fields
 #    have to match exactly unless allowed by option overrideKeyTypes==1
@@ -101,8 +108,8 @@ sub new # (class, optionName => optionValue ...)
 			rightTable => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::Table") } ],
 			leftFromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
 			rightFromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
-			leftIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
-			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+			leftIdxPath => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+			rightIdxPath => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 			leftFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
@@ -117,6 +124,13 @@ sub new # (class, optionName => optionValue ...)
 		}, @_);
 
 	&Triceps::Opt::checkMutuallyExclusive($myname, 0, "by", $self->{by}, "byLeft", $self->{byLeft});
+
+	if (!defined $self->{by} && !defined $self->{byLeft}) {
+		for my $i ('leftIdxPath', 'rightIdxPath') {
+			Carp::confess("Option '$i' must be present if both 'by' and 'byLeft' are absent") 
+				if (!defined $self->{$i});
+		}
+	}
 
 	my $selfJoin = $self->{leftTable}->same($self->{rightTable});
 	if ($selfJoin && !defined $self->{leftFromLabel}) {
@@ -157,6 +171,12 @@ sub new # (class, optionName => optionValue ...)
 	my %rightmap = $self->{rightRowType}->getFieldMapping();
 	my @rightfld = $self->{rightRowType}->getFieldNames();
 
+	if (defined $self->{byLeft}) { # override the order
+		push @{$self->{byLeft}}, "!.*"; # add the implicit no-pass-through
+		my @by = &Triceps::Fields::filterToPairs("Triceps::JoinTwo::new: option 'byLeft'", \@leftfld, $self->{byLeft});
+		$self->{by} = \@by;
+	}
+
 	# find the feed labels, compare the index definitions, check that the fields match
 	for my $side ( ("left", "right") ) {
 		if (defined $self->{"${side}FromLabel"}) {
@@ -169,6 +189,23 @@ sub new # (class, optionName => optionValue ...)
 				unless $self->{"${side}Table"}->getRowType()->match($self->{"${side}FromLabel"}->getType());
 		} else {
 			$self->{"${side}FromLabel"} = $self->{"${side}Table"}->getOutputLabel();
+		}
+
+		if (!defined $self->{"${side}IdxPath"}) {
+			# try to find the index by keys automatically;
+			# start by extracting one side of "by"
+			my $by = $self->{by};
+			my @idxkeys;
+			for (my $i = ($side eq "left"? 0 : 1); $i <= $#$by; $i+= 2) {
+				push @idxkeys, $by->[$i];
+			}
+
+			$self->{"${side}IdxPath"} = [ $self->{"${side}Table"}->getType()->findIndexPathForKeys(@idxkeys) ];
+			Carp::confess("The ${side}Table does not have an index that matches the key set\n  ${side} key: ("
+					. join(", ", @idxkeys) . ")\n  by: ("
+					. join(", ", @{$self->{by}}) . ")\n  ${side} table type:\n    "
+					. $self->{"${side}Table"}->getType()->print("    ") . "\n ")
+				unless $#{$self->{"${side}IdxPath"}} >= 0;
 		}
 
 		my @keys;
@@ -204,12 +241,6 @@ sub new # (class, optionName => optionValue ...)
 	Carp::confess("The count of key fields in left and right indexes doesnt match\n  left:  (" 
 			. join(", ", @leftkeys) . ")\n  right: (" . join(", ", @rightkeys) . ")\n  ")
 		unless ($#leftkeys == $#rightkeys);
-
-	if (defined $self->{byLeft}) { # override the order
-		push @{$self->{byLeft}}, "!.*"; # add the implicit no-pass-through
-		my @by = &Triceps::Fields::filterToPairs("Triceps::JoinTwo::new: option 'byLeft'", \@leftfld, $self->{byLeft});
-		$self->{by} = \@by;
-	}
 
 	if (defined $self->{by}) { # override the order
 		Carp::confess("The count of key fields in the indexes and option '" . (defined $self->{byLeft}? "byLeft" : "by")

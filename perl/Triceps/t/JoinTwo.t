@@ -291,14 +291,14 @@ wirejoin("3c", Triceps::JoinTwo->new(
 	type => "left",
 ));
 
-# right - with leaf index on left
+# right - with leaf index on left, and indexes looked up automatically from byLeft,
 # and along the way test an explicit "byLeft"
 wirejoin("3d", Triceps::JoinTwo->new(
 	name => "join3d",
 	leftTable => $tTrans3p,
 	rightTable => $tAccounts3,
-	leftIdxPath => ["byAccount"],
-	rightIdxPath => ["lookupSrcExt"],
+	# leftIdxPath => ["byAccount"],
+	# rightIdxPath => ["lookupSrcExt"],
 	leftFields => undef, # copy all
 	rightFields => [ '.*/ac_$&' ], # copy all with prefix ac_
 	fieldsUniqKey => "none",
@@ -1099,10 +1099,6 @@ ok($@ =~ /^Option 'name' must be specified for class 'Triceps::JoinTwo'/);
 ok($@ =~ /^Option 'leftTable' must be specified for class 'Triceps::JoinTwo'/);
 &tryMissingOptValue("rightTable");
 ok($@ =~ /^Option 'rightTable' must be specified for class 'Triceps::JoinTwo'/);
-&tryMissingOptValue("leftIdxPath");
-ok($@ =~ /^Option 'leftIdxPath' must be specified for class 'Triceps::JoinTwo'/);
-&tryMissingOptValue("rightIdxPath");
-ok($@ =~ /^Option 'rightIdxPath' must be specified for class 'Triceps::JoinTwo'/);
 
 sub tryBadOptValue # (optName, optValue, ...)
 {
@@ -1114,7 +1110,11 @@ sub tryBadOptValue # (optName, optValue, ...)
 		rightIdxPath => ["lookupSrcExt"],
 	);
 	while ($#_ >= 1) {
-		$opt{$_[0]} = $_[1];
+		if (defined $_[1]) {
+			$opt{$_[0]} = $_[1];
+		} else {
+			delete $opt{$_[0]};
+		}
 		shift; shift;
 	}
 	eval {
@@ -1146,6 +1146,11 @@ ok($@ =~ /^Option 'byLeft' of class 'Triceps::JoinTwo' must be a reference to 'A
 ok($@ =~ /^Option 'leftSaveJoinerTo' of class 'Triceps::JoinTwo' must be a reference to a scalar, is ''/);
 &tryBadOptValue(rightSaveJoinerTo => 9);
 ok($@ =~ /^Option 'rightSaveJoinerTo' of class 'Triceps::JoinTwo' must be a reference to a scalar, is ''/);
+
+&tryBadOptValue("leftIdxPath" => undef);
+ok($@, qr/^Option 'leftIdxPath' must be present if both 'by' and 'byLeft' are absent at/);
+&tryBadOptValue("rightIdxPath" => undef);
+ok($@, qr/^Option 'rightIdxPath' must be present if both 'by' and 'byLeft' are absent at/);
 
 &tryBadOptValue(
 	by => [ "acctSrc", "source", "acctXtrId", "external" ],
