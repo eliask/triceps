@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 87 };
+BEGIN { plan tests => 92 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -312,6 +312,51 @@ table \(
     index PerlSortedIndex\(SimpleOrder a ASC, c DESC, \) xbc,
   } xab,
 }/);
+}
+
+###################### findIndexPathForKeys ###########################
+
+{
+	my $ttDeep = Triceps::TableType->new($rt1)
+		->addSubIndex("by_ab",
+			Triceps::IndexType->newHashed(key => [ "a", "b" ])
+			->addSubIndex("by_ac", # duplicate a
+				Triceps::IndexType->newHashed(key => [ "a", "c" ])
+			)
+			->addSubIndex("by_c", # currently has no key
+				Triceps::SimpleOrderedIndex->new(
+					c => "DESC",
+				)
+				->addSubIndex("by_c", # an index with no key would not allow to reach this
+					Triceps::IndexType->newHashed(key => [ "c" ])
+				)
+			)
+		)
+		->addSubIndex("fifo", # has no key
+			Triceps::IndexType->newFifo()
+		)
+		->addSubIndex("by_c",
+			Triceps::IndexType->newHashed(key => [ "c" ])
+			->addSubIndex("by_ab",
+				Triceps::IndexType->newHashed(key => [ "a", "b" ])
+			)
+		)
+	;
+	ok(ref $ttDeep, "Triceps::TableType");
+	my @path = $ttDeep->findIndexPathForKeys("a", "b", "c");
+	ok(join(',', @path), "by_c,by_ab");
+
+	# the order of fields doesn't matter
+	@path = $ttDeep->findIndexPathForKeys("c", "b", "a");
+	ok(join(',', @path), "by_c,by_ab");
+
+	# an empty key set produces empty result
+	@path = $ttDeep->findIndexPathForKeys();
+	ok($#path, -1);
+
+	# if can not find, an empty result
+	@path = $ttDeep->findIndexPathForKeys("d", "b", "a");
+	ok($#path, -1);
 }
 
 ###################### initialization #################################

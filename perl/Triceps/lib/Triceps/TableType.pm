@@ -72,6 +72,58 @@ sub findIndexKeyPath # (self, idxName, ...)
 	return ($cur, @keys);
 }
 
+# Find if possible a ready index that matches the input set of key
+# fields.
+# @param keyFld1, ... - names of the desired key fields
+# @return - the array with the key path if found, or empty if no match found
+sub findIndexPathForKeys # (self, keyFld1, ...)
+{
+	my $myname = "Triceps::TableType::findIndexKeyPath";
+	my $self = shift;
+
+	return if ($#_ < 0); # no keys, no index
+
+	my %keys;
+	my $f;
+	for $f (@_) { # hashable for easy matching against
+		$keys{$f} = 1;
+	}
+
+	my @curpath; # the path of the current index
+	my @curkeys = ( \%keys ); # keys for each level traversed
+	my @todo = ( [$self->getSubIndexes()] ); # array of arrays of sub-indexes, by level
+
+	# traverse the tree until find a match or run out of indexes
+	OUTER: while(1) {
+		my $idxlist = $todo[$#todo];
+		if ($#$idxlist < 0) { # end of list, go one level up
+			pop @todo;
+			pop @curpath;
+			pop @curkeys;
+			return if ($#todo < 0); # went through everything and found no match
+			next;
+		}
+		my $idxname = shift @$idxlist;
+		my $idx = shift @$idxlist;
+
+		my @pkey = $idx->getKey();
+		next if ($#pkey < 0); # index with no key can not be used
+
+		my %keysleft = %{$curkeys[$#curkeys]};
+		for $f (@pkey) {
+			next OUTER if (!exists $keysleft{$f}); # key mismatch
+			delete $keysleft{$f};
+		}
+
+		# ok, by now the current index fits into the requested keys
+		push @curpath, $idxname;
+		return @curpath if (!scalar(%keysleft)); # found an exact match, done
+
+		push @curkeys, \%keysleft;
+		push @todo, [$idx->getSubIndexes()]; # go deeper
+	}
+}
+
 # Copy a table type by extracting only a subsef of indexes,
 # without any aggregators. This is generally used for exporting the
 # table types to the other threads, supplying barely enough to keep
