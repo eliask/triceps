@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 238 };
+BEGIN { plan tests => 248 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -1063,6 +1063,55 @@ in OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500"
 join2xf.out OP_DELETE acctSrc="source2" acctXtrId="ZZZZ" amount="500" source="source2" external="ZZZZ" 
 ';
 ok($result2, $expect2xf);
+
+#########
+# (2xg) same as 2xf, only drop the right-side key instead of mirroring it
+# also test the leftFromLabel here
+
+# this is purely to keep track of the input in the log
+my $inlab2xg = $vu2->makeLabel($rtInTrans, "in", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $inlab2xg, "Triceps::Label");
+
+$join2xg = Triceps::LookupJoin->new(
+	name => "join2xg",
+	leftFromLabel => $inlab2xg,
+	rightTable => $tAccounts2xde,
+	rightIdxPath => ["lookupSrcExt"],
+	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	isLeft => 1,
+	limitOne => 1,
+	automatic => $auto,
+	fieldsDropRightKey => 1,
+);
+ok(ref $join2xg, "Triceps::LookupJoin");
+
+my $outlab2xg = $vu2->makeLabel($join2xg->getResultRowType(), "out", undef, sub { $result2 .= $_[1]->printP() . "\n" } );
+ok(ref $outlab2xg, "Triceps::Label");
+
+# the output
+$join2xg->getOutputLabel()->chain($outlab2xg);
+
+undef $result2;
+# feed the data
+&feedInput($inlab2xg, &Triceps::OP_INSERT, \@incomingData);
+# no need for a DELETE version
+$vu2->drainFrame();
+ok($vu2->empty());
+
+#print STDERR $result2;
+$expect2xg = 
+'in OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" 
+join2xg.out OP_INSERT acctSrc="source1" acctXtrId="999" amount="100" internal="1" 
+in OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" 
+join2xg.out OP_INSERT acctSrc="source2" acctXtrId="ABCD" amount="200" internal="1" 
+in OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+join2xg.out OP_INSERT acctSrc="source3" acctXtrId="ZZZZ" amount="300" 
+in OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" 
+join2xg.out OP_INSERT acctSrc="source1" acctXtrId="2011" amount="400" internal="2" 
+in OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+join2xg.out OP_INSERT acctSrc="source2" acctXtrId="ZZZZ" amount="500" 
+';
+ok($result2, $expect2xg);
 
 }
 

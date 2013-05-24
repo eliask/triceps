@@ -487,9 +487,10 @@ sub _tqlPrint # ($ctx, @args)
 #   considered the "left side", the table the "right side".
 #   The duplicate key fields on the right side are always excluded
 #   from the result, like JoinTwo option (fieldsUniqKey => "left").
-# rightIdxPath - path name of the table's index on which to join.
-#   At the moment there is no way to join without knowing the
-#   name of the index. (As usual, the path is an array of nested names).
+# rightIdxPath (optional) - path name of the table's index on which to join.
+#   (As usual, the path is an array of nested names). By default is
+#   computed automatically from options by or byLeft. If it can not be
+#   found automatically, it's an error.
 # by (semi-optional) - the join equality condition specified as
 #   pairs of fields. Similarly to JoinTwo, it's a single-level array
 #   with the fields logically paired:
@@ -518,7 +519,7 @@ sub _tqlJoin # ($ctx, @args)
 	my $opts = {};
 	&Triceps::Opt::parse("join", $opts, {
 		table => [ undef, \&Triceps::Opt::ck_mandatory ],
-		rightIdxPath => [ undef, \&Triceps::Opt::ck_mandatory ],
+		rightIdxPath => [ undef, undef ],
 		by => [ undef, undef ],
 		byLeft => [ undef, undef ],
 		leftFields => [ undef, undef ],
@@ -550,14 +551,6 @@ sub _tqlJoin # ($ctx, @args)
 	my $leftFields = split_braced_final($opts->{leftFields});
 	my $rightFields = split_braced_final($opts->{rightFields});
 
-	# Build the filtering-out of the duplicate key fields on the right.
-	# Similar to what JoinTwo does.
-	my($rightIdxType, @rightkeys) = $table->getType()->findIndexKeyPath(@$rightIdxPath);
-	if (!defined($rightFields)) {
-		$rightFields = [ ".*" ]; # the implicit pass-all
-	}
-	unshift(@$rightFields, map("!$_", @rightkeys) );
-
 	my $unit = $ctx->{u};
 	my $join = Triceps::LookupJoin->new(
 		name => "join" . $ctx->{id},
@@ -570,6 +563,7 @@ sub _tqlJoin # ($ctx, @args)
 		by => $by,
 		byLeft => $byLeft,
 		isLeft => $isLeft,
+		fieldsDropRightKey => 1,
 	);
 	
 	$ctx->{next} = $join->getOutputLabel();

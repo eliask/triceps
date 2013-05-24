@@ -40,6 +40,10 @@ use strict;
 #    the key fields from it would still be present in the result by mirroring
 #    them from the left side.
 #    (default: 0) Used by JoinTwo.
+# fieldsDropRightKey (optional) - flag: automatically exclude the right-side key fields
+#    from the result, since they are duplicates of the left side anyway. This is kind of
+#    the opposide of fieldsMirrorKey and nullifies its effect.
+#    (default: 0)
 # by (semi-optional) - reference to array, containing pairs of field names used for look-up,
 #    [ leftFld1, rightFld1, leftFld2, rightFld2, ... ]
 #    XXX should allow an arbitrary expression on the left?
@@ -100,6 +104,7 @@ sub new # (class, optionName => optionValue ...)
 			rightFields => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			fieldsLeftFirst => [ 1, undef ],
 			fieldsMirrorKey => [ 0, undef ],
+			fieldsDropRightKey => [ 0, undef ],
 			by => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			byLeft => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 			isLeft => [ 1, undef ],
@@ -209,6 +214,16 @@ sub new # (class, optionName => optionValue ...)
 	my %idxkeymap;
 	foreach my $i (@idxkeys) {
 		$idxkeymap{$i} = 1;
+	}
+
+	if ($self->{fieldsDropRightKey}) {
+		if (!defined($self->{rightFields})) {
+			$self->{rightFields} = [ ".*" ]; # the implicit pass-all
+		} else {
+			$self->{rightFields} = [ @{$self->{rightFields}} ]; # copy to avoid changing the original
+		}
+		# exclude by prepending the forbidding patterns
+		unshift(@{$self->{rightFields}}, map("!$_", @idxkeys) );
 	}
 
 	# create the look-up row (and check that "by" contains the correct field names)
