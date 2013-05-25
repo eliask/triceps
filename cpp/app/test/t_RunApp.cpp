@@ -1609,3 +1609,219 @@ UTESTCASE dispose_once(Utest *utest)
 
 	restore_uncatchable();
 }
+
+// Logs a message, decreases the counter and reschedules if not 0.
+// The counter is kept in field 1 ("b").
+// The row identification is printed as value from field 2 ("c").
+class SchedLabel: public Label
+{
+public:
+	// @param targLog - string where to append the log of running
+	// @param targUnit - unit where to schedule the output
+	// @param targLabel - label where to schedule the output
+	//        (make sure that it has the same type!); 
+	//        can be also set later manually
+	SchedLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name,
+		string &targLog, Unit *targUnit, Label *targLabel):
+		Label(unit, rtype, name),
+		targLog_(targLog),
+		targUnit_(targUnit),
+		targLabel_(targLabel)
+	{ }
+
+	// from Label
+	virtual void clearSubclass()
+	{
+		targUnit_ = NULL;
+		targLabel_ = NULL;
+	}
+
+	virtual void execute(Rowop *arg) const
+	{
+		int32_t val = type_->getInt32(arg->getRow(), 1);
+		int64_t id = type_->getInt64(arg->getRow(), 2);
+		string msg = strprintf("%s id=%d val=%d\n", name_.c_str(), (int)id, (int)val);
+		targLog_.append(msg);
+		if (--val > 0 && !targUnit_.isNull() && !targLabel_.isNull()) {
+			// put the decreased value into the new row
+			FdataVec fields;
+			type_->splitInto(arg->getRow(), fields);
+			fields[1].setPtr(true, &val, sizeof(val));
+
+			targUnit_->schedule(new Rowop(targLabel_.get(), arg->getOpcode(), type_->makeRow(fields)));
+		}
+	}
+
+	string &targLog_;
+	Autoref<Unit> targUnit_;
+	Autoref<Label> targLabel_;
+};
+
+// test that the frame gets drained after executing every rowop from an Xtray
+// (simple, because with only one unit)
+UTESTCASE drain_frame_simple(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1", "frag1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2", "frag1");
+
+	string log;
+	FdataVec dv;
+	mkfdata(dv);
+
+	// prepare elements
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+	ow1->markReady();
+
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+	Autoref<SchedLabel> sl1 = new SchedLabel(ow2->unit(), rt1, "sl1",
+		log, NULL, NULL);
+	// make it point to itself
+	sl1->targUnit_ = ow2->unit();
+	sl1->targLabel_ = sl1;
+	
+	fa2a->getFnReturn()->getLabel("one")->chain(sl1);
+	ow2->markReady();
+
+	ow1->readyReady();
+	ow2->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	int32_t four32 = 4;
+	int64_t one64 = 1;
+	int64_t two64 = 2;
+
+	dv[1].setPtr(true, &four32, sizeof(int32_t));
+	dv[2].setPtr(true, &one64, sizeof(int64_t));
+	Rowref r1(rt1,  rt1->makeRow(dv));
+
+	dv[1].setPtr(true, &four32, sizeof(int32_t));
+	dv[2].setPtr(true, &two64, sizeof(int64_t));
+	Rowref r2(rt1,  rt1->makeRow(dv));
+
+	ow1->unit()->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r1) );
+	ow1->unit()->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r2) );
+	ow1->flushWriters();
+
+	ow2->nextXtray();
+
+	UT_IS(log, 
+		"sl1 id=1 val=4\n"
+		"sl1 id=1 val=3\n"
+		"sl1 id=1 val=2\n"
+		"sl1 id=1 val=1\n"
+
+		"sl1 id=2 val=4\n"
+		"sl1 id=2 val=3\n"
+		"sl1 id=2 val=2\n"
+		"sl1 id=2 val=1\n"
+	);
+
+	// ----------------------------------------------------------------------
+
+	ow1->markDead();
+	ow2->markDead();
+
+	a1->harvester();
+
+	restore_uncatchable();
+}
+
+// test that the frame gets drained after executing every rowop from an Xtray,
+// with two units
+UTESTCASE drain_frame(Utest *utest)
+{
+	make_catchable();
+
+	Autoref<App> a1 = App::make("a1");
+
+	Autoref<TrieadOwner> ow1 = a1->makeTriead("t1", "frag1");
+	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2", "frag1");
+
+	string log;
+	FdataVec dv;
+	mkfdata(dv);
+
+	// prepare elements
+	RowType::FieldVec fld;
+	mkfields(fld);
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+
+	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
+		->addLabel("one", rt1)
+		->complete()
+	;
+	ow1->markReady();
+
+	Autoref<Unit> u22 = new Unit("u22");
+	ow2->addUnit(u22);
+
+	Autoref<Facet> fa2a = ow2->importReader("t1", "nxa", "");
+	Autoref<SchedLabel> sl1 = new SchedLabel(ow2->unit(), rt1, "sl1",
+		log, NULL, NULL);
+
+	Autoref<SchedLabel> sl2 = new SchedLabel(u22, rt1, "sl2",
+		log, ow2->unit(), sl1);
+
+	// make sl1 point back to sl2
+	sl1->targUnit_ = u22;
+	sl1->targLabel_ = sl2;
+	
+	fa2a->getFnReturn()->getLabel("one")->chain(sl1);
+	ow2->markReady();
+
+	ow1->readyReady();
+	ow2->readyReady();
+
+	// ----------------------------------------------------------------------
+
+	int32_t four32 = 4;
+	int64_t one64 = 1;
+	int64_t two64 = 2;
+
+	dv[1].setPtr(true, &four32, sizeof(int32_t));
+	dv[2].setPtr(true, &one64, sizeof(int64_t));
+	Rowref r1(rt1,  rt1->makeRow(dv));
+
+	dv[1].setPtr(true, &four32, sizeof(int32_t));
+	dv[2].setPtr(true, &two64, sizeof(int64_t));
+	Rowref r2(rt1,  rt1->makeRow(dv));
+
+	ow1->unit()->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r1) );
+	ow1->unit()->call(new Rowop(fa1a->getFnReturn()->getLabel("one"), Rowop::OP_INSERT, r2) );
+	ow1->flushWriters();
+
+	ow2->nextXtray();
+
+	UT_IS(log, 
+		"sl1 id=1 val=4\n"
+		"sl2 id=1 val=3\n"
+		"sl1 id=1 val=2\n"
+		"sl2 id=1 val=1\n"
+
+		"sl1 id=2 val=4\n"
+		"sl2 id=2 val=3\n"
+		"sl1 id=2 val=2\n"
+		"sl2 id=2 val=1\n"
+	);
+
+	// ----------------------------------------------------------------------
+
+	ow1->markDead();
+	ow2->markDead();
+
+	a1->harvester();
+
+	restore_uncatchable();
+}

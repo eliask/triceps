@@ -193,8 +193,23 @@ public:
 	void drainFrame();
 
 	// Check whether the queue is empty.
-	// @return - if no rowops in the whole queue
+	// @return - true if no rowops in the whole queue
 	bool empty() const;
+
+	// Check whether the current frame is empty.
+	// @return - true if the current frame is empty
+	bool isFrameEmpty() const
+	{
+		return innerFrame_->empty();
+	}
+
+	// Check whether the unit is in the outer frame (i.e. not
+	// in the middle of a call).
+	// @return - true if the current frame is the outer frame
+	bool isInOuterFrame() const
+	{
+		return innerFrame_ == outerFrame_;
+	}
 
 	// Get the human-readable name
 	const string &getName() const

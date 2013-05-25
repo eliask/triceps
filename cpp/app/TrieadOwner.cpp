@@ -282,6 +282,7 @@ void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
 				FdataVec fd;
 				mainUnit_->call(new Rowop(
 					beginLabel, Rowop::OP_INSERT, beginLabel->getType()->makeRow(fd)));
+				drainUnits();
 			}
 		}
 	}
@@ -289,6 +290,7 @@ void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
 		const Xtray::Op &op = xt->at(i);
 		mainUnit_->call(new Rowop(
 			fret->getLabel(op.idx_), op.opcode_, op.row_));
+		drainUnits();
 	}
 
 	{
@@ -302,8 +304,37 @@ void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
 				FdataVec fd;
 				mainUnit_->call(new Rowop(
 					endLabel, Rowop::OP_INSERT, endLabel->getType()->makeRow(fd)));
+				drainUnits();
 			}
 		}
+	}
+}
+
+void TrieadOwner::drainUnits()
+{
+	// an optimization for the frequent case
+	if (units_.size() == 1) {
+		mainUnit_->drainFrame();
+	} else {
+		// keep draining all the units until all of them are empty
+		// (since they may be interconnected and schedule data for each other,
+		// need to keep repeating).
+		bool repeat;
+		do {
+			repeat = false;
+
+			for (UnitList::iterator it = units_.begin(); it != units_.end(); ++it) {
+				Unit *u = *it;
+				// this method is not expected to be called when the units are not
+				// in the outer frame, but just in case, do the check about the
+				// current frame and not complete empty() to avoid the possibility
+				// of the endless loops
+				if (!u->isFrameEmpty()) {
+					u->drainFrame();
+					repeat = true;
+				}
+			}
+		} while(repeat);
 	}
 }
 

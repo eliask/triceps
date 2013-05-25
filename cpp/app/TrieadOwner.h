@@ -538,6 +538,10 @@ protected:
 	// May propagate an Exception.
 	void processXtray(Xtray *xt, Facet *facet);
 
+	// Drain any scheduled rowops from all the units. Done after
+	// executing every rowop from Xtray.
+	void drainUnits();
+
 	// Get the QueEvent.
 	QueEvent *queEvent()
 	{
