@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 92 };
+BEGIN { plan tests => 104 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -485,3 +485,53 @@ ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can 
 		ok($@, qr/^Triceps::TableType::copyFundamental: unable to find the index type at path 'one.z', table type is:/);
 	}
 }
+
+###################### findOrAddIndex #################################
+
+{
+	my $ttProto = Triceps::TableType->new($rt1)
+		->addSubIndex("by_ab",
+			Triceps::IndexType->newHashed(key => [ "a", "b" ])
+			->addSubIndex("by_c",
+				Triceps::IndexType->newHashed(key => [ "c" ])
+			)
+		)
+	;
+	# find an existing index
+	ok(ref $ttProto, "Triceps::TableType");
+	my @path = $ttProto->findOrAddIndex("a", "b", "c");
+	ok(join(',', @path), "by_ab,by_c");
+
+	# add a new index
+	my $tt2 = $ttProto->copy();
+	ok(ref $tt2, "Triceps::TableType");
+	@path = $tt2->findOrAddIndex("a", "c");
+	ok(join(',', @path), "by_a_c");
+	ok($tt2->print(undef), "table ( row { uint8 a, int32 b, int64 c, float64 d, string e, } ) { index HashedIndex(a, b, ) { index HashedIndex(c, ) by_c, } by_ab, index HashedIndex(a, c, ) { index FifoIndex() fifo, } by_a_c, }");
+	ok($tt2->initialize());
+
+	# try a conflicting name
+	$tt2 = Triceps::TableType->new($rt1)
+		->addSubIndex("by_a_c",
+			Triceps::IndexType->newHashed(key => [ "a" ])
+		)
+		->addSubIndex("by_a_c_",
+			Triceps::IndexType->newHashed(key => [ "a" ])
+		)
+	;
+	ok(ref $tt2, "Triceps::TableType");
+	@path = $tt2->findOrAddIndex("a", "c");
+	ok(join(',', @path), "by_a_c__");
+	ok($tt2->initialize());
+
+	# try an unknown field
+	$tt2 = $ttProto->copy();
+	ok(ref $tt2, "Triceps::TableType");
+	eval { $tt2->findOrAddIndex("a", "zzz"); };
+	ok($@, qr/^Triceps::TableType::findOrAddIndex: can not use a non-existing field 'zzz' to create an index\n  table row type:\n  row {\n    uint8 a,\n    int32 b,\n    int64 c,\n    float64 d,\n    string e,\n  }\n  at/);
+
+	# an empty field list
+	eval { $tt2->findOrAddIndex(); };
+	ok($@, qr/^Triceps::TableType::findOrAddIndex: no index fields specified at/);
+}
+

@@ -74,9 +74,9 @@ sub findIndexKeyPath # (self, idxName, ...)
 
 # Find if possible a ready index that matches the input set of key
 # fields.
-# @param keyFld1, ... - names of the desired key fields
+# @param @keyFld - names of the desired key fields
 # @return - the array with the key path if found, or empty if no match found
-sub findIndexPathForKeys # (self, keyFld1, ...)
+sub findIndexPathForKeys # ($self, @keyFld1)
 {
 	my $myname = "Triceps::TableType::findIndexKeyPath";
 	my $self = shift;
@@ -122,6 +122,58 @@ sub findIndexPathForKeys # (self, keyFld1, ...)
 		push @curkeys, \%keysleft;
 		push @todo, [$idx->getSubIndexes()]; # go deeper
 	}
+}
+
+# Find an existing index that matches these keys, or if none found then
+# add a new one as a secondary index at the top level (the name will
+# be created from the names of the fields). Either way will return
+# the index type path.
+#
+# If the index type is added, it will always be a Hashed one
+# with a Fifo under it (since supposedly the primary index would
+# be alredy defined and not matching, so the required index is
+# a secondary with probably multiple rows per key).
+#
+# This table type must be not initialized yet.
+#
+# Confesses on errors. Also may leave the table type with errors
+# to be found during initialization.
+#
+# @param @keyFld - names of the desired key fields
+# @return - the array with the key path
+sub findOrAddIndex # ($self, @keyFld)
+{
+	my $myname = "Triceps::TableType::findOrAddIndex";
+	my $self = shift;
+
+	confess "$myname: no index fields specified" if ($#_ < 0);
+
+	my @path = $self->findIndexPathForKeys(@_);
+	return @path unless ($#path < 0);
+
+	# Check that all the field names are valid, otherwise
+	# it will show up at initialization time anyway but will
+	# be harder to track to where it was created.
+	my %rtdef = $self->getRowType()->getdef();
+	for my $f (@_) {
+		confess("$myname: can not use a non-existing field '$f' to create an index\n  table row type:\n  "
+				. $self->getRowType()->print("  ") . "\n ")
+			unless (exists $rtdef{$f});
+	}
+
+	my $idxname = "by_" . join('_', @_);
+	# make sure that it doesn't conflict
+	my %ihash = $self->getSubIndexes();
+	while (exists $ihash{$idxname}) {
+		$idxname .= '_';
+	}
+
+	my $idx = Triceps::IndexType->newHashed(key => [ @_ ]);
+	$idx->addSubIndex("fifo", Triceps::IndexType->newFifo())
+		or confess "$!";
+	$self->addSubIndex($idxname, $idx)
+		or confess "$!";
+	return ($idxname);
 }
 
 # Copy a table type by extracting only a subsef of indexes,
