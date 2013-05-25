@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 77 };
+BEGIN { plan tests => 76 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -308,7 +308,6 @@ qr/^Triceps::Label::adopt: row types do not match
       string e,
     }/);
 
-# an unmatching unit is not OK
-$ropx1 = eval { $laby1->adopt($rop1); };
-ok(!defined $ropx1);
-ok($@, qr/^Triceps::Label::adopt: label units do not match, 'u2' vs 'u1'/);
+# an unmatching unit is OK
+$ropx1 = $laby1->adopt($rop1);
+ok(ref $ropx1, "Triceps::Rowop");

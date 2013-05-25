@@ -252,11 +252,6 @@ adopt(WrapLabel *self, WrapRowop *wrop)
 			Rowop *orop = wrop->get();
 			const Label *olab = orop->getLabel();
 
-			if (lab->getUnitPtr() != olab->getUnitPtr()) {
-				throw Exception::f("%s: label units do not match, '%s' vs '%s'", funcName,
-					lab->getUnitName().c_str(), olab->getUnitName().c_str());
-			}
-
 			if (!lab->getType()->match(olab->getType())) {
 				throw Exception(strprintf("%s: row types do not match\n  Label:\n    ", funcName)
 						+ lab->getType()->print("    ") + "\n  Row:\n    " + olab->getType()->print("    "),
