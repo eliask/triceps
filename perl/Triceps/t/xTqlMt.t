@@ -323,7 +323,7 @@ c1|__EOF__
 			$client->expect(c1 => 'ready');
 
 			# fill the symbols
-			$client->send(c1 => "d,symbol,OP_INSERT,ABC,ABC Corp,1.0\n");
+			$client->send(c1 => "d,symbol,OP_INSERT,ABC,ABC Corp,2.0\n");
 			$client->send(c1 => "d,symbol,OP_INSERT,DEF,Defense Corp,2.0\n");
 			$client->send(c1 => "d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0\n");
 			# no expect, because not subscribed yet
@@ -355,6 +355,16 @@ c1|__EOF__
 			$client->send(c1 => "d,window,OP_DELETE,1\n");
 			$client->expect(c1 => '^t,query1');
 
+			# a weird query that doesn't make a whole lot of sense
+			# but tests the join of the same table twice in the
+			# same query
+			$client->send(c1 => "querysub,q2,query2,"
+				. '{read table window}'
+				. '{join table symbol byLeft {symbol} type left}'
+				. '{join table symbol byLeft {eps} type left rightFields {symbol/symbol2}}'
+				. "\n");
+			$client->expect(c1 => '^querysub,q2,query2');
+
 			$client->send(c1 => "shutdown\n");
 			$client->expect(c1 => '__EOF__');
 
@@ -362,7 +372,7 @@ c1|__EOF__
 			ok($client->getTrace(), 
 '> connect c1
 c1|ready
-> c1|d,symbol,OP_INSERT,ABC,ABC Corp,1.0
+> c1|d,symbol,OP_INSERT,ABC,ABC Corp,2.0
 > c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
 > c1|d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0
 > c1|d,window,OP_INSERT,1,AAA,12,100
@@ -370,13 +380,18 @@ c1|ready
 c1|t,query1,query1 OP_INSERT id="1" symbol="AAA" price="12" size="100" name="Absolute Auto Analytics Inc" eps="3" 
 c1|querysub,q1,query1
 > c1|d,window,OP_INSERT,2,ABC,13,100
-c1|t,query1,query1 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="1" 
+c1|t,query1,query1 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="2" 
 > c1|d,window,OP_INSERT,3,AAA,11,200
 c1|t,query1,query1 OP_INSERT id="3" symbol="AAA" price="11" size="200" name="Absolute Auto Analytics Inc" eps="3" 
 > c1|d,symbol,OP_DELETE,AAA,Absolute Auto Analytics Inc,3.0
 > c1|d,symbol,OP_INSERT,AAA,Alcoholic Abstract Aliens,3.0
 > c1|d,window,OP_DELETE,1
 c1|t,query1,query1 OP_DELETE id="1" symbol="AAA" price="12" size="100" name="Alcoholic Abstract Aliens" eps="3" 
+> c1|querysub,q2,query2,{read table window}{join table symbol byLeft {symbol} type left}{join table symbol byLeft {eps} type left rightFields {symbol/symbol2}}
+c1|t,query2,query2 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="2" symbol2="ABC" 
+c1|t,query2,query2 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="2" symbol2="DEF" 
+c1|t,query2,query2 OP_INSERT id="3" symbol="AAA" price="11" size="200" name="Alcoholic Abstract Aliens" eps="3" symbol2="AAA" 
+c1|querysub,q2,query2
 > c1|shutdown
 c1|shutdown,,,,
 c1|__EOF__
