@@ -11,7 +11,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 4 };
+BEGIN { plan tests => 5 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Triceps::X::Tql;
@@ -55,11 +55,8 @@ sub appCoreT # (@opts)
 	) or confess "$!";
 
 	my $ttWindow = Triceps::TableType->new($rtTrade)
-		->addSubIndex("bySymbol", 
-			Triceps::SimpleOrderedIndex->new(symbol => "ASC")
-				->addSubIndex("last2",
-					Triceps::IndexType->newFifo(limit => 2)
-				)
+		->addSubIndex("byId", 
+			Triceps::SimpleOrderedIndex->new(id => "ASC")
 		)
 		or confess "$!";
 	$ttWindow->initialize() or confess "$!";
@@ -287,6 +284,99 @@ c1|d,query1,OP_INSERT,AAA,Absolute Auto Analytics Inc,3
 c1|t,query2,query2 OP_INSERT symbol="AAA" eps="3" 
 > c1|d,symbol,OP_DELETE,DEF,Defense Corp,2.0
 c1|d,query1,OP_DELETE,DEF,Defense Corp,2
+> c1|shutdown
+c1|shutdown,,,,
+c1|__EOF__
+');
+		};
+	};
+
+	# let the errors from the server to be printed first
+	$thread->join();
+	die $@ if $@;
+}
+
+# the query with join
+{
+	my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
+			app => "appTql",
+			main => \&appCoreT,
+			port => 0,
+			fork => -1, # create a thread, not a process
+	);
+
+	eval {
+		Triceps::App::build "client", sub {
+			my $appname = $Triceps::App::name;
+			my $owner = $Triceps::App::global;
+
+			# give the port in startClient
+			my $client = Triceps::X::ThreadedClient->new(
+				owner => $owner,
+				totalTimeout => 10.,
+				debug => 0,
+			);
+
+			$owner->readyReady();
+
+			$client->startClient(c1 => $port);
+			$client->expect(c1 => 'ready');
+
+			# fill the symbols
+			$client->send(c1 => "d,symbol,OP_INSERT,ABC,ABC Corp,1.0\n");
+			$client->send(c1 => "d,symbol,OP_INSERT,DEF,Defense Corp,2.0\n");
+			$client->send(c1 => "d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0\n");
+			# no expect, because not subscribed yet
+
+			# send some trades too
+			$client->send(c1 => "d,window,OP_INSERT,1,AAA,12,100\n");
+			# no expect, because not subscribed yet
+
+			# the query with join
+			$client->send(c1 => "querysub,q1,query1,"
+				. '{read table window}'
+				. '{join table symbol byLeft {symbol} type left}'
+				. "\n");
+			$client->expect(c1 => '^querysub,q1,query1');
+
+			# more trades
+			$client->send(c1 => "d,window,OP_INSERT,2,ABC,13,100\n");
+			$client->expect(c1 => '^t,query1');
+			$client->send(c1 => "d,window,OP_INSERT,3,AAA,11,200\n");
+			$client->expect(c1 => '^t,query1');
+
+			# change a symbol
+			$client->send(c1 => "d,symbol,OP_DELETE,AAA,Absolute Auto Analytics Inc,3.0\n");
+			$client->send(c1 => "d,symbol,OP_INSERT,AAA,Alcoholic Abstract Aliens,3.0\n");
+			# since the join is LookupJoin, produces no output
+
+			# but on the next trade will use the new symbol info
+			# (and magically fill the rest of the fields from primary key on DELETE)
+			$client->send(c1 => "d,window,OP_DELETE,1\n");
+			$client->expect(c1 => '^t,query1');
+
+			$client->send(c1 => "shutdown\n");
+			$client->expect(c1 => '__EOF__');
+
+			#print $client->getTrace();
+			ok($client->getTrace(), 
+'> connect c1
+c1|ready
+> c1|d,symbol,OP_INSERT,ABC,ABC Corp,1.0
+> c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
+> c1|d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0
+> c1|d,window,OP_INSERT,1,AAA,12,100
+> c1|querysub,q1,query1,{read table window}{join table symbol byLeft {symbol} type left}
+c1|t,query1,query1 OP_INSERT id="1" symbol="AAA" price="12" size="100" name="Absolute Auto Analytics Inc" eps="3" 
+c1|querysub,q1,query1
+> c1|d,window,OP_INSERT,2,ABC,13,100
+c1|t,query1,query1 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="1" 
+> c1|d,window,OP_INSERT,3,AAA,11,200
+c1|t,query1,query1 OP_INSERT id="3" symbol="AAA" price="11" size="200" name="Absolute Auto Analytics Inc" eps="3" 
+> c1|d,symbol,OP_DELETE,AAA,Absolute Auto Analytics Inc,3.0
+> c1|d,symbol,OP_INSERT,AAA,Alcoholic Abstract Aliens,3.0
+> c1|d,window,OP_DELETE,1
+c1|t,query1,query1 OP_DELETE id="1" symbol="AAA" price="12" size="100" name="Alcoholic Abstract Aliens" eps="3" 
 > c1|shutdown
 c1|shutdown,,,,
 c1|__EOF__

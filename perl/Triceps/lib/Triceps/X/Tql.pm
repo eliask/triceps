@@ -304,6 +304,70 @@ sub initialize # ($self)
 	$self->{initialized} = 1;
 }
 
+# Build a "qdumpsub" request for dumping a table and subscribing to its
+# updates in the multithreaded configuration.
+#
+# Confesses on errors.
+#
+# @param ctx - the context of the query
+# @param tabname - name of the table to dump
+# @param front - flag: put this request at the front of the requests
+#        list; default: 0; the normal reading should use 0 but the
+#        joining uses 1 to read the dimension tables before the
+#        man fact feed starts
+# @param lbNext - the label where the results of the dump and
+#        subscription will be sent; if undef then a dummy label will
+#        be created automatically
+# @return - the lbNext, as passed in or automatically created
+sub _makeQdumpsub # ($ctx, $tabname, [$front, $lbNext])
+{
+	my $ctx = shift;
+	my $tabname = shift;
+	my $front = shift;
+	my $lbNext = shift;
+
+	my $unit = $ctx->{u};
+
+	my $lbrq = eval {
+		$ctx->{faRqDump}->getLabel("t.rqdump.$tabname");
+	};
+	my $lbsrc = eval {
+		$ctx->{faOut}->getLabel("t.out.$tabname");
+	};
+	die ("Found no such table '$tabname'\n") unless ($lbrq && $lbsrc);
+
+	# compute the binding for the data dumps, that would be a cross-unit
+	# binding to the original faOut but it's OK
+	my $fretOut = $ctx->{faOut}->getFnReturn();
+	my $dumpname = "t.dump.$tabname";
+	# the dump and following subscription data will merge on this label
+	if (!defined $lbNext) {
+		$lbNext = $unit->makeDummyLabel(
+			$lbsrc->getRowType(), "lb" . $ctx->{id} . "out_$tabname");
+	}
+
+	my $bindDump = Triceps::FnBinding->new(
+		on => $fretOut,
+		name => "bind" . $ctx->{id} . "dump",
+		labels => [ $dumpname => $lbNext ],
+	);
+
+	# qdumpsub:
+	#   * label where to send the dump request to
+	#   * source output label, from which a subscription will be set up
+	#     at the end of the dump
+	#   * target label in the query that will be tied to the source label
+	#   * binding to be used during the dump, which also directs the data
+	#     to the same target label
+	my $request = [ "qdumpsub", $lbrq, $lbsrc, $lbNext, $bindDump ];
+	if ($front) {
+		unshift @{$ctx->{requests}}, $request;
+	} else {
+		push @{$ctx->{requests}}, $request;
+	}
+	return $lbNext;
+}
+
 # "read" command. Defines a table to read from and starts the command pipeline.
 # Options:
 # table - name of the table to read from.
@@ -322,46 +386,14 @@ sub _tqlRead # ($ctx, @args)
 	my $unit = $ctx->{u};
 
 	if ($ctx->{faOut}) {
-		my $lbrq = eval {
-			$ctx->{faRqDump}->getLabel("t.rqdump.$tabname");
-		};
-		my $lbsrc = eval {
-			$ctx->{faOut}->getLabel("t.out.$tabname");
-		};
-		die ("Read found no such table '$tabname'\n") unless ($lbrq && $lbsrc);
-
-		# compute the binding for the data dumps, that would be a cross-unit
-		# binding to the original faOut but it's OK
-		my $fretOut = $ctx->{faOut}->getFnReturn();
-		my $dumpname = "t.dump.$tabname";
-		# the dump and following subscription data will merge on this label
-		my $lbNext = $unit->makeDummyLabel(
-			$lbsrc->getRowType(), "lb" . $ctx->{id} . "out");
-
-		my $bindDump = Triceps::FnBinding->new(
-			on => $fretOut,
-			name => "bind" . $ctx->{id} . "dump",
-			labels => [ $dumpname => $lbNext ],
-		);
-
 		# This request is not combined with any other table dump;
 		# if the query does a self-join, the table will be independently
 		# dumped twice.
 		# XXX For now the result of "read" is not saved in any local table
 		# copy, so it can not be used with a JoinTwo, only with a LookupJoin
 		# (which is consistent with the single-threaded Tql).
-		#
-		# qdumpsub:
-		#   * label where to send the dump request to
-		#   * source output label, from which a subscription will be set up
-		#     at the end of the dump
-		#   * target label in the query that will be tied to the source label
-		#   * binding to be used during the dump, which also directs the data
-		#     to the same target label
-		my $request = [ "qdumpsub", $lbrq, $lbsrc, $lbNext, $bindDump ];
-		push @{$ctx->{requests}}, $request;
 
-		$ctx->{next} = $lbNext;
+		$ctx->{next} = &_makeQdumpsub($ctx, $tabname);
 	} else {
 		my $fret = $ctx->{fretDumps};
 
@@ -529,9 +561,8 @@ sub _tqlJoin # ($ctx, @args)
 	}, @_);
 
 	my $tabname = bunquote($opts->{table});
-	die ("Join found no such table '$tabname'\n")
-		unless (exists $ctx->{tables}{$tabname});
-	my $table = $ctx->{tables}{$tabname};
+	my $unit = $ctx->{u};
+	my $table;
 
 	&Triceps::Opt::checkMutuallyExclusive("join", 1, "by", $opts->{by}, "byLeft", $opts->{byLeft});
 	my $by = split_braced_final($opts->{by});
@@ -540,6 +571,62 @@ sub _tqlJoin # ($ctx, @args)
 	my $rightIdxPath;
 	if (defined $opts->{rightIdxPath}) { # propagate the undef
 		$rightIdxPath = split_braced_final($opts->{rightIdxPath});
+	}
+
+	# If we were to use a JoinTwo (which is more correct), the data
+	# incoming through the query would have to be put into a table too.
+	# And that requires finding the primary key for the data.
+	# I suppose, after the sequence ids for the rows would get worked
+	# out, that would provide the easy default primary key.
+	if ($ctx->{faOut}) {
+		# Potentially, the tables might be reused between multiple joins
+		# in the query if the required keys match. But for now keep things
+		# simpler by creating a new table from scratch each time.
+
+		my $lbrq = eval {
+			$ctx->{faRqDump}->getLabel("t.rqdump.$tabname");
+		};
+		my $lbsrc = eval {
+			$ctx->{faOut}->getLabel("t.out.$tabname");
+		};
+		my $tt = eval {
+			# copy to avoid adding an index to the original type
+			$ctx->{faOut}->impTableType($tabname)->copy();
+		};
+		die ("Join found no such table '$tabname'\n") unless ($lbrq && $lbsrc & $tt);
+
+		if (!defined $rightIdxPath) {
+			# determine or add the index automatically
+			my @workby;
+			if (defined $byLeft) { # need to translate
+				my @leftfld = $ctx->{prev}->getRowType()->getFieldNames();
+				@workby = &Triceps::Fields::filterToPairs("Join option 'byLeft'", 
+					\@leftfld, [ @$byLeft, "!.*" ]);
+			} else {
+				@workby = @$by;
+			}
+			
+			my @idxkeys; # extract the keys for the right side table
+			for (my $i = 1; $i <= $#workby; $i+= 2) {
+				push @idxkeys, $workby[$i];
+			}
+			$rightIdxPath = [ $tt->findOrAddIndex(@idxkeys) ];
+		}
+
+		# build the table from the type
+		$tt->initialize() or confess "$!";
+		$table = $ctx->{u}->makeTable($tt, "EM_CALL", "tab" . $ctx->{id} . $tabname);
+		push @{$ctx->{copyTables}}, $table;
+
+		# build the request that fills the table with data and then
+		# keeps it up to date; 
+		# the table has to be filled before the query's main flow starts,
+		# so put the request at the front
+		&_makeQdumpsub($ctx, $tabname, 1, $table->getInputLabel());
+	} else {
+		die ("Join found no such table '$tabname'\n")
+			unless (exists $ctx->{tables}{$tabname});
+		$table = $ctx->{tables}{$tabname};
 	}
 
 	my $isLeft = 0; # default for inner join
@@ -555,7 +642,6 @@ sub _tqlJoin # ($ctx, @args)
 	my $leftFields = split_braced_final($opts->{leftFields});
 	my $rightFields = split_braced_final($opts->{rightFields});
 
-	my $unit = $ctx->{u};
 	my $join = Triceps::LookupJoin->new(
 		name => "join" . $ctx->{id},
 		unit => $unit,
@@ -781,7 +867,8 @@ sub compileQuery # (@opts)
 	$ctx->{faRqDump} = $opts->{faRqDump};
 	$ctx->{subPrint} = $opts->{subPrint};
 	$ctx->{requests} = []; # dump and subscribe requests that will run the pipeline
-	$ctx->{copyTabs} = {}; # information on table copies that have been set up
+	$ctx->{copyTables} = []; # the tables created in this query
+		# (have to keep references to the tables or they will disappear)
 
 	# The query will be built in a separate unit
 	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
@@ -1174,6 +1261,7 @@ sub writeT
 			# this code very specifically ignores %dump, doing its requests
 			# independently for each query, and showing off another way to
 			# do things
+			# print "DBG next request {" . $ctx->{qname} . "} qdumpsub " . $lbrq->getName() . "\n";
 			$unit->makeHashCall($lbrq, "OP_INSERT", 
 				client => $fragment, id => $ctx->{qid}, name => $ctx->{qname}, cmd => $cmd);
 		} else {
@@ -1291,10 +1379,8 @@ sub writeT
 			$ctx->{curRequest}[2]->makeChained(
 				"qsub$id." . $ctx->{curRequest}[3]->getName(), undef,
 				sub {
-					# cross-unit forward to the subscribed label (and can't just adopt the
-					# rowop because it will complain about different units)
-					# XXX should have a method for cross-unit call?
-					$_[2]->call($_[3]->makeRowop($_[1]->getOpcode(), $_[1]->getRow()));
+					# a cross-unit call
+					$_[2]->call($_[3]->adopt($_[1]));
 				},
 				$ctx->{u}, $ctx->{curRequest}[3]
 			);
