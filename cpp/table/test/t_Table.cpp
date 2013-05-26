@@ -16,33 +16,7 @@
 #include <table/Table.h>
 #include <mem/Rhref.h>
 
-// Make fields of all simple types
-void mkfields(RowType::FieldVec &fields)
-{
-	fields.clear();
-	fields.push_back(RowType::Field("a", Type::r_uint8, 10));
-	fields.push_back(RowType::Field("b", Type::r_int32,0));
-	fields.push_back(RowType::Field("c", Type::r_int64));
-	fields.push_back(RowType::Field("d", Type::r_float64));
-	fields.push_back(RowType::Field("e", Type::r_string));
-}
-
-uint8_t v_uint8[10] = "123456789";
-int32_t v_int32 = 1234;
-int64_t v_int64 = 0xdeadbeefc00c;
-double v_float64 = 9.99e99;
-char v_string[] = "hello world";
-
-void mkfdata(FdataVec &fd)
-{
-	fd.resize(4);
-	fd[0].setPtr(true, &v_uint8, sizeof(v_uint8));
-	fd[1].setPtr(true, &v_int32, sizeof(v_int32));
-	fd[2].setPtr(true, &v_int64, sizeof(v_int64));
-	fd[3].setPtr(true, &v_float64, sizeof(v_float64));
-	// test the constructor
-	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
-}
+#include <utest/TestHelpers.h>
 
 // records the table size in the tracer's buffer when called
 class LabelTraceSize : public Label
@@ -247,8 +221,7 @@ UTESTCASE exceptions(Utest *utest)
 {
 	string msg;
 
-	Exception::abort_ = false; // make them catchable
-	Exception::enableBacktrace_ = false; // make the error messages predictable
+	make_catchable();
 
 	RowType::FieldVec fld;
 	mkfields(fld);
@@ -441,17 +414,11 @@ UTESTCASE exceptions(Utest *utest)
 	UT_ASSERT(rh12->isInTable());
 	UT_ASSERT(!rh21->isInTable());
 
-	Exception::abort_ = true; // restore back
-	Exception::enableBacktrace_ = true; // restore back
+	restore_uncatchable();
 }
 
 UTESTCASE groupSize(Utest *utest)
 {
-	string msg;
-
-	Exception::abort_ = false; // make them catchable
-	Exception::enableBacktrace_ = false; // make the error messages predictable
-
 	RowType::FieldVec fld;
 	mkfields(fld);
 
@@ -629,4 +596,47 @@ UTESTCASE dumpAll(Utest *utest)
 	t->dumpAllIdx(NULL);
 	tlog = trace->getBuffer()->print();
 	UT_IS(tlog, "unit 'u' before label 't.dump' op OP_INSERT\n");
+}
+
+// test of the reference keeping, and detection by the input label
+// of the table being destroyed
+UTESTCASE inputRef(Utest *utest)
+{
+	string msg;
+	make_catchable();
+
+	RowType::FieldVec fld;
+	mkfields(fld);
+
+	Autoref<Unit> unit = new Unit("u");
+	Autoref<Unit::StringNameTracer> trace = new Unit::StringNameTracer;
+	unit->setTracer(trace);
+
+	Autoref<RowType> rt1 = new CompactRowType(fld);
+	UT_ASSERT(rt1->getErrors().isNull());
+
+	Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
+		->addSubIndex("fifo", new FifoIndexType())
+	);
+
+	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	UT_ASSERT(!t.isNull());
+
+	Autoref<Label> lbin = t->getInputLabel();
+	t = NULL; // drop the reference to a table, this should destroy it
+
+	FdataVec dv;
+	mkfdata(dv);
+	Rowref r1(rt1,  rt1->makeRow(dv));
+
+	try {
+		unit->call(new Rowop(lbin, Rowop::OP_INSERT, r1));
+	} catch(Exception e) {
+		msg = e.getErrors()->print();
+	}
+	UT_IS(msg, 
+		"Can not send more input to a destroyed table\n"
+		"Called through the label 't.in'.\n");
+
+	restore_uncatchable();
 }

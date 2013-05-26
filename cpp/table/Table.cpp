@@ -26,6 +26,9 @@ Table::InputLabel::InputLabel(Unit *unit, const_Onceref<RowType> rtype, const st
 
 void Table::InputLabel::execute(Rowop *arg) const
 {
+	if (table_ == NULL)
+		throw Exception::f("Can not send more input to a destroyed table");
+
 	if (arg->isInsert()) {
 		table_->insertRow(arg->getRow()); // ignore the failures
 	} else if (arg->isDelete()) {
@@ -61,6 +64,8 @@ Table::Table(Unit *unit, EnqMode emode, const string &name,
 Table::~Table()
 {
 	// fprintf(stderr, "DEBUG Table::~Table root=%p\n", root_.get());
+
+	inputLabel_->resetTable(); // prevent it from sending more data
 
 	// remove all the rows in the table: this goes more efficiently
 	// if we first move them to a vector, clear the indexes and delete from vector;

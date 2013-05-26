@@ -343,12 +343,20 @@ protected:
 protected:
 	class InputLabel: public Label
 	{
+		friend class Table;
 	public:
 		InputLabel(Unit *unit, const_Onceref<RowType> rtype, const string &name, Table *table);
 
 	protected:
 		// from Label
+		// Throws an Exception of the table is already destroyed.
 		virtual void execute(Rowop *arg) const;
+
+		// when the table gets destroyed, it resets this back-link
+		void resetTable()
+		{
+			table_ = NULL;
+		}
 
 		Table *table_;
 	};
