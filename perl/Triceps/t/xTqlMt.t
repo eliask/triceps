@@ -11,7 +11,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 5 };
+BEGIN { plan tests => 7 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Triceps::X::Tql;
@@ -94,6 +94,14 @@ sub appCoreT # (@opts)
 			$tSymbol,
 		],
 		tableNames => [
+			"window",
+			"symbol",
+		],
+		inputs => [
+			$tWindow->getInputLabel(),
+			$tSymbol->getInputLabel(),
+		],
+		inputNames => [
 			"window",
 			"symbol",
 		],
@@ -402,6 +410,40 @@ c1|__EOF__
 	# let the errors from the server to be printed first
 	$thread->join();
 	die $@ if $@;
+}
+
+# test that the addInput() and addNamedInput() work, without actually instantating
+# the server
+{
+	my $uTrades = Triceps::Unit->new("uTrades");
+
+	my $rtTrade = Triceps::RowType->new(
+		id => "int32", # trade unique id
+		symbol => "string", # symbol traded
+		price => "float64",
+		size => "float64", # number of shares traded
+	) or confess "$!";
+
+	my $lb1 = $uTrades->makeDummyLabel($rtTrade, "lb1");
+	my $lb2 = $uTrades->makeDummyLabel($rtTrade, "lb2");
+	my $lb3 = $uTrades->makeDummyLabel($rtTrade, "lb3");
+	my $lb4 = $uTrades->makeDummyLabel($rtTrade, "lb4");
+
+	# The information about tables, for querying.
+	my $tql = Triceps::X::Tql->new(name => "tql");
+	$tql->addNamedInput(
+		first => $lb1,
+		second => $lb2,
+	);
+	$tql->addInput(
+		$lb3,
+		$lb4,
+	);
+	my @inputs = @{$tql->{inputs}};
+	my @inputNames = @{$tql->{inputNames}};
+
+	ok(join(',', map {$_->getName()} @inputs), "lb1,lb2,lb3,lb4");
+	ok(join(',', @inputNames), "first,second,lb3,lb4");
 }
 
 # check that everything completed and not died

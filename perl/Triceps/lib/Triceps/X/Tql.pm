@@ -68,6 +68,17 @@ use Safe;
 # (optional) Reference to an array of names, under which the tables
 # from the option "tables" will be known to TQL. If absent, the table names
 # will be obtained with getName() for each table.
+#
+# inputs => [ @inputs ]
+# (optional) Reference to an array of labels that the multithreaded
+# TQL will recognize as inputs to which the clients may send data.
+# The single-threaded TQL silently ignores them.
+# The presence of this option triggers the immediate initialization.
+#
+# inputNames => [ @names ]
+# (optional) Reference to an array of names, under which the labels
+# from the option "inputs" will be known to TQL. If absent, the names
+# will be obtained with getName() for each label.
 sub new # ($class, $optName => $optValue, ...)
 {
 	my $myname = "Triceps::X::Tql";
@@ -78,6 +89,8 @@ sub new # ($class, $optName => $optValue, ...)
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		tables => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "Triceps::Table") } ],
 		tableNames => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
+		inputs => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "Triceps::Label") } ],
+		inputNames => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 		trieadOwner => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
 		socketName => [ undef, undef ],
 		nxprefix => [ "tql", undef ],
@@ -95,10 +108,30 @@ sub new # ($class, $optName => $optValue, ...)
 			}
 			$self->{tableNames} = \@names;
 		}
-		initialize($self);
 	} else {
 		confess "$myname: the option 'tableNames' may not be used without option 'tables'."
 			if (defined $self->{tableNames});
+	}
+
+	if (defined $self->{inputs}) {
+		if (defined $self->{inputNames}) {
+			confess "$myname: the arrays in options 'inputs' and 'inputNames' must be of equal size, got "
+					. ($#{$self->{inputs}} + 1) . " and " . ($#{$self->{inputNames}} + 1)
+				unless ($#{$self->{inputNames}} == $#{$self->{inputs}});
+		} else {
+			my @names;
+			foreach my $t (@{$self->{inputs}}) {
+				push @names, $t->getName();
+			}
+			$self->{inputNames} = \@names;
+		}
+	} else {
+		confess "$myname: the option 'inputNames' may not be used without option 'inputs'."
+			if (defined $self->{inputNames});
+	}
+
+	if (defined $self->{tables} || defined $self->{inputs}) {
+		initialize($self);
 	}
 
 	confess "$myname: option 'trieadOwner' requires 'socketName'"
@@ -148,6 +181,51 @@ sub addTable # ($self, @tables)
 
 		push @{$self->{tables}}, $table;
 		push @{$self->{tableNames}}, $table->getName();
+	}
+}
+
+# Add one or input labels, using their own names.
+# Has no effect in the single-threaded version.
+# May be used only while $self is not initialized.
+sub addInput # ($self, @labels)
+{
+	my $myname = "Triceps::X::Tql::addInput";
+	my $self = shift;
+
+	confess "$myname: may be used only on an uninitialized object"
+		if ($self->{initialized});
+
+	for my $label (@_) {
+		my $ref = ref $label;
+		confess "$myname: input label must be of Triceps::Label type, is '$ref'"
+			unless ($ref eq "Triceps::Label");
+
+		push @{$self->{inputs}}, $label;
+		push @{$self->{inputNames}}, $label->getName();
+	}
+}
+
+# Add one or more named inputs, defined in pairs of arguments.
+# Has no effect in the single-threaded version.
+# May be used only while $self is not initialized.
+sub addNamedInput # ($self, $name => $label, ...)
+{
+	my $myname = "Triceps::X::Tql::addNamedInput";
+	my $self = shift;
+
+	confess "$myname: may be used only on an uninitialized object"
+		if ($self->{initialized});
+
+	while($#_ >= 0) {
+		my $name = shift; 
+		my $label = shift;
+
+		my $ref = ref $label;
+		confess "$myname: input label name '$name' must be of Triceps::Label type, is '$ref'"
+			unless ($ref eq "Triceps::Label");
+
+		push @{$self->{inputs}}, $label;
+		push @{$self->{inputNames}}, $name;
 	}
 }
 
@@ -222,11 +300,11 @@ sub initialize # ($self)
 
 		# build the input side
 		undef @labels;
-		for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
-			my $name = $self->{tableNames}[$i]; 
-			my $table = $self->{tables}[$i];
+		for (my $i = 0; $i <= $#{$self->{inputs}}; $i++) {
+			my $name = $self->{inputNames}[$i]; 
+			my $input = $self->{inputs}[$i];
 
-			push @labels, "in." . $name, $table->getInputLabel()->getRowType();
+			push @labels, "in." . $name, $input->getRowType();
 		}
 		push @labels, "control", $rtControl;
 
@@ -236,11 +314,11 @@ sub initialize # ($self)
 			import => "reader",
 		);
 		# tie together the labels
-		for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
-			my $name = $self->{tableNames}[$i]; 
-			my $table = $self->{tables}[$i];
+		for (my $i = 0; $i <= $#{$self->{inputs}}; $i++) {
+			my $name = $self->{inputNames}[$i]; 
+			my $input = $self->{inputs}[$i];
 
-			$self->{faIn}->getLabel("in." . $name)->chain($table->getInputLabel());
+			$self->{faIn}->getLabel("in." . $name)->chain($input);
 		}
 		# the controll passes through
 		$self->{faIn}->getLabel("control")->chain($self->{faOut}->getLabel("control"));
