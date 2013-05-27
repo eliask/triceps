@@ -661,17 +661,11 @@ sub _tqlJoin # ($ctx, @args)
 		# in the query if the required keys match. But for now keep things
 		# simpler by creating a new table from scratch each time.
 
-		my $lbrq = eval {
-			$ctx->{faRqDump}->getLabel("t.rqdump.$tabname");
-		};
-		my $lbsrc = eval {
-			$ctx->{faOut}->getLabel("t.out.$tabname");
-		};
 		my $tt = eval {
 			# copy to avoid adding an index to the original type
 			$ctx->{faOut}->impTableType($tabname)->copy();
 		};
-		die ("Join found no such table '$tabname'\n") unless ($lbrq && $lbsrc & $tt);
+		die ("Join found no such table '$tabname'\n") unless ($tt);
 
 		if (!defined $rightIdxPath) {
 			# determine or add the index automatically
