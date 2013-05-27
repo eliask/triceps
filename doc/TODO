@@ -105,23 +105,39 @@ Things that need to be done:
 * in TrieadOwner::nextXtray allow a timeout
 * in ThreadedClient allow a timeout, and return 0 on expect on unexpected EOF
   or timeout
+* a row type that also holds an arbitrary Perl value
+* should the unit keep track of the tables? as-is it creates a reference loop,
+  but think of some better way: maybe split the "table wrap", "table core" and
+  input labeli(s). The table wrap will reference the unit, table core and input
+  label. The core will reference all the output labels. The unit will reference
+  the labels as usual and the table core.
+* allow to assign a name to the computed key of an index, and have getkey()
+  return both the assigned name and the source fields from which it is computed;
+  allow to select the index for joins by that assigned name (and the source
+  fields still would have to be provided from the other side of the join
+  to compute the index value); the assigned name must not conflict with the
+  field names of the row type
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
 * doc: perl Label::isCleared()
+* doc: in Perl Label::adopt() removed the check for the same unit
+* doc: Label::makeChained() in Perl
 * doc: in types construction throw instead of abort()
 * doc: HoldRowTypes
 * doc: RowType::copy(), RowSetType::deepCopy()
 * doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
+* doc: flat copying of indexes (C++ and Perl)
 * doc: Autoref::swap()
 * doc: RowType::isRowEmpty()
-* doc: croak() in typemap, it croak nicely, with a stack trace
+* doc: croak() in typemap, it croaks nicely, with a stack trace
 * doc: the "*" placeholder in Opt, Opt::drop, Opt::dropExcept
 * doc: FnReturn::isFaceted() in Perl
-* doc: Label::makeChained() in Perl
 * doc: how index comparators can return errors through table->setStickyError()
 * doc: in docbook update the source code produced by SimpleAggregator
-* doc: flat copying of indexes (C++ and Perl)
+* doc: Rowop::printP argument for an explicit name
+* doc: in C++ Unit isFrameEmpty(), isInOuterFrame() (add in Perl too?)
+* doc: important to keep areferences to Tables, not just to their labels
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
