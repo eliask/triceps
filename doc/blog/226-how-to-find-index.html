@@ -1,0 +1,23 @@
+how to find an index
+
+When working on the next example (still in progress but now getting closer to completion), I've solved one more nagging little problem: finding an index type in the table type by key fields. It makes the joins more convenient: if you know, by which fields you want to join, it's nice to find the correct index automatically. My previous solution to this problem has been to go in the opposite direction: specify the indexes for the join, and find the list of fields automatically from there. But that created a problem with deciding, which field on the left to pair with which on the right, and so either the indexes had to be carefully controlled to have the key fields in the same order, or a separate option still had to be used to specify the pairing of the fields.
+
+Now this problem is solved with the method:
+
+@idxPath = $tableType-> findIndexPathForKeys(@keyFields);
+
+It returns the array that represents the path to an index type that matches these key fields (the index type and all the types in the path still have to be of the Hashed variety). If the correct index can not be found, an empty array is returned. If you specify the fields that aren't present in the row type in the first place, this is simply treated the same as being unable to find an index for these fields.
+
+If more that one index would match, the first one found in the direct order of the index tree walk is returned.
+
+This allowed to change the LookupJoin to make the option  "rightIdxPath" optional: if undefined, the index that matches the key fields specified in the option "by" or "byLeft" will be found automatically. Of course, if such an index doesn't exist, it's still an error, the join could not create it for you yet.
+
+The same way, in the JoinTwo now the options "leftIdxPath" and "rightIdxPath" have become optional if either "by" or "byLeft" is specified. The old way of specifying "leftIdxPath" and "rightIdxPath" without any of the "by" varieties still works too.
+
+And this propagated into the TQL command "join": no more need for the option "rightIdxPath". You can still use it if you want but there is rarely any point to it, only if there are multiple matching indexes and you strongly prefer one of them.
+
+One more indirect fall-out from these changes is the new option to LookupJoin:
+
+  fieldsDropRightKey => 0/1
+
+The default is 0, and if you set it to 1, the logic will automatically exclude from the result row type the key fields from the right side. This is convenient because these fields contain the values that are duplicates of the key fields from the left side anyway. It's what the TQL join was doing all along, and the implementation of this logic becomes simpler when it gets moved directly into LookupJoin. 

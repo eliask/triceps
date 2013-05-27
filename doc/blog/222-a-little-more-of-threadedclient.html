@@ -1,0 +1,7 @@
+a little more of ThreadedClient
+
+Forgot to mention one more method of ThreadedClient, it's used like this:
+
+$client->sendClose("c4", "WR");
+
+This allows to close the client socket (in socket terms, shut it down). The first argument is the client name. The second argument determines, which side of the socket gets closed: "WR" for the writing side, "RD" for the reading side, and "RDWR" for both. It's the same names as for the system call shutdown(). 

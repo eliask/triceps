@@ -1,0 +1,56 @@
+Label chaining at the front, and label method confessions.
+
+It has been bothering me, how the threaded pipeline example was sensitive to the order of chaining the output facet and the internal logic to the input facet. To get the input data pass through first and only then have the processed data come out, the output facet had to be connected (and thus defined) first, and only then the internal logic could be connected to the input facet.  Things would be much easier if the output facet could be connected at the end, but still put at the front of the chain of the input facet's label. And the FnReturn in general suffers from this problem as well.
+
+So I've added this feature: a way to chain a label, placing it at the front of the chain.
+
+Along the way I've also changed all the Label methods to use the new way of error reporting, confessing on errors. No more need to add "or confess" after that manually (and I've been forgetting to do that properly all over the place).
+
+The new method is:
+
+$label->chainFront($otherLabel);
+
+In C++ this is done slightly differently, by adding an extra argument to chain:
+
+err = label->chain(otherLabel, true);
+
+The second argument has the default value of false, so the method is still backwards-compatible, and you can call either way
+
+err = label->chain(otherLabel);
+err = label->chain(otherLabel, false);
+
+
+to chain a label normally, at the end of the chain. The return value in C++ is still the Erref (though hm, maybe it could use an exception as well).
+
+Having done this, I went and changed the TrieadOwner::makeNexus() and FnReturn::new to chain their labels at the front by default. This can be switched to the old behavior by using a new option:
+
+  chainFront => 0
+
+The default value of this option is 1.
+
+In C++ this is expressed also by an extra argument to FnReturn::addFrontLabel(), that also has a default value, and the default value is true, matching the Perl code. Now when you call
+
+ret = initialize(FnReturn::make(unit, name)
+    ->addLabel("lb1", rt1)
+    ->addFromLabel("lb2", lbX)
+);
+
+or
+
+ret = initialize(FnReturn::make(unit, name)
+    ->addLabel("lb1", rt1)
+    ->addFromLabel("lb2", lbX, true)
+);
+
+
+you add the FnReturn's label to the front of the lbX's chain. To get the old behavior, use:
+
+ret = initialize(FnReturn::make(unit, name)
+    ->addLabel("lb1", rt1)
+    ->addFromLabel("lb2", lbX, false)
+);
+
+
+I've changed the default behavior because there would not be many uses for the old one.
+
+I haven't described yet, how the nexuses are created in C++, but they are created from an FnReturn, and thus this change to FnReturn covers them both. 
