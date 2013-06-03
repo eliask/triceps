@@ -80,9 +80,9 @@ Facet::Facet(Unit *unit, Autoref<Nexus> nx, const string &fullname, const string
 	const RowSetType::NameVec &rsnames = rst->getRowNames();
 	const RowSetType::RowTypeVec &rstypes = rst->getRowTypes();
 	int rsz = rsnames.size();
-	fret_->setFacet(this);
 	for (int i = 0; i < rsz; i++)
 		fret_->addLabel(rsnames[i], holder->copy(rstypes[i]));
+	fret_->setFacet(this);
 	fret_->initialize(); // never fails
 	
 	// this is pretty much a copy of the Nexus constructor logic from Facet
