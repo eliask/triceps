@@ -33,7 +33,7 @@ TableType *TableType::copy()
 	return cpt;
 }
 
-TableType *TableType::deepCopy(HoldRowTypes *holder)
+TableType *TableType::deepCopy(HoldRowTypes *holder) const
 {
 	TableType *cpt = new TableType(holder->copy(rowType_));
 	// replace the root index type with a copy

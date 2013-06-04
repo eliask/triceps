@@ -51,7 +51,7 @@ public:
 	//        (unless it's NULL, which reverts to plain copying).
 	//        The caller has to keep a reference to the holder for
 	//        the duration.
-	TableType *deepCopy(HoldRowTypes *holder);
+	TableType *deepCopy(HoldRowTypes *holder) const;
 
 	// from Type
 	virtual Erref getErrors() const; 
