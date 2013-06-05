@@ -80,7 +80,6 @@ sub mainT # (@opts)
 		labels => [
 			rate => $rtRate,
 			_BEGIN_ => $rtFrame,
-			_END_ => $rtFrame,
 		],
 		import => "none",
 	);
@@ -91,7 +90,6 @@ sub mainT # (@opts)
 		labels => [
 			result => $rtResult,
 			_BEGIN_ => $rtFrame,
-			_END_ => $rtFrame,
 		],
 		import => "none",
 	);
@@ -168,6 +166,7 @@ sub readerT # (@opts)
 
 	my $lbRate = $faIn->getLabel("rate");
 	my $lbBegin = $faIn->getLabel("_BEGIN_");
+	# _END_ is always defined, even if not defined explicitly
 	my $lbEnd = $faIn->getLabel("_END_");
 	my $seq = 0; # the sequence
 
@@ -180,9 +179,8 @@ sub readerT # (@opts)
 		$unit->makeHashCall($lbBegin, "OP_INSERT", seq => $seq);
 		my @data = split(/,/); # starts with a string opcode
 		$unit->makeArrayCall($lbRate, @data);
-		$unit->makeHashCall($lbEnd, "OP_INSERT", seq => $seq);
-		# writing to _END_ flushes the writer
-		#$owner->flushWriters();
+		# calling _END_ is an equivalent of flushWriter()
+		$unit->makeHashCall($lbEnd, "OP_INSERT");
 	}
 
 	{
@@ -265,12 +263,9 @@ sub workerT # (@opts)
 		}
 
 		# even with $compute is set, this might produce some output or not,
-		# but the frame still goes out every time $compute is set
+		# but the frame still goes out every time $compute is set, because
+		# _BEGIN_ forces it
 		$unit->call($lbRateInput->adopt($_[1]));
-
-		if ($compute) {
-			$unit->makeHashCall($lbResEnd, "OP_INSERT", seq => $seq, triead => $identity)
-		}
 	});
 
 
