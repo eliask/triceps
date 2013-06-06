@@ -1851,6 +1851,7 @@ UTESTCASE pass_begin_end(Utest *utest)
 	Autoref<TrieadOwner> ow2 = a1->makeTriead("t2");
 	Autoref<TrieadOwner> ow3 = a1->makeTriead("t3");
 	Autoref<TrieadOwner> ow4 = a1->makeTriead("t4");
+	Autoref<TrieadOwner> ow5 = a1->makeTriead("t5");
 
 	// prepare fragments
 	RowType::FieldVec fld;
@@ -1872,6 +1873,9 @@ UTESTCASE pass_begin_end(Utest *utest)
 	Autoref<Unit::Tracer> trace3 = new Unit::StringNameTracer(false);
 	unit3->setTracer(trace3);
 	Autoref<Unit> unit4 = ow4->unit();
+	Autoref<Unit> unit5 = ow5->unit();
+	Autoref<Unit::Tracer> trace5 = new Unit::StringNameTracer(false);
+	unit5->setTracer(trace5);
 
 	// start with a writer
 	Autoref<Facet> fa1a = ow1->makeNexusWriter("nxa")
@@ -1910,10 +1914,29 @@ UTESTCASE pass_begin_end(Utest *utest)
 
 	ow4->markReady();
 
+	// ow5 is very much like ow3, only with chaining from a binding
+	// add a reader
+	Autoref<Facet> fa5a = ow5->importReader("t1", "nxa", "");
+	ReaderQueue *far5a = FacetGuts::readerQueue(fa5a);
+	UT_ASSERT(far5a != NULL);
+
+	// in t5 add the begin/end label chainings
+	Autoref<Label> lb5begin = new DummyLabel(unit5, rt1, "begin");
+	Autoref<Label> lb5end = new DummyLabel(unit5, rt1, "end");
+
+	Autoref<FnBinding> bind5 = FnBinding::make("bind5", fa5a->getFnReturn())
+		->addLabel("_BEGIN_", lb5begin, true)
+		->addLabel("_END_", lb5end, true);
+
+	fa5a->getFnReturn()->push(bind5);
+
+	ow5->markReady();
+
 	ow1->readyReady();
 	ow2->readyReady();
 	ow3->readyReady();
 	ow4->readyReady();
+	ow5->readyReady();
 
 	// ----------------------------------------------------------------------
 
@@ -1977,6 +2000,21 @@ UTESTCASE pass_begin_end(Utest *utest)
 		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
 	}
 
+	// when the handlers are chained from a binding, begin/end get called
+	UT_ASSERT(ow5->nextXtray());
+	{
+		string tlog = trace5->getBuffer()->print();
+		trace5->clearBuffer();
+		string expect =
+			"unit 't5' before label 'nxa._BEGIN_' op OP_INSERT\n"
+			"unit 't5' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+			"unit 't5' before label 'nxa.one' op OP_INSERT\n"
+			"unit 't5' before label 'nxa._END_' op OP_INSERT\n"
+			"unit 't5' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+		;
+		if (UT_IS(tlog, expect)) printf("Expected: \"%s\"\n", expect.c_str());
+	}
+
 	// ----------------------------------------------------------------------
 
 	// send a row through with the BEGIN/END that become implicit
@@ -2026,6 +2064,21 @@ UTESTCASE pass_begin_end(Utest *utest)
 				"unit 't3' before label 'nxa.one' op OP_INSERT\n"
 				"unit 't3' before label 'nxa._END_' op OP_INSERT\n"
 				"unit 't3' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+			;
+			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
+		}
+
+		// when the handlers are chained from a binding, begin/end get called
+		UT_ASSERT(ow5->nextXtray());
+		{
+			string tlog = trace5->getBuffer()->print();
+			trace5->clearBuffer();
+			string expect =
+				"unit 't5' before label 'nxa._BEGIN_' op OP_INSERT\n"
+				"unit 't5' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+				"unit 't5' before label 'nxa.one' op OP_INSERT\n"
+				"unit 't5' before label 'nxa._END_' op OP_INSERT\n"
+				"unit 't5' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
 			;
 			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
 		}
@@ -2080,6 +2133,20 @@ UTESTCASE pass_begin_end(Utest *utest)
 			;
 			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
 		}
+
+		UT_ASSERT(ow5->nextXtray());
+		{
+			string tlog = trace5->getBuffer()->print();
+			trace5->clearBuffer();
+			string expect =
+				"unit 't5' before label 'nxa._BEGIN_' op OP_NOP\n"
+				"unit 't5' before label 'begin' (chain 'nxa._BEGIN_') op OP_NOP\n"
+				"unit 't5' before label 'nxa.one' op OP_INSERT\n"
+				"unit 't5' before label 'nxa._END_' op OP_NOP\n"
+				"unit 't5' before label 'end' (chain 'nxa._END_') op OP_NOP\n"
+			;
+			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
+		}
 	}
 
 	// ----------------------------------------------------------------------
@@ -2131,6 +2198,20 @@ UTESTCASE pass_begin_end(Utest *utest)
 			;
 			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
 		}
+
+		UT_ASSERT(ow5->nextXtray());
+		{
+			string tlog = trace5->getBuffer()->print();
+			trace5->clearBuffer();
+			string expect =
+				"unit 't5' before label 'nxa._BEGIN_' op OP_INSERT\n"
+				"unit 't5' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+				"unit 't5' before label 'nxa.one' op OP_INSERT\n"
+				"unit 't5' before label 'nxa._END_' op OP_INSERT\n"
+				"unit 't5' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+			;
+			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
+		}
 	}
 
 	// ----------------------------------------------------------------------
@@ -2171,6 +2252,19 @@ UTESTCASE pass_begin_end(Utest *utest)
 			;
 			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
 		}
+
+		UT_ASSERT(ow5->nextXtray());
+		{
+			string tlog = trace5->getBuffer()->print();
+			trace5->clearBuffer();
+			string expect =
+				"unit 't5' before label 'nxa._BEGIN_' op OP_INSERT\n"
+				"unit 't5' before label 'begin' (chain 'nxa._BEGIN_') op OP_INSERT\n"
+				"unit 't5' before label 'nxa._END_' op OP_INSERT\n"
+				"unit 't5' before label 'end' (chain 'nxa._END_') op OP_INSERT\n"
+			;
+			if (UT_IS(tlog, expect)) printf("Pass %d Expected: \"%s\"\n", i, expect.c_str());
+		}
 	}
 
 	// ----------------------------------------------------------------------
@@ -2180,6 +2274,7 @@ UTESTCASE pass_begin_end(Utest *utest)
 	ow2->markDead();
 	ow3->markDead();
 	ow4->markDead();
+	ow5->markDead();
 	a1->harvester();
 
 	restore_uncatchable();

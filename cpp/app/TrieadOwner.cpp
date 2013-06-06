@@ -274,10 +274,8 @@ void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
 	{
 		int beginIdx = facet->beginIdx();
 		if (xt->frontIdx() != beginIdx) {
-			Label *beginLabel = fret->getLabel(beginIdx);
-			// any connection in an FnBinding may be redirected to a tray,
-			// so to guarantee an immediate reaction the label should be chained directly
-			if (beginLabel->hasChained()) {
+			Label *beginLabel = fret->checkLabelChained(beginIdx);
+			if (beginLabel != NULL) {
 				// generate a synthetic _BEGIN_
 				FdataVec fd;
 				mainUnit_->call(new Rowop(
@@ -296,10 +294,8 @@ void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
 	{
 		int endIdx = facet->endIdx();
 		if (xt->backIdx() != endIdx) {
-			Label *endLabel = fret->getLabel(endIdx);
-			// any connection in an FnBinding may be redirected to a tray,
-			// so to guarantee an immediate reaction the label should be chained directly
-			if (endLabel->hasChained()) {
+			Label *endLabel = fret->checkLabelChained(endIdx);
+			if (endLabel != NULL) {
 				// generate a synthetic _END_
 				FdataVec fd;
 				mainUnit_->call(new Rowop(
