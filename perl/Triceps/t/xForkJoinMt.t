@@ -446,15 +446,15 @@ package main;
 
 # input for the arbitration
 my @inputArb = (
-	"OP_INSERT,AAA,BBB,0.74\n",
-	"OP_INSERT,BBB,AAA,1.30\n",
-	"OP_INSERT,AAA,CCC,1.28\n",
-	"OP_INSERT,CCC,AAA,0.78\n",
-	"OP_INSERT,BBB,CCC,1.98\n",
-	"OP_INSERT,CCC,BBB,0.49\n",
+	"OP_INSERT,AAA,BBB,1.30\n",
+	"OP_INSERT,BBB,AAA,0.74\n",
+	"OP_INSERT,AAA,CCC,1.98\n",
+	"OP_INSERT,CCC,AAA,0.49\n",
+	"OP_INSERT,BBB,CCC,1.28\n",
+	"OP_INSERT,CCC,BBB,0.78\n",
 
-	"OP_DELETE,AAA,BBB,0.74\n",
-	"OP_INSERT,AAA,BBB,0.64\n",
+	"OP_DELETE,BBB,AAA,0.74\n",
+	"OP_INSERT,BBB,AAA,0.64\n",
 );
 setInputLines(@inputArb);
 &App1::RUN();
@@ -463,24 +463,24 @@ ok(&getResultLines(),
 '--- raw ---
 BEGIN OP_INSERT seq="2" triead="1" 
 BEGIN OP_INSERT seq="5" triead="1" 
-result OP_INSERT ccy1="AAA" ccy2="BBB" ccy3="CCC" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
+BEGIN OP_INSERT seq="7" triead="1" 
+result OP_DELETE ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856" 
+BEGIN OP_INSERT seq="8" triead="1" 
 BEGIN OP_INSERT seq="1" triead="0" 
 BEGIN OP_INSERT seq="3" triead="0" 
 BEGIN OP_INSERT seq="4" triead="0" 
 BEGIN OP_INSERT seq="6" triead="0" 
-BEGIN OP_INSERT seq="7" triead="0" 
-result OP_DELETE ccy1="AAA" ccy2="BBB" ccy3="CCC" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
-BEGIN OP_INSERT seq="8" triead="0" 
+result OP_INSERT ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856" 
 --- cooked ---
 BEGIN OP_INSERT seq="1" triead="0" 
 BEGIN OP_INSERT seq="2" triead="1" 
 BEGIN OP_INSERT seq="3" triead="0" 
 BEGIN OP_INSERT seq="4" triead="0" 
 BEGIN OP_INSERT seq="5" triead="1" 
-result OP_INSERT ccy1="AAA" ccy2="BBB" ccy3="CCC" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
 BEGIN OP_INSERT seq="6" triead="0" 
-BEGIN OP_INSERT seq="7" triead="0" 
-result OP_DELETE ccy1="AAA" ccy2="BBB" ccy3="CCC" rate1="0.74" rate2="1.98" rate3="0.78" looprate="1.142856" 
-BEGIN OP_INSERT seq="8" triead="0" 
+result OP_INSERT ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856" 
+BEGIN OP_INSERT seq="7" triead="1" 
+result OP_DELETE ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856" 
+BEGIN OP_INSERT seq="8" triead="1" 
 ');
 
