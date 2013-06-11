@@ -766,6 +766,38 @@ undrain(WrapTrieadOwner *self)
 			self->get()->undrain();
 		} while(0); } TRICEPS_CATCH_CROAK;
 
+void
+addUnit(WrapTrieadOwner *self, WrapUnit *wu)
+	CODE:
+		clearErrMsg();
+		try { do {
+			self->get()->addUnit(wu->get());
+		} while(0); } TRICEPS_CATCH_CROAK;
+
+int
+forgetUnit(WrapTrieadOwner *self, WrapUnit *wu)
+	CODE:
+		clearErrMsg();
+		RETVAL = 0;
+		try { do {
+			RETVAL = self->get()->forgetUnit(wu->get())? 1 : 0;
+		} while(0); } TRICEPS_CATCH_CROAK;
+	OUTPUT:
+		RETVAL
+
+SV *
+listUnits(WrapTrieadOwner *self)
+	PPCODE:
+		// for casting of return value
+		static char CLASS[] = "Triceps::Unit";
+		clearErrMsg();
+		const TrieadOwner::UnitList &lst = self->get()->listUnits();
+		for (TrieadOwner::UnitList::const_iterator it = lst.begin(); it != lst.end(); ++it) {
+			SV *sub = newSV(0);
+			sv_setref_pv( sub, CLASS, (void*)(new WrapUnit(*it)) );
+			XPUSHs(sv_2mortal(sub));
+		}
+
 #// {
 #// The FileInterrupt API
 

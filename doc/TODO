@@ -120,14 +120,7 @@ Things that need to be done:
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
-* doc: perl Label::isCleared()
-* doc: in Perl Label::adopt() removed the check for the same unit
-* doc: Label::makeChained() in Perl
 * doc: in types construction throw instead of abort()
-* doc: HoldRowTypes
-* doc: RowType::copy(), RowSetType::deepCopy()
-* doc: TableType, AggregatorType && IndexType ::deepCopy and copy constructor with holder; 
-* doc: flat copying of indexes (C++ and Perl)
 * doc: Autoref::swap()
 * doc: RowType::isRowEmpty()
 * doc: croak() in typemap, it croaks nicely, with a stack trace
@@ -137,7 +130,6 @@ Things that need to be done:
 * doc: in docbook update the source code produced by SimpleAggregator
 * doc: Rowop::printP argument for an explicit name
 * doc: in C++ Unit isFrameEmpty(), isInOuterFrame() (add in Perl too?)
-* doc: important to keep areferences to Tables, not just to their labels
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

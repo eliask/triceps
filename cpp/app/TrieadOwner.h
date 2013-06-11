@@ -189,7 +189,6 @@ public:
 		return mainUnit_;
 	}
 
-	// XXX test the extra units
 	// Add a unit to the thread, it's OK if it has been already added 
 	// (extra addition will be ignored).
 	// There is no easy way to find it back other than going through the

@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 231 };
+BEGIN { plan tests => 250 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -880,6 +880,68 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 			$to->nextXtrayTimeLimit($tm1 + 0.1); # this hould have no extra delay
 		},
 	);
+	ok(1); # if it got here, a success
+}
+
+# tests of extra units
+{
+	my ($u2, $u3, $u4);
+	my ($lb3, $lb4);
+
+	Triceps::Triead::startHere(
+		app => "a1",
+		thread => "main",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("main main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+
+			my @un;
+			my $res;
+
+			@un = $to->listUnits();
+			ok($#un, 0);
+			ok($to->unit()->same($un[0])); # the main unit always goest 1st
+
+			$u2 = Triceps::Unit->new("u2");
+			$u3 = Triceps::Unit->new("u3");
+			$u4 = Triceps::Unit->new("u4");
+
+			$to->addUnit($u2);
+			$to->addUnit($u3);
+			$to->addUnit($u4);
+
+			@un = $to->listUnits();
+			ok($#un, 3);
+			ok($to->unit()->same($un[0])); # the main unit always goest 1st
+			ok($u2->same($un[1])); # in the order of addition
+			ok($u3->same($un[2]));
+			ok($u4->same($un[3]));
+
+			$res = $to->forgetUnit($to->unit());
+			ok($res, 0); # can't forget the main unit
+
+			$lb3 = $u3->makeDummyLabel($u3->getEmptyRowType(), "lb3");
+			ok(!$lb3->isCleared());
+
+			$lb4 = $u4->makeDummyLabel($u4->getEmptyRowType(), "lb4");
+			ok(!$lb4->isCleared());
+
+			$res = $to->forgetUnit($u3);
+			ok($res, 1);
+			ok(!$lb3->isCleared()); # forgetting does not clear the unit
+
+			@un = $to->listUnits();
+			ok($#un, 2);
+			ok($to->unit()->same($un[0])); # the main unit always goest 1st
+			ok($u2->same($un[1])); # in the order of addition
+			ok($u4->same($un[2]));
+		},
+	);
+
+	ok(!$lb3->isCleared()); # not in TrieadOwner, no clearing
+	ok($lb4->isCleared()); # TrieadOwner destruction clears the unit
+
 	ok(1); # if it got here, a success
 }
 
