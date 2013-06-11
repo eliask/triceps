@@ -144,6 +144,7 @@ UTESTCASE x_data(Utest *utest)
 
 	Rowref r1(rt1,  rt1->makeRow(fd1));
 	UT_ASSERT(!rt1->isRowEmpty(r1));
+	UT_ASSERT(!r1.isRowEmpty());
 
 	Rowref r2(rt1,  fd1);
 

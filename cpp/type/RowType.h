@@ -361,6 +361,11 @@ public:
 		return (row_ != ar.row_);
 	}
 
+	bool isRowEmpty() const
+	{
+		return type_->isRowEmpty(row_);
+	}
+
 	uint8_t getUint8(int nf, int pos = 0) const
 	{
 		return type_->getUint8(row_, nf, pos);
