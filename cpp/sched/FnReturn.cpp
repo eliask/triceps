@@ -201,6 +201,24 @@ void FnReturn::setFacet(Facet *fa)
 	}
 }
 
+Label *FnReturn::checkLabelChained(int idx) const
+{
+	if (idx < 0 || idx >= labels_.size())
+ 		return NULL;
+
+	Label *lb = labels_[idx];
+	if (lb->hasChained())
+		return lb;
+
+	if (stack_.empty())
+		return NULL;
+
+	FnBinding *top = stack_.back();
+	if (top->getLabel(idx) != NULL)
+		return lb; // always go honestly through FnReturn, no shortcuts directly to FnBinding
+	return NULL;
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // FnContext
 

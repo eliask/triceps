@@ -72,6 +72,7 @@ public:
 class FnReturn: public Starget
 {
 	friend class Facet;
+	friend class TrieadOwner;
 protected:
 	// The class of labels created inside FnReturn, that forward the rowops
 	// to the final destination.
@@ -362,6 +363,18 @@ protected:
 	// Sets facet_ and the flags in the labels that represent _BEGIN_ and _END_.
 	void setFacet(Facet *fa);
 
+	// }
+
+	// Interface for TrieadOwner (closely connected to Facet).
+	// {
+
+	// Check whether the label either has a chaining directly from the
+	// FnReturn or is defined in the current pushed binding. This is used by
+	// TrieadOwner to decide whether it needs to generate the artificial
+	// _BEGIN_ and _END_ rowops.
+	// @param idx - index of the label
+	// @return - pointer to the label of there is a chaining, NULL if not
+	Label *checkLabelChained(int idx) const;
 	// }
 
 	Unit *unit_; // not a reference, used only to create the labels
