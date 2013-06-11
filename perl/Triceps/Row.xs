@@ -183,3 +183,11 @@ same(WrapRow *self, WrapRow *other)
 	OUTPUT:
 		RETVAL
 
+#// check if the row is empty (i.e. all fields are NULL)
+int
+isEmpty(WrapRow *self)
+	CODE:
+		clearErrMsg();
+		RETVAL = self->ref_.getType()->isRowEmpty(self->ref_.get())? 1 : 0;
+	OUTPUT:
+		RETVAL

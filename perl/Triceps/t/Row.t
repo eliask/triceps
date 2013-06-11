@@ -16,7 +16,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 77 };
+BEGIN { plan tests => 80 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -82,6 +82,7 @@ ok(ref $rt3, "Triceps::RowType");
 $r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 ok($r1->getType()->same($rt1));
+ok($r1->isEmpty(), 0);
 
 # this result is dependent on the machine byte order, so it's not for final tests
 # but just for debugging
@@ -107,6 +108,11 @@ ok(ref $r2, "Triceps::Row");
 ok(join(',', map {defined $_? $_ : "-"} @d2), join(',', map {defined $_? $_ : "-"} @dataset2));
 ok($r2->printP(), "c=\"3000000000000000\" ");
 #print STDERR "\n dataset d2: ", &row2string(@d2), "\n";
+
+# all nulls
+$rempty = $rt1->makeRowHash();
+ok(ref $rempty, "Triceps::Row");
+ok($rempty->isEmpty(), 1);
 
 # arrays
 @dataset3 = (
