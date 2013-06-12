@@ -7,17 +7,18 @@ TRICEPS_XLIB = -lpthread -lrt
 
 # The NSPR library is a pain. In some distributions it's using the name,
 # including the include directory name "nspr4". In some it's just "nspr".
-# The difference in the include directory is a major pain and gets
-# handled by the setting of TRICEPS_NSPR. If it's not set at all,
-# NSPR won't be used. Instead an alternative portable implementation
-# of atomic integers that uses a mutex will be used.
+# Hopefully, the configuration will be auto-found.
+# You can override it by setting the values explicitly instead.
+# If TRICEPS_NSPR is not set, NSPR won't be used. Instead an alternative
+# portable implementation of atomic integers that uses a mutex will be used.
 #
-# use the NSPR4 library, named as such
-TRICEPS_CONF += -DTRICEPS_NSPR=4
-TRICEPS_XLIB += -lnspr4
-# use the NSPR4 library, named simply "nspr", auto-found
-# TRICEPS_CONF += -DTRICEPS_NSPR=0 $(shell pkg-config --cflags nspr)
-# TRICEPS_XLIB += $(shell pkg-config --libs nspr)
+# use the NSPR4 library, auto-found
+TRICEPS_CONF += -DTRICEPS_NSPR $(shell pkg-config --cflags nspr)
+TRICEPS_XLIB += $(shell pkg-config --libs nspr)
+#
+# use the NSPR4 library, expliticly located
+#TRICEPS_CONF += -DTRICEPS_NSPR -I/usr/include/nspr4
+#TRICEPS_XLIB += -lnspr4
 
 # use a different namespace (instead of Triceps)
 # TRICEPS_CONF += -DTRICEPS_NS=name

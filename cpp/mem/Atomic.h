@@ -12,13 +12,7 @@
 
 #include <pw/ptwrap.h>
 #ifdef TRICEPS_NSPR // {
-#  if TRICEPS_NSPR == 4
-#    include <nspr4/pratom.h>
-#  elif TRICEPS_NSPR == 0
-#    include <nspr/pratom.h>
-#  else
-#    error "Unsupported value of TRICEPS_NSPR"
-#  endif 
+#  include <pratom.h>
 #endif // } TRICEPS_NSPR
 
 namespace TRICEPS_NS {
