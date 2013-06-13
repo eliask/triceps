@@ -83,12 +83,6 @@ protected:
 		mode_ = mode;
 	}
 
-	// Change the gadget's name (the label won't be changed until setRowType()).
-	void setName(const string &name)
-	{
-		name_ = name;
-	}
-
 	// Set the row type. This initializes the label.
 	void setRowType(const_Onceref<RowType> rt);
 

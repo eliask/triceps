@@ -96,12 +96,6 @@ public:
 		return name_;
 	}
 
-	// XXX any reason to change name after construction?
-	void setName(const string &name)
-	{
-		name_ = name;
-	}
-
 	// Mark the label as non-reentrant. This is essentially setting its
 	// little private recursion depth limit to 1 (i.e. it can occur only
 	// once on the call stack, never nested).

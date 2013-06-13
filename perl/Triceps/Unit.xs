@@ -267,13 +267,6 @@ getName(WrapUnit *self)
 	OUTPUT:
 		RETVAL
 
-void 
-setName(WrapUnit *self, char *name)
-	CODE:
-		clearErrMsg();
-		Unit *u = self->get();
-		u->setName(name);
-
 int
 getStackDepth(WrapUnit *self)
 	CODE:

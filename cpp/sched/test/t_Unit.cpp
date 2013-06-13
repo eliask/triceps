@@ -50,9 +50,6 @@ UTESTCASE mkunit(Utest *utest)
 	
 	UT_IS(unit1->getStackDepth(), 1);
 
-	unit1->setName("xxx");
-	UT_IS(unit1->getName(), "xxx");
-
 	// try setting a tracer
 	Autoref<Unit::Tracer> tracer1 = new Unit::StringNameTracer;
 	UT_IS(unit1->getTracer().get(), NULL);
@@ -169,8 +166,6 @@ UTESTCASE mklabel(Utest *utest)
 
 	// play with names
 	UT_IS(lab1->getName(), "lab1");
-	lab1->setName("zzz");
-	UT_IS(lab1->getName(), "zzz");
 }
 
 UTESTCASE rowop(Utest *utest)

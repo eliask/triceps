@@ -162,13 +162,6 @@ getName(WrapLabel *self)
 	OUTPUT:
 		RETVAL
 
-void
-setName(WrapLabel *self, char *name)
-	CODE:
-		clearErrMsg();
-		Label *lab = self->get();
-		lab->setName(name);
-
 #// Set the non-reentrant flag.
 void
 setNonReentrant(WrapLabel *self)

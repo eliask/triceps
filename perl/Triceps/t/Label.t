@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 63 };
+BEGIN { plan tests => 62 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -74,10 +74,6 @@ ok($rt1->same($rt2));
 $v = $lb->getName();
 ok($v, "tab1.out");
 
-$lb->setName("xxx_tab1.out");
-$v = $lb->getName();
-ok($v, "xxx_tab1.out");
-
 $v = $lb->same($lb);
 ok($v);
 
@@ -119,7 +115,7 @@ ok(join(", ", map {$_->getName()} @chain), "tab1.in, tab1.in");
 
 # incorrect chaining
 eval { $lb->chain($lb); };
-ok($@, qr/^Triceps::Label::chain: failed\n  labels must not be chained in a loop\n    xxx_tab1.out->xxx_tab1.out/);
+ok($@, qr/^Triceps::Label::chain: failed\n  labels must not be chained in a loop\n    tab1.out->tab1.out/);
 
 # see that it's unchanged
 @chain = $lb->getChain();
@@ -143,7 +139,7 @@ ok(join(", ", map {$_->getName()} @chain), "tab1.pre, tab1.in");
 
 # incorrect chaining
 eval { $lb->chainFront($lb); };
-ok($@, qr/^Triceps::Label::chainFront: failed\n  labels must not be chained in a loop\n    xxx_tab1.out->xxx_tab1.out/);
+ok($@, qr/^Triceps::Label::chainFront: failed\n  labels must not be chained in a loop\n    tab1.out->tab1.out/);
 
 # see that it's unchanged
 @chain = $lb->getChain();

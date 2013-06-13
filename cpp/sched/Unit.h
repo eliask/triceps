@@ -217,11 +217,6 @@ public:
 		return name_;
 	}
 
-	void setName(const string &name)
-	{
-		name_ = name;
-	}
-
 	// Get the depth of the frame stack in the queue.
 	// Very useful for debugging of the stack growtn.
 	int getStackDepth() const

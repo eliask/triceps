@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 151 };
+BEGIN { plan tests => 150 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -39,12 +39,6 @@ $v = $u1->same($u2);
 ok(!$v);
 
 ok($u1->getStackDepth(), 1);
-
-###################### name setting #################################
-
-$u2->setName("unit2");
-$v = $u2->getName();
-ok($v, "unit2");
 
 ###################### empty row type #################################
 

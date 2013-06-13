@@ -122,14 +122,14 @@ Things that need to be done:
 
 * doc: in types construction throw instead of abort()
 * doc: Autoref::swap()
-* doc: RowType::isRowEmpty()
 * doc: croak() in typemap, it croaks nicely, with a stack trace
-* doc: the "*" placeholder in Opt, Opt::drop, Opt::dropExcept
-* doc: FnReturn::isFaceted() in Perl
+* doc: FnReturn::isFaceted() in Perl and C++
 * doc: how index comparators can return errors through table->setStickyError()
 * doc: in docbook update the source code produced by SimpleAggregator
 * doc: Rowop::printP argument for an explicit name
 * doc: in C++ Unit isFrameEmpty(), isInOuterFrame() (add in Perl too?)
+* doc: autodetection of NSPR
+* doc: removed setName() in Unit and Label (and in C++ Gadget)
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

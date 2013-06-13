@@ -50,11 +50,6 @@ public:
 		GadgetCE(unit, mode, name, rt)
 	{ }
 
-	void setName(const string &name)
-	{
-		GadgetCE::setName(name);
-	}
-
 	void setRowType(Onceref<RowType> rt)
 	{
 		GadgetCE::setRowType(rt);
@@ -81,9 +76,6 @@ UTESTCASE mkgadget(Utest *utest)
 	UT_IS(g1->getName(), "g1");
 	UT_IS(g1->getEnqMode(), Gadget::EM_IGNORE);
 	UT_IS(g1->getLabel(), NULL);
-
-	g1->setName("gg1");
-	UT_IS(g1->getName(), "gg1");
 
 	g1->setEnqMode(Gadget::EM_CALL);
 	UT_IS(g1->getEnqMode(), Gadget::EM_CALL);
