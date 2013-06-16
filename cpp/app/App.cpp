@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <app/App.h>
 #include <app/TrieadOwner.h>
 #include <app/Nexus.h>
