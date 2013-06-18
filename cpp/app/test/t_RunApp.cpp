@@ -7,6 +7,7 @@
 // Test of the App running.
 
 #include <assert.h>
+#include <unistd.h>
 #include <utest/Utest.h>
 #include <type/AllTypes.h>
 #include <app/AutoDrain.h>
