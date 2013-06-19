@@ -294,9 +294,6 @@ UTESTCASE drain_writer(Utest *utest)
 {
 	Autoref<DrainApp> drain = new DrainApp;
 	Autoref<QueEvent> qev = new QueEvent(drain);
-	timespec atm;
-	atm.tv_sec = 0;
-	atm.tv_nsec = 0;
 
 	qev->setWriteMode(); // a prerequisite
 	UT_ASSERT(QueEventGuts::isSleeping(qev));
