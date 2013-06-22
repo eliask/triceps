@@ -1,0 +1,174 @@
+App reference, Perl, part 2
+Triceps::App::setTimeout($appOrName, $main_to_sec);
+Triceps::App::setTimeout($appOrName, $main_to_sec, $frag_to_sec);
+
+Set the readiness timeout. Even though Triceps is quite eager in watching for deadlocks in the threads topology, it's still possible to get some threads, and with them the whole program, stuck during initialization. For example, if you declare a thread and then never define it. These situations ere very unpleasant because you start the program and expect it to work but it doesn't, without any indication to why. So Triceps imposes an initialization timeout. The App (and thus all its threads) must become ready within the timeout after the definition or declaration of the last Triead. If not, the App will be aborted (and the error message will tell, which thread did not initialize in time). The same applies to the creation of Trieads (usually in the fragments) after the App is already running: all the threads must become ready within the timeout since the last thread has been defined or declared.
+
+The default timeout is 30 seconds, or symbolically
+
+&Triceps::App::DEFAULT_TIMEOUT
+
+(subject to possible changes of the exact value in the future).
+
+But the timeout can be changed. Technically, there are two timeouts:
+
+    one starts when the App is created
+    one restarts when any Triead is defined or declared
+
+
+For the App to be aborted, both timeouts must expire. By default they are set to the same length, so only the second timeout really matters, since it will always be the last one to start and last one to end. But if you set the first timeout to be longer, you can allow for a longer initialization period at the App start ("main timeout") than later when more threads are added to a running App ("frag timeout", since the threads added later are typically the threads nin fragments).
+
+The one-argument form of setTimeout() sets both timeouts to the same value, The two-argument form sets these timeouts separately.
+
+The timeouts may be set only before the first thread has been created. This is largely due to the historical reasons of implementation, with the current implementation it should actually be safe to allow changing the timeouts at a later point as well, and this limitation may be removed in the future.
+
+The timeout values are represented as integer whole seconds.
+
+Note that it's still possible to get the initialization stuck without any indication if it gets stuck in the other libraries. The reason is that the harvester waits for all the threads to be joined before it propagates the error, so if a thread doesn't get joined, the harvester will be stuck. For example, if you open a file on NFS as a part of Triead initialization, and the NFS server doesn't respond, this thread will be stuck for a long time if not forever. The App will detect a timeout and try to interrupt the threads but the NFS operations are often not interruptable, so the harvester will wait for this thread to complete this operation and exit before it propagates the error, and thus the whole program will be silently stuck forever (and to avoid this, the NFS mounts should be done in the "soft" mode but it's a separate story). This will likely be improved in the future but it needs more thinking about how to do it right.
+
+Triceps::App::setDeadline($appOrName, $deadline_sec);
+
+Set the "main" timeout in the form of an absolute deadline. This is actually closer to the way it works internally: the limit is expressed as a deadline, and setTimeout() just adds the timeout value to the current time to compute the deadline, while setDeadline() sets it straight. Like setTimeout(), this may be called only before any Trieads were created.
+
+The time is represented as floating-point seconds since epoch. Triceps::now() can be used to get the current time with the fractional seconds (or if you don't care about the fractional seconds, you can always use the stock time()).
+
+Triceps::App::refreshDeadline($appOrName);
+
+Restart the  "fragment" timeout. Same as when a Triead is defined or declared, only without involving a Triead. Again, the name has to do with how the time computations are done internally, computing the deadline from both timeouts. This method can be called at any time.
+
+The next few methods have to do with the drains. Generally, using the AutoDrain class to automatically limit the scope of the drains is a better idea. But if the automatic scoping is not desired, the App methods can be used directly.
+
+Triceps::App::requestDrain($appOrName);
+
+Request a shared drain. Does not wait for the drain to complete. This method may be called repeatedly, potentially from multiple threads, which will keep the drain active and increase the recursion count. The drain will be released when undrain() is called the matching number of times.
+
+If an exclusive drain by another thread is active when requestDrain() is called, the call will be stuck until the exclusive drain becomes undrained (and potentially more exclusive drains might be queued up before the shared drain, using the POSIX read-write-lock implementation). Otherwise the call will set the appropriate state and return immediately.
+
+If this thread has requested an exclusive drain previously (and didn't undrain it yet), an attempt to get a shared drain in the same thread will likely deadlock. The same applies in the opposite order as well.
+
+Once the shared drain is requested, the input-only threads will be blocked from sending more data (any their attempts to flush their write facets will get stuck until undrain), and the rest of the threads will continue churning through the data buffered in the nexuses until all the nexuses are empty and there is no more data to process (yes, these threads will continue writing to their write facets).
+
+It is important to not request a shared drain from an input-only thread and then try to write more data into an output facet, that would deadlock. The whole concept is doable, but an exclusive drain must be used instead ("exclusive" means that a designated input-only thread is excluded from blocking).
+
+Triceps::App::waitDrain($appOrName);
+
+Wait for the requested shared drain to complete. This means that all the queues in all the nexuses have become empty.
+
+The effect of waitDrain() without a preceding requestDrain() is undefined. If you definitely know that some other thread has requested a drain and didn't undrain yet, it will work as normal, so you can have any number of threads wait for drain in parallel. (And the semantics, shared or exclusive, will match that currently active request). If no thread requested a drain, it might either return immediately irrespective of the state of the nexuses or might wait for some other thread to request a drain and succeed.
+
+This call may also be used with an exclusive (or shared) drain requested through a TrieadOwner or any drain requested through an AutoDrain (though a better style is to use the same object as used for requesting the drain).
+
+Triceps::App::drain($appOrName);
+
+A combination of requestDrain() and waitDrain() in one call.
+
+Triceps::App::undrain($appOrName);
+
+Release the drain and let the normal processing continue. Make sure to call it exactly the same number of times as the requestDrain().
+
+This call may also be used with a drain requested through a TrieadOwner (though a better style is to use the same object as used for requesting the drain).
+
+$result = Triceps::App::isDrained($appOrName);
+
+Check whether the App is currently drained (i.e. all the nexuses are empty), without waiting for it. Returns 1 if drained, 0 if not. If no drain is active during this call, the result is undefined, not even in the "best effort" sense: it may return 1 even if there are millions of records queued up. The only reliable way is to request a drain first.
+
+This call may also be used with a drain requested through a TrieadOwner or through an AutoDrain.
+
+
+The next part of the API deals with the passing of the file descriptors between the Perl threads. The concepts have been described in detail before, this is just a short reference. This API works under the hood of TrieadOwner::TrackGetSocket() and friends, those desribed in http://babkin-cep.blogspot.com/2013/04/multithreaded-socket-server-part-3.html and neighboring posts, but can also be used directly.
+
+Triceps::App::storeFd($appOrName, $name, $fd);
+
+Store a file descriptor in the App object, allowing to load it into other threads, and thus pass it around between the threads. $name is the name for this descriptor that will later be used to get the file descriptor back (generally, you want to generate a unique name for each file descriptor stored to avoid confusion, and then pass this name to the target thread). $fd is the file descriptor, an integer number, normally received from fileno(). The file descriptor is dupped before it gets stored, so the original will continue to exist, and if you have no other use for it, should be closed.
+
+If a file descriptor with this name already exists in the App, this call will confess.
+
+$fd = Triceps::App::loadFd($appOrName, $name);
+
+Load back the file descriptor that was previously stored. If no descriptor with such a name is stored in the App, it will confess. The descriptor will keep existing in the App, so to keep things consistent, there are two options:
+
+One is to let your code take over the ownership of the file descriptor, and tell the App to forget about it with forgetFd().
+
+The other one is to never close the received descriptor in your code (a good example would be to dup it right away for the future use and then leave the original alone), and let App keep its ownership.
+
+$fd = Triceps::App::loadDupFd($appOrName, $name);
+
+Very much the same as loadFd(), only does the dupping for you and returns the dupped descriptor. In this case your code is responsible for closing that descriptor. Which method is more suitable, loadFd() or dupFd(), depends on the nature of the code that will use the file descriptor and whether you want to leave the descriptor in the App for more threads to load.
+
+Triceps::App::forgetFd($appOrName, $name);
+
+Forget the file descriptor in the App. It doesn't get closed, so closing it becomes your responsibility, or it will leak. If no descriptor with this name exists, the call will confess.
+
+Triceps::App::closeFd($appOrName, $name);
+
+Close and forget the file descriptor in the App. If no descriptor with this name exists, the call will confess.
+
+Triceps::App::storeFile($appOrName, $name, FILE);
+
+A convenience wrapper for closeFd(), calls fileno() on the file and stores the resulting file descriptor.
+
+Triceps::App::storeCloseFile($appOrName, $name, FILE);
+
+Stores the file descriptor extracted from the file, and closes the original file (since the file descriptor gets dupped on store, that copy continues to exist in the App).
+
+$file = Triceps::App::loadDupFile($appOrName, $name, $mode);
+
+Load a file descriptor and build a file handle object (IO::Handle) from it. The mode string may be specified in either the open() format (</>/>>/+</+>/+>>) or the C stdio format (r/w/a/r+/w+/a+). Note that the mode must match or be a subset of the mode used to originally open the file descriptor. If you open a file read-only, store its descriptor, and load back as a write-only file, you will have a bad time.
+
+There is no corresponding loadFile(), since loadFd() is a more dangerous method that is useful for the low-level operations but doesn't make much sense for the higher level.
+
+$file = Triceps::App::loadDupSocket($appOrName, $name, $mode);
+
+Load a file descriptor and build an IO::Socket::INET object from it. The mode string meaning is the same as for loadDupFile().
+
+
+$file = Triceps::App::loadDupFileClass($appOrName, $name, $mode, $class);
+
+
+Load a file descriptor and build an arbitrary class object from it. The class (specified by its name) should normally be a subclass of IO::Handle, or at the very least must implement the method new_from_fd() similar to IO::Handle. This is the common underlying implementation of but loadDupFile() and loadDupSocket().
+
+
+The last part of the API is the convenience methods for building and starting an App.
+
+Triceps::App::build($name,  \&builder );
+
+Build an App instance. It creates the App instance, then the builder function is called to create the App's nexuses and threads, then the harvester is executed, that eventually destroys the App object after collecting all its threads. For a very basic example:
+
+Triceps::App::build "a1", sub {
+    Triceps::App::globalNexus(
+        name => "types",
+        rowTypes => [
+            rt1 => $rt1,
+        ],
+    );
+    Triceps::Triead::start(
+        app => $Triceps::App::name,
+        thread => "t1",
+        main => sub {
+            my $opts = {};
+            &Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
+            my $to = $opts->{owner};
+            $to->importNexus(
+                from => "global/types",
+                import => "writer", # if importing just for the types, use "writer"!
+            );
+            $to->readyReady();
+        },
+    );
+};
+
+The builder function runs in the current Perl thread, however from the logical standpoint it runs in the App's first Triead named "global" (this Triead name is hardcoded in build()). This allows you not to worry about the App being technically dead until the first Triead is created: by the time the builder function is called, the first Triead is already created. However it also means that you can't change the readiness timeouts. After the builder function returns, the global Triead exits, and the harvester starts in the same current Perl thread.
+
+The builder has access to a few global variables:
+
+    $Triceps::App::name is the App name, from the build() first argument.
+    $Triceps::App::app is the reference to the App object.
+    $Triceps::App::global is the reference to the TrieadOwner object of the global Triead.
+
+After the builder function exits, these variables become undefined.
+
+Triceps::App::globalNexus(@nexusOptions);
+
+Creates a nexus with the import mode of "none", on the global Triead. The arguments are the same options as for the normal nexus creation. This is a simple convenience wrapper for the nexus creation. Since the global thread is supposed to exit immediately, there is no point in importing this nexus into it.
+
+The global thread is found by this function from $Triceps::App::global, so this method can only be used from inside the builder function of build(). 

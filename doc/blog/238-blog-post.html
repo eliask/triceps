@@ -1,0 +1,5 @@
+$! !!!!!!
+
+Turns out, the more recent versions of Perl (starting with 5.16.4 or maybe even earlier) have changed the way they treat the error variable $!. This special can not be assigned any arbitrary error text any more, now they want it to be a proper integer OS error code. So all the Triceps error reporting through $! breaks on the newer versions of Perl. The code still works, except that the text of the errors can not be extracted,
+
+Well, looks like it's about time to bite the bullet and finally convert everything to the newer and better error reporting with confessions. 

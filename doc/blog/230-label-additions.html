@@ -1,0 +1,15 @@
+Label additions
+
+As I've mentioned in the last post, Label::adopt() now accepts the rowops from other labels that belong to the other units without complaining.
+
+But there are more refinements. The next one was already shown in the examples but I didn't draw the attention to it:
+
+$lb2 = $lb1->makeChained($name, \&subClear, \&subExec, @args);
+
+It creates a new label by chaining it from another existing label. The arguments are very much the same as in Unit::makeLabel(), only there is no need to specify the row type for the new label (nor obviously the Unit), these are taken from the original label.
+
+Another one allows to check whether the label has been already cleared:
+
+$result = $lb->isCleared();
+
+This method has been available in C++ all along but not it's exported to Perl too. 

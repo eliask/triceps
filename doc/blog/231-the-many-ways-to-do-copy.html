@@ -1,0 +1,90 @@
+the many ways to do a copy
+
+So far the way to copy an index type or table type was with the method copy(), in both Perl and C++. It copies the items, and as needed its components, but tries to share the objects that can be shared (such as the row types). But the multithreading support required more kinds of copying.
+
+The Perl method TableType::copyFundamental() copies a table type with only a limited subset of its index types, and excludes all the aggregators. It is implemented in Perl, and if you look in lib/Triceps/TableType.pm, you can find that it starts by making a new table type with the same row type, and then one by one adds the needed index types to it. It needs index types without any aggregators or nested index types, and thus there is a special method for doing this kind of copies:
+
+$idxtype2 = $idxtype->flatCopy();
+
+The "flat" means exactly what it looks like: copy just the object itself without any connected hierarchies.
+
+On the C++ level there is no such method, instead there is an optional argument to IndexType::copy():
+
+virtual IndexType *copy(bool flat = false) const;
+
+So if you want a flat copy, you call
+
+idxtype2 = idxtype->copy(true);
+
+There is no copyFundamental() on the C++ level, though it probably should be, and should be added in the future. For now, if you really want it, you can make it yourself by copying the logic from Perl.
+
+In the implementation of the index types, this argument "flat" mostly just propagates to the base class, without a whole lot needed from the subclass. For example, this is how it works in the SortedIndexType:
+
+IndexType *SortedIndexType::copy(bool flat) const
+{
+    return new SortedIndexType(*this, flat);
+}
+
+SortedIndexType::SortedIndexType(const SortedIndexType &orig, bool flat) :
+    TreeIndexType(orig, flat),
+    sc_(orig.sc_->copy())
+{ }
+
+The base class TreeIndexType takes care of everything, all the subclass needs to do is carry the flat argument to it.
+
+The next kind of copying is exactly the opposite: it copies the whole table type or index type, including all the objects involved, including the row types or such. It is used for passing the table types through the nexus.
+
+Remember that all these objects are reference-counted. Whenever a Row object is created or deleted in Perl, it increase or decreases the reference of the RowType. If the same RowType object is shared between multiple threads, they will have  a contention for this atomic counter, or at the very least will be shuttling the cache line with it back and forth between the CPUs. It's more efficient to give each thread its own copy of a RowType, and then it can stay stuck in one CPU's cache.
+
+So wherever a table type is exported into a nexus, it's deep-copied (and when a row type is exported into a nexus, it's simply copied, and so are the row types of the labels in the nexus). Then when a nexus is imported, the types are again deep-copied into the thread's facet.
+
+But there is one more catch. Suppose we have a label and a table type that use the same row type. Whenever a row coming from a label is inserted into the table (in Perl), the row types of the row (i.e. the label's row type in this case) and of the table are checked for the match. If the row type is the same, this check is very quick. But if the same row type gets copied and then different copies are used for the label and for the table, the check will have to go and actually compare the contents of these row types, and will be much slower. To prevent this slowness, the deep copy has to be smart: it must be able to copy a bunch of things while preserving the identity of the underlying row types. If it's given a label and then a table type, both referring to the same row type, it will copy the row type from the label, but then when copying the table type it will realize that it had already seen and copied the table type, and will reuse its first type. And the same applies even within a table: it may have multiple references to the same row type from the aggregators, and will be smart enough to figure out if they are the same, and copy the same row type once.
+
+This smartness stays mostly undercover in Perl. When you import a facet, it will do all the proper copying, sharing the row types. (Though of course if you export the same row type through two separate nexuses, and then import them both into another thread, these facets will not share the types between them any more). There is a method TableType::deepCopy() but it was mostly intended for testing and it's self-contained: it will copy one table type with the correct row type sharing inside it but it won't do the sharing between two table types.
+
+All the interesting uses of the deepCopy() are at the C++ level. It's used all over the place: for the TableType, IndexType, AggregatorType, SortedIndexCondition and RowSetType (the type of FnReturn and FnBinding). If you decide to create your own subclass of these classes, you need to implement the deepCopy() (and of course the normal copy()) for it.
+
+Its prototype generally looks like this (substitute the correct return type as needed):
+
+virtual IndexType *deepCopy(HoldRowTypes *holder) const;
+
+The HoldRowTypes object is what takes care of sharing the underlying row types. To copy a bunch of objects with sharing, you create a HoldRowTypes, copy the bunch, destroy the HoldRowTypes.
+
+For example, the Facet copies the table types from a Nexus like this:
+
+Autoref<HoldRowTypes> holder = new HoldRowTypes;
+
+for (TableTypeMap::iterator it = nx->tableTypes_.begin(); it != nx->tableTypes_.end(); ++it)
+    tableTypes_[it->first] = it->second->deepCopy(holder);
+
+It also uses the same holder to copy the exported row types and the labels. A row type gets copied through a holder like this:
+
+Autoref <RowType> rt2 = holder->copy(rt);
+
+For all the other purposes, HoldRowTypes is an opaque object.
+
+A special feature is that you can pass the holder pointer as NULL, and the deep copy will still work, only it obviously won't be able to share the underlying row types. So if you don't care about sharing, you can always use NULL as an argument. It even works for the direct copying:
+
+HoldRowTypes *holder = NULL;
+Autoref <RowType> rt2 = holder->copy(rt);
+
+
+Its method copy() is smart enough to recognize the this being NULL and do the correct thing.
+
+
+In the classes, the deepCopy() is typically implemented like this:
+
+
+IndexType *SortedIndexType::deepCopy(HoldRowTypes *holder) const
+{
+    return new SortedIndexType(*this, holder);
+}
+
+
+SortedIndexType::SortedIndexType(const SortedIndexType &orig, HoldRowTypes *holder) :
+    TreeIndexType(orig, holder),
+    sc_(orig.sc_->deepCopy(holder))
+{ }
+
+
+The wrapper passes the call to the deep-copy constructor with a holder which in turn propagates the deep-copying to all the components using their constructor with a holder. Of course, if some component doesn't have any RowType references in it, it doesn't need a constructor with a holder, and can be copied without it. But again, the idea of the deepCopy() it to copy as deep as it goes, without sharing any references with the original. 

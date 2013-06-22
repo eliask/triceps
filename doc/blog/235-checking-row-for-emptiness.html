@@ -1,0 +1,22 @@
+checking a row for emptiness
+
+I've mentioned that the rowops with the empty rows (i.e. rows with all fields NULL) on the _BEGIN_ and _END_ labels in the facets are treated specially. The same check is also available as the directly callable method, in case if you have some other uses for it.
+
+In Perl it is:
+
+$result = $row->isEmpty();
+
+It returns 1 if all the fields are NULL and 0 otherwise.
+
+In C++ this is done as a method of the RowType class:
+
+virtual bool RowType::isRowEmpty(const Row *row) const;
+
+And is used like this:
+
+bool res = type->isRowEmpty(row);
+
+It's also available as a convenience wrapper method on the Rowref:
+
+Rowref r1(...);
+if (r1.isRowEmpty()) { ... } 

@@ -1,0 +1,66 @@
+options passing through
+
+I've already shown it in the examples, but here is also the official description: you can accept the arbitrary options, typically if your function is a wrapper to another function, and you just want to process a few options and let the others through. The Triead::start() is a good example, passing the options through to the main function of the thread.
+
+You specify the acceptance of the arbitrary options by using "*" in the Opt::parse() arguments. For example:
+
+  &Triceps::Opt::parse($myname, $opts, {
+    app => [ undef, \&Triceps::Opt::ck_mandatory ],
+    thread => [ undef, \&Triceps::Opt::ck_mandatory ],
+    fragment => [ "", undef ],
+    main => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
+    '*' => [],
+  }, @_);
+
+The specification array for "*" is empty. The unknown options will be collected in the array referred to from $opts->{'*'}, that is @{$opts->{'*'}}.
+
+From there on your wrapper has the choice of either passing through all the options to the wrapped function, using @_, or explicitly specifying a few options and  passing through the  rest from @{$opts->{'*'}}.
+
+There is also the third possibility: filter out only some of the incoming options. This can be done with Opt::drop(). For example, Triead::startHere() works like this:
+
+our @startOpts = (
+  app => [ undef, \&Triceps::Opt::ck_mandatory ],
+  thread => [ undef, \&Triceps::Opt::ck_mandatory ],
+  fragment => [ "", undef ],
+  main => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
+);
+
+sub startHere # (@opts)
+{
+  my $myname = "Triceps::Triead::start";
+  my $opts = {};
+  my @myOpts = ( # options that don't propagate through
+    harvest => [ 1, undef ],
+    makeApp => [ 1, undef ],
+  );
+
+  &Triceps::Opt::parse($myname, $opts, {
+    @startOpts,
+    @myOpts,
+    '*' => [],
+  }, @_);
+
+  my @args = &Triceps::Opt::drop({
+    @myOpts
+  }, \@_);
+  @_ = (); # workaround for threads leaking objects
+
+  # no need to declare the Triead, since all the code executes synchronously anyway
+  my $app;
+  if ($opts->{makeApp}) {
+    $app = &Triceps::App::make($opts->{app});
+  } else {
+    $app = &Triceps::App::resolve($opts->{app});
+  }
+  my $owner = Triceps::TrieadOwner->new(undef, undef, $app, $opts->{thread}, $opts->{fragment});
+  push(@args, "owner", $owner);
+  eval { &{$opts->{main}}(@args) };
+...
+
+The @startOpts are both used by the startHere() and passed through. The @myOpts are only used in startHere() and do not pass through. And the rest of the options pass through without baing used in startHere(). So the options from @myOpts get dropped from @_, and the result goes to the main thread.
+
+The Opt::drop() takes the specification of the options to drop as a hash reference, the same as Opt::parse(). The values in the hash are not important in this case, only the keys are used. But it's simpler to store the same specification of the options and reuse it for both parse() and drop() than to write it twice.
+
+There is also an opposite function, Opt::dropExcept(). It passes through only the listed options and drops the rest. It can come handy if your wrapper wants to pass different subsets of its incoming options to multiple functions.
+
+The functions drop() and dropExcept() can really be used on any name-value arrays, not just the options as such. And the same goes for the Fields::filter() and friends. So you can use them interchangeably: you can use Opt::drop() on the row type specifications and Fields::filter() on the options if you feel that it makes your code simpler. 
