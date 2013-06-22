@@ -2,8 +2,8 @@
 .DEFAULT_GOAL = all
 
 all clean test qtest vtest: perl/Triceps/Makefile
-	$(MAKE) -C cpp $@
-	$(MAKE) -C perl/Triceps $@
+	LANG=C $(MAKE) -C cpp $@
+	LANG=C $(MAKE) -C perl/Triceps $@
 
 clobber:
 	$(MAKE) -C cpp $@
