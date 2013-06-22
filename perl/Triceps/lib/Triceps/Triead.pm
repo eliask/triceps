@@ -48,12 +48,17 @@ our @opts = (
 # fragment => $fragname
 # Name of the fragment (default: "").
 #
+# immed => 0/1
+# Flag: when the new thread imports its nexuses, it should import them in the
+# immediate mode. This flag is purely advisory, and the thread's main function
+# is free to use or ignore it depending on its logic. It's provided as a
+# convenience, since it's a typical concern for the helper threads. Default: 0.
+#
 # main => \&function
 # The main function of the thread that will be called with all the options
 # plus some more:
-#     &$func(@opts, owner => $ownerObj, immed => $imm )
+#     &$func(@opts, owner => $ownerObj)
 # owner: the TrieadOwner object constructed for this thread
-# immed: passed through, flag for use in the nexus imports (default: 0)
 #
 sub start # (@opts)
 {
