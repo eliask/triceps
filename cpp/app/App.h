@@ -333,8 +333,7 @@ public:
 	// Quickly check whether the drain has completed.
 	// Can be used with both shared and exclusive drains.
 	// Can be called even without the preceding requestDrain*() but
-	// in that case there are no quarantees that the App won't be
-	// undrained a moment later.
+	// in that case it will likely return garbage.
 	bool isDrained();
 
 	// Start the shared drain sequence and wait for the drain to complete.
