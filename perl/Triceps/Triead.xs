@@ -167,5 +167,3 @@ writerImports(WrapTriead *self)
 			XPUSHs(sv_2mortal(sub));
 		}
 
-#// XXX add Nexus methods
-#// XXX test all methods
