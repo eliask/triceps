@@ -12,13 +12,22 @@ TRICEPS_XLIB = -lpthread -lrt
 # If TRICEPS_NSPR is not set, NSPR won't be used. Instead an alternative
 # portable implementation of atomic integers that uses a mutex will be used.
 #
-# use the NSPR4 library, auto-found
-TRICEPS_CONF += -DTRICEPS_NSPR $(shell pkg-config --cflags nspr)
-TRICEPS_XLIB += $(shell pkg-config --libs nspr)
-#
-# use the NSPR4 library, expliticly located
-#TRICEPS_CONF += -DTRICEPS_NSPR -I/usr/include/nspr4
-#TRICEPS_XLIB += -lnspr4
+# The code below tries to do its best to find the NSPR library in the
+# places I know of, or otherwise makes the code do without it.
+# If it doesn't work weel on your system, you can always comment out
+# this code and override it manually.
+NSPR_LIBS = $(shell pkg-config --libs nspr 2>/dev/null)
+ifneq ($(NSPR_LIBS),)
+	# use the NSPR4 library, auto-found
+	TRICEPS_CONF += -DTRICEPS_NSPR $(shell pkg-config --cflags nspr)
+	TRICEPS_XLIB += $(NSPR_LIBS)
+else
+	NSPR_INC = $(shell ls -d /usr/include/nspr4 2>/dev/null)
+	ifneq ($(NSPR_INC),)
+		TRICEPS_CONF += -DTRICEPS_NSPR -I/usr/include/nspr4
+		TRICEPS_XLIB += -lnspr4
+	endif
+endif
 
 # use a different namespace (instead of Triceps)
 # TRICEPS_CONF += -DTRICEPS_NS=name
