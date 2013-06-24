@@ -114,6 +114,7 @@ t/xChatMt.t
 t/xClear.t
 t/xCollapse.t
 t/xFn.t
+t/xForkJoinMt.t
 t/xHelloTable.t
 t/xHelloWorld.t
 t/xJoin.t
