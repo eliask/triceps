@@ -260,7 +260,6 @@ void TrieadOwner::mainLoop()
 {
 	while (nextXtray())
 		{ }
-	markDead();
 }
 
 void TrieadOwner::processXtray(Xtray *xt, Facet *facet)
