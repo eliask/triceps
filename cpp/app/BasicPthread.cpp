@@ -35,6 +35,7 @@ void BasicPthread::start(Autoref<TrieadOwner> to)
 void BasicPthread::startL(Autoref<App> app, Autoref<TrieadOwner> to)
 {
 	to_ = to;
+	to->fileInterrupt_ = fileInterrupt();
 	selfref_ = this; // will be reset to NULL in run_it
 	int err = pthread_create(&id_, NULL, run_it, (void *)this); // sets id_
 	if (err != 0) {
@@ -49,7 +50,6 @@ void BasicPthread::startL(Autoref<App> app, Autoref<TrieadOwner> to)
 	// There is no race between defineJoin() and shutdown() because the
 	// shutdown flag gets checked when the thread calls markReady().
 	app->defineJoin(name_, this);
-	to->fileInterrupt_ = fileInterrupt();
 }
 
 void BasicPthread::join()
