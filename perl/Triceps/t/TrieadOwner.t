@@ -17,7 +17,7 @@ use strict;
 use threads;
 
 use Test;
-BEGIN { plan tests => 250 };
+BEGIN { plan tests => 253 };
 use Triceps;
 use Carp;
 # for the file interruption test
@@ -408,6 +408,11 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	ok(ref $exp[1], "Triceps::Nexus");
 	ok($exp[1]->getName(), "nx1");
 	ok($fa->nexus()->same($exp[1]));
+
+	# test the Nexus methods
+	ok($exp[1]->getTrieadName(), "t1");
+	ok($exp[1]->isReverse(), 0);
+	ok($exp[1]->queueLimit(), 100);
 
 	@exp = $t1->imports();
 	ok($#exp, 1);

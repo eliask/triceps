@@ -49,14 +49,6 @@ public:
 	typedef map<string, Autoref<TableType> > TableTypeMap;
 	typedef vector<Autoref<NexusWriter> > WriterVec;
 
-	// Create a Nexus from its first Facet.
-	// The types will be deep-copied from the Facet. The Facet must not
-	// contain errors, the callexp rmust check it before.
-	//
-	// @param tname - name of the thread that owns the nexus
-	// @param facet - the first facet; must not contain errors
-	Nexus(const string &tname, Facet *facet);
-
 	// Get the name
 	const string &getName() const
 	{
@@ -67,12 +59,6 @@ public:
 	const string &getTrieadName() const
 	{
 		return tname_;
-	}
-
-	// Check whether the nexus is exported.
-	bool isExported() const
-	{
-		return !tname_.empty();
 	}
 
 	// Check whether the nexus is reverse, i.e. the its queue is pointed
@@ -98,6 +84,20 @@ public:
 
 	// XXX add print() ?
 protected:
+	// Create a Nexus from its first Facet.
+	// The types will be deep-copied from the Facet. The Facet must not
+	// contain errors, the callexp rmust check it before.
+	//
+	// @param tname - name of the thread that owns the nexus
+	// @param facet - the first facet; must not contain errors
+	Nexus(const string &tname, Facet *facet);
+
+	// Check whether the nexus is exported.
+	bool isExported() const
+	{
+		return !tname_.empty();
+	}
+
 	// Add a new reader queue.
 	// Synchronizes with the data flow.
 	// @param rq - the reader queue to add, must be brand new (the deleted readers

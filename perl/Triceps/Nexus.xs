@@ -51,4 +51,31 @@ getName(WrapNexus *self)
 	OUTPUT:
 		RETVAL
 
+char *
+getTrieadName(WrapNexus *self)
+	CODE:
+		clearErrMsg();
+		Nexus *nx = self->get();
+		RETVAL = (char *)nx->getTrieadName().c_str();
+	OUTPUT:
+		RETVAL
 
+int
+isReverse(WrapNexus *self)
+	CODE:
+		clearErrMsg();
+		Nexus *nx = self->get();
+		RETVAL = nx->isReverse();
+	OUTPUT:
+		RETVAL
+
+int
+queueLimit(WrapNexus *self)
+	CODE:
+		clearErrMsg();
+		Nexus *nx = self->get();
+		RETVAL = nx->queueLimit();
+	OUTPUT:
+		RETVAL
+
+#// tested in TrieadOwner.t

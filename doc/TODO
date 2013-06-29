@@ -128,9 +128,7 @@ Things that need to be done:
 * doc: in docbook update the source code produced by SimpleAggregator
 * doc: Rowop::printP argument for an explicit name
 * doc: in C++ Unit isFrameEmpty(), isInOuterFrame() (add in Perl too?)
-* doc: autodetection of NSPR
 * doc: removed setName() in Unit and Label (and in C++ Gadget)
-* doc: LANG=C override in the top-level Makefile
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
