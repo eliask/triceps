@@ -124,7 +124,7 @@ sub trackDupFile # ($self, $name, $mode)
 # Same as trackDupFile(), but also closes the original
 # file descriptor in the App, thus completely moving the
 # descriptor here.
-sub trackGetFile # ($self, $name, $mode, $class)
+sub trackGetFile # ($self, $name, $mode)
 {
 	my ($self, $name, $mode) = @_;
 	my ($tfd, $file) = trackDupFile(@_);
@@ -154,7 +154,7 @@ sub trackDupSocket # ($self, $name, $mode)
 # Same as trackDupSocket(), but also closes the original
 # file descriptor in the App, thus completely moving the
 # descriptor here.
-sub trackGetSocket # ($self, $name, $mode, $class)
+sub trackGetSocket # ($self, $name, $mode)
 {
 	my ($self, $name, $mode) = @_;
 	my ($tfd, $file) = trackDupSocket(@_);
