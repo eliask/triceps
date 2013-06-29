@@ -357,6 +357,7 @@ public:
 
 	virtual void execute(TrieadOwner *to)
 	{
+		my_to_ = to;
 		to->markDead();
 	}
 
@@ -367,6 +368,7 @@ public:
 	}
 
 	bool joined_;
+	Autoref<TrieadOwner> my_to_;
 };
 
 // The minimal construction, starting and joining of BasicPthread.
@@ -383,6 +385,7 @@ UTESTCASE basic_pthread_join(Utest *utest)
 	a1->harvester(false);
 
 	UT_ASSERT(pt1->joined_);
+	UT_IS(pt1->fileInterrupt(), pt1->my_to_->fileInterrupt_.get());
 
 	restore_uncatchable();
 }

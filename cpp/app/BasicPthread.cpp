@@ -49,6 +49,7 @@ void BasicPthread::startL(Autoref<App> app, Autoref<TrieadOwner> to)
 	// There is no race between defineJoin() and shutdown() because the
 	// shutdown flag gets checked when the thread calls markReady().
 	app->defineJoin(name_, this);
+	to->fileInterrupt_ = fileInterrupt();
 }
 
 void BasicPthread::join()
