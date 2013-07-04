@@ -389,24 +389,23 @@ makeTray(WrapUnit *self, ...)
 		clearErrMsg();
 		Unit *unit = self->get();
 
-		for (int i = 1; i < items; i++) {
-			SV *arg = ST(i);
-			if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
-				WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
-				if (var == 0 || var->badMagic()) {
-					setErrMsg( strprintf("%s: argument %d has an incorrect magic for Rowop", funcName, i) );
-					XSRETURN_UNDEF;
+		try { do {
+			for (int i = 1; i < items; i++) {
+				SV *arg = ST(i);
+				if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+					WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
+					if (var == 0 || var->badMagic()) {
+						throw Exception::f("%s: argument %d has an incorrect magic for Rowop", funcName, i);
+					}
+					if (var->get()->getLabel()->getUnitPtr() != unit) {
+						throw Exception::f("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
+							var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnitName().c_str());
+					}
+				} else{
+					throw Exception::f("%s: argument %d is not a blessed SV reference to Rowop", funcName, i);
 				}
-				if (var->get()->getLabel()->getUnitPtr() != unit) {
-					setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
-						var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnitName().c_str()) );
-					XSRETURN_UNDEF;
-				}
-			} else{
-				setErrMsg( strprintf("%s: argument %d is not a blessed SV reference to Rowop", funcName, i) );
-				XSRETURN_UNDEF;
 			}
-		}
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 		Autoref<Tray> tray = new Tray;
 		for (int i = 1; i < items; i++) {
@@ -447,29 +446,32 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *clear, SV *exec, ...
 	CODE:
 		// for casting of return value
 		static char CLASS[] = "Triceps::Label";
+		RETVAL = NULL; // shut up the warning
 
-		clearErrMsg();
-		Unit *unit = self->get();
-		RowType *rt = wrt->get();
+		try { do {
+			clearErrMsg();
+			Unit *unit = self->get();
+			RowType *rt = wrt->get();
 
-		Onceref<PerlCallback> clr;
-		if (!SvOK(clear)) {
-			// take the default
-			clear = get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0);
-		}
-		if (SvOK(clear)) {
-			clr = new PerlCallback();
-			PerlCallbackInitializeSplit(clr, "Triceps::Unit::makeLabel(clear)", clear, 5, items-5);
-			if (clr->code_ == NULL)
-				XSRETURN_UNDEF; // error message is already set
-		}
+			Onceref<PerlCallback> clr;
+			if (!SvOK(clear)) {
+				// take the default
+				clear = get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0);
+			}
+			if (SvOK(clear)) {
+				clr = new PerlCallback();
+				PerlCallbackInitializeSplit(clr, "Triceps::Unit::makeLabel(clear)", clear, 5, items-5);
+				if (clr->code_ == NULL)
+					break; // error message is already set
+			}
 
-		Onceref<PerlCallback> cb = new PerlCallback();
-		PerlCallbackInitialize(cb, "Triceps::Unit::makeLabel(callback)", 4, items-4);
-		if (cb->code_ == NULL)
-			XSRETURN_UNDEF; // error message is already set
+			Onceref<PerlCallback> cb = new PerlCallback();
+			PerlCallbackInitialize(cb, "Triceps::Unit::makeLabel(callback)", 4, items-4);
+			if (cb->code_ == NULL)
+				break; // error message is already set
 
-		RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, cb));
+			RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, cb));
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 

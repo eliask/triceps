@@ -53,7 +53,6 @@ ok(ref $tt1, "Triceps::TableType");
 
 $res = $tt1->initialize();
 ok($res, 1);
-#print STDERR "$!" . "\n";
 
 $t1 = $u1->makeTable($tt1, "tab1");
 ok(ref $t1, "Triceps::Table");

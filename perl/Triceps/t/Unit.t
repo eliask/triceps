@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 142 };
+BEGIN { plan tests => 140 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -77,13 +77,11 @@ ok($@, qr/^Triceps::Unit::makeTable: table type was not successfully initialized
 
 $res = $tt1->initialize();
 ok($res, 1);
-#print STDERR "$!" . "\n";
 
 ###################### makeTable #################################
 
 $t1 = $u1->makeTable($tt1, "tab1");
 ok(ref $t1, "Triceps::Table");
-#print STDERR "$!" . "\n";
 
 $v = $t1->getUnit();
 ok($u1->same($v));
@@ -273,7 +271,6 @@ ok($v);
 $history = "";
 $v = $u1->makeHashSchedule($xlab1, "OP_INSERT", @dataset1);
 ok($v);
-#print STDERR $! . "\n";
 $v = $u1->empty();
 ok(!$v);
 $u1->callNext();
@@ -284,7 +281,6 @@ ok($v);
 $history = "";
 $v = $u1->makeArraySchedule($xlab1, "OP_DELETE", @datavalues1);
 ok($v);
-#print STDERR $! . "\n";
 $v = $u1->empty();
 ok(!$v);
 $u1->callNext();
@@ -463,7 +459,6 @@ $u1->setMaxRecursionDepth(1);
 
 $v = $u1->getTracer();
 ok(! defined $v);
-ok($! . "", "");
 
 $trsn1 = Triceps::UnitTracerStringName->new();
 ok(ref $trsn1, "Triceps::UnitTracerStringName");
@@ -485,7 +480,6 @@ $u1->setTracer(undef);
 
 $v = $u1->getTracer();
 ok(! defined $v);
-ok($! . "", "");
 
 # try to set an invalid value
 eval {
