@@ -83,8 +83,7 @@ sub doManualLookup {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	"EM_CALL", "tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
 
 my $lbFilterResult = $uJoin->makeDummyLabel($rtInTrans, "lbFilterResult");
 my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
@@ -141,8 +140,7 @@ sub doLookupLeft {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	"EM_CALL", "tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -202,8 +200,7 @@ sub doLookupFull {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	"EM_CALL", "tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
 
 our $lbTrans = $uJoin->makeDummyLabel($rtInTrans, "lbTrans");
 
@@ -273,8 +270,7 @@ sub doLookupLeftMulti {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts2, 
-	"EM_CALL", "tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts2, "tAccounts");
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -349,8 +345,7 @@ sub doLookupLeftMultiOne {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts2, 
-	"EM_CALL", "tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts2, "tAccounts");
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -420,8 +415,7 @@ sub doLookupLeftManual {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	"EM_CALL", "tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -553,10 +547,8 @@ sub doJoinInner {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	"EM_CALL", "tToUsd") or confess "$!";
-our $tPosition = $uJoin->makeTable($ttPosition, 
-	"EM_CALL", "tPosition") or confess "$!";
+our $tToUsd = $uJoin->makeTable($ttToUsd, "tToUsd");
+our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -632,10 +624,8 @@ sub doJoinLeft {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	"EM_CALL", "tToUsd") or confess "$!";
-our $tPosition = $uJoin->makeTable($ttPosition, 
-	"EM_CALL", "tPosition") or confess "$!";
+our $tToUsd = $uJoin->makeTable($ttToUsd, "tToUsd");
+our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 
 our $businessDay = undef;
 
@@ -724,10 +714,8 @@ sub doJoinOuter {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	"EM_CALL", "tToUsd") or confess "$!";
-our $tPosition = $uJoin->makeTable($ttPosition, 
-	"EM_CALL", "tPosition") or confess "$!";
+our $tToUsd = $uJoin->makeTable($ttToUsd, "tToUsd");
+our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -804,10 +792,8 @@ sub doJoinFiltered {
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	"EM_CALL", "tToUsd") or confess "$!";
-our $tPosition = $uJoin->makeTable($ttPosition, 
-	"EM_CALL", "tPosition") or confess "$!";
+our $tToUsd = $uJoin->makeTable($ttToUsd, "tToUsd");
+our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 
 our $businessDay = undef;
 

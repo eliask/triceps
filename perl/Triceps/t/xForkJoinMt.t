@@ -242,8 +242,7 @@ sub workerT # (@opts)
 		)
 	or confess "$!";
 	$ttRate->initialize() or confess "$!";
-	my $tRate = $unit->makeTable($ttRate, 
-		"EM_CALL", "tRate") or confess "$!";
+	my $tRate = $unit->makeTable($ttRate, "tRate");
 	my $lbRateInput = $tRate->getInputLabel();
 
 	my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or confess "$!";

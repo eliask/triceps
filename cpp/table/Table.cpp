@@ -38,9 +38,9 @@ void Table::InputLabel::execute(Rowop *arg) const
 
 ////////////////////////////////////// Table ////////////////////////////////////
 
-Table::Table(Unit *unit, EnqMode emode, const string &name, 
+Table::Table(Unit *unit, const string &name, 
 	const TableType *tt, const RowType *rowt, const RowHandleType *handt) :
-	Gadget(unit, emode, name + ".out", rowt),
+	Gadget(unit, Gadget::EM_CALL, name + ".out", rowt),
 	type_(tt),
 	rowType_(rowt),
 	rhType_(handt),

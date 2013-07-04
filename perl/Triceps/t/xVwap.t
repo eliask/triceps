@@ -156,7 +156,7 @@ ok(ref $ttAggr1, "Triceps::TableType");
 $res = $ttAggr1->initialize();
 ok($res, 1);
 
-$tAggr1 = $vu1->makeTable($ttAggr1, &Triceps::EM_FORK, "tAggr1");
+$tAggr1 = $vu1->makeTable($ttAggr1, "tAggr1");
 ok(ref $tAggr1, "Triceps::Table");
 
 # the label that processes the results of aggregation
@@ -286,7 +286,7 @@ sub new # (class, optionName => optionValue ...)
 		);
 	$tabtype->initialize() or Carp::confess "Failed to initialize the VWAP table type: $!";
 	$self->{tabType} = $tabtype;
-	my $t = $self->{unit}->makeTable($tabtype, &Triceps::EM_CALL, $self->{name} . ".agg");
+	my $t = $self->{unit}->makeTable($tabtype, $self->{name} . ".agg");
 	Carp::confess "Failed to create the VWAP table: $!" unless (ref $t eq "Triceps::Table");
 	$self->{table} = $t;
 
@@ -410,8 +410,7 @@ Triceps::SimpleAggregator::make(
 );
 
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",

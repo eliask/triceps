@@ -36,7 +36,7 @@ sub runExample($$$) # ($unit, $tabType, $aggName)
 {
 	my ($unit, $tt, $aggName) = @_;
 	$tt->initialize() or confess "$!";
-	my $t = $unit->makeTable($tt, &Triceps::EM_CALL, "t") or confess "$!";
+	my $t = $unit->makeTable($tt, "t") or confess "$!";
 	my $lbAgg = $t->getAggregatorLabel($aggName) or confess "$!";
 	
 	# label to print the result of aggregation

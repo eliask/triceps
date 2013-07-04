@@ -135,8 +135,7 @@ sub runQuery1
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query1->new($tWindow, "qWindow");
 my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
@@ -190,8 +189,7 @@ sub new # ($class, $unit, $tabType, $name)
 	my $tabType = shift;
 	my $name = shift;
 
-	my $table = $unit->makeTable($tabType, "EM_CALL", $name)
-		or confess "Query2 table creation failed: $!";
+	my $table = $unit->makeTable($tabType, $name);
 	my $rt = $table->getRowType();
 
 	my $self = {};
@@ -388,8 +386,7 @@ sub runQuery3
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query3->new(table => $tWindow, name => "qWindow");
 my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
@@ -507,8 +504,7 @@ sub runQuery4
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $cmpcode;
 my $query = Query4->new(table => $tWindow, name => "qWindow",
 	fields => ["symbol", "price"]);
@@ -560,8 +556,7 @@ sub runQuery4a
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query4->new(table => $tWindow, name => "qWindow");
 my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
@@ -713,8 +708,7 @@ sub runQuery5
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $cmpcode;
 my $query = Query5->new(table => $tWindow, name => "qWindow",
 	fields => ["symbol", "price"], saveCodeTo => \$cmpcode );
@@ -785,8 +779,7 @@ sub runQuery5a
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query5->new(table => $tWindow, name => "qWindow");
 my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
@@ -942,8 +935,7 @@ sub runQuery6
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query6->new(table => $tWindow, name => "qWindow",);
 my $srvout = &Triceps::X::SimpleServer::makeServerOutLabel($query->getOutputLabel());
 
@@ -1099,8 +1091,7 @@ sub runQuery7
 
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query7->new(table => $tWindow, name => "qWindow",
 	resultFields => [ '!id', 'size/lot_$&', '.*' ],
 );
@@ -1205,8 +1196,7 @@ sub runServerOutputFromLabel
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query1->new($tWindow, "qWindow");
 my $srvout = ServerOutput->new(fromLabel => $query->getOutputLabel());
 
@@ -1230,8 +1220,7 @@ sub runServerOutputFromRowType
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query1->new($tWindow, "qWindow");
 my $srvout = ServerOutput->new(
 	name => "out",
@@ -1335,8 +1324,7 @@ sub runServerOutput2FromLabel
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query1->new($tWindow, "qWindow");
 my $srvout = ServerOutput2->new(
 	unit => $uTrades,
@@ -1363,8 +1351,7 @@ sub runServerOutput2FromRowType
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 my $query = Query1->new($tWindow, "qWindow");
 my $srvout = ServerOutput2->new(
 	name => "out",

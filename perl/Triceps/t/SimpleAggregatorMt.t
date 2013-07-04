@@ -117,7 +117,7 @@ sub makeTtWindow
 
 					my $ttWindow = $faSource->impTableType("ttWindow");
 					$ttWindow->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($ttWindow, "EM_CALL", "t1") or confess "$!";
+					my $t1 = $unit->makeTable($ttWindow, "t1") or confess "$!";
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 

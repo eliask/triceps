@@ -359,7 +359,7 @@ setTracer(WrapUnit *self, SV *arg)
 		} while(0); } TRICEPS_CATCH_CROAK;
 
 WrapTable *
-makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
+makeTable(WrapUnit *unit, WrapTableType *wtt, char *name)
 	CODE:
 		static char funcName[] =  "Triceps::Unit::makeTable";
 		// for casting of return value
@@ -370,11 +370,7 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 			clearErrMsg();
 			TableType *tbt = wtt->get();
 
-			Gadget::EnqMode em;
-			if (!parseEnqMode(funcName, enqMode, em))
-				break; // the error message is already set
-
-			Autoref<Table> t = tbt->makeTable(unit->get(), em, name);
+			Autoref<Table> t = tbt->makeTable(unit->get(), name);
 			if (t.isNull()) {
 				throw Exception::f("%s: table type was not successfully initialized", funcName);
 			}

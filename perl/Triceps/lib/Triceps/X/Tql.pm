@@ -687,7 +687,7 @@ sub _tqlJoin # ($ctx, @args)
 
 		# build the table from the type
 		$tt->initialize() or confess "$!";
-		$table = $ctx->{u}->makeTable($tt, "EM_CALL", "tab" . $ctx->{id} . $tabname);
+		$table = $ctx->{u}->makeTable($tt, "tab" . $ctx->{id} . $tabname);
 		push @{$ctx->{copyTables}}, $table;
 
 		# build the request that fills the table with data and then

@@ -48,8 +48,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
-our $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
 our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
@@ -159,8 +158,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
-our $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
 our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
@@ -285,8 +283,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
-our $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
 our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
@@ -417,8 +414,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
-our $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
 our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
@@ -448,8 +444,7 @@ our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
 	)
 	or confess "$!";
 $ttAvgPrice->initialize() or confess "$!";
-our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, 
-	&Triceps::EM_CALL, "tAvgPrice") or confess "$!";
+our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, "tAvgPrice");
 our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
 
 # place to send the average: could be a dummy label, but to keep the

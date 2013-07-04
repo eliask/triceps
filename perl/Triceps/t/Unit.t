@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 150 };
+BEGIN { plan tests => 142 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -71,7 +71,7 @@ $tt1 = Triceps::TableType->new($rt1)
 ok(ref $tt1, "Triceps::TableType");
 
 # check with uninitialized type
-$t1 = eval { $u1->makeTable($tt1, "EM_SCHEDULE", "tab1"); };
+$t1 = eval { $u1->makeTable($tt1, "tab1"); };
 ok(!defined $t1);
 ok($@, qr/^Triceps::Unit::makeTable: table type was not successfully initialized at/);
 
@@ -81,32 +81,12 @@ ok($res, 1);
 
 ###################### makeTable #################################
 
-$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "tab1");
 ok(ref $t1, "Triceps::Table");
 #print STDERR "$!" . "\n";
 
 $v = $t1->getUnit();
 ok($u1->same($v));
-
-$t1 = $u1->makeTable($tt1, "EM_FORK", "tab1");
-ok(ref $t1, "Triceps::Table");
-
-$t1 = $u1->makeTable($tt1, "EM_CALL", "tab1");
-ok(ref $t1, "Triceps::Table");
-
-$t1 = $u1->makeTable($tt1, "EM_IGNORE", "tab1");
-ok(ref $t1, "Triceps::Table");
-
-$t1 = $u1->makeTable($tt1, 0, "tab1");
-ok(ref $t1, "Triceps::Table");
-
-$t1 = eval { $u1->makeTable($tt1, 0.0, "tab1"); };
-ok(!defined $t1);
-ok($@, qr/Triceps::Unit::makeTable: unknown enqueuing mode string '0', if integer was meant, it has to be cast at/);
-
-$t1 = eval { $u1->makeTable($tt1, 20, "tab1"); };
-ok(!defined $t1);
-ok($@, qr/^Triceps::Unit::makeTable: unknown enqueuing mode integer 20 at/);
 
 ###################### makeTray #################################
 # see in Tray.t

@@ -163,7 +163,7 @@ my @dataset2 = (
 
 					my $tt1 = $faSource->impTableType("tt1");
 					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "EM_CALL", "t1") or confess "$!";
+					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 

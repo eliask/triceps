@@ -77,7 +77,7 @@ ok(ref $rt1, "Triceps::RowType");
 	$res = $tt1->initialize();
 	ok($res);
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# make some records and stick them in, put pseudo-numeric values into the strings

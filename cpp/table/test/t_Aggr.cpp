@@ -173,7 +173,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findSubIndex("primary");
@@ -483,7 +483,7 @@ UTESTCASE tableops_fret(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	Autoref<FnReturn> fret = t->fnReturn();
@@ -571,7 +571,7 @@ UTESTCASE bad_fret(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	msg.clear();
@@ -651,7 +651,7 @@ UTESTCASE aggLast(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	FdataVec dv;
@@ -803,7 +803,7 @@ UTESTCASE aggBasicSum(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	FdataVec dv;
@@ -1037,7 +1037,7 @@ UTESTCASE aggSum(Utest *utest)
 		return;
 	}
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	FdataVec dv;

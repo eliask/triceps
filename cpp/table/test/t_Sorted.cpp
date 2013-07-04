@@ -153,7 +153,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 	UT_ASSERT(t->getInputLabel() != NULL);
 	UT_ASSERT(t->getLabel() != NULL);
@@ -179,14 +179,14 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findSubIndex("primary");
 	UT_ASSERT(prim != NULL);
 
 	// other instance, for checking of errors
-	Autoref<Table> t2 = tt->makeTable(unit, Table::EM_IGNORE, "t2");
+	Autoref<Table> t2 = tt->makeTable(unit, "t2");
 	UT_ASSERT(!t2.isNull());
 	IndexType *prim2 = tt->findSubIndex("primary");
 	UT_ASSERT(prim2 != NULL);
@@ -197,7 +197,7 @@ UTESTCASE tableops(Utest *utest)
 		);
 	UT_ASSERT(tt3);
 	tt3->initialize();
-	Autoref<Table> t3 = tt3->makeTable(unit, Table::EM_IGNORE, "t3");
+	Autoref<Table> t3 = tt3->makeTable(unit, "t3");
 	UT_ASSERT(!t3.isNull());
 	IndexType *prim3 = tt3->findSubIndex("primary");
 	UT_ASSERT(prim3 != NULL);
@@ -390,7 +390,7 @@ UTESTCASE tableops_exception(Utest *utest)
 
 	// just set and check the error manually
 	{
-		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		Autoref<Table> t = tt->makeTable(unit, "t");
 		UT_ASSERT(!t.isNull());
 
 		// no error yet
@@ -415,7 +415,7 @@ UTESTCASE tableops_exception(Utest *utest)
 
 	// set the error on insert and test that everything stops after that
 	{
-		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		Autoref<Table> t = tt->makeTable(unit, "t");
 		UT_ASSERT(!t.isNull());
 
 		Rhref rh1(t, t->makeRowHandle(r1));
@@ -610,7 +610,7 @@ UTESTCASE tableops_exception(Utest *utest)
 	
 	// error on deleteRow
 	{
-		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		Autoref<Table> t = tt->makeTable(unit, "t");
 		UT_ASSERT(!t.isNull());
 
 		Rhref rh1(t, t->makeRowHandle(r1));
@@ -636,7 +636,7 @@ UTESTCASE tableops_exception(Utest *utest)
 	
 	// error on findRowIdx() (propagated from findIdx())
 	{
-		Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+		Autoref<Table> t = tt->makeTable(unit, "t");
 		UT_ASSERT(!t.isNull());
 
 		Rhref rh1(t, t->makeRowHandle(r1));

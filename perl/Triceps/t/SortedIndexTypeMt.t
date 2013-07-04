@@ -137,7 +137,7 @@ ok($res, "index PerlSortedIndex(withArgs)");
 
 					my $tt1 = $faSource->impTableType("tt1");
 					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "EM_CALL", "t1") or confess "$!";
+					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 					$t1->getOutputLabel()->chain($faSink->getLabel("out"));
@@ -260,7 +260,7 @@ sink.dump OP_INSERT b="2" c="2"
 
 					my $tt1 = $faSource->impTableType("tt1");
 					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "EM_CALL", "t1") or confess "$!";
+					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 					$t1->getOutputLabel()->chain($faSink->getLabel("out"));

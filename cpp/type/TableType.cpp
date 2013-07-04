@@ -150,12 +150,12 @@ void TableType::initialize()
 		errors_ = NULL;
 }
 
-Onceref<Table> TableType::makeTable(Unit *unit, Gadget::EnqMode emode, const string &name) const
+Onceref<Table> TableType::makeTable(Unit *unit, const string &name) const
 {
 	if (!initialized_ || errors_->hasError())
 		return NULL;
 
-	return new Table(unit, emode, name, this, rowType_, rhType_);
+	return new Table(unit, name, this, rowType_, rhType_);
 }
 
 IndexType *TableType::findSubIndex(const string &name) const

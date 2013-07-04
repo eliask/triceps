@@ -44,7 +44,7 @@ sub helloWorldDirect()
 	or confess "$!";
 	$ttCount->initialize() or confess "$!";
 
-	my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
+	my $tCount = $hwunit->makeTable($ttCount, "tCount");
 
 	while(&readLine) {
 		chomp;
@@ -171,7 +171,6 @@ sub new # (class, unit, args of makeTable...)
 	my $class = shift;
 	my $unit = shift;
 	my $self = $unit->makeTable(@_);
-	return undef unless defined $self;
 	bless $self, $class;
 	return $self;
 }
@@ -192,7 +191,7 @@ package main;
 	or confess "$!";
 	$ttCount->initialize() or confess "$!";
 
-	my $tCount = MyTable->new($hwunit, $ttCount, &Triceps::EM_CALL, "tCount") or confess "$!";
+	my $tCount = MyTable->new($hwunit, $ttCount, "tCount");
 	ok(ref $tCount, "MyTable");
 }
 
@@ -214,7 +213,7 @@ sub helloWorldLabels()
 	or confess "$!";
 	$ttCount->initialize() or confess "$!";
 
-	my $tCount = $hwunit->makeTable($ttCount, "EM_CALL", "tCount") or confess "$!";
+	my $tCount = $hwunit->makeTable($ttCount, "tCount");
 
 	my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
 		"lbPrintCount", undef, sub { # (label, rowop)

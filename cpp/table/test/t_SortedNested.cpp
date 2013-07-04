@@ -150,7 +150,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 }
 
@@ -167,7 +167,7 @@ UTESTCASE uninitialized(Utest *utest)
 
 	UT_ASSERT(tt);
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -187,7 +187,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findSubIndex("primary");

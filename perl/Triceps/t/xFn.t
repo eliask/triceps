@@ -2278,7 +2278,7 @@ my $ttIsin = Triceps::TableType->new($rtIsin)
 ) or confess "$!"; 
 $ttIsin->initialize() or confess "$!";
 
-my $tIsin = $unit->makeTable($ttIsin, "EM_CALL", "tIsin") or confess "$!";
+my $tIsin = $unit->makeTable($ttIsin, "tIsin");
 
 # the results will come from here
 my $fretLookupIsin = Triceps::FnReturn->new(

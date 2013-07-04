@@ -121,10 +121,10 @@ ok(ref $vu3, "Triceps::Unit");
 my %result;
 
 # the accounts table type is also reused from example (1)
-$tAccounts3 = $vu3->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+$tAccounts3 = $vu3->makeTable($ttAccounts, "Accounts");
 ok(ref $tAccounts3, "Triceps::Table");
 
-$tAccounts3dup = $vu3->makeTable($ttAccountsDup, &Triceps::EM_CALL, "Accounts");
+$tAccounts3dup = $vu3->makeTable($ttAccountsDup, "Accounts");
 ok(ref $tAccounts3dup, "Triceps::Table");
 
 # add a chance to act betfore the account table gets modified, for self-join
@@ -177,7 +177,7 @@ $ttTrans3 = Triceps::TableType->new($rtTrans3)
 ; 
 ok(ref $ttTrans3, "Triceps::TableType");
 ok($ttTrans3->initialize());
-$tTrans3 = $vu3->makeTable($ttTrans3, &Triceps::EM_CALL, "Trans");
+$tTrans3 = $vu3->makeTable($ttTrans3, "Trans");
 ok(ref $tTrans3, "Triceps::Table");
 $intrans3 = $tTrans3->getInputLabel();
 ok(ref $intrans3, "Triceps::Label");
@@ -191,7 +191,7 @@ $ttTrans3p = Triceps::TableType->new($rtTrans3)
 ; 
 ok(ref $ttTrans3p, "Triceps::TableType");
 ok($ttTrans3p->initialize());
-$tTrans3p = $vu3->makeTable($ttTrans3p, &Triceps::EM_CALL, "Trans");
+$tTrans3p = $vu3->makeTable($ttTrans3p, "Trans");
 ok(ref $tTrans3p, "Triceps::Table");
 $intrans3p = $tTrans3p->getInputLabel();
 ok(ref $intrans3p, "Triceps::Label");
@@ -1160,9 +1160,9 @@ ok($@ =~ /^Triceps::JoinTwo::new: must have only one of options by or byLeft, go
 {
 	$vu4 = Triceps::Unit->new("vu4");
 	ok(ref $vu4, "Triceps::Unit");
-	$tAccounts4 = $vu4->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+	$tAccounts4 = $vu4->makeTable($ttAccounts, "Accounts");
 	ok(ref $tAccounts4, "Triceps::Table");
-	$tTrans4 = $vu4->makeTable($ttTrans3, &Triceps::EM_CALL, "Trans");
+	$tTrans4 = $vu4->makeTable($ttTrans3, "Trans");
 	ok(ref $tTrans4, "Triceps::Table");
 
 	&tryBadOptValue(rightTable => $tAccounts4);
@@ -1321,9 +1321,9 @@ ok($@ =~ /^Option 'byLeft' contains a right-side field 'internal' that is not in
 	$res = $ttVaried->initialize();
 	ok($res, 1);
 
-	my $t1 = $vu3->makeTable($ttVaried, &Triceps::EM_CALL, "t1");
+	my $t1 = $vu3->makeTable($ttVaried, "t1");
 	ok(ref $t1, "Triceps::Table");
-	my $t2 = $vu3->makeTable($ttVaried, &Triceps::EM_CALL, "t2");
+	my $t2 = $vu3->makeTable($ttVaried, "t2");
 	ok(ref $t2, "Triceps::Table");
 
 	&tryBadOptValue(

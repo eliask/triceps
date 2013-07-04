@@ -139,7 +139,7 @@ ok(ref $idxAccountsLookup, "Triceps::IndexType");
 $res = $ttAccounts->initialize();
 ok($res, 1);
 
-$tAccounts = $vu1->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+$tAccounts = $vu1->makeTable($ttAccounts, "Accounts");
 ok(ref $tAccounts, "Triceps::Table");
 
 # function to perform the join
@@ -235,7 +235,7 @@ ok(ref $vu2, "Triceps::Unit");
 my $result2;
 
 # the accounts table type is also reused from example (1)
-$tAccounts2 = $vu2->makeTable($ttAccounts, &Triceps::EM_CALL, "Accounts");
+$tAccounts2 = $vu2->makeTable($ttAccounts, "Accounts");
 ok(ref $tAccounts2, "Triceps::Table");
 
 #########
@@ -510,7 +510,7 @@ ok(ref $ttAccounts2de, "Triceps::TableType");
 $res = $ttAccounts2de->initialize();
 ok($res, 1);
 
-$tAccounts2de = $vu2->makeTable($ttAccounts2de, &Triceps::EM_CALL, "Accounts2de");
+$tAccounts2de = $vu2->makeTable($ttAccounts2de, "Accounts2de");
 ok(ref $tAccounts2de, "Triceps::Table");
 
 # fill the accounts table
@@ -862,7 +862,7 @@ ok(ref $ttAccounts2xde, "Triceps::TableType");
 $res = $ttAccounts2xde->initialize();
 ok($res, 1);
 
-$tAccounts2xde = $vu2->makeTable($ttAccounts2xde, &Triceps::EM_CALL, "Accounts2xde");
+$tAccounts2xde = $vu2->makeTable($ttAccounts2xde, "Accounts2xde");
 ok(ref $tAccounts2xde, "Triceps::Table");
 
 # fill the accounts table
@@ -1382,7 +1382,7 @@ ok($@ =~ /^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupI
 	ok(ref $tt, "Triceps::TableType");
 	$res = $tt->initialize();
 	ok($res, 1);
-	$t= $vu2->makeTable($tt, &Triceps::EM_CALL, "TestTable");
+	$t= $vu2->makeTable($tt, "TestTable");
 	ok(ref $t, "Triceps::Table");
 
 	eval {
@@ -1441,7 +1441,7 @@ ok($@ =~ /^A duplicate field 'acctSrc' is produced from  right-side field 'inter
 	ok(ref $tt, "Triceps::TableType");
 	$res = $tt->initialize();
 	ok($res, 1);
-	$t= $vu2->makeTable($tt, &Triceps::EM_CALL, "TestTable");
+	$t= $vu2->makeTable($tt, "TestTable");
 	ok(ref $t, "Triceps::Table");
 
 	my $j;

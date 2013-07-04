@@ -75,10 +75,8 @@ sub appCoreT # (@opts)
 		or confess "$!";
 	$ttSymbol->initialize() or confess "$!";
 
-	my $tWindow = $unit->makeTable($ttWindow, "EM_CALL", "tWindow")
-		or confess "$!";
-	my $tSymbol = $unit->makeTable($ttSymbol, "EM_CALL", "tSymbol")
-		or confess "$!";
+	my $tWindow = $unit->makeTable($ttWindow, "tWindow");
+	my $tSymbol = $unit->makeTable($ttSymbol, "tSymbol");
 
 	# $tSymbol->getOutputLabel()->makeChained("dbgSymbol", undef, sub {
 		# print "XXX ", $_[1]->printP(), "\n";

@@ -44,9 +44,7 @@ our $ttData = Triceps::TableType->new($rtData)
 	->addSubIndex("fifo", Triceps::IndexType->newFifo())
 or confess "$!";
 $ttData->initialize() or confess "$!";
-our $tData = $uChunks->makeTable($ttData,
-	&Triceps::EM_CALL, "tJoin1"
-) or confess "$!";
+our $tData = $uChunks->makeTable($ttData, "tJoin1");
 makePrintLabel("lbPrintData", $tData->getOutputLabel());
 
 # notifications about the clearing

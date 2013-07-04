@@ -100,10 +100,8 @@ sub new # ($class, $optName => $optValue, ...)
 	$dataset->{tt}->initialize() 
 		or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
 
-	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess "Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, "EM_CALL", $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert");
+	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert");
 
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 

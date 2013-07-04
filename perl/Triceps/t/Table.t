@@ -66,7 +66,7 @@ $res = $tt1->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t1 = $u1->makeTable($tt1, "EM_CALL", "tab1");
+$t1 = $u1->makeTable($tt1, "tab1");
 ok(ref $t1, "Triceps::Table");
 
 ### table 2 with a different type
@@ -90,7 +90,7 @@ ok(ref $tt2, "Triceps::TableType");
 $res = $tt2->initialize();
 ok($res, 1);
 
-$t2 = $u1->makeTable($tt2, "EM_CALL", "tab2");
+$t2 = $u1->makeTable($tt2, "tab2");
 ok(ref $t2, "Triceps::Table");
 
 ########################## basic functions #################################################
@@ -560,7 +560,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 		;
 	ok(ref $ttc1, "Triceps::TableType");
 	$ttc1->initialize();
-	my $tc1 = $u1->makeTable($ttc1, "EM_CALL", "tc1");
+	my $tc1 = $u1->makeTable($ttc1, "tc1");
 	ok(ref $tc1, "Triceps::Table");
 	
 	for (my $i = 0; $i < 10; $i++) {
@@ -616,7 +616,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 
 	ok($tt9->initialize(), 1);
 
-	my $t9 = $u9->makeTable($tt9, "EM_CALL", "t9");
+	my $t9 = $u9->makeTable($tt9, "t9");
 	ok(ref $t9, "Triceps::Table");
 	my $fret = $t9->fnReturn();
 	ok(ref $fret, "Triceps::FnReturn");
@@ -664,7 +664,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 
 	ok($tt9->initialize(), 1);
 
-	my $t9 = $u9->makeTable($tt9, "EM_CALL", "t9");
+	my $t9 = $u9->makeTable($tt9, "t9");
 	ok(ref $t9, "Triceps::Table");
 
 	my $fret = eval { $t9->fnReturn(); };
@@ -686,7 +686,7 @@ ok($@ =~ /Triceps::Table::deleteRow: table and row types are not equal, in table
 	ok(ref $tt9, "Triceps::TableType");
 	ok($tt9->initialize(), 1);
 
-	my $t9 = $u9->makeTable($tt9, "EM_CALL", "t9");
+	my $t9 = $u9->makeTable($tt9, "t9");
 	ok(ref $t9, "Triceps::Table");
 	my $fret = $t9->fnReturn();
 	ok(ref $fret, "Triceps::FnReturn");

@@ -66,10 +66,8 @@ sub runTqlQuery1
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
-my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
+my $tSymbol = $uTrades->makeTable($ttSymbol, "tSymbol");
 
 # The information about tables, for querying.
 my $tql = Triceps::X::Tql->new(
@@ -144,10 +142,8 @@ sub runTqlQuery2
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
-my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
+my $tSymbol = $uTrades->makeTable($ttSymbol, "tSymbol");
 
 # The information about tables, for querying.
 my $tql = Triceps::X::Tql->new(name => "tql");
@@ -216,10 +212,8 @@ sub runTqlQuery3
 {
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
-	or confess "$!";
-my $tSymbol = $uTrades->makeTable($ttSymbol, "EM_CALL", "tSymbol")
-	or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
+my $tSymbol = $uTrades->makeTable($ttSymbol, "tSymbol");
 
 # The information about tables, for querying.
 my $tql = Triceps::X::Tql->new(

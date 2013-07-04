@@ -90,8 +90,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -233,8 +232,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -349,8 +347,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -473,8 +470,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -598,8 +594,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -727,8 +722,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -874,8 +868,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -970,8 +963,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # labels to print the table updates
 my $lbPre = makePrintLabel("lbPre", $tWindow->getPreLabel());
@@ -1103,8 +1095,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
@@ -1194,8 +1185,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 $idxByPrice = $ttWindow->findIndexPath("bySymbol", "byPrice");
 
@@ -1345,8 +1335,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 	)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 $idxByOrder = $ttWindow->findIndexPath("bySymbol", "last4");
 
@@ -1433,8 +1422,7 @@ Triceps::SimpleAggregator::make(
 );
 
 $ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 

@@ -174,7 +174,7 @@ UTESTCASE sortedIndexInt32(Utest *utest)
 
 	// make a table, some rows, and check the order
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 
 	FdataVec dv;
 	mkfdata(dv);
@@ -415,7 +415,7 @@ UTESTCASE sortedIndexMultiInt32(Utest *utest)
 
 	// make a table, some rows, and check the order
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 
 	FdataVec dv;
 	mkfdata(dv);
@@ -640,7 +640,7 @@ UTESTCASE sortedIndexSeq(Utest *utest)
 
 	// make a table, some rows, and check the order
 	Autoref<Unit> unit = new Unit("u");
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_CALL, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 
 	FdataVec dv;
 	mkfdata(dv);

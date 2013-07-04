@@ -148,7 +148,7 @@ $res = $tt1->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
+$t1 = $u1->makeTable($tt1, "tab1");
 ok(ref $t1, "Triceps::Table");
 
 # connect the history recording label
@@ -279,7 +279,7 @@ $res = $tt2->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+$t2 = $u1->makeTable($tt2, "tab2");
 ok(ref $t2, "Triceps::Table");
 
 # connect the history recording label, same one as in test 1
@@ -396,7 +396,7 @@ $res = $tt3->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t3 = $u1->makeTable($tt3, "EM_SCHEDULE", "tab3");
+$t3 = $u1->makeTable($tt3, "tab3");
 ok(ref $t3, "Triceps::Table");
 
 # connect the history recording label, same one as in test 1
@@ -511,7 +511,7 @@ $res = $tt4->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t4 = $u1->makeTable($tt4, "EM_SCHEDULE", "tab4");
+$t4 = $u1->makeTable($tt4, "tab4");
 ok(ref $t4, "Triceps::Table");
 
 # remember the reverse index for the aggregator
@@ -618,7 +618,7 @@ $res = $tt2->initialize();
 ok($res, 1);
 #print STDERR "$!" . "\n";
 
-$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+$t2 = $u1->makeTable($tt2, "tab2");
 ok(ref $t2, "Triceps::Table");
 
 # connect the history recording label, same one as in test 1
@@ -684,7 +684,7 @@ $res = $tt2->initialize();
 ok($res, 1);
 #print STDERR "$!\n";
 
-$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+$t2 = $u1->makeTable($tt2, "tab2");
 ok(ref $t2, "Triceps::Table");
 
 eval { $t2->insert($r1); };
@@ -714,7 +714,7 @@ $res = $tt2->initialize();
 ok($res, 1);
 #print STDERR "$!\n";
 
-$t2 = $u1->makeTable($tt2, "EM_SCHEDULE", "tab2");
+$t2 = $u1->makeTable($tt2, "tab2");
 ok(ref $t2, "Triceps::Table");
 
 eval { $t2->insert($r1); };

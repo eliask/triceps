@@ -74,8 +74,7 @@ sub doArbJoins {
 
 our $uArb = Triceps::Unit->new("uArb");
 
-our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or confess "$!";
+our $tRate = $uArb->makeTable($ttRate, "tRate");
 
 our $join1 = Triceps::JoinTwo->new(
 	name => "join1",
@@ -96,8 +95,7 @@ our $ttJoin1 = Triceps::TableType->new($join1->getResultRowType())
 	)
 or confess "$!";
 $ttJoin1->initialize() or confess "$!";
-our $tJoin1 = $uArb->makeTable($ttJoin1,
-	&Triceps::EM_CALL, "tJoin1") or confess "$!";
+our $tJoin1 = $uArb->makeTable($ttJoin1, "tJoin1");
 $join1->getOutputLabel()->chain($tJoin1->getInputLabel());
 
 our $join2 = Triceps::JoinTwo->new(
@@ -200,8 +198,7 @@ sub doArbManual {
 
 our $uArb = Triceps::Unit->new("uArb");
 
-our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or confess "$!";
+our $tRate = $uArb->makeTable($ttRate, "tRate");
 
 # now compute the resulting circular rate and filter the profitable loops
 our $rtResult = Triceps::RowType->new(
@@ -342,8 +339,7 @@ sub doArbLookupJoins {
 
 our $uArb = Triceps::Unit->new("uArb");
 
-our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or confess "$!";
+our $tRate = $uArb->makeTable($ttRate, "tRate");
 
 our $join1 = Triceps::LookupJoin->new(
 	name => "join1",

@@ -81,7 +81,7 @@ UTESTCASE primaryIndex(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 }
 
@@ -98,7 +98,7 @@ UTESTCASE uninitialized(Utest *utest)
 
 	UT_ASSERT(tt);
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -127,7 +127,7 @@ UTESTCASE withError(Utest *utest)
 
 	UT_IS(tt->getErrors()->print(), "index error:\n  nested index 1 'primary':\n    nested index 1 'level2':\n      can not find the key field 'x'\n");
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(t.isNull());
 }
 
@@ -159,7 +159,7 @@ UTESTCASE tableops(Utest *utest)
 	UT_ASSERT(tt->getErrors().isNull());
 	UT_ASSERT(!tt->getErrors()->hasError());
 
-	Autoref<Table> t = tt->makeTable(unit, Table::EM_IGNORE, "t");
+	Autoref<Table> t = tt->makeTable(unit, "t");
 	UT_ASSERT(!t.isNull());
 
 	IndexType *prim = tt->findSubIndex("primary");
@@ -340,7 +340,7 @@ UTESTCASE queuing(Utest *utest)
 	UT_ASSERT(tt0->getErrors().isNull());
 	UT_ASSERT(!tt0->getErrors()->hasError());
 
-	Autoref<Table> t0 = tt0->makeTable(unit, Table::EM_FORK, "t0");
+	Autoref<Table> t0 = tt0->makeTable(unit, "t0");
 	UT_ASSERT(!t0.isNull());
 
 	// tt1 is a table with nested index
@@ -351,7 +351,7 @@ UTESTCASE queuing(Utest *utest)
 	UT_ASSERT(tt1->getErrors().isNull());
 	UT_ASSERT(!tt1->getErrors()->hasError());
 
-	Autoref<Table> t1 = tt1->makeTable(unit, Table::EM_CALL, "t1");
+	Autoref<Table> t1 = tt1->makeTable(unit, "t1");
 	UT_ASSERT(!t1.isNull());
 
 	// connect the tables

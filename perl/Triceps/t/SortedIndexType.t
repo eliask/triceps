@@ -122,7 +122,7 @@ ok($res, "index PerlSortedIndex(basic)");
 	ok($res, 1);
 	#print STDERR "$!" . "\n";
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# insert rows in a backwards order
@@ -189,7 +189,7 @@ ok($res, "index PerlSortedIndex(basic)");
 	ok($res, 1);
 	#print STDERR "$!" . "\n";
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# insert rows in a backwards order
@@ -254,7 +254,7 @@ ok($res, "index PerlSortedIndex(basic)");
 		ok($flat2->isLeaf());
 	}
 	
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# insert rows in a backwards order, with multiple copies of some
@@ -322,7 +322,7 @@ sub testCompError # ($&comp)
 	ok($res, 1);
 	#print STDERR "$!" . "\n";
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	my $r11 = $rt1->makeRowHash(b => 1, c => 1);
@@ -377,7 +377,7 @@ sub testCompError # ($&comp)
 	ok($res, 1);
 	#print STDERR "$!" . "\n";
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# insert rows in a backwards order
@@ -481,7 +481,7 @@ row {
 	ok(!defined $res);
 	ok($! . "", 'Triceps::IndexType::setComparator: this index type is already initialized and can not be changed');
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# insert rows in a backwards order
@@ -573,7 +573,7 @@ row {
 	ok(!defined $res);
 	ok($! . "", 'Triceps::IndexType::setComparator: this index type is already initialized and can not be changed');
 
-	my $t1 = $u1->makeTable($tt1, "EM_CALL", "t1");
+	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
 
 	# insert rows in a backwards order

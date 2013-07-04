@@ -117,6 +117,8 @@ Things that need to be done:
   fields still would have to be provided from the other side of the join
   to compute the index value); the assigned name must not conflict with the
   field names of the row type
+* makeTable() in C++ and Perl is inconsistent: on TableType in C++, on Unit in Perl
+* with the abolishment of the enqueueing mode in Table, Gadget became kind of useless
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 
@@ -129,6 +131,7 @@ Things that need to be done:
 * doc: Rowop::printP argument for an explicit name
 * doc: in C++ Unit isFrameEmpty(), isInOuterFrame() (add in Perl too?)
 * doc: removed setName() in Unit and Label (and in C++ Gadget)
+* doc: converted to new errors: Row, Table, Tray
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

@@ -175,8 +175,7 @@ sub rawToHourlyT # (@opts)
 	);
 
 	$ttPackets->initialize() or confess "$!";
-	my $tPackets = $unit->makeTable($ttPackets, 
-		&Triceps::EM_CALL, "tPackets") or confess "$!";
+	my $tPackets = $unit->makeTable($ttPackets, "tPackets");
 
 	# Filter the aggregator output to match the current hour.
 	my $lbHourlyFiltered = $unit->makeDummyLabel($rtSummary, "hourlyFiltered");
@@ -298,8 +297,7 @@ sub hourlyToDailyT # (@opts)
 	);
 
 	$ttHourly->initialize() or confess "$!";
-	my $tHourly = $unit->makeTable($ttHourly, 
-		&Triceps::EM_CALL, "tHourly") or confess "$!";
+	my $tHourly = $unit->makeTable($ttHourly, "tHourly");
 
 	# Filter the aggregator output to match the current day.
 	my $lbDailyFiltered = $unit->makeDummyLabel($rtSummary, "dailyFiltered");
@@ -381,8 +379,7 @@ sub storeDailyT # (@opts)
 	or confess "$!";
 
 	$ttDaily->initialize() or confess "$!";
-	my $tDaily = $unit->makeTable($ttDaily, 
-		&Triceps::EM_CALL, "tDaily") or confess "$!";
+	my $tDaily = $unit->makeTable($ttDaily, "tDaily");
 
 	# the daily updates can be chained directly
 	$faIn->getLabel("daily")->chain($tDaily->getInputLabel());
@@ -738,8 +735,7 @@ sub rawToHourlyT # (@opts)
 	);
 
 	$ttPackets->initialize() or confess "$!";
-	my $tPackets = $unit->makeTable($ttPackets, 
-		&Triceps::EM_CALL, "tPackets") or confess "$!";
+	my $tPackets = $unit->makeTable($ttPackets, "tPackets");
 
 	# Make the table type for keeping the data after aggregation.
 	my $ttHourly = Triceps::TableType->new(
@@ -834,14 +830,12 @@ sub joinUsersT # (@opts)
 	;
 	$ttHourly->initialize() or confess "$!";
 
-	my $tHourly = $unit->makeTable($ttHourly, 
-		&Triceps::EM_CALL, "tHourly") or confess "$!";
+	my $tHourly = $unit->makeTable($ttHourly, "tHourly");
 
 	my $ttUsers = $faIn->impTableType("users");
 	$ttUsers->initialize() or confess "$!";
 
-	my $tUsers = $unit->makeTable($ttUsers, 
-		&Triceps::EM_CALL, "tUsers") or confess "$!";
+	my $tUsers = $unit->makeTable($ttUsers, "tUsers");
 
 	my $join = Triceps::JoinTwo->new( 
 		name => "join",
