@@ -375,8 +375,31 @@ opcodeString(int val)
 	OUTPUT:
 		RETVAL
 
+#// exactly the same as opcodeString, just for the consistent naming
+char *
+opcodeStringSafe(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Rowop::opcodeString(val); // never returns NULL
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
 char *
 ocfString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Rowop::ocfString(val, NULL);
+		try { do {
+			if (res == NULL)
+				throw Exception::f("Triceps::ocfString: opcode flag value '%d' not defined in the enum", val);
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+ocfStringSafe(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Rowop::ocfString(val, NULL);
@@ -391,6 +414,19 @@ emString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Gadget::emString(val, NULL);
+		try { do {
+			if (res == NULL)
+				throw Exception::f("Triceps::emString: enqueueing mode value '%d' not defined in the enum", val);
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+emStringSafe(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Gadget::emString(val, NULL);
 		if (res == NULL)
 			XSRETURN_UNDEF; // not a croak
 		RETVAL = (char *)res;
@@ -399,6 +435,19 @@ emString(int val)
 
 char *
 tracerWhenString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Unit::tracerWhenString(val, NULL);
+		try { do {
+			if (res == NULL)
+				throw Exception::f("Triceps::tracerWhenString: TracerWhen value '%d' not defined in the enum", val);
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+tracerWhenStringSafe(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Unit::tracerWhenString(val, NULL);
@@ -413,6 +462,19 @@ tracerWhenHumanString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Unit::tracerWhenHumanString(val, NULL);
+		try { do {
+			if (res == NULL)
+				throw Exception::f("Triceps::tracerWhenHumanString: TracerWhen value '%d' not defined in the enum", val);
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+tracerWhenHumanStringSafe(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Unit::tracerWhenHumanString(val, NULL);
 		if (res == NULL)
 			XSRETURN_UNDEF; // not a croak
 		RETVAL = (char *)res;
@@ -424,6 +486,19 @@ indexIdString(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = IndexType::indexIdString(val, NULL);
+		try { do {
+			if (res == NULL)
+				throw Exception::f("Triceps::indexIdString: index id value '%d' not defined in the enum", val);
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+indexIdStringSafe(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = IndexType::indexIdString(val, NULL);
 		if (res == NULL)
 			XSRETURN_UNDEF; // not a croak
 		RETVAL = (char *)res;
@@ -432,6 +507,19 @@ indexIdString(int val)
 
 char *
 aggOpString(int val)
+	CODE:
+		clearErrMsg();
+		const char *res = Aggregator::aggOpString(val, NULL);
+		try { do {
+			if (res == NULL)
+				throw Exception::f("Triceps::aggOpString: aggregation opcode value '%d' not defined in the enum", val);
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = (char *)res;
+	OUTPUT:
+		RETVAL
+
+char *
+aggOpStringSafe(int val)
 	CODE:
 		clearErrMsg();
 		const char *res = Aggregator::aggOpString(val, NULL);

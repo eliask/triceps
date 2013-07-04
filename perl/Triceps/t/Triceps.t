@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 150 };
+BEGIN { plan tests => 170 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -128,16 +128,24 @@ ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
 ok(&Triceps::emString(&Triceps::EM_FORK), "EM_FORK");
 ok(&Triceps::emString(&Triceps::EM_CALL), "EM_CALL");
 ok(&Triceps::emString(&Triceps::EM_IGNORE), "EM_IGNORE");
-ok(&Triceps::emString(999), undef);
+ok(eval { &Triceps::emString(999); }, undef);
+ok($@, qr/^Triceps::emString: enqueueing mode value '999' not defined in the enum at/);
+ok(&Triceps::emStringSafe(&Triceps::EM_IGNORE), "EM_IGNORE");
+ok(&Triceps::emStringSafe(999), undef);
 
 ok(&Triceps::opcodeString(&Triceps::OP_NOP), "OP_NOP");
 ok(&Triceps::opcodeString(&Triceps::OP_INSERT), "OP_INSERT");
 ok(&Triceps::opcodeString(&Triceps::OP_DELETE), "OP_DELETE");
 ok(&Triceps::opcodeString(0x333), "[ID]");
+ok(&Triceps::opcodeStringSafe(&Triceps::OP_DELETE), "OP_DELETE");
+ok(&Triceps::opcodeStringSafe(0x333), "[ID]");
 
 ok(&Triceps::ocfString(&Triceps::OCF_INSERT), "OCF_INSERT");
 ok(&Triceps::ocfString(&Triceps::OCF_DELETE), "OCF_DELETE");
-ok(&Triceps::ocfString(999), undef);
+ok(eval { &Triceps::ocfString(999); }, undef);
+ok($@, qr/^Triceps::ocfString: opcode flag value '999' not defined in the enum at/);
+ok(&Triceps::ocfStringSafe(&Triceps::OCF_DELETE), "OCF_DELETE");
+ok(&Triceps::ocfStringSafe(999), undef);
 
 ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE), "TW_BEFORE");
 ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER), "TW_AFTER");
@@ -145,7 +153,10 @@ ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_CHAINED), "TW_BEFORE_CHAINED")
 ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER_CHAINED), "TW_AFTER_CHAINED");
 ok(&Triceps::tracerWhenString(&Triceps::TW_BEFORE_DRAIN), "TW_BEFORE_DRAIN");
 ok(&Triceps::tracerWhenString(&Triceps::TW_AFTER_DRAIN), "TW_AFTER_DRAIN");
-ok(&Triceps::tracerWhenString(999), undef);
+ok(eval { &Triceps::tracerWhenString(999); }, undef);
+ok($@, qr/^Triceps::tracerWhenString: TracerWhen value '999' not defined in the enum at/);
+ok(&Triceps::tracerWhenStringSafe(&Triceps::TW_AFTER_DRAIN), "TW_AFTER_DRAIN");
+ok(&Triceps::tracerWhenStringSafe(999), undef);
 
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE), "before");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER), "after");
@@ -153,20 +164,29 @@ ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_CHAINED), "before-chained
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER_CHAINED), "after-chained");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_BEFORE_DRAIN), "before-drain");
 ok(&Triceps::tracerWhenHumanString(&Triceps::TW_AFTER_DRAIN), "after-drain");
-ok(&Triceps::tracerWhenHumanString(999), undef);
+ok(eval { &Triceps::tracerWhenHumanString(999); }, undef);
+ok($@, qr/^Triceps::tracerWhenHumanString: TracerWhen value '999' not defined in the enum at/);
+ok(&Triceps::tracerWhenHumanStringSafe(&Triceps::TW_AFTER_DRAIN), "after-drain");
+ok(&Triceps::tracerWhenHumanStringSafe(999), undef);
 
 ok(&Triceps::indexIdString(&Triceps::IT_ROOT), "IT_ROOT");
 ok(&Triceps::indexIdString(&Triceps::IT_HASHED), "IT_HASHED");
 ok(&Triceps::indexIdString(&Triceps::IT_FIFO), "IT_FIFO");
 ok(&Triceps::indexIdString(&Triceps::IT_SORTED), "IT_SORTED");
 ok(&Triceps::indexIdString(&Triceps::IT_LAST), "IT_LAST");
-ok(&Triceps::indexIdString(999), undef);
+ok(eval { &Triceps::indexIdString(999); }, undef);
+ok($@, qr/^Triceps::indexIdString: index id value '999' not defined in the enum at/);
+ok(&Triceps::indexIdStringSafe(&Triceps::IT_LAST), "IT_LAST");
+ok(&Triceps::indexIdStringSafe(999), undef);
 
 ok(&Triceps::aggOpString(&Triceps::AO_BEFORE_MOD), "AO_BEFORE_MOD");
 ok(&Triceps::aggOpString(&Triceps::AO_AFTER_DELETE), "AO_AFTER_DELETE");
 ok(&Triceps::aggOpString(&Triceps::AO_AFTER_INSERT), "AO_AFTER_INSERT");
 ok(&Triceps::aggOpString(&Triceps::AO_COLLAPSE), "AO_COLLAPSE");
-ok(&Triceps::aggOpString(999), undef);
+ok(eval { &Triceps::aggOpString(999); }, undef);
+ok($@, qr/^Triceps::aggOpString: aggregation opcode value '999' not defined in the enum at/);
+ok(&Triceps::aggOpStringSafe(&Triceps::AO_COLLAPSE), "AO_COLLAPSE");
+ok(&Triceps::aggOpStringSafe(999), undef);
 
 # tests of the opcodes
 
