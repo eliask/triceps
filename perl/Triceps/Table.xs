@@ -153,10 +153,11 @@ getAggregatorLabel(WrapTable *self, char *aggname)
 		clearErrMsg();
 		Table *t = self->get();
 		Label *lab = t->getAggregatorLabel(aggname);
-		if (lab == NULL)  {
-			setErrMsg( strprintf("%s: aggregator '%s' is not defined on table '%s'", funcName, aggname, t->getName().c_str()) );
-			XSRETURN_UNDEF;
-		}
+
+		try { do {
+			if (lab == NULL)
+				throw Exception::f("%s: aggregator '%s' is not defined on table '%s'", funcName, aggname, t->getName().c_str());
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = new WrapLabel(lab);
 	OUTPUT:
 		RETVAL
@@ -256,15 +257,16 @@ makeRowHandle(WrapTable *self, WrapRow *row)
 		Row *r = row->get();
 		const RowType *rt = row->ref_.getType();
 
-		if (!rt->match(t->getRowType())) {
-			string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
-			t->getRowType()->printTo(msg, NOINDENT);
-			msg.append(", in row: ");
-			rt->printTo(msg, NOINDENT);
+		try { do {
+			if (!rt->match(t->getRowType())) {
+				string msg = strprintf("%s: table and row types are not equal, in table: ", funcName);
+				t->getRowType()->printTo(msg, NOINDENT);
+				msg.append(", in row: ");
+				rt->printTo(msg, NOINDENT);
 
-			setErrMsg(msg);
-			XSRETURN_UNDEF;
-		}
+				throw Exception(msg, false);
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 		RETVAL = new WrapRowHandle(t, t->makeRowHandle(r));
 	OUTPUT:

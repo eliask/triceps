@@ -113,9 +113,9 @@ $res = $t1->size();
 ok($res, 0); # no data in the table yet
 
 # successful getAggregatorLabel() tested in Aggregator.t, here test a bad arg
-$res = $t1->getAggregatorLabel("zzz");
+$res = eval { $t1->getAggregatorLabel("zzz"); };
 ok(!defined $res);
-ok("$!", "Triceps::Table::getAggregatorLabel: aggregator 'zzz' is not defined on table 'tab1'");
+ok($@, qr/^Triceps::Table::getAggregatorLabel: aggregator 'zzz' is not defined on table 'tab1' at/);
 
 ########################## get label #################################################
 
@@ -179,9 +179,9 @@ $rhn1 = $t1->makeNullRowHandle();
 ok(ref $rhn1, "Triceps::RowHandle");
 ok($rhn1->isNull());
 
-$rh2 = $t1->makeRowHandle($r2);
+$rh2 = eval { $t1->makeRowHandle($r2); };
 ok(!defined $rh2);
-ok($! . "", "Triceps::Table::makeRowHandle: table and row types are not equal, in table: row { uint8 a, int32 b, int64 c, float64 d, string e, }, in row: row { uint8[] a, int32[] b, int64[] c, float64[] d, string e, }");
+ok($@, qr/^Triceps::Table::makeRowHandle: table and row types are not equal, in table: row \{ uint8 a, int32 b, int64 c, float64 d, string e, \}, in row: row \{ uint8\[\] a, int32\[\] b, int64\[\] c, float64\[\] d, string e, \} at/);
 
 $rh2 = $t2->makeRowHandle($r2);
 ok(ref $rh2, "Triceps::RowHandle");
