@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 140 };
+BEGIN { plan tests => 139 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -645,7 +645,6 @@ ok($v, $s_expect);
 
 # check the buffer cleaning of string tracer
 $sntr->clearBuffer();
-ok($! . "", "");
 $v = $sntr->print();
 ok($v, "");
 

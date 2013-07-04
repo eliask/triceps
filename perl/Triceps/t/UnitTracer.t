@@ -35,13 +35,13 @@ ok(ref $ts2, "Triceps::UnitTracerStringName");
 $ts3 = Triceps::UnitTracerStringName->new(verbose => 0);
 ok(ref $ts3, "Triceps::UnitTracerStringName");
 
-$ts4 = Triceps::UnitTracerStringName->new(0);
+$ts4 = eval { Triceps::UnitTracerStringName->new(0); };
 ok (!defined $ts4);
-ok($! . "", "Usage: Triceps::UnitTracerStringName::new(CLASS, optionName, optionValue, ...), option names and values must go in pairs");
+ok($@, qr/^Usage: Triceps::UnitTracerStringName::new\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs at/);
 
-$ts4 = Triceps::UnitTracerStringName->new(unknown => 1);
+$ts4 = eval { Triceps::UnitTracerStringName->new(unknown => 1); };
 ok (!defined $ts4);
-ok($! . "", "Triceps::UnitTracerStringName::new: unknown option 'unknown'");
+ok($@, qr/^Triceps::UnitTracerStringName::new: unknown option 'unknown'/);
 
 # execution tested in Unit.t
 

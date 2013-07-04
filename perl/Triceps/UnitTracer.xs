@@ -59,26 +59,28 @@ MODULE = Triceps::UnitTracer		PACKAGE = Triceps::UnitTracerStringName
 WrapUnitTracer *
 new(char *CLASS, ...)
 	CODE:
-		clearErrMsg();
-		// defaults for options
-		bool verbose = false;
+		static char funcName[] =  "Triceps::UnitTracerStringName::new";
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
+			// defaults for options
+			bool verbose = false;
 
-		if (items % 2 != 1) {
-			setErrMsg("Usage: Triceps::UnitTracerStringName::new(CLASS, optionName, optionValue, ...), option names and values must go in pairs");
-			XSRETURN_UNDEF;
-		}
-		for (int i = 1; i < items; i += 2) {
-			const char *optname = (const char *)SvPV_nolen(ST(i));
-			if (!strcmp(optname, "verbose")) {
-				verbose = (SvIV(ST(i+1)) != 0);
-			} else {
-				setErrMsg(strprintf("Triceps::UnitTracerStringName::new: unknown option '%s'", optname));
-				XSRETURN_UNDEF;
+			if (items % 2 != 1) {
+				throw Exception::f("Usage: %s(CLASS, optionName, optionValue, ...), option names and values must go in pairs", funcName);
 			}
-		}
+			for (int i = 1; i < items; i += 2) {
+				const char *optname = (const char *)SvPV_nolen(ST(i));
+				if (!strcmp(optname, "verbose")) {
+					verbose = (SvIV(ST(i+1)) != 0);
+				} else {
+					throw Exception::f("%s: unknown option '%s'", funcName, optname);
+				}
+			}
 
-		// for casting of return value
-		RETVAL = new WrapUnitTracer(new Unit::StringNameTracer(verbose));
+			// for casting of return value
+			RETVAL = new WrapUnitTracer(new Unit::StringNameTracer(verbose));
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -90,7 +92,7 @@ print(WrapUnitTracer *self)
 		Unit::Tracer *tracer = self->get();
 		Unit::StringNameTracer *sntr = dynamic_cast<Unit::StringNameTracer *>(tracer);
 		if (sntr == NULL)
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // not croak!
 		string msg = sntr->getBuffer()->print();
 		RETVAL = (char *)msg.c_str();
 	OUTPUT:
@@ -113,7 +115,7 @@ __testSubclassCall(WrapUnitTracer *self)
 		Unit::Tracer *tracer = self->get();
 		Unit::StringNameTracer *sntr = dynamic_cast<Unit::StringNameTracer *>(tracer);
 		if (sntr == NULL)
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // not croak!
 		RETVAL = (char *)"UnitTracerStringName";
 	OUTPUT:
 		RETVAL
@@ -125,14 +127,17 @@ WrapUnitTracer *
 new(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::UnitTracerPerl::new";
-		clearErrMsg();
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
 
-		Onceref<PerlCallback> cb = new PerlCallback();
-		PerlCallbackInitialize(cb, funcName, 1, items-1);
-		if (cb->code_ == NULL)
-			XSRETURN_UNDEF; // error message is already set
+			Onceref<PerlCallback> cb = new PerlCallback();
+			PerlCallbackInitialize(cb, funcName, 1, items-1);
+			if (cb->code_ == NULL)
+				break; // error message is already set
 
-		RETVAL = new WrapUnitTracer(new UnitTracerPerl(cb));
+			RETVAL = new WrapUnitTracer(new UnitTracerPerl(cb));
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -144,7 +149,7 @@ __testSubclassCall(WrapUnitTracer *self)
 		Unit::Tracer *tracer = self->get();
 		UnitTracerPerl *ptr = dynamic_cast<UnitTracerPerl *>(tracer);
 		if (ptr == NULL)
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // not croak!
 		RETVAL = (char *)"UnitTracerPerl";
 	OUTPUT:
 		RETVAL
