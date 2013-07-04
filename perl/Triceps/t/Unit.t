@@ -71,9 +71,9 @@ $tt1 = Triceps::TableType->new($rt1)
 ok(ref $tt1, "Triceps::TableType");
 
 # check with uninitialized type
-$t1 = $u1->makeTable($tt1, "EM_SCHEDULE", "tab1");
+$t1 = eval { $u1->makeTable($tt1, "EM_SCHEDULE", "tab1"); };
 ok(!defined $t1);
-ok($! . "", "Triceps::Unit::makeTable: table type was not successfully initialized");
+ok($@, qr/^Triceps::Unit::makeTable: table type was not successfully initialized at/);
 
 $res = $tt1->initialize();
 ok($res, 1);
@@ -100,13 +100,13 @@ ok(ref $t1, "Triceps::Table");
 $t1 = $u1->makeTable($tt1, 0, "tab1");
 ok(ref $t1, "Triceps::Table");
 
-$t1 = $u1->makeTable($tt1, 0.0, "tab1");
+$t1 = eval { $u1->makeTable($tt1, 0.0, "tab1"); };
 ok(!defined $t1);
-ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode string '0', if integer was meant, it has to be cast");
+ok($@, qr/Triceps::Unit::makeTable: unknown enqueuing mode string '0', if integer was meant, it has to be cast at/);
 
-$t1 = $u1->makeTable($tt1, 20, "tab1");
+$t1 = eval { $u1->makeTable($tt1, 20, "tab1"); };
 ok(!defined $t1);
-ok($! . "", "Triceps::Unit::makeTable: unknown enqueuing mode integer 20");
+ok($@, qr/^Triceps::Unit::makeTable: unknown enqueuing mode integer 20 at/);
 
 ###################### makeTray #################################
 # see in Tray.t

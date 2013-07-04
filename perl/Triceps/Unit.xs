@@ -328,7 +328,7 @@ getTracer(WrapUnit *self)
 		Unit *u = self->get();
 		Autoref<Unit::Tracer> tracer = u->getTracer();
 		if (tracer.isNull())
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // not croak!
 
 		// find the class to use for blessing
 		char *CLASS = translateUnitTracerSubclass(tracer.get());
@@ -364,20 +364,22 @@ makeTable(WrapUnit *unit, WrapTableType *wtt, SV *enqMode, char *name)
 		static char funcName[] =  "Triceps::Unit::makeTable";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Table";
+		RETVAL = NULL; // shut up the warning
 
-		clearErrMsg();
-		TableType *tbt = wtt->get();
+		try { do {
+			clearErrMsg();
+			TableType *tbt = wtt->get();
 
-		Gadget::EnqMode em;
-		if (!parseEnqMode(funcName, enqMode, em))
-			XSRETURN_UNDEF;
+			Gadget::EnqMode em;
+			if (!parseEnqMode(funcName, enqMode, em))
+				break; // the error message is already set
 
-		Autoref<Table> t = tbt->makeTable(unit->get(), em, name);
-		if (t.isNull()) {
-			setErrMsg(strprintf("%s: table type was not successfully initialized", funcName));
-			XSRETURN_UNDEF;
-		}
-		RETVAL = new WrapTable(t);
+			Autoref<Table> t = tbt->makeTable(unit->get(), em, name);
+			if (t.isNull()) {
+				throw Exception::f("%s: table type was not successfully initialized", funcName);
+			}
+			RETVAL = new WrapTable(t);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -487,6 +489,7 @@ makeClearingLabel(WrapUnit *self, char *name, ...)
 		static char funcName[] =  "Triceps::Unit::makeClearingLabel";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Label";
+		RETVAL = NULL; // shut up the warning
 
 		try { do {
 			clearErrMsg();
