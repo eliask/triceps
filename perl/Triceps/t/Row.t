@@ -16,7 +16,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 80 };
+BEGIN { plan tests => 78 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -375,21 +375,21 @@ ok(ref $r2, "Triceps::Row");
 ok(&row2string(@d2), &row2string(@dataset1));
 
 # wrong arg number
-$r2 = $r1->copymod(
+$r2 = eval { $r1->copymod(
 	a => undef,
 	b => 123,
 	c => 3e15,
 	"e"
-);
+); };
 ok(!defined $r2);
-ok($! . "", "Usage: Triceps::Row::copymod(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs");
+ok($@, qr/^Usage: Triceps::Row::copymod\(RowType, \[fieldName, fieldValue, ...\]\), names and types must go in pairs at/);
 
 # unknown field
-$r2 = $r1->copymod(
+$r2 = eval { $r1->copymod(
 	z => 123,
-);
+); };
 ok(!defined $r2);
-ok($! . "", "Triceps::Row::copymod: attempting to set an unknown field 'z'");
+ok($@, qr/^Triceps::Row::copymod: attempting to set an unknown field 'z' at/);
 
 # setting an array to a scalar field
 @dataset1 = (
@@ -402,21 +402,21 @@ ok($! . "", "Triceps::Row::copymod: attempting to set an unknown field 'z'");
 $r1 = $rt1->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
-$r2 = $r1->copymod(
+$r2 = eval { $r1->copymod(
 	b => [ 950, 888, 123, 456, 789 ],
-);
+); };
 ok(!defined $r2);
-ok($! . "", "Triceps::Row::copymod: attempting to set an array into scalar field 'b'");
+ok($@, qr/^Triceps::Row::copymod: attempting to set an array into scalar field 'b' at/);
 
 # setting an array for uint8
 $r1 = $rt3->makeRowHash( @dataset1);
 ok(ref $r1, "Triceps::Row");
 
-$r2 = $r1->copymod(
+$r2 = eval { $r1->copymod(
 	a => [ "a", "b", "c" ],
-);
+); };
 ok(!defined $r2);
-ok($! . "", "Triceps field 'a' data conversion: array reference may not be used for string and uint8");
+ok($@, qr/^Triceps field 'a' data conversion: array reference may not be used for string and uint8/);
 
 ############ get #################################
 
@@ -438,8 +438,8 @@ ok($r1->get("d"), 3.14);
 ok($r1->get("e"), "string");
 
 # getting an unknown field
-ok(!defined $r1->get("z"));
-ok($! . "", "Triceps::Row::get: unknown field 'z'");
+ok(!defined eval { $r1->get("z"); });
+ok($@, qr/^Triceps::Row::get: unknown field 'z' at/);
 
 # getting a null field
 @dataset2 = (
@@ -453,7 +453,6 @@ $r2 = $rt1->makeRowHash( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
 ok(!defined $r2->get("a"));
-ok($! . "", "");
 
 # getting array fields
 @dataset3 = (
@@ -486,5 +485,4 @@ $r2 = $rt3->makeRowHash( @dataset2);
 ok(ref $r2, "Triceps::Row");
 
 ok(!defined $r2->get("a"));
-ok($! . "", "");
 

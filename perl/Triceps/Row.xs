@@ -85,57 +85,58 @@ toArray(WrapRow *self)
 WrapRow *
 copymod(WrapRow *self, ...)
 	CODE:
-		clearErrMsg();
-		const RowType *rt = self->ref_.getType();
-		Row *r = self->ref_.get();
-
+		static char funcName[] =  "Triceps::Row::copymod";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Row";
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
+			const RowType *rt = self->ref_.getType();
+			Row *r = self->ref_.get();
 
-		// The arguments come in pairs fieldName => value;
-		// the value may be either a simple value that will be
-		// cast to the right type, or a reference to a list of values.
-		// The uint8 and string are converted from Perl strings
-		// (the difference for now is that string is 0-terminated)
-		// and can not have lists.
+			// The arguments come in pairs fieldName => value;
+			// the value may be either a simple value that will be
+			// cast to the right type, or a reference to a list of values.
+			// The uint8 and string are converted from Perl strings
+			// (the difference for now is that string is 0-terminated)
+			// and can not have lists.
 
-		if (items % 2 != 1) {
-			setErrMsg("Usage: Triceps::Row::copymod(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs");
-			XSRETURN_UNDEF;
-		}
-
-		// parse data to create a copy
-		FdataVec fields;
-		rt->splitInto(r, fields);
-
-		// now override the modified fields
-		// this code is copied from RowType::makerow_hs
-		vector<Autoref<EasyBuffer> > bufs;
-		for (int i = 1; i < items; i += 2) {
-			const char *fname = (const char *)SvPV_nolen(ST(i));
-			int idx  = rt->findIdx(fname);
-			if (idx < 0) {
-				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Triceps::Row::copymod", fname));
-				XSRETURN_UNDEF;
+			if (items % 2 != 1) {
+				throw Exception::f("Usage: %s(RowType, [fieldName, fieldValue, ...]), names and types must go in pairs", funcName);
 			}
-			const RowType::Field &finfo = rt->fields()[idx];
 
-			if (!SvOK(ST(i+1))) { // undef translates to null
-				fields[idx].setNull();
-			} else {
-				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::Row::copymod", fname));
-					XSRETURN_UNDEF;
+			// parse data to create a copy
+			FdataVec fields;
+			rt->splitInto(r, fields);
+
+			// now override the modified fields
+			// this code is copied from RowType::makerow_hs
+			vector<Autoref<EasyBuffer> > bufs;
+			for (int i = 1; i < items; i += 2) {
+				const char *fname = (const char *)SvPV_nolen(ST(i));
+				int idx  = rt->findIdx(fname);
+				if (idx < 0) {
+					throw Exception::f("%s: attempting to set an unknown field '%s'", funcName, fname);
 				}
-				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
-				if (d == NULL)
-					XSRETURN_UNDEF; // error message already set
-				bufs.push_back(d); // remember for cleaning
+				const RowType::Field &finfo = rt->fields()[idx];
 
-				fields[idx].setPtr(true, d->data_, d->size_);
+				if (!SvOK(ST(i+1))) { // undef translates to null
+					fields[idx].setNull();
+				} else {
+					if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
+						throw Exception::f("%s: attempting to set an array into scalar field '%s'", funcName, fname);
+					}
+					EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
+					if (d == NULL)
+						goto error; // error message already set
+					bufs.push_back(d); // remember for cleaning
+
+					fields[idx].setPtr(true, d->data_, d->size_);
+				}
 			}
-		}
-		RETVAL = new WrapRow(rt, rt->makeRow(fields));
+			RETVAL = new WrapRow(rt, rt->makeRow(fields));
+		error: ;
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -143,21 +144,22 @@ copymod(WrapRow *self, ...)
 SV *
 get(WrapRow *self, char *fname)
 	PPCODE:
-		clearErrMsg();
-		const RowType *t = self->ref_.getType();
-		Row *r = self->ref_.get();
-		const RowType::FieldVec &fld = t->fields();
+		static char funcName[] =  "Triceps::Row::get";
+		try { do {
+			clearErrMsg();
+			const RowType *t = self->ref_.getType();
+			Row *r = self->ref_.get();
+			const RowType::FieldVec &fld = t->fields();
 
-		int i = t->findIdx(fname);
-		if ( i < 0 ) {
-			setErrMsg(strprintf("%s: unknown field '%s'", "Triceps::Row::get", fname));
-			XSRETURN_UNDEF;
-		}
+			int i = t->findIdx(fname);
+			if ( i < 0 )
+				throw Exception::f("%s: unknown field '%s'", funcName, fname);
 
-		const char *data;
-		intptr_t dlen;
-		bool notNull = t->getField(r, i, data, dlen);
-		XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+			const char *data;
+			intptr_t dlen;
+			bool notNull = t->getField(r, i, data, dlen);
+			XPUSHs(sv_2mortal(bytesToVal(fld[i].type_->getTypeId(), fld[i].arsz_, notNull, data, dlen, fld[i].name_.c_str())));
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 #// get the type of the row
 WrapRowType*

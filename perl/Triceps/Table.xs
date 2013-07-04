@@ -233,6 +233,7 @@ fnReturn(WrapTable *self)
 		static char funcName[] =  "Triceps::Table::fnReturn";
 		// for casting of return value
 		static char CLASS[] = "Triceps::FnReturn";
+		RETVAL = NULL; // shut up the warning
 
 		clearErrMsg();
 		Table *t = self->get();
@@ -315,12 +316,12 @@ remove(WrapTable *self, WrapRowHandle *wrh)
 			RowHandle *rh = wrh->get();
 
 			if (rh == NULL) {
-				throw TRICEPS_NS::Exception(strprintf("%s: RowHandle is NULL", funcName), false);
+				throw Exception::f("%s: RowHandle is NULL", funcName);
 			}
 
 			if (wrh->ref_.getTable() != t) {
-				throw TRICEPS_NS::Exception( strprintf("%s: row argument is a RowHandle in a wrong table %s",
-					funcName, wrh->ref_.getTable()->getName().c_str()), false );
+				throw Exception::f("%s: row argument is a RowHandle in a wrong table %s",
+					funcName, wrh->ref_.getTable()->getName().c_str());
 			}
 
 			t->remove(rh);
