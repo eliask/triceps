@@ -176,15 +176,15 @@ ok(!defined $tray2);
 ok($! . "", "Triceps::Unit::makeTray: argument 1 is a Rowop for label tab2.in from a wrong unit u2");
 
 # push invalid values
-$tray2 = $tray1->push($rop11, $rop12, 0);
+$tray2 = eval { $tray1->push($rop11, $rop12, 0); };
 ok(!defined $tray2);
-ok($! . "", "Triceps::Tray::push: argument 3 is not a blessed SV reference to Rowop");
-$tray2 = $tray1->push($rop11, $rop12, $tray1);
+ok($@, qr/^Triceps::Tray::push: argument 3 is not a blessed SV reference to Rowop/);
+$tray2 = eval { $tray1->push($rop11, $rop12, $tray1); };
 ok(!defined $tray2);
-ok($! . "", "Triceps::Tray::push: argument 3 has an incorrect magic for Rowop");
-$tray2 = $tray1->push(undef, $rop11, $rop12);
+ok($@, qr/^Triceps::Tray::push: argument 3 has an incorrect magic for Rowop/);
+$tray2 = eval { $tray1->push(undef, $rop11, $rop12); };
 ok(!defined $tray2);
-ok($! . "", "Triceps::Tray::push: argument 1 is not a blessed SV reference to Rowop");
-$tray2 = $tray1->push($rop21, $rop22);
+ok($@, qr/^Triceps::Tray::push: argument 1 is not a blessed SV reference to Rowop/);
+$tray2 = eval { $tray1->push($rop21, $rop22); };
 ok(!defined $tray2);
-ok($! . "", "Triceps::Tray::push: argument 1 is a Rowop for label tab2.in from a wrong unit u2");
+ok($@, qr/^Triceps::Tray::push: argument 1 is a Rowop for label tab2.in from a wrong unit u2/);

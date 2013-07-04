@@ -111,37 +111,37 @@ push(WrapTray *self, ...)
 		static char funcName[] =  "Triceps::Tray::push";
 		// for casting of return value
 		static char CLASS[] = "Triceps::Tray";
+		RETVAL = NULL; // shut up the warning
 
-		clearErrMsg();
-		Unit *unit = self->getParent();
-		Tray *tray = self->get();
+		try { do {
+			clearErrMsg();
+			Unit *unit = self->getParent();
+			Tray *tray = self->get();
 
-		for (int i = 1; i < items; i++) {
-			SV *arg = ST(i);
-			if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
-				WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
-				if (var == 0 || var->badMagic()) {
-					setErrMsg( strprintf("%s: argument %d has an incorrect magic for Rowop", funcName, i) );
-					XSRETURN_UNDEF;
+			for (int i = 1; i < items; i++) {
+				SV *arg = ST(i);
+				if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
+					WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
+					if (var == 0 || var->badMagic()) {
+						throw Exception::f("%s: argument %d has an incorrect magic for Rowop", funcName, i);
+					}
+					if (var->get()->getLabel()->getUnitPtr() != unit) {
+						throw Exception::f("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
+							var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnitName().c_str());
+					}
+				} else{
+					throw Exception::f("%s: argument %d is not a blessed SV reference to Rowop", funcName, i);
 				}
-				if (var->get()->getLabel()->getUnitPtr() != unit) {
-					setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
-						var->get()->getLabel()->getName().c_str(), var->get()->getLabel()->getUnitName().c_str()) );
-					XSRETURN_UNDEF;
-				}
-			} else{
-				setErrMsg( strprintf("%s: argument %d is not a blessed SV reference to Rowop", funcName, i) );
-				XSRETURN_UNDEF;
 			}
-		}
 
-		for (int i = 1; i < items; i++) {
-			SV *arg = ST(i);
-			WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
-			tray->push_back(var->get());
-		}
-		SvREFCNT_inc(ST(0));
-		RETVAL = ST(0);
+			for (int i = 1; i < items; i++) {
+				SV *arg = ST(i);
+				WrapRowop *var = (WrapRowop *)SvIV((SV*)SvRV( arg ));
+				tray->push_back(var->get());
+			}
+			SvREFCNT_inc(ST(0));
+			RETVAL = ST(0);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
