@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 129 };
+BEGIN { plan tests => 150 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -62,16 +62,25 @@ ok(&Triceps::stringEm("EM_SCHEDULE"), &Triceps::EM_SCHEDULE);
 ok(&Triceps::stringEm("EM_FORK"), &Triceps::EM_FORK);
 ok(&Triceps::stringEm("EM_CALL"), &Triceps::EM_CALL);
 ok(&Triceps::stringEm("EM_IGNORE"), &Triceps::EM_IGNORE);
-ok(&Triceps::stringEm("xxx"), undef);
+ok(eval { &Triceps::stringEm("xxx"); }, undef);
+ok($@, qr/^Triceps::stringEm: bad enqueueing mode string 'xxx' at/);
+ok(&Triceps::stringEmSafe("EM_IGNORE"), &Triceps::EM_IGNORE);
+ok(&Triceps::stringEmSafe("xxx"), undef);
 
 ok(&Triceps::stringOpcode("OP_NOP"), &Triceps::OP_NOP);
 ok(&Triceps::stringOpcode("OP_INSERT"), &Triceps::OP_INSERT);
 ok(&Triceps::stringOpcode("OP_DELETE"), &Triceps::OP_DELETE);
-ok(&Triceps::stringOpcode("xxx"), undef);
+ok(eval { &Triceps::stringOpcode("xxx"); }, undef);
+ok($@, qr/^Triceps::stringOpcode: bad opcode string 'xxx' at/);
+ok(&Triceps::stringOpcodeSafe("OP_DELETE"), &Triceps::OP_DELETE);
+ok(&Triceps::stringOpcodeSafe("xxx"), undef);
 
 ok(&Triceps::stringOcf("OCF_INSERT"), &Triceps::OCF_INSERT);
 ok(&Triceps::stringOcf("OCF_DELETE"), &Triceps::OCF_DELETE);
-ok(&Triceps::stringOcf("xxx"), undef);
+ok(eval { &Triceps::stringOcf("xxx"); }, undef);
+ok($@, qr/^Triceps::stringOcf: bad opcode flag string 'xxx' at/);
+ok(&Triceps::stringOcfSafe("OCF_DELETE"), &Triceps::OCF_DELETE);
+ok(&Triceps::stringOcfSafe("xxx"), undef);
 
 ok(&Triceps::stringTracerWhen("TW_BEFORE"), &Triceps::TW_BEFORE);
 ok(&Triceps::stringTracerWhen("TW_AFTER"), &Triceps::TW_AFTER);
@@ -79,7 +88,10 @@ ok(&Triceps::stringTracerWhen("TW_BEFORE_CHAINED"), &Triceps::TW_BEFORE_CHAINED)
 ok(&Triceps::stringTracerWhen("TW_AFTER_CHAINED"), &Triceps::TW_AFTER_CHAINED);
 ok(&Triceps::stringTracerWhen("TW_BEFORE_DRAIN"), &Triceps::TW_BEFORE_DRAIN);
 ok(&Triceps::stringTracerWhen("TW_AFTER_DRAIN"), &Triceps::TW_AFTER_DRAIN);
-ok(&Triceps::stringTracerWhen("xxx"), undef);
+ok(eval { &Triceps::stringTracerWhen("xxx"); }, undef);
+ok($@, qr/^Triceps::stringTracerWhen: bad TracerWhen string 'xxx' at/);
+ok(&Triceps::stringTracerWhenSafe("TW_AFTER_DRAIN"), &Triceps::TW_AFTER_DRAIN);
+ok(&Triceps::stringTracerWhenSafe("xxx"), undef);
 
 ok(&Triceps::humanStringTracerWhen("before"), &Triceps::TW_BEFORE);
 ok(&Triceps::humanStringTracerWhen("after"), &Triceps::TW_AFTER);
@@ -87,20 +99,29 @@ ok(&Triceps::humanStringTracerWhen("before-chained"), &Triceps::TW_BEFORE_CHAINE
 ok(&Triceps::humanStringTracerWhen("after-chained"), &Triceps::TW_AFTER_CHAINED);
 ok(&Triceps::humanStringTracerWhen("before-drain"), &Triceps::TW_BEFORE_DRAIN);
 ok(&Triceps::humanStringTracerWhen("after-drain"), &Triceps::TW_AFTER_DRAIN);
-ok(&Triceps::humanStringTracerWhen("xxx"), undef);
+ok(eval { &Triceps::humanStringTracerWhen("xxx"); }, undef);
+ok($@, qr/^Triceps::humanStringTracerWhen: bad human-readable TracerWhen string 'xxx' at/);
+ok(&Triceps::humanStringTracerWhenSafe("after-drain"), &Triceps::TW_AFTER_DRAIN);
+ok(&Triceps::humanStringTracerWhenSafe("xxx"), undef);
 
 ok(&Triceps::stringIndexId("IT_ROOT"), &Triceps::IT_ROOT);
 ok(&Triceps::stringIndexId("IT_HASHED"), &Triceps::IT_HASHED);
 ok(&Triceps::stringIndexId("IT_FIFO"), &Triceps::IT_FIFO);
 ok(&Triceps::stringIndexId("IT_SORTED"), &Triceps::IT_SORTED);
 ok(&Triceps::stringIndexId("IT_LAST"), &Triceps::IT_LAST);
-ok(&Triceps::stringIndexId("xxx"), undef);
+ok(eval { &Triceps::stringIndexId("xxx"); }, undef);
+ok($@, qr/^Triceps::stringIndexId: bad index id string 'xxx' at/);
+ok(&Triceps::stringIndexIdSafe("IT_LAST"), &Triceps::IT_LAST);
+ok(&Triceps::stringIndexIdSafe("xxx"), undef);
 
 ok(&Triceps::stringAggOp("AO_BEFORE_MOD"), &Triceps::AO_BEFORE_MOD);
 ok(&Triceps::stringAggOp("AO_AFTER_DELETE"), &Triceps::AO_AFTER_DELETE);
 ok(&Triceps::stringAggOp("AO_AFTER_INSERT"), &Triceps::AO_AFTER_INSERT);
 ok(&Triceps::stringAggOp("AO_COLLAPSE"), &Triceps::AO_COLLAPSE);
-ok(&Triceps::stringAggOp("xxx"), undef);
+ok(eval { &Triceps::stringAggOp("xxx"); }, undef);
+ok($@, qr/^Triceps::stringAggOp: bad aggregation opcode string 'xxx' at/);
+ok(&Triceps::stringAggOpSafe("AO_COLLAPSE"), &Triceps::AO_COLLAPSE);
+ok(&Triceps::stringAggOpSafe("xxx"), undef);
 
 # reverse translation of constants
 ok(&Triceps::emString(&Triceps::EM_SCHEDULE), "EM_SCHEDULE");
