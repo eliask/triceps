@@ -134,23 +134,23 @@ ok(ref $rt1, "Triceps::RowType");
 			)
 		);
 	ok(ref $tt1, "Triceps::TableType");
-	$res = $tt1->initialize();
+	$res = eval { $tt1->initialize(); };
 	ok(!defined $res);
 	#print "$!\n";
-	ok("$!", 
-"index error:
+	ok($@, 
+qr/^index error:
   nested index 1 'sorted':
     unknown direction 'XASC' for field 'z', use 'ASC' or 'DESC'
     no field 'z' in the row type
-    can not order by the field 'd', it has an array type 'float64[]', not supported yet
+    can not order by the field 'd', it has an array type 'float64\[\]', not supported yet
     the row type is:
-    row {
+    row \{
       uint8 a,
-      uint8[] b,
+      uint8\[\] b,
       int64 c,
-      float64[] d,
+      float64\[\] d,
       string e,
-    }");
+    \} at/);
 }
 
 #########################

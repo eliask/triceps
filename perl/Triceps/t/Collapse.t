@@ -104,11 +104,11 @@ my $collapse = Triceps::Collapse->new(
 eval {
 	$collapse->getInputLabel("nosuch");
 };
-ok($@ =~ /^Unknown dataset 'nosuch'/);
+ok($@, qr/^Unknown dataset 'nosuch'/);
 eval {
 	$collapse->getOutputLabel("nosuch");
 };
-ok($@ =~ /^Unknown dataset 'nosuch'/);
+ok($@, qr/^Unknown dataset 'nosuch'/);
 
 # test the label names
 ok($collapse->getInputLabel("idata")->getName(), "collapse.idata.in");
@@ -220,11 +220,11 @@ sub tryMissingOptValue # (optName)
 }
 
 &tryMissingOptValue("unit");
-ok($@ =~ /^Triceps::Collapse data set \(idata\): option unit at the main level must be specified at/);
+ok($@, qr/^Triceps::Collapse data set \(idata\): option unit at the main level must be specified at/);
 &tryMissingOptValue("name");
-ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse'/);
+ok($@, qr/^Option 'name' must be specified for class 'Triceps::Collapse'/);
 &tryMissingOptValue("data");
-ok($@ =~ /^Option 'data' must be specified for class 'Triceps::Collapse'/);
+ok($@, qr/^Option 'data' must be specified for class 'Triceps::Collapse'/);
 
 sub tryMissingDataOptValue # (optName)
 {
@@ -247,11 +247,11 @@ sub tryMissingDataOptValue # (optName)
 }
 
 &tryMissingDataOptValue("key");
-ok($@ =~ /^Option 'key' must be specified for class 'Triceps::Collapse data set \(idata\)'/);
+ok($@, qr/^Option 'key' must be specified for class 'Triceps::Collapse data set \(idata\)'/);
 &tryMissingDataOptValue("name");
-ok($@ =~ /^Option 'name' must be specified for class 'Triceps::Collapse data set/);
+ok($@, qr/^Option 'name' must be specified for class 'Triceps::Collapse data set/);
 &tryMissingDataOptValue("rowType");
-ok($@ =~ /^Triceps::Collapse data set \(idata\): must have exactly one of options rowType or fromLabel/);
+ok($@, qr/^Triceps::Collapse data set \(idata\): must have exactly one of options rowType or fromLabel/);
 
 sub tryBadOptValue # (optName, optValue, ...)
 {
@@ -272,9 +272,9 @@ sub tryBadOptValue # (optName, optValue, ...)
 }
 
 &tryBadOptValue("unit", 9);
-ok($@ =~ /^Option 'unit' of class 'Triceps::Collapse' must be a reference to 'Triceps::Unit', is ''/);
+ok($@, qr/^Option 'unit' of class 'Triceps::Collapse' must be a reference to 'Triceps::Unit', is ''/);
 &tryBadOptValue("data", 9);
-ok($@ =~ /^Option 'data' of class 'Triceps::Collapse' must be a reference to 'ARRAY', is ''/);
+ok($@, qr/^Option 'data' of class 'Triceps::Collapse' must be a reference to 'ARRAY', is ''/);
 {
 	my $unit = Triceps::Unit->new("unit");
 	&tryBadOptValue("data",[
@@ -285,7 +285,7 @@ ok($@ =~ /^Option 'data' of class 'Triceps::Collapse' must be a reference to 'AR
 		key => [ "local_ip", "remote_ip" ],
 	]);
 }
-ok($@ =~ /^Triceps::Collapse data set \(idata\): must have only one of options rowType or fromLabel/);
+ok($@, qr/^Triceps::Collapse data set \(idata\): must have only one of options rowType or fromLabel/);
 {
 	my $unit = Triceps::Unit->new("unit2");
 	&tryBadOptValue("data",[
@@ -294,7 +294,7 @@ ok($@ =~ /^Triceps::Collapse data set \(idata\): must have only one of options r
 		key => [ "local_ip", "remote_ip" ],
 	]);
 }
-ok($@ =~ /^Triceps::Collapse data set \(idata\): the label 'lbInput' in option fromLabel has a mismatched unit \('unit2' vs 'unit'\)/);
+ok($@, qr/^Triceps::Collapse data set \(idata\): the label 'lbInput' in option fromLabel has a mismatched unit \('unit2' vs 'unit'\)/);
 
 sub tryBadDataOptValue # (optName, optValue, ...)
 {
@@ -317,11 +317,12 @@ sub tryBadDataOptValue # (optName, optValue, ...)
 }
 
 &tryBadDataOptValue("key", [ "xxx" ]);
-ok($@ =~ /^Collapse table type creation error for dataset 'idata':
-index error:
+# XXX This explanatory message doesn't propagate after the
+# TableType got converted to the new error reporting.
+# qr/^Collapse table type creation error for dataset 'idata':
+ok($@, qr/index error:
   nested index 1 'primary':
-    can not find the key field 'xxx'/);
-#print "$@\n";
+    can not find the key field 'xxx' at/);
 
 #########
 # clearing

@@ -628,14 +628,14 @@ sub noComparator # (tabt, idxt, rowt,  comparator, cmpargs...)
 	ok(ref $tt1, "Triceps::TableType");
 
 	undef $result;
-	$res = $tt1->initialize();
+	$res = eval { $tt1->initialize(); };
 	ok(!defined $res);
 	#print STDERR "$!\n";
-	ok("$!", 
-"index error:
+	ok($@, 
+qr/^index error:
   nested index 1 'primary':
     initializer found an error!
-    error line 2");
+    error line 2 at/);
 }
 
 {
@@ -648,13 +648,13 @@ sub noComparator # (tabt, idxt, rowt,  comparator, cmpargs...)
 	ok(ref $tt1, "Triceps::TableType");
 
 	undef $result;
-	$res = $tt1->initialize();
+	$res = eval { $tt1->initialize(); };
 	ok(!defined $res);
 	#print STDERR "$!\n";
-	ok("$!", 
-"index error:
+	ok($@, 
+qr/^index error:
   nested index 1 'primary':
-    initializer died!");
+    initializer died! at/);
 }
 
 {
@@ -667,13 +667,13 @@ sub noComparator # (tabt, idxt, rowt,  comparator, cmpargs...)
 	ok(ref $tt1, "Triceps::TableType");
 
 	undef $result;
-	$res = $tt1->initialize();
+	$res = eval { $tt1->initialize(); };
 	ok(!defined $res);
 	#print STDERR "$!\n";
-	ok("$!", 
-"index error:
+	ok($@, 
+qr/^index error:
   nested index 1 'primary':
-    the mandatory comparator Perl function is not set by PerlSortedIndex(badInit)");
+    the mandatory comparator Perl function is not set by PerlSortedIndex\(badInit\) at/);
 }
 
 #########################

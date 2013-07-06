@@ -168,8 +168,9 @@ ok($res, "index HashedIndex(b, c, ) {\n  index FifoIndex() fifo,\n}");
 $res = $it2->print(undef);
 ok($res, "index HashedIndex(b, c, ) { index FifoIndex() fifo, }");
 
-$it2 = $tt1->findSubIndex("xxx");
+$it2 = eval { $tt1->findSubIndex("xxx"); };
 ok(!defined($it2));
+ok($@, qr/^Triceps::TableType::findSubIndex: unknown nested index 'xxx' at/);
 
 $it2 = $tt1->findSubIndexById("IT_FIFO");
 ok(ref $it2, "Triceps::IndexType");
@@ -177,21 +178,22 @@ ok(ref $it2, "Triceps::IndexType");
 $it2 = $tt1->findSubIndexById(&Triceps::IT_FIFO);
 ok(ref $it2, "Triceps::IndexType");
 
-$it2 = $tt1->findSubIndexById(&Triceps::IT_ROOT);
+$it2 = eval { $tt1->findSubIndexById(&Triceps::IT_ROOT); };
 ok(!defined $it2);
-ok($! . "", "Triceps::TableType::findSubIndexById: no nested index with type id 'IT_ROOT' (0)");
+ok($@, qr/^Triceps::TableType::findSubIndexById: no nested index with type id 'IT_ROOT' \(0\)/);
 
-$it2 = $tt1->findSubIndexById(999);
+$it2 = eval { $tt1->findSubIndexById(999); };
 ok(!defined $it2);
-ok($! . "", "Triceps::TableType::findSubIndexById: no nested index with type id '???' (999)");
+ok($@, qr/^Triceps::TableType::findSubIndexById: no nested index with type id '\?\?\?' \(999\)/);
 
-$it2 = $tt1->findSubIndexById("xxx");
+$it2 = eval { $tt1->findSubIndexById("xxx"); };
 ok(!defined $it2);
-ok($! . "", "Triceps::TableType::findSubIndexById: unknown IndexId string 'xxx', if integer was meant, it has to be cast");
+ok($@, qr/^Triceps::TableType::findSubIndexById: unknown IndexId string 'xxx', if integer was meant, it has to be cast/);
 
 $tt4 = Triceps::TableType->new($rt1);
-$it2 = $tt4->getFirstLeaf();
+$it2 = eval { $tt4->getFirstLeaf(); };
 ok(!defined($it2));
+ok($@, qr/^Triceps::TableType::getFirstLeaf: table type has no indexes defined at/);
 
 $it2 = $tt1->findIndexPath("primary", "fifo");
 $res = $it2->print();
@@ -366,7 +368,6 @@ ok($res, 0);
 
 $res = $tt1->initialize();
 ok($res, 1);
-ok($! . "", "");
 
 $res = $tt1->isInitialized();
 ok($res, 1);
@@ -374,7 +375,6 @@ ok($res, 1);
 # repeated initialization is OK
 $res = $tt1->initialize();
 ok($res, 1);
-ok($! . "", "");
 
 # check that still can find indexes
 $it2 = $tt1->getFirstLeaf();
@@ -386,9 +386,9 @@ ok(ref $res, "Triceps::TableType");
 ok($tt1->same($res));
 
 # adding indexes is not allowed any more
-$res = $tt1->addSubIndex("second", Triceps::IndexType->newFifo());
+$res = eval { $tt1->addSubIndex("second", Triceps::IndexType->newFifo()); };
 ok(!defined $res);
-ok($! . "", "Triceps::TableType::addSubIndex: table is already initialized, can not add indexes any more");
+ok($@, qr/^Triceps::TableType::addSubIndex: table is already initialized, can not add indexes any more/);
 
 ###################### copy ###########################################
 

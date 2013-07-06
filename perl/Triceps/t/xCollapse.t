@@ -282,11 +282,11 @@ my $collapse = MyCollapse->new(
 eval {
 	$collapse->getInputLabel("nosuch");
 };
-ok($@ =~ /^Unknown dataset 'nosuch'/);
+ok($@, qr/^Unknown dataset 'nosuch'/);
 eval {
 	$collapse->getOutputLabel("nosuch");
 };
-ok($@ =~ /^Unknown dataset 'nosuch'/);
+ok($@, qr/^Unknown dataset 'nosuch'/);
 
 my $lbPrint = makePrintLabel("print", $collapse->getOutputLabel("idata"));
 
@@ -366,11 +366,11 @@ sub tryMissingOptValue # (optName)
 }
 
 &tryMissingOptValue("unit");
-ok($@ =~ /^Option 'unit' must be specified for class 'MyCollapse'/);
+ok($@, qr/^Option 'unit' must be specified for class 'MyCollapse'/);
 &tryMissingOptValue("name");
-ok($@ =~ /^Option 'name' must be specified for class 'MyCollapse'/);
+ok($@, qr/^Option 'name' must be specified for class 'MyCollapse'/);
 &tryMissingOptValue("data");
-ok($@ =~ /^Option 'data' must be specified for class 'MyCollapse'/);
+ok($@, qr/^Option 'data' must be specified for class 'MyCollapse'/);
 
 sub tryMissingDataOptValue # (optName)
 {
@@ -393,11 +393,11 @@ sub tryMissingDataOptValue # (optName)
 }
 
 &tryMissingDataOptValue("key");
-ok($@ =~ /^Option 'key' must be specified for class 'MyCollapse data set \(idata\)'/);
+ok($@, qr/^Option 'key' must be specified for class 'MyCollapse data set \(idata\)'/);
 &tryMissingDataOptValue("name");
-ok($@ =~ /^Option 'name' must be specified for class 'MyCollapse data set/);
+ok($@, qr/^Option 'name' must be specified for class 'MyCollapse data set/);
 &tryMissingDataOptValue("rowType");
-ok($@ =~ /^The data set \(idata\) must have exactly one of options rowType or fromLabel/);
+ok($@, qr/^The data set \(idata\) must have exactly one of options rowType or fromLabel/);
 
 sub tryBadOptValue # (optName, optValue, ...)
 {
@@ -418,9 +418,9 @@ sub tryBadOptValue # (optName, optValue, ...)
 }
 
 &tryBadOptValue("unit", 9);
-ok($@ =~ /^Option 'unit' of class 'MyCollapse' must be a reference to 'Triceps::Unit', is ''/);
+ok($@, qr/^Option 'unit' of class 'MyCollapse' must be a reference to 'Triceps::Unit', is ''/);
 &tryBadOptValue("data", 9);
-ok($@ =~ /^Option 'data' of class 'MyCollapse' must be a reference to 'ARRAY', is ''/);
+ok($@, qr/^Option 'data' of class 'MyCollapse' must be a reference to 'ARRAY', is ''/);
 {
 	my $unit = Triceps::Unit->new("unit");
 	&tryBadOptValue("data",[
@@ -431,7 +431,7 @@ ok($@ =~ /^Option 'data' of class 'MyCollapse' must be a reference to 'ARRAY', i
 		key => [ "local_ip", "remote_ip" ],
 	]);
 }
-ok($@ =~ /^The data set \(idata\) must have only one of options rowType or fromLabel /);
+ok($@, qr/^The data set \(idata\) must have only one of options rowType or fromLabel /);
 {
 	my $unit = Triceps::Unit->new("unit");
 	&tryBadOptValue("data",[
@@ -440,7 +440,7 @@ ok($@ =~ /^The data set \(idata\) must have only one of options rowType or fromL
 		key => [ "local_ip", "remote_ip" ],
 	]);
 }
-ok($@ =~ /^The unit of the Collapse and the unit of its data set \(idata\) fromLabel must be the same/);
+ok($@, qr/^The unit of the Collapse and the unit of its data set \(idata\) fromLabel must be the same/);
 
 sub tryBadDataOptValue # (optName, optValue, ...)
 {
@@ -463,8 +463,10 @@ sub tryBadDataOptValue # (optName, optValue, ...)
 }
 
 &tryBadDataOptValue("key", [ "xxx" ]);
-ok($@ =~ /^Collapse table type creation error for dataset 'idata':
-index error:
+# XXX This explanatory message doesn't propagate after the
+# TableType got converted to the new error reporting.
+# qr/^Collapse table type creation error for dataset 'idata':
+ok($@, 
+qr/^index error:
   nested index 1 'primary':
-    can not find the key field 'xxx'/);
-#print "$@\n";
+    can not find the key field 'xxx' at/);

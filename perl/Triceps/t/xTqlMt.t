@@ -59,7 +59,7 @@ sub appCoreT # (@opts)
 			Triceps::SimpleOrderedIndex->new(id => "ASC")
 		)
 		or confess "$!";
-	$ttWindow->initialize() or confess "$!";
+	$ttWindow->initialize();
 
 	# Represents the static information about a company.
 	my $rtSymbol = Triceps::RowType->new(
@@ -73,7 +73,7 @@ sub appCoreT # (@opts)
 			Triceps::SimpleOrderedIndex->new(symbol => "ASC")
 		)
 		or confess "$!";
-	$ttSymbol->initialize() or confess "$!";
+	$ttSymbol->initialize();
 
 	my $tWindow = $unit->makeTable($ttWindow, "tWindow");
 	my $tSymbol = $unit->makeTable($ttSymbol, "tSymbol");
