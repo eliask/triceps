@@ -321,6 +321,24 @@ findSubIndex(WrapIndexType *self, char *subname)
 	OUTPUT:
 		RETVAL
 
+#// find a nested index by name, on failure just return undef
+WrapIndexType *
+findSubIndexSafe(WrapIndexType *self, char *subname)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::findSubIndex";
+		// for casting of return value
+		static char CLASS[] = "Triceps::IndexType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		IndexType *ixsub = ixt->findSubIndex(subname);
+		if (ixsub == NULL)
+			XSRETURN_UNDEF; // not croak!
+
+		RETVAL = new WrapIndexType(ixsub);
+	OUTPUT:
+		RETVAL
+
 #// find a nested index by type id
 WrapIndexType *
 findSubIndexById(WrapIndexType *self, SV *idarg)

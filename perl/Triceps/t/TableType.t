@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 104 };
+BEGIN { plan tests => 105 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -171,6 +171,9 @@ ok($res, "index HashedIndex(b, c, ) { index FifoIndex() fifo, }");
 $it2 = eval { $tt1->findSubIndex("xxx"); };
 ok(!defined($it2));
 ok($@, qr/^Triceps::TableType::findSubIndex: unknown nested index 'xxx' at/);
+
+$it2 = $tt1->findSubIndexSafe("xxx");
+ok(!defined($it2));
 
 $it2 = $tt1->findSubIndexById("IT_FIFO");
 ok(ref $it2, "Triceps::IndexType");

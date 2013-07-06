@@ -1211,26 +1211,23 @@ in table:
 /);
 
 &tryBadOptValue(leftIdxPath => [ "lookupIntGroup", "lookupInt" ]);
-# XXX This explanatory message doesn't propagate after the
-# TableType got converted to the new error reporting.
-#ok($@, qr/^Triceps::TableType::findIndexKeyPath: unable to find the index type at path 'lookupIntGroup', table type is:
-#table \(
-#  row {
-#    int32 id,
-#    string acctSrc,
-#    string acctXtrId,
-#    int32 amount,
-#  }
-#\) {
-#  index HashedIndex\(id, \) primary,
-#  index HashedIndex\(acctSrc, acctXtrId, \) {
-#    index FifoIndex\(\) data,
-#  } byAccount,
-#  index HashedIndex\(acctXtrId, acctSrc, \) {
-#    index FifoIndex\(\) data,
-#  } byAccountBackwards,
-#}/);
-ok($@, qr/^Triceps::TableType::findSubIndex: unknown nested index 'lookupIntGroup' at/);
+ok($@, qr/^Triceps::TableType::findIndexKeyPath: unable to find the index type at path 'lookupIntGroup', table type is:
+table \(
+  row {
+    int32 id,
+    string acctSrc,
+    string acctXtrId,
+    int32 amount,
+  }
+\) {
+  index HashedIndex\(id, \) primary,
+  index HashedIndex\(acctSrc, acctXtrId, \) {
+    index FifoIndex\(\) data,
+  } byAccount,
+  index HashedIndex\(acctXtrId, acctSrc, \) {
+    index FifoIndex\(\) data,
+  } byAccountBackwards,
+}/);
 
 &tryBadOptValue(rightIdxPath => [ "lookupIntGroup", "lookupInt" ]);
 ok($@, qr/^Triceps::TableType::findIndexKeyPath: the index type at path 'lookupIntGroup.lookupInt' does not have a key, table type is:

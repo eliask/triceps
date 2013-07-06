@@ -29,7 +29,7 @@ sub findIndexPath # (self, idxName, ...)
 	my $progress = '';
 	foreach my $p (@_) {
 		$progress .= $p;
-		$cur = $cur->findSubIndex($p) 
+		$cur = $cur->findSubIndexSafe($p)
 			or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $self->print() . " ");
 		$progress .= '.';
 	}
@@ -56,7 +56,7 @@ sub findIndexKeyPath # (self, idxName, ...)
 	my @keys;
 	foreach my $p (@_) {
 		$progress .= $p;
-		$cur = $cur->findSubIndex($p) 
+		$cur = $cur->findSubIndexSafe($p) 
 			or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $self->print() . " ");
 		my @pkey = $cur->getKey();
 		confess("$myname: the index type at path '$progress' does not have a key, table type is:\n" . $self->print() . " ")
@@ -238,17 +238,17 @@ sub copyFundamental # ($self, @paths)
 					last if ($#allsub < 1);
 
 					$progress .= $allsub[0];
-					my $nextnew = (eval { $curnew->findSubIndex($allsub[0]) }
-						or $curnew->addSubIndex($allsub[0], $allsub[1]->flatCopy()) ->findSubIndex($allsub[0]));
+					my $nextnew = ( $curnew->findSubIndexSafe($allsub[0])
+						or $curnew->addSubIndex($allsub[0], $allsub[1]->flatCopy())->findSubIndex($allsub[0]));
 					$progress .= '.';
 					$curold = $allsub[1];
 					$curnew = $nextnew;
 				}
 			} else {
 				$progress .= $n;
-				my $nextold = eval { $curold->findSubIndex($n) }
+				my $nextold = $curold->findSubIndexSafe($n)
 					or confess("$myname: unable to find the index type at path '$progress', table type is:\n" . $self->print() . " ");
-				my $nextnew = (eval { $curnew->findSubIndex($n) }
+				my $nextnew = ( $curnew->findSubIndexSafe($n)
 					or $curnew->addSubIndex($n, $nextold->flatCopy())->findSubIndex($n));
 				$progress .= '.';
 				$curold = $nextold;

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 123 };
+BEGIN { plan tests => 124 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -252,6 +252,9 @@ ok($res, 1);
 $res = $it2->findSubIndex("xxx");
 ok(!defined($res));
 ok($! . "", "Triceps::IndexType::findSubIndex: unknown nested index 'xxx'");
+
+$res = $it2->findSubIndexSafe("xxx");
+ok(!defined($res));
 
 $it6 = $it2->findSubIndex("level2")->findSubIndex("level3");
 ok(ref $it6, "Triceps::IndexType");
