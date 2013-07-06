@@ -1,0 +1,134 @@
+Facet reference, C++
+
+The general functioning of a facet is the same in C++ as in Perl, so please refer to the part 1 of the Perl description for this information.
+
+However the construction of a Facet is different in C++. The import is still the same: you call TrieadOwner::importNexus() method or one of its varieties and it returns a Facet. However the export is different: first you construct a Facet from scratch and then give it to TrieadOwner::exportNexus() to create a Nexus from it.
+
+In the C++ API the Facet has a notion of being imported, very much like say the FnReturn has a notion of being initialized. When a Facet is first constructed, it's not imported. Then exportNexus() creates the nexus from the facet, exports it into the App, and also imports the nexus information back into the facet, marking the facet as imported. It returns back a reference to the exact same Facet object, only now that object becomes imported. Obviously, you can use either the original or returned reference, they point to the same object. Once a Facet has been imported, it can not be modified any more. The Facet object returned by the importNexus() is also marked as imported, so it can not be modified either. And also an imported facet can not be exported again.
+
+However exportNexus() has an exception. If the export is done with the argument import set to false, the facet object will be left unchanged and not marked as imported. A facet that is not marked as imported can not be used to send or receive data. Theoretically, it can be used to export another nexus, but practically this would not work because that would be an attempt to export another nexus with the same name from the same thread. In reality such a Facet can only be thrown away, and there is not much use for it. You can read its components and use them to construct another Facet but that's about it.
+It might be more convenient to use the TrieadOwner::makeNexus*() methods to build a Facet object rather than building it directly. In either case, the methods are the same and accept the same arguments, just the Facet methods return a Facet pointer while the nexus maker methods return a NexusMaker pointer.
+
+The Facet class is defined in app/Facet.h. It inherits from Mtarget for an obscure reason that has to do with App topology analysis but it's intended to be used from one thread only.
+
+You don't have to keep your own references to all your Facets. The TrieadOwner will keep a reference to all the imported Facets, and they will not be destroyed while the TrieadOwner exists (and this applies to Perl as well).
+
+    enum {
+        DEFAULT_QUEUE_LIMIT = 500,
+    };
+
+The default value used for the nexus queue limit (as a count of Xtrays, not rowops). Since the reading from the nexus involves double-buffering, the real queue size might grow up to twice that amount.
+
+static string buildFullName(const string &tname, const string &nxname);
+
+Build the full nexus name from its components.
+
+Facet(Onceref<FnReturn> fret, bool writer);
+
+Create a Facet, initially non-imported (and non-exported). The FnReturn object fret defines the set of labels in the facet (and nexus), and the name of FnReturn also becomes the name of the Facet, and of the Nexus. The writer flag determines whether this facet will become a writer (if true) or a reader (if false) when a nexus is created from it. If the nexus gets created without importing the facet back, the writer flag doesn't matter and can be set either way.
+
+The FnReturn should generally be not initialized yet. The Facet constructor will check if FnReturn already has the labels _BEGIN_ and _END_ defined, and if either is missing, will add it to the FnReturn, then initialize it. If both _BEGIN_ and _END_ are already present, then the FnReturn can be used even if it's already initialized. But if any of them is missing, FnReturn must be not initialized yet, otherwise the Facet constructor will fail to add these labels.
+
+The same FnReturn object may be used to create only one Facet object. And no, you can not import a Facet, get an FnReturn from it, then use it to create another Facet.
+
+If anything goes wrong, the constructor will not throw but will remember the error, and later the exportNexus() will find it and throw an Exception from it.
+
+static Facet *make(Onceref<FnReturn> fret, bool writer);
+
+Same as the constructor, used for the more convenient operator priority for the chained calls.
+
+static Facet *makeReader(Onceref<FnReturn> fret);
+static Facet *makeWriter(Onceref<FnReturn> fret);
+
+Syntactic sugar around the constructor, hardcoding the writer flag.
+
+Normally the facets are constructed and exported with the chained calls, like:
+
+Autoref<Facet> myfacet = to->exportNexus(
+   Facet::makeWriter(FnReturn::make("My")->...)
+   ->setReverse()
+   ->exportTableType(Table::make(...)->...)
+);
+
+Because of this, the methods that are used for post-construction return the pointer to the original Facet object. They also almost never throw the Exceptions, to prevent the memory leaks through the orphaned Facet objects. The only way an Exception might get thrown is on an attempt to use these methods on an already imported Facet. Any errors get collected, and eventually exportNexus() will find them and properly throw an Exception, making sure that the Facet object gets properly disposed of.
+
+Facet *exportRowType(const string &name, Onceref<RowType> rtype);
+
+Add a row type to the Facet. May throw an Exception if the the facet is already imported. On other errors remembers them to be thrown on an export attempt.
+
+Facet *exportTableType(const string &name, Autoref<TableType> tt);
+
+Add a table type to the Facet. May throw an Exception if the the facet is already imported. On other errors remembers them to be thrown on an export attempt. The table type must also be deep-copyable and contain no errors. Not sure if I described this before, but if the deep copy can not proceed (say, a table type involves a Perl sort condition with a direct reference to the compiled Perl code) the deepCopy() method must still return a newly created object but remember the error inside it. Later when the table type is initialized, that object's initialization must return this error. The exportTableType() does a deep copy then initializes the copied table type. If this detects any errors, they get remembered and cause an Exception later in exportNexus().
+
+
+Facet *setReverse(bool on = true);
+
+Set (or clear) the nexus reverse flag. May throw an Exception if the the facet is already imported.
+
+Facet *setQueueLimit(int limit);
+
+Set the nexus queue limit. May throw an Exception if the the facet is already imported.
+
+Erref getErrors() const;
+
+Get the collected errors, so that they can be found without an export attempt.
+
+bool isImported() const;
+
+Check whether this facet is imported.
+
+The rest of the methods are the same as in Perl. They can be used even if the facet is not imported.
+
+bool isWriter() const;
+
+Check whether this is a writer facet (or if returns false, a reader facet).
+
+bool isReverse() const;
+
+Check whether the underlying nexus is reverse.
+
+int queueLimit() const;
+
+Get the queue size limit of the nexus. Until the facet is exported, this will always return the last value set by setQueueLimit(). However if the nexus is reverse, on import the value will be changed to a very large integer value, currently INT32_MAX, and on all the following calls this value will be returned. Technically speaking, the queue size of the reverse nexuses is not unlimited, it's just very large, but in practice it amounts to the same thing.
+
+FnReturn *getFnReturn() const;
+
+Get the FnReturn object. If you plan to destroy the Facet object soon after this method is called, make sure that you put the FnReturn pointer into an Autoref first.
+
+const string &getShortName() const;
+
+Get the short name, AKA "as-name", which is the same as the FnReturn's name.
+
+const string &getFullName() const;
+
+Get the full name of the nexus imported through this facet. If the facet is not imported, will return an empty string.
+
+typedef map<string, Autoref<RowType> > RowTypeMap;const RowTypeMap &rowTypes() const;
+
+Get the map of the defined row types. Returns the reference to the Facet's internal map object.
+
+typedef map<string, Autoref<TableType> > TableTypeMap;
+const TableTypeMap &tableTypes() const;
+
+Get the map of defined table types. Returns the reference to the Facet's internal map object.
+
+ RowType *impRowType(const string &name) const;
+
+Find a single row type by name. If the name is not known, returns NULL.
+
+TableType *impTableType(const string &name) const;
+
+Find a single table type by name. If the name is not known, returns NULL.
+
+Nexus *nexus() const;
+
+Get the nexus of this facet. If the facet is not imported, returns NULL.
+
+int beginIdx() const;
+int endIdx() const;
+
+Return the indexes (as in "integer offset") of the _BEGIN_ and _END_ labels in FnReturn.
+
+bool flushWriter();
+
+Flush the collected rowops into the nexus as a single Xtray. If there is no data collected, does nothing. Returns true on a successful flush (even if there was no data collected), false if the Triead was requested to die and thus all the data gets thrown away. 

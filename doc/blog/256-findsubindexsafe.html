@@ -1,0 +1,10 @@
+findSubIndexSafe
+
+The scalar leakage in Carp::confess was causing an unpleasant issue with the functions that were trying to look up the nested indexes and catch when they went missing. So, similarly to the string conversions, I've added the method findSubIndexSafe() to the TableType and IndexType:
+
+$ixt =  $tt->findSubIndexSafe($name);
+$ixt =  $ixt_parent->findSubIndexSafe($name);
+
+If the name is not found, it silently returns an undef, without setting any error codes.
+
+Eventually the issue with the leakage in confess() would have to be fixed, but for now it's a good enough plug for the most typical cases. I'll need to think about other methods that could use the safe treatment.

@@ -1,0 +1,9 @@
+string-and-constant conversion errors
+
+As outlined before, I'm going through the the Perl API, changing to the new way of the error reporting by confessing. On of the consequences is that the functions for parsing the string name of a constant into the value got converted too. They now confess on an invalid string. However sometimes it's still convenient to check the string for validity without causing an error, so for that I've added another version of them, with the suffix Safe attached, that still work the old way, returning an undef for an unknown string.
+
+For example, &Triceps::humanStringTracerWhen and Triceps::humanStringTracerWhenSafe.
+
+The same applies the other way around to: the functions converting the integer enumeration value to string will confess when the value is not in the proper enum. The functions with the suffix Safe will still return an undef. Such as &Triceps::tracerWhenHumanString and &Triceps::tracerWhenHumanStringSafe.
+
+The only special case is &Triceps::opcodeString and &Triceps::opcodeStringSafe: neither of them confesses nor returns undef, they print the unknown strings as a combination of bits, but for consistency both names are present anyway, doing the same thing.

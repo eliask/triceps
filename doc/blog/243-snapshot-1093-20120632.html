@@ -1,0 +1,11 @@
+snapshot 1.0.93-20120632
+
+I've decided to do one more snapshot before the release, largely to run it through CPAN's test infrastructure.
+
+I've improved the detection of the NSPR library, and hopefully now it would build out of the box pretty much everywhere. Even if NSPR is not available, it would just use the implementation of the atomic integers through the mutexes.
+
+Another build item, the Perl tests contain a dependency on the locale. They have the English text in some of the error strings received from the OS and Perl, so if you try to build in a non-English locale, these tests failed. To work around this issue, I've added "LANG=C" in the top-level Makefile. However if you run "make test" directly in the perl/Triceps, it has no such override (because the Makefile there is built by Perl). There just do you own "LANG=C make test".
+
+The other items picked up in this snapshot are the last example of the fork-join topology, and other small fixes.
+
+So far I've uploaded the snapshot to CPAN, and soon will upload it to the other locations as well. 

@@ -1,0 +1,26 @@
+Triead reference, C++
+
+Naturally, Triead is a class that can be referenced from multiple threads and inherits from Mtarget. It's defined in app/Triead.h. (By the way, I forgot to mention it for App, but obviously App is also an Mtarget).
+
+The meaning of the C++ methods is exactly the same as in Perl, only the format of values is slightly different. Obviously, the start* methods are Perl-only.
+
+const string &getName() const;
+const string &fragment() const;
+bool isConstructed() const;
+bool isReady() const;
+bool isDead() const;
+bool isInputOnly() const;
+
+typedef map<string, Autoref<Nexus> > NexusMap;
+void exports(NexusMap &ret) const;
+void imports(NexusMap &ret) const;
+void readerImports(NexusMap &ret) const;
+void writerImports(NexusMap &ret) const;
+
+The argument map gets cleared and then filled with the new returned contents.
+
+Onceref<Nexus> findNexus(const string &srcName, const string &appName, const string &name) const;
+
+This is a method unique to the C++ API. It looks up an exported nexus by name without involving the overhead of getting the whole map. Here name is the name of the nexus to look up (its short part, without the thread's name in it). If there is no such nexus, an Exception will be thrown.
+
+The srcName and appName are used for the error message in the Exception: srcName is the name of the thread that requested the look-up, and appName is the name of the App where the threads belong. (It might seem surprising, but a Triead object has no reference to its App, and doesn't know the App's name. It has to do with the avoidance of the circular references). 

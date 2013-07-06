@@ -1,0 +1,103 @@
+TrieadOwner reference, Perl, part 1
+
+TrieadOwner is the thread's private interface used to control its state and interact with the App (the App uses the thread's identity to detect the deadlocks). Whenever a Triead is constructed, its OS/Perl thread receives the TrieadOwner object for it.
+
+Normally the TrieadOwner object is constructed inside Triead::start() or Triead::startHere() and passed to the thread's main function. The following constructor is used inside start(), and it's pretty much a private method. The only reason to use it would be if you want to do something very unusual, and even then you probably should write a wrapper method for your unusual thing and then call that wrapper method. The constructor constructs both Triead and TrieadOwner as a two sides of the same item, and registers the thread with the App.
+
+$to = Triceps::TrieadOwner::new($tid, $handle, $appOrName, $tname, $fragname);
+
+Here $tid is the Perl thread id where this TrieadOwner belongs (it can be obtained with $thr->tid()). $handle is the Perl thread's low-level handle (as in $thr->handle_()), it's the underlying POSIX thread handle, used to interrupt the thread on shutdown (the long story is that in the Perl threads the kill() call doesn't actually send a signal to another thread but just sends a flag, to interrupt a sleeping system call a real signal has to be delivered through the POSIX API). $handle is a dangerous argument, and passing a wrong value there may cause a crash.
+
+Both $tid and $handle may be undef. If $tid is undef, the thread won't be joined by the harvester and you can either detach it or join it yourself. If either $tid or $handle is undef, the thread won't be interrupted on shutdown.
+
+The signal used for interruption is SIGUSR2.Triceps sets its default handler that does nothing on this signal, but you can define your own handler instead.
+
+$appOrName is the App object or its name that would be automatically looked up (or will confess if not found). $tname is the name of the previously created thread, that must be unique within the App (though it might be declared before). $fragname is the name of the fragment where the thread belongs, use "" for no fragment.
+
+$app = $to->app();
+
+Get the App where this Triead belongs.
+
+$unit = $to->unit();
+
+Whenever a Triead is constructed, a Unit is automatically  created to execute its logic. This call returns that unit. When the Triead is destroyed, the unit will be cleaned and unreferenced.
+
+The unit is named the same as the thread.
+
+$to->addUnit($moreUnit);
+
+It's possible to split the Triead's logic into multiple units, all running in the same Perl thread. This call puts an extra unit under Triead's control, and has two effects: First, the unit will be referenced for the life of the Triead, and cleaned and unreferenced when the Triead is destroyed. Second, when the Triead's main loop runs, after each incoming rowop it will check all the controlled units for any rowops scheduled in them, and will run them until all such rowops are processed.
+
+The names of the units are not checked in any way, it's your responsibility to name them sensibly and probably differently from each other.
+
+The repeated calls with the same unit will have no effect.
+
+$to->forgetUnit($moreUnit);
+
+Pull a unit out of Triead's control. After that the cleaning of the unit becomes your responsibility. The thread's main unit can not be forgotten, the attempts to forget it will be simply ignored. The same goes for the units that aren't under the Triead's control in the first place, these calls are ignored.
+
+@units = $to->listUnits();
+
+Get the list of units under Triead's control. The main unit (the same as returned with $to->unit()) will always be the first in the list. The list contains only the unit references, not the name-value pairs (and you can always get the names from the unit objects themselves).
+
+$triead = $to->get();
+
+Get the public API of this Triead.
+
+$name = $to->getName();
+
+Get this Triead's name.
+
+$frag = $to->fragment();
+
+Get the name of this Triead's fragment ("" if not in a fragment).
+
+$to->markConstructed();
+
+Advance the Triead to the Constructed state. After that point no more nexuses may be exported in the Triead. Any look-ups by other Trieads for the Nexuses of this Triead will proceed at this point, either succeeding or failing (if no requested nexus is exported).
+
+If the Triead is already in the Constructed or  later state, this call has no effect.
+
+$to->markReady();
+
+Advance the Triead to the Ready (fully initialized) state. After that point no more nexuses may be imported into this Triead.
+
+If the App has been already shut down, this Triead will be immediately requested to die.
+
+If this is the last Triead to become ready, this method will invoke the check for the topological correctness of the App. If the check finds an error (a loop of nexuses of the same direction), it will abort the App and confess with a message describing the nature of the error.
+
+If the Triead is already in the Ready or  later state, this call has no effect.
+
+
+
+$to->readyReady();
+
+Mark this Triead as Ready and wait for all the App's Trieads to become Ready. There is no method that just waits for readiness because that would be likely causing a deadlock. When the thread waits for readiness, it must be ready itself, so this call does both. All the error checks of markReady() apply.
+
+It is possible and reasonable to call this method repeatedly: more Trieads may be added to the App later, and it's a good idea to call readyReady() again before communicating with these new threads. Otherwise any rowops sent before these threads become ready will never arrive to these threads.
+
+$to->markDead();
+
+Mark this Triead as Dead. A dead thread will not receive any more input, and any its output will be thrown away. This notifies the harvester that it needs to join the Perl thread, so there should not be too much time left between making this call and exiting the Perl thread. The repeated calls have no effect.
+
+Normally the Triead::start() and startHere() call markDead() automatically in their wrapper logic, and there is no need for a manual call. However if you decide to bypass them, you must call markDead() manually before exiting the thread, or the harvester will be stuck forever waiting for this thread to exit.
+
+$to->abort($msg);
+
+Abort the App with a message. This is a convenience wrapper that translates to App::abortBy().
+
+$result = $to->isRqDead();
+
+Check whether the thread was requested to die. For most threads, mainLoop() does this check automatically, and nextXtray() also returns the same value. However in the special cases, such as doing some long processing in response to a rowop, or doing some timeouts, it's best to do a manual check of isRqDead() periodically and abort the long operation if the thread has been requested to die, since any output will be thrown away anyway.
+
+Note that even when the Triead has been requested to die, it still must call markDead() when it actually dies (normally the Triead::start() or startHere() takes care of it in its wrapper).
+
+$result = $to->isConstructed();
+$result = $to->isReady();
+
+$result = $to->isDead();
+
+$result = $to->isInputOnly();
+
+Check the state of the Triead, the same as Triead methods.
+

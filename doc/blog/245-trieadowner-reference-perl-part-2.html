@@ -1,0 +1,105 @@
+TrieadOwner reference, Perl, part 2
+
+I've described it before but forgot to mention in the part 1 of the reference, the mark* methods bring the Triead to the target state through all the intermediate states. So if a Triead was not constructed, markReady() will mark it first constructed and then ready.
+
+The same applies to markDead() but with an even more interesting twist. Suppose there is an application with an incorrect topology, and all the Trieads in it but one are ready. That last Triead then experiences an error, and proceeds directly to call markDead() and then exit. This markDead() will involve an intermediate step marking the Triead as ready. Since it's the last Triead to be ready, it will trigger the topology check, and since the topology is incorrect, it will fail. If it happened in markReady(), the method would confess. But in markDead() confessing doesn't make a whole lot of sense: after all, the thread is about to exit anyway. So markDead() will catch all these confessions and throw them away, it will never fail. However the failed check will still abort the App, and the rest of the threads will wake up and fail as usual.
+
+The other thing about markDead() is that it clears and unreferences all the TrieadOwner's registered units, not waiting for the TrieadOwner object to be destroyed. This unravels any potential cyclic references where the code in a label might be referring back to the TrieadOwner.
+
+And now continuing with more methods.
+
+$facet = $to-> makeNexus(@options);
+
+Create, export and (optionally) import a nexus. The result is an imported Facet of this Nexus, except when the options specify the no-import mode (then the result will be undef). Confesses on errors.
+
+The options are:
+
+name => $name
+Name of the nexus, it will be used both as the export name and the local imported "as-name" of the facet.
+
+labels => [
+  name => $rowType,
+  name => $fromLabel,
+]
+Defines the labels similarly to FnReturn in a referenced array. The array contains the pairs of (label_name, label_definition). The definition may be either a RowType, and then a label of this row type will be created, or a Label, and then a label of the same row type will be created and chained from that original label. The created label objects can be later found from Facets, and used like normal labels, by chaining them or sending rowops to them (but chaining from them is probably not the best idea, although it works anyway).
+
+Optional, or may be an empty array; the implicit labels _BEGIN_ and _END_ will allways be added automatically if not explicitly defined.
+
+The labels are used to construct an implicit FnReturn in the current Triead's main unit, and this is the FnReturn that will be visible in the Facet that gets imported back. If the import mode is "none", the FnReturn will still be  constructed and then abandoned (and freed by the reference count going to 0, as usual). The labels used as $fromLabel must always belong to the Triead's main unit.
+
+rowTypes => [
+  name => $rowType,
+]
+Defines the row types exported in this Nexus as a referenced array of name-value pairs. The types imported back into this Triead's facet will be references to the exact same type objects. Optional, or may be empty.
+
+tableTypes => [
+  name => $tableType,
+]
+Defines the table types exported in this Nexus as a referenced array of name-value pairs. The types imported back into this Triead's facet will be references to the exact same type objects. Optional, or may be empty.
+
+reverse => 0/1
+Flag: this Nexus goes in the reverse direction. The reverse nexuses are used to break up the topological loops, to prevent the deadlocks on the queueing. They have no limit on the queue size, and the data is read from them at a higher priority than from the direct nexuses. Default: 0.
+
+chainFront => 0/1
+Flag: when the labels are specified as $fromLabel, chain them at the front of the original labels. Default: 1. The default is this way because chaining at the front is what is typically needed. The reasons are described at length in the pipelined example, but the short gist is that you might want to send the rows from both the inputs, intermediate points, and the end of processing into an output nexus. It's most convenient to create the nexus in one go, after the whole thread's computation is defined. But the rowops from the earlier stages of computations have to come to the nexus before the rowops from the later stage. Chaining at the front ensures that each such label will send the rowop into the nexus first, and only then to the next stage of the computation.
+
+queueLimit => $number
+Defines the size limit after which the writes to the queue of this Nexus block. In reality because of the double-buffering the queue may contain up to twice that many trays before the future writes block. This option has no effect on the  reverse nexuses. Default: &Facet::DEFAULT_QUEUE_LIMIT, 500 or so.
+
+import => $importType
+A string value, essentially an enum, determining how this Nexus gets immediately imported back into this Triead. The supported values are:
+
+    reader (or anything starting from "read") - import for reading
+    writer (or anything starting from "write") - import for writing
+    none (or anything starting from "no") - do not import
+
+The upper/lowercase doesn't matter. The use of the canonical strings is recommended.
+
+$facet = $to->importNexus(@options);
+
+Import a nexus into this Triead. Returns the imported Facet. The repeated attempts to import the same Nexus will return references to the same Facet object. Confesses on errors. An attempt to import the same nexus for both reading and writing is an error.
+
+The options are:
+
+from => "$t/$n"
+Identifier of the nexus to import, consisting of two parts separated by a slash:
+
+      thread name
+      nexus name
+
+The nexus name will also be used as the name of the local facet, unless overridden by the option "as". The reason for slash separator is that normally both the thread name and the nexus name parts may contain further components separated by dots, and a different separator allows to find the boundary between them. If a dot were used, in "a.b.c" it would be impossible to say, does it mean the thread "a" and nexus "b.c" in it, or thread "a.b" and nexus "c"? However "a/b.c" or "a.b/c" have no such ambiguity. Mutually exclusive with options "fromTriead" and "fromNexus".
+
+fromTriead => $t
+fromNexus => $n
+The alternative way to specify the source thread and nexus as separate options. Both options must be present or absent at the same time. Mutually exclusive with "from".
+
+as => $name
+Specifies an override name for the local facet (and thus also to the FnReturn created in the facet). Logically similar to the SQL clause AS. Default is to reuse the nexus name.
+
+import => $importType
+A string value, essentially an enum, determining how this Nexus gets imported. The supported values are the same as for makeNexus (except "none", since there is no point in a no-op import):
+
+    reader (or anything starting from "read") - import for reading
+    writer (or anything starting from "write") - import for writing
+
+The upper/lowercase doesn't matter.
+
+immed => 0/1
+Flag: do not wait for the thread that exported the nexus to be fully constructed. Waiting synchronizes with the exporter and prevents a race of an import attempt trying to find a nexus before it is made and failing. However if two threads are waiting for each other, it becomes a deadlock that gets caught and aborts the App. The immediate import allows to avoid such deadlocks for the circular topologies with helper threads.
+
+
+The helper threads are the "blind alleys" in the topology: the "main thread" outsources some computation to a "helper thread", sending it the arguments, then later receiving the results and continuing with its logic.
+
+For example, consider the following sequence:
+
+    thread A creates the nexus O;
+    thread A creates the helper thread B and tells it to import the nexus A/O for its input immediately and create the reverse nexus R for result;
+    thread A requests a (normal) import of the nexus B/R and falls asleep because B is not constructed yet;
+        thread B starts running;
+        thread B imports the nexus A/O immediately and succeeds;
+        thread B defines its result nexus R;
+        thread B marks itself as constructed and ready;
+    thread A wakes up after B is constructed, finds the nexus B/R and completes its import;
+    then thread A can complete its initialization, export other nexuses etc.
+
+Default: 0, except if importing a nexus that has been exported from the same Triead. Importing from the same Triead is not used often, since the export also imports the nexus back right away, and there is rarely any use in importing separately. But it's possible, and importing back from the same Triead is always treated as immediate to avoid deadlocks. 

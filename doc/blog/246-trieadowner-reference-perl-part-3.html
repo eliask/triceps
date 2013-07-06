@@ -1,0 +1,98 @@
+TrieadOwner reference, Perl, part 3
+
+@exports = $to->exports();
+
+The same as the method on the Triead, equivalent to $to->get()->exports(). The returned array contains the name-value pairs of the nexus names and objects.
+
+@imports = $to->imports();
+
+This method is different from the Triead method. It still returns an array of name-value pairs but the values are Facets (not Nexuses, as in Triead). It's a natural difference, since the facets are useful in the owner thread, and available only in it.
+
+$result = $to->flushWriters();
+
+Flush any data collected in the writer facets, sending them to the appropriate nexuses. The data in each facet becomes a tray that is sent to the nexus (if there was no data collected on a facet, nothing will be sent from it). Returns 1 if the flush was completed, 0 if the thread was requested to die and this the data was discarded. The data is never sent out of a facet by itself, it always must be flushed in one of the explicit ways (TrieadOwner::flushWriters(), Facet::flushWriter(), or enqueueing a rowop on the facet's labels _BEGIN_ and _END_). The flush may get stuck if this is an input-only thread and a drain is active, it will wait until the drain is released.
+
+$to->requestMyselfDead();
+
+Request this Triead itself to die. This is the way to disconnect from the nexuses while the thread is exiting on its own. For example, if this thread going to dump its data before exit to a large file that takes half an hour to write, normally the data queued for this thread might fill up the queues in the nexuses, and it's a bad practice to keep the other threads stuck due to the overflowing buffers. Requesting this thread to die disconnects it from the nexuses and prevents the data from collecting.The thread could also be disconnected by marking it dead, but it will keep the harvester stuck waiting to join it while the thread completes its long write, and that's not so  good either. So this call provides the solution, avoiding both pitfalls.
+
+$result = $to->nextXtray();
+
+Process one incoming tray from a single reader nexus (any nexus where data is available). A tray essentially embodies a transaction, and "X" stands for "cross-thread". There actually is the Xtray type that represents the Tray in a special thread-safe format but it's used only inside the nexuses and not visible from outside.
+
+If there is currently no data to process, this method will wait.
+
+The return value is 1 normally, or 0 if the thread was requested to die. So the typical usage is:
+
+while($to->nextXtray()) { ... }
+
+The method mainLoop() encapsulates the most typical usage, and nextXtray() needs to be used directly only in the more unusual circumstances.
+
+The data is read from the reverse nexuses first, at a higher priority. If any reverse nexus has data available, it will always be read before the direct nexuses. A reverse nexus typically completes a topological loop, so this priority creates the preference to cycle the data through the loop until it comes out, before accepting more data into the loop. Since all the nexuses have non-zero-length queues, obviously, there will be multiple data items traveling through the loop, in different phases, but this priority solution limits the amount of data kept in the loop's queues and allows the queue flow control to prevent too much data from entering the loop.
+
+The raised priority of the reverse nexuses can also be used to deliver the urgent messages. Remember, there is nothing preventing you from marking any nexus as reverse (as long as it doesn't create a loop consisting of only the reverse nexuses).
+
+The downside of having the reverse nexuses connected to a thread is that it causes an extra overhead from the check with a mutex synchronization on each nextXtray(). The regular-priority direct nexuses use double-buffering, with locking a mutex only when the second buffer runs dry, and refilling it by swapping its contents with the whole collected first buffer. But the high-priority reverse nexuses have to be checked every time, even if they have no incoming data.
+
+Within the same priority the data is processed in the round-robin order. More exactly, each refill of the double-buffering grabs the data from the first buffer of each facet and moves it to the second buffer. Then the second buffer is processed in the round-robin fashion until it runs out and another refill becomes needed.
+
+The nextXtray() processes all the rowops from the incoming tray by calling them on the facet's FnReturn. Two special rowops are generated automatically even if they haven't been queued up explicitly, on the facet's labels _BEGIN_ and _END_ (to avoid extra overhead, they are actually generated only if there is any processing chained for them).
+
+The nextXtray() automatically flushes the writers after processing a tray.
+
+If a fatal error is encountered during processing (such as some code in a label died), nextXtray() will catch the exception, discard the rest of the tray and confess itself (without flushing the writers).
+
+$result = $to->nextXtrayNoWait();
+
+Similar to nextXtray(), but returns immediately if there is no data to process. Returns 0 if there is either no input data or the thread was requested to die (the way to differentiate between these cases is to call $to->isRqDead()).
+
+$result = $to->nextXtrayTimeout($timeout);
+
+Similar to nextXtrayNoWait(), only if there is no data, waits for up to the length of timeout. The timeout value is floating-point seconds. Returns 0 if the timeout has expired or the thread was requested to die.
+
+$result = $to->nextXtrayTimeLimit($deadline);
+
+Similar to nextXtrayNoWait(), only if there is no data, waits until the absolute deadline. The deadline value is time since epoch floating-point seconds, such as returned by Triceps::now(). Returns 0 if the wait reached the deadline or the thread was requested to die.
+
+
+
+$to->mainLoop();
+
+
+Process the incoming trays until the thread is requested to die. The exact implementation of the main loop (in C++) is:
+
+
+void TrieadOwner::mainLoop()
+{
+    while (nextXtray())
+        { }
+}
+
+
+It also used to call markDead() after the loop, and my earlier posts might say so, but now I've realized that it would not be advisable in the situations when the thread needs to do a lengthy saving of its state, blocking the harvester, so I've removed it.
+
+
+The drain API of the TrieadOwner is very similar to the one in the App. The best way to do the drain is by the automatically-scoped AutoDrain class. If a drain doesn't need an automatic scoping, use the TrieadOwner API. And finally if you want to mess with drains from outside an app's Triead and thus don't have a TrieadOwner, only then use the App API.
+
+
+$to->requestDrainShared();$to->requestDrainExclusive();
+$to->waitDrain();
+$to->drainShared();
+$to->drainExclusive();
+$to->undrain();
+
+$result = $to->isDrained();
+
+
+
+The methods are used in exactly the same way as the similar App methods, with only the difference of the names on the shared drains.
+
+The exclusive drains always make the exclusion for this Triead. (Only one thread can be excluded from a drain). Normally the exclusive drains should be used only for the input-only threads. They could potentially be used to exclude the non-input-only thread too but I'm not sure, what's the point, and haven't worked out if it would work reliably (it might, or it might not).
+
+
+
+$result = $to->isRqDrain();
+
+Check whether a drain request is active. This can be used in the threads that generate data based on the real-time clock yet aren't input-only: if they find that a drain is active, they should refrain from generating the data and go back to the waiting. There is no way for them to find when the drain is released, so they should just continue to the next timeout as usual. Such code must use nextXtrayTimeout() or nextXtrayTimeLimit() for the timeouts, or the drain would never complete. The input-only threads don't have this limitation. And of course keep in mind that the better practice is to deal with the deal time either in the input-only threads or by driving it from outside the model altogether.
+
+

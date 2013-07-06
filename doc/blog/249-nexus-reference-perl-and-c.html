@@ -1,0 +1,34 @@
+Nexus reference, Perl and C++
+
+The Nexus class is pretty much opaque. It's created and managed entirely inside the App infrastructure, and even the public API for importing a nexus doesn't deal with the Nexus object itself, but only with its name. The only public use of the Nexus object is for the introspection and entertainment value, to see what Trieads export and import what Nexuses: pretty much the only way to get a Nexus reference is by listing the exports or imports of a Triead.
+
+The Perl API of a Nexus is very limited and is very much an afterthought:
+
+$nxname = $nx->getName();
+
+Get the name of the nexus (the short name, inside the thread).
+
+$tname = $nx->getTrieadName();
+
+Get the name of the Triead that exported this nexus.
+
+$result = $nx->same($nx2);
+
+Check whether two Nexus references point to the same object.
+
+$result = $nx->isReverse();
+
+Check whether the Nexus is reverse.
+
+$limit = $nx->queueLimit();
+
+Get the queue limit of the nexus.
+
+In C++ the corresponding methods are:
+
+const string &getName() const;
+const string &getTrieadName() const;
+bool isReverse() const;
+int queueLimit() const;
+
+In C++ the Nexus object is an Mtarget, and safe to access from multiple threads. It's defined in app/Nexus.h. 

@@ -1,0 +1,38 @@
+Facet reference, Perl, part 1
+
+A Facet represents a Nexus endpoint imported into a Triead. A facet is either a reader (reading from the nexus) or a writer (writing into the nexus).
+
+In the Perl API the Facets are created by TrieadOwner::makeNexus() or TrieadOwner::importNexus(). After that the metadata in the Facet is fixed and is available for reading only. Of course, the rowops can then be read or written.
+
+The reading of data from a Facet is done by TrieadOwner::nextXtray(). There is no way to read a tray from a particular facet, nextXtray() reads from all the Triead's imported reader facets, alternating in a fair fashion if more than one of them has data available.
+
+Each Facet has an FnReturn connected to it. The reading from a reader facet happens by forwarding the incoming rowops to that FnReturn. To actually process the data, you can either chain your handler labels directly to the FnReturn labels, or push an FnBinding onto that FnReturn. An incoming Xtray is always processed as a unit, with no intermixing with the other Xtrays.
+
+The writing to a writer facet happens by calling the labels of its FnReturn. Which then has the logic that collects all these rowops into a buffer. Then when the facet is flushed, that buffer becomes an indivisible Xtray that gets sent to the nexus as a unit, and then read by the reader facets as a unit.
+
+The facet metadata consists of:
+
+    a set of labels, same as for an FnReturn, used to build the facet's internal FnReturn; these labels define the data that can be carried through the nexus;
+    a set of row types that gets exported through the nexus;
+    a set of table types that gets exported through the nexus.
+
+The table types must not contain any references to the Perl functions, or the export will fail. The Perl code snippets in the text format can be used instead.
+
+There are two special labels, named _BEGIN_ and _END_. They may be defined explicitly, but if they aren't, they will be always added implicitly, with an empty row type (i.e. a row type with no fields).
+
+When reading an Xtray, the _BEGIN_ label will always be called first, and _END_ last, thus framing the rest of the data. There are optimizations that skip the calling if there is nothing chained to these labels in FnReturn nor to the top FnBinding, and the rowop as such carries no extra data. The optimization is actually a bit deeper: the _BEGIN_ and _END_ rowops that have no extra data in them aren't even carried in the Xtray through the nexus. They are generated on the fly if there is an interest in them, or otherwise the generation is skipped.
+
+What is meant by the "extra data"? It's either the opcode is not OP_INSERT or there are some non-NULL fields (or both). If the _BEGIN_ and _END_ labels were auto-generated, their row type will contain no fields, so the only way to sent the non-default data in them will be the non-default opcode. But if you define them explicitly with a different row type, you can also send the data in them.
+
+When sending the data into a writer Facet, you don't have to send the _BEGIN_ and _END_ rowops, if you don't, they will be generated automatically as needed, with the default contents (opcode OP_INSERT and NULLs in all the fields). Moreover, they will really be generated automatically on the reader side, thus saving the overhead of passing them through the nexus. Another consequence of this optimization is that it's impossible to create an Xtray consisting of only a default _BEGIN_, a default _END_ and no payload rowops between them. It would be an empty Xtray, that would never be sent through the nexus. Even if you create these _BEGIN_ and _END_ rowops manually (but with the default contents), they will be thrown away when they reach the writer facet. If you want an Xtray to get through, you've got to either send the payload or put something non-default into at least one of the _BEGIN_ or _END_ rowops, at the very minimum a different opcode.
+
+Sending the _BEGIN_ and _END_ rowops into a writer facet also has the effect of flushing it. Even if these rowops have the default contents and become thrown away by the facet, the flushing effect still works. The _BEGIN_ rowop flushes any data that has been collected in the buffer before it. The _END_ rowop gets added to the buffer (or might get thrown away) and then flushes the buffer. If the buffer happens to contain anything at the flush time, that contents forms an Xtray and gets forwarded to the nexus.
+
+It's a long and winding explanation, but really it just does what is intuitively expected.
+
+A Facet has two names, the "full" one and the "short" one:
+
+    The full name is copied from the nexus and consists of the name of the thread that exported the nexus and the name of the nexus itself separated by a slash, such as "t1/nx1".
+    The short name is the name with which the facet was imported. By default it's taken from the short name of the nexus. But it can also be given a different explicit name during the import, which is known as the "as-name" (because it's similar to the SQL "AS" clause). So if the full name is "t1/nx1", the default short name will be "nx1", but it can be overridden. The facet's FnReturn is named with the facet's short name.
+
+

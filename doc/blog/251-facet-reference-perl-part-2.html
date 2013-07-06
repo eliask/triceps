@@ -1,0 +1,81 @@
+Facet reference, Perl, part 2
+
+As mentioned before, a Facet object is returned from either a nexus creation or nexus import. Then the owner thread can work with it.
+
+$result = $fa->same($fa2);
+
+Check whether two references point to the same Facet object.
+
+$name = $fa->getShortName();
+
+Get the short name of the facet (AKA "as-name", with which it has been imported).
+
+$name = $fa->getFullName();
+
+Get the full name of the nexus represented by this facet. The name consists of two parts separated by a slash, "$thread/$nexus".
+
+$result = $fa->isWriter();
+
+Check whether this is a writer facet (i.e. writes to the nexus). Each facet is either a writer or a reader, so if this method returns 0, it means that this is a reader facet.
+
+$result = $fa->isReverse();
+
+Check whether this facet represents a reverse nexus.
+
+$limit = $fa->queueLimit();
+
+Get the queue size limit of the facet's nexus. I think I forgot to mention it in the Nexus reference, but for a reverse nexus the returned value will be a large integer (currently INT32_MAX but the exact value might change in the future). And if some different limit value was specified during the creation of the reverse nexus, it will be ignored.
+
+$limit = &Triceps::Facet::DEFAULT_QUEUE_LIMIT();
+
+The constant of the default queue size limit that is used for the nexus creation, unless explicitly overridden.
+
+$fret = $fa->getFnReturn();
+
+Get the FnReturn object of this facet. This FnReturn will have the same name as the facet's short name, and it has a special symbiotic relation with the Facet object. Its use depends on whether this is a reader or writer facet. For a writer facet, sending rowops to the labels in FnReturn (directly or by chaining them off the other labels) causes these rowops to be buffered for sending into the nexus. For a reader facet, you can either chain your logic directly off the FnReturn's labels, or push an FnBinding onto it as usual.
+
+$nexus = $fa->nexus();
+
+Get the facet's nexus. There is not a whole lot that can be done with the nexus object, just get the introspection information, and the same information can be obtained directly with the facet's methods.
+
+$idx = $fa->beginIdx();
+
+Index (as in "integer offset", not a table index) of the _BEGIN_ label in the FnReturn's set of labels. There probably isn't much use for this method, and its name is somewhat confusing.
+
+$idx = $fa->endIdx();
+
+
+Index (as in "integer offset", not a table index) of the _END_ label in the FnReturn's set of labels. There probably isn't much use for this method, and its name is somewhat confusing.
+
+$label = $fa-> getLabel($labelName);
+
+Get a label from FnReturn by name. This is a convenience method, equivalent to $fa->getFnReturn()->getLabel($labelName). Confesses if the label with this name is not found.
+
+@rowTypes = $fa->impRowTypesHash();
+
+Get ("import") the whole set of row types exported through the nexus. The result is an array containing the name-value pairs, values being the imported row types. This array can be assigned into a hash to populate it. As it happens, the pairs will be ordered by name in the lexicographical order but there are no future guarantees about it.
+
+The actual import of the types is done only once, when the nexus is imported to create the facet, and the repeated calls of the imp* methods will return the same objects.
+
+$rt = $fa->impRowType($rtName);
+
+Get ("import") one row type by name. If the name is not known, will confess.
+
+@tableTypes = $fa->impTableTypesHash();
+
+Get ("import") the whole set of table types exported through the nexus. The result is an array containing the name-value pairs, values being the imported table types. This array can be assigned into a hash to populate it. As it happens, the pairs will be ordered by name in the lexicographical order but there are no future guarantees about it.
+
+
+The actual import of the types is done only once, when the nexus is imported to create the facet, and the repeated calls of the imp* methods will return the same objects.
+
+
+$tt = $fa->impTableType($ttName);
+
+
+Get ("import") one table type by name. If the name is not known, will confess.
+
+$result = $fa-> flushWriter();
+
+Flush the collected buffered rowops to the nexus as a single Xtray. If there are no collected rowops, does nothing. Returns 1 if the flush succeeded (even if there was no data to send), 0 if this thread was requested to die and thus all the collected data gets thrown away, same as for the TrieadOwner::flushWriters(). The rules for when this method may be called is also the same: only after calling readyReady(), or it will confess.
+
+If this facet is in an input-only Triead, this call may sleep if a drain is currently active, until the drain is released.

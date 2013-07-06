@@ -1,0 +1,15 @@
+No more enqueueing mode for table creation
+
+I've finally got around to get rid of that obsolete enqueuing mode argument for the table creation, which always ended up as EM_CALL nowadays anyway. So, now in Perl the call becomes:
+
+$uint->makeTable($tabType, $name);
+
+In C++ the Table constructor becomes:
+
+Table(Unit *unit, const string &name, const TableType *tt, const RowType *rowt, const RowHandleType *handt);
+
+And the convenience wrapper in the TableType:
+
+Onceref<Table> makeTable(Unit *unit, const string &name) const;
+
+Yeah, it's kind of weird that in Perl the method makeTable() is defined on Unit, and in C++ on TableType. But if I remember correctly, it has to do with avoiding the circular dependency in the C++ header files. 

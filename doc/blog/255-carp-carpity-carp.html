@@ -1,0 +1,7 @@
+carp carpity carp
+
+I've found that calling Carp::confess (more exactly, even the lower-level function Carp::longmess that gets called by Carp::confess and by Triceps's error reporting from the C++ code) in a threaded program leaks the scalars, apparently by leaving garbage on the Perl stack.
+
+The problem seems to be in the line "package DB;" in the middle of one of its internal functions. Perhaps changing the package in the middle of a function is not such a great idea, leaving some garbage on the stack. The most interesting part is that this line can be removed altogether, with no adverse effects, and then the leak stops.
+
+Oh, well, looks like the homebrewn Triceps::confess will be coming soon. And I'd like to find some contact to get the stock Carp fixed. 
