@@ -72,7 +72,7 @@ getRowSafe(WrapRowHandle *self)
 		RowHandle *rh = self->get();
 
 		if (rh == NULL) {
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // not a croak!
 		}
 
 		// XXX Should it check for row being NULL? C++ code can create that...
