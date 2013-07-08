@@ -60,7 +60,7 @@ ok(join(",", map { defined $_? $_ : "-" } @res), "axc,-,gxi"); # anchoring and n
 eval {
 	@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ 'cba', 'fed' ] );
 };
-ok($@ =~ /Caller: result definition error:
+ok($@, qr/Caller: result definition error:
   the field in definition 'cba' is not found
   the field in definition 'fed' is not found
 The available fields are:
@@ -70,7 +70,7 @@ The available fields are:
 eval {
 	@res = &Triceps::Fields::filter("Caller", [ 'abc', 'def', 'ghi' ], [ 'cba/abc', '!fed' ] );
 };
-ok($@ =~ /Caller: result definition error:
+ok($@, qr/Caller: result definition error:
   the field in definition 'cba\/abc' is not found
   the field in definition '!fed' is not found
 The available fields are:
@@ -87,7 +87,7 @@ ok(join(",", map { defined $_? $_ : "-" } @res), "abc,axc,ghi,gxi"); # anchoring
 eval {
 	@res = &Triceps::Fields::filterToPairs("Caller", [ 'abc', 'def', 'ghi' ], [ 'cba/abc', '!fed' ] );
 };
-ok($@ =~ /Caller: result definition error:
+ok($@, qr/Caller: result definition error:
   the field in definition 'cba\/abc' is not found
   the field in definition '!fed' is not found
 The available fields are:
@@ -163,14 +163,14 @@ my $tr_pairs2a = [ 'one', 'field1', 'two', 'field2' ];
 			filterPairs => [ $tr_pairs1a, $tr_pairs2a ],
 		);
 	};
-	ok($@ =~ /^Option 'rowTypes' must be specified for class 'Triceps::Fields' at/);
+	ok($@, qr/^Option 'rowTypes' must be specified for class 'Triceps::Fields' at/);
 
 	eval { 
 		Triceps::Fields::makeTranslation(
 			rowTypes => [ $tr_rt1, $tr_rt2 ],
 		);
 	};
-	ok($@ =~ /^Option 'filterPairs' must be specified for class 'Triceps::Fields' at/);
+	ok($@, qr/^Option 'filterPairs' must be specified for class 'Triceps::Fields' at/);
 
 	# args size mismatch
 	eval { 
@@ -179,7 +179,7 @@ my $tr_pairs2a = [ 'one', 'field1', 'two', 'field2' ];
 			filterPairs => [ $tr_pairs1a ],
 		);
 	};
-	ok($@ =~ /^Triceps::Fields::makeTranslation: the arrays of row types and filter pairs must be of the same size, got 2 and 1 elements at/);
+	ok($@, qr/^Triceps::Fields::makeTranslation: the arrays of row types and filter pairs must be of the same size, got 2 and 1 elements at/);
 
 	# duplicate fields in the result
 	eval { 
@@ -189,7 +189,9 @@ my $tr_pairs2a = [ 'one', 'field1', 'two', 'field2' ];
 		);
 	};
 	#print "$@\n";
-	ok($@ =~ /^Triceps::Fields::makeTranslation: Invalid result row type specification: Triceps::RowType::new: duplicate field name 'f1' for fields 3 and 2\nduplicate field name 'f2' for fields 4 and 1  at/);
+	# XXX now no wrapping message
+	# ok($@, qr/^Triceps::Fields::makeTranslation: Invalid result row type specification: Triceps::RowType::new: duplicate field name 'f1' for fields 3 and 2\nduplicate field name 'f2' for fields 4 and 1  at/);
+	ok($@, qr/^Triceps::RowType::new: incorrect data\n  duplicate field name 'f1' for fields 3 and 2\n  duplicate field name 'f2' for fields 4 and 1 at/);
 }
 
 #########################

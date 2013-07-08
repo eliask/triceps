@@ -61,7 +61,6 @@ $r1 = $rt1->makeRowHash(
 	e => "string",
 );
 ok(ref $r1, "Triceps::Row");
-#print STDERR "\n$!\n";
 
 # try an actual hash
 %data1 = (
@@ -118,33 +117,33 @@ $r1 = $rt1->makeRowHash();
 ok(ref $r1, "Triceps::Row");
 
 # try all the errors
-$r1 = $rt1->makeRowHash(
+$r1 = eval { $rt1->makeRowHash(
 	a => "uint8",
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
 	d => 3.14,
 	e => "string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makeRowHash: attempting to set an array into scalar field 'b'");
+ok($@, qr/^Triceps::RowType::makeRowHash: attempting to set an array into scalar field 'b' at/);
 
-$r1 = $rt1->makeRowHash(
+$r1 = eval { $rt1->makeRowHash(
 	z => "uint8",
 	c => 3e15,
 	d => 3.14,
 	e => "string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makeRowHash: attempting to set an unknown field 'z'");
+ok($@, qr/^Triceps::RowType::makeRowHash: attempting to set an unknown field 'z' at/);
 
-$r1 = $rt1->makeRowHash(
+$r1 = eval { $rt1->makeRowHash(
 	a => undef,
 	b => 123,
 	c => 3e15,
 	"e"
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Usage: Triceps::RowType::makeRowHash(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
+ok($@, qr/^Usage: Triceps::RowType::makeRowHash\(RowType, fieldName, fieldValue, ...\), names and types must go in pairs at/);
 
 # array fields
 $r1 = $rt3->makeRowHash(
@@ -157,36 +156,36 @@ $r1 = $rt3->makeRowHash(
 ok(ref $r1, "Triceps::Row");
 #print STDERR "\n", $r1->hexdump;
 
-$r1 = $rt3->makeRowHash(
+$r1 = eval { $rt3->makeRowHash(
 	a => [ "uint8" ],
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
 	d => 3.14,
 	e => "string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps field 'a' data conversion: array reference may not be used for string and uint8");
+ok($@, qr/^Triceps field 'a' data conversion: array reference may not be used for string and uint8 at/);
 
 # errors related to array fields
-$r1 = $rt3->makeRowHash(
+$r1 = eval { $rt3->makeRowHash(
 	a => "uint8",
 	b => [ 0x123, 0x456 ],
 	c => 3e15,
 	d => 3.14,
 	e => [ "string" ],
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makeRowHash: attempting to set an array into scalar field 'e'");
+ok($@, qr/^Triceps::RowType::makeRowHash: attempting to set an array into scalar field 'e' at/);
 
-$r1 = $rt3->makeRowHash(
+$r1 = eval { $rt3->makeRowHash(
 	a => "uint8",
 	b => { "a" , 0x456 },
 	c => 3e15,
 	d => 3.14,
 	e => "string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps field 'b' data conversion: reference not to an array");
+ok($@, qr/^Triceps field 'b' data conversion: reference not to an array at/);
 
 #################### creating from CSV-style arrays ######################
 
@@ -214,24 +213,24 @@ $r1 = $rt1->makeRowArray();
 ok(ref $r1, "Triceps::Row");
 
 # try all the errors
-$r1 = $rt1->makeRowArray(
+$r1 = eval { $rt1->makeRowArray(
 	"uint8",
 	[ 0x123, 0x456 ],
 	3e15,
 	3.14,
 	"string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'b'");
+ok($@, qr/^Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'b' at/);
 
-$r1 = $rt1->makeRowArray(
+$r1 = eval { $rt1->makeRowArray(
 	a => undef,
 	b => 123,
 	c => 3e15,
 	"e"
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makeRowArray: 7 args, only 5 fields in row { uint8 a, int32 b, int64 c, float64 d, string e, }");
+ok($@, qr/^Triceps::RowType::makeRowArray: 7 args, only 5 fields in row { uint8 a, int32 b, int64 c, float64 d, string e, } at/);
 
 # array fields
 $r1 = $rt3->makeRowArray(
@@ -244,34 +243,34 @@ $r1 = $rt3->makeRowArray(
 ok(ref $r1, "Triceps::Row");
 #print STDERR "\n", $r1->hexdump;
 
-$r1 = $rt3->makeRowArray(
+$r1 = eval { $rt3->makeRowArray(
 	[ "uint8" ],
 	[ 0x123, 0x456 ],
 	3e15,
 	3.14,
 	"string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps field 'a' data conversion: array reference may not be used for string and uint8");
+ok($@, qr/^Triceps field 'a' data conversion: array reference may not be used for string and uint8 at/);
 
 # errors related to array fields
-$r1 = $rt3->makeRowArray(
+$r1 = eval { $rt3->makeRowArray(
 	"uint8",
 	[ 0x123, 0x456 ],
 	3e15,
 	3.14,
 	[ "string" ],
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'e'");
+ok($@, qr/^Triceps::RowType::makeRowArray: attempting to set an array into scalar field 'e' at/);
 
-$r1 = $rt3->makeRowArray(
+$r1 = eval { $rt3->makeRowArray(
 	"uint8",
 	{ "a" , 0x456 },
 	3e15,
 	3.14,
 	"string",
-);
+); };
 ok(!defined $r1);
-ok($! . "", "Triceps field 'b' data conversion: reference not to an array");
+ok($@, qr/^Triceps field 'b' data conversion: reference not to an array at/);
 

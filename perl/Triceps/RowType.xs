@@ -29,43 +29,43 @@ CLONE_SKIP(...)
 WrapRowType *
 Triceps::RowType::new(...)
 	CODE:
-		RowType::FieldVec fld;
-		RowType::Field add;
+		static char funcName[] =  "Triceps::RowType::new";
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			RowType::FieldVec fld;
+			RowType::Field add;
 
-		clearErrMsg();
-		if (items < 3 || items % 2 != 1) {
-			setErrMsg("Usage: Triceps::RowType::new(CLASS, fieldName, fieldType, ...), names and types must go in pairs");
-			XSRETURN_UNDEF;
-		}
-		for (int i = 1; i < items; i += 2) {
-			const char *fname = (const char *)SvPV_nolen(ST(i));
-			STRLEN ftlen;
-			char *ftype = (char *)SvPV(ST(i+1), ftlen);
-			if (ftlen >= 2 && ftype[ftlen-1] == ']' && ftype[ftlen-2] == '[') {
-				ftype[ftlen-2] = 0;
-				add.assign(fname, Type::findSimpleType(ftype), RowType::Field::AR_VARIABLE);
-				ftype[ftlen-2] = '[';
-			} else {
-				add.assign(fname, Type::findSimpleType(ftype));
+			clearErrMsg();
+			if (items < 3 || items % 2 != 1) {
+				throw Exception::f("Usage: %s(CLASS, fieldName, fieldType, ...), names and types must go in pairs", funcName);
 			}
-			if (add.type_.isNull()) {
-				setErrMsg(strprintf("%s: field '%s' has an unknown type '%s'", "Triceps::RowType::new", fname, ftype));
-				XSRETURN_UNDEF;
+			for (int i = 1; i < items; i += 2) {
+				const char *fname = (const char *)SvPV_nolen(ST(i));
+				STRLEN ftlen;
+				char *ftype = (char *)SvPV(ST(i+1), ftlen);
+				if (ftlen >= 2 && ftype[ftlen-1] == ']' && ftype[ftlen-2] == '[') {
+					ftype[ftlen-2] = 0;
+					add.assign(fname, Type::findSimpleType(ftype), RowType::Field::AR_VARIABLE);
+					ftype[ftlen-2] = '[';
+				} else {
+					add.assign(fname, Type::findSimpleType(ftype));
+				}
+				if (add.type_.isNull()) {
+					throw Exception::f("%s: field '%s' has an unknown type '%s'", funcName, fname, ftype);
+				}
+				if (add.arsz_ != RowType::Field::AR_SCALAR && add.type_->getTypeId() == Type::TT_STRING) {
+					throw Exception::f("%s: field '%s' string array type is not supported", funcName, fname);
+				}
+				fld.push_back(add);
 			}
-			if (add.arsz_ != RowType::Field::AR_SCALAR && add.type_->getTypeId() == Type::TT_STRING) {
-				setErrMsg(strprintf("%s: field '%s' string array type is not supported", "Triceps::RowType::new", fname));
-				XSRETURN_UNDEF;
+			Onceref<RowType> rt = new CompactRowType(fld);
+			Erref err = rt->getErrors();
+			if (!err.isNull() && !err->isEmpty()) {
+				throw Exception::f(err, "Triceps::RowType::new: incorrect data");
 			}
-			fld.push_back(add);
-		}
-		Onceref<RowType> rt = new CompactRowType(fld);
-		Erref err = rt->getErrors();
-		if (!err.isNull() && !err->isEmpty()) {
-			setErrMsg("Triceps::RowType::new: " + err->print());
-			XSRETURN_UNDEF;
-		}
 
-		RETVAL = new WrapRowType(rt);
+			RETVAL = new WrapRowType(rt);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -145,54 +145,56 @@ getFieldMapping(WrapRowType *self)
 WrapRow *
 makeRowHash(WrapRowType *self, ...)
 	CODE:
-		clearErrMsg();
-		RowType *rt = self->get();
 		// for casting of return value
 		static char CLASS[] = "Triceps::Row";
+		static char funcName[] =  "Triceps::RowType::makeRowHash";
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
+			RowType *rt = self->get();
 
-		// The arguments come in pairs fieldName => value;
-		// the value may be either a simple value that will be
-		// cast to the right type, or a reference to a list of values.
-		// The uint8 and string are converted from Perl strings
-		// (the difference for now is that string is 0-terminated)
-		// and can not have lists.
+			// The arguments come in pairs fieldName => value;
+			// the value may be either a simple value that will be
+			// cast to the right type, or a reference to a list of values.
+			// The uint8 and string are converted from Perl strings
+			// (the difference for now is that string is 0-terminated)
+			// and can not have lists.
 
-		if (items % 2 != 1) {
-			setErrMsg("Usage: Triceps::RowType::makeRowHash(RowType, fieldName, fieldValue, ...), names and types must go in pairs");
-			XSRETURN_UNDEF;
-		}
-
-		int nf = rt->fieldCount();
-		FdataVec fields(nf);
-		for (int i = 0; i < nf; i++) {
-			fields[i].setNull(); // default the fields to null
-		}
-		vector<Autoref<EasyBuffer> > bufs;
-		for (int i = 1; i < items; i += 2) {
-			const char *fname = (const char *)SvPV_nolen(ST(i));
-			int idx  = rt->findIdx(fname);
-			if (idx < 0) {
-				setErrMsg(strprintf("%s: attempting to set an unknown field '%s'", "Triceps::RowType::makeRowHash", fname));
-				XSRETURN_UNDEF;
+			if (items % 2 != 1) {
+				throw Exception::f("Usage: %s(RowType, fieldName, fieldValue, ...), names and types must go in pairs", funcName);
 			}
-			const RowType::Field &finfo = rt->fields()[idx];
 
-			if (!SvOK(ST(i+1))) { // undef translates to null
-				fields[idx].setNull();
-			} else {
-				if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makeRowHash", fname));
-					XSRETURN_UNDEF;
+			int nf = rt->fieldCount();
+			FdataVec fields(nf);
+			for (int i = 0; i < nf; i++) {
+				fields[i].setNull(); // default the fields to null
+			}
+			vector<Autoref<EasyBuffer> > bufs;
+			for (int i = 1; i < items; i += 2) {
+				const char *fname = (const char *)SvPV_nolen(ST(i));
+				int idx  = rt->findIdx(fname);
+				if (idx < 0) {
+					throw Exception::f("%s: attempting to set an unknown field '%s'", funcName, fname);
 				}
-				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
-				if (d == NULL)
-					XSRETURN_UNDEF; // error message already set
-				bufs.push_back(d); // remember for cleaning
+				const RowType::Field &finfo = rt->fields()[idx];
 
-				fields[idx].setPtr(true, d->data_, d->size_);
+				if (!SvOK(ST(i+1))) { // undef translates to null
+					fields[idx].setNull();
+				} else {
+					if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
+						throw Exception::f("%s: attempting to set an array into scalar field '%s'", funcName, fname);
+					}
+					EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
+					if (d == NULL)
+						goto error; // error message already set
+					bufs.push_back(d); // remember for cleaning
+
+					fields[idx].setPtr(true, d->data_, d->size_);
+				}
 			}
-		}
-		RETVAL = new WrapRow(rt, rt->makeRow(fields));
+			RETVAL = new WrapRow(rt, rt->makeRow(fields));
+		error: ;
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -201,41 +203,46 @@ makeRowHash(WrapRowType *self, ...)
 WrapRow *
 makeRowArray(WrapRowType *self, ...)
 	CODE:
-		clearErrMsg();
-		RowType *rt = self->get();
 		// for casting of return value
 		static char CLASS[] = "Triceps::Row";
+		static char funcName[] =  "Triceps::RowType::makeRowArray";
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
+			RowType *rt = self->get();
 
-		int nf = rt->fieldCount();
+			int nf = rt->fieldCount();
 
-		if (items > nf + 1) {
-			setErrMsg(strprintf("Triceps::RowType::makeRowArray: %d args, only %d fields in ", items-1, nf) + rt->print(NOINDENT));
-			XSRETURN_UNDEF;
-		}
-
-		FdataVec fields(nf);
-		for (int i = 0; i < nf; i++) {
-			fields[i].setNull(); // default the fields to null
-		}
-		vector<Autoref<EasyBuffer> > bufs;
-		for (int i = 1; i < items; i ++) {
-			const RowType::Field &finfo = rt->fields()[i-1];
-			const char *fname = finfo.name_.c_str();
-
-			if (SvOK(ST(i))) { // undef translates to null, which is already set
-				if (SvROK(ST(i)) && finfo.arsz_ < 0) {
-					setErrMsg(strprintf("%s: attempting to set an array into scalar field '%s'", "Triceps::RowType::makeRowArray", fname));
-					XSRETURN_UNDEF;
-				}
-				EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i), fname);
-				if (d == NULL)
-					XSRETURN_UNDEF; // error message already set
-				bufs.push_back(d); // remember for cleaning
-
-				fields[i-1].setPtr(true, d->data_, d->size_);
+			if (items > nf + 1) {
+				string rtp;
+				rt->printTo(rtp, NOINDENT);
+				throw Exception::f("%s: %d args, only %d fields in %s", funcName, items-1, nf, rtp.c_str());
 			}
-		}
-		RETVAL = new WrapRow(rt, rt->makeRow(fields));
+
+			FdataVec fields(nf);
+			for (int i = 0; i < nf; i++) {
+				fields[i].setNull(); // default the fields to null
+			}
+			vector<Autoref<EasyBuffer> > bufs;
+			for (int i = 1; i < items; i ++) {
+				const RowType::Field &finfo = rt->fields()[i-1];
+				const char *fname = finfo.name_.c_str();
+
+				if (SvOK(ST(i))) { // undef translates to null, which is already set
+					if (SvROK(ST(i)) && finfo.arsz_ < 0) {
+						throw Exception::f("%s: attempting to set an array into scalar field '%s'", funcName, fname);
+					}
+					EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i), fname);
+					if (d == NULL)
+						goto error; // error message already set
+					bufs.push_back(d); // remember for cleaning
+
+					fields[i-1].setPtr(true, d->data_, d->size_);
+				}
+			}
+			RETVAL = new WrapRow(rt, rt->makeRow(fields));
+		error: ;
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
