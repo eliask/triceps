@@ -139,39 +139,40 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 // See RowType.xs for an example of usage
 #define GEN_PRINT_METHOD(subtype)  \
 		static char funcName[] =  "Triceps::" #subtype "::print"; \
-		clearErrMsg(); \
-		subtype *rt = self->get(); \
-		\
-		if (items > 3) { \
-			setErrMsg( strprintf("Usage: %s(self [, indent  [, subindent ] ])", funcName)); \
-			XSRETURN_UNDEF; \
-		} \
-		\
-		string indent, subindent; \
-		const string *indarg = &indent; \
-		\
-		if (items > 1) { /* parse indent */ \
-			if (SvOK(ST(1))) { \
+		try { do { \
+			clearErrMsg(); \
+			subtype *rt = self->get(); \
+			\
+			if (items > 3) { \
+				throw Exception::f("Usage: %s(self [, indent  [, subindent ] ])", funcName); \
+			} \
+			\
+			string indent, subindent; \
+			const string *indarg = &indent; \
+			\
+			if (items > 1) { /* parse indent */ \
+				if (SvOK(ST(1))) { \
+					const char *p; \
+					STRLEN len; \
+					p = SvPV(ST(1), len); \
+					indent.assign(p, len); \
+				} else { \
+					indarg = &NOINDENT; \
+				} \
+			} \
+			if (items > 2) { /* parse subindent */ \
 				const char *p; \
 				STRLEN len; \
-				p = SvPV(ST(1), len); \
-				indent.assign(p, len); \
+				p = SvPV(ST(2), len); \
+				subindent.assign(p, len); \
 			} else { \
-				indarg = &NOINDENT; \
+				subindent.assign("  "); \
 			} \
-		} \
-		if (items > 2) { /* parse subindent */ \
-			const char *p; \
-			STRLEN len; \
-			p = SvPV(ST(2), len); \
-			subindent.assign(p, len); \
-		} else { \
-			subindent.assign("  "); \
-		} \
-		\
-		string res; \
-		rt->printTo(res, *indarg, subindent); \
-		XPUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size())));
+			\
+			string res; \
+			rt->printTo(res, *indarg, subindent); \
+			XPUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size()))); \
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 // A common macro to catch the Triceps::Exception and convert it to a croak.
 // Use:
