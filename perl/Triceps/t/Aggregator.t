@@ -76,7 +76,7 @@ sub aggHandler1 # (table, context, aggop, opcode, rh, state, args...)
 		unless (defined $args[0]);
 
 	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::aggOpString($aggop) . " " . &Triceps::opcodeString($opcode);
-	my $row = $rh->getRow();
+	my $row = $rh->getRowSafe();
 	if (defined $row) {
 		$agghistory .= " [" . join(", ", $rh->getRow()->toArray()) . "]\n";
 	} else {
@@ -334,7 +334,7 @@ sub aggHandler3 # (table, context, aggop, opcode, rh, state, args...)
 	$agghistory .= "bad context type " . ref($context) unless (ref($context) eq "Triceps::AggregatorContext");
 
 	$agghistory .= "call (" . join(", ", @args) . ") " . &Triceps::aggOpString($aggop) . " " . &Triceps::opcodeString($opcode);
-	my $row = $rh->getRow();
+	my $row = $rh->getRowSafe();
 	if (defined $row) {
 		$agghistory .= " [" . join(", ", $rh->getRow()->toArray()) . "]\n";
 	} else {

@@ -196,13 +196,15 @@ $res = $rh1->getRow();
 ok(ref $res, "Triceps::Row");
 ok($r1->same($res));
 
-$res = $rhn1->getRow();
+$res = eval { $rhn1->getRow(); };
 ok(!defined $res);
-ok($! . "", "Triceps::RowHandle::getRow: RowHandle is NULL");
+ok($@, qr/^Triceps::RowHandle::getRow: RowHandle is NULL at/);
+
+$res = $rhn1->getRowSafe();
+ok(!defined $res);
 
 $res = $rhn1->isInTable();
-ok(!defined $res);
-ok($! . "", "Triceps::RowHandle::isInTable: RowHandle is NULL");
+ok($res, 0);
 
 ########################## basic ops  #################################################
 
