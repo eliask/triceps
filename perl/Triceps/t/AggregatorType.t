@@ -73,17 +73,17 @@ ok(ref $agt1, "Triceps::AggregatorType");
 
 # errors
 
-$agt1 = Triceps::AggregatorType->new($rt1, "aggr", sub { }, undef);
+$agt1 = eval { Triceps::AggregatorType->new($rt1, "aggr", sub { }, undef); };
 ok(! defined $agt1);
-ok($! . "", "Triceps::AggregatorType::new(handler): code must be a source code string or a reference to Perl function");
+ok($@, qr/^Triceps::AggregatorType::new\(handler\): code must be a source code string or a reference to Perl function at/);
 
-$agt1 = Triceps::AggregatorType->new($rt1, "aggr", sub { }, 3);
+$agt1 = eval { Triceps::AggregatorType->new($rt1, "aggr", sub { }, 3); };
 ok(! defined $agt1);
-ok($! . "", "Triceps::AggregatorType::new(handler): code must be a source code string or a reference to Perl function");
+ok($@, qr/^Triceps::AggregatorType::new\(handler\): code must be a source code string or a reference to Perl function at/);
 
-$agt1 = Triceps::AggregatorType->new($rt1, "aggr", 4, sub { });
+$agt1 = eval { Triceps::AggregatorType->new($rt1, "aggr", 4, sub { }); };
 ok(! defined $agt1);
-ok($! . "", "Triceps::AggregatorType::new(constructor): code must be a source code string or a reference to Perl function");
+ok($@, qr/^Triceps::AggregatorType::new\(constructor\): code must be a source code string or a reference to Perl function at/);
 
 ###################### copy/equality #################################
 

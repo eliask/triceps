@@ -44,24 +44,28 @@ WrapAggregatorType *
 new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...)
 	CODE:
 		static char funcName[] =  "Triceps::AggregatorType::new";
-		clearErrMsg();
+		RETVAL = NULL; // shut up the warning
 
-		RowType *rt = wrt->get();
+		try { do {
+			clearErrMsg();
 
-		Onceref<PerlCallback> cbconst; // defaults to NULL
-		if (SvOK(constructor)) {
-			cbconst = new PerlCallback(true);
-			PerlCallbackInitializeSplit(cbconst, "Triceps::AggregatorType::new(constructor)", constructor, 5, items-5);
-			if (cbconst->code_ == NULL)
-				XSRETURN_UNDEF; // error message is already set
-		}
+			RowType *rt = wrt->get();
 
-		Onceref<PerlCallback> cbhand = new PerlCallback(true);
-		PerlCallbackInitialize(cbhand, "Triceps::AggregatorType::new(handler)", 4, items-4);
-		if (cbhand->code_ == NULL)
-			XSRETURN_UNDEF; // error message is already set
+			Onceref<PerlCallback> cbconst; // defaults to NULL
+			if (SvOK(constructor)) {
+				cbconst = new PerlCallback(true);
+				PerlCallbackInitializeSplit(cbconst, "Triceps::AggregatorType::new(constructor)", constructor, 5, items-5);
+				if (cbconst->code_ == NULL)
+					break; // error message is already set
+			}
 
-		RETVAL = new WrapAggregatorType(new PerlAggregatorType(name, rt, NULL, cbconst, cbhand));
+			Onceref<PerlCallback> cbhand = new PerlCallback(true);
+			PerlCallbackInitialize(cbhand, "Triceps::AggregatorType::new(handler)", 4, items-4);
+			if (cbhand->code_ == NULL)
+				break; // error message is already set
+
+			RETVAL = new WrapAggregatorType(new PerlAggregatorType(name, rt, NULL, cbconst, cbhand));
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
