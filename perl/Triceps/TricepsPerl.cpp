@@ -352,8 +352,7 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *optval)
 {
 	if (!SvROK(optval) || SvTYPE(SvRV(optval)) != SVt_PVAV) {
-		setErrMsg(strprintf("%s: option '%s' value must be an array reference", funcName, optname));
-		return NULL;
+		throw Exception::f("%s: option '%s' value must be an array reference", funcName, optname);
 	}
 	Onceref<NameSet> key = new NameSet;
 	AV *ka = (AV *)SvRV(optval);

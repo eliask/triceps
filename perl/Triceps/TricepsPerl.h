@@ -44,10 +44,10 @@ void croakIfSet();
 void croakWithMsg(const char *msg)
 	__attribute__noreturn__;
 
-// Clear the perl $! variable and the Triceps::_CROAK_MSG.
+// Clear the Triceps::_CROAK_MSG.
 void clearErrMsg();
 
-// Set a message in Perl $! variable, and also set the croak message.
+// Set the croak message, to be processed in TRICEPS_CATCH_CROAK.
 // @param msg - error message
 void setErrMsg(const std::string &msg);
 
@@ -84,7 +84,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname);
 SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr_t dlen, const char *fname);
 
 // Parse an option value of reference to array into a NameSet
-// On error calls setErrMsg and returns NULL.
+// On error throws an Exception.
 // @param funcName - calling function name, for error messages
 // @param optname - option name of the originating value, for error messages
 // @param ref - option value (will be checked for being a reference to array)

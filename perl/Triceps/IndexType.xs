@@ -54,9 +54,7 @@ newHashed(char *CLASS, ...)
 					if (!key.isNull()) {
 						throw Exception::f("%s: option 'key' can not be used twice", funcName);
 					}
-					key = parseNameSet(funcName, "key", val);
-					if (key.isNull()) // error message already set
-						goto error;
+					key = parseNameSet(funcName, "key", val); // may throw
 				} else {
 					throw Exception::f("%s: unknown option '%s'", funcName, opt);
 				}
@@ -67,7 +65,6 @@ newHashed(char *CLASS, ...)
 			}
 
 			RETVAL = new WrapIndexType(new HashedIndexType(key));
-		error: ;
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
