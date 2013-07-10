@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 124 };
+BEGIN { plan tests => 125 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -38,33 +38,36 @@ ok($res, "index HashedIndex(a, b, )");
 $key = join(",", $it1->getKey());
 ok($key, "a,b");
 
-$res = $it1->getTabtype();
+$res = eval { $it1->getTabtype(); };
 ok(!defined $res);
-ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type");
+ok($@, qr/^Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type at/);
 
-$it1 = Triceps::IndexType->newHashed("key");
-ok(!defined($it1));
-ok($! . "", "Usage: Triceps::IndexType::newHashed(CLASS, optionName, optionValue, ...), option names and values must go in pairs");
+$res = $it1->getTabtypeSafe();
+ok(!defined $res);
 
-$it1 = Triceps::IndexType->newHashed(zzz => [ "a", "b" ]);
+$it1 = eval { Triceps::IndexType->newHashed("key"); };
 ok(!defined($it1));
-ok($! . "", "Triceps::IndexType::newHashed: unknown option 'zzz'");
+ok($@, qr/^Usage: Triceps::IndexType::newHashed\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs at/);
 
-$it1 = Triceps::IndexType->newHashed(key => [ "a", "b" ], key => ["c"]);
+$it1 = eval { Triceps::IndexType->newHashed(zzz => [ "a", "b" ]); };
 ok(!defined($it1));
-ok($! . "", "Triceps::IndexType::newHashed: option 'key' can not be used twice");
+ok($@, qr/^Triceps::IndexType::newHashed: unknown option 'zzz' at/);
 
-$it1 = Triceps::IndexType->newHashed(key => { "a", "b" });
+$it1 = eval { Triceps::IndexType->newHashed(key => [ "a", "b" ], key => ["c"]); };
 ok(!defined($it1));
-ok($! . "", "Triceps::IndexType::newHashed: option 'key' value must be an array reference");
+ok($@, qr/^Triceps::IndexType::newHashed: option 'key' can not be used twice at/);
 
-$it1 = Triceps::IndexType->newHashed(key => undef);
+$it1 = eval { Triceps::IndexType->newHashed(key => { "a", "b" }); };
 ok(!defined($it1));
-ok($! . "", "Triceps::IndexType::newHashed: option 'key' value must be an array reference");
+ok($@, qr/^Triceps::IndexType::newHashed: option 'key' value must be an array reference at/);
 
-$it1 = Triceps::IndexType->newHashed();
+$it1 = eval { Triceps::IndexType->newHashed(key => undef); };
 ok(!defined($it1));
-ok($! . "", "Triceps::IndexType::newHashed: the required option 'key' is missing");
+ok($@, qr/^Triceps::IndexType::newHashed: option 'key' value must be an array reference at/);
+
+$it1 = eval { Triceps::IndexType->newHashed(); };
+ok(!defined($it1));
+ok($@, qr/^Triceps::IndexType::newHashed: the required option 'key' is missing at/);
 
 ###################### newFifo #################################
 
@@ -86,13 +89,13 @@ ok($res, "index FifoIndex( reverse)");
 @key = $it1->getKey();
 ok($#key, -1);
 
-$it1 = Triceps::IndexType->newFifo("key");
+$it1 = eval { Triceps::IndexType->newFifo("key"); };
 ok(!defined($it1));
-ok($! . "", "Usage: Triceps::IndexType::newFifo(CLASS, optionName, optionValue, ...), option names and values must go in pairs");
+ok($@, qr/^Usage: Triceps::IndexType::newFifo\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs at/);
 
-$it1 = Triceps::IndexType->newFifo(zzz => [ "a", "b" ]);
+$it1 = eval { Triceps::IndexType->newFifo(zzz => [ "a", "b" ]); };
 ok(!defined($it1));
-ok($! . "", "Triceps::IndexType::newFifo: unknown option 'zzz'");
+ok($@, qr/^Triceps::IndexType::newFifo: unknown option 'zzz' at/);
 
 ###################### equality #################################
 
@@ -249,9 +252,9 @@ $it22 = $it2->findSubIndex("level2");
 $res = $it21->same($it22);
 ok($res, 1);
 
-$res = $it2->findSubIndex("xxx");
+$res = eval { $it2->findSubIndex("xxx"); };
 ok(!defined($res));
-ok($! . "", "Triceps::IndexType::findSubIndex: unknown nested index 'xxx'");
+ok($@, qr/^Triceps::IndexType::findSubIndex: unknown nested index 'xxx' at/);
 
 $res = $it2->findSubIndexSafe("xxx");
 ok(!defined($res));
@@ -273,17 +276,17 @@ ok(ref $it6, "Triceps::IndexType");
 $res = $it6->equals($it5);
 ok($res, 1);
 
-$it6 = $it3->findSubIndexById(&Triceps::IT_ROOT);
+$it6 = eval { $it3->findSubIndexById(&Triceps::IT_ROOT); };
 ok(!defined $it6);
-ok($! . "", "Triceps::IndexType::findSubIndexById: no nested index with type id 'IT_ROOT' (0)");
+ok($@, qr/^Triceps::IndexType::findSubIndexById: no nested index with type id 'IT_ROOT' \(0\) at/);
 
-$it6 = $it3->findSubIndexById(999);
+$it6 = eval { $it3->findSubIndexById(999); };
 ok(!defined $it6);
-ok($! . "", "Triceps::IndexType::findSubIndexById: no nested index with type id '???' (999)");
+ok($@, qr/^Triceps::IndexType::findSubIndexById: no nested index with type id '\?\?\?' \(999\) at/);
 
-$it6 = $it3->findSubIndexById("xxx");
+$it6 = eval { $it3->findSubIndexById("xxx"); };
 ok(!defined $it6);
-ok($! . "", "Triceps::IndexType::findSubIndexById: unknown IndexId string 'xxx', if integer was meant, it has to be cast");
+ok($@, qr/^Triceps::IndexType::findSubIndexById: unknown IndexId string 'xxx', if integer was meant, it has to be cast at/);
 
 $it6 = $it2->getFirstLeaf();
 ok(ref $it6, "Triceps::IndexType");

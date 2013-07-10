@@ -39,37 +39,36 @@ WrapIndexType *
 newHashed(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::IndexType::newHashed";
-		clearErrMsg();
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
+			Autoref<NameSet> key;
 
-		Autoref<NameSet> key;
-
-		if (items % 2 != 1) {
-			setErrMsg(strprintf("Usage: %s(CLASS, optionName, optionValue, ...), option names and values must go in pairs", funcName));
-			XSRETURN_UNDEF;
-		}
-		for (int i = 1; i < items; i += 2) {
-			const char *opt = (const char *)SvPV_nolen(ST(i));
-			SV *val = ST(i+1);
-			if (!strcmp(opt, "key")) {
-				if (!key.isNull()) {
-					setErrMsg(strprintf("%s: option 'key' can not be used twice", funcName));
-					XSRETURN_UNDEF;
-				}
-				key = parseNameSet(funcName, "key", val);
-				if (key.isNull()) // error message already set
-					XSRETURN_UNDEF;
-			} else {
-				setErrMsg(strprintf("%s: unknown option '%s'", funcName, opt));
-				XSRETURN_UNDEF;
+			if (items % 2 != 1) {
+				throw Exception::f("Usage: %s(CLASS, optionName, optionValue, ...), option names and values must go in pairs", funcName);
 			}
-		}
+			for (int i = 1; i < items; i += 2) {
+				const char *opt = (const char *)SvPV_nolen(ST(i));
+				SV *val = ST(i+1);
+				if (!strcmp(opt, "key")) {
+					if (!key.isNull()) {
+						throw Exception::f("%s: option 'key' can not be used twice", funcName);
+					}
+					key = parseNameSet(funcName, "key", val);
+					if (key.isNull()) // error message already set
+						goto error;
+				} else {
+					throw Exception::f("%s: unknown option '%s'", funcName, opt);
+				}
+			}
 
-		if (key.isNull()) {
-			setErrMsg(strprintf("%s: the required option 'key' is missing", funcName));
-			XSRETURN_UNDEF;
-		}
+			if (key.isNull()) {
+				throw Exception::f("%s: the required option 'key' is missing", funcName);
+			}
 
-		RETVAL = new WrapIndexType(new HashedIndexType(key));
+			RETVAL = new WrapIndexType(new HashedIndexType(key));
+		error: ;
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -79,32 +78,33 @@ WrapIndexType *
 newFifo(char *CLASS, ...)
 	CODE:
 		static char funcName[] =  "Triceps::IndexType::newFifo";
-		clearErrMsg();
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
 
-		size_t limit = 0;
-		bool jumping = false;
-		bool reverse = false;
+			size_t limit = 0;
+			bool jumping = false;
+			bool reverse = false;
 
-		if (items % 2 != 1) {
-			setErrMsg(strprintf("Usage: %s(CLASS, optionName, optionValue, ...), option names and values must go in pairs", funcName));
-			XSRETURN_UNDEF;
-		}
-		for (int i = 1; i < items; i += 2) {
-			const char *opt = (const char *)SvPV_nolen(ST(i));
-			SV *val = ST(i+1);
-			if (!strcmp(opt, "limit")) { // XXX should it check for < 0?
-				limit = SvIV(val); // may overflow if <0 but we don't care
-			} else if (!strcmp(opt, "jumping")) {
-				jumping = SvIV(val);
-			} else if (!strcmp(opt, "reverse")) {
-				reverse = SvIV(val);
-			} else {
-				setErrMsg(strprintf("%s: unknown option '%s'", funcName, opt));
-				XSRETURN_UNDEF;
+			if (items % 2 != 1) {
+				throw Exception::f("Usage: %s(CLASS, optionName, optionValue, ...), option names and values must go in pairs", funcName);
 			}
-		}
+			for (int i = 1; i < items; i += 2) {
+				const char *opt = (const char *)SvPV_nolen(ST(i));
+				SV *val = ST(i+1);
+				if (!strcmp(opt, "limit")) { // XXX should it check for < 0?
+					limit = SvIV(val); // may overflow if <0 but we don't care
+				} else if (!strcmp(opt, "jumping")) {
+					jumping = SvIV(val);
+				} else if (!strcmp(opt, "reverse")) {
+					reverse = SvIV(val);
+				} else {
+					throw Exception::f("%s: unknown option '%s'", funcName, opt);
+				}
+			}
 
-		RETVAL = new WrapIndexType(new FifoIndexType(limit, jumping, reverse));
+			RETVAL = new WrapIndexType(new FifoIndexType(limit, jumping, reverse));
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -132,30 +132,32 @@ WrapIndexType *
 newPerlSorted(char *CLASS, char *sortName, SV *initialize, SV *compare, ...)
 	CODE:
 		static char funcName[] =  "Triceps::IndexType::newPerlSorted";
-		clearErrMsg();
+		RETVAL = NULL; // shut up the warning
+		try { do {
+			clearErrMsg();
 
-		Onceref<PerlCallback> cbInit; // defaults to NULL
-		if (SvOK(initialize)) {
-			cbInit = new PerlCallback(true);
-			PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 4, items-4);
-			if (cbInit->code_ == NULL)
-				XSRETURN_UNDEF; // error message is already set
-		}
+			Onceref<PerlCallback> cbInit; // defaults to NULL
+			if (SvOK(initialize)) {
+				cbInit = new PerlCallback(true);
+				PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 4, items-4);
+				if (cbInit->code_ == NULL)
+					break; // error message is already set
+			}
 
-		Onceref<PerlCallback> cbCompare; // defaults to NULL
-		if (SvOK(compare)) {
-			cbCompare = new PerlCallback(true);
-			PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 4, items-4);
-			if (cbCompare->code_ == NULL)
-				XSRETURN_UNDEF; // error message is already set
-		}
+			Onceref<PerlCallback> cbCompare; // defaults to NULL
+			if (SvOK(compare)) {
+				cbCompare = new PerlCallback(true);
+				PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 4, items-4);
+				if (cbCompare->code_ == NULL)
+					break; // error message is already set
+			}
 
-		if (cbInit.isNull() && cbCompare.isNull()) {
-			setErrMsg(strprintf("%s: at least one of init and comparator function arguments must be not undef", funcName));
-			XSRETURN_UNDEF;
-		}
+			if (cbInit.isNull() && cbCompare.isNull()) {
+				throw Exception::f("%s: at least one of init and comparator function arguments must be not undef", funcName);
+			}
 
-		RETVAL = new WrapIndexType(new SortedIndexType(new PerlSortCondition(sortName, cbInit, cbCompare)));
+			RETVAL = new WrapIndexType(new SortedIndexType(new PerlSortCondition(sortName, cbInit, cbCompare)));
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -246,10 +248,11 @@ addSubIndex(WrapIndexType *self, char *subname, WrapIndexType *sub)
 		clearErrMsg();
 		IndexType *ixt = self->get();
 
-		if (ixt->isInitialized()) {
-			setErrMsg(strprintf("%s: index is already initialized, can not add indexes any more", funcName));
-			XSRETURN_UNDEF;
-		}
+		try { do {
+			if (ixt->isInitialized()) {
+				throw Exception::f("%s: index is already initialized, can not add indexes any more", funcName);
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 		IndexType *ixsub = sub->get();
 		// can't just return self because it will upset the refcount
@@ -268,15 +271,15 @@ setAggregator(WrapIndexType *self, WrapAggregatorType *wagg)
 		IndexType *ixt = self->get();
 		PerlAggregatorType *agg = wagg->get();
 
-		if (ixt->isInitialized()) {
-			setErrMsg(strprintf("%s: index is already initialized, can not add indexes any more", funcName));
-			XSRETURN_UNDEF;
-		}
+		try { do {
+			if (ixt->isInitialized()) {
+				throw Exception::f("%s: index is already initialized, can not add indexes any more", funcName);
+			}
 
-		if (agg->isInitialized()) {
-			setErrMsg(strprintf("%s: aggregator is already initialized, can not add to more indexes", funcName));
-			XSRETURN_UNDEF;
-		}
+			if (agg->isInitialized()) {
+				throw Exception::f("%s: aggregator is already initialized, can not add to more indexes", funcName);
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
 
 		ixt->setAggregator(agg);
 		// can't just return self because it will upset the refcount
@@ -297,7 +300,7 @@ getAggregator(WrapIndexType *self)
 		PerlAggregatorType *agg = dynamic_cast<PerlAggregatorType *>(const_cast<AggregatorType *>(ixt->getAggregator()));
 
 		if (agg == NULL)
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // not a croak!
 		RETVAL = new WrapAggregatorType(agg);
 	OUTPUT:
 		RETVAL
@@ -313,10 +316,11 @@ findSubIndex(WrapIndexType *self, char *subname)
 		clearErrMsg();
 		IndexType *ixt = self->get();
 		IndexType *ixsub = ixt->findSubIndex(subname);
-		if (ixsub == NULL) {
-			setErrMsg(strprintf("%s: unknown nested index '%s'", funcName, subname));
-			XSRETURN_UNDEF;
-		}
+		try { do {
+			if (ixsub == NULL) {
+				throw Exception::f("%s: unknown nested index '%s'", funcName, subname);
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = new WrapIndexType(ixsub);
 	OUTPUT:
 		RETVAL
@@ -333,7 +337,7 @@ findSubIndexSafe(WrapIndexType *self, char *subname)
 		IndexType *ixt = self->get();
 		IndexType *ixsub = ixt->findSubIndex(subname);
 		if (ixsub == NULL)
-			XSRETURN_UNDEF; // not croak!
+			XSRETURN_UNDEF; // not a croak!
 
 		RETVAL = new WrapIndexType(ixsub);
 	OUTPUT:
@@ -346,20 +350,22 @@ findSubIndexById(WrapIndexType *self, SV *idarg)
 		static char funcName[] =  "Triceps::IndexType::findSubIndexById";
 		// for casting of return value
 		static char CLASS[] = "Triceps::IndexType";
+		RETVAL = NULL; // shut up the warning
 
-		clearErrMsg();
-		IndexType *ixt = self->get();
+		try { do {
+			clearErrMsg();
+			IndexType *ixt = self->get();
 
-		IndexType::IndexId id;
-		if (!parseIndexId(funcName, idarg, id))
-			XSRETURN_UNDEF;
+			IndexType::IndexId id;
+			if (!parseIndexId(funcName, idarg, id))
+				break; // error message already set
 
-		IndexType *ixsub = ixt->findSubIndexById(id);
-		if (ixsub == NULL) {
-			setErrMsg(strprintf("%s: no nested index with type id '%s' (%d)", funcName, IndexType::indexIdString(id), id));
-			XSRETURN_UNDEF;
-		}
-		RETVAL = new WrapIndexType(ixsub);
+			IndexType *ixsub = ixt->findSubIndexById(id);
+			if (ixsub == NULL) {
+				throw Exception::f("%s: no nested index with type id '%s' (%d)", funcName, IndexType::indexIdString(id), id);
+			}
+			RETVAL = new WrapIndexType(ixsub);
+		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL
 
@@ -426,10 +432,29 @@ getTabtype(WrapIndexType *self)
 		clearErrMsg();
 		IndexType *ixt = self->get();
 		TableType *tt = ixt->getTabtype();
-		if (tt == NULL) {
-			setErrMsg(strprintf("%s: this index type does not belong to an initialized table type", funcName));
-			XSRETURN_UNDEF;
-		}
+
+		try { do {
+			if (tt == NULL) {
+				throw Exception::f("%s: this index type does not belong to an initialized table type", funcName);
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
+		RETVAL = new WrapTableType(tt);
+	OUTPUT:
+		RETVAL
+
+WrapTableType *
+getTabtypeSafe(WrapIndexType *self)
+	CODE:
+		static char funcName[] =  "Triceps::IndexType::getTabtype";
+		// for casting of return value
+		static char CLASS[] = "Triceps::TableType";
+
+		clearErrMsg();
+		IndexType *ixt = self->get();
+		TableType *tt = ixt->getTabtype();
+		if (tt == NULL)
+			XSRETURN_UNDEF; // not a croak!
+
 		RETVAL = new WrapTableType(tt);
 	OUTPUT:
 		RETVAL
@@ -459,31 +484,31 @@ setComparator(WrapIndexType *self, SV *compare, ...)
 	CODE:
 		static char funcName[] =  "Triceps::IndexType::setComparator";
 
-		clearErrMsg();
-		IndexType *ixt = self->get();
+		try { do {
+			clearErrMsg();
+			IndexType *ixt = self->get();
 
-		PerlSortCondition *psc = NULL;
-		SortedIndexType *sit = dynamic_cast<SortedIndexType *>(ixt);
-		if (sit != NULL) {
-			psc = dynamic_cast<PerlSortCondition *>(sit->getCondition());
-		}
-		if (psc == NULL) {
-			setErrMsg(strprintf("%s: this index type is not a PerlSortedIndex", funcName));
-			XSRETURN_UNDEF;
-		}
-		
-		Onceref<PerlCallback> cbCompare; // defaults to NULL
-		if (SvOK(compare)) {
-			cbCompare = new PerlCallback(true);
-			PerlCallbackInitializeSplit(cbCompare, funcName, compare, 2, items-2);
-			if (cbCompare->code_ == NULL)
-				XSRETURN_UNDEF; // error message is already set
-		}
+			PerlSortCondition *psc = NULL;
+			SortedIndexType *sit = dynamic_cast<SortedIndexType *>(ixt);
+			if (sit != NULL) {
+				psc = dynamic_cast<PerlSortCondition *>(sit->getCondition());
+			}
+			if (psc == NULL) {
+				throw Exception::f("%s: this index type is not a PerlSortedIndex", funcName);
+			}
+			
+			Onceref<PerlCallback> cbCompare; // defaults to NULL
+			if (SvOK(compare)) {
+				cbCompare = new PerlCallback(true);
+				PerlCallbackInitializeSplit(cbCompare, funcName, compare, 2, items-2);
+				if (cbCompare->code_ == NULL)
+					break; // error message is already set
+			}
 
-		if (!psc->setComparator(cbCompare)) {
-			setErrMsg(strprintf("%s: this index type is already initialized and can not be changed", funcName));
-			XSRETURN_UNDEF;
-		}
+			if (!psc->setComparator(cbCompare)) {
+				throw Exception::f("%s: this index type is already initialized and can not be changed", funcName);
+			}
+		} while(0); } TRICEPS_CATCH_CROAK;
 		RETVAL = 1; // success
 	OUTPUT:
 		RETVAL

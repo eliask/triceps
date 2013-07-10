@@ -63,9 +63,9 @@ ok(ref $tt2, "Triceps::TableType");
 ok($tt2->same($tt1));
 
 # a copy of the index is added, the original is left unchanged
-$res = $it1->getTabtype();
+$res = eval { $it1->getTabtype(); };
 ok(!defined $res);
-ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type");
+ok($@, qr/^Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type/);
 
 $tt3 = Triceps::TableType->new($rt1)
 	->addSubIndex("primary", $it1);
@@ -158,9 +158,9 @@ $res = $it2->print();
 ok($res, "index FifoIndex()");
 
 # until the table type is initialized, indexes still don't know about it...
-$res = $it2->getTabtype();
+$res = eval { $it2->getTabtype(); };
 ok(!defined $res);
-ok($! . "", "Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type");
+ok($@, qr/^Triceps::IndexType::getTabtype: this index type does not belong to an initialized table type/);
 
 $it2 = $tt1->findSubIndex("primary");
 $res = $it2->print();
