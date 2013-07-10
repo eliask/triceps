@@ -88,16 +88,15 @@ SV *bytesToVal(Type::TypeId ti, int arsz, bool notNull, const char *data, intptr
 // @param funcName - calling function name, for error messages
 // @param optname - option name of the originating value, for error messages
 // @param ref - option value (will be checked for being a reference to array)
-// @return - the parsed NameSet or NULL on error
+// @return - the parsed NameSet
 Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *optval);
 
 // Parse an enqueuing mode as an integer or string constant to an enum.
-// On error calls setErrMsg and returns false.
+// On error throws an Exception.
 // @param funcName - calling function name, for error messages
 // @param enqMode - SV containing the value to parse
-// @param em - place to return the parsed value
-// @return - true on success or false on error
-bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em);
+// @return - the parsed value
+Gadget::EnqMode parseEnqMode(const char *funcName, SV *enqMode);
 
 // Parse an opcode as an integer or string constant to an enum.
 // On error calls setErrMsg and returns false.

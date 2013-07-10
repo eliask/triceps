@@ -214,10 +214,7 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 			if (items == 3) {
 				rop = new Rowop(lab, op, r);
 			} else if (items == 4) {
-				Gadget::EnqMode em;
-				if (!parseEnqMode(funcName, ST(3), em))
-					break; // sets the error in the function
-
+				Gadget::EnqMode em = parseEnqMode(funcName, ST(3)); // may throw
 				rop = new Rowop(lab, op, r, em);
 			} else {
 				throw Exception::f("Usage: %s(label, opcode, row [, enqMode]), received too many arguments", funcName);

@@ -106,13 +106,11 @@ enqueue(WrapUnit *self, SV *enqMode, ...)
 			static char funcName[] =  "Triceps::Unit::enqueue";
 			clearErrMsg();
 			Unit *u = self->get();
-			Gadget::EnqMode em;
+			Gadget::EnqMode em = parseEnqMode(funcName, enqMode); // may throw
 
-			if (parseEnqMode(funcName, enqMode, em)) { // XXX otherwise will croak based on setErrMsg()
-				for (int i = 2; i < items; i++) {
-					if (!enqueueSv(funcName, u, NULL, em, ST(i), i))
-						break; // XXX will croak based on setErrMsg()
-				}
+			for (int i = 2; i < items; i++) {
+				if (!enqueueSv(funcName, u, NULL, em, ST(i), i))
+					break; // XXX will croak based on setErrMsg()
 			}
 		} TRICEPS_CATCH_CROAK;
 		RETVAL = 1;

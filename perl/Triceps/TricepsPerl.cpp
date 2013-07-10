@@ -366,27 +366,23 @@ Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *opt
 	return key;
 }
 
-bool parseEnqMode(const char *funcName, SV *enqMode, Gadget::EnqMode &em)
+Gadget::EnqMode parseEnqMode(const char *funcName, SV *enqMode)
 {
 	int intem;
 	// accept enqueueing mode as either number of name
 	if (SvIOK(enqMode)) {
 		intem = SvIV(enqMode);
 		if (Gadget::emString(intem, NULL) == NULL) {
-			setErrMsg(strprintf("%s: unknown enqueuing mode integer %d", funcName, intem));
-			return false;
+			throw Exception::f("%s: unknown enqueuing mode integer %d", funcName, intem);
 		}
-		// em = (Gadget::EnqMode)intem;
 	} else {
 		const char *emname = SvPV_nolen(enqMode);
 		intem = Gadget::stringEm(emname);
 		if (intem == -1) {
-			setErrMsg(strprintf("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname));
-			return false;
+			throw Exception::f("%s: unknown enqueuing mode string '%s', if integer was meant, it has to be cast", funcName, emname);
 		}
 	}
-	em = (Gadget::EnqMode)intem;
-	return true;
+	return (Gadget::EnqMode)intem;
 }
 
 bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
