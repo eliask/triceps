@@ -49,11 +49,11 @@ DESTROY(SV *selfsv)
 			self = (WrapAggregatorContext *)SvIV((SV*)SvRV( selfsv ));
 			if (self == 0 || self->badMagic()) {
 				warn( "Triceps::AggregatorContext::DESTROY: self has an incorrect magic for WrapAggregatorContext" );
-				XSRETURN_UNDEF;
+				XSRETURN_UNDEF; // just an early return
 			}
 		} else{
 			warn( "Triceps::AggregatorContext::DESTROY: self is not a blessed SV reference to WrapAggregatorContext" );
-			XSRETURN_UNDEF;
+			XSRETURN_UNDEF; // just an early return
 		}
 		// warn("AggregatorContext %p destroyed!", self);
 		delete self;
