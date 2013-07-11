@@ -47,10 +47,6 @@ void croakWithMsg(const char *msg)
 // Clear the Triceps::_CROAK_MSG.
 void clearErrMsg();
 
-// Set the croak message, to be processed in TRICEPS_CATCH_CROAK.
-// @param msg - error message
-void setErrMsg(const std::string &msg);
-
 // Copy a Perl scalar (numeric) SV value into a memory buffer.
 // @param ti - field type selection
 // @param val - SV to copy from
@@ -108,7 +104,7 @@ Gadget::EnqMode parseEnqMode(const char *funcName, SV *enqMode);
 Rowop::Opcode parseOpcode(const char *funcName, SV *opcode);
 
 // Parse an IndexId as an integer or string constant to an enum.
-// On error calls setErrMsg and returns false.
+// On error throws an Exception.
 // @param funcName - calling function name, for error messages
 // @param idarg - SV containing the value to parse
 // @return - the parsed value

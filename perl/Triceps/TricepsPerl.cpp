@@ -130,25 +130,6 @@ void clearErrMsg()
 
 // XXX Should also set the numeric value to EINVAL?
 
-void setErrMsg(const std::string &msg)
-{
-	// chop the trailing \n if present
-	int  len = msg.size();
-	if (!msg.empty() && msg[msg.size()-1] == '\n')
-		len--;
-
-	SV *errsv = get_sv("!", 0);
-	if (errsv) {
-		sv_setpvn(errsv, msg.c_str(), len);
-	} else {
-		warn("Triceps: can not set $! with error: %s", msg.c_str());
-	}
-
-	// in case if the function checks for exceptions, check the croak message too
-	// XXX in the future there will probably be just exceptions, no setErrMsg()
-	setCroakMsg(msg);
-}
-
 bool svToBytes(Type::TypeId ti, SV *val, char *bytes)
 {
 	IV xiv;
