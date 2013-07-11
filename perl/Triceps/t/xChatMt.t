@@ -46,13 +46,13 @@ sub listenerT
 	my $rtMsg = Triceps::RowType->new(
 		topic => "string",
 		msg => "string",
-	) or confess "$!";
+	);
 
 	# a control message between the reader and writer threads
 	my $rtCtl = Triceps::RowType->new(
 		cmd => "string", # the command to execute
 		arg => "string", # the command argument
-	) or confess "$!";
+	);
 
 	$owner->makeNexus(
 		name => "chat",

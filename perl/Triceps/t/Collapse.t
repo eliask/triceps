@@ -59,7 +59,7 @@ our $rtData = Triceps::RowType->new(
 	local_ip => "string",
 	remote_ip => "string",
 	bytes => "int64",
-) or confess "$!";
+);
 
 #########################
 

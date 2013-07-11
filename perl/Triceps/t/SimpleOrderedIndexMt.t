@@ -66,7 +66,7 @@ ok(ref $rt1, "Triceps::RowType");
 				)
 			;
 			ok(ref $tt1, "Triceps::TableType");
-			$tt1->initialize() or confess "$!";
+			$tt1->initialize();
 
 			my $faOut = $owner->makeNexus(
 				name => "source",
@@ -111,8 +111,8 @@ ok(ref $rt1, "Triceps::RowType");
 					);
 
 					my $tt1 = $faSource->impTableType("tt1");
-					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
+					$tt1->initialize();
+					my $t1 = $unit->makeTable($tt1, "t1");
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 					$t1->getOutputLabel()->chain($faSink->getLabel("out"));

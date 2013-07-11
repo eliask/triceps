@@ -32,7 +32,7 @@ our $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("bySymbol", 
@@ -41,8 +41,8 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
+;
+$ttWindow->initialize();
 
 #########################
 # A basic manual test of echo server.

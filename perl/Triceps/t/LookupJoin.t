@@ -158,7 +158,6 @@ sub join1 # ($label, $rowop, $resultLab, $enqMode)
 		source => $rowdata{acctSrc},
 		external => $rowdata{acctXtrId},
 	);
-	Carp::confess("$!") unless defined $lookupRow;
 	my $acctrh = $tAccounts->findIdx($idxAccountsLookup, $lookupRow);
 	# if the translation is not found, in production it might be useful
 	# to send the record to the error handling logic instead
@@ -170,12 +169,9 @@ sub join1 # ($label, $rowop, $resultLab, $enqMode)
 		%rowdata,
 		acct => $intacct,
 	);
-	Carp::confess("$!") unless defined $resultRow;
 	my $resultRowop = $resultLab->makeRowop($rowop->getOpcode(), # pass the opcode
 		$resultRow);
-	Carp::confess("$!") unless defined $resultRowop;
-	Carp::confess("$!") 
-		unless $resultLab->getUnit()->enqueue($enqMode, $resultRowop);
+	$resultLab->getUnit()->enqueue($enqMode, $resultRowop);
 }
 
 my $outlab1 = $vu1->makeLabel($rtOutTrans, "out", undef, sub { $result1 .= $_[1]->printP() . "\n" } );
@@ -265,10 +261,7 @@ sub calljoin2 # ($label, $rowop, $join, $resultLab)
 
 	my @resRows = $join->lookup($rowop->getRow());
 	foreach my $resultRow( @resRows ) {
-		my $resultRowop = $resultLab->makeRowop($opcode, $resultRow);
-		Carp::confess("$!") unless defined $resultRowop;
-		Carp::confess("$!") 
-			unless $resultLab->getUnit()->call($resultRowop);
+		$resultLab->getUnit()->call($resultLab->makeRowop($opcode, $resultRow));
 	}
 }
 
@@ -342,10 +335,7 @@ sub calljoin2x # ($label, $rowop, $join, $resultLab)
 
 	my @resRows = $join->lookup($rowop->getRow());
 	foreach my $resultRow( @resRows ) {
-		my $resultRowop = $resultLab->makeRowop($opcode, $resultRow);
-		Carp::confess("$!") unless defined $resultRowop;
-		Carp::confess("$!") 
-			unless $resultLab->getUnit()->call($resultRowop);
+		$resultLab->getUnit()->call($resultLab->makeRowop($opcode, $resultRow));
 	}
 }
 

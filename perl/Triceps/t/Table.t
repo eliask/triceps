@@ -64,7 +64,6 @@ ok(ref $itrev, "Triceps::IndexType");
 
 $res = $tt1->initialize();
 ok($res, 1);
-#print STDERR "$!" . "\n";
 
 $t1 = $u1->makeTable($tt1, "tab1");
 ok(ref $t1, "Triceps::Table");

@@ -321,8 +321,7 @@ sub badFacet # (trieadOwner, optName, optValue, ...)
 	my $tt = Triceps::TableType->new($rt1)
 		->addSubIndex("by_b", 
 			Triceps::IndexType->newHashed(key => [ "b" ])
-		)
-	or confess "$!";
+		);
 
 	my $fa;
 	my $fret;

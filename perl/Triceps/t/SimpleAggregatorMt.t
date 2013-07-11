@@ -37,7 +37,7 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 # create a new table type for trades, to put an aggregator on
 
@@ -72,7 +72,7 @@ sub makeTtWindow
 			my $app = $owner->app();
 			my $unit = $owner->unit();
 
-			my $ttWindow = &makeTtWindow or confess "$!";
+			my $ttWindow = &makeTtWindow();
 			Triceps::SimpleAggregator::make(
 				tabType => $ttWindow,
 				name => "myAggr",
@@ -86,7 +86,7 @@ sub makeTtWindow
 				],
 			);
 			ok(ref $ttWindow, "Triceps::TableType");
-			$ttWindow->initialize() or confess "$!";
+			$ttWindow->initialize();
 
 			my $faOut = $owner->makeNexus(
 				name => "source",
@@ -116,8 +116,8 @@ sub makeTtWindow
 					);
 
 					my $ttWindow = $faSource->impTableType("ttWindow");
-					$ttWindow->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($ttWindow, "t1") or confess "$!";
+					$ttWindow->initialize();
+					my $t1 = $unit->makeTable($ttWindow, "t1");
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 

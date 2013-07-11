@@ -49,7 +49,7 @@ sub mainT # (@opts)
 		ccy1 => "string", # currency code
 		ccy2 => "string", # currency code
 		rate => "float64", # multiplier when exchanging ccy1 to ccy2
-	) or confess "$!";
+	);
 
 	# the resulting trade recommendations
 	my $rtResult = Triceps::RowType->new(
@@ -61,18 +61,18 @@ sub mainT # (@opts)
 		rate2 => "float64",
 		rate3 => "float64",
 		looprate => "float64",
-	) or confess "$!";
+	);
 
 	# each tray gets sequentially numbered and framed
 	my $rtFrame = Triceps::RowType->new(
 		seq => "int64", # sequence number
 		triead => "int32", # id of the thread that produced it (optional)
-	) or confess "$!";
+	);
 	
 	# the plain-text output of the result
 	my $rtPrint = Triceps::RowType->new(
 		text => "string",
-	) or confess "$!";
+	);
 	
 	# the input data
 	my $faIn = $owner->makeNexus(
@@ -240,13 +240,13 @@ sub workerT # (@opts)
 			Triceps::IndexType->newHashed(key => [ "ccy2" ])
 			->addSubIndex("grouping", Triceps::IndexType->newFifo())
 		)
-	or confess "$!";
-	$ttRate->initialize() or confess "$!";
+	;
+	$ttRate->initialize();
 	my $tRate = $unit->makeTable($ttRate, "tRate");
 	my $lbRateInput = $tRate->getInputLabel();
 
-	my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or confess "$!";
-	my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12") or confess "$!";
+	my $ixtCcy1 = $ttRate->findSubIndex("byCcy1");
+	my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12");
 
 	# the table gets updated for every incoming rate
 	$lbInRate->makeChained("lbIn", undef, sub {
@@ -282,8 +282,7 @@ sub workerT # (@opts)
 		my $rate1 = $row->get("rate");
 
 		my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2);
-		my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12)
-			or confess "$!";
+		my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12);
 		for (; !$rhi->same($rhiEnd); $rhi = $rhi->nextIdx($ixtCcy12)) {
 			my $row2 = $rhi->getRow();
 			my $ccy3 = $row2->get("ccy2");

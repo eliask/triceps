@@ -120,7 +120,6 @@ ok($res, "index PerlSortedIndex(basic)");
 
 	$res = $tt1->initialize();
 	ok($res, 1);
-	#print STDERR "$!" . "\n";
 
 	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
@@ -171,7 +170,6 @@ $itsrc1 = Triceps::IndexType->newPerlSorted("basic", undef, '
 	return $res;
 	'
 );
-#print "$!\n";
 ok(ref $itsrc1, "Triceps::IndexType");
 $res = $itsrc1->print();
 ok($res, "index PerlSortedIndex(basic)");
@@ -187,7 +185,6 @@ ok($res, "index PerlSortedIndex(basic)");
 
 	$res = $tt1->initialize();
 	ok($res, 1);
-	#print STDERR "$!" . "\n";
 
 	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");
@@ -240,7 +237,6 @@ ok($res, "index PerlSortedIndex(basic)");
 
 	$res = $tt1->initialize();
 	ok($res, 1);
-	#print STDERR "$!" . "\n";
 
 	# get back the copied object from the table type
 	$it2 = $tt1->findSubIndex("primary");
@@ -320,7 +316,6 @@ sub testCompError # ($&comp)
 
 	$res = $tt1->initialize();
 	ok($res, 1);
-	#print STDERR "$!" . "\n";
 
 	my $t1 = $u1->makeTable($tt1, "t1");
 	ok(ref $t1, "Triceps::Table");

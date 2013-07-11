@@ -52,13 +52,13 @@ sub appCoreT # (@opts)
 		symbol => "string", # symbol traded
 		price => "float64",
 		size => "float64", # number of shares traded
-	) or confess "$!";
+	);
 
 	my $ttWindow = Triceps::TableType->new($rtTrade)
 		->addSubIndex("byId", 
 			Triceps::SimpleOrderedIndex->new(id => "ASC")
 		)
-		or confess "$!";
+	;
 	$ttWindow->initialize();
 
 	# Represents the static information about a company.
@@ -66,13 +66,13 @@ sub appCoreT # (@opts)
 		symbol => "string", # symbol name
 		name => "string", # the official company name
 		eps => "float64", # last quarter earnings per share
-	) or confess "$!";
+	);
 
 	my $ttSymbol = Triceps::TableType->new($rtSymbol)
 		->addSubIndex("bySymbol", 
 			Triceps::SimpleOrderedIndex->new(symbol => "ASC")
 		)
-		or confess "$!";
+	;
 	$ttSymbol->initialize();
 
 	my $tWindow = $unit->makeTable($ttWindow, "tWindow");
@@ -420,7 +420,7 @@ c1|__EOF__
 		symbol => "string", # symbol traded
 		price => "float64",
 		size => "float64", # number of shares traded
-	) or confess "$!";
+	);
 
 	my $lb1 = $uTrades->makeDummyLabel($rtTrade, "lb1");
 	my $lb2 = $uTrades->makeDummyLabel($rtTrade, "lb2");

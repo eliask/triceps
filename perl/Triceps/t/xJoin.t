@@ -37,13 +37,13 @@ our $rtInTrans = Triceps::RowType->new( # a transaction received
 	acctSrc => "string", # external system that sent us a transaction
 	acctXtrId => "string", # its name of the account of the transaction
 	amount => "int32", # the amount of transaction (int is easier to check)
-) or confess "$!";
+);
 
 our $rtAccounts = Triceps::RowType->new( # account translation map
 	source => "string", # external system that sent us a transaction
 	external => "string", # its name of the account in the transaction
 	internal => "int32", # our internal account id
-) or confess "$!";
+);
 
 our $ttAccounts = Triceps::TableType->new($rtAccounts)
 	->addSubIndex("lookupSrcExt", # quick look-up by source and external id
@@ -59,8 +59,8 @@ our $ttAccounts = Triceps::TableType->new($rtAccounts)
 		Triceps::IndexType->newHashed(key => [ "internal" ])
 		->addSubIndex("lookupInt", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttAccounts->initialize() or confess "$!";
+;
+$ttAccounts->initialize();
 
 my @commonInput = (
 	"acct,OP_INSERT,source1,999,1\n",
@@ -96,7 +96,7 @@ my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
 	if (!$rh->isNull()) {
 		$uJoin->call($lbFilterResult->adopt($rowop));
 	}
-}) or confess "$!";
+});
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbFilterResult);
@@ -263,8 +263,8 @@ our $ttAccounts2 = Triceps::TableType->new($rtAccounts)
 			->addSubIndex("grouping", Triceps::IndexType->newFifo())
 		)
 	)
-or confess "$!";
-$ttAccounts2->initialize() or confess "$!";
+;
+$ttAccounts2->initialize();
 
 sub doLookupLeftMulti {
 
@@ -440,10 +440,10 @@ while(&readLine) {
 		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
 		my $op = shift @data; # drop the opcode field
-		my $trans = $rtInTrans->makeRowArray(@data) or confess "$!";
+		my $trans = $rtInTrans->makeRowArray(@data);
 		my @rows = $join->lookup($trans);
 		foreach my $r (@rows) {
-			$uJoin->call($lbPrint->makeRowop($op, $r)) or confess "$!";
+			$uJoin->call($lbPrint->makeRowop($op, $r));
 		}
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
@@ -483,7 +483,7 @@ our $rtToUsd = Triceps::RowType->new( # a currency conversion to USD
 	date => "int32", # as of which date, in format YYYYMMDD
 	currency => "string", # currency code
 	toUsd => "float64", # multiplier to convert this currency to USD
-) or confess "$!";
+);
 
 our $rtPosition = Triceps::RowType->new( # a customer account position
 	date => "int32", # as of which date, in format YYYYMMDD
@@ -492,7 +492,7 @@ our $rtPosition = Triceps::RowType->new( # a customer account position
 	quantity => "float64", # number of shares
 	price => "float64", # share price in local currency
 	currency => "string", # currency code of the price
-) or confess "$!";
+);
 
 # exchange rates, to convert all currencies to USD
 our $ttToUsd = Triceps::TableType->new($rtToUsd)
@@ -503,8 +503,8 @@ our $ttToUsd = Triceps::TableType->new($rtToUsd)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttToUsd->initialize() or confess "$!";
+;
+$ttToUsd->initialize();
 
 # the positions in the original currency
 our $ttPosition = Triceps::TableType->new($rtPosition)
@@ -519,12 +519,12 @@ our $ttPosition = Triceps::TableType->new($rtPosition)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttPosition->initialize() or confess "$!";
+;
+$ttPosition->initialize();
 
 # remember the indexes for the future use
-our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or confess "$!";
-our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or confess "$!";
+our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate");
+our $ixtPositionByDate = $ttPosition->findSubIndex("byDate");
 
 our @inputBasicJoin = (
 	"cur,OP_INSERT,20120310,USD,1\n",
@@ -798,23 +798,23 @@ our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 our $businessDay = undef;
 
 our $lbPositionCurrent = $uJoin->makeDummyLabel(
-	$tPosition->getRowType, "lbPositionCurrent") or confess "$!";
+	$tPosition->getRowType, "lbPositionCurrent");
 our $lbPositionFilter = $uJoin->makeLabel($tPosition->getRowType,
 	"lbPositionFilter", undef, sub {
 		if ($_[1]->getRow()->get("date") >= $businessDay) {
 			$uJoin->call($lbPositionCurrent->adopt($_[1]));
 		}
-	}) or confess "$!";
+	});
 $tPosition->getOutputLabel()->chain($lbPositionFilter);
 
 our $lbToUsdCurrent = $uJoin->makeDummyLabel(
-	$tToUsd->getRowType, "lbToUsdCurrent") or confess "$!";
+	$tToUsd->getRowType, "lbToUsdCurrent");
 our $lbToUsdFilter = $uJoin->makeLabel($tToUsd->getRowType,
 	"lbToUsdFilter", undef, sub {
 		if ($_[1]->getRow()->get("date") >= $businessDay) {
 			$uJoin->call($lbToUsdCurrent->adopt($_[1]));
 		}
-	}) or confess "$!";
+	});
 $tToUsd->getOutputLabel()->chain($lbToUsdFilter);
 
 our $join = Triceps::JoinTwo->new(

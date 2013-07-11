@@ -136,7 +136,6 @@ ok(ref $rt1, "Triceps::RowType");
 	ok(ref $tt1, "Triceps::TableType");
 	$res = eval { $tt1->initialize(); };
 	ok(!defined $res);
-	#print "$!\n";
 	ok($@, 
 qr/^index error:
   nested index 1 'sorted':
@@ -173,7 +172,6 @@ qr/^index error:
 	ok($res, "table (\n  row {\n    int32 a\"b,\n  }\n) {\n  index PerlSortedIndex(SimpleOrder a\\\"b ASC, ) sorted,\n}");
 
 	$res = $tt1->initialize();
-	#print "$!\n";
 	ok($res);
 
 	my $tt2 = Triceps::TableType->new($rt2)

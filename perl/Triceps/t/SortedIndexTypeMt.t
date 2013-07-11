@@ -91,7 +91,7 @@ ok($res, "index PerlSortedIndex(withArgs)");
 				#->addSubIndex("primary", Triceps::IndexType->newHashed(key => [ "b", "c" ]))
 			;
 			ok(ref $tt1, "Triceps::TableType");
-			$tt1->initialize() or confess "$!";
+			$tt1->initialize();
 
 			my $faOut = $owner->makeNexus(
 				name => "source",
@@ -136,8 +136,8 @@ ok($res, "index PerlSortedIndex(withArgs)");
 					);
 
 					my $tt1 = $faSource->impTableType("tt1");
-					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
+					$tt1->initialize();
+					my $t1 = $unit->makeTable($tt1, "t1");
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 					$t1->getOutputLabel()->chain($faSink->getLabel("out"));
@@ -214,7 +214,7 @@ sink.dump OP_INSERT b="2" c="2"
 				#->addSubIndex("primary", Triceps::IndexType->newHashed(key => [ "b", "c" ]))
 			;
 			ok(ref $tt1, "Triceps::TableType");
-			$tt1->initialize() or confess "$!";
+			$tt1->initialize();
 
 			my $faOut = $owner->makeNexus(
 				name => "source",
@@ -259,8 +259,8 @@ sink.dump OP_INSERT b="2" c="2"
 					);
 
 					my $tt1 = $faSource->impTableType("tt1");
-					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
+					$tt1->initialize();
+					my $t1 = $unit->makeTable($tt1, "t1");
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 					$t1->getOutputLabel()->chain($faSink->getLabel("out"));
@@ -345,7 +345,7 @@ sink.dump OP_INSERT b="2" c="2"
 				);
 			;
 			ok(ref $tt1, "Triceps::TableType");
-			$tt1->initialize() or confess "$!";
+			$tt1->initialize();
 
 			eval {
 				my $faOut = $owner->makeNexus(
@@ -391,7 +391,7 @@ sink.dump OP_INSERT b="2" c="2"
 				);
 			;
 			ok(ref $tt1, "Triceps::TableType");
-			$tt1->initialize() or confess "$!";
+			$tt1->initialize();
 
 			eval {
 				my $faOut = $owner->makeNexus(

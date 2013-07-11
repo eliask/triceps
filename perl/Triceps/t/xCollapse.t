@@ -97,18 +97,18 @@ sub new # ($class, $optName => $optValue, ...)
 		->addSubIndex("primary", 
 			Triceps::IndexType->newHashed(key => $dataset->{key})
 		);
-	$dataset->{tt}->initialize() 
-		or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tt}->initialize() ;
+		# XXX extended error "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
 
 	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert");
 	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert");
 
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 
-		undef, \&_handleInput, $self, $dataset)
-			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out")
-		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
+		undef, \&_handleInput, $self, $dataset);
+			# XXX extended error "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out");
+		# XXX extended error "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
 			
 	# chain the input label, if any
 	if (defined $lbFrom) {
@@ -236,7 +236,7 @@ our $rtData = Triceps::RowType->new(
 	local_ip => "string",
 	remote_ip => "string",
 	bytes => "int64",
-) or confess "$!";
+);
 
 #########################
 

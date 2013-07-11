@@ -162,8 +162,8 @@ my @dataset2 = (
 					);
 
 					my $tt1 = $faSource->impTableType("tt1");
-					$tt1->initialize() or confess "$!";
-					my $t1 = $unit->makeTable($tt1, "t1") or confess "$!";
+					$tt1->initialize();
+					my $t1 = $unit->makeTable($tt1, "t1");
 
 					$faSource->getLabel("data")->chain($t1->getInputLabel());
 

@@ -39,7 +39,7 @@ our $rtPacket = Triceps::RowType->new(
 	local_port => "int32", 
 	remote_port => "int32",
 	bytes => "int32", # size of the packet
-) or confess "$!";
+);
 
 # an hourly summary
 our $rtHourly = Triceps::RowType->new(
@@ -47,7 +47,7 @@ our $rtHourly = Triceps::RowType->new(
 	local_ip => "string", # string to make easier to read
 	remote_ip => "string", # string to make easier to read
 	bytes => "int64", # bytes sent in an hour
-) or confess "$!";
+);
 
 # compute an hour-rounded timestamp
 sub hourStamp # (time)
@@ -75,7 +75,7 @@ sub computeHourly # (table, context, aggop, opcode, rh, state, args...)
 	return if ($hourstamp < $currentHour);
 
 	if ($opcode == &Triceps::OP_DELETE) {
-		$context->send($opcode, $$state) or confess "$!";
+		$context->send($opcode, $$state);
 		return;
 	}
 		
@@ -90,9 +90,9 @@ sub computeHourly # (table, context, aggop, opcode, rh, state, args...)
 		local_ip => $rFirst->get("local_ip"), 
 		remote_ip => $rFirst->get("remote_ip"), 
 		bytes => $bytes,
-	) or confess "$!";
+	);
 	${$state} = $res;
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 sub initHourly #  (@args)
@@ -117,9 +117,9 @@ our $ttPackets = Triceps::TableType->new($rtPacket)
 			)
 		)
 	)
-or confess "$!";
+;
 
-$ttPackets->initialize() or confess "$!";
+$ttPackets->initialize();
 our $tPackets = $uTraffic->makeTable($ttPackets, "tPackets");
 
 # the aggregated hourly stats, kept longer
@@ -128,9 +128,9 @@ our $ttHourly = Triceps::TableType->new($rtHourly)
 		Triceps::SimpleOrderedIndex->new(
 			time => "ASC", local_ip => "ASC", remote_ip => "ASC")
 	)
-or confess "$!";
+;
 
-$ttHourly->initialize() or confess "$!";
+$ttHourly->initialize();
 our $tHourly = $uTraffic->makeTable($ttHourly, "tHourly");
 
 # connect the tables
@@ -175,7 +175,7 @@ while(&readLine) {
 		# update the current notion of time (simplistic)
 		$currentHour = &hourStamp($rowop->getRow()->get("time"));
 		if (defined($rowop->getRow()->get("local_ip"))) {
-			$uTraffic->call($rowop) or confess "$!";
+			$uTraffic->call($rowop);
 		}
 		&flushOldPackets(); # flush the packets
 		$uTraffic->drainFrame(); # just in case, for completeness
@@ -276,7 +276,7 @@ our $rtPacket = Triceps::RowType->new(
 	local_port => "int32", 
 	remote_port => "int32",
 	bytes => "int32", # size of the packet
-) or confess "$!";
+);
 
 # an hourly summary, now with the day extracted
 our $rtHourly = Triceps::RowType->new(
@@ -285,13 +285,13 @@ our $rtHourly = Triceps::RowType->new(
 	local_ip => "string", # string to make easier to read
 	remote_ip => "string", # string to make easier to read
 	bytes => "int64", # bytes sent in an hour
-) or confess "$!";
+);
 
 # a daily summary: just all traffic for that day
 our $rtDaily = Triceps::RowType->new(
 	day => "string", # in YYYYMMDD
 	bytes => "int64", # bytes sent in an hour
-) or confess "$!";
+);
 
 # reuse the same sub hourStamp
 
@@ -324,7 +324,7 @@ sub computeHourlywDay # (table, context, aggop, opcode, rh, state, args...)
 	return if ($hourstamp < $currentHour);
 
 	if ($opcode == &Triceps::OP_DELETE) {
-		$context->send($opcode, $$state) or confess "$!";
+		$context->send($opcode, $$state);
 		return;
 	}
 		
@@ -340,9 +340,9 @@ sub computeHourlywDay # (table, context, aggop, opcode, rh, state, args...)
 		local_ip => $rFirst->get("local_ip"), 
 		remote_ip => $rFirst->get("remote_ip"), 
 		bytes => $bytes,
-	) or confess "$!";
+	);
 	${$state} = $res;
-	$context->send($opcode, $res) or confess "$!";
+	$context->send($opcode, $res);
 }
 
 # reuse the same sub initHourly 
@@ -363,9 +363,9 @@ our $ttPackets = Triceps::TableType->new($rtPacket)
 			)
 		)
 	)
-or confess "$!";
+;
 
-$ttPackets->initialize() or confess "$!";
+$ttPackets->initialize();
 our $tPackets = $uTraffic->makeTable($ttPackets, "tPackets");
 
 # the aggregated hourly stats, kept longer
@@ -380,25 +380,23 @@ our $ttHourly = Triceps::TableType->new($rtHourly)
 			Triceps::IndexType->newFifo()
 		)
 	)
-or confess "$!";
+;
 
-$ttHourly->initialize() or confess "$!";
+$ttHourly->initialize();
 our $tHourly = $uTraffic->makeTable($ttHourly, "tHourly");
 
 # remember the daily secondary index type
-our $idxHourlyByDay = $ttHourly->findSubIndex("byDay")
-	or confess "$!";
-our $idxHourlyByDayGroup = $idxHourlyByDay->findSubIndex("group")
-	or confess "$!";
+our $idxHourlyByDay = $ttHourly->findSubIndex("byDay");
+our $idxHourlyByDayGroup = $idxHourlyByDay->findSubIndex("group");
 
 # the aggregated daily stats, kept even longer
 our $ttDaily = Triceps::TableType->new($rtDaily)
 	->addSubIndex("byDay", 
 		Triceps::IndexType->newHashed(key => [ "day" ])
 	)
-or confess "$!";
+;
 
-$ttDaily->initialize() or confess "$!";
+$ttDaily->initialize();
 our $tDaily = $uTraffic->makeTable($ttDaily, "tDaily");
 
 # connect the tables (but not the daily one)
@@ -427,8 +425,7 @@ sub computeDay # ($dateStamp)
 	my $bytes = 0;
 
 	my $rhFirst = $tHourly->findIdxBy($idxHourlyByDay, day => $_[0]);
-	my $rhEnd = $rhFirst->nextGroupIdx($idxHourlyByDayGroup)
-		or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($idxHourlyByDayGroup);
 	for (my $rhi = $rhFirst; 
 			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($idxHourlyByDay)) {
 		$bytes += $rhi->getRow()->get("bytes");
@@ -450,7 +447,7 @@ while(&readLine) {
 		my $lastDay = $currentDay;
 		$currentDay = &dateStamp($currentHour);
 		if (defined($rowop->getRow()->get("local_ip"))) {
-			$uTraffic->call($rowop) or confess "$!";
+			$uTraffic->call($rowop);
 		}
 		&flushOldPackets(); # flush the packets
 		if (defined $lastDay && $lastDay ne $currentDay) {

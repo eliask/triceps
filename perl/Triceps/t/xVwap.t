@@ -284,10 +284,9 @@ sub new # (class, optionName => optionValue ...)
 				->setAggregator($agtype)
 			)
 		);
-	$tabtype->initialize() or Carp::confess "Failed to initialize the VWAP table type: $!";
+	$tabtype->initialize();
 	$self->{tabType} = $tabtype;
 	my $t = $self->{unit}->makeTable($tabtype, $self->{name} . ".agg");
-	Carp::confess "Failed to create the VWAP table: $!" unless (ref $t eq "Triceps::Table");
 	$self->{table} = $t;
 
 	bless $self, $class;
@@ -378,7 +377,7 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -388,7 +387,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 		->addSubIndex("fifo", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
+;
 
 # the aggregation result
 my $rtVwap;
@@ -409,14 +408,14 @@ Triceps::SimpleAggregator::make(
 	saveComputeTo => \$compText,
 );
 
-$ttWindow->initialize() or confess "$!";
+$ttWindow->initialize();
 my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
+	});
 $tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint);
 
 while(&readLine) {

@@ -33,7 +33,7 @@ our $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("bySymbol", 
@@ -42,22 +42,22 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
+;
+$ttWindow->initialize();
 
 # Represents the static information about a company.
 our $rtSymbol = Triceps::RowType->new(
 	symbol => "string", # symbol name
 	name => "string", # the official company name
 	eps => "float64", # last quarter earnings per share
-) or confess "$!";
+);
 
 our $ttSymbol = Triceps::TableType->new($rtSymbol)
 	->addSubIndex("bySymbol", 
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 	)
-	or confess "$!";
-$ttSymbol->initialize() or confess "$!";
+;
+$ttSymbol->initialize();
 
 ################################################################
 # The Tql object built in one call.

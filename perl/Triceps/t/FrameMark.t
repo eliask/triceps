@@ -80,7 +80,7 @@ sub startLoop # ($label, $rowop)
 		$@ =~ s/SCALAR\(\w+\)/SCALAR/g; # remove the varying scalar pointers
 		&send("bad loopAt: $@\n");
 	} else {
-		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow())) or confess "$!";
+		$u1->call($labNext->makeRowop(&Triceps::OP_INSERT, $rowop->getRow()));
 	}
 }
 
@@ -95,9 +95,9 @@ sub nextLoop # ($label, $rowop)
 	my $newrop = $labStart->makeRowop(&Triceps::OP_DELETE, $rt1->makeRowHash(%data) );
 	if ($callType eq "tray") {
 		my $tray = $u1->makeTray($newrop);
-		$u1->loopAt($m1, $tray) or confess "$!";
+		$u1->loopAt($m1, $tray);
 	} elsif ($callType eq "single") {
-		$u1->loopAt($m1, $newrop) or confess "$!";
+		$u1->loopAt($m1, $newrop);
 	} elsif ($callType eq "fromHash") {
 		$u1->makeHashLoopAt($m1, $labStart, &Triceps::OP_DELETE, %data);
 	} elsif ($callType eq "fromArray") {
@@ -199,7 +199,7 @@ my $rtFib = Triceps::RowType->new(
 	iter => "int32", # iteration number
 	cur => "int64", # current number
 	prev => "int64", # previous number
-) or confess "$!";
+);
 
 my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
 	&send($_[1]->getRow()->get("cur"));
@@ -226,7 +226,7 @@ $lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
 		cur => $cur + $row->get("prev"),
 		prev => $cur,
 	);
-}) or confess "$!";
+});
 
 my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 	my $row = $_[1]->getRow();
@@ -236,7 +236,7 @@ my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 		prev => 0,
 	);
 	&send(" is Fibonacci number ", $row->get("iter"), "\n");
-}) or confess "$!";
+});
 
 while(&readLine) {
 	chomp;
@@ -278,7 +278,7 @@ my $rtFib = Triceps::RowType->new(
 	iter => "int32", # iteration number
 	cur => "int64", # current number
 	prev => "int64", # previous number
-) or confess "$!";
+);
 
 my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
 	&send($_[1]->getRow()->get("cur"));
@@ -299,7 +299,7 @@ $lbCompute = $uFib->makeLabel($rtFib, "Compute", undef, sub {
 			prev => $cur,
 		);
 	}
-}) or confess "$!";
+});
 
 ($lbNext, $markFib) = $uFib->makeLoopAround(
 	"Fib", $lbCompute
@@ -313,7 +313,7 @@ my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
 		prev => 0,
 	);
 	&send(" is a Fibonacci number ", $row->get("iter"), "\n");
-}) or confess "$!";
+});
 
 while(&readLine) {
 	chomp;

@@ -31,13 +31,13 @@ ok(1); # If we made it this far, we're ok.
 
 sub doWindow {
 
-our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $uTrades = Triceps::Unit->new("uTrades");
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("bySymbol", 
@@ -46,26 +46,26 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
+;
+$ttWindow->initialize();
 our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
-our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol");
 # remember the FIFO index, for finding the start of the group
-our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2");
 
 # print out the changes to the table as they happen
 our $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n"); # print the change
-	}) or confess "$!";
+	});
 $tWindow->getOutputLabel()->chain($lbWindowPrint);
 
 while(&readLine) {
 	chomp;
-	my $rTrade = $rtTrade->makeRowArray(split(/,/)) or confess "$!";
-	my $rhTrade = $tWindow->makeRowHandle($rTrade) or confess "$!";
+	my $rTrade = $rtTrade->makeRowArray(split(/,/));
+	my $rhTrade = $tWindow->makeRowHandle($rTrade);
 	$tWindow->insert($rhTrade);
 	# There are two ways to find the first record for this
 	# symbol. Use one way for the symbol AAA and the other for the rest.
@@ -74,9 +74,9 @@ while(&readLine) {
 		$rhFirst = $tWindow->findIdx($itSymbol, $rTrade);
 	} else  {
 		# $rhTrade is now in the table but it's the last record
-		$rhFirst = $rhTrade->firstOfGroupIdx($itLast2) or confess "$!";
+		$rhFirst = $rhTrade->firstOfGroupIdx($itLast2);
 	}
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("New contents:\n");
 	for (my $rhi = $rhFirst; 
 			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
@@ -138,13 +138,13 @@ New contents:
 
 sub doSecondary {
 
-our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $uTrades = Triceps::Unit->new("uTrades");
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -156,21 +156,21 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
+;
+$ttWindow->initialize();
 our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
-our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol");
 # remember the FIFO index, for finding the start of the group
-our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2");
 
 # remember, which was the last row modified
 our $rLastMod;
 our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
-	}) or confess "$!";
+	});
 $tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 # Print the average price of the symbol in the last modified row
@@ -178,7 +178,7 @@ sub printAverage # (row)
 {
 	return unless defined $rLastMod;
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("Contents:\n");
 	my $avg;
 	my ($sum, $count);
@@ -263,13 +263,13 @@ Average price: Undefined
 
 sub doManualAgg1 {
 
-our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $uTrades = Triceps::Unit->new("uTrades");
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -281,21 +281,21 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
+;
+$ttWindow->initialize();
 our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
-our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol");
 # remember the FIFO index, for finding the start of the group
-our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2");
 
 # remember, which was the last row modified
 our $rLastMod;
 our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
-	}) or confess "$!";
+	});
 $tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 #####
@@ -305,21 +305,21 @@ our $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or confess "$!";
+);
 
 # place to send the average: could be a dummy label, but to keep the
 # code smaller also print the rows here, instead of in a separate label
 our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
+	});
 
 # Send the average price of the symbol in the last modified row
 sub computeAverage # (row)
 {
 	return unless defined $rLastMod;
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("Contents:\n");
 	my $avg = 0;
 	my ($sum, $count);
@@ -394,13 +394,13 @@ Contents:
 
 sub doManualAgg2 {
 
-our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $uTrades = Triceps::Unit->new("uTrades");
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -412,21 +412,21 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
+;
+$ttWindow->initialize();
 our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
-our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol");
 # remember the FIFO index, for finding the start of the group
-our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2");
 
 # remember, which was the last row modified
 our $rLastMod;
 our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
-	}) or confess "$!";
+	});
 $tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 #####
@@ -436,16 +436,16 @@ our $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or confess "$!";
+);
 
 our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
 	->addSubIndex("bySymbol", 
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 	)
-	or confess "$!";
-$ttAvgPrice->initialize() or confess "$!";
+;
+$ttAvgPrice->initialize();
 our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, "tAvgPrice");
-our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
+our $lbAvgPriceHelper = $tAvgPrice->getInputLabel();
 
 # place to send the average: could be a dummy label, but to keep the
 # code smaller also print the rows here, instead of in a separate label
@@ -456,7 +456,7 @@ sub computeAverage2 # (row)
 {
 	return unless defined $rLastMod;
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("Contents:\n");
 	my $avg = 0;
 	my ($sum, $count);
