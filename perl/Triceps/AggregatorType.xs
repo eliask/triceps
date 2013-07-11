@@ -54,15 +54,11 @@ new(char *CLASS, WrapRowType *wrt, char *name, SV *constructor, SV *handler, ...
 			Onceref<PerlCallback> cbconst; // defaults to NULL
 			if (SvOK(constructor)) {
 				cbconst = new PerlCallback(true);
-				PerlCallbackInitializeSplit(cbconst, "Triceps::AggregatorType::new(constructor)", constructor, 5, items-5);
-				if (cbconst->code_ == NULL)
-					break; // error message is already set
+				PerlCallbackInitializeSplit(cbconst, "Triceps::AggregatorType::new(constructor)", constructor, 5, items-5); // may throw
 			}
 
 			Onceref<PerlCallback> cbhand = new PerlCallback(true);
-			PerlCallbackInitialize(cbhand, "Triceps::AggregatorType::new(handler)", 4, items-4);
-			if (cbhand->code_ == NULL)
-				break; // error message is already set
+			PerlCallbackInitialize(cbhand, "Triceps::AggregatorType::new(handler)", 4, items-4); // may throw
 
 			RETVAL = new WrapAggregatorType(new PerlAggregatorType(name, rt, NULL, cbconst, cbhand));
 		} while(0); } TRICEPS_CATCH_CROAK;

@@ -448,15 +448,11 @@ makeLabel(WrapUnit *self, WrapRowType *wrt, char *name, SV *clear, SV *exec, ...
 			}
 			if (SvOK(clear)) {
 				clr = new PerlCallback();
-				PerlCallbackInitializeSplit(clr, "Triceps::Unit::makeLabel(clear)", clear, 5, items-5);
-				if (clr->code_ == NULL)
-					break; // error message is already set
+				PerlCallbackInitializeSplit(clr, "Triceps::Unit::makeLabel(clear)", clear, 5, items-5); // may throw
 			}
 
 			Onceref<PerlCallback> cb = new PerlCallback();
-			PerlCallbackInitialize(cb, "Triceps::Unit::makeLabel(callback)", 4, items-4);
-			if (cb->code_ == NULL)
-				break; // error message is already set
+			PerlCallbackInitialize(cb, "Triceps::Unit::makeLabel(callback)", 4, items-4); // may throw
 
 			RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, cb));
 		} while(0); } TRICEPS_CATCH_CROAK;
@@ -490,9 +486,7 @@ makeClearingLabel(WrapUnit *self, char *name, ...)
 			}
 
 			clr = new PerlCallback();
-			PerlCallbackInitializeSplit(clr, funcName, clear, 2, items-2);
-			if (clr->code_ == NULL)
-				break; // error message is already set
+			PerlCallbackInitializeSplit(clr, funcName, clear, 2, items-2); // may throw
 
 			RETVAL = new WrapLabel(new PerlLabel(unit, rt, name, clr, NULL));
 		} while(0); } TRICEPS_CATCH_CROAK;

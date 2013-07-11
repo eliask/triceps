@@ -136,17 +136,13 @@ newPerlSorted(char *CLASS, char *sortName, SV *initialize, SV *compare, ...)
 			Onceref<PerlCallback> cbInit; // defaults to NULL
 			if (SvOK(initialize)) {
 				cbInit = new PerlCallback(true);
-				PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 4, items-4);
-				if (cbInit->code_ == NULL)
-					break; // error message is already set
+				PerlCallbackInitializeSplit(cbInit, "Triceps::IndexType::newPerlSorted(initialize)", initialize, 4, items-4); // may throw
 			}
 
 			Onceref<PerlCallback> cbCompare; // defaults to NULL
 			if (SvOK(compare)) {
 				cbCompare = new PerlCallback(true);
-				PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 4, items-4);
-				if (cbCompare->code_ == NULL)
-					break; // error message is already set
+				PerlCallbackInitializeSplit(cbCompare, "Triceps::IndexType::newPerlSorted(compare)", compare, 4, items-4); // may throw
 			}
 
 			if (cbInit.isNull() && cbCompare.isNull()) {
@@ -495,9 +491,7 @@ setComparator(WrapIndexType *self, SV *compare, ...)
 			Onceref<PerlCallback> cbCompare; // defaults to NULL
 			if (SvOK(compare)) {
 				cbCompare = new PerlCallback(true);
-				PerlCallbackInitializeSplit(cbCompare, funcName, compare, 2, items-2);
-				if (cbCompare->code_ == NULL)
-					break; // error message is already set
+				PerlCallbackInitializeSplit(cbCompare, funcName, compare, 2, items-2); // may throw
 			}
 
 			if (!psc->setComparator(cbCompare)) {

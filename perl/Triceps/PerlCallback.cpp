@@ -74,13 +74,12 @@ void PerlCallback::clear()
 	errt_ = NULL;
 }
 
-bool PerlCallback::setCode(SV *code, const char *fname)
+void PerlCallback::setCode(SV *code, const char *fname)
 {
 	clear();
 
 	if (code == NULL) {
-		setErrMsg( string(fname) + ": code must not be NULL" );
-		return false;
+		throw Exception::f("%s: code must not be NULL", fname);
 	}
 
 	if (threadable_) {
@@ -93,10 +92,9 @@ bool PerlCallback::setCode(SV *code, const char *fname)
 			Erref err = compileCode(fname);
 
 			if (err->hasError()) {
-				setErrMsg(err->print());
-				return false;
+				throw Exception(err, false); // XXX add a heading message?
 			}
-			return true;
+			return;
 		} else {
 			threadable_ = false;
 			// here it's not a fatal error, just remember for the future,
@@ -107,16 +105,13 @@ bool PerlCallback::setCode(SV *code, const char *fname)
 
 	if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
 		if (threadinit_)
-			setErrMsg( string(fname) + ": code must be a source code string or a reference to Perl function" );
+			throw Exception::f("%s: code must be a source code string or a reference to Perl function", fname);
 		else
-			setErrMsg( string(fname) + ": code must be a reference to Perl function" );
-		return false;
+			throw Exception::f("%s: code must be a reference to Perl function", fname);
 	}
 
 	code_ = newSV(0);
 	sv_setsv(code_, code);
-
-	return true;
 }
 
 // Append another argument to args_.
@@ -329,17 +324,21 @@ Onceref<PerlLabel> PerlLabel::makeSimple(Unit *unit, const_Onceref<RowType> rtyp
 	const string &name, SV *code, const char *fmt, ...)
 {
 	Onceref<PerlCallback> clr = new PerlCallback();
-	if (!clr->setCode(get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0), "")) {
+	try {
+		clr->setCode(get_sv("Triceps::_DEFAULT_CLEAR_LABEL", 0), "");
+	} catch (Exception e) {
 		// should really never fail, but just in case
 		va_list ap;
 		va_start(ap, fmt);
 		string s = vstrprintf(fmt, ap);
 		va_end(ap);
-		throw Exception(strprintf("%s: internal error, bad value in $Triceps::_DEFAULT_CLEAR_LABEL", s.c_str()), false);
+		throw Exception::f("%s: internal error, bad value in $Triceps::_DEFAULT_CLEAR_LABEL", s.c_str());
 	}
 
 	Onceref<PerlCallback> cb = new PerlCallback();
-	if (!cb->setCode(code, "")) {
+	try {
+		cb->setCode(code, "");
+	} catch (Exception e) {
 		// should really never fail, but just in case
 		va_list ap;
 		va_start(ap, fmt);
@@ -349,7 +348,7 @@ Onceref<PerlLabel> PerlLabel::makeSimple(Unit *unit, const_Onceref<RowType> rtyp
 		SV *errmsg = get_sv("!", 0);
 		if (SvPOK(errmsg))
 			errtxt = SvPV_nolen(errmsg);
-		throw Exception(strprintf("%s%s", s.c_str(), errtxt), false);
+		throw Exception::f("%s%s", s.c_str(), errtxt);
 	}
 	return new PerlLabel(unit, rtype, name, clr, cb);
 }
@@ -480,7 +479,7 @@ Onceref<PerlCallback> GetSvCall(SV *svptr, const char *fmt, ...)
 			if (len > 0) {
 				SV *code = *av_fetch(array, 0, 0);
 				if (SvROK(code) && SvTYPE(SvRV(code)) == SVt_PVCV) {
-					cb->setCode(code, ""); // can't fail
+					cb->setCode(code, ""); // can't fail, but if it ever happens, will throw
 					for (int i = 1; i < len; i++) { // pick up the args
 						cb->appendArg(*av_fetch(array, i, 0));
 					}
@@ -488,7 +487,7 @@ Onceref<PerlCallback> GetSvCall(SV *svptr, const char *fmt, ...)
 				}
 			}
 		} else if (SvTYPE(SvRV(svptr)) == SVt_PVCV) {
-			cb->setCode(svptr, ""); // can't fail
+			cb->setCode(svptr, ""); // can't fail, but if it ever happens, will throw
 			return cb;
 		}
 	}

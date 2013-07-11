@@ -52,7 +52,9 @@ void PerlTrieadJoin::join()
 	// Can not create cb when creating the object, since that is happening in a
 	// different thread, and will cause a deadlock inside Perl when joining.
 	Autoref<PerlCallback> cb = new PerlCallback;
-	if (!cb->setCode(get_sv("Triceps::_JOIN_TID", 0), "")) {
+	try {
+		cb->setCode(get_sv("Triceps::_JOIN_TID", 0), "");
+	} catch (Exception e) {
 		throw Exception::f("In the application '%s' thread '%s' join: can not find a function reference $Triceps::_JOIN_TID",
 			appname_.c_str(), name_.c_str());;
 	}
@@ -79,18 +81,6 @@ void PerlTrieadJoin::interrupt()
 			// but just sets a flag in the interpreter, so it can not be used to interrupt
 			// a system call. Instead the signal is sent through the underlying pthread interface.
 			pthread_kill(*handle_, SIGUSR2);
-#if 0
-			Autoref<PerlCallback> cb = new PerlCallback;
-			if (!cb->setCode(get_sv("Triceps::_INTERRUPT_TID", 0), "")) {
-				throw Exception::f("In the application '%s' thread '%s' interrupt: can not find a function reference $Triceps::_INTERRUPT_TID",
-					appname_.c_str(), name_.c_str());;
-			}
-
-			PerlCallbackStartCall(cb);
-			XPUSHs(sv_2mortal(newSViv(tid_)));
-			PerlCallbackDoCall(cb);
-			callbackSuccessOrThrow("Detected in the application '%s' thread '%s' interrupt.", appname_.c_str(), name_.c_str());
-#endif
 		}
 	}
 }

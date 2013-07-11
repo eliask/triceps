@@ -132,9 +132,7 @@ new(char *CLASS, ...)
 			clearErrMsg();
 
 			Onceref<PerlCallback> cb = new PerlCallback();
-			PerlCallbackInitialize(cb, funcName, 1, items-1);
-			if (cb->code_ == NULL)
-				break; // error message is already set
+			PerlCallbackInitialize(cb, funcName, 1, items-1); // may throw
 
 			RETVAL = new WrapUnitTracer(new UnitTracerPerl(cb));
 		} while(0); } TRICEPS_CATCH_CROAK;

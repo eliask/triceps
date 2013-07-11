@@ -66,6 +66,7 @@ public:
 	void clear();
 
 	// Set code_. Implicitly does clear();
+	// On failure throws an Exception.
 	// @param code - Perl code reference for processing the rows; will check
 	//               for correctness; will make a copy of it (because if keeping a reference,
 	//               SV may change later, a copy is guaranteed to stay the same).
@@ -73,8 +74,7 @@ public:
 	//               compiled into a sub {}. If the code is not a string, will
 	//               reset the threadable_ flag.
 	// @param fname - caller function name, for error messages
-	// @return - true on success, false (and error code) on failure.
-	bool setCode(SV *code, const char *fname);
+	void setCode(SV *code, const char *fname);
 
 	// Append another argument to args_.
 	// @param arg - argument value to append; will make a copy of it.
@@ -139,7 +139,7 @@ private:
 // equality comparison for two pointers to PerlCallback
 bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2);
 
-// Initialize the PerlCallback object. On failure sets code_ to NULL and sets the error message.
+// Initialize the PerlCallback object. On failure throws an Exception.
 // (The code reference is split from the arguments).
 // @param cb - callback object poniter
 // @param fname - function name, for error messages
@@ -151,15 +151,14 @@ bool callbackEquals(const PerlCallback *p1, const PerlCallback *p2);
 		int _i = firstarg, _c = countarg; \
 		if (_c < 0) { \
 			cb->clear(); \
-			setErrMsg( string(fname) + ": missing Perl callback function reference argument" ); \
+			throw Exception::f("%s: missing Perl callback function reference argument", fname); \
 			break; \
 		} \
-		if (!cb->setCode(code, fname)) \
-			break; \
+		cb->setCode(code, fname); /* may throw */ \
 		while (_c-- > 0) \
 			cb->appendArg(ST(_i++)); \
 	} while(0)
-// Initialize the PerlCallback object. On failure sets code_ to NULL and sets the error message.
+// Initialize the PerlCallback object. On failure throws an Exception.
 // @param cb - callback object poniter
 // @param fname - function name, for error messages
 // @param first - index of the first argument, that must represent a code reference
