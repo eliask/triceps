@@ -198,8 +198,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 	case Type::TT_UINT8:
 	case Type::TT_STRING:
 		if (SvROK(arg)) {
-			setErrMsg(strprintf("Triceps field '%s' data conversion: array reference may not be used for string and uint8", fname));
-			return NULL;
+			throw Exception::f("Triceps field '%s' data conversion: array reference may not be used for string and uint8", fname);
 		}
 		if (ti == Type::TT_UINT8) {
 			xsv = SvPV(arg, slen);
@@ -227,8 +226,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		slen = sizeof(double);
 		break;
 	default:
-		setErrMsg(strprintf("Triceps field '%s' data conversion: invalid field type???", fname));
-		return NULL;
+		throw Exception::f("Triceps field '%s' data conversion: invalid field type???", fname);
 		break;
 	}
 
@@ -237,8 +235,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 	if (SvROK(arg)) {
 		AV *lst = (AV *)SvRV(arg);
 		if (SvTYPE(lst) != SVt_PVAV) {
-			setErrMsg(strprintf("Triceps field '%s' data conversion: reference not to an array", fname));
-			return NULL;
+			throw Exception::f("Triceps field '%s' data conversion: reference not to an array", fname);
 		}
 		int llen = av_len(lst)+1; // it's the Perl $#array, so add 1
 
@@ -250,8 +247,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		for (int i = 0; i < llen; i++, xsv += slen) {
 			if (!svToBytes(ti, *av_fetch(lst, i, 0),  xsv)) {
 				delete buf;
-				setErrMsg(strprintf("Triceps field '%s' element %d data conversion: non-numeric value", fname, i));
-				return NULL;
+				throw Exception::f("Triceps field '%s' element %d data conversion: non-numeric value", fname, i);
 			}
 		}
 	} else {
@@ -259,8 +255,7 @@ EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname)
 		buf->size_ = slen;
 		if (!svToBytes(ti, arg,  buf->data_)) {
 			delete buf;
-			setErrMsg(strprintf("Triceps field '%s' data conversion: non-numeric value", fname));
-			return NULL;
+			throw Exception::f("Triceps field '%s' data conversion: non-numeric value", fname);
 		}
 	}
 	return buf;

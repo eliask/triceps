@@ -126,16 +126,13 @@ copymod(WrapRow *self, ...)
 					if (SvROK(ST(i+1)) && finfo.arsz_ < 0) {
 						throw Exception::f("%s: attempting to set an array into scalar field '%s'", funcName, fname);
 					}
-					EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname);
-					if (d == NULL)
-						goto error; // error message already set
+					EasyBuffer *d = valToBuf(finfo.type_->getTypeId(), ST(i+1), fname); // may throw
 					bufs.push_back(d); // remember for cleaning
 
 					fields[idx].setPtr(true, d->data_, d->size_);
 				}
 			}
 			RETVAL = new WrapRow(rt, rt->makeRow(fields));
-		error: ;
 		} while(0); } TRICEPS_CATCH_CROAK;
 	OUTPUT:
 		RETVAL

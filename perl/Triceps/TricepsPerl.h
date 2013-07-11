@@ -63,12 +63,14 @@ bool svToBytes(Type::TypeId ti, SV *val, char *bytes);
 // Does NOT check for undef, the caller must do that before.
 // Also silently allows to set the arrays for the scalar fields
 // and scalars into arrays.
+//
+// Checks for other conversion errors and throws an Exception.
 // 
 // @param ti - field type selection
 // @param arg - value to post to, must be already checked for SvOK
 // @param fname - field name, for error messages
-// @return - new buffer (with size_ set), or NULL (then with error set)
-EasyBuffer * valToBuf(Type::TypeId ti, SV *arg, const char *fname);
+// @return - new buffer (with size_ set)
+EasyBuffer *valToBuf(Type::TypeId ti, SV *arg, const char *fname);
 
 // Convert a byte buffer from a row to a Perl value.
 // @param ti - id of the simple type
