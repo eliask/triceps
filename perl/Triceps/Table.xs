@@ -19,37 +19,33 @@ namespace TricepsPerl
 {
 
 // Parse the argument as either a RowHandle (then return it directly)
-// or a Row (then create a RowHandle from it). On errors returns NULL
-// and sets the message.
+// or a Row (then create a RowHandle from it).
+// On errors throws an Exception.
 // @patab tab - table where the handle will be used
 // @param funcName - calling function name, for error messages
 // @param arg - the incoming argument
-// @return - a RowHandle, or NULL on error; put it into Rhref because handle may be just created!!!
+// @return - a RowHandle; put it into Rhref because handle may be just created!!!
 RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 {
 	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
 		WrapRowHandle *wrh = (WrapRowHandle *)SvIV((SV*)SvRV( arg ));
 		if (wrh == 0) {
-			setErrMsg( string(funcName) + ": row argument is NULL and not a valid SV reference to Row or RowHandle" );
-			return NULL;
+			throw Exception::f("%s: row argument is NULL and not a valid SV reference to Row or RowHandle", funcName);
 		}
 		if (!wrh->badMagic()) {
 			if (wrh->ref_.getTable() != tab) {
-				setErrMsg( strprintf("%s: row argument is a RowHandle in a wrong table %s",
-					funcName, wrh->ref_.getTable()->getName().c_str()) );
-				return NULL;
+				throw Exception::f("%s: row argument is a RowHandle in a wrong table %s",
+					funcName, wrh->ref_.getTable()->getName().c_str());
 			}
 			RowHandle *rh = wrh->get();
 			if (rh == NULL) {
-				setErrMsg( strprintf("%s: RowHandle is NULL", funcName) );
-				return NULL;
+				throw Exception::f("%s: RowHandle is NULL", funcName);
 			}
 			return rh;
 		}
 		WrapRow *wr = (WrapRow *)wrh;
 		if (wr->badMagic()) {
-			setErrMsg( string(funcName) + ": row argument has an incorrect magic for Row or RowHandle" );
-			return NULL;
+			throw Exception::f("%s: row argument has an incorrect magic for Row or RowHandle", funcName);
 		}
 
 		Row *r = wr->get();
@@ -61,13 +57,11 @@ RowHandle *parseRowOrHandle(Table *tab, const char *funcName, SV *arg)
 			msg.append(", in row: ");
 			rt->printTo(msg, NOINDENT);
 
-			setErrMsg(msg);
-			return NULL;
+			throw Exception(msg, false);
 		}
 		return tab->makeRowHandle(r);
 	} else{
-		setErrMsg( string(funcName) + ": row argument is not a blessed SV reference to Row or RowHandle" );
-		return NULL;
+		throw Exception::f("%s: row argument is not a blessed SV reference to Row or RowHandle", funcName);
 	}
 }
 
@@ -297,9 +291,7 @@ insert(WrapTable *self, SV *rowarg)
 			clearErrMsg();
 			Table *t = self->get();
 
-			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
-			if (rhr.isNull()) // XXX otherwise will croak based on setErrMsg()
-				break;
+			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg)); // may throw
 
 			RETVAL = t->insert(rhr.get());
 		} while(0); } TRICEPS_CATCH_CROAK;
@@ -506,9 +498,7 @@ find(WrapTable *self, SV *rowarg)
 			clearErrMsg();
 			Table *t = self->get();
 
-			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
-			if (rhr.isNull())
-				break;
+			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg)); // may throw
 
 			RETVAL = new WrapRowHandle(t, t->find(rhr.get()));
 		} while(0); } TRICEPS_CATCH_CROAK;
@@ -531,9 +521,7 @@ findIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 				throw TRICEPS_NS::Exception(strprintf("%s: indexType argument does not belong to table's type", funcName), false);
 			}
 
-			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
-			if (rhr.isNull())
-				break;
+			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg)); // may throw
 
 			RETVAL = new WrapRowHandle(t, t->findIdx(idx, rhr.get()));
 		} while(0); } TRICEPS_CATCH_CROAK;
@@ -556,9 +544,7 @@ groupSizeIdx(WrapTable *self, WrapIndexType *widx, SV *rowarg)
 				throw TRICEPS_NS::Exception(strprintf("%s: indexType argument does not belong to table's type", funcName), false);
 			}
 
-			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg));
-			if (rhr.isNull())
-				break;
+			Rhref rhr(t,  parseRowOrHandle(t, funcName, rowarg)); // may throw
 
 			RETVAL = t->groupSizeIdx(idx, rhr.get());
 		} while(0); } TRICEPS_CATCH_CROAK;
