@@ -112,12 +112,6 @@ void croakWithMsg(const char *msg)
 void clearErrMsg()
 {
 	{
-		SV *errsv = get_sv("!", 0);
-		if (errsv) {
-			sv_setpvn(errsv, "", 0);
-		}
-	}
-	{
 		SV *msgsv = get_sv("Triceps::_CROAK_MSG", 0);
 		if (msgsv && SvOK(msgsv)) {
 			sv_setsv(msgsv, &PL_sv_undef);
