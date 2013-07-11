@@ -109,6 +109,7 @@ void croakWithMsg(const char *msg)
 	Perl_croak(aTHX_ "%s", msg);
 }
 
+#if 0 // {
 void clearErrMsg()
 {
 	{
@@ -118,6 +119,7 @@ void clearErrMsg()
 		}
 	}
 }
+#endif // }
 
 // XXX Add mode when all the error messages will be fatal?
 // This will work only with exit(1), not croak() because croak() would mess up C++ stack.

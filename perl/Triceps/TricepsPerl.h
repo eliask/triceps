@@ -45,7 +45,11 @@ void croakWithMsg(const char *msg)
 	__attribute__noreturn__;
 
 // Clear the Triceps::_CROAK_MSG.
-void clearErrMsg();
+// CURRENTLY IT DOES NOTHING BUT THE CONVENTION IS STILL TO CALL IT 
+// AT THE START OF EVERY XS FUNCTION, in case if the actual clearing
+// would ever need to be enabled again.
+inline void clearErrMsg()
+{ }
 
 // Copy a Perl scalar (numeric) SV value into a memory buffer.
 // @param ti - field type selection
@@ -134,7 +138,7 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 // See RowType.xs for an example of usage
 #define GEN_PRINT_METHOD(subtype)  \
 		static char funcName[] =  "Triceps::" #subtype "::print"; \
-		try { do { \
+		try { \
 			clearErrMsg(); \
 			subtype *rt = self->get(); \
 			\
@@ -167,7 +171,7 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 			string res; \
 			rt->printTo(res, *indarg, subindent); \
 			XPUSHs(sv_2mortal(newSVpvn(res.c_str(), res.size()))); \
-		} while(0); } TRICEPS_CATCH_CROAK;
+		} TRICEPS_CATCH_CROAK;
 
 // A common macro to catch the Triceps::Exception and convert it to a croak.
 // Use:
@@ -180,8 +184,8 @@ char *translateUnitTracerSubclass(const Unit::Tracer *tr);
 #define TRICEPS_CATCH_CROAK \
 	catch (Exception e) { \
 		setCroakMsg(e.getErrors()->print()); \
-	} \
-	croakIfSet()
+		croakIfSet(); \
+	}
 
 // object parsing and conversion {
 
