@@ -99,12 +99,11 @@ Onceref<NameSet> parseNameSet(const char *funcName, const char *optname, SV *opt
 Gadget::EnqMode parseEnqMode(const char *funcName, SV *enqMode);
 
 // Parse an opcode as an integer or string constant to an enum.
-// On error calls setErrMsg and returns false.
+// On error throws an Exception.
 // @param funcName - calling function name, for error messages
 // @param opcode - SV containing the value to parse
-// @param op - place to return the parsed value
-// @return - true on success or false on error
-bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op);
+// @return - the parsed value
+Rowop::Opcode parseOpcode(const char *funcName, SV *opcode);
 
 // Parse an IndexId as an integer or string constant to an enum.
 // On error calls setErrMsg and returns false.

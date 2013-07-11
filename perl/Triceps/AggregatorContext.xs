@@ -239,9 +239,7 @@ send(WrapAggregatorContext *self, SV *opcode, WrapRow *row)
 				);
 			}
 
-			Rowop::Opcode op;
-			if (!parseOpcode(funcName, opcode, op))
-				break;
+			Rowop::Opcode op = parseOpcode(funcName, opcode); // may throw
 
 			self->getGadget()->sendDelayed(self->getDest(), r, op);
 		} while(0); } TRICEPS_CATCH_CROAK;

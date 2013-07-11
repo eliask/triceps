@@ -385,7 +385,7 @@ Gadget::EnqMode parseEnqMode(const char *funcName, SV *enqMode)
 	return (Gadget::EnqMode)intem;
 }
 
-bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
+Rowop::Opcode parseOpcode(const char *funcName, SV *opcode)
 {
 	int intop;
 	// accept opcode as either number of name
@@ -395,12 +395,10 @@ bool parseOpcode(const char *funcName, SV *opcode, Rowop::Opcode &op)
 		const char *opname = SvPV_nolen(opcode);
 		intop = Rowop::stringOpcode(opname);
 		if (intop == Rowop::OP_BAD) {
-			setErrMsg(strprintf("%s: unknown opcode string '%s', if integer was meant, it has to be cast", funcName, opname));
-			return false;
+			throw Exception::f("%s: unknown opcode string '%s', if integer was meant, it has to be cast", funcName, opname);
 		}
 	}
-	op = (Rowop::Opcode)intop;
-	return true;
+	return (Rowop::Opcode)intop;
 }
 
 bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id)

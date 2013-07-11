@@ -605,8 +605,7 @@ dumpAll(WrapTable *self, ...)
 			if (items == 1) {
 				op = Rowop::OP_INSERT;
 			} else if (items == 2) {
-				if (!parseOpcode(funcName, ST(1), op))
-					break;
+				op = parseOpcode(funcName, ST(1)); // may throw
 			} else {
 				throw TRICEPS_NS::Exception::f("Usage: %s(self [, opcode])", funcName);
 			}
@@ -631,8 +630,7 @@ dumpAllIdx(WrapTable *self, WrapIndexType *widx, ...)
 			if (items <= 2) {
 				op = Rowop::OP_INSERT;
 			} else if (items == 3) {
-				if (!parseOpcode(funcName, ST(2), op))
-					break;
+				op = parseOpcode(funcName, ST(2)); // may throw
 			} else {
 				throw TRICEPS_NS::Exception::f("Usage: %s(self, widx [, opcode])", funcName);
 			}

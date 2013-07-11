@@ -206,9 +206,7 @@ makeRowop(WrapLabel *self, SV *opcode, WrapRow *row, ...)
 				);
 			}
 
-			Rowop::Opcode op;
-			if (!parseOpcode(funcName, opcode, op))
-				break; // sets the error in the function
+			Rowop::Opcode op = parseOpcode(funcName, opcode); // may throw
 
 			Autoref<Rowop> rop;
 			if (items == 3) {
