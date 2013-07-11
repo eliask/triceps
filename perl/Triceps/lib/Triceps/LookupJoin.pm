@@ -334,9 +334,7 @@ sub new # (class, optionName => optionValue ...)
 		$genresdata .= '
 				my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
 				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
-				Carp::confess("$!") unless defined $resrowop;
-				Carp::confess("$!") 
-					unless $resLabel->getUnit()->call($resrowop);
+				$resLabel->getUnit()->call($resrowop);
 				';
 	} else {
 		$genresdata .= '
@@ -350,9 +348,7 @@ sub new # (class, optionName => optionValue ...)
 					&Triceps::isInsert($opcode)? &Triceps::OP_DELETE : &Triceps::OP_INSERT,
 					, $resRowType->makeRowArray(@oppdata));
 				#print STDERR "DEBUGX " . $self->{name} . " +out: ", $opprowop->printP(), "\n";
-				Carp::confess("$!") unless defined $opprowop;
-				Carp::confess("$!") 
-					unless $resLabel->getUnit()->call($opprowop);
+				$resLabel->getUnit()->call($opprowop);
 				';
 	my ($genoppdataIns, $genoppdataDel); # versions for insert and delete
 	if (defined $self->{groupSizeCode}) {
@@ -381,7 +377,6 @@ sub new # (class, optionName => optionValue ...)
 	$genjoin .= '
 			#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
 			my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
-			Carp::confess("$!") unless defined $rh;
 		';
 	$genjoin .= '
 			my @rightdata; # fields from the right side, defaults to all-undef, if no data found
@@ -494,20 +489,17 @@ sub new # (class, optionName => optionValue ...)
 	# now create the result row type
 	#print STDERR "DEBUG result type def = (", join(", ", @resultdef), ")\n"; # DEBUG
 	$self->{resultRowType} = Triceps::RowType->new(@resultdef);
-	Carp::confess("$!") unless (ref $self->{resultRowType} eq "Triceps::RowType");
 
 	# create the input label
 	$self->{inputLabel} = $self->{unit}->makeLabel($self->{leftRowType}, $self->{name} . ".in", 
 		undef, $auto? $self->{joinerAutomatic} : \&handleInput, $self);
-	Carp::confess("$!") unless (ref $self->{inputLabel} eq "Triceps::Label");
 	# create the output label
 	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{resultRowType}, $self->{name} . ".out");
-	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
 	
 	# chain the input label, if any
 	if (defined $self->{leftFromLabel}) {
 		$self->{leftFromLabel}->chain($self->{inputLabel});
-		# or confess "$myname internal error: input label chaining to '" . $self->{leftFromLabel}->getName() . "' failed:\n$! ";
+		# XXX extended error "$myname internal error: input label chaining to '" . $self->{leftFromLabel}->getName() . "' failed:\n$! ";
 		delete $self->{leftFromLabel}; # no need to keep the reference any more, avoid a reference cycle
 	}
 
@@ -551,9 +543,7 @@ sub handleInput # ($label, $rowop, $self)
 	my $resultRowop;
 	foreach my $resultRow( @resRows ) {
 		$resultRowop = $resultLab->makeRowop($opcode, $resultRow);
-		Carp::confess("$!") unless defined $resultRowop;
-		Carp::confess("$!") 
-			unless $resultLab->getUnit()->call($resultRowop);
+		$resultLab->getUnit()->call($resultRowop);
 	}
 }
 

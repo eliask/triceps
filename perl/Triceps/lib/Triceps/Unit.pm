@@ -9,8 +9,6 @@ package Triceps::Unit;
 
 our $VERSION = 'v1.0.1';
 
-use Carp;
-
 # A convenience wrapper that creates the Rowop from
 # the field name-value pairs and then calls it.
 # Eventually should move to XS for higher efficiency.
@@ -21,8 +19,8 @@ sub makeHashCall # (self, label, opcode, fieldName => fieldValue, ...)
 {
 	my $self = shift;
 	my $label = shift;
-	my $rowop = $label->makeRowopHash(@_) or Carp::confess "$!";
-	my $res = $self->call($rowop) or Carp::confess "$!";
+	my $rowop = $label->makeRowopHash(@_);
+	my $res = $self->call($rowop);
 	return $res;
 }
 
@@ -36,8 +34,8 @@ sub makeArrayCall # (self, label, opcode, fieldValue, ...)
 {
 	my $self = shift;
 	my $label = shift;
-	my $rowop = $label->makeRowopArray(@_) or Carp::confess "$!";
-	my $res = $self->call($rowop) or Carp::confess "$!";
+	my $rowop = $label->makeRowopArray(@_);
+	my $res = $self->call($rowop);
 	return $res;
 }
 
@@ -51,8 +49,8 @@ sub makeHashSchedule # (self, label, opcode, fieldName => fieldValue, ...)
 {
 	my $self = shift;
 	my $label = shift;
-	my $rowop = $label->makeRowopHash(@_) or Carp::confess "$!";
-	my $res = $self->schedule($rowop) or Carp::confess "$!";
+	my $rowop = $label->makeRowopHash(@_);
+	my $res = $self->schedule($rowop);
 	return $res;
 }
 
@@ -66,8 +64,8 @@ sub makeArraySchedule # (self, label, opcode, fieldValue, ...)
 {
 	my $self = shift;
 	my $label = shift;
-	my $rowop = $label->makeRowopArray(@_) or Carp::confess "$!";
-	my $res = $self->schedule($rowop) or Carp::confess "$!";
+	my $rowop = $label->makeRowopArray(@_);
+	my $res = $self->schedule($rowop);
 	return $res;
 }
 
@@ -83,8 +81,8 @@ sub makeHashLoopAt # (self, mark, label, opcode, fieldName => fieldValue, ...)
 	my $self = shift;
 	my $mark = shift;
 	my $label = shift;
-	my $rowop = $label->makeRowopHash(@_) or Carp::confess "$!";
-	my $res = $self->loopAt($mark, $rowop) or Carp::confess "$!";
+	my $rowop = $label->makeRowopHash(@_);
+	my $res = $self->loopAt($mark, $rowop);
 	return $res;
 }
 
@@ -100,8 +98,8 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 	my $self = shift;
 	my $mark = shift;
 	my $label = shift;
-	my $rowop = $label->makeRowopArray(@_) or Carp::confess "$!";
-	my $res = $self->loopAt($mark, $rowop) or Carp::confess "$!";
+	my $rowop = $label->makeRowopArray(@_);
+	my $res = $self->loopAt($mark, $rowop);
 	return $res;
 }
 
@@ -128,12 +126,12 @@ sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 {
 	my ($self, $rt, $name, $clear, $exec, @args) = @_;
 
-	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
+	my $mark = Triceps::FrameMark->new($name . ".mark");
 
 	my $lbNext = $self->makeLabel($rt, $name . ".next", $clear, sub {
 		$self->setMark($mark);
 		&$exec(@_);
-	}, @args) or confess "$!";
+	}, @args);
 
 	return ($lbNext, $mark);
 }
@@ -158,11 +156,11 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 	my ($self, $name, $lbFirst) = @_;
 	my $rt = $lbFirst->getRowType();
 
-	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
+	my $mark = Triceps::FrameMark->new($name . ".mark");
 
 	my $lbWrapNext = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
 		$self->setMark($mark);
-	}) or confess "$!";
+	});
 	$lbWrapNext->chain($lbFirst);
 
 	return ($lbWrapNext, $mark);

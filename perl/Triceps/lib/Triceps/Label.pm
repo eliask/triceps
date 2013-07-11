@@ -7,9 +7,9 @@
 
 package Triceps::Label;
 
-our $VERSION = 'v1.0.1';
-
 use Carp;
+
+our $VERSION = 'v1.0.1';
 
 # A convenience wrapper that creates the Rowop from
 # the field name-value pairs, handling the look-up of the
@@ -21,8 +21,8 @@ sub makeRowopHash # (self, opcode, fieldName => fieldValue, ...)
 {
 	my $self = shift;
 	my $opcode = shift;
-	my $row = $self->getType()->makeRowHash(@_) or Carp::confess "$!";
-	my $rop = $self->makeRowop($opcode, $row) or Carp::confess "$!";
+	my $row = $self->getType()->makeRowHash(@_);
+	my $rop = $self->makeRowop($opcode, $row);
 	return $rop;
 }
 
@@ -36,8 +36,8 @@ sub makeRowopArray # (self, opcode, fieldValue, ...)
 {
 	my $self = shift;
 	my $opcode = shift;
-	my $row = $self->getType()->makeRowArray(@_) or Carp::confess "$!";
-	my $rop = $self->makeRowop($opcode, $row) or Carp::confess "$!";
+	my $row = $self->getType()->makeRowArray(@_);
+	my $rop = $self->makeRowop($opcode, $row);
 	return $rop;
 }
 
@@ -59,9 +59,9 @@ sub makeChained # ($self, $name, &$clear, &$exec, @args)
 	my $name = shift;
 	my $clear = shift;
 	my $exec = shift;
-	my $rt = $self->getRowType() or confess "$!";
-	my $unit = $self->getUnit() or confess "$!";
-	my $lb = $unit->makeLabel($rt, $name, $clear, $exec, @_) or confess "$!";
+	my $rt = $self->getRowType();
+	my $unit = $self->getUnit();
+	my $lb = $unit->makeLabel($rt, $name, $clear, $exec, @_);
 	$self->chain($lb);
 	return $lb;
 }

@@ -169,10 +169,8 @@ sub findOrAddIndex # ($self, @keyFld)
 	}
 
 	my $idx = Triceps::IndexType->newHashed(key => [ @_ ]);
-	$idx->addSubIndex("fifo", Triceps::IndexType->newFifo())
-		or confess "$!";
-	$self->addSubIndex($idxname, $idx)
-		or confess "$!";
+	$idx->addSubIndex("fifo", Triceps::IndexType->newFifo());
+	$self->addSubIndex($idxname, $idx);
 	return ($idxname);
 }
 

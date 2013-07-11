@@ -204,8 +204,8 @@ sub makeTranslation # (optName => optValue, ...)
 			);
 		}';
 
-	my $result_rt = Triceps::RowType->new(@rowdef)
-		or confess "$myname: Invalid result row type specification: $! ";
+	my $result_rt = Triceps::RowType->new(@rowdef);
+		# XXX extended error "$myname: Invalid result row type specification: $! ";
 
 	${$opts->{saveCodeTo}} = $gencode if (defined($opts->{saveCodeTo}));
 

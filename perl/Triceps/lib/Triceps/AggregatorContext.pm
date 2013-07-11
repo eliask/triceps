@@ -20,7 +20,7 @@ sub makeHashSend # (self, opcode, fieldName => fieldValue, ...)
 {
 	my $self = shift;
 	my $opcode = shift;
-	my $row = $self->resultType()->makeRowHash(@_) or confess "$!";
+	my $row = $self->resultType()->makeRowHash(@_);
 	my $res = $self->send($opcode, $row);
 	return $res;
 }
@@ -34,7 +34,7 @@ sub makeArraySend # (self, opcode, fieldValue, ...)
 {
 	my $self = shift;
 	my $opcode = shift;
-	my $row = $self->resultType()->makeRowArray(@_) or confess "$!";
+	my $row = $self->resultType()->makeRowArray(@_);
 	my $res = $self->send($opcode, $row);
 	return $res;
 }

@@ -68,14 +68,14 @@ sub collectorT # (@opts)
 	my $rtMsg = Triceps::RowType->new(
 		client => "string", # client name
 		text => "string", # text of the message
-	) or confess "$!";
+	);
 
 	# a control message from the global thread
 	my $rtCtl = Triceps::RowType->new(
 		cmd => "string", # the command to execute
 		client => "string", # client on which the command applies
 		arg => "string", # the command argument
-	) or confess "$!";
+	);
 
 	my $faSend = $owner->makeNexus( # messages to be sent to the client writers
 		name => "send",

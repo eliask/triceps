@@ -74,25 +74,25 @@ sub new # ($class, $optName => $optValue, ...)
 		->addSubIndex("primary", 
 			Triceps::IndexType->newHashed(key => $dataset->{key})
 		);
-	$dataset->{tt}->initialize() 
-		or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tt}->initialize();
+		# XXX extended error or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
 
-	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess "Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbDelete")
-		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert");
+		# XXX extended error "Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbDelete");
+		# XXX extended error "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
 
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 
-		undef, \&_handleInput, $self, $dataset)
-			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out")
-		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
+		undef, \&_handleInput, $self, $dataset);
+			# XXX extended error "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out");
+		# XXX extended error "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
 			
 	# chain the input label, if any
 	if (defined $lbFrom) {
 		$lbFrom->chain($dataset->{lbIn});
-		# or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
+		# XXX extended error "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
 		delete $dataset->{fromLabel}; # no need to keep the reference any more, avoid a reference cycle
 	}
 

@@ -33,7 +33,7 @@ sub new # ($class, $fieldName => $direction...)
 
 	$self = Triceps::IndexType->newPerlSorted(
 		$sortName, '&Triceps::SimpleOrderedIndex::init(@_)', undef, @args
-	) or confess "$!";
+	);
 	bless $self, $class;
 	return $self;
 }
@@ -95,9 +95,7 @@ sub init # ($tabt, $idxt, $rowt, @args)
 	} else {
 		# set the comparison as source code
 		#print STDERR "DEBUG Triceps::SimpleOrderedIndex::init: comparison function:\n$compare\n";
-		$idxt->setComparator($compare)
-			or return "Triceps::SimpleOrderedIndex::init: can not set the compare function:\n"
-			. "$!\n";
+		$idxt->setComparator($compare);
 	}
 	return $errors;
 }

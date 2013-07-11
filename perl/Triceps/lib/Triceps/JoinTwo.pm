@@ -368,7 +368,6 @@ sub new # (class, optionName => optionValue ...)
 
 	# create the output label
 	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{leftLookup}->getResultRowType(), $self->{name} . ".out");
-	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
 
 	# and connect them together
 	$self->{leftFromLabel}->chain($self->{leftLookup}->getInputLabel());

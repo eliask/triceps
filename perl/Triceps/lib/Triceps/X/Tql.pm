@@ -262,7 +262,7 @@ sub initialize # ($self)
 			id => "string", # request id
 			name => "string", # the table name, for convenience of requestor
 			cmd => "string", # for convenience of requestor, the command that it is executing
-		) or confess "$!";
+		);
 
 		# row type for the communication between the client reader
 		# and writer threads, they will pass through the common
@@ -274,7 +274,7 @@ sub initialize # ($self)
 			arg1 => "string", # the arguments depend on the command
 			arg2 => "string",
 			arg3 => "string",
-		) or confess "$!";
+		);
 
 		# build the output side
 		for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
@@ -686,7 +686,7 @@ sub _tqlJoin # ($ctx, @args)
 		}
 
 		# build the table from the type
-		$tt->initialize() or confess "$!";
+		$tt->initialize();
 		$table = $ctx->{u}->makeTable($tt, "tab" . $ctx->{id} . $tabname);
 		push @{$ctx->{copyTables}}, $table;
 
