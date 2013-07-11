@@ -55,10 +55,8 @@ schedule(WrapUnit *self, ...)
 			static char funcName[] =  "Triceps::Unit::schedule";
 			clearErrMsg();
 			Unit *u = self->get();
-			for (int i = 1; i < items; i++) {
-				if (!enqueueSv(funcName, u, NULL, Gadget::EM_SCHEDULE, ST(i), i))
-					break; // XXX will croak based on setErrMsg()
-			}
+			for (int i = 1; i < items; i++)
+				enqueueSv(funcName, u, NULL, Gadget::EM_SCHEDULE, ST(i), i); // may throw
 		} TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
@@ -72,10 +70,8 @@ fork(WrapUnit *self, ...)
 			static char funcName[] =  "Triceps::Unit::fork";
 			clearErrMsg();
 			Unit *u = self->get();
-			for (int i = 1; i < items; i++) {
-				if (!enqueueSv(funcName, u, NULL, Gadget::EM_FORK, ST(i), i))
-					break; // XXX will croak based on setErrMsg()
-			}
+			for (int i = 1; i < items; i++)
+				enqueueSv(funcName, u, NULL, Gadget::EM_FORK, ST(i), i); // may throw
 		} TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
@@ -89,10 +85,8 @@ call(WrapUnit *self, ...)
 			static char funcName[] =  "Triceps::Unit::call";
 			clearErrMsg();
 			Unit *u = self->get();
-			for (int i = 1; i < items; i++) {
-				if (!enqueueSv(funcName, u, NULL, Gadget::EM_CALL, ST(i), i)) 
-					break; // XXX will croak based on setErrMsg()
-			}
+			for (int i = 1; i < items; i++)
+				enqueueSv(funcName, u, NULL, Gadget::EM_CALL, ST(i), i); // may throw
 		} TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
@@ -108,10 +102,8 @@ enqueue(WrapUnit *self, SV *enqMode, ...)
 			Unit *u = self->get();
 			Gadget::EnqMode em = parseEnqMode(funcName, enqMode); // may throw
 
-			for (int i = 2; i < items; i++) {
-				if (!enqueueSv(funcName, u, NULL, em, ST(i), i))
-					break; // XXX will croak based on setErrMsg()
-			}
+			for (int i = 2; i < items; i++)
+				enqueueSv(funcName, u, NULL, em, ST(i), i); // may throw
 		} TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:
@@ -142,10 +134,8 @@ loopAt(WrapUnit *self, WrapFrameMark *wm, ...)
 			if (mu != NULL && mu != u) {
 				throw Exception( strprintf("%s: mark belongs to a different unit '%s'", funcName, mu->getName().c_str()), false );
 			}
-			for (int i = 2; i < items; i++) {
-				if (!enqueueSv(funcName, u, mark, Gadget::EM_FORK, ST(i), i))
-					break; // XXX will croak based on setErrMsg()
-			}
+			for (int i = 2; i < items; i++)
+				enqueueSv(funcName, u, mark, Gadget::EM_FORK, ST(i), i); // may throw
 		} TRICEPS_CATCH_CROAK;
 		RETVAL = 1;
 	OUTPUT:

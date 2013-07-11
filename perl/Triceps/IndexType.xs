@@ -353,9 +353,7 @@ findSubIndexById(WrapIndexType *self, SV *idarg)
 			clearErrMsg();
 			IndexType *ixt = self->get();
 
-			IndexType::IndexId id;
-			if (!parseIndexId(funcName, idarg, id))
-				break; // error message already set
+			IndexType::IndexId id = parseIndexId(funcName, idarg); // may throw
 
 			IndexType *ixsub = ixt->findSubIndexById(id);
 			if (ixsub == NULL) {

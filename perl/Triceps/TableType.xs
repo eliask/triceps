@@ -150,9 +150,7 @@ findSubIndexById(WrapTableType *self, SV *idarg)
 			clearErrMsg();
 			TableType *tbt = self->get();
 
-			IndexType::IndexId id;
-			if (!parseIndexId(funcName, idarg, id))
-				break; // message already filled in
+			IndexType::IndexId id = parseIndexId(funcName, idarg); // may throw
 
 			IndexType *ixsub = tbt->findSubIndexById(id);
 			if (ixsub == NULL)

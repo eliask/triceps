@@ -401,7 +401,7 @@ Rowop::Opcode parseOpcode(const char *funcName, SV *opcode)
 	return (Rowop::Opcode)intop;
 }
 
-bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id)
+IndexType::IndexId parseIndexId(const char *funcName, SV *idarg)
 {
 	int intid;
 	// accept idarg as either number of name
@@ -411,15 +411,13 @@ bool parseIndexId(const char *funcName, SV *idarg, IndexType::IndexId &id)
 		const char *idname = SvPV_nolen(idarg);
 		intid = IndexType::stringIndexId(idname);
 		if (intid < 0) {
-			setErrMsg(strprintf("%s: unknown IndexId string '%s', if integer was meant, it has to be cast", funcName, idname));
-			return false;
+			throw Exception::f("%s: unknown IndexId string '%s', if integer was meant, it has to be cast", funcName, idname);
 		}
 	}
-	id = (IndexType::IndexId)intid;
-	return true;
+	return (IndexType::IndexId)intid;
 }
 
-bool enqueueSv(char *funcName, Unit *u, FrameMark *mark, Gadget::EnqMode em, SV *arg, int i)
+void enqueueSv(char *funcName, Unit *u, FrameMark *mark, Gadget::EnqMode em, SV *arg, int i)
 {
 	if( sv_isobject(arg) && (SvTYPE(SvRV(arg)) == SVt_PVMG) ) {
 		WrapRowop *wrop = (WrapRowop *)SvIV((SV*)SvRV( arg ));
@@ -427,9 +425,8 @@ bool enqueueSv(char *funcName, Unit *u, FrameMark *mark, Gadget::EnqMode em, SV 
 		if (wrop != 0 && !wrop->badMagic()) {
 			Rowop *rop = wrop->get();
 			if (rop->getLabel()->getUnitPtr() != u) {
-				setErrMsg( strprintf("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
-					rop->getLabel()->getName().c_str(), rop->getLabel()->getUnitName().c_str()) );
-				return false;
+				throw Exception::f("%s: argument %d is a Rowop for label %s from a wrong unit %s", funcName, i,
+					rop->getLabel()->getName().c_str(), rop->getLabel()->getUnitName().c_str());
 			}
 			if (mark)
 				u->loopAt(mark, rop);
@@ -437,23 +434,19 @@ bool enqueueSv(char *funcName, Unit *u, FrameMark *mark, Gadget::EnqMode em, SV 
 				u->enqueue(em, rop);
 		} else if (wtray != 0 && !wtray->badMagic()) {
 			if (wtray->getParent() != u) {
-				setErrMsg( strprintf("%s: argument %d is a Tray from a wrong unit %s", funcName, i,
-					wtray->getParent()->getName().c_str()) );
-				return false;
+				throw Exception::f("%s: argument %d is a Tray from a wrong unit %s", funcName, i,
+					wtray->getParent()->getName().c_str());
 			}
 			if (mark)
 				u->loopTrayAt(mark, wtray->get());
 			else
 				u->enqueueTray(em, wtray->get());
 		} else {
-			setErrMsg( strprintf("%s: argument %d has an incorrect magic for either Rowop or Tray", funcName, i) );
-			return false;
+			throw Exception::f("%s: argument %d has an incorrect magic for either Rowop or Tray", funcName, i);
 		}
 	} else{
-		setErrMsg( strprintf("%s: argument %d is not a blessed SV reference to Rowop", funcName, i) );
-		return false;
+		throw Exception::f("%s: argument %d is not a blessed SV reference to Rowop", funcName, i);
 	}
-	return true;
 }
 
 char *translateUnitTracerSubclass(const Unit::Tracer *tr)
