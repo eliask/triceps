@@ -29,6 +29,7 @@ public:
 	}
 	
 	// Set tke key later (until initialized, afterwards will throw an Exception).
+	// If an Exception is thrown, tries to free the unreferenced (this).
 	// Keeps a reference of key.
 	HashedIndexType *setKey(NameSet *key);
 

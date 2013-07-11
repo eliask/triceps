@@ -65,6 +65,7 @@ public:
 	// later in getErrors().
 	//
 	// May throw an exception if the type is already initialized.
+	// If an Exception is thrown, tries to free the unreferenced (this).
 	//
 	// @param rname - name of this element
 	// @param rtype - row type for this element
@@ -123,10 +124,12 @@ public:
 	// Add an error message. Can be used both internally and by the
 	// wrapping objects to add their errors. After the type is initialized,
 	// throws the Exception.
+	// If an Exception is thrown, tries to free the unreferenced (this).
 	void addError(const string &msg);
 	// Returns the errors object for appending to it. Makes sure that
 	// the object exists first, and instantiates it if it doesn't.
 	// After the type is initialized, throws the Exception.
+	// If an Exception is thrown, tries to free the unreferenced (this).
 	Erref appendErrors();
 
 	// from Type

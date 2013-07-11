@@ -194,6 +194,7 @@ IndexType::~IndexType()
 IndexType *IndexType::addSubIndex(const string &name, Onceref<IndexType> index)
 {
 	if (initialized_) {
+		Autoref<IndexType> cleaner = this;
 		throw Exception::fTrace("Attempted to add a sub-index '%s' to an initialized index type", name.c_str());
 	}
 	if (index.isNull())
@@ -206,6 +207,7 @@ IndexType *IndexType::addSubIndex(const string &name, Onceref<IndexType> index)
 IndexType *IndexType::setAggregator(Onceref<AggregatorType> agg)
 {
 	if (initialized_) {
+		Autoref<IndexType> cleaner = this;
 		throw Exception::fTrace("Attempted to set an aggregator on an initialized index type");
 	}
 	if (agg.isNull())

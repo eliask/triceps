@@ -65,6 +65,7 @@ public:
 	// Add a top-level index.
 	//
 	// May be used only until initialized. Afterwards will throw an Exception.
+	// If an Exception is thrown, tries to free the unreferenced (this).
 	//
 	// The index remembered is actually a copy of original, so all the settings
 	// need to be done before calling here. This also means that to access indexes

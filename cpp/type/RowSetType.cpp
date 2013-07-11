@@ -30,8 +30,10 @@ RowSetType *RowSetType::deepCopy(HoldRowTypes *holder) const
 
 RowSetType *RowSetType::addRow(const string &rname, const_Autoref<RowType>rtype)
 {
-	if (initialized_)
+	if (initialized_) {
+		Autoref<RowSetType> cleaner = this;
 		throw Exception("Triceps API violation: attempt to add row '" + rname + "' to an initialized row set type.", true);
+	}
 
 	int idx = names_.size();
 	if (rname.empty()) {
@@ -89,8 +91,10 @@ void RowSetType::addError(const string &msg)
 
 Erref RowSetType::appendErrors()
 {
-	if (initialized_)
+	if (initialized_) {
+		Autoref<RowSetType> cleaner = this;
 		throw Exception("Triceps API violation: attempt to add an error to an initialized row set type.", true);
+	}
 	if (errors_.isNull())
 		errors_ = new Errors;
 	return errors_;

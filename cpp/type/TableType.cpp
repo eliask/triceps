@@ -44,6 +44,7 @@ TableType *TableType::deepCopy(HoldRowTypes *holder) const
 TableType *TableType::addSubIndex(const string &name, IndexType *index)
 {
 	if (initialized_) {
+		Autoref<TableType> cleaner = this;
 		throw Exception::fTrace("Attempted to add a sub-index '%s' to an initialized table type", name.c_str());
 	}
 	root_->addSubIndex(name, index);

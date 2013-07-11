@@ -40,6 +40,7 @@ FifoIndexType::FifoIndexType(const FifoIndexType &orig, HoldRowTypes *holder) :
 FifoIndexType *FifoIndexType::setLimit(size_t limit)
 {
 	if (initialized_) {
+		Autoref<FifoIndexType> cleaner = this;
 		throw Exception::fTrace("Attempted to set the limit value on an initialized Fifo index type");
 	}
 	limit_ = limit;
@@ -49,6 +50,7 @@ FifoIndexType *FifoIndexType::setLimit(size_t limit)
 FifoIndexType *FifoIndexType::setJumping(bool jumping)
 {
 	if (initialized_) {
+		Autoref<FifoIndexType> cleaner = this;
 		throw Exception::fTrace("Attempted to set the jumping mode on an initialized Fifo index type");
 	}
 	jumping_ = jumping;
@@ -58,6 +60,7 @@ FifoIndexType *FifoIndexType::setJumping(bool jumping)
 FifoIndexType *FifoIndexType::setReverse(bool reverse)
 {
 	if (initialized_) {
+		Autoref<FifoIndexType> cleaner = this;
 		throw Exception::fTrace("Attempted to set the reverse mode on an initialized Fifo index type");
 	}
 	reverse_ = reverse;

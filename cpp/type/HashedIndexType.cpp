@@ -113,6 +113,7 @@ HashedIndexType::HashedIndexType(const HashedIndexType &orig, HoldRowTypes *hold
 HashedIndexType *HashedIndexType::setKey(NameSet *key)
 {
 	if (initialized_) {
+		Autoref<HashedIndexType> cleaner = this;
 		throw Exception::fTrace("Attempted to set the key on an initialized Hashed index type");
 	}
 	key_ = key;
