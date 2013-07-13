@@ -168,6 +168,24 @@ empty(WrapUnit *self)
 	OUTPUT:
 		RETVAL
 
+int
+isFrameEmpty(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = u->isFrameEmpty();
+	OUTPUT:
+		RETVAL
+
+int
+isInOuterFrame(WrapUnit *self)
+	CODE:
+		clearErrMsg();
+		Unit *u = self->get();
+		RETVAL = u->isInOuterFrame();
+	OUTPUT:
+		RETVAL
+
 #// Work with the streaming functions: call one or more rowops
 #// in a scope of pushed function bindings. Same thing as push the
 #// bindings, do the calls, pop the bindings.

@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 139 };
+BEGIN { plan tests => 142 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -453,6 +453,44 @@ Called through the label 'reclab'. at [^\n]*
 # restore back to defaults
 $u1->setMaxStackDepth(0);
 $u1->setMaxRecursionDepth(1);
+
+#############################################################
+# Test the current frame emptiness.
+
+{
+	$f_u = Triceps::Unit->new("f_u");
+	ok($f_u->isInOuterFrame());
+	ok($f_u->isFrameEmpty());
+
+	my $f_protocol = "";
+
+	$f_dummy_lab = $f_u->makeDummyLabel($rt1, "f_dummy_lab");
+	$f_inner_lab = $f_u->makeLabel($rt1, "f_inner_lab", undef, sub {
+		$f_protocol .= sprintf("InOuter = %d\n", $f_u->isInOuterFrame());
+		$f_protocol .= sprintf("FrameEmpty = %d\n", $f_u->isFrameEmpty());
+
+		$f_u->schedule($f_dummy_lab->makeRowop("OP_INSERT", $row1));
+		$f_protocol .= sprintf("scheduled, FrameEmpty = %d\n", $f_u->isFrameEmpty());
+
+		$f_u->fork($f_dummy_lab->makeRowop("OP_INSERT", $row1));
+		$f_protocol .= sprintf("forked, FrameEmpty = %d\n", $f_u->isFrameEmpty());
+	});
+	$f_outer_lab = $f_u->makeLabel($rt1, "f_outer_lab", undef, sub {
+		$f_protocol .= sprintf("outer InOuter = %d\n", $f_u->isInOuterFrame());
+		$f_protocol .= sprintf("outer FrameEmpty = %d\n", $f_u->isFrameEmpty());
+		$f_u->call($f_inner_lab->makeRowop("OP_INSERT", $row1));
+	});
+	$f_u->call($f_outer_lab->makeRowop("OP_INSERT", $row1));
+
+	ok($f_protocol, 
+'outer InOuter = 0
+outer FrameEmpty = 1
+InOuter = 0
+FrameEmpty = 1
+scheduled, FrameEmpty = 1
+forked, FrameEmpty = 0
+');
+}
 
 #############################################################
 # tracer ops
