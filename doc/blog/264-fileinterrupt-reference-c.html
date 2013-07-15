@@ -1,0 +1,25 @@
+FileInterrupt reference (C++)
+
+FileInterrupt is the class that keeps track of a bunch of file descriptor and revokes them on demand, hopefully interrupting any ongoing operations on them (and if that doesn't do the job, a separately sent signal will). It's not visible in Perl, being intergrated into the TrieadOwner methods, but in C++ it's a separate class. It's defined in app/FileInterrupt.h, and is an Mtarget, since the descriptors are registered and revoked from different threads.
+
+FileInterrupt();
+
+The constructor, absolutely plain. Normally you would not want to construct it directly but use the object already constructed in TrieadJoin. The object keeps the state, whether the interruption had happened, and is obviously initialized to the non-interrupted state.
+
+void trackFd(int fd);
+
+Add a file descriptor to the tracked interruptable set. If the interruption was already done, the descriptor will instead be revoked right away by dupping over from /dev/null. If the attempt to open /dev/null fails, it will throw an Exception.
+
+void forgetFd(int fd);
+
+Remove a file descriptor to the tracked interruptable set. You must do it before closing the descriptor, or a race leading to the corruption of random file descriptors may occur. If this file descriptor was not registered, the call will be silently ignored.
+
+ void interrupt();
+
+Perform the revocation of all the registered file descriptors by dupping over them from /dev/null. If the attempt to open /dev/null fails, it will throw an Exception.
+
+This marks the FileInterrupt object state as interrupted, and any following trackFd() calls will lead to the immediate revocation of the file descriptors in them, thus preventing any race conditions.
+
+bool isInterrupted() const;
+
+Check whether this object has been interrupted. 

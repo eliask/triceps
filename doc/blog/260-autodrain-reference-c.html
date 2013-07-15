@@ -1,0 +1,37 @@
+AutoDrain reference, C++
+
+The scoped drain in C++ has more structure than in Perl. It consists of the base class AutoDrain and two subclasses: AutoDrainShared and AutoDrainExclusive. The base AutoDrain can not be created directly but is convenient for keeping a reference to any kind of drain:
+
+Autoref<AutoDrain> drain = new AutoDrainShared(app);
+
+The constructor of the subclass determines whether the drain is shared or exclusive, and the rest of the methods are defined in the base class.
+
+The AutoDrain is an Starget, and naturally can be used in only one thread. It's also possible to use the a direct local variable:
+
+{
+  AutoDrainShared drain(app);
+  ...
+}
+
+Just remember not to mix the metaphors, if you create a local variable, don't try to create the references to it.
+
+The constructors are:
+
+AutoDrainShared(App *app, bool wait = true);
+AutoDrainShared(TrieadOwner *to, bool wait = true);
+
+Create a shared drain from an App or TrieadOwner. The wait flag determines if the constructor will wait for the drain to complete, otherwise it will return immediately. The shared drain requests the draining of all the Trieads, and multiple threads may have their shared drains active at the same time (the release will happen when all these drains become released). A shared drain will wait for all the preceding exclusive drains to be released before it gets created.
+
+AutoDrainExclusive(TrieadOwner *to, bool wait = true);
+
+Create an exclusive drain from a TrieadOwner. The wait flag makes the constructor wait for the completion of the drain. Only one exclusive drain at a time may be active, from only one thread, an exclusive drain will wait for all the preceding shared and exclusive drains to be released before it gets created.
+
+The common method is:
+
+void wait();
+
+Wait for the drain to complete. Can be called repeatedly. If more data has been injected into the model through the excluded Triead, will wait for that data to drain.
+
+I'm not sure if I mentioned this yet, but if the new Trieads are created while a drain is active, these Trieads will be notified of the drain. This means that the input-only Trieads won't be able to send any data until the drain is released. However the Trieads in the middle of the model will follow the normal protocol for such threads: the drain will become incomplete after the Triead is marked as ready and until it blocks on the following nextXtray(). Normally this should be a very short amount of time. However such Trieads should take care to never send any rowops on their own before reading from nextXtray(), if they find that TrieadOwner::isRdDrain() returns true, because this may introduce the data into the model at a very inconvenient moment, when some logic expects that no data is changing, and cause a corruption. This is the same caveat as for using nextXtray() varieties with the timeouts: if you want to send data on a timeout, always check isRqDrain(), and never send any data on timeouts if isRqDrain() returns true.
+
+I've also realized that I might have used the word "undrain"/"undrained" for two different meanings: one is for the drain release, the other is for the condition when there is some data being processed in the model (whether a drain is active or not, but if it's active, it will not be completed). Perhaps I should make it less ambiguous. But for now just please keep this ambiguity in mind. 

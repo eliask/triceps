@@ -119,23 +119,16 @@ Things that need to be done:
   field names of the row type
 * makeTable() in C++ and Perl is inconsistent: on TableType in C++, on Unit in Perl
 * with the abolishment of the enqueueing mode in Table, Gadget became kind of useless
+* add the index lookup in the TableType and IndexType that returns undef if not found
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
-
-* doc: in types construction throw instead of abort()
-* doc: Autoref::swap()
-* doc: croak() in typemap, it croaks nicely, with a stack trace
-* doc: FnReturn::isFaceted() in Perl and C++
-* doc: how index comparators can return errors through table->setStickyError()
+* doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
+* doc: update all the examples for the new error handling
 * doc: in docbook update the source code produced by SimpleAggregator
-* doc: Rowop::printP argument for an explicit name
-* doc: in C++ Unit isFrameEmpty(), isInOuterFrame() (add in Perl too?)
-* doc: removed setName() in Unit and Label (and in C++ Gadget)
-* doc: converted to new errors: Row, Table, Tray
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
 * distributed cron
 * data cache
 * the challenges from http://www.orgs.ttu.edu/debs2013/
-
+* look at the use with RabbitMQ

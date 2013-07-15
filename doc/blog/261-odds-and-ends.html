@@ -1,0 +1,59 @@
+odds and ends
+
+While working on threads support, I've added a few small features here and there. Some of them have been already described, some will be described now. I've also done a few more small clean-ups.
+
+First, the historic methods setName() are now gone everywhere. This means Unit and Label classes, and in C++ also the Gadget. The names can now only be specified during the object construction.
+
+FnReturn has the new method:
+
+$res = fret->isFaceted();
+
+bool isFaceted() const;
+
+It returns true (or 1 in Perl) if this FnReturn object is a part of a Facet.
+
+Unit has gained a couple of methods:
+
+$res = $unit->isFrameEmpty();
+
+bool isFrameEmpty() const;
+
+Check whether the current frame is empty. This is different from the method empty() that checks whether the the whole unit is empty. This method is useful if you run multiple units in the same thread, with some potentially complicated cross-unit scheduling. It's what nextXtray() does with a multi-unit Triead, repeatedly calling drainFrame() for all the units that are found not empty. In this situation the simple empty() can not be used because the current inner frame might not be the outer frame, and draining the inner frame can be repeated forever while the outer frame will still contain rowops. The more precise check of isFrameEmpty() prevents the possibility of such endless loops.
+
+$res = $unit->isInOuterFrame();
+
+bool isInOuterFrame() const;
+
+Check whether the unit's current inner frame is the same as its outer frame, which means that the unit is not in the middle of a call.
+
+
+In Perl the method Rowop::printP() has gained an optional argument for the printed label name:
+
+$text = $rop->printP();
+$text = $rop->printP($lbname);
+
+The reason for that is to make the printing of rowops in the chained labels more convenient. A chained label's execution handler receives the original unchanged rowop that refers to the first label in the chain. So when it gets printed, it will print the name of the first label in the chain, which might be very surprising. The explicit argument allows to override it to the name of the chained label (or to any other value).
+
+
+ In C++ the Autoref has gained the method swap():
+
+void swap(Autoref &other);
+
+It swaps the values of two references without changing the reference counts in the referred values. This is a minor optimization for such a special situation. One or both references may contain NULL.
+
+
+In C++ the Table has gained the support for sticky errors. The table internals contain a few places where the errors can't just throw an Exception because it will mess up the logic big time, most specifically the comparator functions for the indexes. The Triceps built-in indexes can't encounter any errors in the comparators but the user-defined ones, such as the Perl Sorted Index, can. Previously there was no way to report these errors other than print the error message and then either continue pretending that nothing happened or abort the program.
+
+The sticky errors provide a way out of this sticky situation. When an index comparator encounters an error, it reports it as a sticky error in the table and then returns false. The table logic then unrolls like nothing happened for a while, but before returning from the user-initiated method it will find this sticky error and throw an Exception at a safe time. Obviously, the incorrect comparison means that the table enters some messed-up state, so all the further operations on the table will keep finding this sticky error and throw an Exception right away, before doing anything. The sticky error can't be unstuck. The only way out of it is to just discard the table and move on.
+
+void setStickyError(Erref err);
+
+Set the sticky error from a location where an exception can not be thrown, such as from the comparators in the indexes. Only the first error sticks, all the others are ignored since (a) the table will be dead and throwing this error in exceptions from this point on anyway and (b) the comparator is likely to report the same error repeatedly and there is no point in seeing multiple copies.
+
+Errors *getStickyError() const;
+
+Get the table's sticky error. Normally there is no point in doing this manually, but just in case.
+
+void checkStickyError() const;
+
+If the sticky error has been set, throw an Exception with it. 

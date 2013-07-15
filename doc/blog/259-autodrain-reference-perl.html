@@ -1,0 +1,31 @@
+AutoDrain reference, Perl
+
+The AutoDrain class creates the drains on an App with the automatic scoping. When the returned AutoDrain object gets destroyed, the drain becomes released. So placing the object into a lexically-scoped variable in a block with cause the undrain on the block exit. Placing it into another object will cause the undrain on deletion of that object. And just not storing the object anywhere works as a barrier: the drain gets completed and then immediately undrained, guaranteeing that all the previously sent data is processed and then continuing with the processing of the new data.
+
+All the drain caveats described in the App class apply to the automatic drains too.
+
+$ad = Triceps::AutoDrain::makeShared($app);
+$ad = Triceps::AutoDrain::makeShared($to);
+
+Create a shared drain and wait for it to complete. A drain may be created from either an App or a TrieadOwner object. Returns the AutoDrain object.
+
+$ad = Triceps::AutoDrain::makeSharedNoWait($app);
+$ad = Triceps::AutoDrain::makeSharedNoWait($to);
+
+Same as makeShared() but doesn't wait for the drain to complete before returning. May still sleep if an exclusive drain is currently active.
+
+$ad = Triceps::AutoDrain::makeExclusive($to);
+
+Create an exclusive drain on a TrieadOwner and wait for it to complete. Returns the AutoDrain object. Normally the excluded thread should be input-only. Such an input-only thread is allowed to send more data in without blocking (to wait for the app become drained again after that, use the method wait()).
+
+$ad = Triceps::AutoDrain::makeExclusiveNoWait($to);
+
+Same as makeExclusive() but doesn't wait for the drain to complete before returning. May still sleep if a shared or another exclusive drain is currently active.
+
+$ad->wait();
+
+Wait for the drain to complete. Particularly useful after the NoWait creation, but can also be used to wait for the App to become drained again after injecting some rowops through the excluded Triead of the exclusive drain.
+
+$ad->same($ad2);
+
+Check that two AutoDrain references point to the same object. 

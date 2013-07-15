@@ -1,0 +1,17 @@
+safe functions in RowHandle
+
+As I'm updating the error reporting in the Perl methods, there is one more class that has grown the safe (non-confessing functions). In RowHandle now the method
+
+$row = $rh->getRow();
+
+confesses if the RowHandle is NULL. The method
+
+$row = $rh->getRowSafe();
+
+returns an undef in this situation, just like getRow() used to, only now it doesn't set the text in $! any more. A consequence is that some of the Aggregator examples that branch directly on checking whether a row handle contains NULL, now had to be changed to use getRowSafe().
+
+The method
+
+$result = $rh->isInTable();
+
+has also been updated for the case when it contains a NULL: now it simply returns 0 (instead of undef) and doesn't set the text in $!. 

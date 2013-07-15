@@ -1,0 +1,9 @@
+no more explicit confessions
+
+It's official: all the code has been converted to the new error handling. Now if anything goes wrong, the Triceps Perl calls just confess right away. No more need for the pattern 'or confess "$!"' that was used throughout the code (though of course you can still use it for handling the other errors).
+
+It also applies to the error checks done by the XS typemaps, these will also confess automatically.
+
+I've also added one more method that doesn't confess: IndexType::getTabtypeSafe(). If the index type is not set into a table type, it will silently return an undef without any error indications.
+
+On a related note, the construction of the Type subclasses has been made nicer in the C++: instead of calling abort() on the major errors, they now throw Exceptions. Mind you, these exceptions are thrown not in the constructors as such but in the  chainable methods that set the contents of the types. And they try to be smart enough to preserve the reference count correctness: if the object was not assigned into any reference yet (as is typical for the chained calls), they take care to temporarily increase and decrease the reference count, thus freeing the object, before throwing. Of course, the default reaction to Exceptions is still to dump core, but need be, these exceptions can be caught. 
