@@ -12,6 +12,7 @@
 #include "ppport.h"
 
 #include "TricepsPerl.h"
+#include <app/Sigusr2.h>
 
 #include "const-c.inc"
 
@@ -558,4 +559,14 @@ now()
 		RETVAL = (double)tm.tv_sec + (double)tm.tv_nsec / 1000000000.;
 	OUTPUT:
 		RETVAL
+
+############ sigusr2 handling ####################################################
+
+#// Set up the dummy handler on SIGUSR2, overriding Perl's.
+#// Otherwise the recent versions of Perl (like 5.19) crash when
+#// they receive a signal at an inopportune time.
+void
+sigusr2_setup()
+	CODE:
+		Sigusr2::setup();
 

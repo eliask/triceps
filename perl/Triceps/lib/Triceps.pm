@@ -121,6 +121,10 @@ sub joinTid {
 require XSLoader;
 XSLoader::load('Triceps', $VERSION);
 
+# Set up a dummy handler in C, or the more recent Perl versions (like 5.19)
+# crash when they receive a signal at an inopportune time.
+Triceps::sigusr2_setup();
+
 # Preloaded methods go here.
 
 # Subpackages go here
