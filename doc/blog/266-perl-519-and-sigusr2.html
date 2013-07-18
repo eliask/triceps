@@ -1,0 +1,9 @@
+Perl 5.19 and SIGUSR2
+
+I've tested Triceps with Perl version 5.19. This required fixing some expected error messages that have changed, and now the patterns accept both the old and new error messages.
+
+But the worst part is that the Perl 5.19 was crashing on SIGUSR2. If you're interested in the details, see https://rt.perl.org/rt3//Public/Bug/Display.html?id=118929. I've worked around this issue by overriding the Perl's signal handler for SIGUSR2  in the XS code.
+
+The method is Triceps::sigusr2_setup(), and it gets called during the Triceps module loading. Internally it translates to the C++ method Sigusr2::setup() that sets the dummy handler on the first call.
+
+This has a consequence that you can't set a real SIGUSR2 handler in Perl any more. But it stops Perl from crashing, and there probably isn't much reason to do a custom handler of SIGUSR2 anyway. 
