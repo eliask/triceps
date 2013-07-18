@@ -51,7 +51,7 @@ sub new # ($class, $optName => $optValue, ...)
 	# parse the data element
 	my %data_unparsed = @{$self->{data}};
 	my $dataset = {};
-	&Triceps::Opt::parse("$class data set (" . $data_unparsed{name} . ")", $dataset, {
+	&Triceps::Opt::parse("$class data set (" . ($data_unparsed{name} or 'UNKNOWN') . ")", $dataset, {
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		key => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
