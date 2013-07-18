@@ -268,6 +268,6 @@ package main;
 		$olb->clear();
 		$olb->makeChained("lbChained", undef, undef);
 	});
-	ok($@, qr/^Triceps::Label::getUnit: label has been already cleared at \S+ line \d+\n\tTriceps::Label::makeChained/);
+	ok($@, qr/^Triceps::Label::getUnit: label has been already cleared at \S+ line \S+\n\tTriceps::Label::makeChained/);
 }
 

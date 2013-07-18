@@ -471,13 +471,13 @@ c1|__EOF__
 
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", 'zzz'); # will die here on an unexpected EOF
-		ok($@, "Unexpected EOF when expecting (?m-xis:zzz)");
+		ok($@, qr/^Unexpected EOF when expecting .*:zzz/);
 		ok($client->getTrace(),
-'> connect c1
+qr/^> connect c1
 c1|!ready,cliconn1
 > c1|shutdown
-c1|Unexpected EOF when expecting (?m-xis:zzz)
-');
+c1|Unexpected EOF when expecting .*:zzz\)
+/);
 	};
 
 	$thread->join();
@@ -506,21 +506,21 @@ c1|Unexpected EOF when expecting (?m-xis:zzz)
 
 		$client->startClient("c1", $port);
 		$client->expect("c1", 'zzz', 0.1);
-		ok($@, "Timed out when expecting (?m-xis:zzz)");
+		ok($@, qr/^Timed out when expecting \(.*:zzz\)/);
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__'); # makes sure of flusing the socket
 
 		ok($client->getTrace(),
-'> connect c1
-c1|Timed out when expecting (?m-xis:zzz)
+qr/^> connect c1
+c1|Timed out when expecting \(.*:zzz\)
 > c1|shutdown
 c1|!ready,cliconn1
-c1|*,server shutting down
+c1|\*,server shutting down
 c1|__EOF__
-');
+/);
 		ok($client->getErrorTrace(),
-'c1|Timed out when expecting (?m-xis:zzz)
-');
+qr/^c1|Timed out when expecting \(.*:zzz\)
+/);
 	};
 
 	$thread->join();
@@ -550,21 +550,21 @@ c1|__EOF__
 
 		$client->startClient("c1", $port);
 		$client->expect("c1", 'zzz');
-		ok($@, "Timed out when expecting (?m-xis:zzz)");
+		ok($@, qr/^Timed out when expecting \(.*:zzz\)/);
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__', 0); # 0 disables the timeout
 
 		ok($client->getTrace(),
-'> connect c1
-c1|Timed out when expecting (?m-xis:zzz)
+qr/^> connect c1
+c1|Timed out when expecting \(.*:zzz\)
 > c1|shutdown
 c1|!ready,cliconn1
-c1|*,server shutting down
+c1|\*,server shutting down
 c1|__EOF__
-');
+/);
 		ok($client->getErrorTrace(),
-'c1|Timed out when expecting (?m-xis:zzz)
-');
+qr/^c1|Timed out when expecting \(.*:zzz\)
+/);
 	};
 
 	$thread->join();
@@ -594,25 +594,25 @@ c1|__EOF__
 
 		$client->startClient("c1", $port);
 		$client->expect("c1", 'zzz');
-		ok($@, "Timed out when expecting (?m-xis:zzz)");
+		ok($@, qr/^Timed out when expecting \(.*:zzz\)/);
 		$client->expect("c1", 'yyy');
-		ok($@, "Timed out when expecting (?m-xis:yyy)");
+		ok($@, qr/^Timed out when expecting \(.*:yyy\)/);
 		$client->send("c1", "shutdown\n");
 		$client->expect("c1", '__EOF__', 0); # 0 disables the timeout
 
 		ok($client->getTrace(),
-'> connect c1
-c1|Timed out when expecting (?m-xis:zzz)
-c1|Timed out when expecting (?m-xis:yyy)
+qr/^> connect c1
+c1|Timed out when expecting \(.*:zzz\)
+c1|Timed out when expecting \(.*:yyy\)
 > c1|shutdown
 c1|!ready,cliconn1
-c1|*,server shutting down
+c1|\*,server shutting down
 c1|__EOF__
-');
+/);
 		ok($client->getErrorTrace(),
-'c1|Timed out when expecting (?m-xis:zzz)
-c1|Timed out when expecting (?m-xis:yyy)
-');
+qr/^c1|Timed out when expecting \(.*:zzz\)
+c1|Timed out when expecting \(.*:yyy\)
+/);
 	};
 
 	$thread->join();

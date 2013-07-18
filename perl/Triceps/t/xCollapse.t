@@ -68,15 +68,14 @@ sub new # ($class, $optName => $optValue, ...)
 	}, @_);
 	
 	# parse the data element
-	my $dataref = $self->{data};
+	my %data_unparsed = @{$self->{data}};
 	my $dataset = {};
-	# dataref->[1] is the best guess for the dataset name, in case if the option "name" goes first
-	&Triceps::Opt::parse("$class data set (" . $dataref->[1] . ")", $dataset, {
+	&Triceps::Opt::parse("$class data set (" . $data_unparsed{name} . ")", $dataset, {
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		key => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
 		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
-	}, @$dataref);
+	}, @{$self->{data}});
 
 	# save the dataset for the future
 	$self->{datasets}{$dataset->{name}} = $dataset;

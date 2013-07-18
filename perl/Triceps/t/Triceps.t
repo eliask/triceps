@@ -271,4 +271,4 @@ sub sub2 {
 }
 
 eval { &sub2; };
-ok($@, qr/^Triceps::Unit::schedule\(\): self is not a blessed SV reference to WrapUnitPtr at \S+ line \d+\n\tmain::sub1 called at \S+ line \d+\n\tmain::sub2 called at \S+ line \d+\n\teval {...} called at \S+ line \d+/);
+ok($@, qr/^Triceps::Unit::schedule\(\): self is not a blessed SV reference to WrapUnitPtr at \S+ line \S+\n\tmain::sub1 called at \S+ line \S+\n\tmain::sub2 called at \S+ line \S+\n\teval {...} called at \S+ line \S+/);

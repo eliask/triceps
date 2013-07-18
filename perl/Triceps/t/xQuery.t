@@ -879,7 +879,11 @@ sub genComparison # ($self, $query)
 			{
 				use strict;';
 
-	while (($f, $v) = each %qhash) {
+	# the sorting keeps the key order predictable for the tests;
+	# the can also be done with Hash::Util::hash_traversal_mask() 
+	# but would not be backwards-compatible
+	foreach $f (sort keys %qhash) {
+		$v = $qhash{$f};
 		next unless($v);
 		my $t = $rtdef{$f};
 
@@ -982,10 +986,10 @@ Compiled comparator:
 			sub # ($query, $data)
 			{
 				use strict;
-				return 0 if ($_[0]->get("symbol")
-					ne $_[1]->get("symbol"));
 				return 0 if ($_[0]->get("id")
 					!= $_[1]->get("id"));
+				return 0 if ($_[0]->get("symbol")
+					ne $_[1]->get("symbol"));
 				return 1; # all succeeded
 			}
 qWindow.out,OP_INSERT,5,AAA,30,30

@@ -672,7 +672,7 @@ qr/^index error:
 	ok(!defined $it2);
 	ok($@, 
 qr/^Triceps::IndexType::newPerlSorted\(initialize\): failed to compile the source code
-Compilation error: Global symbol \"\$zz\" requires explicit package name at \(eval 13\) line 2.
+Compilation error: Global symbol \"\$zz\" requires explicit package name at \(eval \d+\) line 2.
 The source code was:
   sub {
   \$zz\+\+;} at/);
@@ -683,7 +683,7 @@ The source code was:
 	ok(!defined $it2);
 	ok($@, 
 qr/^Triceps::IndexType::newPerlSorted\(compare\): failed to compile the source code
-Compilation error: Global symbol \"\$zz\" requires explicit package name at \(eval 14\) line 2.
+Compilation error: Global symbol \"\$zz\" requires explicit package name at \(eval \d+\) line 2.
 The source code was:
   sub {
   \$zz\+\+;} at/);
@@ -696,7 +696,7 @@ The source code was:
 	ok(!defined eval { $it2->setComparator('$zz++;') });
 	ok($@, 
 qr/^Triceps::IndexType::setComparator: failed to compile the source code
-Compilation error: Global symbol \"\$zz\" requires explicit package name at \(eval 16\) line 2.
+Compilation error: Global symbol \"\$zz\" requires explicit package name at \(eval \d+\) line 2.
 The source code was:
   sub {
   \$zz\+\+;} at/);
