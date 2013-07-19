@@ -1,0 +1,5 @@
+GCC warning flags
+
+The GCC warning flags have been an annoying issue: in general, I've been building Triceps with warning-treated-as-errors, except for a few of them disabled for uselessness. However this presents a problem with the varying versions of GCC: the older versions don't have some of the warning flags I use, so they fail, and the new ones have more warnings of the useless variety that fail in a different way (and there are some non-useless, and they occasionally help detecting more weird stuff but that's not the point).
+
+The solution I've come up, is to use the different warning flags for the build checked out from SVN on the trunk branch, and for all the other builds. All these warning flags are now enabled only if the path of the Triceps directory ends in "trunk". Otherwise they are skipped. If you check out the code directly from SVN, you still need to worry about the warning flags but not notherwise. 
