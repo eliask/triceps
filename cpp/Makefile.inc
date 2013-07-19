@@ -46,7 +46,7 @@ ifeq ($(notdir $(realpath ../..)), trunk)
 	# Option useful for the newer GCC: -Wno-int-to-pointer-cast
 	CFLAGS_WARNINGS = -Wall -Wno-sign-conversion -Wno-sign-compare -Werror
 else
-	CFLAGS_WARNINGS = -Wall
+	CFLAGS_WARNINGS =
 endif
 
 OBJEXT := .o
