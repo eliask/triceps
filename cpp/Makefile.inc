@@ -42,7 +42,7 @@ LIBRARY := triceps
 # for the annoying few. For the release build, just build with the minimum of
 # flags and don't fail on warnings, since the warnings and their names
 # differ by the GCC versions.
-ifeq ($(findstring trunk, $(shell pwd)), trunk)
+ifeq ($(notdir $(realpath ../..)), trunk)
 	# Option useful for the newer GCC: -Wno-int-to-pointer-cast
 	CFLAGS_WARNINGS = -Wall -Wno-sign-conversion -Wno-sign-compare -Werror
 else
