@@ -38,11 +38,22 @@ endif
 # base name of the Triceps library
 LIBRARY := triceps
 
+# For the build checked out from trunk, treat the warnings as errors except
+# for the annoying few. For the release build, just build with the minimum of
+# flags and don't fail on warnings, since the warnings and their names
+# differ by the GCC versions.
+ifeq ($(findstring trunk, $(shell pwd)), trunk)
+	# Option useful for the newer GCC: -Wno-int-to-pointer-cast
+	CFLAGS_WARNINGS = -Wall -Wno-sign-conversion -Wno-sign-compare -Werror
+else
+	CFLAGS_WARNINGS = -Wall
+endif
+
 OBJEXT := .o
 BINEXT := 
 BUILDDIR := build
 CPPFLAGS := -I.. $(TRICEPS_CONF)
-CFLAGS := -g -fPIC -pthread -rdynamic $(CPPFLAGS) -Wall -Wno-sign-conversion -Wno-sign-compare -Wno-int-to-pointer-cast -Werror $(TRICEPS_CONF)
+CFLAGS := -g -fPIC -pthread -rdynamic $(CPPFLAGS) $(CFLAGS_WARNINGS) $(TRICEPS_CONF)
 CXXFLAGS := $(CFLAGS)
 LDFLAGS := -L../build -l$(LIBRARY) $(TRICEPS_XLIB)
 TESTLDFLAGS := $(LDFLAGS) -L../utest/build -Wl,-rpath='$$ORIGIN/../../../build' \
