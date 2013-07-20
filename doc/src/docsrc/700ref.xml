@@ -68,28 +68,28 @@ See the file COPYRIGHT for the copyright notice and license information
 		<xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
-		<xi:include href="file:///DOCS/810tabtype.xml"/>
+		<xi:include href="file:///DOCS/710tabtype.xml"/>
 
-		<xi:include href="file:///DOCS/812idxtype.xml"/>
+		<xi:include href="file:///DOCS/712idxtype.xml"/>
 
-		<xi:include href="file:///DOCS/814aggtype.xml"/>
+		<xi:include href="file:///DOCS/714aggtype.xml"/>
 
-		<xi:include href="file:///DOCS/816simpleagg.xml"/>
+		<xi:include href="file:///DOCS/716simpleagg.xml"/>
 
-		<xi:include href="file:///DOCS/818table.xml"/>
+		<xi:include href="file:///DOCS/718table.xml"/>
 
-		<xi:include href="file:///DOCS/820rowhand.xml"/>
+		<xi:include href="file:///DOCS/720rowhand.xml"/>
 
-		<xi:include href="file:///DOCS/822aggcontext.xml"/>
+		<xi:include href="file:///DOCS/722aggcontext.xml"/>
 
-		<xi:include href="file:///DOCS/830opt.xml"/>
+		<xi:include href="file:///DOCS/730opt.xml"/>
 
-		<xi:include href="file:///DOCS/832field.xml"/>
+		<xi:include href="file:///DOCS/732field.xml"/>
 
-		<xi:include href="file:///DOCS/840lookupjoin.xml"/>
+		<xi:include href="file:///DOCS/740lookupjoin.xml"/>
 
-		<xi:include href="file:///DOCS/842jointwo.xml"/>
+		<xi:include href="file:///DOCS/742jointwo.xml"/>
 
-		<xi:include href="file:///DOCS/844collapse.xml"/>
+		<xi:include href="file:///DOCS/744collapse.xml"/>
 
 </chapter>
