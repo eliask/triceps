@@ -27,8 +27,12 @@ See the file COPYRIGHT for the copyright notice and license information
 
 -->
 
-	<sect1 id="sc_notes_1_1_0">
-		<title>Release 1.1.0</title>
+	<sect1 id="sc_notes_2_0_0">
+		<title>Release 2.0.0</title>
+
+		<para>
+		Major:
+		</para>
 
 		<itemizedlist>
 			<listitem>
@@ -38,9 +42,15 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			Streaming functions.
 			</listitem>
+		</itemizedlist>
 
+		<para>
+		Minor:
+		</para>
+
+		<itemizedlist>
 			<listitem>
-			No more copy trays in the tables, they got replaced by treating the table
+			No more copy trays in the tables, they've got replaced by treating the table
 			as a streaming function (the automatically generated FnReturn).
 			</listitem>
 
@@ -83,7 +93,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			Added <pre>Table::clear()</pre>.
+			Added <computeroutput>Table::clear()</computeroutput>.
 			</listitem>
 
 			<listitem>
@@ -105,12 +115,16 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			In &Cpp; added a Rhref constructor directly from FdataVec.
+			In &Cpp; added a Rhref constructor directly from a FdataVec argument.
 			</listitem>
 
 			<listitem>
-			In &Cpp; added the method <pre>Label::adopt()</pre>, making it easier
+			In &Cpp; added the method <computeroutput>Label::adopt()</computeroutput>, making it easier
 			to remember.
+			</listitem>
+
+			<listitem>
+			Out-of-the-box compilation with a wider range of GCC compiler versions.
 			</listitem>
 		</itemizedlist>
 	</sect1>

@@ -25,12 +25,13 @@ See the file COPYRIGHT for the copyright notice and license information
 		The official Triceps site is located at SourceForge.
 		</para>
 
+		<!-- Use directly <computeroutput> around <link> -->
 		<para>
-		<ulink url="http://triceps.sf.net"/> is the high-level page.
+		<computeroutput><ulink url="http://triceps.sf.net"/></computeroutput> is the high-level page.
 		</para>
 
 		<para>
-		<ulink url="http://sf.net/projects/triceps"/> is the SourceForge project page.
+		<computeroutput><ulink url="http://sf.net/projects/triceps"/></computeroutput> is the SourceForge project page.
 		</para>
 
 		<para>
@@ -41,7 +42,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		The release policy of Triceps is aimed towards the easy development.
 		As the new features are added (or sometimes removed), they are checked into
 		the SVN repository and documented in the blog form at
-		<ulink url="http://babkin-cep.blogspot.com/"/>. Periodically 
+		<computeroutput><ulink url="http://babkin-cep.blogspot.com/"/></computeroutput>. Periodically 
 		the documentation updates are collected from the blog into this manual,
 		and the official releases are produced.
 		</para>
@@ -54,14 +55,20 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
+svn co http://svn.code.sf.net/p/triceps/code/trunk
 </pre>
 
 		<para>
 		You don't need any login for check-out. You can keep it current with
 		latest changes by periodically running <pre>svn update</pre>. After
-		you've checked out the trunk, you can build it as usual.
+		you've checked out the trunk, you can build it as usual. If you do have
+		a login and SSH key, you can use then as well:
 		</para>
+
+<pre>
+svn co svn+ssh://your_username@svn.code.sf.net/p/triceps/code/trunk
+</pre>
+
 	</sect1>
 
 	<sect1 id="sc_build_refenv">
@@ -74,14 +81,15 @@ svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
 		<para>
 		The tested reference build environment is where I do the Triceps development,
 		and currently it is Linux Fedora 11. The build should work
-		automatically on the other Linux systems as well but has not been tested
-		much in practice.
+		automatically on the other Linux systems as well, and the testing reports
+		from CPAN show that it usually works.
 		</para>
 
 		<para>
-		The build should work on the other Unix environments too but would
-		require some manual configuration for the available libraries,
-		and has not been tested either.
+		The build should work on the other Unix environments too but may
+		require some manual configuration for the available libraries.
+		The test reports from CPAN show that the BSD varieties (FreeBSD, OpenBSD,
+		MidnightBSD) usually do well.
 		</para>
 
 		<para>
@@ -91,10 +99,43 @@ svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
 		</para>
 
 		<para>
-		The tested Perl version is 5.10.0, and should work on any later version
+		The older GNU compiler 4.1 and the newer compiler versions have been reported 
+		to work as well. But if you build the trunk code checked out from SVN
+		(or otherwise in the directory named <quote><pre>trunk</pre></quote>),
+		there is a catch with the warning flags. This kind of build treats almost all
+		warnings as errors, and this causes varying results
+		with the different compiler versions. The version 4.1
+		doesn't have the option <pre>-Wno-sign-conversion</pre> and
+		will fail on it. The newer compiler versions may have some extra warnings
+		that will be treated as errors (and since my reference compiler doesn't
+		check for them, the code may trigger them). The fix for this situation is
+		to edit <pre>cpp/Makefile.inc</pre> and change the
+		variable <pre>CFLAGS_WARNINGS</pre>, or just clear it altogether. In the release form
+		this is not an issue, in the release directory the warnings are not treated
+		as errors and no warning options are used.
+		</para>
+
+		<para>
+		GCC 4.1 is also known to have complaints about the construct 
+		<pre>sizeof(field)</pre>. I've modified the
+		reported occurrences but more might creep up in the future. If this
+		stops your build, change them to
+		<pre>sizeof(TypeOfField)</pre>.
+		</para>
+
+		<para>
+		The tested Perl versions are 5.10.0 and 5.19.0, and should work on any recent version
 		as well. With the earlier versions your luck may vary. The Makefile.PL
-		has been configured to require at least 5.8.0 but you may edit it and
-		try building on the older versions.
+		has been configured to require at least 5.8.0. The older versions
+		have a different threading module and definitely won't work.
+		</para>
+
+		<para>
+		The threads support in the Perl interpreter is needed to run
+		the multithreaded API. If your Perl is built without threads, the single-threaded
+		part is still usable but all the tests related to multithreading will fail.
+		The last version of Triceps with no threads support at all is 1.0.1,
+		and it's the last resort if you want to run without threads.
 		</para>
 
 		<para>
@@ -105,7 +146,7 @@ svn co https://triceps.svn.sourceforge.net/svnroot/triceps/trunk
 		The normal build expectation is for the 64-bit machines. The 32-bit
 		machines should work (and the code even includes the special cases for
 		them) but have been untested at the moment. Some of the tests might fail
-		of the 32-bit and/or big-endian machines due to the different computation
+		on the 32-bit and/or big-endian machines due to the different computation
 		of the hash values, and thus producing a different row order in the result.
 		</para>
 	</sect1>
@@ -147,29 +188,8 @@ make test
 		</para>
 
 		<para>
-		In some circumstances the Per unit test print the error messages as a normal part
-		of running the test. Such messages are prepended with a message that they are
-		expected, for example:
-		</para>
-
-<pre>
-Expect message(s) like: Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator
-Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator
-Error in PerlSortedIndex(bad) comparator: test a death in PerlSortedIndex comparator
-</pre>
-
-		<para>
-		These messages come from the tests of the &Cpp; code catching of the
-		fatal errors in the Perl code. In the future all such catching
-		will be converted to the stack unwind and confession back to the
-		surrounding Perl code. However for now there still are the old-style handlers
-		that simply print the error message.
-		</para>
-
-		<para>
 		The other interesting <pre>make</pre> targets are:
 		</para>
-
 
 		<variablelist>
 		<varlistentry>
