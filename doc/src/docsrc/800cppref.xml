@@ -343,4 +343,6 @@ Autoref <RowType> rt2 = rtp; // resurrects the dead pointer, corrupts memory
 		</para>
 	</sect1>
 
+	<xi:include href="file:///DOCS/810autoref.xml"/>
+
 </chapter>

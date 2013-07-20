@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+	<sect1 id="sc_cppref_Autoref"  xmlns:xi="http://www.w3.org/2001/XInclude">
+		<title>Autoref reference</title>
+
+		<indexterm>
+			<primary>Autoref</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Onceref</primary>
+		</indexterm>
+		<indexterm>
+			<primary>const_Autoref</primary>
+		</indexterm>
+		<indexterm>
+			<primary>const_Onceref</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Starget</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Mtarget</primary>
+		</indexterm>
+
+		<para>
+		The Autoref template is defined in <pre>mem/Autoref.h</pre>, along with its
+		sister templates Onceref, const_Autoref, const_Onceref (see
+		<xref linkend="sc_cpp_mem" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for the description of the differences). It represents a reference with
+		automatic reference counting. Its template argument should generally
+		inherit from the classes Starget or Mtarget but can also be any other
+		class implementing the same set of methods.
+		</para>
+
+		<para>
+		Starget and Mtarget are independent classes but Autoref 
+		can work transparently on both of them because Autoref
+		doesn't modify the reference counters by itself. Instead the target
+		class is expected to provide the methods 
+		</para>
+
+<pre>
+void incref() const;
+int decref() const;
+</pre>
+
+		<para>
+		They are defined as const to allow the reference counting of even the
+		const objects, but of course the reference counter field must be mutable.
+		decref() returns the resulting counter value. When it goes down to 0,
+		Autoref calls the destructor. 
+		</para>
+
+		<para>
+		The definitions of the template methods are fairly convoluted,
+		so I'll show the usage informally first.
+		</para>
+
+		<para>
+		Autoref can be constructed with or assigned from another Autoref or a
+		pointer, or with a NULL value:
+		</para>
+
+<pre>
+T *ptr;
+Autoref<T> ref1(ptr);
+Autoref<T> ref2(ref1);
+Autoref<T> ref3; // initialized as NULL by default
+ref1 = ref2;
+ref1 = ptr;
+ref2 = NULL; // releases the reference
+ref2 = Autoref<T>::null(); // another way to assign NULL
+</pre>
+
+		<para>
+		The simple NULL usually works but there are cases with ambiguity,
+		and the static method null() helps to create the NULL of the correct
+		type and remove that ambiguity.
+		</para>
+
+		<para>
+		The assignments work for exactly the same type and also for assignment
+		to any parent in the class hierarchy:
+		</para>
+
+<pre>
+Autoref<Label> = new DummyLabel(...);
+</pre>
+
+		<para>
+		The automatic conversion to pointers works too:
+		</para>
+
+<pre>
+ptr = ref1;
+</pre>
+
+		<para>
+		Or a pointer can be extracted from an Autoref explicitly:
+		</para>
+
+<pre>
+ptr = ref1.get();
+</pre>
+
+		<para>
+		The dereferencing and arrow operations work like on a pointer:
+		</para>
+
+<pre>
+T val = *ref1;
+ref1->method();
+</pre>
+
+		<para>
+		The Autorefs can also be compared for equality and inequality:
+		</para>
+
+<pre>
+ref1 == ref2
+ref1 != ref2
+</pre>
+
+		<para>
+		To compare them to pointers, use get(). Except for one special case:
+		the comparison to NULL happens so often that a special method is
+		provided for it:
+		</para>
+
+<pre>
+ref1.isNull()
+</pre>
+
+		<para>
+		Two Autorefs may swap their values, without changing the reference
+		counts of either value:
+		</para>
+
+<pre>
+ref1.swap(ref2);
+</pre>
+
+		<para>
+		The method prototypes are (Target is the argument class of the
+		Autoref template, Ptr is the pointer to it):
+		</para>
+
+<pre>
+typedef Target *Ptr;
+static Ptr null();
+Autoref();
+Autoref(Target *t);
+Autoref(const Autoref &ar);
+Autoref(const Autoref<OtherTarget> &ar);
+Target &operator*() const;
+Target *operator->() const;
+Target *get() const;
+operator Ptr() const; // type conversion to pointer
+bool isNull() const;
+Autoref &operator=(const Autoref &ar);
+Autoref &operator=(const Autoref<OtherTarget> &ar);
+bool operator==(const Autoref &ar);
+bool operator!=(const Autoref &ar);
+bool operator==(const Autoref<OtherTarget> &ar);
+bool operator!=(const Autoref<OtherTarget> &ar);
+void swap(Autoref &other);
+</pre>
+
+		<indexterm>
+			<primary>const_Autoref</primary>
+		</indexterm>
+		<para>
+		const_Autoref is a template defined over Autoref:
+		</para>
+
+<pre>
+template <typename Target>
+class const_Autoref : public Autoref<const Target>
+</pre>
+
+		<para>
+		Its purpose is for keeping references to constant objects.
+		</para>
+
+		<indexterm>
+			<primary>Onceref</primary>
+		</indexterm>
+		<indexterm>
+			<primary>const_Onceref</primary>
+		</indexterm>
+		<para>
+		Onceref and const_Onceref are currently defined to be equal to
+		Autoref and const_Autoref. They are placeholders for a future
+		optimization for passing the function arguments and results
+		more efficiently, reducing the number of reference count modifications.
+		In the future they may be implemented with the semantics similar to
+		auto_ptr: any assignment from an Onceref to Autoref or another
+		Onceref will move the value, preserving the reference count and
+		setting the original Onceref to NULL.
+		</para>
+
+	</sect1>
