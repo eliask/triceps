@@ -306,6 +306,8 @@ eval { $self->{unit}->call($rowop) } or confess "Bad rowop argument:\n$@";
 		</indexterm>
 		<para>
 		In &Cpp; the Autoref template is used to produce the reference objects.
+		The memory management at the &Cpp; level is  described in more detail in
+		<xref linkend="sc_cpp_mem" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		As the references are copied around between these objects, the
 		reference counts in the target objects are automatically adjusted. When
 		the reference count drops to 0, the target object gets destroyed. While
