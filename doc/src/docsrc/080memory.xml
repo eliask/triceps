@@ -49,7 +49,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		<para>
 		These leaks are pretty hard to diagnose. There are some
 		packages, like Devel::Cycle, but they won't detect the loops that
-		involve a reference at C++ level. And when the Perl interpreter exits,
+		involve a reference at &Cpp; level. And when the Perl interpreter exits,
 		it clears up all the variables used, even the ones involved in the
 		loops, so if you run it under valgrind, valgrind doesn't show any
 		leaks. There is a package Devel::LeakTrace that should be able

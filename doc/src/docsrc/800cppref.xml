@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_cpp_ref" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Triceps &Cpp; API Reference</title>
+
+		<indexterm>
+			<primary>C++</primary>
+		</indexterm>
+		<para>
+		Fundamentally, the &Cpp; and Perl APIs are shaped similarly. So I won't
+		be making a version of all the examples in &Cpp;. Please read the
+		Perl-based documentation first to understand the spirit and usage of
+		Triceps. The &Cpp;-based documentation is more of the reference type and
+		concentrates on the low-level specifics and differences from Perl
+		necessitated by this specifics.
+		</para>
+
+		<para>
+		In many cases just reading the descriptions of the methods in the <pre>.h</pre>
+		files should be enough to understand the details and be able to use the
+		API. However in some cases the class hierarchies differ, with the Perl
+		API covering the complexities exposed in the &Cpp; API.
+		</para>
+
+		<para>
+		Writing directly in &Cpp; is significantly harder than in Perl, so I
+		highly recommend sticking with the Perl API unless you have a good
+		reason to do otherwise. Even when the performance is important, it's
+		usually enough to write a few critical elements in &Cpp; and then bind
+		them together in Perl. (If you wonder about Java, and why I didn't use
+		it instead, the answer is that Java successfully combines the drawbacks
+		of both and adds some of its own).
+		</para>
+
+		<para>
+		The &Cpp; Triceps API is much more sensitive to the errors. The Perl API
+		checks all the arguments for consistency, it's principle is that the
+		interpreter must never crash. The &Cpp; API is geared towards the
+		efficiency of execution. It checks for errors when constructing the
+		major elements but then does almost no checks at run time. The
+		expectation is that the caller knows what he is doing. If the caller
+		sends bad data, mislays the pointers etc., the program will crash. The
+		idea here is that most likely the &Cpp; API will be used from another
+		layer: either an interpreted one (like Perl) or a compiled one (like a
+		possible future custom language). Either way that layer is responsible
+		for detecting the user errors at either interpretation or compile time.
+		By the time the data gets to the &Cpp; code, it's already checked and
+		there is no need to check it again. Of course, if you write the
+		programs manually in &Cpp;, that checking is upon you.
+		</para>
+
+		<para>
+		The more high-level features are currently available only in Perl. For
+		example, there are no joins in the &Cpp; API. If you want to do the joins
+		in &Cpp;, you have to code your own. This will change over time, as these
+		features will solidify and move to a &Cpp; implementation to become more
+		efficient and available through all the APIs. But it's much easier to
+		experiment with the initial implementations in Perl.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+</chapter>

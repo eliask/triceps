@@ -567,7 +567,7 @@ $string = $rowop->printP();
 
 		<para>
 		Just as with a row, the method <pre>printP()</pre> is implemented in Perl. In
-		the future a <pre>print()</pre> done right in C++ may be added, but for now I try
+		the future a <pre>print()</pre> done right in &Cpp; may be added, but for now I try
 		to keep all the interpretation of the data on the Perl side. Even though
 		<pre>printP()</pre> is implemented in Perl, it can print the rowops
 		for any kinds of labels.  The

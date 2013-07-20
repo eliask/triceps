@@ -93,7 +93,7 @@ svn co svn+ssh://your_username@svn.code.sf.net/p/triceps/code/trunk
 		</para>
 
 		<para>
-		Currently you must use the GNU Linux toolchain: GNU make, GNU C++ 
+		Currently you must use the GNU Linux toolchain: GNU make, GNU &Cpp; 
 		compiler (version 4.4.1 has been tested), glibc, valgrind. You can build
 		without valgrind by running only the non-valgrind tests.
 		</para>

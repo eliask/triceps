@@ -330,13 +330,13 @@ See the file COPYRIGHT for the copyright notice and license information
 		And worst of all, there is still no modular programming. Yeah, there
 		are <quote>modules</quote> but they are not really reusable. They are
 		tied too tightly to the schema of the data. What is needed, is more
-		like C++ templates. Only preferrably something more flexible and
-		less difficult to debug than the C++ templates.
+		like &Cpp; templates. Only preferrably something more flexible and
+		less difficult to debug than the &Cpp; templates.
 		</para>
 
 		<para>
 		StreamBase does have modules with parametrizable arguments (<quote>
-		capture fields</quote>), somewhat like the C++ templates. The limitation
+		capture fields</quote>), somewhat like the &Cpp; templates. The limitation
 		is that you can say <quote>and carry any additional fields through 
 		unchanged</quote> but can't really specify subsets of fields
 		for a particular usage (<quote>and use these fields as a key</quote>).
