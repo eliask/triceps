@@ -8,7 +8,7 @@
 
 package Triceps::Triead;
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 use Carp;
 use threads;

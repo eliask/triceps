@@ -7,7 +7,7 @@
 
 package Triceps::Rowop;
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 # convert a rowop to a printable string, with name-value pairs
 # (printP stands for "print in Perl")

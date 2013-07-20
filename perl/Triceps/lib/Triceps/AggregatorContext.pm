@@ -7,7 +7,7 @@
 
 package Triceps::AggregatorContext;
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 use Carp;
 

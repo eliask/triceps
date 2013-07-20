@@ -9,7 +9,7 @@ package Triceps::Label;
 
 use Carp;
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 # A convenience wrapper that creates the Rowop from
 # the field name-value pairs, handling the look-up of the

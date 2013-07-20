@@ -8,7 +8,7 @@
 package Triceps::App;
 use strict;
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 use Carp;
 use IO::Handle;

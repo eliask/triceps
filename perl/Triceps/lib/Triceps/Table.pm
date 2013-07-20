@@ -7,7 +7,7 @@
 
 package Triceps::Table;
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 # create a row with specified fields and find it, thus 
 # making more convenient to search by key fields

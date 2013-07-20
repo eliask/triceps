@@ -12,7 +12,7 @@ package Triceps::X::ThreadedServer;
 
 sub CLONE_SKIP { 1; }
 
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v2.0.0';
 
 use Carp;
 use Errno qw(EINTR EAGAIN);
