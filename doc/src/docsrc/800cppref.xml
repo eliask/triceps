@@ -15,6 +15,9 @@ See the file COPYRIGHT for the copyright notice and license information
 <chapter id="ch_cpp_ref" xmlns:xi="http://www.w3.org/2001/XInclude">
 	<title>Triceps &Cpp; API Reference</title>
 
+	<sect1 id="sc_cpp_intro">
+		<title>&Cpp; API Introduction</title>
+
 		<indexterm>
 			<primary>C++</primary>
 		</indexterm>
@@ -69,11 +72,75 @@ See the file COPYRIGHT for the copyright notice and license information
 		efficient and available through all the APIs. But it's much easier to
 		experiment with the initial implementations in Perl.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_cpp_const">
+		<title>The const-ness in &Cpp;</title>
+
+		<indexterm>
+			<primary>const</primary>
+		</indexterm>
+
+		<para>
+		I've been using the <pre>const</pre> keyword for two purposes:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			To let the compiler optimize a little better the methods that do not
+			change the state of the objects.
+			</listitem>
+
+			<listitem>
+			To mark the fragments of the read-only object internal state returned
+			by the methods. This is much more efficient than making copies of them.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		So if you get a <pre>const vector<> &</pre> returned from a method, this is a
+		gentle reminder that you should not be modifying this vector. Of
+		course, nothing can stop a determined programmer from doing a type cast
+		and modifying it anyway, but be aware that such inconsistent
+		modifications will likely cause the program to crash in the future. And
+		if the vector contains references to other objects, these objects
+		usually should not be modified either, even they might not be marked
+		with const.
+		</para>
+
+		<indexterm>
+			<primary>const_iterator</primary>
+		</indexterm>
+		<para>
+		However all this <pre>const</pre> stuff is not all rainbows and unicorns but also
+		produces a sizable amount of suffering. One consequence is that you can
+		not use the normal iterators on the <pre>const</pre> vectors, you have to use the
+		const_iterators. Another is that once in a while you get something like
+		a <pre>(const RowType *)</pre> from one method and need to pass it as an argument
+		to another method that takes a <pre>(RowType *)</pre>. In this case make sure that
+		you know what you are doing and then proceed boldly with using a
+		<pre>const_cast</pre>. There is just no way to get all the const-ness
+		self-consistent without ripping it out altogether. 
+		</para>
+
+		<para>
+		</para>
 
 		<para>
 		</para>
 
 		<para>
 		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+
+
+
+	</sect1>
 
 </chapter>
