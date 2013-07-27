@@ -1,0 +1,72 @@
+string utilities
+
+As I'm editing the documentation for 2.0, I've found an omission: the string helper functions in the C++ API haven't been documented yet. Some of them have been mentioned but not officially documented.
+
+The first two are declared in common/Strprintf.h:
+
+string strprintf(const char *fmt, ...);
+string vstrprintf(const char *fmt, va_list ap);
+
+They are entirely similar to sprintf() and vsprintf() with the difference that they place the result of formatting into a newly constructed string and return that string.
+
+The rest are defined in common/StringUtil.h:
+
+extern const string &NOINDENT;
+
+The special constant that when passed to the printing of the Type, causes it to print without line breaks. Doesn't have any special effect on Errors, there it's simply treated as an empty string.
+
+const string &nextindent(const string &indent, const string &subindent, string &target);
+
+Compute the indentation for the next level when printing a Type. The arguments are:
+
+indent - indent string of the current level
+subindent - characters to append for the next indent level
+target - buffer to store the extended indent string
+
+The passing of target as an argument allows to reuse the same string object and avoid the extra construction.
+
+
+The function returns the computed reference: if indent was NOINDENT, then reference to NOINDENT, otherwise reference to target. This particular calling pattern is strongly tied to how things are computed inside the type printing, but you're welcome to look inside it and do the same for any other purpose.
+
+void newlineTo(string &res, const string &indent);
+
+Another helper function for the printing of Type, inserting a line break. The indent argument specifies the indentation, with the special handling of NOINDENT: if indent is NOINDENT, a single space is added, thus printing everything in one line; otherwise a \n and the contents of indent are added. The res argument is the result string, where the line break characters are added.
+
+void hexdump(string &dest, const void *bytes, size_t n, const char *indent = "");
+
+Print a hex dump of a sequence of bytes (at address bytes and of length n), appending the dump to the destination string dest. The data will be nicely broken into lines, with 16 bytes printed per line. The first line is added directly to the end of the dest as-is,  but if n is over 16, the other lines will follow after \n. The indent argument allows to add indentation at the start of each following string.
+
+void hexdump(FILE *dest, const void *bytes, size_t n, const char *indent = "");
+
+Another version, sending the dumped data directly into a file descriptor.
+
+The next pair of functions provides a generic mechanism for converting enums between a string and integer representation:
+
+struct Valname
+{
+    int val_;
+    const char *name_;
+};
+
+int string2enum(const Valname *reft, const char *name);
+const char *enum2string(const Valname *reft, int val, const char *def = "???");
+
+The reference table is defined with an n array of Valnames, with the last element being { -1, NULL }. Then it's passed as the argument reft of the conversion functions which do a sequential look-up by that table. If the argument is not found, string2enum() will return -1, and enum2string() will return the value of the def argument (which may be NULL).
+
+Here is an example of how it's used for the conversion of opcode flags:
+
+Valname opcodeFlags[] = {
+    { Rowop::OCF_INSERT, "OCF_INSERT" },
+    { Rowop::OCF_DELETE, "OCF_DELETE" },
+    { -1, NULL }
+};
+
+const char *Rowop::ocfString(int flag, const char *def)
+{
+    return enum2string(opcodeFlags, flag, def);
+}
+
+int Rowop::stringOcf(const char *flag)
+{
+    return string2enum(opcodeFlags, flag);
+}
