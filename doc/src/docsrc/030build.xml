@@ -25,24 +25,33 @@ See the file COPYRIGHT for the copyright notice and license information
 		The official Triceps site is located at SourceForge.
 		</para>
 
-		<!-- Use directly <computeroutput> around <link> -->
 		<para>
-		<computeroutput><ulink url="http://triceps.sf.net"/></computeroutput> is the high-level page.
+		<ulink url="http://triceps.sf.net"/> is the high-level page.
 		</para>
 
 		<para>
-		<computeroutput><ulink url="http://sf.net/projects/triceps"/></computeroutput> is the SourceForge project page.
+		<ulink url="http://sf.net/projects/triceps"/> is the SourceForge project page.
 		</para>
 
 		<para>
-		The official releases of Triceps can be downloaded from SourceForge.
+		The official releases of Triceps can be downloaded from SourceForge and CPAN. The CPAN
+		location is:
 		</para>
 
 		<para>
-		The release policy of Triceps is aimed towards the easy development.
+		<ulink url="http://search.cpan.org/~babkin/triceps/"/>
+		</para>
+
+		<para>
+		The Developer's Guide can also be found in the Kindle format on Amazon web site,
+		for the Amazon's minimal price of $1.
+		</para>
+
+		<para>
+		The release policy of Triceps is aimed towards the ease of development.
 		As the new features are added (or sometimes removed), they are checked into
 		the SVN repository and documented in the blog form at
-		<computeroutput><ulink url="http://babkin-cep.blogspot.com/"/></computeroutput>. Periodically 
+		<ulink url="http://babkin-cep.blogspot.com/"/>. Periodically 
 		the documentation updates are collected from the blog into this manual,
 		and the official releases are produced.
 		</para>
