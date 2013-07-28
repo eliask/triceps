@@ -122,6 +122,11 @@ static Onceref<const SimpleType> findSimpleType(const char *name);
 </pre>
 
 		<para>
+		If the type name is incorrect and the type is not found,
+		findSimpleType() will return NULL.
+		</para>
+
+		<para>
 		There is not a whole lot of point in having many copies
 		of the simple type objects (though if you want, you can). So there is
 		one common copy of each simple type that can be found by name with
@@ -181,7 +186,8 @@ virtual Erref getErrors() const;
 
 		<para>
 		A type with errors may not be used for anything other than reading the
-		errors. Its behavior for anything else is undefined and may cause a crash.
+		errors (and of course it can be destroyed by deleting all the references
+		to it). Its behavior for anything else is undefined and may cause a crash.
 		</para>
 
 		<para>
