@@ -262,5 +262,5 @@ string print(const string &indent = "", const string &subindent = "  ") const;
 		The definitions of all the types are collected together in
 		<pre>type/AllTypes.h</pre>. 
 		</para>
-
 	</sect1>
+
