@@ -15,7 +15,7 @@ See the file COPYRIGHT for the copyright notice and license information
 <book id="GUIDE" xmlns:xi="http://www.w3.org/2001/XInclude">
 	<bookinfo>
 		<title>
-			Complex Event Processing with Triceps CEP v1.0
+			Complex Event Processing with Triceps CEP v2.0
 		</title>
 		<subtitle>
 			Developer's Guide
@@ -28,7 +28,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<copyright>
 			<year>2011</year>
-			<year>2012</year>
+			<year>2013</year>
 			<holder>Sergey A. Babkin</holder>
 		</copyright>
 

@@ -366,4 +366,9 @@ ref1.isNull()
 ref1.swap(ref2);
 </pre>
 
+		<para>
+		There is also a special variety of Autoref for referring to rows,
+		Rowref, described in
+		<xref linkend="sc_cpp_row" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
 	</sect1>

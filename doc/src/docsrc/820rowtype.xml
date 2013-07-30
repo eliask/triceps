@@ -13,7 +13,7 @@ See the file COPYRIGHT for the copyright notice and license information
 -->
 
 	<sect1 id="sc_cpp_rowtype">
-		<title>Row type</title>
+		<title>RowType reference</title>
 
 		<indexterm>
 			<primary>RowType</primary>
@@ -378,6 +378,6 @@ const Field *find(const string &fname) const;
 		<para>
 		The rest of the RowType methods have to do with the manipulation of the
 		rows. They are described in 
-		XXXREF.
+		<xref linkend="sc_cpp_row" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>

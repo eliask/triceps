@@ -134,6 +134,6 @@ App ideas:
 * look at the use with RabbitMQ
 
 * describe strprintf() and StringUtil
-122-123
-132-197
+123
+133-197
 199-267

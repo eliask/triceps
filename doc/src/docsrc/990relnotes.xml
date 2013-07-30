@@ -126,6 +126,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			Out-of-the-box compilation with a wider range of GCC compiler versions.
 			</listitem>
+
+			<listitem>
+			The default constructor of Fdata sets the value to NULL.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 
