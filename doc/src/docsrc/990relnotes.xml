@@ -134,6 +134,14 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			In &Cpp; addded the convenience get* methods on Rowref.
 			</listitem>
+
+			<listitem>
+			In &Cpp; addded the initializeOrThrow(), checkOrThrow() templates.
+			</listitem>
+
+			<listitem>
+			The tables no longer have an enqueuing mode associated with them.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 
