@@ -130,6 +130,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			The default constructor of Fdata sets the value to NULL.
 			</listitem>
+
+			<listitem>
+			In &Cpp; addded the convenience get* methods on Rowref.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 

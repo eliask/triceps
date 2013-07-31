@@ -386,6 +386,30 @@ bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const;
 		If the field is NULL, they will be set to NULL and 0.
 		</para>
 
+		<para>
+		The returned data pointer type is constant, to remind that the rows are
+		immutable and the data in them must not be changed.
+		However for the most types you can't refer by this pointer and get the
+		desired value directly, because the data might not be aligned right for
+		that data type. Because of this the returned pointer is a <pre>char*</pre> and not
+		<pre>void*</pre>. If you have an int64 field, you can't just do:
+		</para>
+
+<pre>
+int64_t *data;
+intptr_t len;
+if (getField(myrow, myfield, data, len)) {
+	int64_t val = *data; // WRONG!
+}
+</pre>
+
+		<para>
+		Fortunately, the type checks will catch this usage attempt right at the
+		call of getField(). But there also are the convenience functions that
+		return the values of particular types. They are implemented over
+		getField() and take care of the alignment issue.
+		</para>
+
 <pre>
 uint8_t getUint8(const Row *row, int nf, int pos = 0) const;
 int32_t getInt32(const Row *row, int nf, int pos = 0) const;
@@ -408,11 +432,20 @@ const char *getString(const Row *row, int nf) const;
 		If the field is NULL, these methods return the value of 0 for the numeric types,
 		and an empty string (<quote></quote>) for the string type, thus
 		simulating the Perl semantics of undefined values. If you care
-		about the field being NULL, check it separately.
+		about the field being NULL, check it separately:
 		</para>
 
+<pre>
+if (!rt1->isFieldNull(r1, nf)) {
+	int64_t val = rt1->getInt64(r1, nf);
+	...
+}
+</pre>
+
 		<para>
-		The field <i>pos</i> is the position in an array field. These methods don't
+		The field <i>pos</i> is the position in an array field. 
+		It's an array index, not a byte offset.
+		These methods don't
 		care very much about the differentiation of scalars and arrays, from
 		their standpoint a scalar is the same thing as an array of length 1.
 		So the default value <i>pos</i> = 0 works well for the scalars. For the arrays,
@@ -421,6 +454,29 @@ const char *getString(const Row *row, int nf) const;
 		thing as an array of length 0, and it's really just a specific case
 		of the general rule: for a NULL field any <i>pos</i> value is considered
 		to be beyond the end of the array.
+		</para>
+
+		<para>
+		For a side note, the arguments of these calls are Row*, not Rowref.
+		It's cheaper, and OK for memory management because it's expected that
+		the row would be held in a Rowref variable anyway while the data is
+		extracted from it. Don't construct an anonymous rowref object and
+		immediately try to extract a value from it!
+		</para>
+
+<pre>
+int64_t val = rt1->getInt64(Rowref(rt1, datavec), nf); // WRONG!
+</pre>
+
+		<para>
+		However if you have an Fdata vector, there is no point in constructing a
+		row to extract back the same data in the first place.
+		</para>
+
+		<para>
+		The Rowref has the same-named convenience methods to access the
+		row stored in it, using the type stored in it. They are described in
+		detail below.
 		</para>
 
 <pre>
@@ -497,7 +553,11 @@ bool equalRows(const Row *row1, const Row *row2) const;
 		<para>
 		Check two rows for an absolute equality. Returns true if the rows are
 		equal, otherwise false. This is the method used by the FIFO indexes
-		to find the equal rows.
+		to find the equal rows by value.
+		Right now it's defined to work only on the rows of the same type,
+		including the same representation (but since only one CompactRowType
+		representation is available, this is not a problem). When more
+		representations become available, it will likely be extended.
 		</para>
 
 <pre>
