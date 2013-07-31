@@ -25,7 +25,7 @@ TableType::TableType(Onceref<RowType> rt) :
 TableType::~TableType()
 { }
 
-TableType *TableType::copy()
+TableType *TableType::copy() const
 {
 	TableType *cpt = new TableType(rowType_);
 	// replace the root index type with a copy

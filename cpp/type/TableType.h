@@ -36,7 +36,7 @@ public:
 
 	// Copy this type, copying the contents but sharing the row types.
 	// The copy is also uninitialized. The errors will not be copied.
-	TableType *copy();
+	TableType *copy() const;
 
 	// Create a copy of the type, also copying all the contents including the row types.
 	// The copy is also uninitialized. The errors will not be copied.
