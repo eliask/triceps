@@ -13,7 +13,7 @@ namespace TRICEPS_NS {
 NameSet::NameSet()
 { }
 
-NameSet::NameSet(const NameSet *other) :
+NameSet::NameSet(const vector<string> *other) :
 	vector<string> (*other)
 { }
 
