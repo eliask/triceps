@@ -23,7 +23,7 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
 
 	// from IndexType
-	virtual const_Onceref<NameSet> getKey() const;
+	virtual const NameSet *getKey() const;
 	virtual IndexType *copy(bool flat = false) const;
 	virtual IndexType *deepCopy(HoldRowTypes *holder) const;
 	virtual void initialize();

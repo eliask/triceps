@@ -458,8 +458,8 @@ getKey(WrapIndexType *self)
 		clearErrMsg();
 		IndexType *ixt = self->get();
 
-		const_Autoref<NameSet> key = ixt->getKey();
-		if (!key.isNull()) {
+		const NameSet *key = ixt->getKey();
+		if (key != NULL) {
 			for (NameSet::const_iterator it = key->begin(); it != key->end(); ++it) {
 				const string &s = *it;
 				XPUSHs(sv_2mortal(newSVpvn(s.c_str(), s.size())));

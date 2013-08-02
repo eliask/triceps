@@ -320,7 +320,7 @@ public:
 		return new MultiInt32SortCondition(*this);
 	}
 
-	virtual const_Onceref<NameSet> getKey() const
+	virtual const NameSet *getKey() const
 	{
 		return key_;
 	}
@@ -407,8 +407,8 @@ UTESTCASE sortedIndexMultiInt32(Utest *utest)
 		fflush(stdout);
 	}
 
-	const_Autoref<NameSet> key = it->getKey();
-	UT_ASSERT(!key.isNull());
+	const NameSet *key = it->getKey();
+	UT_ASSERT(key != NULL);
 	UT_IS(key->size(), 2);
 	UT_IS(key->at(0), "b");
 	UT_IS(key->at(1), "c");
@@ -635,8 +635,8 @@ UTESTCASE sortedIndexSeq(Utest *utest)
 		fflush(stdout);
 	}
 
-	const_Autoref<NameSet> key = it->getKey();
-	UT_ASSERT(key.isNull());
+	const NameSet *key = it->getKey();
+	UT_ASSERT(key == NULL);
 
 	// make a table, some rows, and check the order
 	Autoref<Unit> unit = new Unit("u");

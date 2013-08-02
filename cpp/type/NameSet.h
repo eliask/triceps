@@ -10,13 +10,13 @@
 #define __Triceps_NameSet_h__
 
 #include <common/Common.h>
-#include <mem/Starget.h>
+#include <mem/Mtarget.h>
 
 namespace TRICEPS_NS {
 
 // The ordered set of names gets used to specify subsets of fields,
 // in particular, the index keys.
-class NameSet : public Starget, public vector<string>
+class NameSet : public Mtarget, public vector<string>
 {
 public:
 	NameSet();

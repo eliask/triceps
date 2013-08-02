@@ -120,7 +120,7 @@ HashedIndexType *HashedIndexType::setKey(NameSet *key)
 	return this;
 }
 
-const_Onceref<NameSet> HashedIndexType::getKey() const
+const NameSet *HashedIndexType::getKey() const
 {
 	return key_;
 }

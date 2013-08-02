@@ -132,8 +132,9 @@ UTESTCASE hashedIndex(Utest *utest)
 	UT_IS(tt->getFirstLeaf(), prim);
 
 	Autoref<NameSet> expectKey = (new NameSet())->add("a")->add("e");
-	const_Autoref<NameSet> getKey = prim->getKey();
-	UT_ASSERT(getKey->equals(expectKey));
+	const NameSet *key = prim->getKey();
+	UT_ASSERT(key != NULL);
+	UT_ASSERT(key->equals(expectKey));
 
 	UT_IS(tt->findSubIndexById(IndexType::IT_LAST), NULL);
 	UT_IS(tt->findSubIndex("nosuch"), NULL);
@@ -500,8 +501,8 @@ UTESTCASE fifoIndex(Utest *utest)
 	UT_ASSERT(prim != NULL);
 	UT_IS(tt->findSubIndexById(IndexType::IT_FIFO), prim);
 
-	const_Autoref<NameSet> getKey = prim->getKey();
-	UT_ASSERT(getKey.isNull());
+	const NameSet *key = prim->getKey();
+	UT_ASSERT(key == NULL);
 }
 
 UTESTCASE fifoIndexLimit(Utest *utest)

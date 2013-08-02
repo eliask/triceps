@@ -43,7 +43,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-class NameSet : public Starget, public vector<string> { ... }
+class NameSet : public Mtarget, public vector<string> { ... }
 </pre>
 
 		<para>

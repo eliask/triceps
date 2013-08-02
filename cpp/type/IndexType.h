@@ -181,7 +181,7 @@ public:
 	// Get the list of field names that this index uses as keys.
 	// May be NULL if the index has no keys at all or if the key is
 	// calculated as some expression on the fields.
-	virtual const_Onceref<NameSet> getKey() const = 0;
+	virtual const NameSet *getKey() const = 0;
 
 	// Define an aggregator on this index. Each aggregator instance
 	// will work on the instance of this index.

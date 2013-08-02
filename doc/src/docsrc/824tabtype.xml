@@ -186,7 +186,26 @@ IndexType *findSubIndex(const string &name) const;
 		Find the index by name. Returns NULL if not found.  This looks only for
 		the top-level indexes, to find the nested indexes, the similar calls
 		have to be continued on the further levels. At the moment there is no
-		ready method to resolve a whole index path in &Cpp;.
+		ready method to resolve a whole index path in &Cpp;, however the
+		same method in IndexType has a special feature that allows to
+		do it by simple chaining:
+		</para>
+
+<pre>
+Autoref<IndexType> it = tt->findSubIndex("level1")->findSubIndex("level2");
+if (it.isNull()) {
+	// not found
+}
+</pre>
+
+		<para>
+		That special feature is that findSubIndex() in IndexType works
+		even on a NULL reference, simply returning NULL. So if 
+		<pre>findSubIndex("level1")</pre> returns NULL,
+		<pre>findSubIndex("level2")</pre> will simply propagate that NULL.
+		The downside compared with the path-resolving method in Perl
+		is that this chain doesn't tell you, which of the indexes in the
+		path were not found.
 		</para>
 
 <pre>
