@@ -108,11 +108,15 @@ Autoref<TableType> tt = initializeOrThrow( TableType::make(rt1)
 ); 
 </pre>
 
+		<indexterm>
+			<primary>Exception</primary>
+		</indexterm>
 		<para>
 		Not all index types allow sub-indexes but this method
 		works silently for all of them. Any mistakes will be detected and
 		reported at the initialization time. The sub-indexes may be added
-		only until the index type is initialized.
+		only until the index type is initialized. Any modification attempts
+		after that will throw an Exception.
 		</para>
 
 <pre>
@@ -194,7 +198,8 @@ const AggregatorType *getAggregator() const;
 
 		<para>
 		Set or get an aggregator type for this index type. As usual, any
-		setting can be done only until the index type is initialized.
+		setting can be done only until the index type is initialized. 
+		Any modification attempts after that will throw an Exception.
 		</para>
 
 <pre>

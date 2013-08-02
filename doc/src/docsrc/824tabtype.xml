@@ -156,6 +156,14 @@ if (tt->getErrors()->hasError())
 		simply have no effect.
 		</para>
 
+		<indexterm>
+			<primary>Exception</primary>
+		</indexterm>
+		<para>
+		The sub-indexes may be added only while the table type is not
+		initialized, afterwards it will throw an Exception.
+		</para>
+
 		<para>
 		The methods to examine the contents of the table type are:
 		</para>
@@ -291,8 +299,8 @@ Onceref<Table> makeTable(Unit *unit, const string &name) const;
 
 		<para>
 		This creates a table with the given name in a given unit. 
-		Obviously, if the initialization of a TableType has returned errors,
-		that type can not be used to create tables, or everything will crash.
+		If the table type is not initialized or the initialization
+		returned an error, will return NULL.
 		</para>
 
 		<para>
