@@ -84,8 +84,8 @@ Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
 
 <pre>
 Autoref<TableType> tt = initializeOrThrow(TableType::make(rt1)
-	->addSubIndex("primary", (new HashedIndexType(
-		(new NameSet())->add("a")->add("e")))
+	->addSubIndex("primary", HashedIndexType::make(
+		NameSet::make()->add("a")->add("e"))
 		->setAggregator(new MyAggregatorType("onPrimary", NULL))
 		->addSubIndex("level2", new FifoIndexType)
 	)
