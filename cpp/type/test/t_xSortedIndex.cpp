@@ -562,14 +562,14 @@ public:
 	
 	// Helper method to read the sequence from the row handle,
 	// can also be used by the end-user. The row handle must as usual
-	// belong to this table.
+	// belong to a table of this type.
 	int64_t getSeq(const RowHandle *rh) const
 	{
 	    return rh->get<SeqRhSection>(rhOffset_)->seq_;
 	}
 
 	// Helper method to set the sequence in the row handle.
-	// May be used only on the rows that are not in table.
+	// May be used only on the rows that are not in a table.
 	void setSeq(const RowHandle *rh, int64_t val) const
 	{
 		if (rh->isInTable()) {

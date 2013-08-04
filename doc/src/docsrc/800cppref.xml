@@ -143,5 +143,7 @@ See the file COPYRIGHT for the copyright notice and license information
 	<xi:include href="file:///DOCS/826nameset.xml"/>
 	<xi:include href="file:///DOCS/828idxtype.xml"/>
 	<xi:include href="file:///DOCS/830fifoidx.xml"/>
+	<xi:include href="file:///DOCS/832hashidx.xml"/>
+	<xi:include href="file:///DOCS/834sortidx.xml"/>
 
 </chapter>
