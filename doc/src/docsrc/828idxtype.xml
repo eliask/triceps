@@ -253,7 +253,7 @@ IndexType *deepCopy(HoldRowTypes *holder) const;
 		<xref linkend="sc_cpp_tabtype" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		and
 		XXXREF kinds of copying
-		for the detained explanation. When you deep-copy a table type,
+		for the detailed explanation. When you deep-copy a table type,
 		the <i>holder</i> argument propagates recurively to all the
 		index types in it.
 		</para>

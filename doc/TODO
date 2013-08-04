@@ -133,9 +133,8 @@ App ideas:
 * the challenges from http://www.orgs.ttu.edu/debs2013/
 * look at the use with RabbitMQ
 
-* describe strprintf() and StringUtil
 123
-139-197
+140-197
 199-230
 231
 232-267
