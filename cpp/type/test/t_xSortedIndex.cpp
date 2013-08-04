@@ -255,16 +255,16 @@ public:
 			const string &s = (*key_)[i];
 			int n = rt_->findIdx(s);
 			if (n < 0) {
-				errors->appendMsg(true, strprintf("No such field '%s'.", s.c_str()));
+				errors.f("No such field '%s'.", s.c_str());
 				continue;
 			}
 			const RowType::Field &fld = rt_->fields()[n];
 			if (fld.type_->getTypeId() != Type::TT_INT32) {
-				errors->appendMsg(true, strprintf("The field '%s' must be an int32.", s.c_str()));
+				errors.f("The field '%s' must be an int32.", s.c_str());
 				continue;
 			}
 			if (fld.arsz_ != RowType::Field::AR_SCALAR) {
-				errors->appendMsg(true, strprintf("The field '%s' must not be an array.", s.c_str()));
+				errors.f("The field '%s' must not be an array.", s.c_str());
 				continue;
 			}
 			idxs_.push_back(n);
