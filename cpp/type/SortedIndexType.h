@@ -106,7 +106,7 @@ public:
 	// conditions would not have any row types nor any Perl snippets.
 	//
 	// If redefined, the typical implementation is like this:
-	// IndexType *MySortCondition::copy(HoldRowTypes *holder) const
+	// IndexType *MySortCondition::deepCopy(HoldRowTypes *holder) const
 	// {
 	//     return new MySortCondition(*this, holder);
 	// }

@@ -59,6 +59,11 @@ public:
 		idx_(other->idx_)
 	{ }
 
+	virtual SortedIndexCondition *copy() const
+	{
+		return new Int32SortCondition(*this);
+	}
+
 	virtual TreeIndexType::Less *tableCopy(Table *t) const
 	{
 		return new Int32SortCondition(this, t);
@@ -68,16 +73,16 @@ public:
 	{
 		SortedIndexCondition::initialize(errors, tabtype, indtype);
 		if (idx_ < 0)
-			errors->appendMsg(true, "The index must not be negative.");
+			errors.f("The index must not be negative.");
 		if (rt_->fieldCount() <= idx_)
-			errors->appendMsg(true, strprintf("The row type must contain at least %d fields.", idx_+1));
+			errors.f("The row type must contain at least %d fields.", idx_+1);
 
 		if (!errors->hasError()) { // can be checked only if index is within range
 			const RowType::Field &fld = rt_->fields()[idx_];
 			if (fld.type_->getTypeId() != Type::TT_INT32)
-				errors->appendMsg(true, strprintf("The field at index %d must be an int32.", idx_));
+				errors.f("The field at index %d must be an int32.", idx_);
 			if (fld.arsz_ != RowType::Field::AR_SCALAR)
-				errors->appendMsg(true, strprintf("The field at index %d must not be an array.", idx_));
+				errors.f("The field at index %d must not be an array.", idx_);
 		}
 	}
 
@@ -87,17 +92,15 @@ public:
 		Int32SortCondition *other = (Int32SortCondition *)sc;
 		return idx_ == other->idx_;
 	}
+
 	virtual bool match(const SortedIndexCondition *sc) const
 	{
 		return equals(sc);
 	}
+
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
 	{
 		res.append(strprintf("Int32Sort(%d)", idx_));
-	}
-	virtual SortedIndexCondition *copy() const
-	{
-		return new Int32SortCondition(*this);
 	}
 
 	virtual bool operator() (const RowHandle *rh1, const RowHandle *rh2) const
@@ -233,6 +236,11 @@ public:
 		key_(other->key_)
 	{ }
 
+	virtual SortedIndexCondition *copy() const
+	{
+		return new MultiInt32SortCondition(*this);
+	}
+
 	virtual TreeIndexType::Less *tableCopy(Table *t) const
 	{
 		return new MultiInt32SortCondition(this, t);
@@ -313,11 +321,6 @@ public:
 			res.append(", "); // extra comma after last field doesn't hurt
 		}
 		res.append(")");
-	}
-
-	virtual SortedIndexCondition *copy() const
-	{
-		return new MultiInt32SortCondition(*this);
 	}
 
 	virtual const NameSet *getKey() const
@@ -496,6 +499,11 @@ public:
 		seq_(other->seq_)
 	{ }
 
+	virtual SortedIndexCondition *copy() const
+	{
+		return new SeqSortCondition(*this);
+	}
+
 	virtual TreeIndexType::Less *tableCopy(Table *t) const
 	{
 		return new SeqSortCondition(this, t);
@@ -520,11 +528,6 @@ public:
 	virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const
 	{
 		res.append("Sequenced");
-	}
-
-	virtual SortedIndexCondition *copy() const
-	{
-		return new SeqSortCondition(*this);
 	}
 
 	virtual size_t sizeOfRhSection() const
