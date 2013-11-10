@@ -224,7 +224,7 @@ $df = $end - $start;
 printf("Repeated table insert (single hashed idx, direct & Perl construct) %f s, %.02f per second.\n", $df, $pcount/$df);
 
 $df -= $hasheddf;
-printf("  Rowop creation overhead in Perl %f s, %.02f per second.\n", $df, $pcount/$df);
+printf("  RowHandle creation overhead in Perl %f s, %.02f per second.\n", $df, $pcount/$df);
 
 #########################
 
