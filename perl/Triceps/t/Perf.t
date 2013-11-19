@@ -73,6 +73,17 @@ my $tSingleHashed = $u1->makeTable($ttSingleHashed, "tSingleHashed");
 my $rhSingleHashed = $tSingleHashed->makeRowHandle($row1);
 my $ropSingleHashed = $tSingleHashed->getInputLabel()->makeRowop("OP_INSERT", $row1);
 
+my $ljSingleHashed = Triceps::LookupJoin->new(
+	unit => $u1,
+	name => "ljSingleHashed",
+	leftRowType => $rt1,
+	rightTable => $tSingleHashed,
+	rightIdxPath => ["primary"],
+	rightFields => [ "e/ee" ],
+	by => [ "b" => "b" ],
+	isLeft => 1,
+);
+
 my $ttDoubleHashed = Triceps::TableType->new($rt1)
 	->addSubIndex("primary",
 		Triceps::IndexType->newHashed(key => ["b"])
@@ -340,7 +351,51 @@ $df -= $mkarraydf;
 }
 $df = $end - $start;
 
-printf("Table lookup (single hashed idx, direct) %f s, %.02f per second.\n", $df, $pcount/$df);
+printf("Table lookup (single hashed idx) %f s, %.02f per second.\n", $df, $pcount/$df);
+
+#########################
+
+{
+	my $rh = $tSingleSorted->makeRowHandle(
+			$rt1->makeRowArray(
+				"uint8",
+				$pcount/2,
+				3e15+0,
+				3.14,
+				"string",
+			)
+		);
+	$start = &Triceps::now();
+	for ($i = 0; $i < $pcount; $i++) { 
+		$tSingleSorted->find($rh);
+	}
+	$end = &Triceps::now();
+}
+$df = $end - $start;
+
+printf("Table lookup (single sorted idx) %f s, %.02f per second.\n", $df, $pcount/$df);
+
+#########################
+
+{
+	my $rop = $ljSingleHashed->getInputLabel()->makeRowop("OP_INSERT",
+			$rt1->makeRowArray(
+				"uint8",
+				$pcount/2,
+				3e15+0,
+				3.14,
+				"string",
+			)
+		);
+	$start = &Triceps::now();
+	for ($i = 0; $i < $pcount; $i++) { 
+		$u1->call($rop);
+	}
+	$end = &Triceps::now();
+}
+$df = $end - $start;
+
+printf("Lookup join (single hashed idx) %f s, %.02f per second.\n", $df, $pcount/$df);
 
 #########################
 
