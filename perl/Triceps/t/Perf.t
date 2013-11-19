@@ -121,6 +121,42 @@ printf("Empty Perl loop %f s, %.02f per second.\n", $df, $pcount/$df);
 
 #########################
 
+sub emptyFunc { }
+
+$start = &Triceps::now();
+for ($i = 0; $i < $pcount; $i++) { 
+	&emptyFunc(
+		"uint8",
+		1,
+		3e15+0,
+		3.14,
+		"string",
+	);
+}
+$end = &Triceps::now();
+$df = $end - $start;
+$loopdf = $df; # the loop overhead
+
+printf("Empty Perl function of 5 args %f s, %.02f per second.\n", $df, $pcount/$df);
+
+$start = &Triceps::now();
+for ($i = 0; $i < $pcount; $i++) { 
+	&emptyFunc(
+		a => "uint8",
+		b => 1,
+		c => 3e15+0,
+		d => 3.14,
+		e => "string",
+	);
+}
+$end = &Triceps::now();
+$df = $end - $start;
+$loopdf = $df; # the loop overhead
+
+printf("Empty Perl function of 10 args %f s, %.02f per second.\n", $df, $pcount/$df);
+
+#########################
+
 $start = &Triceps::now();
 for ($i = 0; $i < $pcount; $i++) { 
 	$rt1->makeRowArray(
