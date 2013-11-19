@@ -20,6 +20,7 @@ use ExtUtils::testlib;
 use Test;
 BEGIN { plan tests => 2 };
 use Triceps;
+use strict;
 ok(1); # If we made it this far, we're ok.
 
 #########################
@@ -28,6 +29,7 @@ ok(1); # If we made it this far, we're ok.
 # its man page ( perldoc Test::More ) for help writing this test script.
 
 #########################
+
 
 our $pcount = $ENV{TRICEPS_PERF_COUNT}? $ENV{TRICEPS_PERF_COUNT}+0 : 1000; # the default for the fast run
 our($start, $end, $df, $loopdf, $i);
@@ -320,6 +322,28 @@ $df -= $mkarraydf;
 
 #########################
 
+{
+	my $rh = $tSingleHashed->makeRowHandle(
+			$rt1->makeRowArray(
+				"uint8",
+				$pcount/2,
+				3e15+0,
+				3.14,
+				"string",
+			)
+		);
+	$start = &Triceps::now();
+	for ($i = 0; $i < $pcount; $i++) { 
+		$tSingleHashed->find($rh);
+	}
+	$end = &Triceps::now();
+}
+$df = $end - $start;
+
+printf("Table lookup (single hashed idx, direct) %f s, %.02f per second.\n", $df, $pcount/$df);
+
+#########################
+
 # this is a bigger one, with multithreading
 {
 	Triceps::Triead::startHere(
@@ -377,7 +401,77 @@ $df -= $mkarraydf;
 }
 $df = $end - $start;
 
-printf("Nexus pass %f s, %.02f per second.\n", $df, $pcount/$df);
+printf("Nexus pass (1 row/flush) %f s, %.02f per second.\n", $df, $pcount/$df);
+
+#########################
+
+# same as last one, only 10 rows at a time
+{
+	Triceps::Triead::startHere(
+		app => "perfTriead",
+		thread => "writer",
+		main => sub {
+			my $opts = {};
+			&Triceps::Opt::parse("writer main", $opts, {@Triceps::Triead::opts}, @_);
+			my $to = $opts->{owner};
+
+			my $lb = $to->unit()->makeDummyLabel($rt1, "lb");
+			my $fa = $to->makeNexus(
+				name => "nx",
+				labels => [
+					lb => $lb,
+				],
+				# queueLimit => 1,
+				import => "writer",
+			);
+
+			Triceps::Triead::start(
+				app => "perfTriead",
+				thread => "reader",
+				main => sub {
+					my $opts = {};
+					&Triceps::Opt::parse("reader main", $opts, {@Triceps::Triead::opts}, @_);
+					my $to = $opts->{owner};
+
+					my $fa = $to->importNexus(
+						from => "writer/nx",
+						import => "reader",
+					);
+					$to->readyReady();
+					$to->mainLoop();
+				}
+			);
+
+			my $unit = $to->unit();
+			my $rop = $lb->makeRowop("OP_INSERT", $row1);
+
+			$to->readyReady();
+
+			$start = &Triceps::now();
+			for ($i = 0; $i < $pcount; $i++) { 
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$unit->call($rop);
+				$to->flushWriters();
+			}
+			{
+				my $ad = Triceps::AutoDrain::makeShared($to);
+				$end = &Triceps::now();
+				$to->app()->shutdown();
+			}
+		}
+	);
+}
+$df = $end - $start;
+
+printf("Nexus pass (10 rows/flush) %f s, %.02f per second.\n", $df, $pcount*10/$df);
 
 #########################
 
