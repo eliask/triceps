@@ -120,6 +120,7 @@ Things that need to be done:
 * makeTable() in C++ and Perl is inconsistent: on TableType in C++, on Unit in Perl
 * with the abolishment of the enqueueing mode in Table, Gadget became kind of useless
 * add the index lookup in the TableType and IndexType that returns undef if not found
+* in C++ add next() and such on Rhref
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()

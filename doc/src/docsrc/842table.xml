@@ -268,6 +268,37 @@ RowHandle *nextGroupIdx(IndexType *ixt, const RowHandle *cur) const;
 		</para>
 
 		<para>
+		The iteration loops may look as:
+		</para>
+
+<pre>
+for (RowHandle *iter = t->begin(); iter != NULL; iter = t->next(iter)) {
+	...
+}
+
+for (Rhref iter(t, t->beginIdx(level3)); !iter->isNull();
+		iter = t->nextIdx(level3, iter)) {
+	...
+}
+</pre>
+
+		<para>
+		Note that if the table does not change during the iteration (or at the
+		very least if the row handle at the iterator is not being affected by
+		the changes), the iterator doesn't have to be kept in an Rhref.
+		A pointer to RowHandle is perfectly adequate and more efficient since
+		it doesn't modify the reference counts. However you must be perfectly
+		sure that the table will not be changed by any of the code in any
+		labels called from the iteration loop.
+		</para>
+
+		<para>
+		Unlike Perl, there are no methods on RowHandle that produce the next
+		RowHandle in the table, all the <pre>next*()</pre> methods are defined on the Table.
+		It's possible to define them on Rhref, and will probably be done in the future.
+		</para>
+
+		<para>
 		Next go the size operations:
 		</para>
 
