@@ -146,5 +146,6 @@ See the file COPYRIGHT for the copyright notice and license information
 	<xi:include href="file:///DOCS/832hashidx.xml"/>
 	<xi:include href="file:///DOCS/834sortidx.xml"/>
 	<xi:include href="file:///DOCS/840gadget.xml"/>
+	<xi:include href="file:///DOCS/842table.xml"/>
 
 </chapter>
