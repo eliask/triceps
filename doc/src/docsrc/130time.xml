@@ -235,7 +235,7 @@ or confess "$!";
 
 $ttPackets->initialize() or confess "$!";
 our $tPackets = $uTraffic->makeTable($ttPackets, 
-	&Triceps::EM_CALL, "tPackets") or confess "$!";
+	"tPackets") or confess "$!";
 
 # the aggregated hourly stats, kept longer
 our $ttHourly = Triceps::TableType->new($rtHourly)
@@ -247,7 +247,7 @@ or confess "$!";
 
 $ttHourly->initialize() or confess "$!";
 our $tHourly = $uTraffic->makeTable($ttHourly, 
-	&Triceps::EM_CALL, "tHourly") or confess "$!";
+	"tHourly") or confess "$!";
 
 # connect the tables
 $tPackets->getAggregatorLabel("aggrHourly")->chain($tHourly->getInputLabel()) 
@@ -648,7 +648,7 @@ or confess "$!";
 
 $ttHourly->initialize() or confess "$!";
 our $tHourly = $uTraffic->makeTable($ttHourly, 
-	&Triceps::EM_CALL, "tHourly") or confess "$!";
+	"tHourly") or confess "$!";
 
 # remember the daily secondary index type
 our $idxHourlyByDay = $ttHourly->findSubIndex("byDay")
@@ -673,7 +673,7 @@ or confess "$!";
 
 $ttDaily->initialize() or confess "$!";
 our $tDaily = $uTraffic->makeTable($ttDaily, 
-	&Triceps::EM_CALL, "tDaily") or confess "$!";
+	"tDaily") or confess "$!";
 
 # label to print the changes to the daily stats
 makePrintLabel("lbPrintDaily", $tDaily->getOutputLabel());

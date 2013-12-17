@@ -144,7 +144,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+my $table = $unit->makeTable($tabType, $name)
 	or confess "$!";
 </pre>
 
@@ -196,7 +196,7 @@ use Carp;
 		</para>
 
 <pre>
-my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+my $table = $unit->makeTable($tabType, $name)
 	or confess "Query2: bad table type, table creation failed: $!";
 </pre>
 

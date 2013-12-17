@@ -476,7 +476,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 $ttWindow->initialize() or confess "$!";
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow")
 	or confess "$!";
 my $query = Query1->new($tWindow, "qWindow");
 my $srvout = &ServerHelpers::makeServerOutLabel($query->getOutputLabel());
@@ -607,7 +607,7 @@ sub new # ($class, $unit, $tabType, $name)
 	my $tabType = shift;
 	my $name = shift;
 
-	my $table = $unit->makeTable($tabType, "EM_CALL", $name)
+	my $table = $unit->makeTable($tabType, $name)
 		or confess "Query2 table creation failed: $!";
 	my $rt = $table->getRowType();
 
@@ -1694,7 +1694,7 @@ sub getName # ($self)
 package main;
 
 my $uTrades = Triceps::Unit->new("uTrades");
-my $tWindow = $uTrades->makeTable($ttWindow, "EM_CALL", "tWindow")
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow")
 	or confess "$!";
 my $query = Query7->new(table => $tWindow, name => "qWindow",
 	resultFields => [ '!id', 'size/lot_$&', '.*' ],

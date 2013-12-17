@@ -307,7 +307,7 @@ $ttAccounts->initialize() or confess "$!";
 our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	"EM_CALL", "tAccounts") or confess "$!";
+	"tAccounts") or confess "$!";
 
 my $lbFilterResult = $uJoin->makeDummyLabel($rtInTrans, "lbFilterResult");
 my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
@@ -696,7 +696,7 @@ or confess "$!";
 $ttAccounts2->initialize() or confess "$!";
 
 our $tAccounts = $uJoin->makeTable($ttAccounts2, 
-	"EM_CALL", "tAccounts") or confess "$!";
+	"tAccounts") or confess "$!";
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -1530,9 +1530,9 @@ $ttPosition->initialize() or confess "$!";
 our $uJoin = Triceps::Unit->new("uJoin");
 
 our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	"EM_CALL", "tToUsd") or confess "$!";
+	"tToUsd") or confess "$!";
 our $tPosition = $uJoin->makeTable($ttPosition, 
-	"EM_CALL", "tPosition") or confess "$!";
+	"tPosition") or confess "$!";
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -1568,7 +1568,7 @@ while(&readLine) {
 		</para>
 
 		<para>
-		Both the joined tables must provide a Hashed index for the efficient
+		Both of the joined tables must provide a Hashed index for the efficient
 		joining.  The index may be leaf (selecting one row per key) or non-leaf
 		(containing multiple rows per key) but it must be there. This makes
 		sure that the joins are always efficient and you don't have to hunt for
@@ -2676,7 +2676,7 @@ $ttRate->initialize() or confess "$!";
 our $uArb = Triceps::Unit->new("uArb");
 
 our $tRate = $uArb->makeTable($ttRate, 
-	&Triceps::EM_CALL, "tRate") or confess "$!";
+	"tRate") or confess "$!";
 
 our $join1 = Triceps::JoinTwo->new(
 	name => "join1",
@@ -2698,7 +2698,7 @@ our $ttJoin1 = Triceps::TableType->new($join1->getResultRowType())
 or confess "$!";
 $ttJoin1->initialize() or confess "$!";
 our $tJoin1 = $uArb->makeTable($ttJoin1,
-	&Triceps::EM_CALL, "tJoin1") or confess "$!";
+	"tJoin1") or confess "$!";
 $join1->getOutputLabel()->chain($tJoin1->getInputLabel()) or confess "$!";
 
 our $join2 = Triceps::JoinTwo->new(

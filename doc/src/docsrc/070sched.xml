@@ -1113,7 +1113,7 @@ $label = $unit->makeLabel($rowType, "name",
 
 $label = $unit->makeClearingLabel("name", @args);
 
-$table = $unit->makeTable($tableType, $enqMode, "name") 
+$table = $unit->makeTable($tableType, "name") 
 	or confess "$!";
 
 $tray = $unit->makeTray(@rowops) or confess "$!"; 

@@ -24,22 +24,13 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$t = $unit->makeTable($tabType, $enqMode, "tableName") or confess "$!";
+$t = $unit->makeTable($tabType, "tableName") or confess "$!";
 </pre>
 
 		<para>
 		Creates a table of a given table type.
 		The table type must be initialized before it can be used to create
 		tables. The tables are strictly single-threaded.
-		</para>
-
-		<para>
-		The enqueueing mode defines, how the rows will be enqueued to the output
-		label. It can be specified as a string or Triceps constant.
-		However in the modern reality you should use <pre>"EM_CALL"</pre> or
-		<pre>&Triceps::EM_CALL</pre>. This argument is likely to be removed altogether
-		in the future and become fixed to <pre>"EM_CALL"</pre>. For the Pre label,
-		it is already fixed to <pre>"EM_CALL"</pre>.
 		</para>
 
 		<para>

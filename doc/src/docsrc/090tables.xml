@@ -47,7 +47,7 @@ my $ttCount = Triceps::TableType->new($rtCount)
 or confess "$!";
 $ttCount->initialize() or confess "$!";
 
-my $tCount = $hwunit->makeTable($ttCount, &Triceps::EM_CALL, "tCount") 
+my $tCount = $hwunit->makeTable($ttCount, "tCount") 
 	or confess "$!";
 
 while(&readLine) {
@@ -170,9 +170,7 @@ Received 'table' 2 times
 		</para>
 
 		<para>
-		The table is then created from the table type, enqueueing mode 
-		(another hold-over, just always use <pre>EM_CALL</pre>, this
-		argument will be removed in the future), and given a name.
+		The table is then created from the table type, and given a name.
 		</para>
 
 		<indexterm>
@@ -351,7 +349,7 @@ my $ttCount = Triceps::TableType->new($rtCount)
 or confess "$!";
 $ttCount->initialize() or confess "$!";
 
-my $tCount = $hwunit->makeTable($ttCount, "EM_CALL", "tCount") or confess "$!";
+my $tCount = $hwunit->makeTable($ttCount, "tCount") or confess "$!";
 
 my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
 	"lbPrintCount", undef, sub { # (label, rowop)
@@ -395,8 +393,7 @@ while(&readLine) {
 </pre>
 
 		<para>
-		The table creation is the same as last time. The only difference is that
-		it uses <pre>"EM_CALL"</pre> instead of <pre>&Triceps::EM_CALL</pre>, both being equivalent.
+		The table creation is the same as last time. 
 		The row finding in the table is also the same.
 		</para>
 
@@ -884,7 +881,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
 our $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 # remember the index type by symbol, for searching on it
 our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
@@ -1411,7 +1408,7 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 	or confess "$!";
 $ttWindow->initialize() or confess "$!";
 our $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 # remember the index type by symbol, for searching on it
 our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";

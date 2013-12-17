@@ -106,7 +106,7 @@ Triceps::SimpleAggregator::make(
 
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
@@ -401,7 +401,7 @@ our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
 	or confess "$!";
 $ttAvgPrice->initialize() or confess "$!";
 our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, 
-	&Triceps::EM_CALL, "tAvgPrice") or confess "$!";
+	"tAvgPrice") or confess "$!";
 our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
 
 # place to send the average: could be a dummy label, but to keep the
@@ -623,7 +623,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -729,13 +729,11 @@ $aggLabel = $table->getAggregatorLabel("aggName") or confess "$!";
 </pre>
 
 		<para>
-		The aggregator types are theoretically multithreaded, but for all I can
-		tell, they will not integrate with the Perl multithreading well, due to
-		the way the Perl objects (the execution methods!) are tied to each
-		thread's separate interpreter. In the future expect that the table
-		types with aggregators could not be shared between the threads.
-		But then again, maybe they could be copied between the threads and that
-		would work just as well.
+		The aggregator types are theoretically multithreaded but the way the
+		Perl threads work, the Perl code has to be recompiled from the source
+		code in each thread. So for a table type with aggregators to be
+		exportable to the other threads, the aggregators must have their logic
+		specified as the Perl source code, not a compiled Perl function.
 		</para>
 
 		<para>
@@ -2189,7 +2187,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
@@ -2320,7 +2318,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 $idxByPrice = $ttWindow->findIndexPath("bySymbol", "byPrice");
 </pre>
@@ -2461,7 +2459,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 or confess "$!";
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 $idxByOrder = $ttWindow->findIndexPath("bySymbol", "last4");
 </pre>
@@ -2529,7 +2527,7 @@ Triceps::SimpleAggregator::make(
 
 $ttWindow->initialize() or confess "$!";
 my $tWindow = $uTrades->makeTable($ttWindow, 
-	&Triceps::EM_CALL, "tWindow") or confess "$!";
+	"tWindow") or confess "$!";
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
