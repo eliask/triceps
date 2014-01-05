@@ -54,6 +54,12 @@ public:
 		return static_cast<const C*>(type_.get());
 	}
 
+	// Get back the index type
+	const IndexType *getIndexType() const
+	{
+		return indexType_;
+	}
+
 	// export the sendDelayed() interface
 	void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const
 	{
