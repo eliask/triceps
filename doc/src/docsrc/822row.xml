@@ -638,7 +638,7 @@ Rowref(const Rowref &ar);
 </pre>
 
 		<para>
-		The RowType is referred from the Rowref through an Autoref. So after
+		The RowType will be referred from the new Rowref through an Autoref. So after
 		you've created the Rowref, feel free to discard any other references to the
 		RowType, the Rowref will keep it alive.
 		</para>
