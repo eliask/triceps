@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+	<sect1 id="sc_cpp_aggtype">
+		<title>AggregatorType and AggregatorGadget reference</title>
+
+		<indexterm>
+			<primary>AggregatorType</primary>
+		</indexterm>
+		<para>
+		The AggregatorType is a base class from which you derive the concrete
+		aggregator types, similarly to ho it's done for the index types.
+		It has a chunk of functionality common for all the aggregator types and
+		a the virtual functions that create the aggregator objects.
+		</para>
+
+<pre>
+AggregatorType(const string &name, const RowType *rt);
+</pre>
+
+		<para>
+		The constructor provides a name and the result row type. Remember, that
+		AggregatorType is an abstract class,  and will never be instantiated
+		directly. Instead your subclass that performs a concrete aggregation
+		will invoke this constructor as a part of its constructor.
+		</para>
+
+		<para>
+		As has been described in the Perl part of the manual, the aggregator
+		type is unique in the fact that it has a name.  And it's a bit weird
+		name: each aggregator type is kind of by itself and can be reused in
+		multiple table types, but all the aggregator types in a table type must
+		have different names. This is the name that is used to generate the
+		name of the aggregator's output label in a table:
+		<quote><i>table_name.aggregator_type_name</i></quote>. Fundamentally, the aggregator
+		type itself should not have a name, it should be given a name when
+		connected to an index in the table type. But at the time the current
+		idea looked good enough, it's easy, convenient for error messages, and
+		doesn't get much in the way.
+		</para>
+
+		<para>
+		The result row type might not be known at the time of the aggregator
+		type creation. All the constructor does with it is place the value into
+		a reference field, so if the right type is not known, just use NULL,
+		then change later at the initialization time.
+		If it's still NULL after initialization, this will be reported as an 
+		initialization error.
+		</para>
+
+<pre>
+AggregatorType(const AggregatorType &agg);
+virtual AggregatorType *copy() const;
+AggregatorType(const AggregatorType &agg, HoldRowTypes *holder);
+virtual AggregatorType *deepCopy(HoldRowTypes *holder) const;
+</pre>
+
+		<para>
+		An aggregator type must provide the copy constructors 
+		and the virtual methods that invoke them. 
+		Both kinds of copies are deep but <pre>deepCopy()</pre> is even deeper,
+		copying even the row types.
+		XXXREF HoldRowTypes
+		XXXREF discussion of copy varieties
+		</para>
+
+		<para>
+		The basic copy is the same as
+		with the index types: when an agggregator type gets connected into a
+		table type, it gets actually copied, and the copy must always be
+		uninitialized.
+		</para>
+
+		<para>
+		The virtual methods are typically defined in the subclasses as follows:
+		</para>
+
+<pre>
+AgregatorType *MyAggregatorType::copy() const
+{
+	return new MyAggregatorType(*this);
+}
+
+AgregatorType *MyAggregatorType::deepCopy(HoldRowTypes *holder) const
+{
+	return new MyAggregatorType(*this, holder);
+}
+</pre>
+
+		<para>
+		Some of the fields in the AggregatorType are directly usable
+		by the subclasses:
+		</para>
+
+<pre>
+const_Autoref<RowType> rowType_; // row type of result
+Erref errors_; // errors from initialization
+string name_; // name inside the table's dotted namespace
+int pos_; // a table has a flat vector of AggregatorGadgets in it, this is the index for this one (-1 if not set)
+bool initialized_; // flag: already initialized, no future changes
+</pre>
+
+		<variablelist>
+			<varlistentry>
+				<term>rowType_</term>
+				<listitem>
+				<para>
+				is the row type of the result. The constructor puts
+				the argument value there but it can be changed at any time
+				(until the initialization is completed) later.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>errors_</term>
+				<listitem>
+				<para>
+				is a place to put the errors during initialization. It
+				comes set to NULL, so if you want to report any errors, you
+				have to create an Errors object first, there are the
+				helper functions for that.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>name_</term>
+				<listitem>
+				<para>
+				is where the aggregator name is kept. Generally, don't change it,
+				treat it as read-only.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>pos_</term>
+				<listitem>
+				<para>
+				has to do with management of the aggregator types in a
+				table type. Before initialization it's -1, after initialization
+				each aggregator type (that becomes tied to its table type) will
+				be assigned a sequential number. Again, treat it as read-only,
+				and you probably would never need to even read it.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>initialized_</term>
+				<listitem>
+				<para>
+				shows that the initialization has already
+				happened. Your initialization should call the initialization
+				of the base class, which would set this flag. No matter if the
+				initialization succeesed or failed, this flag gets set. It
+				never gets reset in the original AggregatorType object, it gets
+				reset only in the copies.
+				</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+<pre>
+const string &getName() const;
+const RowType *getRowType() const;
+bool isInitialized() const;
+virtual Erref getErrors() const;
+</pre>
+
+		<para>
+		The convenience getter functions that return the data from the fields.
+		You can override <pre>getErrors()</pre> but there probably is no point to it.
+		</para>
+
+<pre>
+virtual bool equals(const Type *t) const;
+virtual bool match(const Type *t) const;
+</pre>
+
+		<para>
+		The equality and match comparisons are as usual. The defaults provided
+		in the base AggregatorType check that the result row type is equal or
+		matching (or that both result row types are NULL), and
+		that the &Cpp; typeid of both are the same. So if your aggregator type has no
+		parameters, this is good enough and you don't need to redefine these
+		methods. If you do have parameters, you call the base class method
+		first, if it returns false, you return false, otherwise you check the
+		parameters. Like this:
+		</para>
+
+<pre>
+bool MyAggregatorType::equals(const Type *t) const
+{
+     if (!AggregatorType::equals(t))
+        return false;
+
+    // the typeid matched, so safe to cast
+    const MyAggregatorType *at = static_cast<const MyAggregatorType *>(t);
+    // ... check the type-specific parameters ...
+}
+</pre>
+
+		<para>
+		The other method that you can re-define or leave alone is printTo():
+		</para>
+
+<pre>
+virtual void printTo(string &res, const string &indent = "", const string &subindent = "  ") const;
+</pre>
+
+		<para>
+		The default one prints <quote>aggregator (<i>result row type</i>) <i>name</i></quote>. If you
+		want to print more information, such as the name of the aggregator
+		class and its arguments, you can define your own.
+		</para>
+
+<pre>
+virtual void initialize(TableType *tabtype, IndexType *intype);
+</pre>
+
+		<para>
+		This method is called at the TableType initialization time, as it goes through
+		all the components. This is the place where the aggregator type parses its
+		arguments, matches them up with the information about the table type and produces
+		any internal representations of the computations. It may also compute the
+		aggregation result type if that was not done earlier. The <pre>initialize()</pre>
+		method in the subclass must always call the method in the parent class,
+		to let it do its part. If any errors are found, they must be reported by
+		setting an Errors object in the field <pre>errors_</pre>. If the aggregator
+		type has no parameters, and its result type was set in the constructor,
+		it doesn't have to define the <pre>initialize()</pre> method.
+		</para>
+
+		<para>
+		Finally, there are methods that will produce objects that do the actual
+		work:
+		</para>
+
+<pre>
+virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const;
+virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget);
+</pre>
+
+		<indexterm>
+			<primary>BasicAggregatorType</primary>
+		</indexterm>
+		<indexterm>
+			<primary>IndexType</primary>
+		</indexterm>
+		<indexterm>
+			<primary>SortedIndexType</primary>
+		</indexterm>
+		<para>
+		This exposes quite a bit of the inherent complexity of the aggregators.
+		For the simpler cases you can use the subclass BasicAggregatorType that
+		handles most of this complexity for you and just skip these <quote>make</quote>
+		methods. By the way, the IndexType has a <quote>make</quote> method of this kind too
+		but it was not discussed because unless you define a completely new
+		IndexType, you don't need to worry about it: it just happens under the
+		hood. The SortedIndexType just asks you to define a condition and takes
+		care of the rest, like the BasicAggregatorType for aggregators.
+		</para>
+
+		<para>
+		The Gadget concept is discussed in
+		<xref linkend="sc_cpp_gadget" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		Each aggregator in a table is a gadget. So whenever a table is
+		created from a table type, each aggregator type in that table type is
+		called to produce its gadget, and these gadgets are collected in the
+		table. When you call <pre>table->getAggregatorLabel("name")</pre>, you get the
+		output label from the appropriate gadget.
+		</para>
+
+		<para>
+		The short summary: one AggregatorGadget per table per aggregator type.
+		</para>
+
+		<indexterm>
+			<primary>AggregatorGadget</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Gadget</primary>
+		</indexterm>
+		<para>
+		The AggregatorGadget is a subclass of Gadget that keeps the extra
+		information typically needed by all the aggregators. It's defined in
+		<pre>sched/AggregatorGadget.h</pre>. 
+		The original grand plan was that the different aggregator types may
+		define their own subclasses of AggregatorGadget but in reality there
+		appears no need to. So far all the aggregators happily live with the
+		base AggregatorGadget.  It's constructed as:
+		</para>
+
+<pre>
+AggregatorGadget(const AggregatorType *type, Table *table, IndexType *intype);
+</pre>
+
+		<para>
+		The argumetns are pretty much a pass-through from the <pre>makeGadget()</pre>.
+		The AggregatorGadget will keep references to the AggregatorType and
+		to the IndexType, and a pointer to the Table, for the future use.
+		The reason why the Table is not referenced is that it would create
+		cyclic references, because the table already references
+		all its aggregator gadgets. There is normally no need to worry that the
+		table will disappear: when the table is destroyed, it will never call
+		the aggregator gadget again. And that would remove the references
+		to the Aggregator and AggregatorGadget, thus likely causing them
+		to be destroyed too (unless you hold another reference to
+		AggregatorGadget from outside Aggregator, which you normally should
+		not).
+		</para>
+
+		<para>
+		This information can be obtained back from the AggregatorGadget with:
+		</para>
+
+<pre>
+Table *getTable() const;
+const AggregatorType *getType() const;
+template<class C> const C *typeAs() const;
+const IndexType *getIndexType() const;
+</pre>
+
+		<para>
+		The AggregatorType can be extracted in two ways, as a plain base
+		class pointer with getType() and with the template typeAs() that
+		casts it to the appropriate subclass. For example:
+		</para>
+
+<pre>
+MyAggregatorType *agt = gadget->typeAs<MyAggregatorType>();
+</pre>
+
+		<para>
+		Of course, the subclasses can also read the fields directly.
+		</para>
+
+		<para>
+		The AggregatorGadget also publicly exports the method <pre>sendDelayed()</pre>
+		of the Gadget (which is normally protected) and provides
+		a convenience wrapper that constructs a row from fields data
+		and sends it:
+		</para>
+
+<pre>
+void sendDelayed(Tray *dest, const Row *row, Rowop::Opcode opcode) const
+void sendDelayed(Tray *dest, FdataVec &data, Rowop::Opcode opcode) const;
+</pre>
+
+		<para>
+		The Gadget method <pre>send()</pre> is not exported, and even marked as
+		private. The rows are always sent from the aggregators in the delayed
+		fashion. The reasons for that are partially historic, having to do with
+		the per-Gadget enqueueing modes, but the bigger reason is that it also helps with the error
+		handling inside the Table and Aggregator code, separating the errors in
+		the Aggregators themselves from the errors in the labels called by
+		them.
+		</para>
+
+		<para>
+		Unlike AggregatorGadget, an Aggergator represents a concrete aggregation 
+		group, on a concrete index (not on an index type, on an index!). Whenever an index
+		of some type is created, an aggregator of its connected type is created
+		with it. Remember, an index contains a single aggregation group. A table with nested indexes can have
+		lots of aggregators of a single type. The difference between an index
+		type and an index is explained in detail in
+		<xref linkend="sc_table_indextree" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		The way it works, whenever some row in the table gets deleted or
+		inserted, the table determines for each index type, which actual index
+		in the tree (i.e. which group) got changed. Then for aggregation
+		purposes, if that index has an aggegator on it, that aggregator is
+		called to do its work on the group. It produces an output row or two
+		(or maybe none, or it can get creative and produce many rows) 
+		for that group and sends it to the aggregator gadget of
+		the same type.
+		</para>
+
+		<para>
+		The short summary: one Aggregator object per group, produces
+		the updates when asked, sends them to the single common gadget.
+		</para>
+
+		<para>
+		The pointers to the Table and Gadget are passed to the <pre>makeAggregator()</pre>  method
+		for convenience, the Aggergator object doesn't need to remember them. Whenever
+		it will be called, it will also be given these pointers as arguments.
+		This is done in an attempt to reduce the amount of data stored per
+		aggregator. 
+		</para>
+
+	</sect1>

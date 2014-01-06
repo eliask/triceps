@@ -121,6 +121,8 @@ Things that need to be done:
 * with the abolishment of the enqueueing mode in Table, Gadget became kind of useless
 * add the index lookup in the TableType and IndexType that returns undef if not found
 * in C++ add next() and such on Rhref
+* change the aggregator types to not have an own name, but to be named in a table type
+* move the aggregation handler into AggregatorType?
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
@@ -134,10 +136,12 @@ App ideas:
 * the challenges from http://www.orgs.ttu.edu/debs2013/
 * look at the use with RabbitMQ
 
-144-181
-183-189
+tangent 144
+147-181
+184-189
 191-197
 199-230
 231
 232-252
 254-267
+*** next 269
