@@ -1717,6 +1717,10 @@ or confess "$!";
 		contains one of the constant values:
 		</para>
 
+		<indexterm>
+			<primary>aggregation</primary>
+			<secondary>operation</secondary>
+		</indexterm>
 		<itemizedlist>
 		<listitem>
 		<pre>&Triceps::AO_BEFORE_MOD</pre>: the group is about to be modified,

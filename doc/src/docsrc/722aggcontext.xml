@@ -75,6 +75,15 @@ $rh = $ctx->next($rh);
 		</para>
 
 <pre>
+$rh = $ctx->last();
+</pre>
+
+		<para>
+		Returns the last row handle of the group. In case of an empty
+		group it would return a NULL handle.
+		</para>
+
+<pre>
 $rh = $ctx->beginIdx($idxType);
 </pre>
 
