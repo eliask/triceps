@@ -362,6 +362,20 @@ RowHandle *findRowIdx(IndexType *ixt, const Row *what) const;
 		</para>
 
 <pre>
+void clear(size_t limit = 0); 
+</pre>
+
+		<para>
+		Deletes the rows from the table.
+		If <pre>limit</pre> is 0, the whole table gets cleared. If it's greater
+		than 0, no more than this number of rows will be deleted. 
+		The deletion happens in the usual order of the first
+		leaf index, and the rowops are sent to the table's output label as
+		usual. It's really the same thing as running a loop over all the row
+		handles and removing them.
+		</para>
+
+<pre>
 void dumpAll(Rowop::Opcode op = Rowop::OP_INSERT) const;
 void dumpAllIdx(IndexType *ixt, Rowop::Opcode op = Rowop::OP_INSERT) const;
 </pre>
