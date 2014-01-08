@@ -122,7 +122,7 @@ Things that need to be done:
 * add the index lookup in the TableType and IndexType that returns undef if not found
 * in C++ add next() and such on Rhref
 * change the aggregator types to not have an own name, but to be named in a table type
-* move the aggregation handler into AggregatorType?
+* provide a default AggregatorType::makeGadget() that makes the generic AggregatorGadget
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
@@ -140,7 +140,6 @@ tangent 144
 149-181
 184-189
 191-192
-+ 193-195 except AO_ constant explanation
 197
 199-230
 231

@@ -806,13 +806,376 @@ typedef void Callback(Table *table, AggregatorGadget *gadget, Index *index,
 		</para>
 	</sect2>
 
+	<sect2 id="sc_cpp_aggregator_example">
+		<title>Aggegator example</title>
+
 		<para>
+		Since the aggregator classes are somewhat convoluted and substantially
+		different from the Perl version, I've decided to provide not just 
+		the reference but also a couple of small examples.  The full text can be found in
+		the unit test file <pre>table/test/t_Aggr.cpp</pre>.
 		</para>
 
 		<para>
+		First, if your aggregator is truly stateless and fully hardcoded, the
+		easier way to do it as by defining a plain function with the same
+		handler arguments and building a BasicAggregatorType with it. And here
+		is one that sums the values of an int64 field (the test case
+		<pre>aggBasicSum</pre>):
 		</para>
 
+		<indexterm>
+			<primary>BasicAggregatorType</primary>
+		</indexterm>
 
-		XXXXXXXXXXXXXXXXXXXXXXX See 193-195
+<!-- table/test/t_Aggr.cpp UTESTCASE aggBasicSum -->
+<pre>
+void sumC(Table *table, AggregatorGadget *gadget, Index *index,
+	const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+	Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
+{
+	// don't send the NULL record after the group becomes empty
+	if (opcode == Rowop::OP_NOP || parentIndexType->groupSize(gh) == 0)
+		return;
+	
+	int64_t sum = 0;
+	for (RowHandle *rhi = index->begin(); rhi != NULL; rhi = index->next(rhi)) {
+		sum += table->getRowType()->getInt64(rhi->getRow(), 2, 0); // field c at idx 2
+	}
+
+	// pick the rest of fields from the last row of the group
+	RowHandle *lastrh = index->last();
+
+	// build the result row; relies on the aggregator result being of the
+	// same type as the rows in the table
+	FdataVec fields;
+	table->getRowType()->splitInto(lastrh->getRow(), fields);
+	fields[2].setPtr(true, &sum, sizeof(sum)); // set the field c from the sum
+
+	// could use the table row type again, but to exercise a different code,
+	// use the aggregator's result type:
+	// gadget()->getType()->getRowType() and gadget->getLabel()->getType()
+	// are equivalent
+	Rowref res(gadget->getLabel()->getType(), fields);
+	gadget->sendDelayed(dest, res, opcode);
+}
+
+...
+	Autoref<TableType> tt = TableType::make(rt1)
+		->addSubIndex("Hashed", HashedIndexType::make( // will be the default index
+				(new NameSet())->add("e")
+			)->addSubIndex("Fifo", FifoIndexType::make()
+				->setAggregator(new BasicAggregatorType("aggr", rt1, sumC))
+			)
+		);
+...
+</pre>
+
+		<para>
+		As described above, you create the BasicAggregatorType by giving it
+		the aggregator name, aggregator result row type, and the handler
+		function.
+		</para>
+
+		<para>
+		In this case the handler function is completely hardcoded. It works on
+		the int64 field at index 2. The row type I used in this example is:
+		</para>
+
+<pre>
+row {
+	uint8[10] a,
+	int32[] b,
+	int64 c,
+	float64 d,
+	string e,
+}
+</pre>
+
+		<para>
+		So the field is actually named <quote>c</quote>, and that's why the aggregator
+		function is named <quote>sumC</quote>.  But since in this case everything is known
+		in advance, to make it more efficient, the look-up of the field by name
+		has been skipped, and the field index has been pre-computed and hardcoded
+		into the function.
+		</para>
+
+		<para>
+		The general outline of the aggregator is exactly the same as in Perl:
+		check for an empty group, then iterate through all the rows in the
+		group and compute a the sum, fill the rest of the fields from the last
+		row, and send the result. The difference is that there is no
+		AggregatorContext, and the calls are done directly on the bits and
+		pieces received as arguments.
+		</para>
+
+		<para>
+		The input row type for reading the rows from the group is found as:
+		</para>
+
+<pre>
+table->getRowType()
+</pre>
+
+		<para>
+		The result row is built in this example by copying the last row and
+		replacing one field. The data from the last row is split into FdataVec
+		(the data itself is not copied at this point but the data descriptors
+		in the construction vector are made to point to the data in the
+		original row). Then the descriptor for the field <quote>c</quote> is changed to
+		point to the computed sum. Then the new row is built from the
+		descriptor.
+		</para>
+
+		<para>
+		In this particular case the type of the input rows and of the result
+		rows is the same, so either could have been used to construct the
+		result rows.  There are two ways to find the result type:
+		</para>
+
+<pre>
+gadget->getType()->getRowType()
+gadget->getLabel()->getType()
+</pre>
+
+		<para>
+		They are exactly the same, just there are two paths leading to the same
+		object.
+		</para>
+
+		<para>
+		Finally, the constructed row is sent. <pre>sendDelayed()</pre> takes care of
+		constructing the rowop from the components. The version of <pre>sendDelayed()</pre> 
+		that also constructs the row from the fields is shown in the next example.
+		</para>
+
+		<para>
+		And now on to the next example.
+		</para>
+
+		<para>
+		Doing a proper custom aggregator is more involved, and requires making
+		subclasses of both Aggregator and AggregatorType. The test case <pre>aggSum</pre>
+		shows an example of aggregator that can sum any 64-bit field.
+		It still could be done with subclassing the BasicAggregatorType, since
+		it still doesn't keep any group state, but I wanted to show a
+		full-size example as well.
+		</para>
+
+		<para>
+		The subclass of Aggregator contains only one method that is very
+		similar to the BasicAggregator handler shown before:
+		</para>
+
+<!-- table/test/t_Aggr.cpp UTESTCASE aggSum -->
+<pre>
+class MySumAggregator: public Aggregator
+{
+public:
+	// same as sumC but finds the field from the type
+	virtual void handle(Table *table, AggregatorGadget *gadget, Index *index,
+		const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+		Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh);
+};
+
+void MySumAggregator::handle(Table *table, AggregatorGadget *gadget, Index *index,
+	const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+	Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh)
+{
+	// don't send the NULL record after the group becomes empty
+	if (opcode == Rowop::OP_NOP || parentIndexType->groupSize(gh) == 0)
+		return;
+
+	int fidx = gadget->typeAs<MySumAggregatorType>()->fieldIdx();
+	
+	int64_t sum = 0;
+	for (RowHandle *rhi = index->begin(); rhi != NULL; rhi = index->next(rhi)) {
+		sum += table->getRowType()->getInt64(rhi->getRow(), fidx, 0);
+	}
+
+	// pick the rest of fields from the last row of the group
+	RowHandle *lastrh = index->last();
+
+	// build the result row; relies on the aggregator result being of the
+	// same type as the rows in the table
+	FdataVec fields;
+	table->getRowType()->splitInto(lastrh->getRow(), fields);
+	fields[fidx].setPtr(true, &sum, sizeof(sum));
+
+	// use the convenience wrapper version
+	gadget->sendDelayed(dest, fields, opcode);
+}
+</pre>
+
+		<para>
+		The difference is that the field index is not hardcoded but taken from
+		the aggregator type. The aggregator type is found with
+		</para>
+
+<pre>
+gadget->typeAs<MySumAggregatorType>()
+</pre>
+
+		<para>
+		The method <pre>fieldIdx()</pre> is a custom addition to
+		the MySumAggregatorType, not inherited from any base class.
+		</para>
+
+		<para>
+		The version of <pre>AggregatorGadget::sendDelayed()</pre> used here
+		takes care of constructing the row from the fields and then
+		sends it on.
+		</para>
+
+		<para>
+		Then the aggregator type needs to be defined with a fixed set of
+		inherited virtual methods plus any needed custom parts.
+		</para>
+
+<pre>
+class MySumAggregatorType: public AggregatorType
+{
+public:
+	// @param fname - field name to sum on
+	MySumAggregatorType(const string &name, const string &fname):
+		AggregatorType(name, NULL),
+		fname_(fname),
+		fidx_(-1)
+	{ }
+	// the copy constructor works fine
+	// (might set the non-NULL row type, but it will be overwritten 
+	// during initialization)
+	
+	// constructor for deep copy
+	// (might set the non-NULL row type, but it will be overwritten 
+	// during initialization)
+	MySumAggregatorType(const MySumAggregatorType &agg, HoldRowTypes *holder):
+		AggregatorType(agg, holder),
+		fname_(agg.fname_),
+		fidx_(agg.fidx_)
+	{ }
+
+	virtual AggregatorType *copy() const
+	{
+		return new MySumAggregatorType(*this);
+	}
+
+	virtual AggregatorType *deepCopy(HoldRowTypes *holder) const
+	{
+		return new MySumAggregatorType(*this, holder);
+	}
+
+	virtual bool equals(const Type *t) const
+	{
+		if (this == t)
+			return true; // self-comparison, shortcut
+
+		if (!AggregatorType::equals(t))
+			return false;
+		
+		const MySumAggregatorType *sumt = static_cast<const MySumAggregatorType *>(t);
+
+		if (fname_ != sumt->fname_)
+			return false;
+
+		return true;
+	}
+
+	virtual bool match(const Type *t) const
+	{
+		if (this == t)
+			return true; // self-comparison, shortcut
+
+		if (!AggregatorType::match(t))
+			return false;
+		
+		const MySumAggregatorType *sumt = static_cast<const MySumAggregatorType *>(t);
+
+		if (fname_ != sumt->fname_)
+			return false;
+
+		return true;
+	}
+
+	virtual AggregatorGadget *makeGadget(Table *table, IndexType *intype) const
+	{
+		return new AggregatorGadget(this, table, intype);
+	}
+
+	virtual Aggregator *makeAggregator(Table *table, AggregatorGadget *gadget) const
+	{
+		return new MySumAggregator;
+	}
+
+	virtual void initialize(TableType *tabtype, IndexType *intype)
+	{
+		const RowType *rt = tabtype->rowType();
+		setRowType(rt); // the result has the same type as the argument
+		fidx_ = rt->findIdx(fname_);
+		if (fidx_ < 0)
+			errors_.fAppend(new Errors(rt->print()), "Unknown field '%s' in the row type:", fname_.c_str());
+		else {
+			if (rt->fields()[fidx_].arsz_ != RowType::Field::AR_SCALAR
+			|| rt->fields()[fidx_].type_->getTypeId() != Type::TT_INT64)
+				errors_.fAppend(new Errors(rt->print()), 
+					"Field '%s' is not an int64 scalar in the row type:", fname_.c_str());
+		}
+		AggregatorType::initialize(tabtype, intype);
+	}
+
+	// called from the handler
+	int fieldIdx() const
+	{
+		return fidx_;
+	}
+	
+protected:
+	string fname_; // name of the field to sum, must be an int64
+	int fidx_; // index of field named fname_
+};
+</pre>
+
+		<para>
+		The constructor accepts the aggregator name and the name of the field
+		on which it will sum. The field name will be translated to field index
+		during initialization, and made available to the
+		<pre>MySumAggregator::handler()</pre> via the method <pre>fieldIdx()</pre>. The aggregator
+		type starts with the result row type of NULL, with the actual row type
+		set during initialization.  The idea here is
+		that the result row type of this aggregator is always equal to the
+		input row type, so rather than specifying the result type explicitly
+		and then having to check it for compatibility, why not just take the
+		table's row type when it becomes available? And it works beautifully.
+		</para>
+
+		<para>
+		The copy constructor and the constructor with HoldRowTypes are the
+		implementations of the virtual methods <pre>copy()</pre> and <pre>deepCopy()</pre>. The
+		<pre>deepCopy()</pre> is used in the multithreaded
+		support
+		XXXREF deepCopy
+		.
+		</para>
+
+		<para>
+		The methods <pre>match()</pre> and <pre>equals()</pre> follow the same general shape as
+		everywhere else. <pre>makeGadget()</pre> creates a generic gadget, and
+		<pre>makeAggregator()</pre> creates an instance of aggregator for each group.
+		</para>
+
+		<para>
+		The interesting stuff starts happening in the initialization. The row
+		type gets found from the table and set as the result type. Then the
+		aggregation field is found in the row type and checked for being of the
+		proper type. Its index is remembered for the later use.
+		</para>
+
+		<para>
+		<pre>errors_.fAppend()</pre> makes the error
+		construction more convenient. It is smart enough to check the reference
+		for NULL and allocate a new Errors if so, then append a
+		printf-formatted message and nested errors to it. 
+		</para>
+	</sect2>
 
 	</sect1>
