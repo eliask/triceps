@@ -742,29 +742,77 @@ gadget->sendDelayed(dest, fields, opcode);
 				</listitem>
 			</varlistentry>
 		</variablelist>
-		XXXXXXXXXXXXX AO_ to string conversions
+
+		<para>
+		The methods to convert the <pre>AO_*</pre> constants to and from the strings
+		are also defined in the Aggregator class:
+		</para>
+
+<pre>
+static const char *aggOpString(int code, const char *def = "???");
+static int stringAggOp(const char *code);
+</pre>
+
+		<para>
+		They work in the same way as the other constant conversion methods.
+		</para>
+
 	</sect2>
+
+	<sect2 id="sc_cpp_aggregator_basic">
+		<title>BasicAggregatorType reference</title>
+
+		<indexterm>
+			<primary>BasicAggregatorType</primary>
+		</indexterm>
+		<para>
+		In many cases a simple stateless aggregation is good enough.
+		For that, you don't need to define the whole set of classes
+		for your aggregation, you can use the BasicAggregatorType 
+		(defined in <pre>type/BasicAggregatorType.h</pre>)
+		instead.
+		</para>
+
+		<para>
+		You just define a simple C-style function to compute the aggregation
+		and pass it to the BasicAggregatorType constructor:
+		</para>
+
+<pre>
+BasicAggregatorType(const string &name, const RowType *rt, Callback *cb);
+</pre>
+
+		<para>
+		This function has all the arguments of Aggregator::handle forwarded to it:
+		</para>
+
+<pre>
+typedef void Callback(Table *table, AggregatorGadget *gadget, Index *index,
+	const IndexType *parentIndexType, GroupHandle *gh, Tray *dest,
+	Aggregator::AggOp aggop, Rowop::Opcode opcode, RowHandle *rh, Tray *copyTray);
+</pre>
+
+		<para>
+		BasicAggregatorType takes care of the rest of the infrastructure:
+		gadgets, aggregators etc. 
+		</para>
+
+		<para>
+		If you need to pass some additional information to this function,
+		you do it by extending the BasicAggregatorType class. Add your
+		extra fields to your subclass, and then the callback function
+		can find the type object from the gadget, and read the values
+		from there.
+		</para>
+	</sect2>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
+
+
 		XXXXXXXXXXXXXXXXXXXXXXX See 193-195
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
-
-		<para>
-		</para>
 
 	</sect1>
