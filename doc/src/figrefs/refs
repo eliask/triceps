@@ -4,6 +4,8 @@
 #
 # For example:
 samplesdraw 4in svg
+func-010-fmac 6in svg
+func-020-query 6in svg
 label-000-chain 5in svg
 label-010-loop 5in svg
 label-011-mark 5in svg

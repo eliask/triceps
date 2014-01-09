@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_strf" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Streaming functions</title>
+
+	<sect1 id="sc_strf_intro">
+		<title>Introduction to streaming functions</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>macro</primary>
+		</indexterm>
+
+		<para>
+		The streaming functions are a cool and advanced
+		concept. I've never seen it anywhere before, and for all I know I have
+		invented it.
+		</para>
+
+		<para>
+		First let's look at the differences between the common functions and
+		macros (or templates and such), shown in
+		<xref linkend="fig_strf_fmac" xrefstyle="select: label nopage"/>&xrsp;.
+		</para>
+
+		<figure id="fig_strf_fmac" >
+			<title>The difference between the function and macro calls.</title>
+			<xi:include href="file:///FIGS/func-010-fmac.xml"/> 
+		</figure>
+
+		<para>
+		What happens during a function call? Some code
+		(marked with the light bluish color) is happily zooming along when it
+		decides to call a function. It prepares some arguments and jumps to the
+		function code (reddish). The function executes, computes its result and
+		jumps back to the point right after it has been called from. Then the
+		original code continues from there (the slightly darker bluish color).
+		</para>
+
+		<para>
+		What happens during a macro (or template) invocation? It starts with
+		some code zooming along in the same way, however when the macro call
+		time comes, it prepares the arguments and then does nothing. It gets
+		away with it because the compiler has done the work: it has placed the
+		macro code right where it's called, so there is no need for jumps.
+		After the macro is done, again it does nothing: the compiler has placed
+		the next code to execute right after it, so it just continues on its
+		way.
+		</para>
+
+		<para>
+		So far it's pretty equivalent. An interesting difference happens when
+		the function or macro is called from more than one place. With a macro,
+		another copy of the macro is created, inserted between its call and
+		return points. That's why in the figure the macro is shown twice. But
+		with the function, the same function code is executed every time, and then returns
+		back to the caller. That's why in the figure there are two function
+		callers with their paths through the same function. But how does the
+		function know, where should it jump on return? The caller tells it by
+		pushing the return address onto the stack. When the function is done,
+		it pops this address from the stack and jumps there.
+		</para>
+
+		<para>
+		Still, it looks all the same. A macro call is a bit more efficient,
+		except when a large complex macro is called from many places, then it
+		becomes more efficient as a function. However there is another
+		difference if the function or macro holds some context (say, a static
+		variable): each invocation of the macro will get its own context but
+		all the function calls will share the same context. The only way to
+		share the context with a macro is to pass some global context as its
+		argument (or you can use a separately defined global variable if you're
+		willing to dispense with some strict modularity).
+		</para>
+
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<indexterm>
+			<primary>StreamBase</primary>
+		</indexterm>
+		<indexterm>
+			<primary>template</primary>
+		</indexterm>
+
+		<para>
+		Now let's switch to the CEP world. The Sybase or StreamBase modules are
+		essentially macros, and so are the Triceps templates. When such a macro
+		gets instantiated, a whole new copy of it gets created with its
+		tables/windows and streams/labels. Its input and output streams/labels
+		get all connected in a fixed way. The limitation is that if the macro
+		contains any tables, each instantiation gets another copy of them. Well, in
+		Triceps you can use a table as an argument to a template. In the other
+		systems I think you still can't, so if you want to work with a common
+		table in a module, you have to make up the query-response patterns,
+		like the one described in
+		<xref linkend="sc_template_intro" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		In a query-response pattern there is some common sub-model, with a
+		stream (in Triceps terms, a label, but here we're talking the other
+		systems) for the queries to come in and a stream for the results to
+		come out (both sides might have not only one but multiple streams).
+		There are multiple inputs connected, from all the request sources, and
+		the outputs are connected back to all the request sources. All the
+		request sources (i.e. callers) get back the whole output of the
+		pattern, so they need to identify, what output came from their input,
+		and ignore the rest. They do this by adding the unique ids to their
+		queries, and filter the results. In the end, it looks <i>almost</i>
+		like a function but with much pain involved.
+		</para>
+
+		<para>
+		To make it look quite like a function, one thing is needed: the
+		selective connection of the result streams (or, returning to the
+		Triceps terminology, labels) to the caller. Connect the output labels,
+		send some input, have it processed and send the result through the
+		connection, disconnect the output labels. And what you get is a
+		streaming function. It's very much like a common function but working
+		on the streaming data arguments and results.
+		</para>
+
+		<para>
+		The 
+		<xref linkend="fig_strf_query" xrefstyle="select: label nopage"/>&xrsp;
+		highlights the similarity and differences between the
+		query patterns and the streaming functions.
+		</para>
+
+		<figure id="fig_strf_query" >
+			<title>The query patterns and streaming functions.</title>
+			<xi:include href="file:///FIGS/func-020-query.xml"/> 
+		</figure>
+
+		<para>
+		The thick lines show where the data goes
+		during one concrete call. The thin lines show the connections that do
+		exist but without the data going through them at the moment (they will
+		be used during the other calls, from these other callers). The dashed
+		thin line shows the connection that doesn't exist at the moment. It
+		will be created when needed (and at that time the thick arrow from the
+		streaming function to what is now the current return would disappear).
+		</para>
+
+		<para>
+		The particular beauty of the streaming functions for Triceps is that
+		the other callers don't even need to exist yet. They can be created
+		and connected dynamically, do their job, call the function, use its
+		result, and then be disposed of. The calling side in Triceps doesn't
+		have to be streaming either: it could as well be procedural.  
+		</para>
+	</sect1>
+
+</chapter>
