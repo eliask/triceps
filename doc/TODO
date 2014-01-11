@@ -126,8 +126,8 @@ Things that need to be done:
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
-* doc: update all the examples for the new error handling
 * doc: in docbook update the source code produced by SimpleAggregator
+* doc: describe CLONE_SKIP
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -137,7 +137,7 @@ App ideas:
 * look at the use with RabbitMQ
 
 tangent 144
-151-181
+152-181
 184-189
 191-192
 tangent 197
