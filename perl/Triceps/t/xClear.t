@@ -63,18 +63,14 @@ makePrintLabel("lbPrintNote", $lbReportNote);
 our $lbClear = $uChunks->makeLabel($rtNote, "lbClear", undef, sub {
 	my $limit = 2; # no more than 2 rows per run
 	my $next;
-	for (my $rhit = $tData->begin(); !$rhit->isNull(); $rhit = $next) {
-		if ($limit-- <= 0) {
-			# request to be called again when the model becomes idle
-			$trayIdle->push($_[0]->adopt($_[1])); 
-			return;
-		}
-		$next = $rhit->next(); # advance before removal
-		$tData->remove($rhit);
+	$tData->clear($limit);
+	if ($tData->size() > 0) {
+		$trayIdle->push($_[0]->adopt($_[1])); 
+	} else {
+		$uChunks->makeHashCall($lbReportNote, "OP_INSERT",
+			text => "done clearing",
+		);
 	}
-	$uChunks->makeHashCall($lbReportNote, "OP_INSERT",
-		text => "done clearing",
-	);
 });
 
 while(&readLine) {
