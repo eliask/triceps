@@ -61,9 +61,7 @@ makePrintLabel("lbPrintNote", $lbReportNote);
 
 # code that clears the table in small chunks
 our $lbClear = $uChunks->makeLabel($rtNote, "lbClear", undef, sub {
-	my $limit = 2; # no more than 2 rows per run
-	my $next;
-	$tData->clear($limit);
+	$tData->clear(2); # no more than 2 rows deleted per run
 	if ($tData->size() > 0) {
 		$trayIdle->push($_[0]->adopt($_[1])); 
 	} else {
