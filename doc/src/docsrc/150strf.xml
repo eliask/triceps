@@ -187,6 +187,9 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
 			<primary>Collapse</primary>
 		</indexterm>
 		<para>
@@ -221,7 +224,6 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <!-- t/xFn.t FnCollapse -->
-
 <pre>
 package FnCollapse;
 
@@ -364,7 +366,7 @@ del => $dataset->{tbDelete}->getOutputLabel(),
 
 		<para>
 		In this case both binding labels forward the data to the Collapse's
-		output label. Only the one for the insert table has to change the
+		output label. Only the one for the Insert table has to change the
 		opcodes to OP_INSERT. The check
 		</para>
 
@@ -414,6 +416,239 @@ if ($_[1]->isDelete()) ...
 		triggered by <pre>clear()</pre> in the caller? Or are the <pre>clear()</pre> calls also a
 		part of the function body? But it practice it just doesn't matter,
 		whatever. 
+		</para>
+	</sect1>
+
+	<sect1 id="sc_strf_keyed_collapse">
+		<title>Collapse with grouping by key with streaming functions</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Collapse</primary>
+		</indexterm>
+		<para>
+		The Collapse as shown before sends all the collected deletes before all
+		the collected inserts. For example, if it has collected the updates for
+		four rows, the output will be (assuming that the Collapse element is
+		named <pre>collapse</pre> and the data set in it is named <pre>idata</pre>):
+		</para>
+
+<!-- t/xFn.t doCollapse1 -->
+<exdump>
+collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100"
+collapse.idata.out OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100"
+collapse.idata.out OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100"
+collapse.idata.out OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100"
+collapse.idata.out OP_INSERT local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="300"
+collapse.idata.out OP_INSERT local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="300"
+collapse.idata.out OP_INSERT local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="300"
+collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300"
+</exdump>
+
+		<para>
+		What if you want the updates produced as deletes immediately followed
+		by the matching inserts with the same key?  Like this:
+		</para>
+
+<!-- t/xFn.t doCollapse2 -->
+<exdump>
+collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100"
+collapse.idata.out OP_INSERT local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="300"
+collapse.idata.out OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100"
+collapse.idata.out OP_INSERT local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="300"
+collapse.idata.out OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100"
+collapse.idata.out OP_INSERT local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="300"
+collapse.idata.out OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100"
+collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300"
+</exdump>
+
+		<para>
+		With the procedural version it would have required doing a look-up in the Insert
+		table after processing each row in the Delete table and handling it if
+		found. So I've left it out to avoid complicating that example. But in
+		the streaming function form it becomes easy, just change the binding 
+		of the <quote>del</quote> label a little bit:
+		</para>
+
+<!-- t/xFn.t FnCollapseClose, selected lines -->
+<pre>
+		my $lbInsInput = $dataset->{tbInsert}->getInputLabel();
+
+		my $fbind = Triceps::FnBinding->new(
+			name => $self->{name} . "." . $dataset->{name} . ".bndTbl",
+			on => $fret,
+			unit => $unit,
+			labels => [
+				del => sub {
+					if ($_[1]->isDelete()) {
+						$unit->call($lbOut->adopt($_[1]));
+						# If the INSERT is available after this DELETE, this
+						# will produce it.
+						$unit->call($lbInsInput->adopt($_[1]));
+					}
+				},
+				ins => sub {
+					if ($_[1]->isDelete()) {
+						$unit->call($lbOut->makeRowop($OP_INSERT, $_[1]->getRow()));
+					}
+				},
+			],
+		);
+</pre>
+
+		<para>
+		The <quote>del</quote> binding first sends the result out as usual and then forwards
+		the DELETE rowop to the Insert table's input. Which then causes the
+		INSERT rowop to be sent if a match is found. Mind you, the look-up and
+		conditional processing still happens. But now it all happens inside the
+		table machinery, all you need to do is add one more line to invoke it.
+		</para>
+
+		<para>
+		Let's talk through in a little more detail, what happens when the clearing of
+		the Delete table deletes the row with <pre>(local_ip="3.3.3.3" remote_ip="7.7.7.7")</pre>.
+		</para>
+
+		<orderedlist>
+			<listitem>
+			The Delete table sends a rowop with this row and OP_DELETE to its
+			output label <pre>collapse.idata.tbDelete.out</pre>.
+			</listitem>
+			<listitem>
+			Which then gets forwarded to a chained label in the FnReturn,
+			<pre>collapse.idata.retTbl.del</pre>.
+			</listitem>
+			<listitem>
+			FnReturn has an FnBinding pushed into it, so the rowop passes to the
+			matching label in the binding, <pre>collapse.idata.bndTbl.del</pre>.
+			</listitem>
+			<listitem>
+			The Perl handler of that label gets called, first forwards the
+			rowop to the Collapse output label <pre>collapse.idata.out</pre>, and then to
+			the Insert table's input label <pre>collapse.idata.tbInsert.in</pre>.
+			</listitem>
+			<listitem>
+			The Insert table looks up the row by the key, finds it, removes it
+			from the table, and sends an OP_DELETE rowop to its output label
+			<pre>collapse.idata.tbInsert.out</pre>.
+			</listitem>
+			<listitem>
+			Which then gets forwarded to a chained label in the FnReturn,
+			<pre>collapse.idata.retTbl.ins</pre>.
+			</listitem>
+			<listitem>
+			FnReturn has an FnBinding pushed into it, so the rowop passes to the
+			matching label in the binding, <pre>collapse.idata.bndTbl.ins</pre>.
+			</listitem>
+			<listitem>
+			The Perl handler of that label gets called and sends the rowop with
+			the opcode changed to OP_INSERT to the Collapse output label
+			<pre>collapse.idata.out</pre>.
+			</listitem>
+		</orderedlist>
+
+		<para>
+		It's a fairly complicated sequence but all you needed to do was to add
+		one line of code. The downside of course is that if something goes not
+		the way you expected, you'd have to trace and understand the whole
+		long sequence (that's the typical trouble with the SQL-based systems).
+		</para>
+
+		<para>
+		When the INSERTs are sent after DELETEs, their rows are removed
+		from the Insert table too, so the following <pre>clear()</pre> of the Insert table
+		won't find them any more and won't send any duplicates; it will send
+		only the inserts for which there were no matching deletes.
+		</para>
+
+		<para>
+		And of course if there is only a DELETE collected for a certain
+		key, not an update, there will be no matching row in the Insert
+		table, so the forwarded DELETE request will have no effect
+		and produce no output from the Insert table.
+		</para>
+
+		<para>
+		You may notice that the code in the <quote>del</quote> handler only forwards the
+		rows around, and that can be replaced by a chaining:
+		</para>
+
+<!-- t/xFn.t FnCollapseClose3, selected lines -->
+<pre>
+		my $lbDel = $unit->makeDummyLabel(
+			$dataset->{tbDelete}->getOutputLabel()->getRowType(), 
+			$self->{name} . "." . $dataset->{name} . ".lbDel");
+		$lbDel->chain($lbOut);
+		$lbDel->chain($lbInsInput);
+
+		my $fbind = Triceps::FnBinding->new(
+			name => $self->{name} . "." . $dataset->{name} . ".bndTbl",
+			on => $fret,
+			unit => $unit,
+			labels => [
+				del => $lbDel,
+				ins => sub {
+					$unit->call($lbOut->makeRowop($OP_INSERT, $_[1]->getRow()));
+				},
+			],
+		);
+</pre>
+
+		<indexterm>
+			<primary>FnBinding</primary>
+		</indexterm>
+		<para>
+		This shows another way of label definition in FnBinding: an actual
+		label is created first and then given to the FnBinding, instead of letting
+		it automatically create a label from the code. The condition
+		<quote><pre>if ($_[1]->isDelete())</pre></quote> has been removed 
+		from the <quote>ins</quote> part, since
+		it's really redundant and the <quote>del</quote> part with its chaining doesn't do
+		this check anyway.
+		</para>
+
+		<para>
+		This code works just as well and even more efficiently than the
+		previous version, since no Perl code needs to be invoked for <quote>del</quote>, it
+		all propagates internally through the chaining. However the price is
+		that the DELETE rowops coming out of the output label will have the
+		head-of-the-chain label in them:
+		</para>
+
+<!-- t/xFn.t doCollapse3 -->
+<exdump>
+collapse.idata.lbDel OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100"
+collapse.idata.out OP_INSERT local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="300"
+collapse.idata.lbDel OP_DELETE local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="100"
+collapse.idata.out OP_INSERT local_ip="2.2.2.2" remote_ip="6.6.6.6" bytes="300"
+collapse.idata.lbDel OP_DELETE local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="100"
+collapse.idata.out OP_INSERT local_ip="4.4.4.4" remote_ip="8.8.8.8" bytes="300"
+collapse.idata.lbDel OP_DELETE local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="100"
+collapse.idata.out OP_INSERT local_ip="1.1.1.1" remote_ip="5.5.5.5" bytes="300"
+</exdump>
+
+		<para>
+		The <quote>ins</quote> side can't be handled just by chaining because it has to
+		replace the opcode in the rowops. Another potential way to handle
+		this would be to define various preprogrammed label types in &Cpp; for many primitive
+		operations, like replacing the opcode, and then build the models by combining
+		them.
+		</para>
+
+		<indexterm>
+			<primary>recursion</primary>
+		</indexterm>
+		<para>
+		The final item is that the code shown in this section involved a recursive
+		call of the streaming function. Its output from the <quote>del</quote> label got fed
+		back to the function, producing more output on the <quote>ins</quote> label. This
+		worked because it invoked a different code path in the streaming
+		function than the one that produced the <quote>del</quote> data. If it were to form
+		a topological loop back to the same path with the same labels, that
+		would have been an error. The more advanced use of recursion is
+		possible and will be discussed in more detail later. 
 		</para>
 	</sect1>
 </chapter>

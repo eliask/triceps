@@ -319,5 +319,13 @@ tralala tralala tralala tralala tralala tralala tralala tralala tralala tralala 
 			<primary>Pthreads wrapper</primary>
 			<secondary></secondary>
 		</indexterm>
+
+<pre>
+my $lbInsInput = $dataset->{tbInsert}->getInputLabel();
+</pre>
+<exdump>
+collapse.idata.out OP_DELETE local_ip="3.3.3.3" remote_ip="7.7.7.7" bytes="100"
+</exdump>
+
 -->
 </book>

@@ -123,6 +123,7 @@ Things that need to be done:
 * in C++ add next() and such on Rhref
 * change the aggregator types to not have an own name, but to be named in a table type
 * provide a default AggregatorType::makeGadget() that makes the generic AggregatorGadget
+* add an option to adopt the rowop during the label chaining
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
@@ -137,7 +138,7 @@ App ideas:
 * look at the use with RabbitMQ
 
 tangent 144
-152-181
+153-181
 184-189
 191-192
 tangent 197
