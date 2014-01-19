@@ -184,6 +184,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		For a streaming function to become
 		beneficial, it has to be written in SQLy primitives (such as tables,
 		joins) and not be easily reducible to the procedural code.
+		The streaming function examples that aren't big enough for their own file
+		are collected in <pre>t/xFn.t</pre>.
 		</para>
 
 		<indexterm>
