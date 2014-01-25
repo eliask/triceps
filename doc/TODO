@@ -129,6 +129,7 @@ Things that need to be done:
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
 * doc: in docbook update the source code produced by SimpleAggregator
 * doc: describe CLONE_SKIP
+* doc: a very short explanation of stock market terms in the intro
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -138,7 +139,7 @@ App ideas:
 * look at the use with RabbitMQ
 
 tangent 144
-153-181
+154-181
 184-189
 191-192
 tangent 197
