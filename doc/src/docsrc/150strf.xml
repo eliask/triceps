@@ -903,6 +903,7 @@ while(&readLine) {
 		And an example of running, with the input lines shown in bold:
 		</para>
 
+<!-- t/xFn.t doSymbology -->
 <exdump>
 > isin,OP_INSERT,ABC.L,US0000012345
 tIsin.out OP_INSERT ric="ABC.L" isin="US0000012345"
@@ -932,6 +933,218 @@ lbTradeEnriched OP_INSERT ric="GHI.N" isin="XX0000012345" size="600" price="10.5
 		with <pre>(GHI.N, XX0000012345)</pre> both updates the ISIN table and sends through
 		the trade record), and the following trades can then use this newly
 		added translation but obviously the older ones do not get updated. 
+		</para>
+	</sect1>
+
+	<sect1 id="sc_strf_loops">
+		<title>Streaming functions and loops</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>topological loop</primary>
+		</indexterm>
+		<indexterm>
+			<primary>loop</primary>
+			<secondary>topological</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>loop</primary>
+			<secondary>streaming function</secondary>
+		</indexterm>
+		<para>
+		The streaming functions can be used to replace the topological loops
+		(where the connection between the labels go in circles) with the
+		procedural ones. Just make the body of the loop into a streaming
+		function and connect its output with its own input (and of course also
+		to the loop results). Then call this function in a procedural
+		while-loop until the data stop circulating.
+		</para>
+
+		<para>
+		The way the streaming functions have been described so far, there is a
+		catch, even two of them: First, with such a connection, the output of
+		the streaming function would immediately circulate to its input, and
+		would try to keep circulating until the loop is done, with no need for
+		a while-loop. Second, as soon as it attempts to circulate, the
+		scheduler will detect a recursive call and die (unless you change
+		the recursion settings, however this is not a good reason to change them).
+		</para>
+
+		<para>
+		But there is also a solution that has not been described yet: an
+		FnBinding can collect the incoming rowops in a tray instead of
+		immediately forwarding them. This tray can be called later, after the
+		original function call completes. This way the iteration has its data collected, 
+		the function completes, and then the next iteration of the while-loop starts,
+		sending the data from the previous iteration. When there is nothing to
+		send any more, the loop completes.
+		</para>
+
+		<indexterm>
+			<primary>Fibonacci</primary>
+		</indexterm>
+		<para>
+		Using this logic, let's rewrite the Fibonacci example with the
+		streaming function loops. Its original version and description of the
+		logic can be found in 
+		<xref linkend="sc_sched_loop_ex" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		The new version is:
+		</para>
+
+<!-- t/xFn.t doFibFn1 -->
+<pre>
+my $uFib = Triceps::Unit->new("uFib");
+
+###
+# A streaming function that computes one step of a
+# Fibonacci number, will be called repeatedly.
+
+# Type of its input and output.
+my $rtFib = Triceps::RowType->new(
+	iter => "int32", # number of iterations left to do
+	cur => "int64", # current number
+	prev => "int64", # previous number
+);
+
+# Input: 
+#   $lbFibCompute: request to do a step. iter will be decremented,
+#     cur moved to prev, new value of cur computed.
+# Output (by FnReturn labels):
+#   "next": data to send to the next step, if the iteration
+#     is not finished yet (iter in the produced row is >0).
+#   "result": the result data if the iretaion is finished
+#     (iter in the produced row is 0).
+# The opcode is preserved through the computation.
+
+my $frFib = Triceps::FnReturn->new(
+	name => "Fib",
+	unit => $uFib,
+	labels => [
+		next => $rtFib,
+		result => $rtFib,
+	],
+);
+
+my $lbFibCompute = $uFib->makeLabel($rtFib, "FibCompute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $prev = $row->get("cur");
+	my $cur = $prev + $row->get("prev");
+	my $iter = $row->get("iter") - 1;
+	$uFib->makeHashCall($frFib->getLabel($iter > 0? "next" : "result"), $_[1]->getOpcode(),
+		iter => $iter,
+		cur => $cur,
+		prev => $prev,
+	);
+});
+
+# End of streaming function
+###
+
+my $lbPrint = $uFib->makeLabel($rtFib, "Print", undef, sub {
+	&send($_[1]->getRow()->get("cur"));
+});
+
+# binding to run the Triceps steps in a loop
+my $fbFibLoop = Triceps::FnBinding->new(
+	name => "FibLoop",
+	on => $frFib,
+	withTray => 1,
+	labels => [
+		next => $lbFibCompute,
+		result => $lbPrint,
+	],
+);
+
+my $lbMain = $uFib->makeLabel($rtFib, "Main", undef, sub {
+	my $row = $_[1]->getRow();
+	{
+		my $ab = Triceps::AutoFnBind->new($frFib, $fbFibLoop);
+
+		# send the request into the loop
+		$uFib->makeHashCall($lbFibCompute, $_[1]->getOpcode(),
+			iter => $row->get("iter"),
+			cur => 0, # the "0-th" number
+			prev => 1,
+		);
+
+		# now keep cycling the loop until it's all done
+		while (!$fbFibLoop->trayEmpty()) {
+			$fbFibLoop->callTray();
+		}
+	}
+	&send(" is Fibonacci number ", $row->get("iter"), "\n");
+});
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/);
+	$uFib->makeArrayCall($lbMain, @data);
+	$uFib->drainFrame(); # just in case, for completeness
+}
+</pre>
+
+		<para>
+		It produces the same output as before (as usual,
+		the lines in bold are the input lines):
+		</para>
+
+<!-- t/xFn.t doFibFn1 -->
+<exdump>
+> OP_INSERT,1
+1 is Fibonacci number 1
+> OP_DELETE,2
+1 is Fibonacci number 2
+> OP_INSERT,5
+5 is Fibonacci number 5
+> OP_INSERT,6
+8 is Fibonacci number 6
+</exdump>
+
+		<para>
+		The option <quote>withTray</quote> of FnBind is what makes it collect the rowops in
+		a tray. The rowops are not the original incoming ones but already
+		translated to call the FnBinding's output labels. The method <pre>callTray()</pre>
+		swaps the tray with a fresh one and then calls the original tray with
+		the collected rowops. There are more methods for the tray control:
+		<pre>swapTray()</pre> swaps the tray with a fresh one and returns the original
+		one, which can then be read or called; <pre>traySize()</pre> returns not just the
+		emptiness condition but the whole size of the tray.
+		</para>
+
+		<para>
+		The whole loop runs in one binding scope, because it doesn't change
+		with the iterations. The first row primes the loop, and then it
+		continues while there is anything to circulate.
+		</para>
+
+		<para>
+		This example sent both the next iteration rows and the result rows
+		through the binding. But for the result rows it doesn't have to. They
+		can be sent directly out of the loop:
+		</para>
+
+<!-- t/xFn.t doFibFn2 -->
+<pre>
+my $lbFibCompute = $uFib->makeLabel($rtFib, "FibCompute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $prev = $row->get("cur");
+	my $cur = $prev + $row->get("prev");
+	my $iter = $row->get("iter") - 1;
+	$uFib->makeHashCall($iter > 0? $frFib->getLabel("next") : $lbPrint, $_[1]->getOpcode(),
+		iter => $iter,
+		cur => $cur,
+		prev => $prev,
+	);
+});
+</pre>
+
+		<para>
+		The printed result is exactly the same as in the previous example. 
 		</para>
 	</sect1>
 </chapter>

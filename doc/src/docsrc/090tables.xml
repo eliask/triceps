@@ -301,11 +301,15 @@ Received 'table' 2 times
 			<secondary>recursion</secondary>
 		</indexterm>
 		<indexterm>
-			<primary>recursion</primary>
+			<primary>scheduling</primary>
+			<secondary>loop</secondary>
 		</indexterm>
 		<indexterm>
-			<primary>schedule</primary>
-			<secondary>loop</secondary>
+			<primary>loop</primary>
+			<secondary>scheduling</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>recursion</primary>
 		</indexterm>
 		<indexterm>
 			<primary>bundling</primary>
