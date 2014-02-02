@@ -149,7 +149,7 @@ sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 #     2. The frame mark: .mark
 # @param lbFirst - the label that starts the loop. Its row type
 #     also becomes the row type of the created labels.
-# @returns - a triplet of
+# @returns - a pair of
 #     ($next_label, $frame_mark)
 sub makeLoopAround # ($self, $name, $lbFirst)
 {
