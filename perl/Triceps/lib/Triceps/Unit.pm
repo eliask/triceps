@@ -129,7 +129,7 @@ sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 
 	my $mark = Triceps::FrameMark->new($name . ".mark");
 
-	my $label = $self->makeLabel($rt, $name . ".next", $clear, sub {
+	my $label = $self->makeLabel($rt, $name, $clear, sub {
 		$self->setMark($mark);
 		&$exec(@_);
 	}, @args);
@@ -159,7 +159,7 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 
 	my $mark = Triceps::FrameMark->new($name . ".mark");
 
-	my $lbWrap = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
+	my $lbWrap = $self->makeLabel($rt, $name . ".wrap", undef, sub {
 		$self->setMark($mark);
 	});
 	$lbWrap->chain($lbFirst);
