@@ -105,7 +105,8 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 
 # Create a whole combination for the start of the loop:
 #  1. The first label inside the actual loop, that runs on
-#    every iteration. It gets the clearSub and execSub to execute in it.
+#    every iteration. It gets the clearSub and execSub to execute in it,
+#    same as the usual Perl label creation.
 #    The user code doesn't need to bother about setting
 #    the frame mark, it's set in the wrapper.
 #  2. The frame mark.
@@ -121,19 +122,19 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 # @param execSub - handler function for .next
 # @param args - args for .next
 # @returns - a pair of
-#     ($next_label, $frame_mark)
+#     ($label, $frame_mark)
 sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 {
 	my ($self, $rt, $name, $clear, $exec, @args) = @_;
 
 	my $mark = Triceps::FrameMark->new($name . ".mark");
 
-	my $lbNext = $self->makeLabel($rt, $name . ".next", $clear, sub {
+	my $label = $self->makeLabel($rt, $name . ".next", $clear, sub {
 		$self->setMark($mark);
 		&$exec(@_);
 	}, @args);
 
-	return ($lbNext, $mark);
+	return ($label, $mark);
 }
 
 # Similar to makeLoopHead() but the first label inside the loop
@@ -150,7 +151,7 @@ sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 # @param lbFirst - the label that starts the loop. Its row type
 #     also becomes the row type of the created labels.
 # @returns - a pair of
-#     ($next_label, $frame_mark)
+#     ($label, $frame_mark)
 sub makeLoopAround # ($self, $name, $lbFirst)
 {
 	my ($self, $name, $lbFirst) = @_;
@@ -158,12 +159,12 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 
 	my $mark = Triceps::FrameMark->new($name . ".mark");
 
-	my $lbWrapNext = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
+	my $lbWrap = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
 		$self->setMark($mark);
 	});
-	$lbWrapNext->chain($lbFirst);
+	$lbWrap->chain($lbFirst);
 
-	return ($lbWrapNext, $mark);
+	return ($lbWrap, $mark);
 }
 
 1;
