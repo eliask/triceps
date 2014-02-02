@@ -452,7 +452,135 @@ $tray->push(@rowops);
 		</para>
 	</sect1>
 
-<!-- XXXXXXXXXXXXXXXXXX -->
+	<sect1 id="sc_sched_unwind">
+		<title>Error handling during the execution</title>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		When the labels execute, they may produce errors in one of two ways:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		The Perl code in the label might die.
+		</listitem>
+		<listitem>
+		The call topology might violate the rules.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The rules are basically that by default you can't make the recursive calls.
+		A label may not make calls directly or through other labels to itself.
+		The idea is to catch the call sequences that are likely to go into 
+		the deep recursion and overflow the stack. It catches them early,
+		on the first attempt of recursion. If you need to do the recursion,
+		use <pre>schedule()</pre> or <pre>loopAt()</pre> or the streaming
+		functions with trays. That way you avoid overrunning the stack.
+		</para>
+
+		<para>
+		It's also possible to relax the recursion checks by specifying
+		higher limits for the recursion count and stack depth. It's useful
+		in some special cases, as described in
+		XXXREF the streaming functions and recursion.
+		However such higher limits best be avoided unless really needed.
+		</para>
+
+		<para>
+		What particular stack is meant here? The execution of Triceps in Perl has
+		three stacks:
+		</para>
+
+		<itemizedlist>
+		<listitem>
+		The system stack used by the underlying Triceps &Cpp; code and
+		by the internal functions of the Perl interpreter.
+		</listitem>
+		<listitem>
+		The Perl call stack, keeping the call history of the Perl code.
+		</listitem>
+		<listitem>
+		The Triceps call stack, keeping the call history of the Triceps
+		labels in a Unit.
+		</listitem>
+		</itemizedlist>
+
+		<para>
+		The answer is <quote>all three of these stacks</quote>.
+		As the calls are made, frames are pushed onto all these stacks,
+		logically intermingling.
+		</para>
+
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
+		<indexterm>
+			<primary>draining</primary>
+		</indexterm>
+		<indexterm>
+			<primary>stack</primary>
+			<secondary>unwinding</secondary>
+		</indexterm>
+		<para>
+		Whichever way the error is detected, it causes the stacks to be unwound,
+		undoing the intermingling in the opposite order. 
+		The Perl error messages from <pre>die</pre> or <pre>confess</pre>
+		and the Triceps tracing (in the &Cpp; code) of the rowop calls and label chainings get
+		combined into a common stack trace as the stacks are being unwound. When the code gets back to
+		Perl, the XS code triggers a <pre>confess</pre> with the message containing the
+		unwound stack trace up to this point. If that happens to be in the
+		handler of another label, it continues the hybrid stack
+		unwinding. If not caught by <pre>eval</pre>, it keeps going to the topmost Triceps Unit
+		<pre>call()</pre> or <pre>drainFrame()</pre> and causes the whole program to die,
+		printing the stack trace. In a multithreaded Triceps model there is also
+		a step of interrupting all the threads in the model, but in the end
+		it still ends up dying and printing the stack trace along with the
+		information, what thread caused it.
+		Which is a reasonable reaction most of the time.
+		</para>
+
+		<para>
+		Remember, the root cause is a serious error that is likely to leave the
+		model in an inconsistent state, and it should usually be considered
+		fatal.  
+		</para>
+
+		<para>
+		If you want to catch the errors, nip them in the bud
+		by wrapping your Perl code in <pre>eval</pre>. Then you can handle
+		the errors before they have a chance to propagate.
+		</para>
+
+		<para>
+		In case if the program runs multiple models (multiple Units, or
+		multiple multithreaded Apps) in it, it can
+		also wrap the outermost call in <pre>eval</pre>, and discard just this
+		one erroneous model while leaving the other models running.
+		If the erroneous units get properly cleared, they will free
+		their memory and cause no leaks.
+		</para>
+
+		<para>
+		An interesting question is, what happens to the rowops that were
+		enqueued in the Triceps stack frames when the stack gets unwound? They
+		get thrown away. The memory gets collected thanks to the reference
+		counting, but the rowops and their sequence order get thrown out
+		of the stack.
+		The reason is basically that there may be no catching of the
+		errors until unwinding to the outermost call. The choice is to either
+		throw away everything after the first error or keep trying to
+		execute the following rowops, collecting the errors. And that
+		might become a lot of errors. I've taken the choice of stopping
+		as early as possible, because the state of the model will probably
+		be corrupted anyway and nothing but garbage would be coming out
+		(if anything would be coming at all and not be stuck in an
+		endless loop).
+		</para>
+	</sect1>
+
 	<sect1 id="sc_sched_no_bundling">
 		<title>No bundling</title>
 
@@ -461,8 +589,13 @@ $tray->push(@rowops);
 		</indexterm>
 		<para>
 		The most important principle of Triceps scheduling is: No Bundling.
-		Every rowop is for itself. The bundling is what messes up the Coral8
-		scheduler the most. 
+		Every rowop is for itself. 
+		</para>
+
+		<para>
+		I've seen the most damage done by bundling in the Coral8/Sybase
+		scheduling, so I'll refer to it when explaining the dangers of
+		bundling.
 		</para>
 
 		<para>
@@ -495,10 +628,12 @@ F1(R1), F2(R1), F1(R2), F2(R2), F1(R3), F2(R3)
 			<primary>tray</primary>
 		</indexterm>
 		<para>
-		Even though the trays in Triceps store multiple rowops, they are not bundles.
-		When a tray is called, it works exactly as if every rowop from it
-		were called separately in order. The first rowop fully propagates,
-		then the second one, and so on.
+		Even though the trays in Triceps store multiple rowops, they are not
+		bundles.  When a tray is called, it works exactly as if every rowop
+		from it were called separately in order. The first rowop fully
+		propagates, then the second one, and so on.  The ordered storage in the
+		trays only provides the order for that future execution or for a manual
+		iteration over the rowops.
 		</para>
 
 		<para>
@@ -514,22 +649,29 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		The whole bundle goes through F1 before the rows go to F2.
 		</para>
 
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<indexterm>
+			<primary>CCL</primary>
+		</indexterm>
 		<para>
-		That would not be a problem, and even could be occasionally useful, if
-		the bundles were always created explicitly. In the reality of Coral8,
-		every time a statement produces multiple record from a single one
-		(think of a join that picks multiple records from another side), it
+		That would not always be a problem, and even could be occasionally useful, if
+		the bundles were always created explicitly. In the reality of Coral8/Sybase scheduling,
+		every time a statement produces multiple rows from a single one
+		(think of a join that picks multiple rows from another side), it
 		creates a bundle and messes up all the logic after it. Some logic gets
-		affected so badly that a few statements in CCL (like ON UPDATE) had to
-		be designated as always ignoring the bundles, otherwise they would not
-		work at all. At DB I wrote a CCL pattern for breaking up the bundles.
+		affected so badly that a few statements in CCL (the Sybase modeling language),
+		such as <quote>ON UPDATE</quote>, had to
+		be designated to always ignore the bundles, otherwise they would not
+		work at all. At my past work I wrote a CCL pattern for breaking up the bundles.
 		It's rather heavyweight and thus could not be used all over the place
 		but provides a generic solution for the most unpleasant cases.
 		</para>
 
 		<para>
 		Worse yet, the bundles may get created in Coral8 absolutely
-		accidentally: if two records happen to have the same timestamp, for all
+		accidentally: if two rows happen to have the same timestamp, for all
 		practical purposes they would act as a bundle. In the models that were
 		designed without the appropriate guards, this leads to the time-based
 		bugs that are hard to catch and debug. Writing these guards correctly
@@ -539,18 +681,21 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		<para>
 		Another issue with bundles is that they make the large queries slower.
 		Suppose you do a query from a window that returns a million
-		records. All of them will be collected in a bundle, then the
+		rows. All of them will be collected in a bundle, then the
 		bundle will be sent to the interface gateway that would build one huge
 		protocol packet, which will then be sent to the client, which will
-		receive the whole packet and then finally iterate on the records in it.
+		receive the whole packet and then finally iterate on the rows in it.
 		Assuming that nothing runs out of memory along the way, it will be a
-		long time until the client sees the first record. Very, very
+		long time until the client sees the first row. Very, very
 		annoying.
 		</para>
 
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
 		<para>
-		Aleri also has its own version of bundles, called transactions, but a
-		more smart one. Aleri always relies on the primary keys. The condition
+		The Aleri CEP also had its own version of bundles, called transactions, but a
+		more smart one. Aleri always relied on the primary keys. The condition
 		for a transaction is that it must never contain multiple modification
 		for the same primary key. Since there are no execution order guarantees
 		between the functional elements, in this respect the transactions work
@@ -560,18 +705,9 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		it. Such elements have to internally collapse the outgoing transactions
 		along the new key, adding overhead.
 		</para>
-
-		<indexterm>
-			<primary>tray</primary>
-		</indexterm>
-		<para>
-		The Triceps trays store the sequences of row operations but do
-		no bundling.  If and when these rowops get executed, they will be unbundled. The
-		ordered storage only provides the order for that future execution or
-		for a manual iteration over them.
-		</para>
 	</sect1>
 
+<!-- XXXXXXXXXXXX -->
 	<sect1 id="sc_sched_basic">
 		<title>Basic scheduling in Triceps</title>
 
@@ -1281,82 +1417,6 @@ foreach my $row (@rowset) {
 		The loop won't continue until these rowops execute. They may
 		change the state of the model, so if the loop code expects it
 		to stay the same, it will be mightily surprised.
-		</para>
-	</sect1>
-
-	<sect1 id="sc_sched_unwind">
-		<title>Error handling during the execution</title>
-
-		<indexterm>
-			<primary>error handling</primary>
-		</indexterm>
-		<para>
-		When the labels execute, they may produce errors in one of two ways:
-		</para>
-
-		<itemizedlist>
-		<listitem>
-		The Perl code in the label might die.
-		</listitem>
-		<listitem>
-		The call topology might violate the rules. 
-		</listitem>
-		</itemizedlist>
-
-		<para>
-		The rules are basically that you can't make the recursive calls.
-		A label may not make calls directly or through other labels to itself.
-		The idea is to catch the call sequences that are likely to go into 
-		the deep recursion and overflow the stack. It catches them early,
-		on the first attempt of recursion. If you need to do the recursion,
-		use <pre>schedule()</pre> or <pre>loopAt()</pre>. That way you 
-		avoid overrunning the stack.
-		</para>
-
-		<indexterm>
-			<primary>XS</primary>
-		</indexterm>
-		<indexterm>
-			<primary>draining</primary>
-		</indexterm>
-		<indexterm>
-			<primary>stack</primary>
-			<secondary>unwinding</secondary>
-		</indexterm>
-		<para>
-		Whichever way the error is detected, it causes the Triceps call
-		stack to be unwound. The Perl error messages from <pre>die</pre> or <pre>confess</pre>
-		and the &Cpp; tracing of rowop calls and label chainings get
-		combined into a common stack trace. When the code gets back to
-		Perl, the XS code triggers a <pre>confess</pre>. If that happens to be in the
-		handler of another rowop, it continues the Triceps hybrid stack
-		unwinding. If not caught by <pre>eval</pre>, it keeps going to the topmost
-		<pre>call()</pre> or <pre>drainFrame()</pre> and causes the whole program to die.
-		Which is a reasonable reaction most of the time.
-		</para>
-
-		<para>
-		Remember, the root cause is a serious error that is likely to leave the
-		model in an inconsistent state, and it should usually be considered
-		as fatal. If you want to catch the errors, nip them in the bud
-		by wrapping your Perl code in <pre>eval</pre>. Then you can handle
-		the errors before thay have a chance to propagate.
-		</para>
-
-		<para>
-		An interesting question is, what happens to the rowops that were
-		in the Triceps stack frames when the stack gets unwound? They
-		get thrown away. The memory gets collected thanks to the reference
-		counting, but the rowops and their sequence order get thrown away.
-		The reason is basically that there may be no catching of the
-		errors until unwinding to the <pre>drainFrame()</pre>. The choice is to either
-		throw away everything after the first error or keep trying to
-		execute the following rowops, collecting the errors. And that
-		might become a lot of errors. I've taken the choice of stopping
-		as early as possible, because the state of the model will probably
-		be corrupted anyway and nothing but garbage would be coming out
-		(if anything would be coming at all and not be stuck in an
-		endless loop).
 		</para>
 	</sect1>
 
