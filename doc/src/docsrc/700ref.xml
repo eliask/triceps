@@ -63,10 +63,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		<xref linkend="sc_Rowop" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
-		<para>
-		Unit in 
-		<xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
-		</para>
+		<xi:include href="file:///DOCS/708unit.xml"/>
 
 		<xi:include href="file:///DOCS/710tabtype.xml"/>
 

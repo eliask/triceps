@@ -372,7 +372,7 @@ $execSubRef = $label->getCode();
 		They can be constructed from Perl, and really only from Perl. The &Cpp;
 		code can access and control them, in a symmetrical relation. The
 		method <pre>getCode()</pre> has meaning only on these Perl labels.
-		Finally, the clearing labels also get dreated from Perl, and fundamentally
+		Finally, the clearing labels also get created from Perl, and fundamentally
 		are Perl labels with many settings hardcoded in the constructor.
 		<pre>getCode()</pre> can be used on them too but since they have
 		no handler code, it would always return <pre>undef</pre>.

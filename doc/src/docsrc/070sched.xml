@@ -15,8 +15,8 @@ See the file COPYRIGHT for the copyright notice and license information
 <chapter id="ch_scheduling" xmlns:xi="http://www.w3.org/2001/XInclude">
 	<title>Scheduling</title>
 
-	<sect1 id="sc_sched_overview">
-		<title>Overview of the scheduling</title>
+	<sect1 id="sc_sched_intro">
+		<title>Introduction to the scheduling</title>
 
 		<indexterm>
 			<primary>scheduling</primary>
@@ -32,6 +32,46 @@ See the file COPYRIGHT for the copyright notice and license information
 		logic of a CEP model.  
 		</para>
 
+		<para>
+		The Triceps approach to scheduling varied over time. Initially it
+		looked like the purely procedural execution will be enough, with the
+		order determined by the order of the procedural execution, and no
+		explicit scheduling would be needed.  This has proved to have its own
+		limitations, and thus the labels and their scheduling were born. Then
+		it had turned out that the most typical thing to do with a label is to
+		call it, again in the purely procedural order.
+		</para>
+
+		<para>
+		So for the most part you don't need to think about scheduling in Triceps.
+		It just works as expected: when you call a label with a rowop, the call 
+		returns after the label's work is all done.
+		You can pretty much skip over the section
+		with the low-level details altogether, just read the high-level sections. 
+		The only important exception is the topological loops,
+		where the rowops go repeatedly through a closed loop of the labels.
+		But even for them the Perl API provides the high-level methods that
+		take care of the details under the hood. And there is another way to 
+		deal with the loops by using the streaming functions and procedural loops.
+		</para>
+
+		<para>
+		If you want to understand the loop scheduling better, skim over
+		the sections with the details. You'd also need to do this if you plan
+		to write the Triceps models in &Cpp;, since as of version 2.0 the &Cpp; API 
+		does not provide the high-level methods for building the loops yet.
+		</para>
+
+		<para>
+		Only if you are a serious CEP
+		affictionado and want to understand how everything really works,
+		you need to seriously read all the details.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_compar">
+		<title>Comparative scheduling in the various CEP systems</title>
+
 		<indexterm>
 			<primary>Aleri</primary>
 		</indexterm>
@@ -45,10 +85,11 @@ See the file COPYRIGHT for the copyright notice and license information
 			<primary>StreamBase</primary>
 		</indexterm>
 		<para>
-		There are multiple approaches to scheduling. Aleri essentially doesn't
+		There are multiple approaches to scheduling employed by different
+		CEP systems. The classic Aleri CEP essentially didn't
 		have any, except for the flow control between threads, because each its
-		element is a separate thread. Coral8 has an intricate scheduling
-		algorithm. Sybase R5 has the same logic as Coral8 inside each thread.
+		element is a separate thread. Coral8 had an intricate scheduling
+		algorithm. Sybase R5.1 has the same logic as Coral8 inside each thread.
 		StreamBase presumably also has some.
 		</para>
 
@@ -58,22 +99,360 @@ See the file COPYRIGHT for the copyright notice and license information
 		to go, but could not be used in Triceps for three reasons: First, it's a trade
 		secret, so it can't be simply reused. If I'd never seen it, that would
 		not be an issue but I've worked on it and implemented its version for
-		R5. Second, it relies on the properties that the compiler computes from
+		R5.1. Second, it relies on the properties that the compiler computes from
 		the model graph analysis. Triceps has no compiler, and could not do
 		this. Third, in reality it simply doesn't work that well. There are
 		quite a few cases when the Coral8 scheduler comes up with a strange and
 		troublesome execution order.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_unit_basics">
+		<title>Execution unit basics</title>
+
+		<indexterm>
+			<primary>unit</primary>
+		</indexterm>
+		<para>
+		An execution unit (often called simply <quote>unit</quote>) 
+		keeps the state of the Triceps execution for one
+		thread. Each thread running Triceps must have its own execution unit.
+		</para>
 
 		<para>
-		For a while I've hoped that Triceps would need no scheduler at all, and
-		everything would be handled by the procedural calls. This has proved to
-		have its own limitations, and thus the labels and their scheduling were
-		born. The Triceps scheduling still has issues to resolve, but overall
-		it still feels much better than the Coral8 one.
+		It's perfectly possible to have multiple execution units in the
+		same thread. This is typically done when there is some permanent
+		model plus some small intermittent sub-models created on demand to handle
+		the user requests. These small sub-models would be created in the
+		separate units, to be destroyed when their work is done. But this is
+		a somewhat advanced usage, it will be described in detail in
+		XXXREF maybe TQL.
+		</para>
+
+		<para>
+		This section describes the basic methods of the units, the most
+		often used ones. The more advanced ones are described in the following
+		sections, and the full reference is located in
+		<xref linkend="sc_ref_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		A unit is created with:
+		</para>
+
+<pre>
+$myUnit = Triceps::Unit->new("name");
+</pre>
+
+		<para>
+		The name argument will be used in the error messages, making easier
+		to find, which exact part of the model is having troubles.
+		By convention the name should be the same as the name of the unit variable
+		(<quote>myUnit</quote> in this case). 
+		</para>
+
+		<para>
+		The name can be read back:
+		</para>
+
+<pre>
+$name = $myUnit->getName();
+</pre>
+
+		<para>
+		Also, as usual, the variable <pre>$myUnit</pre> here contains a reference to the
+		actual unit object, and two references can be compared for whether they
+		refer to the same object:
+		</para>
+
+<pre>
+$result = $unit1->same($unit2);
+</pre>
+
+		<para>
+		A unit also keeps an empty row type (one with no fields), primarily for the
+		creation of the clearing labels (discussed in
+		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		and
+		<xref linkend="sc_Label_construction" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;),
+		but you can use it for any other purposes
+		too. You can get it with the method:
+		</para>
+
+<pre>
+$rt = $unit->getEmptyRowType();
+</pre>
+
+		<para>
+		Each unit has its own instance of an empty row type. Its purely for
+		the conveniece of memory management, they are all equivalent.
+		</para>
+
+		<para>
+		The labels are called with:
+		</para>
+
+<pre>
+$unit->call($rowop, ...);
+</pre>
+
+		<para>
+		The identity of the label being called is embedded in the row operation.
+		The <quote>...</quote> shows that multiple rowops may be passed as arguments.
+		So the real signature of this method is:
+		</para>
+
+<pre>
+$unit->call(@rowops);
+</pre>
+
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		But this way it looks more confusing. A call with multiple
+		arguments produces the same result as doing multiple calls with 
+		one argument at a time. Not only
+		rowops but also <i>trays</i> (to be discussed later) of rowops can be
+		used as arguments.
+		</para>
+
+		<para>
+		There also are the convenience methods that create the rowops
+		from the field values and immediately call them:
+		</para>
+
+<pre>
+$unit->makeHashCall($label, $opcode, 
+	$fieldName => $fieldValue, ...);
+$unit->makeArrayCall($label, $opcode, @fieldValues);
+</pre>
+
+		<para>
+		The methods for creation of labels have been already discussed in
+		<xref linkend="sc_Label_construction" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		Here is their recap along with the similar methods for creation of
+		tables and trays that will be discussed later:
+		</para>
+
+<pre>
+$label = $unit->makeDummyLabel($rowType, "name");
+
+$label = $unit->makeLabel($rowType, "name",
+	$clearSub, $execSub, @args);
+
+$label = $unit->makeClearingLabel("name", @args);
+
+$table = $unit->makeTable($tableType, "name");
+
+$tray = $unit->makeTray(@rowops); 
+</pre>
+
+		<indexterm>
+			<primary>label</primary>
+			<secondary>clearing</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>memory management</primary>
+		</indexterm>
+		<para>
+		A special thing about the labels is that when a unit creates
+		a label, it keeps a reference to it, for clearing. A label keeps a pointer
+		back to the unit but not a reference (if you call <pre>getUnit()</pre>
+		on a label, the returned value becomes a reference). For a table
+		or a tray, the unit doesn't keep a reference to them. Instead,
+		they keep a reference to the unit. 
+		The references are at the &Cpp; level, not Perl level.
+		</para>
+
+		<para>
+		With the tables, the references can get
+		pretty involved: A table has labels associated with it.
+		When a table is created, it also creates these labels.
+		The unit keeps references of these labels. The table also
+		keeps references of these labels. The table keeps a reference
+		of the unit. The labels 
+		have pointers to the unit and the
+		table but not references, to avoid the reference cycles.
+		</para>
+
+		<para>
+		See more on the memory management and label clearing in the
+		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 
+	<sect1 id="sc_sched_tray">
+		<title>Trays</title>
+
+		<para>
+		The easiest way to store a sequence of rowops is to put them into the Perl arrays,
+		like:
+		</para>
+
+<pre>
+my @ops = ($rowop1, $rowop2);
+push @ops, $rowop3;
+</pre>
+
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		However the &Cpp; internals of Triceps do not know about the Perl
+		arrays. And some of them can work directly with the sequences of rowops. So
+		Triceps defines an internal sort-of-equivalent of Perl array for
+		rowops, called a <i>Tray</i>.
+		</para>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<para>
+		The trays have first been used to <quote>catch</quote> the side effects of
+		operations on the stateful elements, so the name <quote>tray</quote> came from the
+		metaphor <quote>put a tray under it to catch the drippings</quote>.
+		The new and better approach for catching the results in a tray
+		catches the results of streaming functions.
+		</para>
+
+		<para>
+		The trays get created as:
+		</para>
+
+<pre>
+$tray = $unit->makeTray(@rowops);
+</pre>
+
+		<para>
+		A tray always stores rowops for only one unit. It can be only used in
+		one thread. A tray can be used in all the calling/enqueueing methods,
+		just like the direct rowops (the details of the enqueueing methods will be
+		described later in XXXREF).
+		</para>
+
+<pre>
+$unit->call($tray);
+$unit->fork($tray);
+$unit->schedule($tray);
+$unit->enqueue($mode, $tray);
+$unit->loopAt($mark, $tray);
+</pre>
+
+		<para>
+		Moreover, multiple trays may be passed, and the loose rowops and trays
+		can be mixed in the arguments of these functions, for example:
+		</para>
+
+<pre>
+$unit->call($rowopStartPkg, $tray, $rowopEndPkg);
+</pre>
+
+		<indexterm>
+			<primary>protocol</primary>
+		</indexterm>
+		<para>
+		A tray may contain the rowops of any types
+		mixed in any order. This is by design, and it's an important feature
+		that allows to build the protocol blocks out of rowops and perform an
+		orderly data exchange. This feature is an absolute necessity for proper
+		inter-process and inter-thread communication.
+		</para>
+
+		<indexterm>
+			<primary>Coral8</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Aleri</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<para>
+		The ability to send the rows of multiple types through the same channel
+		in order is a must, and its lack makes the communication with some
+		other CEP systems exceedingly difficult. Coral8 supports only one
+		stream per connection. Aleri (and I believe Sybase R5) allows to send
+		multiple streams through the same connection but has no guarantees of
+		order between them. I don't know about the others, check yourself.
+		</para>
+
+		<para>
+		To iterate on a tray in the Perl code, it can be converted to a Perl array:
+		</para>
+
+<pre>
+@array = $tray->toArray();
+</pre>
+
+		<para>
+		The size of the tray (the count of rowops in it) can be found directly
+		without a conversion, and the unit can be read back too:
+		</para>
+
+<pre>
+$size = $tray->size();
+$traysUnit = $tray->getUnit();
+</pre>
+
+		<para>
+		Another way to create a tray is by copying an existing one:
+		</para>
+
+<pre>
+$tray2 = $tray1->copy();
+</pre>
+
+		<para>
+		This copies the contents (which is the references to the rowops) and
+		does not create any ties between the trays. The copying is really just
+		a more efficient way to do an equivalent of:
+		</para>
+
+<pre>
+$tray2 = $tray1->getUnit()->makeTray($tray1->toArray());
+</pre>
+
+		<para>
+		The tray references can be compared for whether they point to the same
+		tray object:
+		</para>
+
+<pre>
+$result = $tray1->same($tray2);
+</pre>
+
+		<para>
+		The contents of a tray may be cleared. Which is more convenient and
+		more efficient than discarding a tray and creating another one:
+		</para>
+
+<pre>
+$tray->clear();
+</pre>
+
+		<para>
+		The data may be added to the back of a tray:
+		</para>
+
+<pre>
+$tray->push(@rowops);
+</pre>
+
+		<para>
+		Multiple rowops can be pushed in a single call. There are no other
+		Perl-like operations on a tray: it's either create from a set of
+		rowops, push, or convert to a Perl array.
+		</para>
+
+		<para>
+		Note that the trays are mutable, unlike the rows and rowops. Multiple
+		references to a tray will see the same contents. If a tray is changed
+		through one reference, the others will see the changes too.
+		</para>
+	</sect1>
+
+<!-- XXXXXXXXXXXXXXXXXX -->
 	<sect1 id="sc_sched_no_bundling">
 		<title>No bundling</title>
 
@@ -110,6 +489,16 @@ F1(R1), F2(R1), F1(R2), F2(R2), F1(R3), F2(R3)
 		before the next one is touched. This allows F2 to take into
 		accont the state of F1 exactly as it was right after processing
 		the same record, without any interventions in between.
+		</para>
+
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		Even though the trays in Triceps store multiple rowops, they are not bundles.
+		When a tray is called, it works exactly as if every rowop from it
+		were called separately in order. The first rowop fully propagates,
+		then the second one, and so on.
 		</para>
 
 		<para>
@@ -171,6 +560,16 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		it. Such elements have to internally collapse the outgoing transactions
 		along the new key, adding overhead.
 		</para>
+
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		The Triceps trays store the sequences of row operations but do
+		no bundling.  If and when these rowops get executed, they will be unbundled. The
+		ordered storage only provides the order for that future execution or
+		for a manual iteration over them.
+		</para>
 	</sect1>
 
 	<sect1 id="sc_sched_basic">
@@ -197,7 +596,7 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 				</indexterm>
 				<para>
 				Execute the label right now, including all the nested calls.
-				All of this will be completed after the call returns.
+				When the call returns, the execution is completed.
 				</para>
 				</listitem>
 			</varlistentry>
@@ -209,11 +608,11 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 				</indexterm>
 				<para>
 				Execute the label after the current label returns but
-				before anything else is done. Obviously, if multiple labels are
-				forked, they will execute in order after the current label
-				returns (but before its caller gets the control back).
-				This method has looked promising at one point but has currently
-				fallen out of favor and will likely be removed in the future.
+				before its caller gets the control back or
+				anything else is done. Obviously, if multiple labels are
+				forked, they will execute in the order they were forked.
+				The forked labels can be seen as <quote>little siblings</quote> of the
+				current label.
 				</para>
 				</listitem>
 			</varlistentry>
@@ -249,14 +648,16 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 			<primary>draining</primary>
 		</indexterm>
 		<para>
-		A scheduler in the execution unit keeps a stack of queues. Each queue
+		A scheduler in the execution unit keeps a stack of queues that contain
+		the rowops to be executed. The rowops get into the queues when they are
+		forked or scheduled.  Each queue
 		is essentially a stack frame, so I'll be using the terms <pre>queue</pre> and
 		<pre>frame</pre> interchangeably. The stack always contains at least one
-		queue, which is called the outermost stack frame.
+		queue, which is called the <b>outermost</b> stack frame.
 		</para>
 
 		<para>
-		When the new rowops come from the outside world, they are added with
+		When the new rowops arrive from the outside world, they are added with
 		<pre>schedule()</pre> to that stack frame. That's what <pre>schedule()</pre> does: always
 		adds rowops to the outermost stack frame. If rowops 1, 2 and 3 are
 		added, the stack looks like this (the brackets denote a stack frame):
@@ -782,7 +1183,7 @@ foreach my $row (@rowset) {
 		<pre>makeLoopHead()</pre> and <pre>makeLoopAround()</pre> that take care of constructing
 		the whole front part of the loop, including the setting of the mark.
 		They will be described below in
-		<xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		<!-- XXXREF loop support <xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp; -->. 
 		This is still messy, and I'm still thinking about the ways to improve
 		the situation.
 		</para>
@@ -880,455 +1281,6 @@ foreach my $row (@rowset) {
 		The loop won't continue until these rowops execute. They may
 		change the state of the model, so if the loop code expects it
 		to stay the same, it will be mightily surprised.
-		</para>
-	</sect1>
-
-	<sect1 id="sc_sched_unit">
-		<title>Execution unit</title>
-
-		<para>
-		After discussing the principles of scheduling in Triceps, let's get
-		down to the nuts and bolts.
-		</para>
-
-		<indexterm>
-			<primary>unit</primary>
-		</indexterm>
-		<para>
-		A unit is created as:
-		</para>
-
-<pre>
-$myUnit = Triceps::Unit->new("name") or confess "$!";
-</pre>
-
-		<para>
-		The name argument is as usual used for later debugging, and by
-		convention should be the same as the name of the unit variable
-		(<quote>myUnit</quote> in this case). The name can also be changed later:
-		</para>
-
-<pre>
-$myUnit->setName("newName");
-</pre>
-
-		<para>
-		It returns no value. Though in practice there is no good reason for changing names,
-		and this call will likely be removed in the future. The name can be
-		read back:
-		</para>
-
-<pre>
-$name = $myUnit->getName();
-</pre>
-
-		<para>
-		Also, as usual, the variable $myName here contains a reference to the
-		actual unit object, and two references can be compared for whether they
-		refer to the same object:
-		</para>
-
-<pre>
-$result = $unit1->same($unit2);
-</pre>
-
-		<para>
-		A unit also keeps an empty row type (one with no fields), primarily for the
-		creation of the clearing labels, but you can use it for any other purposes
-		too. You can get it with the method:
-		</para>
-
-<pre>
-$rt = $unit->getEmptyRowType();
-</pre>
-
-		<para>
-		Each unit has its own instance of an empty row type. Its purely for
-		the conveniece of memory management, they are all equivalent.
-		</para>
-
-		<para>
-		The rowops are enqueued with the calls:
-		</para>
-
-<pre>
-$unit->call($rowop, ...);
-$unit->fork($rowop, ...);
-$unit->schedule($rowop, ...); 
-</pre>
-
-		<indexterm>
-			<primary>enqueue</primary>
-		</indexterm>
-		<para>
-		<quote>Enqueued</quote> is an ugly word but since I've already used the
-		word <quote>schedule</quote> for a specific purpose, I needed another word to name
-		all these operations together. Hence <quote>enqueue</quote>.
-		</para>
-
-		<para>
-		The <quote>...</quote> shows that multiple rowops may be passed as arguments.
-		So the real signature of these methods is:
-		</para>
-
-<pre>
-$unit->call(@rowops);
-$unit->fork(@rowops);
-$unit->schedule(@rowops); 
-</pre>
-
-		<indexterm>
-			<primary>error handling</primary>
-		</indexterm>
-		<indexterm>
-			<primary>tray</primary>
-		</indexterm>
-		<para>
-		But this way it loos more confusing. 
-		Calling these functions with multiple arguments produces the same
-		result as doing multiple calls with one argument at a time. Not only
-		rowops but also <i>trays</i> (to be discussed later) of rowops can be
-		used as arguments.
-		</para>
-
-		<para>
-		These methods are among those
-		that use the new error handling, that makes the operation to confess
-		on any fatal errors. So there is no need to check their results with
-		<quote><pre>or confess</pre></quote>.
-		</para>
-
-		<para>
-		Also there is a call that selects the enqueueing mode by argument:
-		</para>
-
-<pre>
-$unit->enqueque($mode, @rowops);
-</pre>
-
-		<para>
-		The calling rules are exactly the same for the other enqueueing methods,
-		may have multiple rowops or trays as arguments, no need to check the result.
-		The <pre>$mode</pre> argument is one of:
-		</para>
-
-		<indexterm>
-			<primary>constants</primary>
-		</indexterm>
-		<itemizedlist>
-		<listitem>
-		<pre>&Triceps::EM_CALL</pre> or <pre>"EM_CALL"</pre>
-		</listitem>
-		<listitem>
-		<pre>&Triceps::EM_FORK</pre> or <pre>"EM_FORK"</pre>
-		</listitem>
-		<listitem>
-		<pre>&Triceps::EM_SCHEDULE</pre> or <pre>"EM_SCHEDULE"</pre>
-		</listitem>
-		</itemizedlist>
-
-		<para>
-		As usual, there are calls to convert between the integer constant and
-		string representations:
-		</para>
-
-<pre>
-$string = &Triceps::emString($value);
-$value = &Triceps::stringEm($string);
-</pre>
-
-		<para>
-		And as usual, if the value can not be translated, they return <pre>undef</pre>.
-		</para>
-
-		<para>
-		The frame marks for looping are created as their own class:
-		</para>
-
-		<indexterm>
-			<primary>frame mark</primary>
-		</indexterm>
-<pre>
-$mark = Triceps::FrameMark->new("name") or confess "$!";
-</pre>
-
-		<para>
-		The name can be obtained back from the mark:
-		</para>
-
-<pre>
-$name = $mark->getName();
-</pre>
-
-		<para>
-		Other than that, the frame marks are completely opaque, and can be used
-		only for the loop scheduling. Not even the <pre>same()</pre> method is supported
-		for them at the moment, though it probably will be in the future. The
-		mark gets set and used as:
-		</para>
-
-<pre>
-$unit->setMark($mark);
-$unit->loopAt($mark, @rowops);
-</pre>
-
-		<para>
-		The rowop arguments of the <pre>loopAt()</pre> are the same as for the
-		other enqueueing functions, and as for other functions they may happen
-		to be trays. These methods also use the new error handling scheme, and
-		will confess on errors. No need to check the results.
-		</para>
-
-		<para>
-		There also are the convenience methods that create the rowops
-		from the field values and immediately enqueue them:
-		</para>
-
-<pre>
-$unit->makeHashCall($label, $opcode, 
-	$fieldName => $fieldValue, ...);
-$unit->makeArrayCall($label, $opcode, @fieldValues);
-
-$unit->makeHashSchedule($label, $opcode, 
-	$fieldName => $fieldValue, ...);
-$unit->makeArraySchedule($label, $opcode, @fieldValues);
-
-$unit->makeHashLoopAt($mark, $label, $opcode, 
-	$fieldName => $fieldValue, ...);
-$unit->makeArrayLoopAt($mark, $label, $opcode, @fieldValues);
-</pre>
-
-		<para>
-		These are essentially the shorter ways to make the rowops and enqueue
-		them without the three-deep calls. Only the methods for the most 
-		frequently used enqueueing modes are provided, not for all of them.
-		All these methods also confess on errors.
-		</para>
-
-		<para>
-		The methods for creation of labels have been already discussed in
-		<xref linkend="sc_Label_construction" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
-		Here is their recap along with the similar methods for creation of
-		tables and trays that will be discussed later:
-		</para>
-
-<pre>
-$label = $unit->makeDummyLabel($rowType, "name") 
-	or confess "$!";
-
-$label = $unit->makeLabel($rowType, "name",
-	$clearSub, $execSub, @args) or confess "$!";
-
-$label = $unit->makeClearingLabel("name", @args);
-
-$table = $unit->makeTable($tableType, "name") 
-	or confess "$!";
-
-$tray = $unit->makeTray(@rowops) or confess "$!"; 
-</pre>
-
-		<para>
-		Of them <pre>makeClearingLabel()</pre> uses the new error handling convention,
-		confessing by itself, and the rest return an undef on errors that
-		has to be checked. It's actually real difficult to make 
-		<pre>makeClearingLabel()</pre> fail, only by corrupting some of the Triceps
-		internal variables, and it was a late additiion, so going straight
-		with the new convention for it made sense.
-		</para>
-
-		<indexterm>
-			<primary>memory management</primary>
-		</indexterm>
-		<para>
-		A special thing about the labels is that when a unit creates
-		a label, it keeps a reference to it, for clearing. A label keeps a pointer
-		back to the unit but not a reference (if you call <pre>getUnit()</pre>
-		on a label, the returned value becomes a reference). For a table
-		or a tray, the unit doesn't keep a reference to them. Instead,
-		they keep a reference to the unit. With the tables, it can get
-		pretty involved: A table has labels associated with it.
-		When a table is created, it also creates these labels.
-		The unit keeps references of these labels. The table also
-		keeps references of these labels. The table keeps a reference
-		of the unit. The labels (they are at the &Cpp; level, not Perl level)
-		have pointers to the unit and the
-		table but not references, to avoid the reference cycles.
-		</para>
-
-		<para>
-		See more on the memory management and label clearing in the
-		<xref linkend="ch_memory" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
-		</para>
-
-		<para>
-		The convenience methods to create the whole front part of the 
-		topological loop are:
-		</para>
-
-		<indexterm>
-			<primary>scheduling</primary>
-			<secondary>loop</secondary>
-		</indexterm>
-		<indexterm>
-			<primary>loop</primary>
-			<secondary>scheduling</secondary>
-		</indexterm>
-<pre>
-($labelBegin, $labelNext, $frameMark) = $unit->makeLoopHead(
-	$rowType, "name", $clearSub, $execSub, @args);
-
-($labelBegin, $labelNext, $frameMark) = $unit->makeLoopAround(
-	"name", $labelFirst);
-</pre>
-
-		<para>
-		You don't have to use them, you can create the loops manually. These
-		methods merely make it more convenient. Remember also that a procedural
-		loop is usually much easier to write and debug and read later than a
-		topological one.
-		</para>
-
-		<para>
-		These methods use the new error handling convention, confessing
-		on the errors. There is no need to check the result.
-		</para>
-
-		<para>
-		<pre>makeLoopHead()</pre> creates the front part of the loop that starts
-		with a Perl label. It gets the arguments for that label and
-		creates it among the other things. <pre>makeLoopAround()</pre> creates
-		the front part of the loop around an existing label that
-		will be the first one executed in the loop. <pre>makeLoopHead()</pre> 
-		is really redundant and can be replaced with a combination
-		of <pre>makeLabel()</pre> and <pre>makeLoopAround()</pre>.
-		</para>
-
-		<para>
-		They both return the same results, a triplet:
-		</para>
-
-		<itemizedlist>
-		<listitem>
-		The label where you send a rowop to initiate the loop (remember that
-		the loop consists of one row going through the loop at a time), 
-		<pre>$labelBegin</pre>.
-		</listitem>
-		<listitem>
-		The label that you use at the end of the loop in the <pre>loopAt()</pre> to
-		do the next iteration of the loop, <pre>$labelNext</pre>.
-		</listitem>
-		<listitem>
-		The frame mark that you use in <pre>loopAt()</pre>, <pre>$frameMark</pre>. You don't need to
-		set the frame mark, it will be set for you in the wrapper logic.
-		</listitem>
-		</itemizedlist>
-
-		<para>
-		The name is used to construct the names of the elements by adding 
-		a dotted suffix: <quote>name.begin</quote>, <quote>name.next</quote> for 
-		<pre>makeLoopHead()</pre> or <quote>name.wrapnext</quote> for <pre>makeLoopAround()</pre>,
-		<quote>name.mark</quote>.
-		</para>
-
-		<para>
-		<pre>makeLoopAround()</pre> takes the row type for its created labels
-		from the first label that is given to it as an argument.
-		</para>
-
-		<para>
-		The makeLoop methods may be easier to understand if you look at their source code:
-		</para>
-
-<pre>
-sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
-{
-	my ($self, $rt, $name, $clear, $exec, @args) = @_;
-
-	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
-
-	my $lbNext = $self->makeLabel($rt, $name . ".next", $clear, sub {
-		$self->setMark($mark);
-		&$exec(@_);
-	}, @args) or confess "$!";
-
-	my $lbBegin = $self->makeLabel($rt, $name . ".begin", undef, sub {
-		$self->call($lbNext->adopt($_[1]));
-	}) or confess "$!";
-
-	return ($lbBegin, $lbNext, $mark);
-}
-
-sub makeLoopAround # ($self, $name, $lbFirst)
-{
-	my ($self, $name, $lbFirst) = @_;
-	my $rt = $lbFirst->getRowType();
-
-	my $mark = Triceps::FrameMark->new($name . ".mark") or confess "$!";
-
-	my $lbWrapNext = $self->makeLabel($rt, $name . ".wrapnext", undef, sub {
-		$self->setMark($mark);
-	}) or confess "$!";
-	$lbWrapNext->chain($lbFirst) or confess "$!";
-
-	my $lbBegin = $self->makeLabel($rt, $name . ".begin", undef, sub {
-		$self->call($lbWrapNext->adopt($_[1]));
-	}) or confess "$!";
-
-	return ($lbBegin, $lbWrapNext, $mark);
-}
-</pre>
-
-		<para>
-		The label execution handlers in them use <pre>$_[1]</pre> to get their rowop
-		argument, without assigning it to a variable first.
-		An extended example of them will also be shown in 
-		<xref linkend="sc_sched_loop_ex" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
-		</para>
-
-		<para>
-		The unit can be checked for the emptiness of its queues:
-		</para>
-
-<pre>
-$result = $unit->empty();
-</pre>
-
-		<para>
-		Also the current depth of the call stack (the number of the
-		stack frames on the queue) can be found with:
-		</para>
-
-<pre>
-$result = $unit->getStackDepth();
-</pre>
-
-		<para>
-		It isn't of any use for the model logic as such but comes handy
-		for debugging, to check in the loops that you haven't accidentally
-		created a stack growing with iterations. When the unit is not
-		running, the stack depth is 1, since the outermost frame always
-		stays on the stack. When a rowop is being executed, the stack
-		depth is at least 2.
-		</para>
-
-		<para>
-		The functions for execution from the queues are:
-		</para>
-
-<pre>
-$unit->callNext();
-$unit->drainFrame();
-</pre>
-
-		<para>
-		<pre>callNext()</pre> takes one label from the top (innermost) stack frame queue and calls it.
-		If the innermost frame happens to be empty, it does nothing. 
-		<pre>drainFrame()</pre> calls the rowops from the top stack frame until it becomes
-		empty. This includes any rowops that may be created and enqueued as
-		part of the execution of the previous rowops. But it doesn't pop the
-		frame from the stack.  And of course the method
-		<pre>call()</pre> causes the argument rowops to be executed immediately, without
-		even being technically enqueued.
 		</para>
 	</sect1>
 
@@ -2363,184 +2315,6 @@ drainFrame()
 		</para>
 	</sect1>
 
-	<sect1 id="sc_sched_tray">
-		<title>Trays, or yes bundling</title>
-
-		<indexterm>
-			<primary>bundling</primary>
-		</indexterm>
-		<para>
-		Even though Triceps does no bundling in scheduling, there still is a
-		need to store the sequences of row operations. This is an important
-		distinction, since the stored sequences are to be scheduled somewhere
-		in the future (or maybe not scheduled at all, but iterated through
-		manually). If and when they get scheduled, they will be unbundled. The
-		ordered storage only provides the order for that future scheduling or
-		iteration.
-		</para>
-
-		<para>
-		The easiest way to store rowops is to put them into the Perl arrays,
-		like:
-		</para>
-
-<pre>
-my @ops = ($rowop1, $rowop2);
-push @ops, $rowop3;
-</pre>
-
-		<indexterm>
-			<primary>tray</primary>
-		</indexterm>
-		<para>
-		However the &Cpp; internals of Triceps do not know about the Perl
-		arrays. And some of them can work directly with the sequences of rowops. So
-		Triceps defines an internal sort-of-equivalent of Perl array for
-		rowops, called a <i>Tray</i>.
-		</para>
-
-		<para>
-		The trays have first been used to <quote>catch</quote> the side effects of
-		operations on the stateful elements, so the name <quote>tray</quote> came from the
-		metaphor <quote>put a tray under it to catch the drippings</quote>.
-		</para>
-
-		<para>
-		The trays get created as:
-		</para>
-
-<pre>
-$tray = $unit->makeTray(@rowops) or confess "$!";
-</pre>
-
-		<para>
-		A tray always stores rowops for only one unit. It can be only used in
-		one thread. A tray can be used in all the enqueueing methods,
-		just like the direct rowops:
-		</para>
-
-<pre>
-$unit->call($tray);
-$unit->fork($tray);
-$unit->schedule($tray);
-$unit->enqueue($mode, $tray);
-$unit->loopAt($mark, $tray);
-</pre>
-
-		<para>
-		Moreover, multiple trays may be passed, and the loose rowops and trays
-		can be mixed in the multiple arguments of these functions, for example:
-		</para>
-
-<pre>
-$unit->call($rowopStartPkg, $tray, $rowopEndPkg);
-</pre>
-
-		<indexterm>
-			<primary>protocol</primary>
-		</indexterm>
-		<para>
-		In this example nothing really stops you from placing the start and end
-		rowops into the tray too. A tray may contain the rowops of any types
-		mixed in any order. This is by design, and it's an important feature
-		that allows to build the protocol blocks out of rowops and perform an
-		orderly data exchange. This feature is an absolute necessity for proper
-		inter-process and inter-thread communication.
-		</para>
-
-		<indexterm>
-			<primary>Coral8</primary>
-		</indexterm>
-		<indexterm>
-			<primary>Aleri</primary>
-		</indexterm>
-		<indexterm>
-			<primary>Sybase</primary>
-		</indexterm>
-		<para>
-		The ability to send the rows of multiple types through the same channel
-		in order is a must, and its lack makes the communication with some
-		other CEP systems exceedingly difficult. Coral8 supports only one
-		stream per connection. Aleri (and I believe Sybase R5) allows to send
-		multiple streams through the same connection but has no guarantees of
-		order between them. I don't know about the others, check yourself.
-		</para>
-
-		<para>
-		To iterate on a tray in the Perl code, it can be converted to a Perl array:
-		</para>
-
-<pre>
-@array = $tray->toArray();
-</pre>
-
-		<para>
-		The size of the tray (the count of rowops in it) can be read directly
-		without a conversion, and the unit can be read back too:
-		</para>
-
-<pre>
-$size = $tray->size();
-$traysUnit = $tray->getUnit();
-</pre>
-
-		<para>
-		Another way to create a tray is by copying an existing one:
-		</para>
-
-<pre>
-$tray2 = $tray1->copy();
-</pre>
-
-		<para>
-		This copies the contents (which is the references to the rowops) and
-		does not create any ties between the trays. The copying is really just
-		a more efficient way to do
-		</para>
-
-<pre>
-$tray2 = $tray1->getUnit()->makeTray($tray1->toArray());
-</pre>
-
-		<para>
-		The tray references can be compared for whether they point to the same
-		tray object:
-		</para>
-
-<pre>
-$result = $tray1->same($tray2);
-</pre>
-
-		<para>
-		The contents of a tray may be cleared. Which is more convenient and
-		more efficient than discarding a tray and creating another one:
-		</para>
-
-<pre>
-$tray->clear();
-</pre>
-
-		<para>
-		The data may be added to the back of a tray:
-		</para>
-
-<pre>
-$tray->push(@rowops);
-</pre>
-
-		<para>
-		Multiple rowops can be pushed in a single call. There are no other
-		Perl-like operations on a tray: it's either create from a set of
-		rowops, push, or convert to a Perl array.
-		</para>
-
-		<para>
-		Note that the trays are mutable, unlike the rows and rowops. Multiple
-		references to a tray will see the same contents. If a tray is changed
-		through one reference, the others will see the changes too.
-		</para>
-	</sect1>
-
 	<sect1 id="sc_sched_tracing">
 		<title>Tracing the execution</title>
 
@@ -2590,8 +2364,7 @@ $tray->push(@rowops);
 		</para>
 
 <pre>
-$tracer = Triceps::UnitTracerStringName(option => $value, ...)
-	or confess "$!";
+$tracer = Triceps::UnitTracerStringName(option => $value, ...);
 </pre>
 
 		<para>
@@ -2768,8 +2541,7 @@ unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE
 		</para>
 
 <pre>
-$tracer = Triceps::UnitTracerPerl->new($sub, @args) 
-	or confess "$!";
+$tracer = Triceps::UnitTracerPerl->new($sub, @args);
 </pre>
 
 		<para>
@@ -3020,5 +2792,6 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		Eventually this tracing should become another standard class in Triceps.
 		</para>
 	</sect1>
+
 
 </chapter>
