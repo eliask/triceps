@@ -989,7 +989,7 @@ lbTradeEnriched OP_INSERT ric="GHI.N" isin="XX0000012345" size="600" price="10.5
 		Using this logic, let's rewrite the Fibonacci example with the
 		streaming function loops. Its original version and description of the
 		logic can be found in 
-		<xref linkend="sc_sched_loop_ex" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		<xref linkend="sc_sched_topo_loops" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

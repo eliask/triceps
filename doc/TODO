@@ -124,6 +124,7 @@ Things that need to be done:
 * change the aggregator types to not have an own name, but to be named in a table type
 * provide a default AggregatorType::makeGadget() that makes the generic AggregatorGadget
 * add an option to adopt the rowop during the label chaining
+* add callAdopted() that combines $unit->call($label->adopt($rowop))
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
@@ -134,6 +135,9 @@ Things that need to be done:
 * doc: in section on topo loops add an xref to streaming functions loops
 * doc: clear up all "or confess"
 * doc: clean up the section on unit
+* doc: the loop support in C++?
+* doc: somewhere up front, describe, what is a stock symbol etc
+* doc: wipe aout all mentions of new/old error handling convention
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
