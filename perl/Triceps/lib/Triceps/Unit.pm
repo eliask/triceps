@@ -116,7 +116,7 @@ sub makeArrayLoopAt # (self, mark, label, opcode, fieldValue, ...)
 # @param rt - row type for the looping rows
 # @param name - base name for the labels and the mark.
 #     The names are created with suffixes as:
-#     1. First label in the loop: .next
+#     1. First label in the loop: no suffix
 #     2. The frame mark: .mark
 # @param clearSub - clearing function for .next
 # @param execSub - handler function for .next
@@ -145,8 +145,8 @@ sub makeLoopHead # ($self, $rt, $name, $clearSub, $execSub, @args)
 #
 # @param name - base name for the labels and the mark.
 #     The names are created with suffixes as:
-#     1. Wrapper for the first label in the loop: .wrapnext;
-#        that should be used with loopAt().
+#     1. Wrapper for the first label in the loop: no suffix;
+#        this label is the one that should be used with loopAt().
 #     2. The frame mark: .mark
 # @param lbFirst - the label that starts the loop. Its row type
 #     also becomes the row type of the created labels.
@@ -159,7 +159,7 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 
 	my $mark = Triceps::FrameMark->new($name . ".mark");
 
-	my $lbWrap = $self->makeLabel($rt, $name . ".wrap", undef, sub {
+	my $lbWrap = $self->makeLabel($rt, $name, undef, sub {
 		$self->setMark($mark);
 	});
 	$lbWrap->chain($lbFirst);
