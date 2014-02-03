@@ -1254,62 +1254,212 @@ sub makeLoopAround # ($self, $name, $lbFirst)
 			<secondary>main</secondary>
 		</indexterm>
 		<para>
-		The execution unit doesn't magically process the data by itself.
-		The data needs to be pushed into it, and the unit has to be told
-		to process it. There has to be some internal code to drive it,
-		that would continuously read the data, schedule, drain.
+		The examples above had already shown the <quote>main loop</quote>, now
+		let's look at it up close and discuss, what and why is it doing.
+		The point of the main loop is to get the execution of the model going:
+		accept some rowops from the outside world, shovel them into the
+		Triceps model and process them, sending some result rowops back into
+		the outside world. The sending back is done from inside the label handlers,
+		so as long as the model runs, nothing else is needed for them.
 		</para>
 
 		<para>
-		A typical way of processing the incoming rowops in a loop is:
+		By the time the program enters the main loop, the model should be all
+		constructed and ready to run.
+		The simplest main loop may look like this:
 		</para>
 
 <pre>
-$stop = 0; 
-while (!$stop) {
-	$rowop = &readRowop(); # some user-defined function
+while ($rowop = &readRowop()) { # reads with some user-defined function
+	$unit->call($rowop);
+} 
+</pre>
+
+		<para>
+		This loop will read the incoming rowops as long as they're available,
+		and call them. When <pre>$unit->call()</pre> returns, the processing
+		of the rowop in the model is done, including all the nested calls
+		it caused.
+		</para>
+
+		<para>
+		However there is also a way to request the post-processing.
+		It's somewhat similar to the Tcl concept of <quote>idletasks</quote>.
+		An example of post-processing might be the flushing of the output
+		buffer: the normal processing may collect a number of the output
+		rowops in the buffer, and after everything is done, the buffer
+		would be serialized and sent out.
+		This post-processing needs to happen after the initial call returns.
+		</para>
+
+		<para>
+		The rowops are scheduled for post-processing with the method:
+		</para>
+
+<pre>
+$unit->schedule(@rowops_or_trays); 
+</pre>
+
+		<indexterm>
+			<primary>schedule</primary>
+		</indexterm>
+		<para>
+		The model keeps a queue of the post-processing requests, and
+		<pre>schedule()</pre> adds to this queue.
+		</para>
+
+		<para>
+		However the simplest main loop shown above won't run the
+		postprocessing. The queue would just keep growing.
+		The postprocessing is done by the method
+		</para>
+
+<pre>
+$unit->drainFrame();
+</pre>
+
+		<para>
+		It calls all the collected post-processing rowops in order.
+		Their handling may keep scheduling more rowops, and the draining
+		won't stop until all of them are processed. So they should not
+		keep schduling more rowops forever, or the draining will never end.
+		To handle the postprocessing properly, the main loop
+		should be:
+		</para>
+
+<pre>
+while ($rowop = &readRowop()) { # reads with some user-defined function
 	$unit->call($rowop);
 	$unit->drainFrame();
 } 
 </pre>
 
 		<para>
-		The rowops coming from the outside get executed as they are received,
-		and then any rows left over from them get handled by <pre>drainFrame()</pre>
-		before the next incoming rowop is read.
-		Some of the executed rowops may set <pre>$stop</pre>, and the main loop
-		will exit. 
-		</para>
-
-		<para>
-		There is also another version of the main loop that has been more
-		historic:
+		You can even write it in a slightly different form:
 		</para>
 
 <pre>
-$stop = 0; 
-while (!$stop) {
-	$rowop = &readRowop(); # some user-defined function
+while ($rowop = &readRowop()) { # reads with some user-defined function
 	$unit->schedule($rowop);
 	$unit->drainFrame();
 } 
 </pre>
 
 		<para>
-		It uses <pre>schedule()</pre> instead of <pre>call()</pre> for the rowop.
-		As long as only one rowop is scheduled before draining the frame, both
-		versions work equally well. But if you schedule multiple rowops before
-		draining the frame, you can introduce a subtle unpredictability in the
-		execution order. It is described in detail in
-		<xref linkend="sc_sched_issues" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
-		Actually, you can have the same problem if you don't drain the frame
-		after each top-level <pre>call()</pre> too. But mentally <pre>call()</pre> kind of reminds
-		better to feed the rowops one at a time, and also is slightly more
-		efficient, so now I prefer the version with it.
+		In this version the incoming rowop gets added to the queue, and then
+		<pre>drainFrame()</pre> calls it and any of its after-effects.
+		Historically, this has been the intended way but then it had turned
+		out that there is no point in first placing the incoming rowop
+		onto the queue and then reading it from the queue, so calling
+		it directly is slightly more efficient.
 		</para>
 
 		<para>
-		Many of the examples in this manual use the main loop along the
+		What if you decide in some label handler deep in the call tree
+		that now is the good time to run the schduled rowops, similar
+		to Tcl's <quote>update idletasks</quote> and call <pre>drainFrame()</pre>?
+		First of all, this is a very bad idea. The CEP models are usually
+		very sensitive to the particular execution order, and inserting
+		some random rowops in the middle tends to break things.
+		Second, it won't work. It might execute <i>some</i> rowops
+		(which ones exactly is a long story, described in 
+		<xref linkend="sc_sched_detail" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;)
+		but none of the scheduled ones. In short, there is a reason to
+		why the method is called <pre>drainFrame()</pre>: the queue
+		is organized in frames that are pushed stack-wise as the
+		labels are called, and popped after the calls complete.
+		<pre>DrainFrame()</pre> drains the current frame. 
+		<pre>Schedule()</pre> puts the rowops onto the outermost frame
+		that becomes accessible for draining only when the model is idle.
+		</para>
+
+		<para>
+		It is possible to find out whether there are the post-processing
+		rowops scheduled and to run them one by one:
+		</para>
+
+<pre>
+while ($rowop = &readRowop()) { # reads with some user-defined function
+	$unit->call($rowop);
+	while (!$unit->empty()) {
+		$unit->callNext();
+	}
+} 
+</pre>
+
+		<para>
+		But of course a Perl loop is less efficient than the &Cpp; loop
+		in <pre>drainFrame()</pre>.
+		</para>
+
+		<para>
+		Another straightforward idea is to read and execute the input
+		as it comes in but delay the post-processing until the input
+		becomes idle, exacly like the Tcl <quote>idletasks</quote> do.
+		Somewhat like this:
+		</para>
+
+<pre>
+while (1) {
+	if (!$unit->empty()) {
+		$rowop = &readRowopNoWait();
+		if ($rowop) {
+			$unit->call($rowop);
+		} else {
+			$unit->callNext();
+		}
+	} else {
+		$rowop = &readRowop();
+		last if (!$rowop); # no more input
+		$unit->call($rowop);
+	}
+} 
+</pre>
+
+		<indexterm>
+			<primary>bundling</primary>
+		</indexterm>
+		<para>
+		It might even be useful sometimes but most of the time this turns
+		out to be nothing but pain. The problem is that the exact order
+		of execution becomes dependent on the timing of the data arrival,
+		and the repeatable testing becomes next to impossible. It's
+		another case of the bundling problem.
+		</para>
+
+		<para>
+		If the data arrives bundled with multiple rowops per packet,
+		you have a choice whether to drain the frame after each rowop
+		or after each packet. Which approach is better depends on the
+		needs of the application and on whether the bundling of the
+		rowops into packets is predictable and repeatable. If there are
+		no defined boundaries between packets but the grouping is
+		done simply by timeout or buffer size, such bundles are
+		much better off being broken up into the individual rowops.
+		</para>
+
+		<para>
+		Now let's look at yet another aspect: the main loop may need
+		to exit not only when there is no more input available
+		but also after processing some requests. This can be done
+		by adding a global stop flag, with label handlers setting it
+		when they need to request the exit:
+		</para>
+
+<pre>
+$stop = 0;
+while (!$stop && ($rowop = &readRowop())) {
+	$unit->call($rowop);
+	$unit->drainFrame();
+} 
+</pre>
+
+		<para>
+		The examples in this manual tend to read the input data
+		as plain text lines, convert them to rowops and execute.
+		They are simple-minded, so they don't do any error checking,
+		they would just fail randomly on the incorrect input.
+		Their main loop usually goes along the
 		following lines (with variations, to fit the examples, and as the
 		main loop was refined over time):
 		</para>
@@ -1332,10 +1482,7 @@ while(&readLine) {
 		It reads the CSV (Comma-Separated Values) data from stdin,
 		with the label name in the first column, the opcode in the
 		second, and the data fields in the rest. Then dispatches
-		according to the label. Doing a <pre>call()</pre> instead 
-		of <pre>schedule()</pre> works just as well, and the following
-		<pre>drainFrame()</pre> takes care of any rowops scheduled
-		from the call.
+		according to the label.
 		</para>
 
 		<para>
@@ -1374,18 +1521,23 @@ while(&readLine) {
 </pre>
 
 		<para>
-		Though none of these small examples are production-ready. At the
-		very least, their parsing of the CSV data is primitive. It
+		Once again, none of these small examples are production-ready. 
+		They have no error handling, and
+		their parsing of the CSV data is primitive. It
 		can't handle the quoting properly and can't parse the data
 		with commas in it.
-		</para>
-
-		<para>
 		A better ready way to parse the data will be provided in the future.
 		For now, make your own.
 		</para>
+
+		<para>
+		The multithreaded models have their own special needs for the
+		main loops. These will be discussed in 
+		XXXREF multithreaded main loop.
+		</para>
 	</sect1>
 
+<!-- XXXXXXX -->
 	<sect1 id="sc_sched_mainloop_socket">
 		<title>Main loop with a socket</title>
 
@@ -2253,14 +2405,11 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		</para>
 	</sect1>
 
-<!-- XXXXXXXXXXXX -->
-	<sect1 id="sc_sched_basic">
-		<title>Basic scheduling in Triceps</title>
+	<sect1 id="sc_sched_detail">
+		<title>The gritty details of Triceps scheduling</title>
 
 		<para>
-		In Triceps the scheduling is done by the execution unit, or simply
-		<quote>unit</quote> as it's often referred to.
-		It provides 3 basic ways of executing of a rowop:
+		There are three ways of executing a rowop in Triceps:
 		</para>
 
 		<indexterm>
@@ -2278,7 +2427,8 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 				</indexterm>
 				<para>
 				Execute the label right now, including all the nested calls.
-				When the call returns, the execution is completed.
+				When the call returns, the execution is completed. This is
+				the most typical way, and the only one explicitly described so far.
 				</para>
 				</listitem>
 			</varlistentry>
@@ -2338,6 +2488,7 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		queue, which is called the <b>outermost</b> stack frame.
 		</para>
 
+<!-- XXXXXXXXXXXX -->
 		<para>
 		When the new rowops arrive from the outside world, they are added with
 		<pre>schedule()</pre> to that stack frame. That's what <pre>schedule()</pre> does: always
@@ -2968,146 +3119,5 @@ foreach my $row (@rowset) {
 		to stay the same, it will be mightily surprised.
 		</para>
 	</sect1>
-
-	<sect1 id="sc_sched_issues">
-		<title>Issues with the Triceps scheduling</title>
-		<!-- XXXXXXXXXXX needs an update -->
-
-		<para>
-		As much as I like it, the Triceps scheduling is not perfect, and has
-		some open issues at the moment.  Some of them have been already
-		mentioned in the description of the loop scheduling: it's a bit
-		confusing that the frame mark is placed on the next outer scheduling
-		stack frame and not on the current one. This leads to the interesting
-		effects in execution order.
-		</para>
-
-		<para>
-		The other one has been mentioned in the main loop discussion:
-		the <pre>schedule()</pre> call, when used from inside the scheduled code,
-		may introduce unpredictability in the execution order. It puts the rowop
-		after the last rowop in the outermost stack frame. But the outermost
-		stack frame may contain a whole queue of rowops that come from the outside.
-		This means that the exact order of execution will depend on the timing
-		of the rowops arriving from outside. 
-		</para>
-
-		<para>
-		Let me demonstrate it with an example. Suppose the main loop tries to
-		optimize by collecting and schedulng as many incoming rowops as it can
-		before running them:
-		</para>
-
-		<indexterm>
-			<primary>main loop</primary>
-		</indexterm>
-		<indexterm>
-			<primary>loop</primary>
-			<secondary>main</secondary>
-		</indexterm>
-<pre>
-$stop = 0; 
-while (!$stop) {
-	&waitForIncomingData(); # some user-defined function
-	while ($rowop = &readRowop()) { # some user-defined function
-		$unit->schedule($rowop);
-	}
-	$unit->drainFrame();
-} 
-</pre>
-
-		<para>
-		Suppose the rowops A, B, C, D are being received from the outside.
-		When the rowop A executes, it schedules the rowop E. Then depending
-		on the timing of the packets in the network, the call sequence may
-		be
-		</para>
-
-<pre>
-schedule(A)
-drainFrame()
-schedule(B)
-drainFrame()
-schedule(C)
-drainFrame()
-schedule(D)
-drainFrame()
-</pre>
-
-		<para>
-		or
-		</para>
-
-<pre>
-schedule(A)
-schedule(B)
-drainFrame()
-schedule(C)
-schedule(D)
-drainFrame()
-</pre>
-
-		<para>
-		or
-		</para>
-
-<pre>
-schedule(A)
-schedule(B)
-schedule(C)
-schedule(D)
-drainFrame()
-</pre>
-
-		<para>
-		or a few other combinations. In the first case the actual execution order
-		will be A, E, B, C, D. That's because when A schedules E, E will be picked
-		up and executed by the first following frame drain. In the second case the
-		execution order will be A, B, E, C, D. Here when E gets scheduled, B is 
-		already on the queue in front of it. In the third case the order will
-		be A, B, C, D, E. And it will fluctuate at random between the runs.
-		</para>
-
-		<para>
-		If the repeatable execution order is important (and usually it is), 
-		the solution if to feed the rowops one by one and drain the frame
-		right afterwards. Then the execution order will always be A, E, B, C, D.
-		When feeding one by one, <pre>call()</pre> can be used instead of <pre>schedule()</pre>,
-		and even slightly more efficient. Just don't forget to drain the frame
-		after each call.
-		</para>
-
-		<indexterm>
-			<primary>scheduling</primary>
-			<secondary>loop</secondary>
-		</indexterm>
-		<indexterm>
-			<primary>loop</primary>
-			<secondary>scheduling</secondary>
-		</indexterm>
-		<para>
-		The same issue happens with the topological loops that have been temporarily
-		stopped and then resumed on arrival of more data from outside. The mark
-		of such a loop will be unset when the loop continues, and looping at
-		this mark will be equivalent to <pre>schedule()</pre>, having the same
-		repeatability problem. The same solution works for this issue too.
-		</para>
-
-		<para>
-		The method <pre>fork()</pre> is not exactly useful. It was created when I've
-		thought that it's the solution to the problem of the loops. Which it
-		has turned out to not solve, and another solution had to be devised.
-		Now it really doesn't have much use, and will probably be removed in
-		the future.
-		</para>
-
-		<para>
-		I have a few ideas for better solutions of these issues, but they will
-		need a bit more experimentation. Just keep in mind that the scheduling
-		will be refined in the future. It will still have the same general
-		shape but differ in detail.
-		</para>
-	</sect1>
-
 
 </chapter>

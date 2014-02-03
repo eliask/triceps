@@ -137,7 +137,8 @@ Things that need to be done:
 * doc: clean up the section on unit
 * doc: the loop support in C++?
 * doc: somewhere up front, describe, what is a stock symbol etc
-* doc: wipe aout all mentions of new/old error handling convention
+* doc: wipe out all mentions of new/old error handling convention
+* doc: in the intro, what is a "model"?
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
