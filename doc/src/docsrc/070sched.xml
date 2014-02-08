@@ -1927,6 +1927,7 @@ exit(0);
 		</para>
 	</sect1>
 
+<!-- XXXX the exact tracing sequences will change -->
 	<sect1 id="sc_sched_tracing">
 		<title>Tracing the execution</title>
 
@@ -2409,7 +2410,7 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		<title>The gritty details of Triceps scheduling</title>
 
 		<para>
-		There are three ways of executing a rowop in Triceps:
+		There are four ways of executing a rowop in Triceps:
 		</para>
 
 		<indexterm>
@@ -2428,7 +2429,18 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 				<para>
 				Execute the label right now, including all the nested calls.
 				When the call returns, the execution is completed. This is
-				the most typical way, and the only one explicitly described so far.
+				the most typical way, and the only one described in detail so far.
+				</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>Schedule:</term>
+				<listitem>
+				<indexterm>
+					<primary>schedule</primary>
+				</indexterm>
+				<para>
+				Execute the label after everything else is done.
 				</para>
 				</listitem>
 			</varlistentry>
@@ -2444,25 +2456,33 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 				anything else is done. Obviously, if multiple labels are
 				forked, they will execute in the order they were forked.
 				The forked labels can be seen as <quote>little siblings</quote> of the
-				current label.
+				current label. Forking is currently not used much, other
+				than for the special case of looping.
 				</para>
 				</listitem>
 			</varlistentry>
 			<varlistentry>
-				<term>Schedule:</term>
+				<term>Loop:</term>
 				<listitem>
 				<indexterm>
-					<primary>schedule</primary>
+					<primary>topological loop</primary>
+				</indexterm>
+				<indexterm>
+					<primary>loop</primary>
+					<secondary>topological</secondary>
 				</indexterm>
 				<para>
-				Execute the label after everything else is done.
+				Execute the label as the start of the next iteration of the
+				topological loop, after the current iteration is fully
+				completed. This is a special case of fork, essentially
+				forking at the level of the loop's first label.
 				</para>
 				</listitem>
 			</varlistentry>
 		</variablelist>
 
 		<para>
-		This is kind of intuitively clear but the details might sometimes
+		This is kind of intuitively straightforward but the details might sometimes
 		be a bit surprising. So let us look in detail at how it works inside
 		on an example of a fairly convoluted scheduling sequence.
 		</para>
@@ -2480,19 +2500,20 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 			<primary>draining</primary>
 		</indexterm>
 		<para>
-		A scheduler in the execution unit keeps a stack of queues that contain
+		A scheduler in the execution unit keeps not just a single queue but 
+		a stack of queues that contain
 		the rowops to be executed. The rowops get into the queues when they are
-		forked or scheduled.  Each queue
-		is essentially a stack frame, so I'll be using the terms <pre>queue</pre> and
-		<pre>frame</pre> interchangeably. The stack always contains at least one
+		forked or looped or scheduled.  Each queue
+		is essentially a stack frame, so I'll be using the terms <i>queue</i> and
+		<i>frame</i> interchangeably. The stack always contains at least one
 		queue, which is called the <b>outermost</b> stack frame.
 		</para>
 
-<!-- XXXXXXXXXXXX -->
 		<para>
-		When the new rowops arrive from the outside world, they are added with
+		When the new rowops arrive from the outside world, they can be added with the method
 		<pre>schedule()</pre> to that stack frame. That's what <pre>schedule()</pre> does: always
-		adds rowops to the outermost stack frame. If rowops 1, 2 and 3 are
+		adds rowops to the outermost stack frame, no matter how many frames
+		might be pushed on top of it. If rowops 1, 2 and 3 are
 		added, the stack looks like this (the brackets denote a stack frame):
 		</para>
 
@@ -2520,7 +2541,7 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		<para>
 		This new frame is the rowop 1's frame, which is marked on the diagram
 		by <quote>~1</quote>. The diagram shows the most recently pushed, innermost,
-		frame on the top, and the oldest, outermost frame on the bottom. The
+		frame on top, and the oldest, outermost frame on the bottom. The
 		concepts of <quote>innermost</quote> and <quote>outermost</quote>
 		come from the nested calls: the most recent call is nested the deepest
 		in the middle and is the innermost one.
@@ -2559,7 +2580,8 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 </pre>
 
 		<para>
-		Suppose then rowop 1 forks rowops 5 and 6. They are appended to the
+		Suppose then rowop 1 forks rowops 5 and 6 by calling the Unit method
+		<pre>fork()</pre>. They are appended to the
 		innermost frame in the order they are forked.
 		</para>
 
@@ -2588,102 +2610,69 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 
 		<para>
 		Suppose now the execution of rowop 1 completes. But its stack frame can
-		not be popped yet, because it is not empty. The scheduler calls
-		<pre>drainFrame()</pre> recursively, which picks the next rowop from the innermost
-		queue (rowop 5), and calls it, pushing a new stack frame and executing
-		the rowop 5 code:
+		not be popped yet, because it is not empty. Now is the time to execute
+		the rowops from it.
+		The first rowop gets picked from the frame and called, but in a special way.
+		It doesn't get its own frame. Instead, it takes over the frame of its
+		parent rowop. The frame that was marked <quote>~1</quote> now changes
+		its marking to <quote>~5</quote> because of that take-over:
 		</para>
 
 <pre>
-[ ] ~5
-[6] ~1*
+[6] ~5
 [2, 3]
 </pre>
 
 		<para>
-		The former rowop 1's frame is now marked with <quote>~1*</quote>
-		for the ease of tracking, even though it has completed.
-		</para>
-
-		<para>
-		If rowop 5 forks rowop 8, the stack becomes:
+		If the rowop 5 forks rowop 8, the stack becomes:
 		</para>
 
 <pre>
-[8] ~5
-[6] ~1*
+[6, 8] ~5
 [2, 3]
 </pre>
 
 		<para>
-		When the execution of rowop 5 returns, its queue is also not empty. So
-		the scheduler starts draining the innermost frame again, and calls rowop 8.
-		During its execution the stack is:
+		Since the frame was inherited from the parent rowop 1, the rowop 8
+		just gets appended to the end of it after rowop 6. The rowops forked
+		in the same frame are executed in the order they were forked.
+		Unlike the calls, there is no nesting involved in forking.
+		</para>
+
+		<para>
+		When the execution of rowop 5 returns, the execution of the forked
+		rowops from the innermost frame continues. The rowop 6 gets picked
+		from the front of the frame and takes over the frame ownership:
+		</para>
+
+<pre>
+[8] ~6
+[2, 3]
+</pre>
+
+		<para>
+		Suppose the rowop 6 doesn't call or fork anything else and returns.
+		Then the rowop 8 starts executing and takes over the frame:
 		</para>
 
 <pre>
 [ ] ~8
-[ ] ~5*
-[6] ~1*
 [2, 3]
 </pre>
 
-		<para>
-		Suppose the rowop 8 doesn't call or fork anything else and returns. Its
-		innermost queue is empty, so the call completes and pops the stack
-		frame:
-		</para>
-
-<pre>
-[ ] ~5*
-[6] ~1*
-[2, 3]
-</pre>
 
 		<para>
-		Now the queue of rowop 5 is also empty, so its draining completes and
-		pops the drained frame:
-		</para>
-
-<pre>
-[6] ~1*
-[2, 3]
-</pre>
-
-		<para>
-		The draining of the rowop 1's frame continues by picking the rowop 6
-		from the queue and calling it:
-		</para>
-
-<pre>
-[ ] ~6
-[ ] ~1*
-[2, 3]
-</pre>
-
-		<para>
-		Suppose rowop 6 calls <pre>schedule()</pre> of rowop 9. Rowop 9 is then
+		Suppose rowop 8 calls <pre>schedule()</pre> of rowop 9. Rowop 9 is then
 		added to the outermost queue:
 		</para>
 
 <pre>
-[ ] ~6
-[ ] ~1*
+[ ] ~8
 [2, 3, 9]
 </pre>
 
 		<para>
-		Rowop 6 then returns, its queue is empty, so it's popped and its call completes.
-		</para>
-
-<pre>
-[ ] ~1*
-[2, 3, 9]
-</pre>
-
-		<para>
-		Now the queue of rowop 1 has become empty, so it's popped from the
-		stack and the call of rowop 1 completes:
+		Rowop 8 then returns, its queue is empty, so it's popped and its call completes.
 		</para>
 
 <pre>
@@ -2702,21 +2691,133 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		</indexterm>
 		<para>
 		An interesting question is, what happens with the chained labels?
-		Where do they fit in the order of execution? It turns out to be
-		a bit of a mix between a <pre>call()</pre> and a <pre>fork()</pre>.
-		They get checked after the original label completes its execution 
-		and has its frame drained but before that frame gets popped.
+		Where do they fit in the order of execution? They turn out to be
+		similar to a <pre>fork()</pre>.
+		The presence of chaining gets checked after the original label completes its execution 
+		but before executing any of the forked labels from its frame.
+		If any chained labels are found, they are called one by one.
+		They take over the frame of the parent, just like the forked labels.
+		Any of the chained labels may also call <pre>fork()</pre>, adding
+		more labels to the frame. The next forked label (if any) gets
+		executed only after all the labels chained from the current
+		one are done.
 		</para>
 
 		<para>
-		If any chained labels are found, they are called one by one.
-		But they don't get a new frame created. They all reuse the frame
-		left over from the parent label. The frame gets popped only
-		after all the chained labels have completed.
+		What would happen if <pre>drainFrame()</pre> is called not from outside
+		the model but from inside some label handler? It will drain the
+		innermost frame. Suppose that the queue stack was in the following
+		state, with rowop 5 executing:
+		</para>
+
+<pre>
+[6, 8] ~5
+[2, 3]
+</pre>
+
+		<para>
+		If the label handler of the rowop 5 calls <pre>drainFrame()</pre>
+		now, <pre>drainFrame()</pre> will do its usual job: pick the
+		rowops one by one from the innermost frame, create the nested
+		frames for them and execute. So first it will pick up the rowop 6:
+		</para>
+
+<pre>
+[ ] ~6
+[8] ~5
+[2, 3]
+</pre>
+
+		<para>
+		After the rowop 6 completes, its frame gets popped:
+		</para>
+
+<pre>
+[8] ~5
+[2, 3]
+</pre>
+
+		<para>
+		But <pre>drainFrame()</pre> continues running, and now picks the rowop 8:
+		</para>
+
+<pre>
+[ ] ~8
+[ ] ~5
+[2, 3]
+</pre>
+
+		<para>
+		After the rowop 8 completes, its frame gets also popped:
+		</para>
+
+<pre>
+[ ] ~5
+[2, 3]
+</pre>
+
+		<para>
+		At this point the innermost frame becomes empty and <pre>drainFrame()</pre>
+		returns. The label handler of rowop 5 continues its execution.
+		</para>
+
+		<para>
+		If you haven't forked anything, the innermost frame will be empty, and
+		<pre>drainFrame()</pre> will do nothing. If you did fork some rowops,
+		<pre>drainFrame()</pre> looks like a convenient way to call them now
+		and then continue. However note that in this case the semantics is
+		different from the normal forking. The rowops from the frame will
+		be called in the nested frames, not taking over the original frame.
+		So if say rowop 6 refers to the same label as rowop 5, this nested
+		execution will be considered a recursive call of the same label.
+		Thus <pre>drainFrame()</pre> is best used only with the outermost
+		frame.
+		</para>
+
+		<para>
+		What if the rowop 1 weren't scheduled and then drained but was just
+		directly called? The outermost frame will remain empty, while a new
+		frame will be pushed for the rowop 1 as usual:
+		</para>
+
+<pre>
+[ ] ~1
+[ ]
+</pre>
+
+		<para>
+		If the rowop 1 executed the same code as before, after the call it
+		will leave the rowop 9 scheduled on the outermost frame:
+		</para>
+
+<pre>
+[9]
+</pre>
+
+		<para>
+		To execute the rowop 9, call <pre>drainFrame()</pre>, or it will be
+		stuck there forever.
+		</para>
+
+		<para>
+		Note that the execution order differs depending on whether the
+		incoming rowops were scheduled or directly called, and on when
+		the <pre>drainFrame()</pre> is called. If the three rowops were
+		scheduled and then drained, the execution order will be
+		1, 2, 3, 9. If they were called directly with draining the
+		frame after each one, the order will be 1, 9, 2, 3. And if they
+		were called directly but with draining only after the last
+		one, it would be again 1, 2, 3, 9. 
+		</para>
+
+		<para>
+		The loop scheduling is a whole big separate subject that will
+		be discussed in the next section.
 		</para>
 
 	</sect1>
 
+<!-- XXXXXXXX -->
 	<sect1 id="sc_sched_loop">
 		<title>Loop scheduling</title>
 
