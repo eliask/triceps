@@ -2481,8 +2481,18 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 			</varlistentry>
 		</variablelist>
 
+		<indexterm>
+			<primary>enqueue</primary>
+		</indexterm>
 		<para>
-		This is kind of intuitively straightforward but the details might sometimes
+		The common term encompassing all of them is <quote>enqueue</quote>.
+		<quote>Enqueue</quote> is an ugly word but since I've already used the
+		word <quote>schedule</quote> for a specific purpose, I needed another word to name
+		all these operations together. Hence <quote>enqueue</quote>.
+		</para>
+
+		<para>
+		The meaning is kind of intuitively straightforward but the details might sometimes
 		be a bit surprising. So let us look in detail at how it works inside
 		on an example of a fairly convoluted scheduling sequence.
 		</para>
@@ -2817,11 +2827,9 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 
 	</sect1>
 
-<!-- XXXXXXXX -->
 	<sect1 id="sc_sched_loop">
-		<title>Loop scheduling</title>
+		<title>The gritty details of Triceps loop scheduling</title>
 
-		<!-- XXXXXX duplicated in Topological loops -->
 		<indexterm>
 			<primary>scheduling</primary>
 			<secondary>loop</secondary>
@@ -2830,17 +2838,6 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 			<primary>loop</primary>
 			<secondary>scheduling</secondary>
 		</indexterm>
-		<para>
-		The easiest and most efficient way to schedule the loops is to do it
-		procedurally, something like this:
-		</para>
-
-<pre>
-foreach my $row (@rowset) {
-	$unit->call($lbA->makeRowop(&Triceps::OP_INSERT, $row)); 
-}
-</pre>
-
 		<indexterm>
 			<primary>topological loop</primary>
 		</indexterm>
@@ -2849,34 +2846,20 @@ foreach my $row (@rowset) {
 			<secondary>topological</secondary>
 		</indexterm>
 		<para>
-		However the labels topologically connected into a loop can come handy
-		as well. Some logic may be easier to express this way. Suppose the
-		model contains the labels connected in a loop, as in
-		<xref linkend="fig_sched_loop" xrefstyle="select: label nopage"/>&xrsp;.
+		Now it's time to look at what is really going on when a
+		topological loop gets executed. Let's continue looking at
+		the loop example that was already shown in
+		<xref linkend="fig_sched_loop" xrefstyle="select: label page"/>&xrsp;.
+		<!-- the figure here is with a page reference! -->
 		</para>
 
-		<!--
-		<figure id="fig_sched_loop" >
-			<title>Labels forming a loop.</title>
-			<xi:include href="file:///FIGS/label-010-loop.xml"/> 
-		</figure>
-		-->
-
 		<para>
-		But if handled simple-mindedly, it can use a lot of stack space.
+		If the loop were handled simple-mindedly, with all the execution
+		done by calls, it could use a lot of stack space.
 		Suppose some rowop X1 is scheduled for label X, and causes the loop
 		to be executed twice, with rowops X1, A2, B3, C4, A5, B6, C7, Y8. If each
 		operation is done as a <pre>call()</pre>, the stack grows like this: It starts with
-		X1 scheduled.
-		</para>
-
-<pre>
-[X1]
-</pre>
-
-		<para>
-		Which then gets executed, with its own execution frame (marked as such
-		for clarity):
+		X1 called, creating its own execution frame (marked as such for clarity):
 		</para>
 
 <pre>
@@ -2895,6 +2878,7 @@ foreach my $row (@rowset) {
 </pre>
 
 		<para>
+		Which then continues the calls in sequence.
 		By the time the execution comes to Y8, the stack looks like this:
 		</para>
 
@@ -2915,7 +2899,7 @@ foreach my $row (@rowset) {
 		execution is the depth of the recursion. If the loop executes a million
 		times, the stack will be three million levels deep. Worse yet, it's not
 		just the Triceps scheduler stack that grows, it's also the process
-		(&Cpp;) stack.
+		(&Cpp; and Perl) stack.
 		</para>
 
 		<indexterm>
@@ -2927,9 +2911,10 @@ foreach my $row (@rowset) {
 		</indexterm>
 
 		<para>
-		Which is why this kind of recursive calls are explicitly forbidden
+		Which is why this kind of recursive calls is forbidden by default
 		in Triceps. If you try to do it, on the first recursive call the
-		execution will die with an error.
+		execution will die with an error. You can enable the recursion
+		but this only lets the stack grow and doesn't prevent the growth.
 		</para>
 
 		<para>
@@ -2951,61 +2936,72 @@ foreach my $row (@rowset) {
 </pre>
 
 		<para>
-		Then A2 executes, gets its own frame and forks B3:
+		Then A2 inherits the stack frame and executes, forks B3:
 		</para>
 
 <pre>
 [B3] ~A2
-[ ] ~X1*
 [ ]
 </pre>
 
 		<para>
-		Even though X1 has completed, its stack frame stays until all the rowops
-		forked in it complete too.
-		By the end of the loop the stack picture becomes exactly the same as with
-		<pre>call()</pre>. For a while I've thought that optimizing out the empty stack
-		frames would solve the problem, but no, that doesn't work: the problem
-		is that the &Cpp; process stack keeps growing no matter what. The jump
-		back in the loop needs to be placed into an earlier stack frame to
-		prevent the stack from growing.
-		</para>
-
-		<para>
-		One way to do it would be to use the <pre>schedule()</pre> operation in
-		C to jump back to A, placing the rowop A5 back onto the outermost
-		frame. The scheduler stack at the end of C4 would look like:
+		On each step the frame will be inherited by the next label,
+		and if Y8 is also eventually forked, at the end the stack will
+		be:
 		</para>
 
 <pre>
-[ ] ~C4
-[ ] ~B3
-[ ] ~A2
-[ ] ~X1
-[A5]
+[ ] ~Y8
+[ ]
 </pre>
 
 		<para>
-		Then the stack would unwind back to:
+		Problem solved, no matter how many iterations were done by the loop,
+		the stack will stay limited. 
 		</para>
 
-<pre>
-[A5]
-</pre>
+		<para>
+		The catch though is that <i>every</i>
+		operation inside the loop must be done with a <pre>fork()</pre>.
+		If there is even one <pre>call()</pre> occuring in the loop, the
+		stack will grow by a frame for each <pre>call()</pre> and may
+		become quite deep again. The problem is that <pre>call()</pre> is
+		hardcoded in many primitives, such as Tables, and is fairly typically
+		used in the templates as well. The historic solution for that
+		was to specify for each table, how it should handle its results,
+		call them or fork them or even schedule them. And the templates
+		could use a similar approach.
+		</para>
 
 		<para>
-		And the next iteration of the loop will start afresh. The problem here
-		is that if X1 wanted to complete the loop and then do something, it
-		can't. By the time the second iteration of the loop starts, X1 is
-		completely gone. It would be better to be able to enqueue the next
-		execution of the loop at the specific point of the stack.
+		The practice had quickly showed that not only all this explicit
+		choice is quite cumbersome and easy to miss, but also the
+		semantics of <pre>fork()</pre> is different from <pre>call()</pre>
+		in a very annoying way. If some label wants to do something,
+		call some other label, then do something more using the result of the call, doing it with
+		<pre>call()</pre> is simple: just execute all this procedurally
+		in sequence. After <pre>call()</pre> returns, its work is
+		guaranteed to be done and any global state to be updated.
+		Not so with <pre>fork()</pre> that just puts the rowop onto
+		a queue, there just isn't any way to get the second half
+		of the original label's code to execute only after all the
+		effects from the forked rowop had propagated.
+		(Historically <pre>fork()</pre> worked differently in
+		Triceps 1.0 and did allow to reproduce the call semantics
+		through some minor contortions but then it kept growing
+		the stack on every fork, just as the calls do).
+		</para>
+
+		<para>
+		The solution, even back in the version 1.0 days, was to add a special
+		method for the loop scheduling.
 		</para>
 
 		<indexterm>
 			<primary>frame mark</primary>
 		</indexterm>
 		<para>
-		Here the concept of the frame mark comes in. A frame mark is a token
+		It starts with the concept of the frame mark. A <i>frame mark</i> is a token
 		object, completely opaque to the program. It can be used only in two
 		operations:
 		</para>
@@ -3033,54 +3029,19 @@ foreach my $row (@rowset) {
 		</figure>
 
 		<para>
-		When A2 calls setMark(M), the stack will look like this:
+		When the label A executes the rowop A2, first things it does is
+		calling setMark(M). After that the stack will look like this:
 		</para>
 
 <pre>
-[ ] ~A2
-[ ] ~X1, mark M
+[ ] ~A2, mark M
+[ ] ~X1
 [ ]
 </pre>
 
 		<para>
-		The mark M remembers the frame one outer to the current one. The stack
+		The mark M remembers the current frame. The stack
 		at the end of C4, after it has called <pre>loopAt(M, A5)</pre>, is:
-		</para>
-
-<pre>
-[ ] ~C4
-[ ] ~B3
-[ ] ~A2
-[A5] ~X1, mark M
-[ ]
-</pre>
-
-		<para>
-		The stack then unwinds until A5 starts its execution:
-		</para>
-
-<pre>
-[ ] ~A5
-[ ] ~X1*, mark M
-[ ]
-</pre>
-
-		<para>
-		Each iteration starts with a fresh stack, and the stack depth is
-		limited to one iteration. The nested loops can also be properly
-		executed.
-		</para>
-
-		<para>
-		Now, why does the mark get placed on the frame that is one out from the
-		current one? After all, this means that X1 can not wait for the
-		loop to complete. It has to return before the second iteration of
-		the loop can start. And then the rest of the loop will run before
-		the control returns to X1's caller. At least the caller of X1 can
-		wait for the loop to complete before continuing its execution.
-		Why all this trouble? Its the result of a compromise.
-		Suppose that it did remember the current frame. Then at
-		the end of C4 the stack will be:
 		</para>
 
 <pre>
@@ -3092,51 +3053,58 @@ foreach my $row (@rowset) {
 </pre>
 
 		<para>
-		The stack will unwind until A5. Which would then have its own frame
-		pushed onto the stack, and the code in the label A will call <pre>setMark(M)</pre> 
-		again, moving the mark to A5's own frame because it's the topmost frame now:
+		The stack then unwinds until A5 starts its execution:
 		</para>
 
 <pre>
 [ ] ~A5, mark M
-[ ] ~A2*
 [ ] ~X1
 [ ]
 </pre>
 
 		<para>
-		So on each iteration of the loop one extra frame will be pushed onto
-		the stack, and the mark moved by one level. A loop executing a million
-		times will push a million frames, which is bad. Marking the next outer
-		frame prevents this. Another option would have been to put the
-		mark operation in X, but that would mean that every loop must have a preceding
-		label that just marks the frame (well, and potentially could do the
-		other initializations too), which seems to be too annoying.
+		When A5 inherits the stack frame from A2, the mark M stays put.
+		The label A would normally call <pre>setMark(M)</pre> again anyway,
+		but it will just put the mark onto the same frame, so effectively
+		it's a no-operation.
 		</para>
 
 		<para>
-		It's one problem or the other, and the lesser problem won.
-		To further reduce the complexity, I've also added the methods 
-		<pre>makeLoopHead()</pre> and <pre>makeLoopAround()</pre> that take care of constructing
-		the whole front part of the loop, including the setting of the mark.
-		They will be described below in
-		<!-- XXXREF loop support <xref linkend="sc_sched_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp; -->. 
-		This is still messy, and I'm still thinking about the ways to improve
-		the situation.
+		Thus each iteration starts with a fresh stack, and the stack depth is
+		limited to one iteration. The nested loops can also be properly
+		executed.
+		</para>
+
+		<para>
+		After Y8 completes, the stack will unroll back, and X1
+		can continue its execution:
+		</para>
+
+<pre>
+[ ] ~X1
+[ ]
+</pre>
+
+		<para>
+		To reiterate, when the control returns back to X1, the whole loop
+		is done.
 		</para>
 
 		<para>
 		What happens after the stack unwinds past the mark? The mark gets
 		unset. When someone calls <pre>loopAt()</pre> with an unset mark, the rowop is
-		enqueued in the outermost frame, having the same effect as schedule<pre>()</pre>.
+		enqueued in the outermost frame, having the same effect as <pre>schedule()</pre>.
 		</para>
 
 		<para>
-		This handling of an unset mark comes handy in case if the loop execution
-		takes a pause in the middle. Suppose the label B finds that it can't process
+		It's possible to use this handling of an unset mark to some creative
+		effects. It allows the loops to take a pause in the middle.
+		Suppose the label B finds that it can't process
 		the rowop B3 until some other data has arrived. What it can do then is remember
 		B3 somewhere in the thread state and return. The loop has not completed but
 		it can't progress either, so the call unrolls until it becomes empty.
+		In this case the code of label X must be prepared to find that the
+		loop hadn't completed yet after the call of A2 returns.
 		Since the frame of X1 is popped off the stack, the mark M gets unset. 
 		The knowledge that the loop needs to be continued stays remembered
 		in the state.
@@ -3144,80 +3112,25 @@ foreach my $row (@rowset) {
 
 		<para>
 		After some time that awaited data arrives, as some other rowop. When that
-		rowop gets processed, it finds that remembered state with B3 and makes
+		rowop gets processed, it will find that remembered state with B3 and will make
 		it continue, maybe by calling <pre>call(B3)</pre> again. So now the
 		logic in B finds all the data it needs and continues with the loop,
 		calling C4. C4 will do its job and call <pre>loopAt(M, A5)</pre>.
 		But the mark M has been unset a while ago!  Scheduling A5 at the outermost
 		frame seems to be a logical thing to do at this point. Then whatever
 		current processing will complete and unwind, and the loop will continue
-		after it.
+		after it. When the rowop A5 gets executed, the label A will call
+		<pre>setMark(M)</pre> again, thus setting the mark on its new frame,
+		and making the loop run as far as it can before executing any other
+		scheduled rowops.
 		</para>
 
 		<para>
-		What if <pre>setMark()</pre> is called when there is only one frame on
-		the stack? Then there is no second frame outer to it. The mark will
-		simply be left unset.
-		</para>
-
-		<para>
-		But overall pausing and then restarting a loop like this is not such
+		Overall, pausing and then restarting a loop like this is not such
 		a good idea. The caller of the loop normally expects that it can wait
 		for the loop to complete, and that when the loop returns, it's all done.
-		If a loop may decide to bail out now and continue later, the caller
-		has to be prepared for it.
-		</para>
-
-		<indexterm>
-			<primary>scheduling</primary>
-			<secondary>loop interleaving</secondary>
-		</indexterm>
-		<indexterm>
-			<primary>batch</primary>
-		</indexterm>
-		<indexterm>
-			<primary>bundling</primary>
-		</indexterm>
-		<indexterm>
-			<primary>fork</primary>
-		</indexterm>
-		<indexterm>
-			<primary>schedule</primary>
-		</indexterm>
-		<para>
-		And the sequence of execution when the loop continues might not
-		be direct. In the normal execution one iteration of the loop
-		follows directly after the previous one because of the orchestration
-		by the label at the head of the loop (X in this example). 
-		When C calls <pre>loopAt()</pre>, the rowop gets pushed onto
-		the stack frame of X. It would execute immediately only if X
-		is draining its frame, and only if there are no other rowops
-		queued on that frame in front of this one. I've been seeing it
-		as a feature: X can easily be careful and make sure that the
-		whole loop executes in one go without any interruptions.
-		<pre>makeLoopHead()</pre> and <pre>makeLoopAround()</pre>
-		create such careful labels. But it may also decide to
-		run multiple loops interleaved, with each one making one
-		iteration at a time. To do that, all it needs is fork the
-		rowops to start all these loops and then drain the frame
-		(directly or by returning from its own code). This way
-		you can for example make a batch of records run through the
-		loop (or even through the different loops) with the whole
-		batch going throgh one iteration before the another iteration
-		starts, achieving a kind of bundling. Though, if fork
-		gets removed, this would not be possible any more. Maybe
-		is's a reason for fork to stay, maybe it's a useless feature.
-		</para>
-
-		<para>
-		However if a loop decides to pause and then continues on
-		some other event, its following <pre>loopAt()</pre> pushing the rowop
-		onto the outermost frame, there is no caring parent to do the
-		careful orchestration. There is no way to tell, which other
-		rowops have been pushed onto the outermust frame by this time.
-		The loop won't continue until these rowops execute. They may
-		change the state of the model, so if the loop code expects it
-		to stay the same, it will be mightily surprised.
+		If a loop may decide to bail out now and continue later, the
+		effects may be quite unexpected.
 		</para>
 	</sect1>
 
