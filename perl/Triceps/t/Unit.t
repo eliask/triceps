@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 142 };
+BEGIN { plan tests => 145 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -802,6 +802,32 @@ $c_expect =
 	. "unit 'u1' after-chained label 'lab1' op OP_DELETE }\n"
 	. "unit 'u1' after label 'lab1' op OP_DELETE }\n"
 	;
+
+$v = $sntr->print();
+ok($v, $c_expect);
+
+### same chained input but with no-verbose
+
+$sntr = Triceps::UnitTracerStringName->new();
+$u1->setTracer($sntr);
+
+$u1->schedule($c_op1);
+$u1->schedule($c_op2);
+ok(!$u1->empty());
+
+$u1->drainFrame();
+ok($u1->empty());
+
+$c_expect =
+"unit 'u1' before label 'lab1' op OP_INSERT
+unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT
+unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT
+unit 'u1' before label 'lab1' op OP_DELETE
+unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE
+unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE
+";
 
 $v = $sntr->print();
 ok($v, $c_expect);
