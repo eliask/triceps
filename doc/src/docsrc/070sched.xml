@@ -328,7 +328,8 @@ $tray = $unit->makeTray(@rowops);
 		A tray always stores rowops for only one unit. It can be only used in
 		one thread. A tray can be used in all the calling/enqueueing methods,
 		just like the direct rowops (the details of the enqueueing methods will be
-		described later in XXXREF).
+		described later in 
+		<xref linkend="sc_sched_detail" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
 		</para>
 
 <pre>
@@ -483,9 +484,11 @@ $tray->push(@rowops);
 
 		<para>
 		It's also possible to relax the recursion checks by specifying
-		higher limits for the recursion count and stack depth. It's useful
-		in some special cases, as described in
-		XXXREF the streaming functions and recursion.
+		higher limits for the recursion count and stack depth. 
+		How to do it is described in
+		<xref linkend="sc_sched_recursion" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		It comes useful in some special cases, as described in
+		<xref linkend="sc_strf_recursion" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		However such higher limits best be avoided unless really needed.
 		</para>
 
@@ -775,7 +778,7 @@ foreach my $row (@rowset) {
 		The detailed explanation of
 		how it all works is somewhat complicated, split into a separate
 		section
-		XXXREF loop details
+		<xref linkend="sc_sched_loop" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		for those interested. But there are the easy methods that cover
 		up all the complexity.
 		</para>
@@ -3193,6 +3196,153 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		If a loop may decide to bail out now and continue later, the
 		effects may be quite unexpected.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_sched_recursion">
+		<title>Recursion control</title>
+
+		<indexterm>
+			<primary>recursion</primary>
+		</indexterm>
+		<para>
+		Historically, the recursive calls (when a
+		label calls itself, directly or indirectly) have been forbidden in
+		Triceps. Mind you, the recursive calling could still be done even
+		then with the help of trays and forking.
+		And it's probably the best way too from the
+		standpoint of correctness. However it's not the most straightforward
+		way, and the real recursion still comes handy once in a while.
+		</para>
+
+		<para>
+		Now the recursion is allowed in its direct way. Especially
+		that it doesn't have to be all-or-nothing, it can be done in a
+		piecemeal and controlled fashion.
+		</para>
+
+		<para>
+		It's controlled per-unit. Each unit has two adjustable limits:
+		</para>
+
+		<indexterm>
+			<primary>topological loop</primary>
+		</indexterm>
+		<indexterm>
+			<primary>loop</primary>
+			<secondary>topological</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<variablelist>
+			<varlistentry>
+				<term>Maximal stack depth:</term>
+				<listitem>
+				<para>
+				Limits the total depth of the unit's call stack. That's the
+				maximal length of the call chain, whether it goes straight or
+				in loops.
+				</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term>Maximal recursion depth:</term>
+				<listitem>
+				<para>
+				Limits the number of times each particular label may appear on
+				the call stack. So if you have a recursive code fragment
+				(a simple-minded loop or a recursive streaming function), this
+				is the limit on its recursive reentrances.
+				</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		Both these limits accept the 0 and negative values to mean <quote>unlimited</quote>.
+		</para>
+
+		<para>
+		The default is as it has been before: unlimited stack depth, recursion
+		depth of 1 (which means that each label may be called once but it may
+		not call itself). But now you can change them with the calls:
+		</para>
+
+<pre>
+$unit->setMaxStackDepth($n);
+$unit->setMaxRecursionDepth($n);
+</pre>
+
+		<para>
+		You can change them at any time, even when the unit is running (but
+		they will be enforced only on the next attempt to execute a rowop).
+		</para>
+
+		<para>
+		You can also read the current values:
+		</para>
+
+<pre>
+$n = $unit->maxStackDepth();
+$n = $unit->maxRecursionDepth();
+</pre>
+
+		<para>
+		Another thing about the limits is that even if you set them to
+		<quote>unlimited</quote> or to some very large values, there still are the system
+		limits. The calls use the &Cpp; process (or thread) stack and the Perl stack, and if you
+		make too many of them, the stack will overflow and the whole process
+		will crash and possibly dump core. Keeping the call depths within
+		reason is still a good idea.
+		</para>
+
+		<indexterm>
+			<primary>table</primary>
+		</indexterm>
+		<para>
+		Now you can do the direct recursion. However as with the procedural
+		code, not all the labels are reentrant. Some of them may work with the
+		static data structures that can't be modified in a nested fashion.
+		Think for example of a table: when you modify a table, it sends rowops
+		to its <quote>pre</quote> and <quote>out</quote> labels. You can connect the other labels there,
+		and react to the table modifications. However these labels can't
+		attempt to modify the same table, because the table is already in the
+		middle of a modification, and it's not reentrant.
+		</para>
+
+		<para>
+		The table still has a separate logic to check for non-reentrance, and
+		no matter what is the unit's general recursion depth limit, for the
+		table it always stays at 1. Moreover, the table enforces it across both
+		the input label interface and the procedural interface.
+		</para>
+
+		<indexterm>
+			<primary>reentrance</primary>
+		</indexterm>
+		<para>
+		If you make your own non-reentrant labels, Triceps can make this check
+		for you. Just mark the first label of the non-reentrant sequence with
+		</para>
+
+<pre>
+$label->setNonReentrant();
+</pre>
+
+		<para>
+		It will have its own private recursion limit of 1. Any time it's
+		attempted to execute recursively, it will confess. There is no way to
+		unset this flag: when a label is known to be non-reentrant, it can not
+		suddenly become reentrant until its code is rewritten.
+		</para>
+
+		<para>
+		You can read this flag with
+		</para>
+
+<pre>
+$val = $label->isNonReentrant();
+</pre>
 	</sect1>
 
 </chapter>

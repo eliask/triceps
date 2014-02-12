@@ -354,24 +354,6 @@ $result = $unit->empty();
 </pre>
 
 		<para>
-		Also the current depth of the call stack (the number of the
-		stack frames on the queue) can be found with:
-		</para>
-
-<pre>
-$result = $unit->getStackDepth();
-</pre>
-
-		<para>
-		It isn't of any use for the model logic as such but comes handy
-		for debugging, to check in the loops that you haven't accidentally
-		created a stack growing with iterations. When the unit is not
-		running, the stack depth is 1, since the outermost frame always
-		stays on the stack. When a rowop is being executed, the stack
-		depth is at least 2.
-		</para>
-
-		<para>
 		The functions for execution from the queues are:
 		</para>
 
@@ -390,6 +372,65 @@ $unit->drainFrame();
 		<pre>call()</pre> causes the argument rowops to be executed immediately, without
 		even being technically enqueued.
 		</para>
+
+		<para>
+		The recursive calls may be enabled per-unit with the methods:
+		</para>
+
+<pre>
+$unit->setMaxStackDepth($n);
+$unit->setMaxRecursionDepth($n);
+</pre>
+
+		<para>
+		<pre>setMaxStackDepth()</pre> sets the limit on the total depth of the
+		unit's call stack. That's the maximal length of the call chain, whether
+		it goes straight or in loops.
+		</para>
+
+		<para>
+		<pre>setMaxRecursionDepth()</pre> sets the limit on the 
+		number of times each particular label may appear on
+		the call stack. So if you have a recursive code fragment 
+		(a simple-minded loop or a recursive streaming function), this
+		is the limit on its recursive reentrances.
+		</para>
+
+		<para>
+		You can change them at any time, even when the unit is running (but
+		they will be enforced only on the next attempt to execute a rowop).
+		Both these limits accept the 0 and negative values to mean <quote>unlimited</quote>.
+		The default is: unlimited stack depth, recursion
+		depth of 1.
+		</para>
+
+		<para>
+		You can read the current limits with:
+		</para>
+
+<pre>
+$n = $unit->maxStackDepth();
+$n = $unit->maxRecursionDepth();
+</pre>
+
+		<para>
+		Also the current depth of the call stack (the number of the
+		stack frames on the queue) can be found with:
+		</para>
+
+<pre>
+$result = $unit->getStackDepth();
+</pre>
+
+		<para>
+		It isn't of any use for the model logic as such but comes handy
+		for debugging, to check in the loops that you haven't accidentally
+		created a stack growing with iterations. When the unit is not
+		running, the stack depth is 1, since the outermost frame always
+		stays on the stack. When a rowop is being executed, the stack
+		depth is at least 2.
+		</para>
+
 	</sect1>
 
 <!-- XXXXXXXXXXXX add makeClearingTrigger to the reference -->

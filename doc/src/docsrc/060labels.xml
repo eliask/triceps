@@ -395,6 +395,18 @@ $label->setName($name);
 		The label also provides the constructor methods for the row operations, 
 		which are described below.
 		</para>
+
+		<para>
+		And for completeness I'll mention the methods used to mark the
+		label as non-reentrant and to read this mark back. They will be described
+		in detail in 
+		<xref linkend="sc_sched_recursion" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+<pre>
+$label->setNonReentrant();
+$val = $label->isNonReentrant();
+</pre>
+
 	</sect1>
 
 	<sect1 id="sc_Rowop">
@@ -734,6 +746,7 @@ Triceps::isDelete($rowop->getOpcode())
 		They handle the whole logic directly in &Cpp; without an extra
 		Perl conversion of the values.
 		</para>
+
 	</sect1>
 
 </chapter>
