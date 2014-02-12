@@ -1960,18 +1960,41 @@ exit(0);
 		before a label executes,
 		</listitem>
 		<listitem>
-		after the label executes but before draining its frame,
+		before the chained labels execute,
 		</listitem>
 		<listitem>
-		after the frame is drained but before the chained labels execute,
+		after the chained labels execute,
 		</listitem>
 		<listitem>
-		after all the execution caused by the label is completed.
+		after the label executes,
+		</listitem>
+		<listitem>
+		before the label's frame is drained (and thus the forked rowops
+		execute, see the details of that in
+		<xref linkend="sc_sched_detail" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		),
+		</listitem>
+		<listitem>
+		after the frame is drained.
 		</listitem>
 		</itemizedlist>
 
 		<para>
-		For the simple tracing, there is a small simple tracer provided. It
+		The calls around the chaining and around the draining are done only if there
+		are the chained labels to call or forked rowops to drain accordingly. Otherwise these
+		pairs are skipped. 
+		</para>
+
+		<para>
+		The tracing calls happen in the order shown above.
+		The call after the label executes goes after the chained calls (if any),
+		enveloping them. However the draining calls happen after that (and no matter
+		how many rowops were forked onto that frame, there will be only one
+		after-draining call per frame, still referring to the original label).
+		</para>
+
+		<para>
+		For the simple tracing, a small simple tracer is provided. It
 		actually executes directly as compiled in &Cpp; so it's quite
 		efficient:
 		</para>
@@ -1985,9 +2008,9 @@ $tracer = Triceps::UnitTracerStringName(option => $value, ...);
 		</para>
 
 		<para>
-		The only option supported is <pre>verbose</pre>, which may be 0 (default) or
+		The only option supported is <quote>verbose</quote>, which may be 0 (default) or
 		non-0. If it's 0 (false), the tracer will record a message only before
-		executing each label. If true, it will record a message after each
+		executing each label. If true, it will record a message on each
 		stage. The class is named UnitTracerStringName because it records the
 		execution trace in the string format, including the names of the
 		labels. The tracer is set into the unit:
@@ -2011,14 +2034,10 @@ $unit->setTracer($tracer);
 $oldTracer = $unit->getTracer();
 </pre>
 
-		<indexterm>
-			<primary>error handling</primary>
-		</indexterm>
 		<para>
 		If no tracer was previously set, <pre>getTracer()</pre> will return <pre>undef</pre>.
 		And <pre>undef</pre> can also be used as an argument of <pre>setTracer()</pre>, to
-		cancel any previously set tracing. <pre>setTracer()</pre> has the new-style
-		error handling and confesses on errors.
+		cancel any previously set tracing. 
 		</para>
 
 		<para>
@@ -2058,26 +2077,21 @@ $tracer->clearBuffer();
 		Here is a code sequence designed to produce a fairly involved trace:
 		</para>
 
-<!-- t/Unit.t, with ok() replaced with confess() -->
+<!-- t/Unit.t, test the chaining, with ok() removed -->
 <pre>
 $sntr = Triceps::UnitTracerStringName->new(verbose => 1);
 $u1->setTracer($sntr);
 
-$c_lab1 = $u1->makeDummyLabel($rt1, "lab1") 
-	or confess "$!";
-$c_lab2 = $u1->makeDummyLabel($rt1, "lab2") 
-	or confess "$!";
-$c_lab3 = $u1->makeDummyLabel($rt1, "lab3") 
-	or confess "$!";
+$c_lab1 = $u1->makeDummyLabel($rt1, "lab1");
+$c_lab2 = $u1->makeDummyLabel($rt1, "lab2");
+$c_lab3 = $u1->makeDummyLabel($rt1, "lab3");
 
-$c_op1 = $c_lab1->makeRowop(&Triceps::OP_INSERT, $row1) 
-	or confess "$!";
-$c_op2 = $c_lab1->makeRowop(&Triceps::OP_DELETE, $row1) 
-	or confess "$!";
+$c_op1 = $c_lab1->makeRowop(&Triceps::OP_INSERT, $row1);
+$c_op2 = $c_lab1->makeRowop(&Triceps::OP_DELETE, $row1);
 
-$v = $c_lab1->chain($c_lab2) or confess "$!";
-$v = $c_lab1->chain($c_lab3) or confess "$!";
-$v = $c_lab2->chain($c_lab3) or confess "$!";
+$c_lab1->chain($c_lab2);
+$c_lab1->chain($c_lab3);
+$c_lab2->chain($c_lab3);
 
 $u1->schedule($c_op1);
 $u1->schedule($c_op2);
@@ -2089,36 +2103,42 @@ $u1->drainFrame();
 		The trace is:
 		</para>
 
+<!-- extracted form strings to plain text -->
 <exdump>
 unit 'u1' before label 'lab1' op OP_INSERT {
-unit 'u1' drain label 'lab1' op OP_INSERT
-unit 'u1' before-chained label 'lab1' op OP_INSERT
+unit 'u1' before-chained label 'lab1' op OP_INSERT {
 unit 'u1' before label 'lab2' (chain 'lab1') op OP_INSERT {
-unit 'u1' drain label 'lab2' (chain 'lab1') op OP_INSERT
-unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_INSERT
+unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_INSERT {
 unit 'u1' before label 'lab3' (chain 'lab2') op OP_INSERT {
-unit 'u1' drain label 'lab3' (chain 'lab2') op OP_INSERT
 unit 'u1' after label 'lab3' (chain 'lab2') op OP_INSERT }
+unit 'u1' after-chained label 'lab2' (chain 'lab1') op OP_INSERT }
 unit 'u1' after label 'lab2' (chain 'lab1') op OP_INSERT }
 unit 'u1' before label 'lab3' (chain 'lab1') op OP_INSERT {
-unit 'u1' drain label 'lab3' (chain 'lab1') op OP_INSERT
 unit 'u1' after label 'lab3' (chain 'lab1') op OP_INSERT }
+unit 'u1' after-chained label 'lab1' op OP_INSERT }
 unit 'u1' after label 'lab1' op OP_INSERT }
 unit 'u1' before label 'lab1' op OP_DELETE {
-unit 'u1' drain label 'lab1' op OP_DELETE
-unit 'u1' before-chained label 'lab1' op OP_DELETE
+unit 'u1' before-chained label 'lab1' op OP_DELETE {
 unit 'u1' before label 'lab2' (chain 'lab1') op OP_DELETE {
-unit 'u1' drain label 'lab2' (chain 'lab1') op OP_DELETE
-unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_DELETE
+unit 'u1' before-chained label 'lab2' (chain 'lab1') op OP_DELETE {
 unit 'u1' before label 'lab3' (chain 'lab2') op OP_DELETE {
-unit 'u1' drain label 'lab3' (chain 'lab2') op OP_DELETE
 unit 'u1' after label 'lab3' (chain 'lab2') op OP_DELETE }
+unit 'u1' after-chained label 'lab2' (chain 'lab1') op OP_DELETE }
 unit 'u1' after label 'lab2' (chain 'lab1') op OP_DELETE }
 unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE {
-unit 'u1' drain label 'lab3' (chain 'lab1') op OP_DELETE
 unit 'u1' after label 'lab3' (chain 'lab1') op OP_DELETE }
+unit 'u1' after-chained label 'lab1' op OP_DELETE }
 unit 'u1' after label 'lab1' op OP_DELETE }
 </exdump>
+
+		<para>
+		The print-out is not indented because the execution of real models
+		tends to involve some quite long call chains, which would result
+		in some extremely wide indenting. Instead the curly braces at the
+		end of each line help to find the matching pair. You can always
+		use the <pre>vi</pre> command <pre>%</pre> to jump to the matching
+		brace, or a similar feature in the other editors.
+		</para>
 
 		<para>
 		In non-verbose mode the same trace would be:
@@ -2136,9 +2156,8 @@ unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE
 </exdump>
 
 		<para>
-		The verbose trace has the <quote>before</quote> and <quote>after</quote> lines marked
-		with the curly braces, so that when it gets loaded into an editor,
-		it can be navigated relatively easily.
+		The non-verbose trace doesn't have the curly braces because
+		there are no matching pairs of lines.
 		</para>
 
 		<para>
@@ -2154,7 +2173,7 @@ unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE
 		</para>
 
 <pre>
-$tracer = Triceps::UnitTracerPerl->new($sub, @args);
+$tracer = Triceps::UnitTracerPerl->new(\&sub, @args);
 </pre>
 
 		<para>
@@ -2193,8 +2212,12 @@ $tracer = Triceps::UnitTracerPerl->new($sub, @args);
 		<listitem>
 		<pre>$when</pre> is an integer constant showing the point when the
 		tracer is being called. It's value may be one of
-		<pre>&Triceps::TW_BEFORE</pre>, <pre>&Triceps::TW_BEFORE_DRAIN</pre>,
-		<pre>&Triceps::TW_BEFORE_CHAINED</pre>, <pre>&Triceps::TW_AFTER</pre>;
+		<pre>&Triceps::TW_BEFORE</pre>, 
+		<pre>&Triceps::TW_AFTER</pre>, 
+		<pre>&Triceps::TW_BEFORE_DRAIN</pre>,
+		<pre>&Triceps::TW_AFTER_DRAIN</pre>,
+		<pre>&Triceps::TW_BEFORE_CHAINED</pre>, 
+		<pre>&Triceps::TW_AFTER_CHAINED</pre>; 
 		the prefix <pre>TW</pre> stands for <quote>tracer when</quote>.
 		</listitem>
 		<listitem>
@@ -2217,8 +2240,14 @@ $value = &Triceps::stringTracerWhen($string);
 
 		<para>
 		There also are the conversion functions with strings more suitable for
-		the human-readable messages: <quote>before</quote>, <quote>drain</quote>, <quote>before-chained</quote>,
-		<quote>drain</quote>. These are actually the conversions used in the
+		the human-readable messages: 
+		<quote>before</quote>, 
+		<quote>after</quote>, 
+		<quote>before-chained</quote>,
+		<quote>after-chained</quote>,
+		<quote>before-drain</quote>, 
+		<quote>after-drain</quote>. 
+		These are actually the conversions used in the
 		UnitTracerStringName. The functions for them are:
 		</para>
 
@@ -2226,6 +2255,50 @@ $value = &Triceps::stringTracerWhen($string);
 $string = &Triceps::tracerWhenHumanString($value);
 $value = &Triceps::humanStringTracerWhen($string);
 </pre>
+
+		<para>
+		Now that the constants have been mentioned, the order of tracing calls
+		for a single executing rowop on a single label is:
+		</para>
+
+<pre>
+TW_BEFORE
+TW_BEFORE_CHAINED
+TW_AFTER_CHAINED
+TW_AFTER
+TW_BEFORE_DRAIN
+TW_AFTER_DRAIN
+</pre>
+
+		<para>
+		There is also a general way to find, if the <pre>$when</pre>
+		refers to a <quote>before</quote> or <quote>after</quote>
+		situation:
+		</para>
+
+<pre>
+$result = &Triceps::tracerWhenIsBefore($when);
+$result = &Triceps::tracerWhenIsAfter($when);
+</pre>
+
+		<para>
+		Their typical usage in a trace function, to append an opening or closing brace, looks like:
+		</para>
+
+<pre>
+if (Triceps::tracerWhenIsBefore($when)) {
+	$msg .= " {";
+} elsif (Triceps::tracerWhenIsAfter($when)) {
+	$msg .= " }";
+}
+</pre>
+
+
+		<para>
+		More trace points that are neither <quote>before</quote> or <quote>after</quote> could get added
+		in the future, so a good practice is to use an elsif with both
+		conditions rather than a simple if/else with one condition.
+		</para>
 
 		<para>
 		The Perl tracers allow to execute any arbitrary actions when tracing.
@@ -2240,7 +2313,7 @@ $value = &Triceps::humanStringTracerWhen($string);
 
 <!-- t/Unit.t x_Unit_A -->
 <pre>
-sub tracerCb()
+sub tracerCb() # unit, label, fromLabel, rop, when, extra
 {
 	my ($unit, $label, $from, $rop, $when, @extra) = @_;
 	our $history;
@@ -2252,9 +2325,9 @@ sub tracerCb()
 		$msg .= "(chain '" . $fromLabel->getName() . "') ";
 	}
 	$msg .= "op " . Triceps::opcodeString($rop->getOpcode());
-	if ($when == &Triceps::TW_BEFORE) {
+	if (Triceps::tracerWhenIsBefore($when)) {
 		$msg .= " {";
-	} elsif ($when == &Triceps::TW_AFTER) {
+	} elsif (Triceps::tracerWhenIsAfter($when)) {
 		$msg .= " }";
 	}
 	$msg .= "\n";
@@ -2268,7 +2341,7 @@ $u1->setTracer($ptr);
 
 		<para>
 		It's slightly different, in the way that it always produces the
-		verbose trace, and that it collectes the trace in the global
+		verbose trace, and that it collects the trace in the global
 		variable <pre>$history</pre>. But the resulting text is the same as
 		with UnitTracerStringName.
 		</para>
@@ -2282,13 +2355,10 @@ $u1->setTracer($ptr);
 		</para>
 
 		<para>
-		And for extra nicety let's make the result nicely indented, with two spaces
-		per the indenting level. The indenting
-		is actually not such a great idea: with the long sequences of the calls
-		between the labels, the nesting levels would also be deep, and the
-		output would be indented way off the right end of the screen. That's why
-		it's not done in UnitTracerStringName (though it might be a good idea
-		as an option). But for the small short examples it works well.
+		And for something different let's make the result indented, with two spaces
+		per indenting level. As mentioned before, the indenting
+		is actually not such a great idea.
+		But for the small short examples it works well.
 		The function would take 3 extra arguments:
 		</para>
 
@@ -2306,13 +2376,7 @@ $u1->setTracer($ptr);
 		<listitem>
 		Reference to a scalar variable that would be used to keep the indenting level.
 		The value of that variable will be updated as the tracing happens. Its
-		initial value will determine the initial indenting level. Keeping the
-		indenting is actually not easy because the indenting level
-		can be changed for two reasons,
-		the label chaining and the label calls. To get the logic working, one
-		indenting level gets added before in advance, in front of the outermost
-		trace lines. So, to make the outermost
-		lines appear with no indenting, initialize this variable to -1 and not 0.
+		initial value will determine the initial indenting level. 
 		</listitem>
 		</itemizedlist>
 
@@ -2324,12 +2388,10 @@ sub traceStringRowop
 		$verbose, $rlog, $rnest) = @_;
 
 	if ($verbose) {
-		${$rnest}++ if ($when == &Triceps::TW_BEFORE);
-		${$rnest}-- if ($when == &Triceps::TW_AFTER);
+		${$rnest}-- if (Triceps::tracerWhenIsAfter($when));
 	} else {
 		return if ($when != &Triceps::TW_BEFORE);
 	}
-
 
 	my $msg =  "unit '" . $unit->getName() . "' " 
 		. Triceps::tracerWhenHumanString($when) . " label '"
@@ -2338,22 +2400,21 @@ sub traceStringRowop
 		$msg .= "(chain '" . $fromLabel->getName() . "') ";
 	}
 	my $tail = "";
-	if ($when == &Triceps::TW_BEFORE) {
+	if (Triceps::tracerWhenIsBefore($when)) {
 		$tail = " {";
-	} elsif ($when == &Triceps::TW_AFTER) {
+	} elsif (Triceps::tracerWhenIsAfter($when)) {
 		$tail = " }";
 	}
 	push (@{$rlog}, ("  " x ${$rnest}) . $msg . "op " 
 		. $rowop->printP() . $tail);
 
 	if ($verbose) {
-		${$rnest}++ if ($when == &Triceps::TW_BEFORE);
-		${$rnest}-- if ($when == &Triceps::TW_AFTER);
+		${$rnest}++ if (Triceps::tracerWhenIsBefore($when));
 	}
 }
 
 undef @history;
-my $tnest =  -1; # keeps track of the tracing nesting level
+my $tnest =  0; # keeps track of the tracing nesting level
 $ptr = Triceps::UnitTracerPerl->new(\&traceStringRowop, 1, \@history, \$tnest);
 $u1->setTracer($ptr);
 </pre>
@@ -2366,32 +2427,28 @@ $u1->setTracer($ptr);
 
 <exdump>
 unit 'u1' before label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
-  unit 'u1' drain label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
-  unit 'u1' before-chained label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+  unit 'u1' before-chained label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
     unit 'u1' before label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
-      unit 'u1' drain label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
-      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
+      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
         unit 'u1' before label 'lab3' (chain 'lab2') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
-          unit 'u1' drain label 'lab3' (chain 'lab2') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
         unit 'u1' after label 'lab3' (chain 'lab2') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
+      unit 'u1' after-chained label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
     unit 'u1' after label 'lab2' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
     unit 'u1' before label 'lab3' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  {
-      unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text" 
     unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
+  unit 'u1' after-chained label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
 unit 'u1' after label 'lab1' op lab1 OP_INSERT a="123" b="456" c="789" d="3.14" e="text"  }
 unit 'u1' before label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
-  unit 'u1' drain label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
-  unit 'u1' before-chained label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+  unit 'u1' before-chained label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
     unit 'u1' before label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
-      unit 'u1' drain label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
-      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
+      unit 'u1' before-chained label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
         unit 'u1' before label 'lab3' (chain 'lab2') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
-          unit 'u1' drain label 'lab3' (chain 'lab2') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
         unit 'u1' after label 'lab3' (chain 'lab2') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
+      unit 'u1' after-chained label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
     unit 'u1' after label 'lab2' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
     unit 'u1' before label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  {
-      unit 'u1' drain label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text" 
     unit 'u1' after label 'lab3' (chain 'lab1') op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
+  unit 'u1' after-chained label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
 unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" e="text"  }
 </exdump>
 
@@ -2618,10 +2675,14 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 		the previous state.
 		</para>
 
+		<indexterm>
+			<primary>draining</primary>
+		</indexterm>
 		<para>
 		Suppose now the execution of rowop 1 completes. But its stack frame can
 		not be popped yet, because it is not empty. Now is the time to execute
-		the rowops from it.
+		the rowops from it. It's also called <quote>frame draining</quote>
+		but if works somewhat differently in the case of the forked rowops.
 		The first rowop gets picked from the frame and called, but in a special way.
 		It doesn't get its own frame. Instead, it takes over the frame of its
 		parent rowop. The frame that was marked <quote>~1</quote> now changes
@@ -2690,7 +2751,7 @@ unit 'u1' after label 'lab1' op lab1 OP_DELETE a="123" b="456" c="789" d="3.14" 
 </pre>
 
 		<para>
-		The unit method <pre>drainFrame()</pre> keeps running on the outermost
+		The method <pre>drainFrame()</pre> keeps running on the outermost
 		frame, now taking the rowop 2 and executing it, and so on, until the
 		outermost queue becomes empty, and <pre>drainFrame()</pre> returns.
 		</para>
