@@ -1493,4 +1493,398 @@ $ perl -e 'print((pack "H*", "726573756c74204f505f44454c455445206e616
 result OP_DELETE name="def" count="102" 
 </exdump>
 	</sect1>
+
+	<sect1 id="sc_strf_recursion">
+		<title>Streaming functions and recursion</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>recursion</primary>
+		</indexterm>
+		<para>
+		Let's look again at the pipeline example. Suppose we want to do the
+		encryption twice (you know, maybe we have a secure channel to a
+		semi-trusted intermediary who can can read the envelopes and forward
+		the encrypted messages he can't read to the final destination). The
+		pipeline becomes
+		</para>
+
+<pre>
+decrypt | decrypt | process | encrypt | encrypt
+</pre>
+
+		<para>
+		Or if you want to think about it in a more function-like notation,
+		rather than a pipeline, the logic can also be expressed as:
+		</para>
+
+<pre>
+encrypt(encrypt(process(decrypt(decrypt(data)))))
+</pre>
+
+		<para>
+		However it would not work directly: a decrypt function has only one
+		output and it can not have two bindings at the same time, it would not
+		know which one to use at any particular time.
+		</para>
+
+		<para>
+		Instead you can make decrypt into a template, instantiate it twice, and
+		connect into a pipeline. It's very much like what the Unix shell does:
+		it instantiates a new process for each part of its pipeline.
+		</para>
+
+		<para>
+		But there is also another possibility: instead of assembling the whole
+		pipeline in advance, do it in steps.
+		</para>
+
+		<para>
+		Start by adding this option in every binding:
+		</para>
+
+<pre>
+withTray => 1,
+</pre>
+
+		<para>
+		This will make all the bindings collect the result on a tray instead of
+		sending it on immediately. Then modify the main loop:
+		</para>
+
+<!-- t/xFn.t doRecursivePipeline, $variant == 1 -->
+<pre>
+while(&readLine) {
+	chomp;
+
+	# receive
+	my $abReceive = Triceps::AutoFnBind->new(
+		$retReceive => $bindDecrypt,
+	);
+	$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+
+	# 1st decrypt
+	my $abDecrypt1 = Triceps::AutoFnBind->new(
+		$retDecrypt => $bindDecrypt,
+	);
+	$bindDecrypt->callTray();
+
+	# 2nd decrypt
+	my $abDecrypt2 = Triceps::AutoFnBind->new(
+		$retDecrypt => $bindDispatch,
+	);
+	$bindDecrypt->callTray();
+
+	# processing
+	my $abProcess = Triceps::AutoFnBind->new(
+		$retOutput => $bindEncrypt,
+	);
+	$bindDispatch->callTray();
+
+	# 1st encrypt
+	my $abEncrypt1 = Triceps::AutoFnBind->new(
+		$retEncrypt => $bindEncrypt,
+	);
+	$bindEncrypt->callTray();
+
+	# 2nd encrypt
+	my $abEncrypt2 = Triceps::AutoFnBind->new(
+		$retEncrypt => $bindSend,
+	);
+	$bindEncrypt->callTray();
+
+	# send
+	$bindSend->callTray();
+}
+</pre>
+
+		<para>
+		Here I've dropped the encrypted-or-unencrypted choice to save the
+		space, the data is always encrypted twice. The <pre>drainFrame()</pre> call has
+		been dropped because with the way the function calls work here 
+		there is no chance that it could be useful. The rest of the code stays the same.
+		</para>
+
+		<para>
+		The bindings have been split in stages. The next binding
+		is set in each stage, and the data from the previous binding gets sent into it. The
+		binding method <pre>callTray()</pre> replaces the tray in the binding with an
+		empty one, and then calls all the rowops collected on the old tray (and
+		if you wonder what then happens to the old tray, it gets discarded).
+		Because of this the first decryption stage with binding
+		</para>
+
+<pre>
+my $abDecrypt1 = Triceps::AutoFnBind->new(
+	$retDecrypt => $bindDecrypt,
+);
+</pre>
+
+		<para>
+		doesn't send the data circling forever. It just does one pass through
+		the decryption and prepares for the second pass.
+		</para>
+
+		<para>
+		Every time <pre>AutoFnBind->new()</pre> runs, it doesn't replace the binding of
+		the FnReturn but pushes a new binding onto the FnReturn's stack. Each
+		FnReturn has its own stack of bindings (this way it's easier to manage
+		than a single stack). When an AutoFnBind gets destroyed, it pops the
+		binding from the return's stack. And yes, if you specify multiple
+		bindings in one AutoFnBind, all of them get pushed on construction and
+		popped on destruction. In this case all the auto-binds are in the same
+		block, so they will all be destroyed at the end of block in the
+		opposite order. Which means that in effect the code is equivalent to
+		the nested blocks. And the version with explicit nexted blocks
+		might be easier for you to think of:
+		</para>
+
+<!-- t/xFn.t doRecursivePipeline, $variant == 2 -->
+<pre>
+while(&readLine) {
+	chomp;
+
+	# receive
+	my $abReceive = Triceps::AutoFnBind->new(
+		$retReceive => $bindDecrypt,
+	);
+	$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+
+	{
+		# 1st decrypt
+		my $abDecrypt1 = Triceps::AutoFnBind->new(
+			$retDecrypt => $bindDecrypt,
+		);
+		$bindDecrypt->callTray();
+
+		{
+			# 2nd decrypt
+			my $abDecrypt1 = Triceps::AutoFnBind->new(
+				$retDecrypt => $bindDispatch,
+			);
+			$bindDecrypt->callTray();
+
+			{
+				# processing
+				my $abProcess = Triceps::AutoFnBind->new(
+					$retOutput => $bindEncrypt,
+				);
+				$bindDispatch->callTray();
+
+				{
+					# 1st encrypt
+					my $abEncrypt1 = Triceps::AutoFnBind->new(
+						$retEncrypt => $bindEncrypt,
+					);
+					$bindEncrypt->callTray();
+
+					{
+						# 2nd encrypt
+						my $abEncrypt1 = Triceps::AutoFnBind->new(
+							$retEncrypt => $bindSend,
+						);
+						$bindEncrypt->callTray();
+
+						# send
+						$bindSend->callTray();
+					}
+				}
+			}
+		}
+	}
+}
+</pre>
+
+		<para>
+		An interesting consequence of all this nesting, pushing and popping is
+		that you can put the inner calls into the procedural loops if you wish.
+		For example, if you want to process every input line thrice:
+		</para>
+
+<!-- t/xFn.t doRecursivePipeline, $variant == 4 -->
+<pre>
+while(&readLine) {
+	chomp;
+
+	# receive
+	my $abReceive = Triceps::AutoFnBind->new(
+		$retReceive => $bindDecrypt,
+	);
+
+	for (my $i = 0; $i < 3; $i++) {
+		$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+
+		{
+			# 1st decrypt
+			my $abDecrypt1 = Triceps::AutoFnBind->new(
+				$retDecrypt => $bindDecrypt,
+			);
+			$bindDecrypt->callTray();
+
+			{
+				# 2nd decrypt
+				my $abDecrypt1 = Triceps::AutoFnBind->new(
+					$retDecrypt => $bindDispatch,
+				);
+				$bindDecrypt->callTray();
+
+				{
+					# processing
+					my $abProcess = Triceps::AutoFnBind->new(
+						$retOutput => $bindEncrypt,
+					);
+					$bindDispatch->callTray();
+
+					{
+						# 1st encrypt
+						my $abEncrypt1 = Triceps::AutoFnBind->new(
+							$retEncrypt => $bindEncrypt,
+						);
+						$bindEncrypt->callTray();
+
+						{
+							# 2nd encrypt
+							my $abEncrypt1 = Triceps::AutoFnBind->new(
+								$retEncrypt => $bindSend,
+							);
+							$bindEncrypt->callTray();
+
+							# send
+							$bindSend->callTray();
+						}
+					}
+				}
+			}
+		}
+	}
+}
+</pre>
+
+		<para>
+		This code will run the whole pipeline three times for each input line,
+		and print out three output lines. The following example of the
+		output has both the input and the output lines wrapped, since
+		they are hugely long:
+		</para>
+
+<!-- t/xFn.t doRecursivePipeline(4), manual wrapping -->
+<exdump>
+> 363936653633326334663530356634393465353334353532353432633631363236
+>   3332633332
+373236353733373536633734323034663530356634393465353334353532353432
+  3036653631366436353364323236313632363332323230363336663735366537
+  3433643232333332323230
+373236353733373536633734323034663530356634393465353334353532353432
+  3036653631366436353364323236313632363332323230363336663735366537
+  3433643232333332323230
+373236353733373536633734323034663530356634393465353334353532353432
+  3036653631366436353364323236313632363332323230363336663735366537
+  3433643232333332323230
+</exdump>
+
+		<para>
+		If you wonder, what is the meaning of these lines, they are the same as
+		before. The input is :
+		</para>
+
+<!-- t/xFn.t -->
+<exdump>
+inc,OP_INSERT,abc,2
+</exdump>
+
+		<para>
+		And each line of output is:
+		</para>
+
+<!-- t/xFn.t -->
+<exdump>
+result OP_INSERT name="abc" count="3"
+</exdump>
+
+		<para>
+		I suppose, it would be more entertaining if the processing weren't just
+		incrementing a value in the input data but incrementing some static
+		counter, then the three output lines would be different.
+		</para>
+
+		<para>
+		However this is not the only way to do the block nesting. The contents
+		of the FnBinding's tray is not affected in any way by the binding being
+		pushed or popped. It stays there throughout, until it's explicitly
+		flushed by <pre>callTray()</pre>. So it could use the blocks formed in a more
+		pipeline-like fashion (as opposed to the more function-call-like fashion
+		shown before):
+		</para>
+
+<!-- t/xFn.t doRecursivePipeline, $variant == 3 -->
+<pre>
+while(&readLine) {
+	chomp;
+
+	# receive
+	{
+		my $abReceive = Triceps::AutoFnBind->new(
+			$retReceive => $bindDecrypt,
+		);
+		$unit->makeArrayCall($lbReceive, "OP_INSERT", $_);
+	}
+
+	# 1st decrypt
+	{
+		my $abDecrypt1 = Triceps::AutoFnBind->new(
+			$retDecrypt => $bindDecrypt,
+		);
+		$bindDecrypt->callTray();
+	}
+
+	# 2nd decrypt
+	{
+		my $abDecrypt1 = Triceps::AutoFnBind->new(
+			$retDecrypt => $bindDispatch,
+		);
+		$bindDecrypt->callTray();
+	}
+
+	# processing
+	{
+		my $abProcess = Triceps::AutoFnBind->new(
+			$retOutput => $bindEncrypt,
+		);
+		$bindDispatch->callTray();
+	}
+
+	# 1st encrypt
+	{
+		my $abEncrypt1 = Triceps::AutoFnBind->new(
+			$retEncrypt => $bindEncrypt,
+		);
+		$bindEncrypt->callTray();
+	}
+
+	# 2nd encrypt
+	{
+		my $abEncrypt1 = Triceps::AutoFnBind->new(
+			$retEncrypt => $bindSend,
+		);
+		$bindEncrypt->callTray();
+	}
+
+	# send
+	$bindSend->callTray();
+}
+</pre>
+
+		<para>
+		After each stage, its binding is popped but the tray is carried through
+		to the next stage.
+		</para>
+
+		<para>
+		Which way of blocking is better? I'd say they're pretty equivalent in
+		functionality, and your preference would depend on what style you
+		prefer to express. 
+		</para>
+	</sect1>
 </chapter>
