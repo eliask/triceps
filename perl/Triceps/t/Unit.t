@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 145 };
+BEGIN { plan tests => 142 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -759,12 +759,9 @@ ok(ref $c_op1, "Triceps::Rowop");
 $c_op2 = $c_lab1->makeRowop(&Triceps::OP_DELETE, $row1);
 ok(ref $c_op2, "Triceps::Rowop");
 
-$v = $c_lab1->chain($c_lab2);
-ok($v);
-$v = $c_lab1->chain($c_lab3);
-ok($v);
-$v = $c_lab2->chain($c_lab3);
-ok($v);
+$c_lab1->chain($c_lab2);
+$c_lab1->chain($c_lab3);
+$c_lab2->chain($c_lab3);
 
 $u1->schedule($c_op1);
 $u1->schedule($c_op2);
