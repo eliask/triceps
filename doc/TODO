@@ -125,6 +125,7 @@ Things that need to be done:
 * provide a default AggregatorType::makeGadget() that makes the generic AggregatorGadget
 * add an option to adopt the rowop during the label chaining
 * add callAdopted() that combines $unit->call($label->adopt($rowop))
+* in FnBinding::call() allow to get back the tray (see "Streaming functions and more recursion")
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
@@ -148,7 +149,8 @@ App ideas:
 * look at the use with RabbitMQ
 
 tangent 144, 157
-160-181
+160
+162-181
 184-189
 191-192
 tangent 197
