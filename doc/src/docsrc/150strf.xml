@@ -1906,6 +1906,8 @@ while(&readLine) {
 		</para>
 
 		<para>
+		All the examples from this section (and most of others from this chapter)
+		are locates in <pre>t/xFn.t</pre>.
 		The first example uses the dumb recursive calls.
 		It's a real dumb recursive way, with two recursive calls and thus the
 		exponential execution time, just to show
@@ -2397,6 +2399,218 @@ unit 'uFib' after label 'FibCompute' op OP_DELETE }
 		The maximal call stack depth is reduced to 5.
 		For the 6th number the maximal required stack depth now gets reduced to
 		only 9 instead of 51. 
+		</para>
+
+		<indexterm>
+			<primary>fork</primary>
+		</indexterm>
+		<para>
+		And there is also a way to run the recursive calls without even the
+		need to increase the recursion depth limit. It can be left at the
+		default 1, without <pre>setMaxRecursionDepth()</pre>. The secret is to fork the
+		argument rowops to the functions instead of calling them.
+		</para>
+
+<pre>
+###
+# A streaming function that computes a Fibonacci number.
+
+# Input: 
+#   $lbFibCompute: request to compute the number.
+# Output (by FnReturn labels):
+#   "result": the computed value.
+# The opcode is preserved through the computation.
+
+my @stackFib; # stack of the function states
+my $stateFib; # The current state
+
+my $frFib = Triceps::FnReturn->new(
+	name => "Fib",
+	unit => $uFib,
+	labels => [
+		result => $rtFibRes,
+	],
+	onPush => sub { push @stackFib, $stateFib; $stateFib = { }; },
+	onPop => sub { $stateFib = pop @stackFib; },
+);
+
+my $lbFibResult = $frFib->getLabel("result");
+
+# Declare the label & binding variables in advance, to define them sequentially.
+my ($lbFibCompute, $fbFibPrev1, $fbFibPrev2);
+$lbFibCompute = $uFib->makeLabel($rtFibArg, "FibCompute", undef, sub {
+	my $row = $_[1]->getRow();
+	my $op = $_[1]->getOpcode();
+	my $idx = $row->get("idx");
+
+	if ($idx <= 1) {
+		$uFib->fork($frFib->getLabel("result")->makeRowopHash($op,
+			idx => $idx,
+			fib => $idx < 1 ? 0 : 1,
+		));
+	} else {
+		$stateFib->{op} = $op;
+		$stateFib->{idx} = $idx;
+
+		$frFib->push($fbFibPrev1);
+		$uFib->fork($lbFibCompute->makeRowopHash($op, 
+			idx => $idx - 1,
+		));
+	}
+});
+$fbFibPrev1 = Triceps::FnBinding->new(
+	unit => $uFib,
+	name => "FibPrev1",
+	on => $frFib,
+	labels => [
+		result => sub {
+			$frFib->pop($fbFibPrev1);
+
+			$stateFib->{prev1} = $_[1]->getRow()->get("fib");
+
+			# must prepare before pushing new state and with it new $stateFib
+			my $rop = $lbFibCompute->makeRowopHash($stateFib->{op}, 
+				idx => $stateFib->{idx} - 2,
+			);
+
+			$frFib->push($fbFibPrev2);
+			$uFib->fork($rop);
+		},
+	],
+);
+$fbFibPrev2 = Triceps::FnBinding->new(
+	unit => $uFib,
+	on => $frFib,
+	name => "FibPrev2",
+	labels => [
+		result => sub {
+			$frFib->pop($fbFibPrev2);
+
+			$stateFib->{prev2} = $_[1]->getRow()->get("fib");
+			$uFib->fork($frFib->getLabel("result")->makeRowopHash($stateFib->{op},
+				idx => $stateFib->{idx},
+				fib => $stateFib->{prev1} + $stateFib->{prev2},
+			));
+		},
+	],
+);
+
+# End of streaming function
+###
+</pre>
+
+		<para>
+		This is a variation of the pre-previous example, with the split push and
+		pop. The split is required for the fork to work: when the forked rowop
+		executes, the calling label has already returned, so obviously the
+		scoped approach won't work.
+		</para>
+
+		<para>
+		In this version the unit stack depth required to compute the 6th (and
+		any) Fibonacci number reduces to 2: it's really only one level on top
+		of the outermost frame. 
+		</para>
+
+		<para>
+		If you were to attempt taking the advantage of the techniques from
+		both of the last two examples (the one with the trays
+		and the one with the forks) at the same time,
+		that combination won't work. They could be combined but
+		the combination just doesn't work right.
+		</para>
+
+		<para>
+		The problem is that the example with trays relies on the recursive
+		function being completed before the tray gets called. But if the recursive
+		functions are forked, things break. Looking at why
+		they break provides another insight into the works of recursion. The
+		example would look approximately like this in pseudo-code:
+		</para>
+
+<pre>
+Compute:
+	if (idx <= 1) {
+		call FrFib Result;
+	} else {
+		push FibPrev1 to FrFib;
+		fork Compute for n-1;
+		fork Followup1;
+	}
+
+Followup1:
+	fork tray of FibPrev1;
+	
+FibPrev1.result:
+	pop FibPrev1 from FrFib;
+	push FibPrev2 to FrFib;
+	fork Compute for n-2;
+	fork Followup2;
+	
+Followup2:
+	fork tray of FibPrev2;
+
+FibPrev2.result:
+	pop FibPrev2 from FrFib;
+	call FrFib Result;
+</pre>
+
+		<para>
+		The Followup labels are required because the trays with the intermediate
+		results won't call themselves. They need to be called (or in this case,
+		forked) by something else. The FnBinding has no method <pre>forkTray()</pre>
+		but it can be done manually by first swapping the tray and then
+		forking the result. The result FnReturn has to be called, not forked,
+		so that it would immediately deposit the result rowop into the
+		bound tray.
+		</para>
+
+		<para>
+		If there were only one recursive call, it would still work because the
+		execution frame after the label <pre>Compute(n)</pre> returns would then look like this:
+		</para>
+
+<pre>
+Compute(n-1)
+Followup1(n)
+</pre>
+
+		<para>
+		The rowop <pre>Compute(n-1)</pre> would be the argument for the recursive function
+		call, and <pre>Followup1(n)</pre> would be the follow-up rowop.
+		When the execution time comes,
+		the rowop <pre>Compute(n-1)</pre> executes, places the result into the tray.
+		Then the rowop <pre>Followup1(n)</pre>
+		executes and forks the tray, with the next rowop <pre>FibPrev1.result(n)</pre> 
+		then executing in order. So far so good.
+		</para>
+
+		<para>
+		Now let's trace the recursion to the depth of two. The first level starts the
+		same:
+		</para>
+
+<pre>
+Compute(n-1)
+Followup1(n)
+</pre>
+
+		<para>
+		Then <pre>Compute(n-1)</pre> executes and forks the second level of recursion,
+		the frame becoming:
+		</para>
+
+<pre>
+Followup1(n)
+Compute(n-1-1)
+Followup1(n-1)
+</pre>
+
+		<para>
+		Do you see what went wrong? The unit execution frames are FIFO. So the
+		second level of recursion got queued after the follow-up of the first
+		level. That rowop <pre>Followup1(n)</pre> executes next, doesn't get any return 
+		values, and everything goes downhill from there. 
 		</para>
 	</sect1>
 </chapter>
