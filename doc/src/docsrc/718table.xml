@@ -113,7 +113,6 @@ $rh = $t->makeNullRowHandle();
 
 <pre>
 $result = $t->insert($row_or_rh);
-$result = $t->insert($row_or_rh, $copyTray);
 </pre>
 
 		<para>
@@ -123,36 +122,30 @@ $result = $t->insert($row_or_rh, $copyTray);
 		it is internally wrapped in a fresh row handle, and then that row
 		handle inserted. An insert may trigger the replacement policy in the
 		table's indexes and have some rows removed before the insert is done.
-		The optional copy tray can be used to collect a copy of all the row
-		updates that happen in the table as a result of the insert, both on the
-		table output label and on all its aggregator labels. Returns 1 on
-		success, 0 if the insert can not be done (the row handle is already in
-		the table or NULL), confesses on an incorrect argument.
+		Returns 1 on success, 0 if the insert can not be done (the row handle is already in
+		the table or NULL).
 		</para>
 
 <pre>
 $result = $t->remove($rh);
-$result = $t->remove($rh, $copyTray);
 </pre>
 
 		<para>
 		Removes a row handle from the table. The row handle must be previously
 		inserted in the table, and either found in it or a reference to it
 		remembered from before. An attempt to remove a newly created row handle
-		will have no effect. The optional copy tray works in the same way as
-		for <pre>insert()</pre>. The result is 1 on success (even if the row handle was
-		not in the table), confesses on an incorrect argument.
+		will have no effect. 
+		The result is 1 on success (even if the row handle was not in the table).
 		</para>
 
 <pre>
 $result= $t->deleteRow($row);
-$result= $t->deleteRow($row, $copyTray);
 </pre>
 
 		<para>
 		Finds the handle of the matching row by the table's first leaf index
-		and removes it. Returns 1 on success, 0 if the row was not found,
-		confesses on an incorrect argument. Unlike <pre>insert()</pre>, the
+		and removes it. Returns 1 on success, 0 if the row was not found.
+		Unlike <pre>insert()</pre>, the
 		deletion methods for a row handle and a row are named differently to
 		emphasize their difference. The method <pre>remove()</pre> must get a reference to
 		the exactly same row handle that was previously inserted. The method
@@ -361,5 +354,24 @@ $table->clear($limit);
 		confession.
 		</para>
 
+<pre>
+$fret = $table->fnReturn();
+</pre>
+
+		<para>
+		Returns an FnReturn object connected to the output of this table.
+		The FnReturn contains the labels <quote>pre</quote>, <quote>out</quote>, and the named labels for
+		all aggregators.  The FnReturn object is created on the first call of
+		this method and is kept in the table.  All the following calls return
+		the same object. 
+		This has some interesting consequences for the <quote>pre</quote>
+		label: the rowop for the <quote>pre</quote> label doesn't get created at all if
+		there is nothing chained from that label. But when the FnReturn gets
+		created, one of its labels gets chained from the <quote>pre</quote> label. Which
+		means that once you call <pre>$table->fnReturn()</pre> for the first time, you
+		will see that table's <quote>pre</quote> label called in all the traces. It's not a
+		huge extra overhead, but still something to keep in mind and not be
+		surprised when calling <pre>fnReturn()</pre> changes all your traces.
+		</para>
 	</sect1>
 
