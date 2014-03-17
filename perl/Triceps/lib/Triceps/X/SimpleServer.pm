@@ -55,18 +55,19 @@ our $srv_exit; # exit when all the client connections are closed
 # Writing to the output buffers. Will also trigger the polling to
 # actually send the output data to the client's socket.
 #
-# XXX A caveat is that if the client had already disconnected, this
-# will create all kinds of mess.
-#
 # @param id - the client id, as generated on the client connection
+#        (if the client already disconnected, this call will 
+#        have no effect)
 # @param string - the string to write
 sub outBuf # ($id, $string)
 {
 	my $id = shift;
 	my $line = shift;
-	$outbufs{$id} .= $line;
-	# If there is anything to write on a buffer, stop reading from it.
-	$poll->mask($clients{$id} => POLLOUT);
+	if (exists $clients{$id}) {
+		$outbufs{$id} .= $line;
+		# If there is anything to write on a buffer, stop reading from it.
+		$poll->mask($clients{$id} => POLLOUT);
+	}
 }
 
 # Write to the output buffer of the current client (as set in $cur_cli
