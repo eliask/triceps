@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 254 };
+BEGIN { plan tests => 258 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -869,4 +869,112 @@ lp2 OP_DELETE b="2" c="2" e="r22"
 	ok(!defined $res);
 	#print "$@\n";
 	ok($@ =~ /^Triceps::Table::dumpAllIdx: indexType argument does not belong to table's type/);
+}
+
+############################## CopyTray1 #############################################
+# CopyTray analog.
+
+{
+use strict;
+
+my $unit = Triceps::Unit->new("unit");
+
+my @schema = (
+	a => "int32",
+	b => "string"
+);
+
+my $rt1 = Triceps::RowType->new(@schema);
+
+my $tt1 = Triceps::TableType->new($rt1)
+	->addSubIndex("byA", Triceps::IndexType->newHashed(key => [ "a" ])
+); 
+$tt1->initialize();
+
+my $t1 = $unit->makeTable($tt1, "t1");
+
+my $row1 = $rt1->makeRowArray(1, "x");
+
+### start snippet
+my $fret1 = $t1->fnReturn();
+my $fbind1 = Triceps::FnBinding->new(
+    unit => $unit,
+    name => "fbind1",
+    on => $fret1,
+    withTray => 1,
+    labels => [
+        out => sub { }, # another way to make a dummy
+    ],
+);
+
+$fret1->push($fbind1);
+$t1->insert($row1);
+$fret1->pop($fbind1);
+
+# $tray contains the rowops produced by the update
+my $tray = $fbind1->swapTray(); # get the updates on an insert
+my @rowops = $tray->toArray();
+### end snippet
+
+ok($tray->size(), 1);
+ok($#rowops, 0);
+}
+
+############################## CopyTray2 #############################################
+# CopyTray analog - find if any rows got displaced.
+
+{
+use strict;
+
+my $unit = Triceps::Unit->new("unit");
+
+my @schema = (
+	a => "int32",
+	b => "string"
+);
+
+my $rt1 = Triceps::RowType->new(@schema);
+
+my $tt1 = Triceps::TableType->new($rt1)
+	->addSubIndex("byA", Triceps::IndexType->newHashed(key => [ "a" ])
+); 
+$tt1->initialize();
+
+my $t1 = $unit->makeTable($tt1, "t1");
+
+my $row1 = $rt1->makeRowArray(1, "x");
+
+### start snippet
+my $seenDelete;
+
+my $fret1 = $t1->fnReturn();
+my $fbind1 = Triceps::FnBinding->new(
+    unit => $unit,
+    name => "fbind1",
+    on => $fret1,
+    labels => [
+        out => sub {
+			$seenDelete = 1 if ($_[1]->isDelete());
+		}
+    ],
+);
+
+$fret1->push($fbind1);
+$seenDelete = 0;
+$t1->insert($row1);
+$fret1->pop($fbind1);
+
+if ($seenDelete) {
+	# there was a displacement
+}
+### end snippet
+
+ok($seenDelete, 0);
+
+$fret1->push($fbind1);
+$seenDelete = 0;
+$t1->insert($row1);
+$fret1->pop($fbind1);
+
+ok($seenDelete, 1);
 }
