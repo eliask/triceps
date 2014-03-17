@@ -372,6 +372,8 @@ $fret = $table->fnReturn();
 		will see that table's <quote>pre</quote> label called in all the traces. It's not a
 		huge extra overhead, but still something to keep in mind and not be
 		surprised when calling <pre>fnReturn()</pre> changes all your traces.
+		See more detail in
+		<xref linkend="sc_strf_tables" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 

@@ -322,6 +322,20 @@ $lb = $joiner->getOutputLabel();
 		</para>
 
 <pre>
+$fret = $joiner->fnReturn();
+</pre>
+
+		<para>
+		Returns an FnReturn object connected to the output of this joiner.
+		The FnReturn contains one label <quote>out</quote>.
+		The FnReturn is created on the first call of
+		this method and is kept in the joiner object.  All the following calls return
+		the same object. 
+		See more detail in
+		<xref linkend="sc_strf_templates" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+<pre>
 $res = $joiner->getUnit();
 $res = $joiner->getName();
 $res = $joiner->getLeftTable();

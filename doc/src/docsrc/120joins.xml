@@ -881,6 +881,9 @@ while(&readLine) {
 		<para>
 		Since <pre>lookup()</pre> returns rows, not rowops, and knows nothing
 		about the opcodes, those had to be handled separately around the lookup.
+		There is a way to achieve a similar result using the streaming functions
+		that returns the rowops. It will be described in
+		<xref linkend="sc_strf_templates" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

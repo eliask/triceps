@@ -267,6 +267,13 @@ sub { &Triceps::isInsert($_[0]); }
 		<quote>automatic</quote> is 0.
 		</para>
 
+		<para>
+		This method has become largely obsolete since addition of <pre>fnReturn()</pre>
+		as described in
+		<xref linkend="sc_strf_templates" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		but is still present in case if it comes useful.
+		</para>
+
 <pre>
 $rt = $joiner->getResultRowType();
 </pre>
@@ -294,6 +301,20 @@ $lb = $joiner->getOutputLabel();
 		input rowops come out here. Note that the results of the <pre>lookup()</pre> calls
 		do not come out at the output label, they are only returned to the
 		caller.
+		</para>
+
+<pre>
+$fret = $joiner->fnReturn();
+</pre>
+
+		<para>
+		Returns an FnReturn object connected to the output of this joiner.
+		The FnReturn contains one label <quote>out</quote>.
+		The FnReturn is created on the first call of
+		this method and is kept in the joiner object.  All the following calls return
+		the same object. 
+		See more detail in
+		<xref linkend="sc_strf_templates" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 <pre>

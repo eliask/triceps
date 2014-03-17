@@ -137,4 +137,20 @@ $lb = $collapse->getOutputLabel($setName);
 		Returns the names of all the data sets (though since currently only one
 		data set is supported, only one name will be returned).
 		</para>
+
+<pre>
+$fret = $collapse->fnReturn();
+</pre>
+
+		<para>
+		Returns an FnReturn object connected to the output of this collapser.
+		The FnReturn contains a label for each data set, named accordingly.
+		The order of the labels matches the specified order of data sets.
+		The FnReturn is created on the first call of
+		this method and is kept in the collapser object.  All the following calls return
+		the same object. 
+		See more detail in
+		<xref linkend="sc_strf_templates" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
 	</sect1>

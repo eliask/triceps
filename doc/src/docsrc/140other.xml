@@ -88,25 +88,25 @@ C:
 		Suppose A then gets the input, in CSV form:
 		</para>
 
-<pre>
+<exdump>
 INSERT,key1,10
 DELETE,key1,10
 INSERT,key1,20
 DELETE,key1,20
 INSERT,key1,-1
-</pre>
+</exdump>
 
 		<para>
 		What arrives at D should be 
 		</para>
 
-<pre>
+<exdump>
 INSERT,key1,10,0
 DELETE,key1,10,0
 INSERT,key1,20,0
 DELETE,key1,20,0
 INSERT,key1,-1,1
-</pre>
+</exdump>
 
 		<para>
 		And with the first four rows this is not a problem: they follow the
@@ -117,13 +117,13 @@ INSERT,key1,-1,1
 		the incorrect result:
 		</para>
 
-<pre>
+<exdump>
 INSERT,key1,10,0
 DELETE,key1,10,0
 INSERT,key1,20,0
 INSERT,key1,-1,1
 DELETE,key1,20,0
-</pre>
+</exdump>
 
 		<para>
 		If all these input rows arrive closely one after another, the last row
@@ -131,13 +131,13 @@ DELETE,key1,20,0
 		result like
 		</para>
 
-<pre>
+<exdump>
 INSERT,key1,-1,1
 INSERT,key1,10,0
 DELETE,key1,10,0
 INSERT,key1,20,0
 DELETE,key1,20,0
-</pre>
+</exdump>
 
 		<para>
 		Such misorderings may also happen between the rows with different keys.
@@ -184,13 +184,13 @@ DELETE,key1,20,0
 		then D will receive the rows in the order:
 		</para>
 
-<pre>
+<exdump>
 INSERT,key1,-1,1
 INSERT,key1,10,0
 DELETE,key1,10,0
 INSERT,key1,20,0
 DELETE,key1,20,0
-</pre>
+</exdump>
 
 		<indexterm>
 			<primary>bundling</primary>
@@ -202,9 +202,8 @@ DELETE,key1,20,0
 		</para>
 
 		<para>
-		At the moment Triceps does not directly support the multithreaded
-		execution, so that renders the first sub-case moot for now. But the
-		multithreading will be added soon, and then I'll return to this aspect.
+		The multithreaded case in Triceps will be discussed separately
+		in XXXREF.
 		</para>
 
 		<para>
@@ -446,7 +445,7 @@ our $rtData = Triceps::RowType->new(
 	local_ip => "string",
 	remote_ip => "string",
 	bytes => "int64",
-) or confess "$!";
+);
 </pre>
 
 		<para>
@@ -674,28 +673,32 @@ sub new # ($class, $optName => $optValue, ...)
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		data => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
 	}, @_);
+
+	# Keeps the names of the datasets in the order they have been defined
+	# (since the hash loses the order).
+	$self->{dsetnames} = [];
 	
 	# parse the data element
-	my $dataref = $self->{data};
+	my %data_unparsed = @{$self->{data}};
 	my $dataset = {};
-	# dataref->[1] is the best guess for the dataset name, in case if the option "name" goes first
-	&Triceps::Opt::parse("$class data set (" . $dataref->[1] . ")", $dataset, {
+	&Triceps::Opt::parse("$class data set (" . ($data_unparsed{name} or 'UNKNOWN') . ")", $dataset, {
 		name => [ undef, \&Triceps::Opt::ck_mandatory ],
 		key => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "ARRAY", "") } ],
 		rowType => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::RowType"); } ],
 		fromLabel => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Label"); } ],
-	}, @$dataref);
+	}, @{$self->{data}});
 </pre>
 
 		<para>
 		The options parsing goes as usual. The option <quote>data</quote> is parsed again
-		for the options inside it, and those are places into the hash
+		for the options inside it, and those are placed into the hash
 		<pre>%$dataset</pre>.
 		</para>
 
 <!-- lib/Triceps/Collapse.pm -->
 <pre>
 	# save the dataset for the future
+	push @{$self->{dsetnames}}, $dataset->{name};
 	$self->{datasets}{$dataset->{name}} = $dataset;
 	# check the options
 	&Triceps::Opt::handleUnitTypeLabel("Triceps::Collapse data set (". $dataset->{name} . ")",
@@ -722,13 +725,10 @@ sub new # ($class, $optName => $optValue, ...)
 		->addSubIndex("primary", 
 			Triceps::IndexType->newHashed(key => $dataset->{key})
 		);
-	$dataset->{tt}->initialize() 
-		or confess "Collapse table type creation error for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tt}->initialize();
 
-	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess "Collapse internal error: insert table creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert")
-		or confess "Collapse internal error: delete table creation for dataset '" . $dataset->{name} . "':\n$! ";
+	$dataset->{tbInsert} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbInsert");
+	$dataset->{tbDelete} = $self->{unit}->makeTable($dataset->{tt}, $self->{name} . "." . $dataset->{name} . ".tbDelete");
 </pre>
 
 		<para>
@@ -767,10 +767,8 @@ sub new # ($class, $optName => $optValue, ...)
 <pre>
 	# create the labels
 	$dataset->{lbIn} = $self->{unit}->makeLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".in", 
-		undef, \&_handleInput, $self, $dataset)
-			or confess "Collapse internal error: input label creation for dataset '" . $dataset->{name} . "':\n$! ";
-	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out")
-		or confess "Collapse internal error: output label creation for dataset '" . $dataset->{name} . "':\n$! ";
+		undef, \&_handleInput, $self, $dataset);
+	$dataset->{lbOut} = $self->{unit}->makeDummyLabel($dataset->{rowType}, $self->{name} . "." . $dataset->{name} . ".out");
 </pre>
 
 		<para>
@@ -785,8 +783,7 @@ sub new # ($class, $optName => $optValue, ...)
 <pre>
 	# chain the input label, if any
 	if (defined $lbFrom) {
-		$lbFrom->chain($dataset->{lbIn})
-			or confess "Collapse internal error: input label chaining for dataset '" . $dataset->{name} . "' to '" . $lbFrom->getName() . "' failed:\n$! ";
+		$lbFrom->chain($dataset->{lbIn});
 		delete $dataset->{fromLabel}; # no need to keep the reference any more, avoid a reference cycle
 	}
 </pre>
@@ -950,7 +947,7 @@ sub getOutputLabel($$) # ($self, $dsetname)
 sub getDatasets($) # ($self)
 {
 	my $self = shift;
-	return keys %{$self->{datasets}};
+	return @{$self->{dsetnames}};
 }
 </pre>
 
@@ -969,6 +966,8 @@ sub getDatasets($) # ($self)
 		That's it, Collapse in a nutshell! Another way to do the collapse will
 		be shown in
 		<xref linkend="sc_strf_collapse" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		And one more piece to it is shown in
+		<xref linkend="sc_strf_templates" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 
@@ -1016,18 +1015,16 @@ our $uChunks = Triceps::Unit->new("uChunks");
 our $rtData = Triceps::RowType->new(
 	s => "string",
 	i => "int32",
-) or confess "$!";
+);
 
 # the data is auto-generated by a sequence
 our $seq = 0;
 
 our $ttData = Triceps::TableType->new($rtData)
 	->addSubIndex("fifo", Triceps::IndexType->newFifo())
-or confess "$!";
-$ttData->initialize() or confess "$!";
-our $tData = $uChunks->makeTable($ttData,
-	"tJoin1"
-) or confess "$!";
+;
+$ttData->initialize();
+our $tData = $uChunks->makeTable($ttData, "tJoin1");
 makePrintLabel("lbPrintData", $tData->getOutputLabel());
 </pre>
 
@@ -1046,13 +1043,13 @@ makePrintLabel("lbPrintData", $tData->getOutputLabel());
 # notifications about the clearing
 our $rtNote = Triceps::RowType->new(
 	text => "string",
-) or confess "$!";
+);
 
 # rowops to run when the model is otherwise idle
 our $trayIdle = $uChunks->makeTray();
 
 our $lbReportNote = $uChunks->makeDummyLabel($rtNote, "lbReportNote"
-) or confess "$!";
+);
 makePrintLabel("lbPrintNote", $lbReportNote);
 
 # code that clears the table in small chunks
@@ -1065,7 +1062,7 @@ our $lbClear = $uChunks->makeLabel($rtNote, "lbClear", undef, sub {
 			text => "done clearing",
 		);
 	}
-}) or confess "$!";
+});
 </pre>
 
 		<para>
@@ -1352,3 +1349,4 @@ lbReportNote OP_INSERT text="done clearing"
 	</sect1>
 
 </chapter>
+<!-- updated the examples for 2.0 2014-03-16 -->
