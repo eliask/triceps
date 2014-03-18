@@ -104,12 +104,10 @@ $dispatch{"exit"} = $lbExit;
 my @inputQuery = (
 "echo,OP_INSERT,1,a,2,3.4\n",
 "echo2,OP_INSERT,1,a,2,3.4\n",
-"exit,OP_NOP\n",
 );
 my $expectQuery = 
 '> echo,OP_INSERT,1,a,2,3.4
 > echo2,OP_INSERT,1,a,2,3.4
-> exit,OP_NOP
 echo OP_INSERT id="1" symbol="a" price="2" size="3.4" 
 echo,OP_INSERT,1,a,2,3.4
 ';
