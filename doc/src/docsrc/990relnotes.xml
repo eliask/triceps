@@ -147,6 +147,16 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			The tables no longer have an enqueuing mode associated with them.
 			</listitem>
+
+			<listitem>
+			The potentially reusable examples have been exported in the packages
+			under Triceps::X.
+			</listitem>
+
+			<listitem>
+			The Triceps::X::SimpleServer::outBuf() now checks for the client
+			disconnection before sending data to it.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 

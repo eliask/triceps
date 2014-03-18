@@ -659,4 +659,57 @@ row { uint8 a, int32 b, int64 c, float64 d, string e, }
 		useful for its SQL as well.
 		</para>
 	</sect1>
+
+	<sect1 id="sc_perl_libex">
+		<title>The Perl libraries and examples</title>
+
+		<indexterm>
+			<primary>examples</primary>
+		</indexterm>
+		<indexterm>
+			<primary>X package</primary>
+		</indexterm>
+		<para>
+		The official Triceps classes are collected in the Triceps package
+		(and its subpackages). 
+		</para>
+
+		<para>
+		However when writing tests and examples I've found
+		that there are also some repeating elements. Initially I've been handling
+		the situation by either combining all examples using such an element into a
+		single file or by copying it around. Then I've collected all such fragments
+		under the package Triceps::X.
+		X can be thought of as a mark of eXperimental, eXample,
+		eXtraneous code. 
+		</para>
+
+		<para>
+		While the code in the official part of the library is extensively
+		tested, the X-code is tested only in its most important functionality
+		and not in the details.
+		This code is not exactly of production quality but is
+		good enough for the examples, and can be used as a starting point for
+		development of the better code. Quite a few fragments of Triceps went
+		this way: the joins have been done as an example first, and then
+		solidified for the main code base, and so did the aggregation.
+		</para>
+
+		<indexterm>
+			<primary>TestFeed</primary>
+		</indexterm>
+		<para>
+		One of these modules is Triceps::X::TestFeed. It's a small
+		infrastructure to run the examples, pretending that it gets the input
+		from stdin and sends output to stdout, while actually doing it all in
+		memory. All of the more complicated examples have been written to use it. 
+		When you look in the code of the actual running examples and compare
+		it to the code snippets in the manual, you can see the differences.
+		<!-- here must use <computeroutput> directly because otherwise the text gets substituted! -->
+		A <computeroutput>&amp;readLine</computeroutput> shows instead of <pre><STDIN></pre>, and a
+		<computeroutput>&amp;send</computeroutput> instead of <pre>print</pre> (and for the manual, I have a script that does
+		the reverse substitutions automatically when I insert the code examples into
+		it). 
+		</para>
+	</sect1>
 </chapter>

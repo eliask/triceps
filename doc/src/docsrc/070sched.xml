@@ -1540,7 +1540,6 @@ while(&readLine) {
 		</para>
 	</sect1>
 
-<!-- XXXXXXX -->
 	<sect1 id="sc_sched_mainloop_socket">
 		<title>Main loop with a socket</title>
 
@@ -1554,28 +1553,81 @@ while(&readLine) {
 		<indexterm>
 			<primary>socket</primary>
 		</indexterm>
+		<indexterm>
+			<primary>SimpleServer</primary>
+		</indexterm>
 		<para>
 		A fairly typical situation is when a CEP model has to run in a daemon
 		process, receiving and sending data through the network sockets.
-		Here goes an example that does this. It's not production-ready either.
+		Here goes an example that does this. It's not production-ready, it's
+		only of an example quality, and thus is located in an X-package.
 		It still has the issue with the parsing of the CSV data, its
 		handling of the errors is not well-tested, and it makes a few
 		simplifying assumptions about the buffering (more on this below). 
 		Other than that, it's a decent starting point.
-		If you want to copy-and-paste
-		this code for your experiments, it can be found in
-		<pre>perl/Triceps/t/xQuery.t</pre>.
+		You can import this package as Triceps::X::SimpleServer,
+		its source code found in 
+		<pre>lib/Triceps/X/SimpleServer.pm</pre>.
 		</para>
 
-<!-- t/xQuery.t, with requires assembled, with if(0) removed -->
+<!-- t/lib/Triceps/SimpleServer.pm -->
 <pre>
-use Triceps;
+package Triceps::X::SimpleServer;
+
+sub CLONE_SKIP { 1; }
+
+our $VERSION = 'v2.0.0';
+
 use Carp;
 use Errno qw(EINTR EAGAIN);
 use IO::Poll qw(POLLIN POLLOUT POLLHUP);
 use IO::Socket;
 use IO::Socket::INET;
 
+our @ISA = qw(Exporter);
+
+our %EXPORT_TAGS = ( 'all' => [ qw(
+	outBuf outCurBuf mainLoop startServer makeExitLabel makeServerOutLabel
+) ] );
+
+our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+
+# For whatever reason, Linux signals SIGPIPE when writing on a closed
+# socket (and it's not a pipe). So intercept it.
+sub interceptSigPipe
+{
+	if (!$SIG{PIPE}) {
+		$SIG{PIPE} = sub {};
+	}
+}
+
+# and intercept SIGPIPE by default on import
+&interceptSigPipe();
+</pre>
+
+		<para>
+		The package starts with the usual imports and exports. The CLONE_SKIP
+		is required to make sure that the package interacts properly with
+		the multithreading (any objects of this package won't be cloned
+		into the new threads, and since the cloning tends to not work right
+		anyway, I'm not sure why it's not the default).
+		</para>
+
+		<para>
+		Then it intercepts and ignores the SIGPIPE signal for the reasons
+		described in the comment. It's very inconvenient to have your
+		server die on a signal when the other side decides to drop the connection.
+		Any server dealing with sockets on Linux must intercept SIGPIPE.
+		Intercepting it with an empty handler looks like a better idea than
+		ignoring it altogether, to make extra-sure that the writer won't
+		be stuck in that write forever, but perhaps ignoring it would be just as good.
+		The interception is placed into a function which gets called on the
+		package import and can be called again later in case if something
+		else resets the handler to default.
+		</para>
+
+<!-- t/lib/Triceps/SimpleServer.pm -->
+<pre>
 # the socket and buffering control for the main loop;
 # they are all indexed by a unique id
 our %clients; # client sockets
@@ -1585,34 +1637,72 @@ our $poll; # the poll object
 our $cur_cli; # the id of the current client being processed
 our $srv_exit; # exit when all the client connections are closed
 
-# writing to the output buffers
+# Writing to the output buffers. Will also trigger the polling to
+# actually send the output data to the client's socket.
+#
+# @param id - the client id, as generated on the client connection
+#        (if the client already disconnected, this call will 
+#        have no effect)
+# @param string - the string to write
 sub outBuf # ($id, $string)
 {
 	my $id = shift;
 	my $line = shift;
-	$outbufs{$id} .= $line;
-	# If there is anything to write on a buffer, stop reading from it.
-	$poll->mask($clients{$id} => POLLOUT);
+	if (exists $clients{$id}) {
+		$outbufs{$id} .= $line;
+		# If there is anything to write on a buffer, stop reading from it.
+		$poll->mask($clients{$id} => POLLOUT);
+	}
 }
 
+# Write to the output buffer of the current client (as set in $cur_cli
+# by the main loop).
+#
+# @param string - the string to write
 sub outCurBuf # ($string)
 {
 	outBuf($cur_cli, @_);
 }
 
-sub closeClient # ($id, $h)
+# Close the client connection. This doesn't flush the ouput buffer,
+# so it must be called only after the flush is done, or if the flush
+# can not be done (such as, if the client has dropped the connection).
+# It does delete all the client-related data.
+#
+# @param id - the client id, as generated on the client connection
+# @param h - the socket handle of the client
+sub _closeClient # ($id, $h)
 {
 	my $id = shift;
 	my $h = shift;
 	$poll->mask($h, 0);
 	$h->close();
-	delete $clients{$id}; # OK perl Perl manual even when iterating
+	delete $clients{$id}; # OK per Perl manual even when iterating
 	delete $inbufs{$id};
 	delete $outbufs{$id};
 }
 
 # The server main loop. Runs with the specified server socket.
-# Uses the labels hash to send the incoming data to Triceps.
+# Accepts the connections from it, then polls the connections for
+# input, reads the data in CSV and dispatches it using the labels hash.
+#
+# XXX Caveats:
+# The way this works, if there is no '\n' before EOF,
+# the last line won't be processed.
+# Also, the whole output for all the input will be buffered
+# before it can be sent.
+#
+# @param srvsock - the server socket handle
+# @param labels - Reference to the label hash, that contains the
+#        mappings used to dispatch the input, in either of formats:
+#          name => label_object
+#          name => code_reference
+#        The input from the clients is parsed as CSV with the 1st field
+#        containing the label name.  Then if the looked up dispatch is an
+#        actual label, the rest of CSV fields are: the 2nd the opcode, and the rest
+#        the data fields in the order of the label's row type. If the
+#        looked up dispatch is a Perl sub reference, just the whole input
+#        line is passed to it as an argument.
 sub mainLoop # ($srvsock, $%labels)
 {
 	my $srvsock = shift;
@@ -1647,11 +1737,13 @@ sub mainLoop # ($srvsock, $%labels)
 
 		my ($id, $h, $mask, $n, $s);
 		while (($id, $h) = each %clients) {
+			no warnings; # or in tests prints a lot of warnings about undefs
+
 			$cur_cli = $id;
 			$mask = $poll->events($h);
 			if (($mask & POLLHUP) && !defined $outbufs{$id}) {
 				# &send("Lost client $client_id\n");
-				closeClient($id, $h);
+				_closeClient($id, $h);
 				next;
 			}
 			if ($mask & POLLOUT) {
@@ -1667,7 +1759,7 @@ sub mainLoop # ($srvsock, $%labels)
 					}
 				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
 					warn "write to client $id failed: $!";
-					closeClient($id, $h);
+					_closeClient($id, $h);
 					next;
 				}
 			}
@@ -1675,13 +1767,13 @@ sub mainLoop # ($srvsock, $%labels)
 				$n = $h->sysread($s, 10000);
 				if ($n == 0) {
 					# &send("Lost client $client_id\n");
-					closeClient($id, $h);
+					_closeClient($id, $h);
 					next;
 				} elsif ($n > 0) {
 					$inbufs{$id} .= $s;
 				} elsif(! $!{EAGAIN} && ! $!{EINTR}) {
 					warn "read from client $id failed: $!";
-					closeClient($id, $h);
+					_closeClient($id, $h);
 					next;
 				}
 			}
@@ -1692,20 +1784,26 @@ sub mainLoop # ($srvsock, $%labels)
 			while($inbufs{$id} =~ s/^(.*)\n//) {
 				my $line = $1;
 				chomp $line;
-				local $/ = "\r"; # take care of a possible CR-LF
-				chomp $line;
+				{
+					local $/ = "\r"; # take care of a possible CR-LF in this block
+					chomp $line;
+				}
 				my @data = split(/,/, $line);
 				my $lname = shift @data;
 				my $label = $labels->{$lname};
 				if (defined $label) {
-					my $unit = $label->getUnit();
-					confess "label '$lname' received from client $id has been cleared"
-						unless defined $unit;
-					eval {
-						$unit->makeArrayCall($label, @data);
-						$unit->drainFrame();
-					};
-					warn "input data error: $@\nfrom data: $line\n" if $@;
+					if (ref($label) eq 'CODE') {
+						&$label($line);
+					} else {
+						my $unit = $label->getUnit();
+						confess "label '$lname' received from client $id has been cleared"
+							unless defined $unit;
+						eval {
+							$unit->makeArrayCall($label, @data);
+							$unit->drainFrame();
+						};
+						warn "input data error: $@\nfrom data: $line\n" if $@;
+					}
 				} else {
 					warn "unknown label '$lname' received from client $id: $line "
 				}
@@ -1721,8 +1819,8 @@ sub mainLoop # ($srvsock, $%labels)
 		<para>
 		The general outline follows the single-threaded multiplexing server described in
 		<biblioref linkend="Babkin10"/>. <pre>mainLoop()</pre> gets the server socket
-		and a dispatch table of labels as its arguments. It then proceeds with waiting
-		for connections. 
+		and a dispatch table of labels or functions as its arguments. It then proceeds 
+		with waiting for connections. 
 		</para>
 
 		<para>
@@ -1734,24 +1832,38 @@ sub mainLoop # ($srvsock, $%labels)
 		It's expected to have the format:
 		</para>
 
-<pre>
-name,opcode,data...
-</pre>
+<exdump>
+> name,opcode,data...
+</exdump>
 
 		<para>
 		Such as:
 		</para>
 
-<pre>
-window,OP_INSERT,5,AAA,30,30
-window.query,OP_INSERT
-exit,OP_NOP
-</pre>
+<exdump>
+> window,OP_INSERT,5,AAA,30,30
+> window.query,OP_INSERT
+> exit,OP_NOP
+</exdump>
 
 		<para>
 		The name part is then used to find a label in the dispatch table. The
 		rest of the data is used to create a rowop for that label and execute it.
+		As you can see, a row must contain at least the label name and opcode,
+		or the execution will print an error message on the server's standard error
+		and return no response to the client in the socket.
 		</para>
+
+		<para>
+		If the dispatch table contains not a label but a simple function reference
+		for some name, the rest of the row is not even parsed, the function gets
+		called without any arguments. If the exit is implemented as a function
+		in the dispatch table, the following would also work:
+		</para>
+
+<exdump>
+> exit
+</exdump>
 
 		<para>
 		The data is sent back to the client through buffering. To send some data
@@ -1766,7 +1878,8 @@ exit,OP_NOP
 		The <pre>$id</pre> is the unique id of the client. How do you find, what is the id
 		of the client you want to send the data to? When an input line is processed,
 		the main loop knows, from what client it was received. It puts the id of that
-		client in the global variable <pre>$cur_cli</pre>. You can take it from there and remember.
+		client in the global variable <pre>$Triceps::X::SimpleServer::cur_cli</pre>. 
+		You can take it from there and remember.
 		If you want to reply to the current client, you don't need to bother yourself
 		with the id at all, just call
 		</para>
@@ -1776,20 +1889,24 @@ exit,OP_NOP
 </pre>
 
 		<para>
-		If you remember an id for the future use, you'd probably need to check that
-		the client hasn't disconnected before sending data to it:
+		If you remember an id for the future use, and the client disconnects before
+		you call <pre>outBuf()</pre>, the call will have no effect.
+		In any case, if a client has disconnected, the further processing of its requests
+		should usually be stopped, and thus checking if the client is still connected
+		is a good idea anyway:
 		</para>
 
 <pre>
 if (exists $clients{$id}) {
+	# ... prepare the data for it ...
 	&outBuf($id, $text);
+} else {
+	# ... stop sending the data to this client ...
 }
 </pre>
 
 		<para>
-		Otherwise your output attempts would be leaking memory in the output buffer.
-		In any case, if a client has disconnected, the further processing of its requests
-		shoudl usually be stopped. The client ids are not reused, so this check is
+		The client ids are not reused, so this check is
 		always safe.
 		</para>
 
@@ -1830,7 +1947,7 @@ if (exists $clients{$id}) {
 		</para>
 
 		<para>
-		The loop exits when the global variable <pre>$srv_exit</pre> gets set 
+		The loop exits when the global variable <pre>$Triceps::X::SimpleServer::srv_exit</pre> gets set 
 		(synchronously, i.e. by one of the label handlers) to 1 and all the 
 		clients disconnect. The requirement for disconnection of all the clients
 		makes sure that all the output buffers get flushed before exit, and
@@ -1839,22 +1956,35 @@ if (exists $clients{$id}) {
 
 		<para>
 		<pre>mainLoop()</pre> relies on the listening socket being already created,
-		bound and given to it as a parameter. Here is a function used in the examples
-		to create this socket and run the server in a separate process:
+		bound and given to it as a parameter.  The creation of the socket and
+		forking of a separate server process is wrapped in another function:
 		</para>
 
-<!-- t/xQuery.t -->
+<!-- t/lib/Triceps/SimpleServer.pm -->
 <pre>
-sub startServer # ($labels)
+# The server start function that creates the server socket,
+# remembers its port number, then forks and
+# starts the main loop in the child process. The parent
+# process then returns the pair (port number, child PID).
+#
+# @param port - the port number to use; 0 will cause a unique free
+#        port number to be auto-assigned
+# @param labels - reference to the label hash, to be passed to mainLoop()
+# @return - pair (port number, child PID) that can then be used to connect
+#        to and control the server in the child process
+sub startServer # ($port, $%labels)
 {
+	my $port = shift;
 	my $labels = shift;
 
 	my $srvsock = IO::Socket::INET->new(
 		Proto => "tcp",
-		LocalPort => 0,
+		LocalPort => $port,
 		Listen => 10,
 	) or confess "socket failed: $!";
-	my $port = $srvsock->sockport() or confess "sockport failed: $!";
+	# Read back the port, since the port 0 will cause a free port
+	# to be auto-assigned.
+	$port = $srvsock->sockport() or confess "sockport failed: $!";
 	my $pid = fork();
 	confess "fork failed: $!" unless defined $pid;
 	if ($pid) {
@@ -1870,7 +2000,7 @@ sub startServer # ($labels)
 </pre>
 
 		<para>
-		It binds the socket to the port 0 to request that the OS bind it to
+		You can specify the server port 0 to request that the OS bind it to
 		a randum unused port. The port number is then read back with <pre>sockport()</pre>.
 		The pair of the port numer and the server's child process id is then returned
 		as the result. The process where the server runs is in this case
@@ -1879,14 +2009,23 @@ sub startServer # ($labels)
 
 		<para>
 		For a simple complete example, let's make an echo server that would print
-		back the rows it receives:
+		back the rows it receives, as found in <pre>t/xQuery.t</pre>:
 		</para>
 
 		<indexterm>
 			<primary>dispatch table</primary>
 		</indexterm>
-<!-- t/xQuery.t, shifted left -->
+<!-- t/xQuery.t, combined rtTrade definition -->
 <pre>
+our $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+);
+
+use Triceps::X::SimpleServer qw(:all);
+
 my $uEcho = Triceps::Unit->new("uEcho");
 my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
 	&outCurBuf($_[1]->printP() . "\n");
@@ -1896,7 +2035,7 @@ my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
 		$_[1]->getRow()->toArray()) . "\n");
 });
 my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
-	$srv_exit = 1;
+	$Triceps::X::SimpleServer::srv_exit = 1;
 });
 
 my %dispatch;
@@ -1904,7 +2043,7 @@ $dispatch{"echo"} = $lbEcho;
 $dispatch{"echo2"} = $lbEcho2;
 $dispatch{"exit"} = $lbExit;
 
-my ($port, $pid) = &startServer(\%dispatch);
+my ($port, $pid) = &Triceps::X::SimpleServer::startServer(0, \%dispatch);
 print STDERR "port=$port pid=$pid\n";
 waitpid($pid, 0);
 exit(0);
@@ -1917,17 +2056,220 @@ exit(0);
 		</para>
 
 		<para>
-		<pre>$rt</pre> is the row type for the expected data. It's not particularly
-		important here, so I didn't show its definition. Two labels, <quote>echo</quote>
+		<pre>$rtTrade</pre> is the row type for the expected data. 
+		Two labels, <quote>echo</quote>
 		and <quote>echo2</quote> differ in the way they print the data back:
 		<quote>echo</quote> prints it in the symbolic form while <quote>echo2</quote>
 		prints in CSV. The label <quote>exit</quote> sets the exit flag.
+		Here is a small session log from the client side (46651 is the port
+		that got picked at random and printed by the server on the start):
 		</para>
+
+<exdump>
+> $ telnet localhost 46651
+Trying 127.0.0.1...
+Connected to localhost.
+Escape character is '^]'.
+> echo,OP_INSERT,1,a,2,3.4
+echo OP_INSERT id="1" symbol="a" price="2" size="3.4" 
+> echo2,OP_INSERT,1,a,2,3.4
+echo,OP_INSERT,1,a,2,3.4
+> exit,OP_NOP
+> ^]
+> telnet> q
+Connection closed.
+</exdump>
 
 		<para>
 		The names in the dispatch table don't have to be the same as the names of
 		the labels. It's often convenient to have them the same but not mandatory.
 		</para>
+
+		<para>
+		The exit label was created manually in this example but SimpleServer
+		also provides the functions that create an exit label or an exit
+		function, either of which can be placed into a dispatch table:
+		</para>
+
+<pre>
+# A dispatch function, sending anything to which will exit the server.
+# The server will not flush the outputs before exit.
+#
+# Use like:
+#   $dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+#
+# In this way the input line doesn't have to contain the opcode.
+# The alternative way is through makeExitLabel().
+sub exitFunc # ($line)
+{
+		$srv_exit = 1;
+}
+
+# Create a label, sending anything to which will exit the server.
+# The server will not flush the outputs before exit.
+#
+# Use like:
+#   $dispatch{"exit"} = &Triceps::X::SimpleServer::makeExitLabel($uTrades, "exit");
+#
+# In this way the input line has to contain at least the opcode.
+# The alternative way is through exitFunc().
+#
+# @param unit - the unit in which to create the label
+# @param name - the label name
+# @return - the newly created label object
+sub makeExitLabel # ($unit, $name)
+{
+	my $unit = shift;
+	my $name = shift;
+	return $unit->makeLabel($unit->getEmptyRowType(), $name, undef, sub {
+		$srv_exit = 1;
+	});
+}
+</pre>
+
+		<para>
+		There is also a function for making the labels that output
+		their rows in CSV to the client:
+		</para>
+
+<pre>
+# Create a label that will print the data in CSV format to the server output
+# (to the current client).
+#
+# @param fromLabel - the new label will be chained to this one and get the
+#        data from it
+# @return - the newly created label object
+sub makeServerOutLabel # ($fromLabel)
+{
+	no warnings; # or in tests prints a lot of warnings about undefs
+	my $fromLabel = shift;
+	my $unit = $fromLabel->getUnit();
+	my $fromName = $fromLabel->getName();
+	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
+		$fromName . ".serverOut", undef, sub {
+			&outCurBuf(join(",", $fromName, 
+				&Triceps::opcodeString($_[1]->getOpcode()),
+				$_[1]->getRow()->toArray()) . "\n");
+		});
+	$fromLabel->chain($lbOut);
+	return $lbOut;
+}
+</pre>
+
+		<indexterm>
+			<primary>DumbClient</primary>
+		</indexterm>
+		<para>
+		Running the automated tests of the servers requires the clients
+		to be started automatically too, feed the input, receive the
+		results, and then compare them to the expected results.
+		The package Triceps::X::DumbClient from <pre>lib/Triceps/X/DumbClient.pm</pre>
+		does exactly that. The server code gets created as usual,
+		only instead of starting the server, the dispatch table is
+		given to the DumbClient method that takes care of starting
+		the server, feeding the input, collecting the results,
+		and waiting for the server to stop.
+		</para>
+
+		<para>
+		For example, the same echo example is run like this with
+		DumbClient:
+		</para>
+
+<!-- t/xQuery.t echo server through DumbClient -->
+<pre>
+use Triceps::X::SimpleServer qw(:all);
+
+my $uEcho = Triceps::Unit->new("uEcho");
+my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
+	&outCurBuf($_[1]->printP() . "\n");
+});
+my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
+	&outCurBuf(join(",", "echo", &Triceps::opcodeString($_[1]->getOpcode()),
+		$_[1]->getRow()->toArray()) . "\n");
+});
+my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
+	$Triceps::X::SimpleServer::srv_exit = 1;
+});
+
+my %dispatch;
+$dispatch{"echo"} = $lbEcho;
+$dispatch{"echo2"} = $lbEcho2;
+$dispatch{"exit"} = $lbExit;
+
+my @inputQuery = (
+"echo,OP_INSERT,1,a,2,3.4\n",
+"echo2,OP_INSERT,1,a,2,3.4\n",
+);
+my $expectQuery = 
+'> echo,OP_INSERT,1,a,2,3.4
+> echo2,OP_INSERT,1,a,2,3.4
+echo OP_INSERT id="1" symbol="a" price="2" size="3.4" 
+echo,OP_INSERT,1,a,2,3.4
+';
+
+Triceps::X::TestFeed::setInputLines(@inputQuery);
+Triceps::X::DumbClient::run(\%dispatch);
+
+ok(&Triceps::X::TestFeed::getResultLines(), $expectQuery);
+</pre>
+
+		<indexterm>
+			<primary>TestFeed</primary>
+		</indexterm>
+		<para>
+		DumbClient works in symbiosis with the TestFeed module that
+		handles the recorded inputs and outputs. Note that the
+		<quote>exit</quote> line is not there, DumbClient
+		adds it implicitly at the end of the input.
+		</para>
+
+		<para>
+		The input lines are also included by TestFeed in the output
+		with the <quote>&gt; </quote> prepended to them. DumbClient
+		feeds all the inputs first and then reads all the results,
+		relying on the TCP buffering to avoid deadlocking on the
+		flow control. This works only for the small amounts of
+		input but is good enough for the small tests.
+		</para>
+
+		<para>
+		And the implementation of DumbClient is fairly small, there
+		is only one method:
+		</para>
+
+<pre>
+sub run # ($labels)
+{
+	my $labels = shift;
+
+	my ($port, $pid) = Triceps::X::SimpleServer::startServer(0, $labels);
+	my $sock = IO::Socket::INET->new(
+		Proto => "tcp",
+		PeerAddr => "localhost",
+		PeerPort => $port,
+	) or confess "socket failed: $!";
+	while(& readLine) {
+		$sock->print($_);
+		$sock->flush();
+	}
+	$sock->print("exit,OP_INSERT\n");
+	$sock->flush();
+	$sock->shutdown(1); # SHUT_WR
+	while(<$sock>) {
+		& send($_);
+	}
+	waitpid($pid, 0);
+}
+</pre>
+
+		<para>
+		As mentioned before in 
+		<xref linkend="sc_perl_libex" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		the methods <pre>readLine</pre> and <pre>send</pre> are imported from the
+		TestFeed module.
+		</para>
+
 	</sect1>
 
 <!-- XXXX the exact tracing sequences will change -->
