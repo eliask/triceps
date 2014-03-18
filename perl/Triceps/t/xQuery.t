@@ -10,7 +10,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 14 };
+BEGIN { plan tests => 15 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
@@ -48,30 +48,76 @@ $ttWindow->initialize();
 # A basic manual test of echo server.
 
 if (0) {
-	use strict;
-	use Triceps::X::SimpleServer qw(:all);
 
-	my $uEcho = Triceps::Unit->new("uEcho");
-	my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
-		&outCurBuf($_[1]->printP() . "\n");
-	});
-	my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
-		&outCurBuf(join(",", "echo", &Triceps::opcodeString($_[1]->getOpcode()),
-			$_[1]->getRow()->toArray()) . "\n");
-	});
-	my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
-		$Triceps::X::SimpleServer::srv_exit = 1;
-	});
+use strict;
+use Triceps::X::SimpleServer qw(:all);
 
-	my %dispatch;
-	$dispatch{"echo"} = $lbEcho;
-	$dispatch{"echo2"} = $lbEcho2;
-	$dispatch{"exit"} = $lbExit;
+my $uEcho = Triceps::Unit->new("uEcho");
+my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
+	&outCurBuf($_[1]->printP() . "\n");
+});
+my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
+	&outCurBuf(join(",", "echo", &Triceps::opcodeString($_[1]->getOpcode()),
+		$_[1]->getRow()->toArray()) . "\n");
+});
+my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
+	$Triceps::X::SimpleServer::srv_exit = 1;
+});
 
-	my ($port, $pid) = &Triceps::X::SimpleServer::startServer(0, \%dispatch);
-	print STDERR "port=$port pid=$pid\n";
-	waitpid($pid, 0);
-	exit(0);
+my %dispatch;
+$dispatch{"echo"} = $lbEcho;
+$dispatch{"echo2"} = $lbEcho2;
+$dispatch{"exit"} = $lbExit;
+
+my ($port, $pid) = &Triceps::X::SimpleServer::startServer(0, \%dispatch);
+print STDERR "port=$port pid=$pid\n";
+waitpid($pid, 0);
+exit(0);
+
+}
+
+#########################
+# An echo server running through DumbClient.
+
+{
+
+use strict;
+use Triceps::X::SimpleServer qw(:all);
+
+my $uEcho = Triceps::Unit->new("uEcho");
+my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
+	&outCurBuf($_[1]->printP() . "\n");
+});
+my $lbEcho2 = $uEcho->makeLabel($rtTrade, "echo2", undef, sub {
+	&outCurBuf(join(",", "echo", &Triceps::opcodeString($_[1]->getOpcode()),
+		$_[1]->getRow()->toArray()) . "\n");
+});
+my $lbExit = $uEcho->makeLabel($rtTrade, "exit", undef, sub {
+	$Triceps::X::SimpleServer::srv_exit = 1;
+});
+
+my %dispatch;
+$dispatch{"echo"} = $lbEcho;
+$dispatch{"echo2"} = $lbEcho2;
+$dispatch{"exit"} = $lbExit;
+
+my @inputQuery = (
+"echo,OP_INSERT,1,a,2,3.4\n",
+"echo2,OP_INSERT,1,a,2,3.4\n",
+"exit,OP_NOP\n",
+);
+my $expectQuery = 
+'> echo,OP_INSERT,1,a,2,3.4
+> echo2,OP_INSERT,1,a,2,3.4
+> exit,OP_NOP
+echo OP_INSERT id="1" symbol="a" price="2" size="3.4" 
+echo,OP_INSERT,1,a,2,3.4
+';
+
+setInputLines(@inputQuery);
+Triceps::X::DumbClient::run(\%dispatch);
+
+ok(&getResultLines(), $expectQuery);
 }
 
 #########################
