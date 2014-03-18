@@ -43,7 +43,7 @@ sub run # ($labels)
 		PeerAddr => "localhost",
 		PeerPort => $port,
 	) or confess "socket failed: $!";
-	while(&readLine) {
+	while(& readLine) {
 		$sock->print($_);
 		$sock->flush();
 	}
