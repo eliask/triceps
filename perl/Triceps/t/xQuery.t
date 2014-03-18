@@ -48,6 +48,9 @@ $ttWindow->initialize();
 # A basic manual test of echo server.
 
 if (0) {
+	use strict;
+	use Triceps::X::SimpleServer qw(:all);
+
 	my $uEcho = Triceps::Unit->new("uEcho");
 	my $lbEcho = $uEcho->makeLabel($rtTrade, "echo", undef, sub {
 		&outCurBuf($_[1]->printP() . "\n");
