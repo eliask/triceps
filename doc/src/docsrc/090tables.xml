@@ -3203,7 +3203,12 @@ foreach my $rop ($ctr->toArray()) {
 		class is the cornerstone of Triceps, and everything is connected
 		to it.  The aggregators
 		work with the tables and are a whole separate big subject with their
-		own chapter. There also are many more options and small methods that
+		own 
+		<xref linkend="ch_aggregation" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		The features that take advantage of the streaming functions are
+		described in 
+		<xref linkend="sc_strf_tables" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		There also are many more options and small methods that
 		haven't been touched upon yet. They are enumerated in the reference
 		chapter, please refer there.
 		</para>

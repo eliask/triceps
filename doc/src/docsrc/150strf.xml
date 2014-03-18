@@ -1505,6 +1505,7 @@ result OP_DELETE name="def" count="102"
 		</indexterm>
 		<indexterm>
 			<primary>table</primary>
+			<secondary>FnReturn</secondary>
 		</indexterm>
 
 		<para>
@@ -1528,7 +1529,8 @@ $fret = $table->fnReturn();
 </pre>
 
 		<para>
-		The return contains the labels <quote>pre</quote>, <quote>out</quote>, and the named labels for
+		The return contains the labels <quote>pre</quote>, <quote>out</quote>, <quote>dump</quote> (more
+		on that one below) and the named labels for
 		all aggregators. The FnReturn object is created on the first call of
 		this method and is kept in the table. All the following calls return
 		the same object. This has some interesting consequences for the <quote>pre</quote>
@@ -1619,6 +1621,101 @@ if ($seenDelete) {
 		the table outputs as usual.
 		</para>
 
+		<indexterm>
+			<primary>table</primary>
+			<secondary>dump</secondary>
+		</indexterm>
+		<para>
+		Another feature where the tables and streaming functions intersect is the table
+		dumping. It allows to iterate on a table in a functional manner.
+		</para>
+
+		<para>
+		The label <quote>dump</quote> is present in the table and its FnReturn. Whenever the
+		method <pre>Table::dumpAll()</pre> is called, it sends the whole contents of the table to
+		that label. Then you can set a binding on the table's FnReturn, call
+		<pre>dumpAll()</pre>, and the binding will iterate through the whole table's
+		contents.
+		</para>
+
+		<para>
+		If you want to get the dump label explicitly, you can do it with
+		</para>
+
+<pre>
+my $dlab = $table->getDumpLabel();
+</pre>
+
+		<para>
+		Normally the only reason to do that would be to add it to another
+		FnReturn (besides the table's FnReturn). Chaining anything else
+		directly to this label would not make much sense, because the dump of
+		the table can be called from many places, and the directly chained
+		label will receive data every time the dump is called.
+		</para>
+
+		<para>
+		The grand plan is also to add the dumping by a a condition that selects
+		a sub-index, but it's not implemented yet. You can select an index for
+		an alternative ordering but all the rows get dumped in any case.
+		</para>
+
+		<para>
+		The method <pre>dumpAllIdx()</pre> is the one that
+		sends the rows in the order of a chosen index, rather than the default first
+		leaf index:
+		</para>
+
+<pre>
+$table->dumpAll();
+$table->dumpAllIdx($indexType);
+</pre>
+
+		<para>
+		As usual, the index type must belong to the exact type of this table. For example:
+		</para>
+
+<pre>
+$table->dumpAllIdx($table->getType()->findIndexPath("cb"), "OP_NOP");
+</pre>
+
+		<para>
+		The typical usage looks like this:
+		</para>
+
+<!-- from t/Table.t, with renamed variables and shifted -->
+<pre>
+Triceps::FnBinding::call(
+	name => "iterate",
+	on => $table->fnReturn(),
+	unit => $unit,
+	labels => [
+		dump => sub { ... },
+	],
+	code => sub {
+		$table->dumpAll();
+	},
+);
+</pre>
+
+		<para>
+		It's less efficient than the normal iteration but sometimes comes
+		handy.
+		</para>
+
+		<para>
+		Normally the rowops are sent with the opcode OP_INSERT. But the opcode
+		can also be specified explicitly:
+		</para>
+
+<pre>
+$table->dumpAll($opcode);
+$table->dumpAllIdx($indexType, $opcode);
+</pre>
+
+		<para>
+		And some more interesting examples will be forthcoming in XXXREF. 
+		</para>
 	</sect1>
 
 	<sect1 id="sc_strf_templates">

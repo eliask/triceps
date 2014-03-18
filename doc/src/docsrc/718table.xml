@@ -52,6 +52,7 @@ $result = $t1->same($t2);
 $lb = $t->getInputLabel();
 $lb = $t->getPreLabel();
 $lb = $t->getOutputLabel();
+$lb = $t->getDumpLabel();
 $lb = $t->getAggregatorLabel("aggName") or confess "$!";
 </pre>
 
@@ -360,7 +361,8 @@ $fret = $table->fnReturn();
 
 		<para>
 		Returns an FnReturn object connected to the output of this table.
-		The FnReturn contains the labels <quote>pre</quote>, <quote>out</quote>, and the named labels for
+		The FnReturn contains the labels <quote>pre</quote>, <quote>out</quote>, 
+		<quote>dump</quote> (used with <pre>dumpAll</pre> methods) and the named labels for
 		all aggregators.  The FnReturn object is created on the first call of
 		this method and is kept in the table.  All the following calls return
 		the same object. 
@@ -374,6 +376,29 @@ $fret = $table->fnReturn();
 		surprised when calling <pre>fnReturn()</pre> changes all your traces.
 		See more detail in
 		<xref linkend="sc_strf_tables" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+<pre>
+$table->dumpAll();
+$table->dumpAll($opcode);
+</pre>
+
+		<para>
+		Sends all the table's rows in their default order to the label <quote>dump</quote>.
+		The opcode for the created rowops is OP_INSERT by default, or can be specified
+		explicitly as an argument. The typical usage is to push a binding on the table's
+		FnReturn to process these dumped rowops.
+		</para>
+
+<pre>
+$table->dumpAllIdx($indexType);
+$table->dumpAllIdx($indexType, $opcode);
+</pre>
+
+		<para>
+		Similar to <pre>dumpAll()</pre>, only allows to send the rows in an order
+		specified by another index type.
+		As usual, the index type must belong to the exact type of this table.
 		</para>
 	</sect1>
 
