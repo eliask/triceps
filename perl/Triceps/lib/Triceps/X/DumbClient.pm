@@ -51,7 +51,7 @@ sub run # ($labels)
 	$sock->flush();
 	$sock->shutdown(1); # SHUT_WR
 	while(<$sock>) {
-		&send($_);
+		& send($_);
 	}
 	waitpid($pid, 0);
 }
