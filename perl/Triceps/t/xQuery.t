@@ -114,10 +114,10 @@ echo OP_INSERT id="1" symbol="a" price="2" size="3.4"
 echo,OP_INSERT,1,a,2,3.4
 ';
 
-setInputLines(@inputQuery);
+Triceps::X::TestFeed::setInputLines(@inputQuery);
 Triceps::X::DumbClient::run(\%dispatch);
 
-ok(&getResultLines(), $expectQuery);
+ok(&Triceps::X::TestFeed::getResultLines(), $expectQuery);
 }
 
 #########################
