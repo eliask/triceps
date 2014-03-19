@@ -2936,4 +2936,38 @@ Followup1(n-1)
 		values, and everything goes downhill from there. 
 		</para>
 	</sect1>
+
+	<sect1 id="sc_strf_scheduling">
+		<title>The gritty details of streaming functions scheduling</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>scheduling</primary>
+			<secondary>streaming function</secondary>
+		</indexterm>
+		<para>
+		If you've read carefully about all the gritty details of scheduling,
+		you might wonder, what exactly happens when a label in an FnBinding gets
+		called through an FnReturn? The answer is, they are executed
+		like the chained labels, reusing the frame of the parent label
+		(that is, of the matching label on the FnReturn side). They
+		even show in the traces as the chained labels.
+		This lets the bound labels to easily fork a rowop to the frame of its parent.
+		</para>
+
+		<para>
+		The only exception is when the FnReturn and FnBinding are in the different units.
+		Then the bound label is properly called with its own frame in the unit
+		where it belongs. 
+		</para>
+
+		<para>
+		And of course the rowops collected in a tray are another exception,
+		since they are not called in the binding, they are only collected.
+		When the tray gets called, they get properly called with their
+		own frames, just as when calling any other tray.
+		</para>
+	</sect1>
 </chapter>

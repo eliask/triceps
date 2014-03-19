@@ -157,6 +157,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			The Triceps::X::SimpleServer::outBuf() now checks for the client
 			disconnection before sending data to it.
 			</listitem>
+
+			<listitem>
+			The <quote>dump</quote> label added to the tables.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 
