@@ -2937,6 +2937,395 @@ Followup1(n-1)
 		</para>
 	</sect1>
 
+	<sect1 id="sc_strf_units">
+		<title>Streaming functions and unit boundaries</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<indexterm>
+			<primary>unit</primary>
+		</indexterm>
+		<indexterm>
+			<primary>TQL</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Sybase</primary>
+		</indexterm>
+		<indexterm>
+			<primary>StreamBase</primary>
+		</indexterm>
+		<para>
+		One of the examples-as-future-standard-modules I've come up with, is TQL:
+		the Triceps Trivial Query Language (or should that be TTQL?) along
+		with a server to execute it. A TQL server is kind of like the
+		Sybase or StreamBase CEP server in the way that it encapsulates
+		the CEP logic, handles the client network connections with inputs and
+		outputs, and also lets the clients define the ad-hoc queries against 
+		the tables of both the one-time and streaming varieties. The ad-hoc
+		capabilities of TQL are probably better than those of Sybase and
+		StreamBase, at least comparing to the last time I've looked at them
+		up close. TQL will be described in detail in XXXREF but right now
+		I want to look at only one aspect of its implementation.
+		</para>
+
+		<para>
+		When you're building the execution model of an ad-hoc query, you'd 
+		obviously need to take it apart after its work is done. The easy way
+		to do so is by building it in its own unit. Then this unit can
+		be disposed of as, well, a unit, and guarantee that nothing will leak.
+		By the way, that is the
+		answer to the question of why would someone want to use multiple units
+		in the same thread: for modular disposal.
+		So far so good, but it means that the data sources in the 
+		<quote>main</quote> unit need to be connected with the processing
+		labels in the units of the ad-hoc queries.
+		</para>
+
+		<para>
+		But the labels in the main unit and the query unit can't be directly
+		connected. A direct connection would create the stable references, and
+		the disposal won't work. That's where the streaming function interface
+		comes to the rescue: it provides a temporary connection. Build the
+		query unit, build a binding for it, push the binding onto the FnReturn
+		of the main unit, run the query, pop the binding, dispose of the query
+		unit.
+		</para>
+
+		<para>
+		And the special capacity (or if you will, superpower) of the streaming
+		functions that allows all that is that the FnReturn and FnBinding don't
+		have to be of the same unit. They may be of the different units and
+		will still work together fine.
+		</para>
+
+		<para>
+		TQL was really developed as a showcase of this feature but it has
+		gained a life of its own and I don't want to go into all details here.
+		Instead lets have a high-level overview and then dive straight into the
+		part that uses the streaming functions.
+		</para>
+
+		<para>
+		To start a TQL server, you build a Triceps model as usual, and then
+		create an object of class Triceps::X::Tql using the endpoints of that
+		model (inputs, outputs, queryable tables) as arguments. After that
+		the object runs the server and handles the clients until it's asked to stop.
+		</para>
+
+		<para>
+		The TQL queries are pipelines. You read the data from a table, then
+		select, project, join (in any order, and possibly repeatedly) and
+		eventually print the result (that is, send it back to the client
+		over the socket).
+		</para>
+
+		<para>
+		The reading from a table is done through its dump label.
+		When the Tql object is created, it builds an FnReturn with the
+		dump labels of all the tables given to it. When an ad-hoc query is created,
+		its head of the pipeline gets a matching FnBinding that is then pushed 
+		onto the FnReturn, the table gets dumped and flows through the binding
+		into the query.
+		</para>
+
+		<para>
+		Now let's take a look at the code. I'll be
+		skipping over the code that is less interesting, you can find the full
+		version in the source code in <pre>lib/Triceps/X/Tql.pm</pre> as
+		always. The constructor is one of these things to be skipped. The
+		initialization part is more interesting. I've cut out the part that
+		supports the multi-threaded logic, and the remaining single-threaded
+		version goes as follows:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm with multithreaded fragment removed -->
+<pre>
+sub initialize # ($self)
+{
+	my $myname = "Triceps::X::Tql::initialize";
+	my $self = shift;
+
+	return if ($self->{initialized});
+
+	my $owner = $self->{trieadOwner};
+	if (defined $owner) {
+		# ... multithreaded version ...
+	} else {
+		my %dispatch;
+		my @labels;
+		for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
+			my $name = $self->{tableNames}[$i]; 
+			my $table = $self->{tables}[$i];
+
+			confess "$myname: found a duplicate table name '$name', all names are: "
+					. join(", ", @{$self->{tableNames}})
+				if (exists $dispatch{$name});
+
+			$dispatch{$name} = $table;
+			push @labels, $name, $table->getDumpLabel();
+		}
+
+		$self->{dispatch} = \%dispatch;
+		$self->{fret} = Triceps::FnReturn->new(
+			name => $self->{name} . ".fret",
+			labels => \@labels,
+		);
+	}
+
+	$self->{initialized} = 1;
+}
+</pre>
+
+		<para>
+		It creates a dispatch hash of name-to-table and also an FnReturn that
+		contains the dump labels of all the tables.
+		</para>
+
+		<para>
+		The method <pre>compileQuery()</pre> then handles the creation of the
+		separate unit with its contents (<quote>facet</quote> is a term from the
+		multithreading support, just ignore it for now):
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm with 3X-es removed -->
+<pre>
+# The common query compilation for the single-threaded and multi-threaded versions.
+#
+# The options are:
+#
+# qid => $id
+# (optional) The query id that will be used to report any service information
+# such as errors, end of dump portion and such.
+# Default: ''.
+#
+# qname => $name
+# The query name that will be used as a label name for all the
+# produced data, and for the service information too.
+#
+# nxprefix => $name
+# (optional) Prefix for the created unit name.
+# Default: ''.
+#
+# text => $query_text
+# Text of the query, in the braced format.
+#
+# subError => \&error($id, $qname, $msg, $error_code, $error_val)
+# The function that will handle the error reporting. The args are:
+#   $id and $qname as received in the options
+#   $msg - the full human-readable message
+#   $error_code - the string identifying the error
+#   $error_val - the particular value that caused the error
+#
+# tables => { $name => $table, ... }
+# The tables list for the single-threaded version.
+# Not used with the multithreaded version.
+#
+# fretDumps => $fnReturn
+# The FnReturn object for dumps in the single-threaded version.
+# Not used with the multithreaded version.
+#
+# faOut => $facet
+# The facet used to send the data to the Tql thread.
+# Not used with the single-threaded version.
+#
+# faRqDump => $facet
+# The facet used to send the table dump requests back to the app core.
+# Not used with the single-threaded version.
+#
+# subPrint => \&print($text)
+# The function that prints the text back to the socket.
+# Not used with the single-threaded version.
+#
+# @return - undef on error, the compiled context object on success
+#           (see the definition of its contents inside the function)
+sub compileQuery # (@opts)
+{
+	my $myname = "Triceps::X::Tql::compileQuery";
+	my $opts = {};
+	&Triceps::Opt::parse("chatSockWriteT", $opts, {
+		qid => [ '', undef ],
+		qname => [ undef, \&Triceps::Opt::ck_mandatory ],
+		nxprefix => [ '', undef ],
+		text => [ undef, \&Triceps::Opt::ck_mandatory ],
+		subError => [ undef, sub { &Triceps::Opt::ck_mandatory; &Triceps::Opt::ck_ref(@_, "CODE"); } ],
+		tables => [ undef, sub { &Triceps::Opt::ck_ref(@_, "HASH", "Triceps::Table"); } ],
+		fretDumps => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::FnReturn"); } ],
+		faOut => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Facet"); } ],
+		faRqDump => [ undef, sub { &Triceps::Opt::ck_ref(@_, "Triceps::Facet"); } ],
+		subPrint => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE"); } ],
+	}, @_);
+
+	my $q = $opts->{qname}; # the name of the query itself
+
+	my @cmds = split_braced($opts->{text});
+	if ($opts->{text} ne '') {
+		&{$opts->{subError}}($opts->{qid}, $q, "mismatched braces in the trailing " . $opts->{text},
+			'query_syntax', $opts->{text});
+		return undef;
+	}
+
+	# The context for the commands to build up an execution of a query.
+	# Unlike $self, the context is created afresh for every query.
+	my $ctx = {};
+	$ctx->{qid} = $opts->{qid};
+	$ctx->{qname} = $opts->{qname};
+
+	$ctx->{tables} = $opts->{tables};
+	$ctx->{fretDumps} = $opts->{fretDumps};
+	$ctx->{actions} = []; # code that will run the pipeline
+
+	$ctx->{faOut} = $opts->{faOut};
+	$ctx->{faRqDump} = $opts->{faRqDump};
+	$ctx->{subPrint} = $opts->{subPrint};
+	$ctx->{requests} = []; # dump and subscribe requests that will run the pipeline
+	$ctx->{copyTables} = []; # the tables created in this query
+		# (have to keep references to the tables or they will disappear)
+
+	# The query will be built in a separate unit
+	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
+	$ctx->{prev} = undef; # will contain the output of the previous command in the pipeline
+	$ctx->{id} = 0; # a unique id for auto-generated objects
+	# deletion of the context will cause the unit in it to clean
+	$ctx->{cleaner} = $ctx->{u}->makeClearingTrigger();
+
+	if (! eval {
+		foreach my $cmd (@cmds) {
+			my @args = split_braced($cmd);
+			my $argv0 = bunquote(shift @args);
+			# The rest of @args do not get unquoted here!
+			die "No such TQL command '$argv0'\n" unless exists $tqlDispatch{$argv0};
+			# do something better with the errors, show the failing command...
+			$ctx->{id}++;
+			&{$tqlDispatch{$argv0}}($ctx, @args);
+			# Each command must set its result label (even if an undef) into
+			# $ctx->{next}.
+			die "Internal error in the command $argv0: missing result definition\n"
+				unless (exists $ctx->{next});
+			$ctx->{prev} = $ctx->{next};
+			delete $ctx->{next};
+		}
+		if (defined $ctx->{prev}) {
+			# implicitly print the result of the pipeline, no options
+			&{$tqlDispatch{"print"}}($ctx);
+		}
+
+		1; # means that everything went OK
+	}) {
+		&{$opts->{subError}}($opts->{qid}, $q, "query error: $@", 'bad_query', '');
+		return undef;
+	}
+
+	return $ctx;
+}
+</pre>
+
+		<para>
+		Each TQL command is defined as its own method, all of them collected in
+		the <pre>%tqlDispatch</pre>. <pre>compileQuery()</pre> splits the pipeline and then lets each
+		command build its part of the query, connecting them through <pre>$ctx</pre>. A
+		command may also register an action to be run later. After everything
+		is built, the actions run and produce the result.
+		</para>
+
+		<para>
+		The TQL syntax uses braces for the grouping in the pipeline.
+		The functions <pre>split_braced()</pre> and <pre>bunquote()</pre> are imported from the
+		package Triceps::X::Braced that handles the parsing of the braced
+		nested lists. They are described in detail in XXXREF.
+		</para>
+		<!-- XXXXXX add a reference of X::Braced -->
+
+		<para>
+		The option <quote>subError</quote> defines a function that reports
+		the errors back to the user. Since everything is returned back as
+		a stream, the errors are reported as rowops on the special label
+		<quote>+ERROR</quote>. 
+		</para>
+
+		<para>
+		And the final part of the puzzle, here is the <quote>read</quote> 
+		command handler that creates the head of the query pipeline:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm with multithreaded fragment removed -->
+<pre>
+# "read" command. Defines a table to read from and starts the command pipeline.
+# Options:
+# table - name of the table to read from.
+sub _tqlRead # ($ctx, @args)
+{
+	my $ctx = shift;
+	die "The read command may not be used in the middle of a pipeline.\n" 
+		if (defined($ctx->{prev}));
+	my $opts = {};
+	&Triceps::Opt::parse("read", $opts, {
+		table => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+
+	my $tabname = bunquote($opts->{table});
+	my $unit = $ctx->{u};
+
+	if ($ctx->{faOut}) {
+		# ... multithreaded version ...
+	} else {
+		my $fret = $ctx->{fretDumps};
+
+		die ("Read found no such table '$tabname'\n")
+			unless (exists $ctx->{tables}{$tabname});
+		my $table = $ctx->{tables}{$tabname};
+		my $lab = $unit->makeDummyLabel($table->getRowType(), "lb" . $ctx->{id} . "read");
+		$ctx->{next} = $lab;
+
+		my $code = sub {
+			Triceps::FnBinding::call(
+				name => "bind" . $ctx->{id} . "read",
+				unit => $unit,
+				on => $fret,
+				labels => [
+					$tabname => $lab,
+				],
+				code => sub {
+					$table->dumpAll();
+				},
+			);
+		};
+		push @{$ctx->{actions}}, $code;
+	}
+}
+</pre>
+
+		<para>
+		It's the only command that registers an action, which sends data into
+		the query unit. The rest of commands just add more handlers to the
+		pipeline in the unit, and get the data that flows from <quote>read</quote>. The
+		action sets up a binding and calls the table dump, to send the data
+		into that binding.
+		</para>
+
+		<para>
+		The reading of the tables could have also been done without the
+		bindings, and without the need to bind the units at all: just iterate
+		through the table procedurally in the action. But this whole example
+		has been built largely to showcase that the bindings can be used in
+		this way, so naturally it uses bindings.
+		</para>
+
+		<para>
+		The bindings come more useful when the query logic has to react to the
+		normal logic of the main unit, such as in the subscriptions: set up the
+		query, read its initial state, and then keep reading as the state gets
+		updated. But guess what, the subscriptions can't be done with the
+		FnReturns as shown because the FnReturn only sends its data to the last
+		binding pushed onto it. This means, if multiple subscriptions get set
+		up, only the last one will be getting the data. This problem gets
+		solved only in the multithreaded implementation of Tql that will
+		be discussed in XXXREF. There each query runs in its own thread,
+		and the inter-thread communications are used to subscribe to the
+		updates.
+		</para>
+	</sect1>
+
 	<sect1 id="sc_strf_scheduling">
 		<title>The gritty details of streaming functions scheduling</title>
 
