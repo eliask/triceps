@@ -1,0 +1,37 @@
+performance variations
+
+I've had an opportunity to run the performance tests on a few more laptops. Al of the same Core2 generation, but with the different CPU frequencies. The 2GHz version showed expectedly an about 10% lower performance, except for the inter-thread communication through the nexus: it went up. On a 3GHz CPU all the performance went up about proportionally. So I'm not sure, what was up with the 2.2GHz CPU, maybe the timing worked out just wrong to add more overhead.
+
+Here are the result from a 3GHz CPU:
+
+Performance test, 100000 iterations, real time.
+Empty Perl loop 0.006801 s, 14702927.05 per second.
+Empty Perl function of 5 args 0.031918 s, 3133046.99 per second.
+Empty Perl function of 10 args 0.027418 s, 3647284.30 per second.
+Row creation from array and destruction 0.277232 s, 360708.19 per second.
+Row creation from hash and destruction 0.498189 s, 200727.04 per second.
+Rowop creation and destruction 0.155996 s, 641043.69 per second.
+Calling a dummy label 0.098480 s, 1015437.21 per second.
+Calling a chained dummy label 0.110546 s, 904601.83 per second.
+  Pure chained call 0.012066 s, 8287664.25 per second.
+Calling a Perl label 0.512559 s, 195099.61 per second.
+Row handle creation and destruction 0.195778 s, 510781.66 per second.
+Repeated table insert (single hashed idx, direct) 0.772934 s, 129377.12 per second.
+Repeated table insert (single hashed idx, direct & Perl construct) 1.109781 s, 90107.89 per second.
+  RowHandle creation overhead in Perl 0.336847 s, 296871.05 per second.
+Repeated table insert (single sorted idx, direct) 2.122350 s, 47117.59 per second.
+Repeated table insert (single hashed idx, call) 0.867846 s, 115227.88 per second.
+Table insert makeRowArray (single hashed idx, direct) 1.224588 s, 81660.14 per second.
+  Excluding makeRowArray 0.947355 s, 105557.02 per second.
+Table insert makeRowArray (double hashed idx, direct) 1.443053 s, 69297.51 per second.
+  Excluding makeRowArray 1.165821 s, 85776.47 per second.
+  Overhead of second index 0.218466 s, 457738.04 per second.
+Table insert makeRowArray (single sorted idx, direct) 29.880962 s, 3346.61 per second.
+  Excluding makeRowArray 29.603730 s, 3377.95 per second.
+Table lookup (single hashed idx) 0.287407 s, 347938.44 per second.
+Table lookup (single sorted idx) 9.160540 s, 10916.39 per second.
+Lookup join (single hashed idx) 3.940388 s, 25378.21 per second.
+Nexus pass (1 row/flush) 0.618648 s, 161642.86 per second.
+Nexus pass (10 rows/flush) 2.417818 s, 413596.01 per second.
+
+I've added a few more tests: the table look-ups, and the passing of rows through the nexus with 10 rows per batch. With the batching, the inter-thread communications work quite decently fast. 

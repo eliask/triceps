@@ -1,0 +1,7 @@
+added a little missing method
+
+When editing the docs, I've noticed an incompleteness in AggregatorGadget, so I've added the method that was missing:
+
+const IndexType *getIndexType() const;
+
+Not that there was any use for it (and the subclasses could just read the field directly), but still. 

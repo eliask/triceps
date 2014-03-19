@@ -1,0 +1,15 @@
+redundancy
+
+Here is another entry on the general things.
+
+Fairly often we want things to be redundant: run two or more copies of a system, and if one of them fails, another one picks up after it. Two is the minimal number of the instances, and it's a pretty unstable one: besides a chance of one instance failing, there is also a chance of the network partitioning. In the case of the network partitioning you don't want two copies to start messing with the data independently, instead you really want to still keep only one copy as the master and shut down the other one. But the failure and partitioning are pretty hard to tell apart, which makes the 2-instance configurations quite unstable.
+
+Even if you have a 3-instance configuration (a good idea overall), you're still not immune. If one instance goes down for the scheduled maintenance, you're back to the 2-instance situation.
+
+How can the situation be made more stable?
+
+One obvious but expensive option is to just create more instances. Not only it's expensive but it also adds its own problems. Suppose, there are 4 instances to start with, and one instance finds that two other instances went down. Does it mean that these two instances just died (possibly from some common reason) or that a network partitioning had occurred?
+
+An improvement on that would be create the extra instances not as the full ones but just as "beacons", only responding for the purpose of watching the partitioning and not actually running the code. Then the load on these beacon instances will be low, and they can be combined with machines running some other systems. Or a dedicated machine can serve as a beacon for many systems in the company. Well, once you ask "what if a beacon goes down", this starts growing a bit into a system of redundant beacons and their own problems of partitioning. And it could actually get stupid with both instances seeing the beacon but not seeing each other, but that can be resolved by the communication through the beacon.
+
+But a typical situation is a pipeline of systems. Each system is connected to one or more source systems and/or one or more sink systems (sou it could be not only a straight pipeline but technically a tree). And each system in the pipeline would be duplicated or triplicated and each instance cross-connected to all the duplicates of each source and sink. In this situation the master node of  a source can be used as such a beacon! This would make a 2-instance configuration still stable. 

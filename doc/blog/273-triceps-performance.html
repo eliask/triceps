@@ -1,0 +1,116 @@
+Triceps performance
+
+I've finally got interested enough in Triceps performance to write a little test, Perf.t. By default it runs only one thousand iterations, to be fast and not delay the run of the full tests suite. But the number can be increased by setting an environment variable, like:
+
+$ TRICEPS_PERF_COUNT=100000 perl t/Perf.t
+
+An important caveat, the test is of the Perl interface, so it includes all the overhead of constructing the Perl objects. I've tried to structure it so that some of the underlying performance can be deduced, but it's still approximate. I haven't done the performance testing of just the underlying C++ implementation yet, it will be better.
+
+Here are the numbers I've got on my 6-year old laptop (dual-CPU Intel Core2 T7600 2.33GHz) with explanations. The time in seconds for each value is for the whole test loop. The "per second" number shows, how many loop iterations were done per second.
+
+The computations are done with the real elapsed time, so if the machine is not idle, the time of the other processes will get still counted against the tests, and the results will show slower than they really are.
+
+Performance test, 1000 iterations, real time.
+
+The first thing it prints is the iteration count, to set the expectations for the run length and precision.
+
+Empty Perl loop 0.000083 s, 11983725.71 per second. 
+
+A calibration to see, how much overhead is added by the execution of the loop itself. As it turns out, not much.
+
+Row creation from array and destruction 0.003744 s, 267085.07 per second. 
+
+The makeRowArray() for a row of 5 fields. Each created row gets destroyed before the next one gets created.
+
+Row creation from hash and destruction 0.006420 s, 155771.52 per second.
+
+The makeRowHash() for a row of 5 fields.
+
+
+Rowop creation and destruction 0.002067 s, 483716.30 per second.
+
+The makeRowop() from an existing row. Same thing, each rowop gets destroyed before constructing the next one.
+
+Calling a dummy label 0.001358 s, 736488.85 per second.
+
+Repeated calls of a dummy label with the same rowop object.
+
+Calling a chained dummy label 0.001525 s, 655872.40 per second.
+  Pure chained call 0.000167 s, 5991862.86 per second.
+
+
+Repeated calls of a dummy label that has another dummy label chained to it. The "pure" part is the difference from the previous case that gets added by adding another chained dummy label.
+
+
+Calling a Perl label 0.006669 s, 149946.52 per second.
+
+Repeated calls of a Perl label with the same rowop object. The Perl label has an empty sub but that empty sub still gets executed, along with all the support functionality.
+
+Row handle creation and destruction 0.002603 s, 384234.52 per second.
+
+The creation of a table's row handle from a single row, including the creation of the Perl wrapper for the row handle object.
+
+Repeated table insert (single hashed idx, direct) 0.010403 s, 96126.88 per second.
+
+Insert of the same row into a table. Since the row is the same, it keeps replacing the previous one, and the table size stays at 1 row. Even though the row is the same, a new row handle gets constructed for it every time by the table, the code is $tSingleHashed->insert($row1). "Single hashed idx" means that the table has a single Hashed index, on an int32 field. "Direct" means the direct insert() call, as opposed to using the table's input label.
+
+Repeated table insert (single hashed idx, direct & Perl construct) 0.014809 s, 67524.82 per second.
+  RowHandle creation overhead in Perl 0.004406 s, 226939.94 per second.
+
+The same, only the row handles are constructed in Perl before inserting them: $tSingleHashed->insert($tSingleHashed->makeRowHandle($row1)). And the second line shows that the overhead of wrapping the row handles for Perl is pretty noticeable (it's the difference from the previous test case).
+
+Repeated table insert (single sorted idx, direct) 0.028623 s, 34937.39 per second.
+
+The same thing, only for a table that uses a Sorted index that executes a Perl comparison on the same int32 field. As you can see, it gets 3 times slower.
+
+Repeated table insert (single hashed idx, call) 0.011656 s, 85795.90 per second.
+
+The same thing, again the table with a single Hashed index, but this time by sending the rowops to its input label.
+
+Table insert makeRowArray (single hashed idx, direct) 0.015910 s, 62852.02 per second.
+  Excluding makeRowArray 0.012166 s, 82194.52 per second.
+
+Now the different rows get inserted into the table, each row having a different key. At the end of this test the table contains 1000 rows (or however many were requested by the environment variable). Naturally, this is slower than the repeated insertions of the same row, since the tree of the table's index becomes deeper and requires more comparisons and rebalancing. This performance will be lower in the tests with more rows, since the index will become deeper and will create more overhead. Since the rows are all different, they are created on the fly, so this row creation overhead needs to be excluded to get the actual Table's performance.
+
+Table insert makeRowArray (double hashed idx, direct) 0.017231 s, 58033.37 per second.
+  Excluding makeRowArray 0.013487 s, 74143.61 per second.
+  Overhead of second index 0.001321 s, 756957.95 per second.
+
+Similar to previous but on a table that has two Hashed indexes (both on the same int32 field). The details here compute also the overhead contributed by the second index.
+
+Table insert makeRowArray (single sorted idx, direct) 0.226725 s, 4410.64 per second.
+  Excluding makeRowArray 0.222980 s, 4484.70 per second.
+
+Similar but for a table with a Sorted index with a Perl expression. As you can see, it's about 20 times slower (and it gets even worse for the larger row sets).
+
+Nexus pass 0.034009 s, 29403.79 per second.
+
+The performance of passing the rows between threads through a Nexus. This is a highly pessimistic case, with only one row per nexus transaction. The time also includes the draining and stopping of the app.
+
+And here are the numbers for a run with 100 thousand iterations, for comparison:
+
+Performance test, 100000 iterations, real time.
+Empty Perl loop 0.008354 s, 11970045.66 per second.
+Row creation from array and destruction 0.386317 s, 258854.76 per second.
+Row creation from hash and destruction 0.640852 s, 156042.16 per second.
+Rowop creation and destruction 0.198766 s, 503105.38 per second.
+Calling a dummy label 0.130124 s, 768497.20 per second.
+Calling a chained dummy label 0.147262 s, 679062.46 per second.
+  Pure chained call 0.017138 s, 5835066.29 per second.
+Calling a Perl label 0.652551 s, 153244.80 per second.
+Row handle creation and destruction 0.252007 s, 396813.99 per second.
+Repeated table insert (single hashed idx, direct) 1.053321 s, 94937.81 per second.
+Repeated table insert (single hashed idx, direct & Perl construct) 1.465050 s, 68257.07 per second.
+  RowHandle creation overhead in Perl 0.411729 s, 242878.43 per second.
+Repeated table insert (single sorted idx, direct) 2.797103 s, 35751.28 per second.
+Repeated table insert (single hashed idx, call) 1.161150 s, 86121.54 per second.
+Table insert makeRowArray (single hashed idx, direct) 1.747032 s, 57239.94 per second.
+  Excluding makeRowArray 1.360715 s, 73490.78 per second.
+Table insert makeRowArray (double hashed idx, direct) 2.046829 s, 48856.07 per second.
+  Excluding makeRowArray 1.660511 s, 60222.41 per second.
+  Overhead of second index 0.299797 s, 333559.51 per second.
+Table insert makeRowArray (single sorted idx, direct) 38.355396 s, 2607.20 per second.
+  Excluding makeRowArray 37.969079 s, 2633.72 per second.
+Nexus pass 1.076210 s, 92918.63 per second.
+As you can see, the table insert performance got worse due to the added depth of the index trees while the nexus performance got better because the drain overhead got spread over a larger number of rows.
+

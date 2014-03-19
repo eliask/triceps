@@ -1,0 +1,7 @@
+NameSet update
+
+While editing the docs, I've realized that the NameSet class being a single-threaded Starget while it's used inside the multithreaded Mtarget IndexType, is not a good thing. So I've upgraded it to an Mtarget as well.
+
+The other related item is the method IndexType::getKey(). There is no good reason to return an Autoref<NameSet> from it, a pointer is just as good and even better. The new prototype for it is:
+
+virtual const NameSet *getKey() const; 

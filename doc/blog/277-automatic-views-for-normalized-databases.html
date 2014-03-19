@@ -1,0 +1,77 @@
+automatic views for the normalized databases
+
+I'm still working on the editing of the docs for 2.0. In the meantime, I want to bullshit on a general subject.
+
+When designing a database schema, there is always this fine line between normalization and denormalization. Denormalize too much and you get the same data in lots of places, with the possibility of them getting dissynchronized. Normalize too much and every query becomes a join of a dozen tables. I've had to deal with a highly normalized database, and I must tell you, it's been quite a pain.
+
+Well, views to the rescue, right? But the views need to be defined, and then their capacity of inserts and updates are quite limited. Let's see if it can be done better.
+
+When the foreign keys are explicitly defined, they can be used to implicitly define a view. For example, suppose that we have a set of tables:
+
+TABLE Employee (
+  EmpId INTEGER PRIMARY KEY,
+  EmpFirstName VARCHAR,
+  EmpLastName VARCHAR,
+  EmpStartDate DATE,
+  EmpSalary FLOAT
+);
+
+TABLE Department (
+  DeptId INTEGER PRIMARY KEY,
+  DeptName VARCHAR PRIMARY KEY
+);
+
+TABLE Title (
+  TitleId INTEGER PRIMARY KEY,
+  TitleName VARCHAR PRIMARY KEY,
+  TitleLevel INTEGER
+);
+
+TABLE Position (
+  EmpId INTEGER FOREIGN KEY (Employee.EmpId),
+  DeptId INTEGER FOREIGN KEY (Department.DeptId),
+  TitleId INTEGER FOREIGN KEY (Title.TitleId)
+);
+
+The knowledge of the foreign keys allows the DBMS to create implicitly a view
+
+CREATE VIEW Position_EXP
+AS SELECT *
+FROM Position, Employee, Department, Title
+WHERE Position.EmpId = Employee.EmpId
+  AND Position.DeptId = Department.DeptId
+  AND Position.TitleId = Title.TitleId;
+
+Okay, I've made things a bit easier by making sure that the fields names don't overlap but in general nothing stops the DBMS from doing this automatically, adding prefixes to the field names if needed. The queries like
+
+SELECT EmpStartDate
+FROM Position_EXP
+WHERE DeptName='Marketing' AND TitleLevel > 5;
+
+become much more compact with this view.
+
+Better yet, it's pretty straightforward to use this view for updates. For example,
+
+UPDATE Position_EXP
+SET TitleName = 'Engineer 2'
+WHERE TitleName = 'Engineer 1' AND EmpStartDate > 2010-10-10;
+
+What it translates to is: first find the TitleId for TitleName 'Engineer 2' then set it into the Position rows that match the conditions. It's not something a normal RDBMS allows to do with a view, and normally this would require two separate SQL statements, but the translation is fairly straightforward. And there is no reason why RDBMS can't translate it automatically.
+
+We can do inserts too. For example:
+
+INSERT INTO Employee_EXP, Position_EXP
+VALUES (
+  EmpId = EmpIdSequence(),
+  EmpFirstName = 'John,
+  EmpLastName = 'Doe',
+  EmpStartDate = TODAY(),
+  EmpSalary = 123456,
+  DeptName = 'Engineering',
+  TitleName = 'Senior Engineer'
+);
+
+Some values would go directly into the Employee table, some into the Position table, and some would be looked up from the helper tables to create the binding by ids. I've listed two table names in INSERT to give an explicit hint to what tables under the views are getting inserts, as opposed to just being used for look-ups, since I think it would be too dangerous to insert things that weren't meant to be inserted.
+
+The statement is small and short, just as for the denormalized tables (maybe even shorter) but handles all the underlying normalization. And again, it's pretty straightforward to deduce the meaning of the statement automatically in the SQL parser.
+

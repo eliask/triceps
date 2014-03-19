@@ -1,0 +1,30 @@
+unusual aggregations
+
+In the meantime, while I'm busy with the other things, I want to write up some short notes for the future.
+
+In the world of monitoring there is a concept of time series: the sequence of values observed at certain moments of time. And then the common thing is to subtract the previous value from each one. For example, if the total number of events processed by a server is by time stamps:
+
+0 20 30 50
+
+then by subtracting the previous value we get the number of events processed during each time period:
+
+20 10 30
+
+(naturally, there is one less value, since, the first one in the original series has nothing to subtract).
+
+This can really be thought of as an aggregation. A highly unusual one, producing not just one result row per group but many rows per group, but still a variety of aggregation.
+
+The other similar  example is with the timestamps. Suppose, we have a multi-stage process, and a timestamped record of when each stage started:
+
+11:30 Stage1
+11:45 Stage2
+12:10 Stage3
+12:20 End
+
+This record can be converted into the length of each stage by subtracting the next time value from the starting timestamp:
+
+Stage1 0:15
+Stage2 0:25
+Stage3 0:10
+
+And the other way around, if we have the starting time and the record of the length of each stage, we can convert them back to the absolute timestamps. 
