@@ -3192,7 +3192,7 @@ sub compileQuery # (@opts)
 	if (! eval {
 		foreach my $cmd (@cmds) {
 			my @args = split_braced($cmd);
-			my $argv0 = bunquote(shift @args);
+			my $argv0 = bunescape(shift @args);
 			# The rest of @args do not get unquoted here!
 			die "No such TQL command '$argv0'\n" unless exists $tqlDispatch{$argv0};
 			# do something better with the errors, show the failing command...
@@ -3228,13 +3228,16 @@ sub compileQuery # (@opts)
 		is built, the actions run and produce the result.
 		</para>
 
+		<indexterm>
+			<primary>Braced</primary>
+		</indexterm>
 		<para>
 		The TQL syntax uses braces for the grouping in the pipeline.
-		The functions <pre>split_braced()</pre> and <pre>bunquote()</pre> are imported from the
-		package Triceps::X::Braced that handles the parsing of the braced
-		nested lists. They are described in detail in XXXREF.
+		The functions <pre>split_braced()</pre> and <pre>bunescape()</pre> are imported from the
+		package Triceps::Braced that handles the parsing of the braced
+		nested lists. They are described in detail in
+		<xref linkend="sc_ref_braced" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
-		<!-- XXXXXX add a reference of X::Braced -->
 
 		<para>
 		The option <quote>subError</quote> defines a function that reports
@@ -3263,7 +3266,7 @@ sub _tqlRead # ($ctx, @args)
 		table => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 
-	my $tabname = bunquote($opts->{table});
+	my $tabname = bunescape($opts->{table});
 	my $unit = $ctx->{u};
 
 	if ($ctx->{faOut}) {

@@ -89,4 +89,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/744collapse.xml"/>
 
+		<xi:include href="file:///DOCS/760braced.xml"/>
+
+		<!-- XXX add references for all the X modules! -->
 </chapter>
