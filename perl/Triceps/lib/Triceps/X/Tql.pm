@@ -28,7 +28,7 @@ sub CLONE_SKIP { 1; }
 our $VERSION = 'v2.0.0';
 
 use Carp;
-use Triceps::X::Braced qw(:all);
+use Triceps::Braced qw(:all);
 use Triceps::X::ThreadedServer qw(printOrShut);
 use Safe;
 
@@ -320,7 +320,7 @@ sub initialize # ($self)
 
 			$self->{faIn}->getLabel("in." . $name)->chain($input);
 		}
-		# the controll passes through
+		# the control passes through
 		$self->{faIn}->getLabel("control")->chain($self->{faOut}->getLabel("control"));
 
 		# build the dump requests, will be coming from below
@@ -460,7 +460,7 @@ sub _tqlRead # ($ctx, @args)
 		table => [ undef, \&Triceps::Opt::ck_mandatory ],
 	}, @_);
 
-	my $tabname = bunquote($opts->{table});
+	my $tabname = bunescape($opts->{table});
 	my $unit = $ctx->{u};
 
 	if ($ctx->{faOut}) {
@@ -547,7 +547,7 @@ sub _tqlPrint # ($ctx, @args)
 	&Triceps::Opt::parse("print", $opts, {
 		tokenized => [ 1, undef ],
 	}, @_);
-	my $tokenized = bunquote($opts->{tokenized}) + 0;
+	my $tokenized = bunescape($opts->{tokenized}) + 0;
 	my $prev = $ctx->{prev};
 
 	if ($ctx->{faOut}) {
@@ -638,7 +638,7 @@ sub _tqlJoin # ($ctx, @args)
 		type => [ "inner", undef ],
 	}, @_);
 
-	my $tabname = bunquote($opts->{table});
+	my $tabname = bunescape($opts->{table});
 	my $unit = $ctx->{u};
 	my $table;
 
@@ -766,7 +766,7 @@ sub _tqlWhere # ($ctx, @args)
 	my $rt = $ctx->{prev}->getRowType();
 	my %def = $rt->getdef();
 
-	my $expr = bunquote($opts->{istrue});
+	my $expr = bunescape($opts->{istrue});
 	$expr =~ s/\$\%(\w+)/&replaceFieldRef(\%def, $1)/ge;
 
 	my $safe = new Safe; 
@@ -952,7 +952,7 @@ sub compileQuery # (@opts)
 	if (! eval {
 		foreach my $cmd (@cmds) {
 			my @args = split_braced($cmd);
-			my $argv0 = bunquote(shift @args);
+			my $argv0 = bunescape(shift @args);
 			# The rest of @args do not get unquoted here!
 			die "No such TQL command '$argv0'\n" unless exists $tqlDispatch{$argv0};
 			# XXX do something better with the errors, show the failing command...
