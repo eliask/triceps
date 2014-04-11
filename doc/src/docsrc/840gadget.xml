@@ -40,10 +40,10 @@ See the file COPYRIGHT for the copyright notice and license information
 		The reasons for the Gadget creation are mostly historic by now.
 		At some point it seemed important to have the ability to associate a
 		particular enqueueing mode with each output label. Most tables might be
-		using EM_CALL but some, ones in a loop, would use EM_FORK, and those
-		that don't need to produce the streaming output would use EM_IGNORE.
+		using <pre>EM_CALL</pre> but some, ones in a loop, would use <pre>EM_FORK</pre>, and those
+		that don't need to produce the streaming output would use <pre>EM_IGNORE</pre>.
 		This approach didn't work out as well as it seemed at first, and now is
-		outright deprecated: the tables have EM_CALL hardcoded everywhere, and there are the
+		outright deprecated: the tables have <pre>EM_CALL</pre> hardcoded everywhere, and there are the
 		newer and better ways to handle the loops. The whole Gadget thing
 		should be removed at some point but for now I'll just describe it as
 		it is.
@@ -54,8 +54,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		</indexterm>
 		<para>
 		As the result of that history, the enqueueing mode constants are
-		defined in the Gadget class, enum EnqMode: EM_SCHEDULE, EM_FORK,
-		EM_CALL, EM_IGNORE.
+		defined in the Gadget class, enum EnqMode: <pre>EM_SCHEDULE</pre>, <pre>EM_FORK</pre>,
+		<pre>EM_CALL</pre>, <pre>EM_IGNORE</pre>.
 		</para>
 
 <pre>

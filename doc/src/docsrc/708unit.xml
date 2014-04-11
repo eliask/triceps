@@ -83,8 +83,13 @@ $rt = $unit->getEmptyRowType();
 </pre>
 
 		<para>
-		Each unit has its own instance of an empty row type. Its purely for
-		the conveniece of memory management, they are all equivalent.
+		Each unit has its own instance of an empty row type that can be used
+		to create the objects that don't process any data (for which
+		just the fact of a rowop passing through is important). The
+		creation of an empty row type in each unit instead of having
+		a single global one is purely for the conveniece of memory management
+		in the threads, they are all equivalent. You could also create
+		your own empty row type.
 		</para>
 
 		<para>
@@ -146,7 +151,16 @@ $unit->enqueque($mode, @rowops_or_trays);
 		<listitem>
 		<pre>&Triceps::EM_SCHEDULE</pre> or <pre>"EM_SCHEDULE"</pre>
 		</listitem>
+		<listitem>
+		<pre>&Triceps::EM_IGNORE</pre> or <pre>"EM_IGNORE"</pre>
+		</listitem>
 		</itemizedlist>
+
+		<para>
+		The <pre>EM_IGNORE</pre> is a <quote>no-op</quote> among the enqueueing
+		methods. It means that the rowop will be simply ignored and not executed at all. 
+		It is very rarely used in practice.
+		</para>
 
 		<para>
 		As usual, there are calls to convert between the integer constant and
@@ -354,6 +368,39 @@ $result = $unit->empty();
 </pre>
 
 		<para>
+		Check whether all the frames are empty.
+		</para>
+
+<pre>
+$res = $unit->isFrameEmpty();
+</pre>
+
+		<indexterm>
+			<primary>TrieadOwner</primary>
+		</indexterm>
+		<para>
+		Check whether the current inner frame is empty.  This
+		method is useful if you run multiple units in the same thread, with
+		some potentially complicated cross-unit scheduling. It's what
+		<pre>TrieadOwner::nextXtray()</pre> does with a multi-unit Triead, repeatedly calling
+		<pre>drainFrame()</pre> for all the units that are found not empty. In this
+		situation the simple <pre>empty()</pre> cannot be used because the current inner
+		frame might not be the outer frame, and draining the inner frame can be
+		repeated forever while the outer frame will still contain rowops. The
+		more precise check of <pre>isFrameEmpty()</pre> prevents the possibility of such
+		endless loops.
+		</para>
+
+<pre>
+$res = $unit->isInOuterFrame();
+</pre>
+
+		<para>
+		Check whether the unit's current inner frame is the same as its outer
+		frame, which means that the unit is not in the middle of a call.
+		</para>
+
+		<para>
 		The functions for execution from the queues are:
 		</para>
 
@@ -363,8 +410,8 @@ $unit->drainFrame();
 </pre>
 
 		<para>
-		<pre>callNext()</pre> takes one label from the top (innermost) stack frame queue and calls it.
-		If the innermost frame happens to be empty, it does nothing. 
+		<pre>callNext()</pre> takes one label from the top (inner) stack frame queue and calls it.
+		If the inner frame happens to be empty, it does nothing. 
 		<pre>drainFrame()</pre> calls the rowops from the top stack frame until it becomes
 		empty. This includes any rowops that may be created and enqueued as
 		part of the execution of the previous rowops. But it doesn't pop the
@@ -431,7 +478,46 @@ $result = $unit->getStackDepth();
 		depth is at least 2.
 		</para>
 
+<pre>
+$unit->clearLabels();
+</pre>
+
+		<indexterm>
+			<primary>label</primary>
+		</indexterm>
+		<indexterm>
+			<primary>UnitClearingTrigger</primary>
+		</indexterm>
+		<para>
+		Clear all the labels in the unit, then drop the references from unit to them.
+		Normally should be called only when the unit is about to be destroyed,
+		and is called automatically when the unit gets destroyed. However
+		in case of cyclic references to the unit, it may need to be called
+		manually or through a UnitClearingTrigger object to break these
+		cycles. For more information, see
+		<xref linkend="sc_ref_cycles" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+<pre>
+$trigger = $unit->makeClearingTrigger();
+</pre>
+
+		<para>
+		Create a unit clearing trigger object. When this object gets destroyed
+		(at exiting the block, or when it encompassing object gets destroyed)
+		it will cause the clearing of the unit.
+		</para>
+<pre>
+$unit->setTracer($tracer); 
+$oldTracer = $unit->getTracer();
+</pre>
+
+		<para>
+		Set and read back a tracer object that will be called before and after
+		each rowop executes in the unit. An <pre>undef</pre> means <quote>no tracer</quote>. See more detail in
+		<xref linkend="sc_sched_tracing" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
 	</sect1>
 
-<!-- XXXXXXXXXXXX add makeClearingTrigger to the reference -->
 <!-- XXXXXXXXXXXX check for any other missing methods -->

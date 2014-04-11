@@ -138,6 +138,12 @@ sub new # ($class, $unit, $name, $rowType, ...)
 $unit->clearLabels();
 </pre>
 
+		<indexterm>
+			<primary>Unit</primary>
+		</indexterm>
+		<indexterm>
+			<primary>label</primary>
+		</indexterm>
 		<para>
 		If you want to get rid of an execution unit with all its components
 		without exiting the whole program, use this call. It will start the
@@ -154,6 +160,9 @@ $unit->clearLabels();
 my $clearUnit = $unit->makeClearingTrigger();
 </pre>
 
+		<indexterm>
+			<primary>UnitClearingTrigger</primary>
+		</indexterm>
 		<para>
 		When the reference to <pre>$clearUnit</pre> gets destroyed, it
 		will call <pre>$unit->clearLabels()</pre> and trigger the destruction

@@ -329,7 +329,9 @@ $tray = $unit->makeTray(@rowops);
 		one thread. A tray can be used in all the calling/enqueueing methods,
 		just like the direct rowops (the details of the enqueueing methods will be
 		described later in 
-		<xref linkend="sc_sched_detail" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
+		<xref linkend="sc_sched_detail" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		and in
+		<xref linkend="sc_ref_unit" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
 		</para>
 
 <pre>
