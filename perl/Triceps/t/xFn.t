@@ -366,12 +366,10 @@ my $fbFibCall = Triceps::FnBinding->new(
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	{
-		my $ab = Triceps::AutoFnBind->new(
-			$frFib => $fbFibCall,
-		);
-		$uFib->makeArrayCall($lbFibCompute, @data);
-	}
+	$uFib->callBound(
+		$lbFibCompute->makeRowopArray(@data),
+		$frFib => $fbFibCall,
+	);
 	$uFib->drainFrame(); # just in case, for completeness
 }
 
@@ -662,12 +660,10 @@ my $fbFibCall = Triceps::FnBinding->new(
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	{
-		my $ab = Triceps::AutoFnBind->new(
-			$frFib => $fbFibCall,
-		);
-		$uFib->makeArrayCall($lbFibCompute, @data);
-	}
+	$uFib->callBound(
+		$lbFibCompute->makeRowopArray(@data),
+		$frFib => $fbFibCall,
+	);
 	$uFib->drainFrame(); # just in case, for completeness
 	&send($uFib->getTracer()->print()); # print the trace, it's entertaining
 	$uFib->getTracer()->clearBuffer();
@@ -1092,12 +1088,10 @@ my $fbFibCall = Triceps::FnBinding->new(
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	{
-		my $ab = Triceps::AutoFnBind->new(
-			$frFib => $fbFibCall,
-		);
-		$uFib->makeArrayCall($lbFibCompute, @data);
-	}
+	$uFib->callBound(
+		$lbFibCompute->makeRowopArray(@data),
+		$frFib => $fbFibCall,
+	);
 	$uFib->drainFrame(); # just in case, for completeness
 	&send($uFib->getTracer()->print()); # print the trace, it's entertaining
 	$uFib->getTracer()->clearBuffer();
@@ -1514,12 +1508,10 @@ my $fbFibCall = Triceps::FnBinding->new(
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	{
-		my $ab = Triceps::AutoFnBind->new(
-			$frFib => $fbFibCall,
-		);
-		$uFib->makeArrayCall($lbFibCompute, @data);
-	}
+	$uFib->callBound(
+		$lbFibCompute->makeRowopArray(@data),
+		$frFib => $fbFibCall,
+	);
 	$uFib->drainFrame(); # just in case, for completeness
 	#&send($uFib->getTracer()->print()); # print the trace, it's entertaining
 	$uFib->getTracer()->clearBuffer();
@@ -1682,12 +1674,10 @@ my $fbFibCall = Triceps::FnBinding->new(
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	{
-		my $ab = Triceps::AutoFnBind->new(
-			$frFib => $fbFibCall,
-		);
-		$uFib->makeArrayCall($lbFibCompute, @data);
-	}
+	$uFib->callBound(
+		$lbFibCompute->makeRowopArray(@data),
+		$frFib => $fbFibCall,
+	);
 	$uFib->drainFrame(); # just in case, for completeness
 	#&send($uFib->getTracer()->print()); # print the trace, it's entertaining
 	$uFib->getTracer()->clearBuffer();
