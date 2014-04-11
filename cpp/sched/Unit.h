@@ -280,8 +280,8 @@ public:
 		// The values go starting from 0 in before-after pairs
 		TW_BEFORE, // before calling the label's execution as such
 		TW_AFTER, // after all the execution is done
-		TW_BEFORE_CHAINED, // after execution, before calliong the chained labels (if they are present)
-		TW_AFTER_CHAINED, // after calliong the chained labels (if they were present)
+		TW_BEFORE_CHAINED, // after execution, before calling the chained labels (if they are present)
+		TW_AFTER_CHAINED, // after calling the chained labels (if they were present)
 		TW_BEFORE_DRAIN, // before draining the label's frame if it's not empty
 		TW_AFTER_DRAIN, // after draining the label's frame if was not empty
 		// XXX should there be events on enqueueing?
