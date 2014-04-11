@@ -2339,12 +2339,10 @@ my $fbFibCall = Triceps::FnBinding->new(
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	{
-		my $ab = Triceps::AutoFnBind->new(
-			$frFib => $fbFibCall,
-		);
-		$uFib->makeArrayCall($lbFibCompute, @data);
-	}
+	$uFib->callBound(
+		$lbFibCompute->makeRowopArray(@data),
+		$frFib => $fbFibCall,
+	);
 	$uFib->drainFrame(); # just in case, for completeness
 }
 </pre>
@@ -2381,6 +2379,18 @@ while(&readLine) {
 		extract the tray from the binding. Perhaps this can be improved
 		in the future. But there is another way to use trays that
 		will be shown below.
+		</para>
+
+		<para>
+		And just to show yet another technique, the main loop is also different:
+		instead of creating an AutoFnBind manually, it uses the Unit's
+		method <pre>callBound()</pre> that is more compact to write and
+		slightly more efficient. It's a great method if you have all the
+		rowops for the call available upfront. It's first argument is a rowop
+		or a tray or a reference to an array of rowops. The rest are the pairs
+		of FnReturns and FnBindings. The bindings are pushed onto the FnReturns,
+		then the rowops are called, then the bindings are popped. It replaces
+		a whole block that would contain an AutoFnBind and the calls.
 		</para>
 
 		<para>

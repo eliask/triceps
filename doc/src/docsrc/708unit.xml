@@ -518,6 +518,44 @@ $oldTracer = $unit->getTracer();
 		<xref linkend="sc_sched_tracing" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
+<pre>
+$unit->callBound($rowop_or_tray, $fnreturn => $fnbinding, ...);
+$unit->callBound([@rowops], $fnreturn => $fnbinding, ...);
+</pre>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<para>
+		An encapsulation of a streaming function call.
+		The first argument is a rowop or a tray or a reference to an array of rowops 
+		(but the trays are not allowed in the array). The rest are the pairs
+		of FnReturns and FnBindings. The bindings are pushed onto the FnReturns,
+		then the rowops are called, then the bindings are popped. It replaces
+		a whole block that would contain an AutoFnBind and the call:
+		</para>
+
+<pre>
+{
+	my $ab = Triceps::AutoFnBind->new(
+		$fnreturn => $fnbinding, ...
+	);
+	$unit->call($rowop_or_tray);
+}
+</pre>
+
+		<para>
+		Only <pre>callBound()</pre> does its work in &Cpp;, so it's more efficient
+		than a Perl block, and it's shorter to write too.
+		</para>
+
+		<para>
+		</para>
+
+		<para>
+		</para>
 	</sect1>
 
 <!-- XXXXXXXXXXXX check for any other missing methods -->
+<!-- XXXXXXXXXXXX document reference for AutoFnBind class -->
+<!-- XXXXXXXXXXXX clear() catches all errors and prints on stderr -->
