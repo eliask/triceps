@@ -43,6 +43,18 @@ void mkfdata(FdataVec &fd)
 	fd.push_back(Fdata(true, &v_string, sizeof(v_string)));
 }
 
+// this just makes sure that the code snippet for the doc compiles
+class SampleTracer : public Unit::Tracer
+{           
+public: 
+    virtual void execute(Unit *unit, const Label *label,
+		const Label *fromLabel, Rowop *rop, Unit::TracerWhen when)
+    {   
+        printf("trace %s label '%s' %c\n", Unit::tracerWhenHumanString(when),
+			label->getName().c_str(), Unit::tracerWhenIsBefore(when)? '{' : '}');
+    }
+};
+
 UTESTCASE mkunit(Utest *utest)
 {
 	Autoref<Unit> unit1 = new Unit("my unit");
