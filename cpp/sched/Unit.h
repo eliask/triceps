@@ -386,7 +386,7 @@ public:
 	class StringTracer : public Tracer
 	{
 	public:
-		// @param verbose - if true, record all the events, otherwise only the BEGIN records
+		// @param verbose - if true, record all the events, otherwise only the TW_BEFORE records
 		StringTracer(bool verbose = false, RowPrinter *rp = NULL);
 
 		// from Tracer
@@ -401,7 +401,7 @@ public:
 	class StringNameTracer : public StringTracer
 	{
 	public:
-		// @param verbose - if true, record all the events, otherwise only the BEGIN records
+		// @param verbose - if true, record all the events, otherwise only the TW_BEFORE records
 		StringNameTracer(bool verbose = false, RowPrinter *rp = NULL);
 
 		// from Tracer
