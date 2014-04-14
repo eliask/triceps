@@ -18,17 +18,23 @@ See the file COPYRIGHT for the copyright notice and license information
 		<indexterm>
 			<primary>Unit</primary>
 		</indexterm>
+		<para>
+		The Unit is declared in <pre>sched/Unit.h</pre>. It represents an
+		execution unit that controls the execution order of a sequential
+		part of a model.
+		An unit is an Mtarget but in reality
+		it may be used in one thread only. The multithreading support in the
+		references is needed to build the multithreaded applications but
+		each Unit in the application belongs to one thread (possibly sharing 
+		it with other Units).
+		</para>
 
 <pre>
 Unit(const string &name);
 </pre>
 
 		<para>
-		Constructs an execution unit. An unit is an Mtarget but in reality
-		it may be used in one thread only. The multithreading support in the
-		references is needed to build the multithreaded applications but
-		each Unit in the application belongs to one thread (possibly sharing 
-		it with other Units).
+		Constructs an execution unit. 
 		</para>
 
 <pre>
@@ -295,7 +301,8 @@ void clearLabels();
 
 		<para>
 		The tracer classes inherit from the nested virtual class Unit::Tracer.
-		It will be described in XXXREF.
+		They will be described in
+		<xref linkend="sc_cpp_unit_tracer" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		The Unit class contains the definition of the enums of the tracers
 		and provides a way to set the tracer in the unit.
 		</para>
@@ -329,6 +336,9 @@ static int stringTracerWhen(const char *when);
 		<para>
 		The usual conversions between the integer constants and their
 		string representations.
+		<pre>def</pre> is as usual the default placeholder that will be used
+		for an invalid value. And the conversion from string would return a -1
+		on an invalid value.
 		</para>
 
 <pre>
@@ -337,9 +347,10 @@ static int humanStringTracerWhen(const char *when);
 </pre>
 
 		<para>
-		The same kind of conversion as above, only the strings are
-		more human-readable. This conversion is used by the provided
-		tracer classes in their traces.
+		The same kind of conversion as above, only the strings are more
+		human-readable.  Basically, the same thing, only in the lowercase
+		words. For example, TW_BEFORE_CHAINED would become "before-chained".
+		This conversion is used by the provided tracer classes in their traces.
 		</para>
 
 <pre>
@@ -366,6 +377,11 @@ Onceref<Tracer> getTracer() const;
 		that no tracer is set. It's possible to use the same tracer object
 		for multiple units, as long as these units are in the same threads;
 		that will combine the traces from these units into one trace.
+		If you really want, it's even possible to use the same tracer object
+		for the units in different threads but for that you must define
+		your own tracer class that does the proper synchronization. None
+		of the pre-defined tracers have the synchronization, since using
+		them from multiple threads is usually not a good idea.
 		</para>
 
 		<para>
@@ -394,5 +410,4 @@ UnitClearingTrigger(Unit *unit);
 		that object would cause the clearing, instead of the end of the block.
 		</para>
 	</sect1>
-<!-- XXXXXX describe the tracer classes in a separate sect1 -->
 <!-- XXXXXX describe FrameMark in C++ -->

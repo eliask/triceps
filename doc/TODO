@@ -140,6 +140,7 @@ Things that need to be done:
 * doc: somewhere up front, describe, what is a stock symbol etc
 * doc: wipe out all mentions of new/old error handling convention
 * doc: in the intro, what is a "model"?
+* doc: for all C++ classes, show the header file for them
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -150,11 +151,12 @@ App ideas:
 
 tangent 144, 157
 171-172
-176-181
+177-181
 184-189
 191-192
 tangent 197
-199-230
+199
+201-230
 231
 232-252
 254-260

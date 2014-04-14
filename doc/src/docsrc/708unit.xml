@@ -514,7 +514,8 @@ $oldTracer = $unit->getTracer();
 
 		<para>
 		Set and read back a tracer object that will be called before and after
-		each rowop executes in the unit. An <pre>undef</pre> means <quote>no tracer</quote>. See more detail in
+		each rowop executes in the unit. An <pre>undef</pre> means <quote>no tracer</quote>. 
+		See more information in
 		<xref linkend="sc_sched_tracing" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
