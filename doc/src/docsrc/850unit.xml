@@ -410,4 +410,3 @@ UnitClearingTrigger(Unit *unit);
 		that object would cause the clearing, instead of the end of the block.
 		</para>
 	</sect1>
-<!-- XXXXXX describe FrameMark in C++ -->

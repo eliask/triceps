@@ -114,6 +114,9 @@ See the file COPYRIGHT for the copyright notice and license information
 			<primary>label</primary>
 			<secondary>chaining</secondary>
 		</indexterm>
+		<indexterm>
+			<primary>DummyLabel</primary>
+		</indexterm>
 		<para>
 		A Triceps model contains the straightforward code and the mode complex
 		stateful elements, such as tables, aggregators, joiners (which may be

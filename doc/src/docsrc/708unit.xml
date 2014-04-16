@@ -267,6 +267,15 @@ $tray = $unit->makeTray(@rowops);
 		<indexterm>
 			<primary>memory management</primary>
 		</indexterm>
+		<indexterm>
+			<primary>label</primary>
+		</indexterm>
+		<indexterm>
+			<primary>DummyLabel</primary>
+		</indexterm>
+		<indexterm>
+			<primary>ClearingLabel</primary>
+		</indexterm>
 		<para>
 		A special thing about the labels is that when a unit creates
 		a label, it keeps a reference to it, for clearing. A label keeps a pointer

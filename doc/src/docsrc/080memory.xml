@@ -334,6 +334,9 @@ $self->{inputLabel} = $unit->makeLabel($rowType, $name . ".in",
 $lb = $unit->makeClearingLabel("name", @args);
 </pre>
 
+		<indexterm>
+			<primary>ClearingLabel</primary>
+		</indexterm>
 		<para>
 		The arguments would be the references to the objects that need clearing,
 		usually <pre>$self</pre>.  For a concrete usage example, here is how
