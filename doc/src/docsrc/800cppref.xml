@@ -159,5 +159,6 @@ See the file COPYRIGHT for the copyright notice and license information
 	<xi:include href="file:///DOCS/860fmark.xml"/>
 	<xi:include href="file:///DOCS/862rowset.xml"/>
 	<xi:include href="file:///DOCS/864fnreturn.xml"/>
+	<xi:include href="file:///DOCS/866fnbind.xml"/>
 
 </chapter>

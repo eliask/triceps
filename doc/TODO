@@ -141,6 +141,8 @@ Things that need to be done:
 * doc: wipe out all mentions of new/old error handling convention
 * doc: in the intro, what is a "model"?
 * doc: for all C++ classes, show the header file for them
+* doc: reference for all new classes in Perl
+* doc: enumerate all the ways to call a streaming function
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -151,7 +153,8 @@ App ideas:
 
 tangent 144, 157, 191, 197, 199
 171-172
-188-189
+188
+FnBinding, FnReturn & friends reference in Perl
 192
 201
 203-230
