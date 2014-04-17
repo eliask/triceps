@@ -2,7 +2,7 @@ RowSetType
 
 RowSetType, defined in types/RowSetType.h, is another item that is not visible in Perl. Maybe it will be in the future but at the moment things look good enough without it. It has been added for 1.1.0 and expresses the type ("return type" if you want to be precise) of a streaming function (FnReturn and FnBinding classes). Naturally, it's a sequence of the row types, and despite the word "set", the order matters.
 
-A RowSetType is one of these objects that gets assembled from many parts and then initialized, like this:
+A RowSetType is one of these objects that get assembled from many parts and then initialized, like this:
 
 Autoref<RowSetType> rst = initializeOr  Throw(RowSetType::make()
     ->addRow("name1", rt1)
