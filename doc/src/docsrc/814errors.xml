@@ -328,7 +328,7 @@ void replaceMsg(const string &msg);
 		an error. By now it has become old-fashioned, and Erref::fAppend() is
 		a better choice. Before fAppend() came along, the typical way to
 		create an error message was by calling strprintf() that formats a
-		printf-like string into a C++ string object. And it's kind of expensive
+		printf-like string into a &Cpp; string object. And it's kind of expensive
 		to call strprintf() in any case, even if the child returned no error.
 		So the optimization was to call append() with an empty string, and
 		if it happened to actually append something, replace that empty
