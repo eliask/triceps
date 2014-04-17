@@ -29,7 +29,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<para>
-		A RowSetType is one of these objects that gets assembled from many
+		A RowSetType is one of these objects that get assembled from many
 		parts and then initialized, like this:
 		</para>
 
