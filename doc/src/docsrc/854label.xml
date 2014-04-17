@@ -94,7 +94,10 @@ Label(Unit *unit, const_Onceref<RowType> rtype, const string &name);
 		<para>
 		The constructed label keeps a reference to its row type, and a pointer
 		(not reference, to avoid the circular references!) to the unit. The unit
-		keeps a reference to the label.
+		automatically keeps a reference to the label, so there is no need to call
+		<pre>Unit::rememberLabel()</pre> manually. On the other hand, if you do not want
+		the label to be remembered by its unit (though why?), the only way to achieve
+		that is to call <pre>Unit::forgetLabel()</pre> after its construction.
 		</para>
 
 		<para>
