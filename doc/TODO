@@ -153,14 +153,14 @@ App ideas:
 
 tangent 144, 157, 191, 197, 199
 171-172
-FnBinding, FnReturn & friends reference in Perl
+FnBinding, & friends reference in Perl
 192
 201
 203-230
 231
 232-252
 254-260
-261 except Unit
+261 except Unit, FnReturn
 262-267
 269-277
 *** next 279

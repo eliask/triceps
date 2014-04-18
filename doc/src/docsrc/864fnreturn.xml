@@ -315,4 +315,14 @@ const BindingVec &bindingStack() const;
 		Get the current return stack. Useful for debugging. 
 		</para>
 
+<pre>
+bool isFaceted() const;
+</pre>
+
+		<indexterm>
+			<primary>Facet</primary>
+		</indexterm>
+		<para>
+		Returns <pre>true</pre> if this FnReturn object is a part of a Facet.
+		</para>
 	</sect1>

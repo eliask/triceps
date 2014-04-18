@@ -29,7 +29,7 @@ $collapse = Triceps::Collapse->new($optName => $optValue, ...);
 </pre>
 
 		<para>
-		Creates a new Collapse object. Confesses on errors. The options are:
+		Creates a new Collapse object. The options are:
 		</para>
 
 		<variablelist>

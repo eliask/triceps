@@ -91,5 +91,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/760braced.xml"/>
 
+		<xi:include href="file:///DOCS/766fnreturn.xml"/>
+
 		<!-- XXX add references for all the X modules! -->
 </chapter>
