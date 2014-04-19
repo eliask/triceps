@@ -201,4 +201,20 @@ $res = $tt->print();
 		Presents the content of a table type as a human-readable description.
 		Accepts the usual <pre>print()</pre> arguments.
 		</para>
+
+<pre>
+$newtt = $tt->copy();
+</pre>
+		<para>
+		Copy the table type, along with copying all the index types in
+		it, since each table type must have its own instances of the index
+		types. The copied table type is always uninitialized and thus can
+		be further extended by defining more indexes and aggregators.
+		</para>
+
+		<para>
+		In case if the table type collected errors, the errors aren't copied,
+		and in general you should not copy such a table type. The errors
+		will be detected again when you try to initialize the copy.
+		</para>
 	</sect1>

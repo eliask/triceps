@@ -258,8 +258,14 @@ TableType *copy() const;
 		Copy the table type, including all its contents of IndexTypes
 		and AggregatorTypes, because they get tied to no more than one
 		TableType. However the RowTypes stay shared.
-		The copy is always uninitialized. The errors are not copied,
-		since they would be re-created during the initialization.
+		The copied table type is always uninitialized and thus can
+		be further extended by defining more indexes and aggregators.
+		</para>
+
+		<para>
+		In case if the table type collected errors, the errors aren't copied,
+		and in general you should not copy such a table type. The errors
+		will be detected again when you try to initialize the copy.
 		</para>
 
 <pre>

@@ -83,5 +83,12 @@ $atCopy = $at->copy();
 		and their arguments must still be the same.
 		</para>
 
+<pre>
+$rt = $at->getRowType(); 
+</pre>
+
+		<para>
+		Get back the result row type.
+		</para>
 	</sect1>
 
