@@ -499,8 +499,7 @@ getDefinedLabelNames(WrapFnBinding *self)
 				XPUSHs(sv_2mortal(newSVpvn(names[i].c_str(), names[i].size())));
 		}
 
-#// get the actual labels (NOT the ones used as the constructor
-#// arguments, these are used for chaining from);
+#// get the actual labels;
 #// when some label is not defined, its value will be undef
 SV *
 getLabels(WrapFnBinding *self)
