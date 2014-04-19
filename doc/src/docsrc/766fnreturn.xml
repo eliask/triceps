@@ -124,9 +124,10 @@ labels => [
 
 		<para>
 		Also, when an FnReturn gets destroyed, it clears and disconnects from 
-		the Unit all the labels defined in that FnReturn. This allows to create and destory
-		the FnReturns dynamically if needed. Of course, if you do that, you should take
-		care to discard the other references to its labels you might have.
+		the Unit all the labels defined in that FnReturn. The reason for that
+		is that the labels in FnReturn cannot work without the FnReturn object
+		anyway, and cannot hold a reference to it either (to avoid the
+		cyclical references).
 		</para>
 
 <pre>
@@ -223,14 +224,23 @@ $res = $fret->match($fbind2);
 </pre>
 
 		<para>
-		Convenience wrappers that compare the equality or match of types with
-		an FnReturn or FnBinding.
+		Compare the equality or match of types with an FnReturn or FnBinding.
+		Since their type objects are not directly visible in the Perl API,
+		the comparison has to be done on the FnReturns and FnBindings themselves.
 		The types are considered equal if they contain the equal row
 		types with equal names going in the same order. They are considered
 		matching if they contain matching row types going in the same order,
 		with any names. If the match condition seems surprising to you, think
 		of it as <quote>nothing will break if one type is substituted for another at
 		execution time</quote>.
+		</para>
+
+<pre>
+$res = $fret->same($fret2);
+</pre>
+
+		<para>
+		The usual check for two references referring to the same FnReturn object.
 		</para>
 
 <pre>
