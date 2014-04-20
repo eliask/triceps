@@ -131,6 +131,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 	<xi:include href="file:///DOCS/810autoref.xml"/>
 	<xi:include href="file:///DOCS/812string.xml"/>
+	<xi:include href="file:///DOCS/813perl.xml"/>
 	<xi:include href="file:///DOCS/814errors.xml"/>
 	<xi:include href="file:///DOCS/816exception.xml"/>
 	<xi:include href="file:///DOCS/817init.xml"/>

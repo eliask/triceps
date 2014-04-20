@@ -126,6 +126,7 @@ Things that need to be done:
 * add an option to adopt the rowop during the label chaining
 * add callAdopted() that combines $unit->call($label->adopt($rowop))
 * in FnBinding::call() allow to get back the tray (see "Streaming functions and more recursion")
+* docbook: make it not access http://docbook.sourceforge.net/release/images/draft.png
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
@@ -153,7 +154,6 @@ App ideas:
 
 tangent 144, 157, 191, 197, 199
 171-172
-201
 203-230
 231
 232-252

@@ -3339,6 +3339,48 @@ sub _tqlRead # ($ctx, @args)
 		</para>
 	</sect1>
 
+
+	<sect1 id="sc_strf_call">
+		<title>The ways to call a streaming function</title>
+
+		<indexterm>
+			<primary>streaming function</primary>
+		</indexterm>
+		<para>
+		The examples in this chapter have shown many ways to call
+		a streaming function. Here is a recap of them all:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			Manually push the FnBinding onto the FnReturn, send the argument rowops
+			to the streaming function, pop the FnBinding.
+			</listitem>
+
+			<listitem>
+			Use an AutoFnBind to handle the pushing and popping in a scoped fashion.
+			A single AutoFnBind can control multiple pairs of FnBinding and FnReturn,
+			so it can build in one go not only a single streaming function call but
+			even a whole pipeline. In the &Cpp; API a more low-level object
+			ScopedFnBind can also be used in a similar way.
+			</listitem>
+
+			<listitem>
+			Use <pre>Unit::callBound()</pre> that takes care of creating both the
+			AutoFnBind object and a scope around of it in a more efficient way.
+			</listitem>
+
+			<listitem>
+			Use <pre>FnBinding::call()</pre> to create an FnBinding object dynamically,
+			do a call with it, and dispose of it.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		The most convenient way depends on the situation.
+		</para>
+	</sect1>
+
 	<sect1 id="sc_strf_scheduling">
 		<title>The gritty details of streaming functions scheduling</title>
 
