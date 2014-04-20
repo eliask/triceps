@@ -60,7 +60,7 @@ Triceps::RowType::new(...)
 			}
 			Onceref<RowType> rt = new CompactRowType(fld);
 			Erref err = rt->getErrors();
-			if (!err.isNull() && !err->isEmpty()) {
+			if (err->hasError()) {
 				throw Exception::f(err, "Triceps::RowType::new: incorrect data");
 			}
 
