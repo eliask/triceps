@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_mt" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>Multithreading</title>
+
+	<sect1 id="sc_mt_concepts">
+		<title>Triceps multithreading concepts</title>
+
+		<indexterm>
+			<primary>multithreading</primary>
+		</indexterm>
+		<para>
+		When running the CEP models, naturally the threads have to be connected
+		by the queues for the data exchange. The use of queues is extremely
+		popular but also notoriously bug-prone.
+		</para>
+
+		<para>
+		The idea of the multithreading support in Triceps is to make writing
+		the multithreaded model easier. To make writing the good code easy and
+		writing the bad code hard. But of course you don't have to use it, if 
+		it feels too constraining, you can always make your own.
+		</para>
+
+		<para>
+		The diagram in
+		<xref linkend="fig_mt_overview" xrefstyle="select: label nopage"/>&xrsp;
+		shows all the main elements of a multithread Triceps application.
+		</para>
+
+		<figure id="fig_mt_overview" >
+			<title>Triceps multithreaded application.</title>
+			<xi:include href="file:///FIGS/thread-010-over.xml"/> 
+		</figure>
+
+		<indexterm>
+			<primary>App</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Triead</primary>
+		</indexterm>
+		<indexterm>
+			<primary>TrieadOwner</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Nexus</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Facet</primary>
+		</indexterm>
+		<indexterm>
+			<primary>fragment</primary>
+		</indexterm>
+		<para>
+		The Triceps application is embodied in the class App. It's possible to
+		have multiple Apps in one program.
+		</para>
+
+		<para>
+		Each thread has multiple parts to it. First, of course, there is the
+		OS-level (or, technically, library-level, or Perl-level) thread where
+		the code executes. And then there is a class that represents this
+		thread and its place in the App. To reduce the naming conflict, this
+		class is creatively named Triead (pronounced still <quote>thread</quote>). In the
+		discussion I use the word <quote>thread</quote> for both concepts, the OS-level
+		thread and the Triead, and it's usually clear from the context which
+		one I mean. But sometimes it's particularly important to make the
+		distinction, and then I name one or the other explicitly.
+		</para>
+
+		<para>
+		The class Triead itself is largely opaque, allowing only a few methods
+		for introspection. But there is a control interface to it, called
+		TrieadOwner. The Triead is visible from the outside, the TrieadOwner
+		object is visible only in the OS thread that owns the Triead. The
+		TrieadOwner manages the thread state and acts as the intermediary in
+		the thread's communications with the App.
+		</para>
+
+		<para>
+		The data is passed between the threads through the Nexuses. A Nexus is
+		unidirectional, with data going only one way, however it may have
+		multiple writers and multiple readers. All the readers see the exact
+		same data, with rowops going in the exact same order (well, there will
+		be other policies in the future as well, but for now there is only one
+		policy).
+		</para>
+
+		<para>
+		A Nexus passes through the data for multiple labels, very much like an
+		FnReturn does (and indeed there is a special connection between them).
+		A Nexus also allows to export the row types and table types from one
+		thread to another.
+		</para>
+
+		<para>
+		A Nexus is created by one thread, and then the other threads connect to it.
+		The thread that creates the Nexus determines what labels will it contain,
+		and what row types and table types to export.
+		</para>
+
+		<para>
+		A Nexus gets connected to the Trieads through the Facets (in the diagram,
+		the Facets are shown as flat spots on the round Nexuses). A Facet is
+		a connection point between the Nexus and the Triead. Each Facet is for
+		either reading or writing. And there may be only one Facet between a
+		given Nexus and a given Triead, you can't make multiple connections
+		between them. As a consequence, a thread can't both write and read to
+		the same Nexus, it can do only one thing. This might actually be an
+		overly restrictive limitation and might change in the future but that's
+		how things work now.
+		</para>
+
+		<para>
+		Each Nexus also has a direction: either direct (<quote>downwards</quote>) or reverse
+		(<quote>upwards</quote>). How does it know, which direction is down and
+		whih is up? It doesn't. You tell it by designating a Nexus one way or the other.
+		And yes, the reverse Nexuses allow to build the models
+		with loops. However the loops consisting of only the direct Nexuses are
+		not allowed, nor of only reverse Nexuses. They would mess up the flow
+		control. The proper loops must contain a mix of direct and reverse
+		Nexuses.
+		</para>
+
+		<para>
+		The direct Nexuses have a limited queue size and stop the writers when
+		the queue fills up, until the data gets consumed, thus providing the
+		flow control. The reverse Nexuses have an unlimited queue size, which
+		allows to avoid the circular deadlocks. The reverse Nexuses also have
+		a higher priority: if a thread is reading from a direct Nexus and a
+		reverse one, with both having data available, it will read the data
+		from the reverse Nexus first. This is to prevent the unlimited queues
+		in the reverse Nexuses from the truly unlimited growth.
+		</para>
+
+		<para>
+		Normally an App is built once and keeps running in this configuration
+		until it stops. But there is a strong need to have the threads
+		dynamically added and deleted too. For example, if the App running as a
+		server, and clients connect to it, each client needs to have its
+		thread(s) added when the client connects and then deleted when the client
+		disconnects. This is handled through the concept of fragments. There is
+		no Fragment class but when you create a Triead, you can specify a
+		fragment name for it. Then it becomes possible to shut down and dispose
+		the threads in a fragment after the fragment's work is done. 
+		</para>
+	</sect1>
+</chapter>
