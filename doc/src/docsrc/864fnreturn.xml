@@ -69,7 +69,7 @@ const string &getUnitName() const;
 		</para>
 
 <pre>
-FnReturn *addFromLabel(const string &lname, Autoref<Label>from);
+FnReturn *addFromLabel(const string &lname, Autoref<Label>from, bool front = true);
 </pre>
 
 		<para>
@@ -78,7 +78,19 @@ FnReturn *addFromLabel(const string &lname, Autoref<Label>from);
 		<quote>return_name.label_name</quote>. The label names within a return must be unique
 		and not empty, or it will be returned as an initialization error. The
 		label type will be copied (actually, referenced) from the <pre>from</pre> label,
-		and the new label will be automatically chained off it. The labels can
+		and the new label will be automatically chained off it. If the argument
+		<pre>front</pre> is <pre>false</pre>, the chaining will be done at the
+		back of the chain, if <pre>true</pre> (default) then at the front.
+		The front chaining is convenient if you want to pass both
+		the original request and the result into the return. Usually you
+		would define the result computation and then define the return.
+		With the chaining at the back, this would lead to the computation
+		chained off the input label first and the return going after it.
+		This would lead to the result coming out before the argument,
+		and special contortions would be needed to avoid it. With chaining
+		at the front, the return will go in the chain before the computation,
+		even if the return was defined last.
+		The labels can
 		be added only until the return is initialized, or it will throw an
 		Exception.
 		</para>

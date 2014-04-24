@@ -161,6 +161,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			The <quote>dump</quote> label added to the tables.
 			</listitem>
+
+			<listitem>
+			The <pre>chainFront()</pre> method added in the Label.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 

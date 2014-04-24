@@ -172,7 +172,7 @@ bool isNonReentrant() const;
 		</para>
 
 <pre>
-Erref chain(Onceref<Label> lab);
+Erref chain(Onceref<Label> lab, bool front = false);
 </pre>
 
 		<para>
@@ -180,6 +180,10 @@ Erref chain(Onceref<Label> lab);
 		chained labels will also be executed in order). This label will keep a
 		reference of the chained label. The circular chainings are forbidden
 		and will throw an Exception.
+		If the argument <pre>front</pre> is <pre>false</pre> (default), the chaining 
+		will be done at the back of the chain, if <pre>true</pre> then at the front,
+		same as the method <pre>chainFront()</pre> in the Perl API.
+		In the &Cpp; API both kinds of chainings are done with the same method.
 		</para>
 
 <pre>

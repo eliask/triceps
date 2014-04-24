@@ -353,7 +353,10 @@ del => $dataset->{tbDelete}->getOutputLabel(),
 
 		<para>
 		says <quote>create a return label named <quote>del</quote> and chain it from the
-		tbDelete's output label</quote>. There are more details to the naming and label
+		tbDelete's output label</quote>. The FnReturn normally does its chaining
+		with <pre>chainFront()</pre>, unless the option <pre>chainFront => 0</pre>
+		tells it otherwise. But in this particular case the chaining order wouldn't matter.
+		There are more details to the naming and label
 		creation but let's not get bogged in them now.
 		</para>
 

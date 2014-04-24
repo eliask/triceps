@@ -79,8 +79,28 @@ labels => [
 			to create a label in FnReturn and that new label will also be automatically
 			chained off the specified one. This is convenient if you already have
 			the logic of the function defined and just want to forward the result
-			data from an existing label into the FnReturn.
+			data from an existing label into the FnReturn. The chaining is normally
+			done with <pre>chainFront()</pre>, unless the option <pre>chainFront => 0</pre>
+			tells otherwise. 
+			The front chaining is convenient if you want to pass both
+			the original request and the result into the return. Usually you
+			would define the result computation and then define the return.
+			With the chaining at the back, this would lead to the computation
+			chained off the input label first and the return going after it.
+			This would lead to the result coming out before the argument,
+			and special contortions would be needed to avoid it. With chaining
+			at the front, the return will go in the chain before the computation,
+			even if the return was defined last.
 			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>chainFront</pre></term>
+			<listitem>
+			Determines whether the FnReturn labels built by chaining off the other
+			labels will be chained at the back (if 0) or at the front (if 1).
+			Optional. Default: 1.
 			</listitem>
 		</varlistentry>
 
@@ -96,6 +116,7 @@ labels => [
 			<pre>onPush => [ $code, @args ]</pre>. The first argument of the function
 			will always be the FnReturn object itself, with extra arguments going
 			after it: <pre>&$code($thisFnReturn, @optional_args)</pre>.
+			Optional.
 			</listitem>
 		</varlistentry>
 
@@ -111,6 +132,7 @@ labels => [
 			<pre>onPop => [ $code, @args ]</pre>. The first argument of the function
 			will always be the FnReturn object itself, with extra arguments going
 			after it: <pre>&$code($thisFnReturn, @optional_args)</pre>.
+			Optional.
 			</listitem>
 		</varlistentry>
 		</variablelist>

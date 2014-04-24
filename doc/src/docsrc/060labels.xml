@@ -164,7 +164,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			<secondary>dummy</secondary>
 		</indexterm>
 <pre>
-$label = $unit->makeDummyLabel($rowType, "name") or confess "$!";
+$label = $unit->makeDummyLabel($rowType, "name");
 </pre>
 
 		<para>
@@ -252,11 +252,11 @@ $lb = $unit->makeClearingLabel("name", @args);
 		<title>Other label methods</title>
 
 		<para>
-		The chaining of labels is done with the call:
+		The chaining of labels is done with the method:
 		</para>
 
 <pre>
-$label1->chain($label2) or confess "$!";
+$label1->chain($label2);
 </pre>
 
 		<para>
@@ -265,6 +265,26 @@ $label1->chain($label2) or confess "$!";
 		other intermediate labels. The row types of the chained labels must be equal
 		(this is more strict than for queueing up the row operations for labels,
 		and might change one or the other way in the future).
+		</para>
+
+		<para>
+		When <pre>$label1</pre> executes, its chained labels will normally
+		be executed in the order they were chained. However sometines it's
+		necessary to add a label to the chain later but have it called
+		first. This is done with the method:
+		</para>
+
+<pre>
+$label1->chainFront($label2);
+</pre>
+
+		<para>
+		It chains <pre>$label2</pre> at the start of the chain. Of course,
+		if more labels will be chained at the front afterwards, <pre>$label2</pre>
+		will be called only after them. But usually there is a need for only
+		one such label, and it's usually connected to the FnReturn and Facet
+		objects. For an example, see
+		<xref linkend="sc_mt_pipeline" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -479,9 +499,7 @@ $rowop = $label->makeRowopArray($opcode, @fields);
 		Note that they don't need the row type argument any more,
 		because the label knows the row type and provides it.
 		Internally these methods are currently implemented in Perl, and just wrap
-		the two calls into one. They also use the new error handling
-		convention, and confess on any errors. There is normally no
-		need to check their result. In the future they will be rewritten
+		the two calls into one.  In the future they will be rewritten
 		in &Cpp; for greater efficiency.
 		</para>
 
@@ -531,7 +549,7 @@ my $lab1 = $unit->makeLabel($rt1, "lab1", undef, sub {
 	if ($rowop->getRow()->get("a") > 10) {
 		$unit->call($lab2->adopt($rowop));
 	}
-}) or confess "$!";
+});
 </pre>
 
 		<para>

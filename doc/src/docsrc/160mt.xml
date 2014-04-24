@@ -166,7 +166,9 @@ See the file COPYRIGHT for the copyright notice and license information
 			<secondary>stages</secondary>
 		</indexterm>
 
+		<para>
 		Each Triead goes through a few stages in its life:
+		</para>
 
 		<itemizedlist>
 			<listitem>
@@ -342,5 +344,666 @@ See the file COPYRIGHT for the copyright notice and license information
 				</listitem>
 			</varlistentry>
 		</variablelist>
+	</sect1>
+
+	<sect1 id="sc_mt_pipeline">
+		<title>Multithreaded pipeline</title>
+
+		<indexterm>
+			<primary>pipeline</primary>
+		</indexterm>
+		<para>
+		The multithreaded models are well suited for running the pipelines,
+		so that is going to be the first example of the threads. The full text of the example
+		can be found in <pre>t/xTrafficAggMt.t</pre> in the class Traffic1.
+		It's a variation of an already shown example, the traffic
+		data aggregation from 
+		<xref linkend="sc_time_periodic" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		The short recap is that it gets
+		the data for each network packet going through and keeps it for some
+		time, aggregates the data by the hour and keeps it for a longer time,
+		and aggregates it by the day and keeps for a longer time yet. This
+		multi-stage computation naturally matches the pipeline approach.
+		</para>
+
+		<para>
+		Since this new example highlights different features than the original one,
+		I've changed it logic a little: it updates both the
+		hourly and daily summaries on every packet received. And I didn't
+		bother to implement the part with the automatic cleaning of the old
+		data, it doesn't add anything interesting to the pipeline works.
+		</para>
+
+		<para>
+		The pipeline topologies are quite convenient for working with the
+		threads. The parallel computations create a possibility of things
+		happening in an unpredictable order and producing unpredictable
+		results. The pipeline topology allows the parallelism and at the same
+		time also keeps the data in the same predictable order, with no
+		possibility of rows overtaking each other.
+		</para>
+
+		<para>
+		The computation in this example is split into the following threads:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			Read the input, parse and send the data into the model.
+			</listitem>
+
+			<listitem>
+			Store the recent data and aggregate it by the hour.
+			</listitem>
+
+			<listitem>
+			Store the hourly data and aggregate it by the day.
+			</listitem>
+
+			<listitem>
+			Store the daily data.
+			</listitem>
+
+			<listitem>
+			Get the data at the end of the pipeline and print it.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		The result of each aggregation gets stored in a table in the next thread,
+		which then uses the same table for the next stage of aggregation.
+		</para>
+
+		<para>
+		Technically, each stage only needs the data from the previous
+		stage, but to get the updates to the printing stage (since we want
+		to print the original updates, daily and hourly), they all go all
+		the way through.
+		</para>
+
+		<para>
+		Dumping the contents of the tables also requires some special support.
+		Each table is local to its thread and can't be accessed from the other
+		threads. To dump its contents, the dump request needs to be sent to its
+		thread, which would extract the data and send it through. There are
+		multiple ways to deal with the dump results. One is to have a special
+		label for each table's dump and propagate it to the last stage to
+		print. If all that is needed is text, another way is to have one label that allows to send
+		strings is good enough, all the dumps can send the data converted to
+		text into it, and it would go all the way through the pipeline.
+		For this example I've picked the last approach.
+		</para>
+
+		<para>
+		And now is time to show some code. The main part goes like this:
+		</para>
+
+<!-- perl/Triceps/t/xTrafficAggMt.t Traffic1 -->
+<pre>
+Triceps::Triead::startHere(
+	app => "traffic",
+	thread => "print",
+	main => \&printT,
+);
+</pre>
+
+		<indexterm>
+			<primary>App</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Triead</primary>
+		</indexterm>
+		<para>
+		The <pre>startHere()</pre> creates an App and starts a Triead in the current OS
+		thread. <quote>Here</quote> in the method name stands for <quote>in the current OS thread</quote>.
+		<quote>traffic</quote> is the app name, <quote>print</quote> the thread name. This thread
+		will be the end of the pipeline, and it will create the rest of the
+		threads. This is a convenient pattern when the results of the model
+		need to be fed back to the current thread, and it works out very
+		conveniently for the unit tests. <pre>printT()</pre> is the body function of
+		this printing thread:
+		</para>
+
+<!-- perl/Triceps/t/xTrafficAggMt.t Traffic1 -->
+<pre>
+sub printT # (@opts)
+{
+	my $opts = {};
+	Triceps::Opt::parse("traffic main", $opts, {@Triceps::Triead::opts}, @_);
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "read",
+		main => \&readerT,
+	);
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "raw_hour",
+		main => \&rawToHourlyT,
+		from => "read/data",
+	);
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "hour_day",
+		main => \&hourlyToDailyT,
+		from => "raw_hour/data",
+	);
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "day",
+		main => \&storeDailyT,
+		from => "hour_day/data",
+	);
+
+	my $faIn = $owner->importNexus(
+		from => "day/data",
+		as => "input",
+		import => "reader",
+	);
+
+	$faIn->getLabel("print")->makeChained("print", undef, sub {
+		&send($_[1]->getRow()->get("text"));
+	});
+	for my $tag ("packet", "hourly", "daily") {
+		makePrintLabel($tag, $faIn->getLabel($tag));
+	}
+
+	$owner->readyReady();
+	$owner->mainLoop(); # all driven by the reader
+}
+</pre>
+
+		<para>
+		<pre>startHere()</pre> accepts a number of fixed options plus arbitrary options
+		that it doesn't care about by itself but passes through to the thread's main
+		function, which are then the responsibility of the main function to
+		parse. To reiterate, the main function gets all the options from the
+		call of <pre>startHere()</pre>, both these that <pre>startHere()</pre> parses and these that
+		it simply passes through. <pre>startHere()</pre> also adds one more option on its
+		own: <quote>owner</quote> containing the TrieadOwner object that the thread uses to
+		communicate with the rest of the App.
+		</para>
+
+		<para>
+		In this case <pre>printT()</pre> doesn't have any extra options on its own,
+		it's just happy to get <pre>startHere()</pre>'s standard set that it takes all
+		together from <pre>@Triceps::Triead::opts</pre>.
+		</para>
+
+		<indexterm>
+			<primary>TrieadOwner</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Unit</primary>
+		</indexterm>
+		<indexterm>
+			<primary>UnitClearingTrigger</primary>
+		</indexterm>
+		<para>
+		It gets the TrieadOwner object <pre>$owner</pre> from the option appended by
+		<pre>startHere()</pre>. Each TrieadOwner is created with its own Unit, so the unit
+		is obtained from it to create the thread's model in it. Incidentally,
+		the TrieadOwner  also acts as a clearing trigger object for the Unit,
+		so when the TrieadOwner is destroyed, it properly clears the Unit.
+		</para>
+
+		<para>
+		Then it goes and creates all the threads of the pipeline. The <pre>start()</pre>
+		works very much like <pre>startHere()</pre>, only it actually creates a new thread
+		and starts the main function in it. The main function can be the same
+		whether it runs through <pre>start()</pre> or <pre>startHere()</pre>. The special catch is
+		that the options to <pre>start()</pre> must contain only the plain Perl values,
+		not Triceps objects. It has to do with how Perl works with threads: it
+		makes a copy of every value for the new thread, and it cant's copy the
+		XS objects, so they simply become undefined in the new thread.
+		</para>
+
+		<para>
+		All but the first thread in the pipeline have the extra option <quote>from</quote>: it
+		specifies the input nexus for this thread, and each thread creates an
+		output nexus <quote>data</quote>. A nexus it named relatively to the
+		thread that created it, so when the option <quote>from</quote> says <quote>day/data</quote>, it's
+		the nexus <quote>data</quote> created by the thread <quote>day</quote>.
+		</para>
+
+		<indexterm>
+			<primary>Nexus</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Facet</primary>
+		</indexterm>
+		<para>
+		So, the pipeline gets all connected sequentially until eventually
+		<pre>printT()</pre> imports the nexus at its tail. <pre>importNexus()</pre> returns a
+		Facet, which is the thread's API to the nexus. A facet looks very much
+		like an FnReturn for most purposes, with a few additions. It even has a
+		real FnReturn in it, and you work with the labels of that FnReturn to get the
+		data out of the nexus (or to send data into the nexus). You could potentially
+		use an FnBinding with that FnReturn but the typical pattern for reading
+		from a facet is different: just get its labels 
+		and chain the handling labels directly to them.
+		</para>
+
+		<para>
+		The option <quote>as</quote> of <pre>importNexus()</pre> gives the name to the facet and to its
+		same-named FnReturn (without it the facet would be named the same as
+		the short name of the nexus, in this case <quote>data</quote>). The option <quote>import</quote>
+		tells whether this thread will be reading or writing the nexus, and
+		in this case it's reading.
+		</para>
+
+		<para>
+		By the time the pipeline gets to the last stage, it has a few
+		labels in its facet:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			<pre>print</pre> - carries the direct text lines to print in its field <pre>text</pre>,
+			and its contents gets printed.
+			</listitem>
+
+			<listitem>
+			<pre>dumprq</pre> - carries the dump requests to the tables, and the printing
+			thread doesn't care about it.
+			</listitem>
+
+			<listitem>
+			<pre>packet</pre> - carries the raw data about the packets.
+			</listitem>
+
+			<listitem>
+			<pre>hourly</pre> - carries the hourly summaries.
+			</listitem>
+
+			<listitem>
+			<pre>daily</pre> - carries the daily summaries.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		The last three get also printed but this time as whole rows.
+		</para>
+
+		<para>
+		And after everything is connected, the thread both tells that it's
+		ready and waits for all the other threads to become ready by calling
+		<pre>readyReady()</pre>. Then its the run time, and <pre>mainLoop()</pre> takes care of it:
+		it keeps reading data from the nexus and
+		processes it until it's told to shutdown.
+		The shutdown will be controlled by the file reading
+		thread at the start of the pipeline. The processing is done by getting
+		the rowops from the nexus and calling them on the appropriate label in
+		the facet, which then calls the the labels chained from it, and that
+		gets all the rest of the thread's model running.
+		</para>
+
+		<para>
+		The reader thread drives the pipeline:
+		</para>
+
+<!-- perl/Triceps/t/xTrafficAggMt.t Traffic1 -->
+<pre>
+sub readerT # (@opts)
+{
+	my $opts = {};
+	Triceps::Opt::parse("traffic main", $opts, {@Triceps::Triead::opts}, @_);
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	my $rtPacket = Triceps::RowType->new(
+		time => "int64", # packet's timestamp, microseconds
+		local_ip => "string", # string to make easier to read
+		remote_ip => "string", # string to make easier to read
+		local_port => "int32", 
+		remote_port => "int32",
+		bytes => "int32", # size of the packet
+	);
+
+	my $rtPrint = Triceps::RowType->new(
+		text => "string", # the text to print (including \n)
+	);
+
+	my $rtDumprq = Triceps::RowType->new(
+		what => "string", # identifies, what to dump
+	);
+
+	my $faOut = $owner->makeNexus(
+		name => "data",
+		labels => [
+			packet => $rtPacket,
+			print => $rtPrint,
+			dumprq => $rtDumprq,
+		],
+		import => "writer",
+	);
+
+	my $lbPacket = $faOut->getLabel("packet");
+	my $lbPrint = $faOut->getLabel("print");
+	my $lbDumprq = $faOut->getLabel("dumprq");
+
+	$owner->readyReady();
+
+	while(&readLine) {
+		chomp;
+		# print the input line, as a debugging exercise
+		$unit->makeArrayCall($lbPrint, "OP_INSERT", "> $_\n");
+
+		my @data = split(/,/); # starts with a command, then string opcode
+		my $type = shift @data;
+		if ($type eq "new") {
+			$unit->makeArrayCall($lbPacket, @data);
+		} elsif ($type eq "dump") {
+			$unit->makeArrayCall($lbDumprq, "OP_INSERT", $data[0]);
+		} else {
+			$unit->makeArrayCall($lbPrint, "OP_INSERT", "Unknown command '$type'\n");
+		}
+		$owner->flushWriters();
+	}
+
+	{
+		# drain the pipeline before shutting down
+		my $ad = Triceps::AutoDrain::makeShared($owner);
+		$owner->app()->shutdown();
+	}
+}
+</pre>
+
+		<para>
+		It starts by creating the nexus with the initial set of the labels: for
+		the data about the network packets, for the lines to be printed at the
+		end of the pipeline and for the dump requests to the tables in the
+		other threads. It gets exported for the other threads to import, and
+		also imported right back into this thread, for writing. And then the
+		setup is done, <pre>readyReady()</pre> is called, and the processing starts.
+		</para>
+
+		<para>
+		It reads the CSV lines, splits them, makes a decision if it's a data
+		line or dump request, and one way or the other sends it into the nexus.
+		The data sent to a facet doesn't get immediately forwarded to the
+		nexus. It's collected internally in a tray, and then <pre>flushWriters()</pre>
+		sends it on. The <pre>mainLoop()</pre> shown in <pre>printT</pre> calls <pre>flushWriters()</pre>
+		automatically after every tray it processes from the input. But when
+		reading from a file you've got to do it yourself. Of course, it's more
+		efficient to send through multiple rows at once, so a smarter
+		implementation would check if multiple lines are available from the
+		file and send them in larger bundles.
+		</para>
+
+		<indexterm>
+			<primary>shutdown</primary>
+		</indexterm>
+		<indexterm>
+			<primary>drain</primary>
+		</indexterm>
+		<para>
+		The last part is the shutdown. After the end of file is reached, it's
+		time to shut down the application. You can't just shut down it right
+		away because there still might be data in the pipeline, and if you shut
+		it down, that data will be lost. The right way is to drain the pipeline
+		first, and then do the shutdown when the app is drained.
+		<pre>AutoDrain::makeShared()</pre> creates a scoped drain: the drain request for
+		all the threads is started when this object is created, and the object
+		construction completes when the drain succeeds. When the object is
+		destroyed, that releases the drain. So in this case the drain succeeds and
+		then the app gets shut down.
+		</para>
+
+		<para>
+		The shutdown causes the <pre>mainLoop()</pre> calls in all the other threads to
+		return, and the threads to exit. Then <pre>startHere()</pre> in the first thread
+		has the special logic in it that joins all the started threads after
+		its own main function returns and before it completes. After that the
+		script continues on its way and is free to exit. 
+		</para>
+
+		<para>
+		The rest of this example might be easier to understand by looking at an
+		example of a run first. The lines in bold are the copies of
+		the input lines that <pre>readerT()</pre> reads from the input and
+		sends into the pipeline, and <pre>printT()</pre> faithfully
+		prints.
+		</para>
+
+		<para>
+		<pre>input.packet</pre> are the rows that reach the <pre>printT</pre> on the <pre>packet</pre> label
+		(remember, <quote>input</quote> is the name with which it imports its input nexus).
+		<pre>input.hourly</pre> is the data aggregated by the hour intervals (and also by
+		the IP addresses, dropping the port information), and <pre>input.daily</pre>
+		further aggregates it per day (and again per the IP addresses). The
+		timestamps in the hourly and daily rows are truncated to the start
+		of the hour or day.
+		</para>
+
+		<para>
+		And the lines without any prefixes are the dumps of the table contents
+		that again reach the <pre>printT()</pre> through the <quote>print</quote> label:
+		</para>
+
+<!-- perl/Triceps/t/xTrafficAggMt.t Traffic1 -->
+<exdump>
+> new,OP_INSERT,1330886011000000,1.2.3.4,5.6.7.8,2000,80,100
+input.packet OP_INSERT time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+input.hourly OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+> new,OP_INSERT,1330886012000000,1.2.3.4,5.6.7.8,2000,80,50
+input.packet OP_INSERT time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+input.hourly OP_DELETE time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="100" 
+input.hourly OP_INSERT time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+> new,OP_INSERT,1330889612000000,1.2.3.4,5.6.7.8,2000,80,150
+input.packet OP_INSERT time="1330889612000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="150" 
+input.hourly OP_INSERT time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
+> new,OP_INSERT,1330889811000000,1.2.3.4,5.6.7.8,2000,80,300
+input.packet OP_INSERT time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+input.hourly OP_DELETE time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="300" 
+input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+input.hourly OP_INSERT time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="450" 
+input.daily OP_DELETE time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+input.daily OP_INSERT time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="600" 
+> new,OP_INSERT,1330972411000000,1.2.3.5,5.6.7.9,3000,80,200
+input.packet OP_INSERT time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
+input.hourly OP_INSERT time="1330970400000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+input.daily OP_INSERT time="1330905600000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+> new,OP_INSERT,1331058811000000
+input.packet OP_INSERT time="1331058811000000" 
+> new,OP_INSERT,1331145211000000
+input.packet OP_INSERT time="1331145211000000" 
+> dump,packets
+time="1330886011000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="100" 
+time="1330886012000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="50" 
+time="1330889612000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="150" 
+time="1330889811000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" local_port="2000" remote_port="80" bytes="300" 
+time="1330972411000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" local_port="3000" remote_port="80" bytes="200" 
+> dump,hourly
+time="1330884000000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="150" 
+time="1330887600000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="450" 
+time="1330970400000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+> dump,daily
+time="1330819200000000" local_ip="1.2.3.4" remote_ip="5.6.7.8" bytes="600" 
+time="1330905600000000" local_ip="1.2.3.5" remote_ip="5.6.7.9" bytes="200" 
+</exdump>
+
+		<para>
+		Note that the order of the lines is completely nice and predictable,
+		nothing goes out of order. Each nexus preserves the order of the rows
+		put into it, and the fact that there is only one writer per nexus and
+		that every thread is fed from only one nexus, avoids the races.
+		</para>
+
+		<para>
+		Let's look at the thread that performs the aggregation by the hour:
+		</para>
+
+<!-- perl/Triceps/t/xTrafficAggMt.t Traffic1 edited -->
+<pre>
+# compute an hour-rounded timestamp (in microseconds)
+sub hourStamp # (time)
+{
+	return $_[0]  - ($_[0] % (1000*1000*3600));
+}
+
+sub rawToHourlyT # (@opts)
+{
+	my $opts = {};
+	Triceps::Opt::parse("traffic main", $opts, {
+		@Triceps::Triead::opts,
+		from => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	# The current hour stamp that keeps being updated;
+	# any aggregated data will be propagated when it is in the
+	# current hour (to avoid the propagation of the aggregator clearing).
+	my $currentHour;
+
+	my $faIn = $owner->importNexus(
+		from => $opts->{from},
+		as => "input",
+		import => "reader",
+	);
+
+	# the full stats for the recent time
+	my $ttPackets = Triceps::TableType->new($faIn->getLabel("packet")->getRowType())
+		->addSubIndex("byHour", 
+			Triceps::IndexType->newPerlSorted("byHour", undef, sub {
+				return &hourStamp($_[0]->get("time")) <=> &hourStamp($_[1]->get("time"));
+			})
+			->addSubIndex("byIP", 
+				Triceps::IndexType->newHashed(key => [ "local_ip", "remote_ip" ])
+				->addSubIndex("group",
+					Triceps::IndexType->newFifo()
+				)
+			)
+		)
+	;
+
+	# type for a periodic summary, used for hourly, daily etc. updates
+	my $rtSummary;
+
+	Triceps::SimpleAggregator::make(
+		tabType => $ttPackets,
+		name => "hourly",
+		idxPath => [ "byHour", "byIP", "group" ],
+		result => [
+			# time period's (here hour's) start timestamp, microseconds
+			time => "int64", "last", sub {&hourStamp($_[0]->get("time"));},
+			local_ip => "string", "last", sub {$_[0]->get("local_ip");},
+			remote_ip => "string", "last", sub {$_[0]->get("remote_ip");},
+			# bytes sent in a time period, here an hour
+			bytes => "int64", "sum", sub {$_[0]->get("bytes");},
+		],
+		saveRowTypeTo => \$rtSummary,
+	);
+
+	$ttPackets->initialize();
+	my $tPackets = $unit->makeTable($ttPackets, "tPackets");
+
+	# Filter the aggregator output to match the current hour.
+	my $lbHourlyFiltered = $unit->makeDummyLabel($rtSummary, "hourlyFiltered");
+	$tPackets->getAggregatorLabel("hourly")->makeChained("hourlyFilter", undef, sub {
+		if ($_[1]->getRow()->get("time") == $currentHour) {
+			$unit->call($lbHourlyFiltered->adopt($_[1]));
+		}
+	});
+
+	# update the notion of the current hour before the table
+	$faIn->getLabel("packet")->makeChained("processPackets", undef, sub {
+		my $row = $_[1]->getRow();
+		$currentHour = &hourStamp($row->get("time"));
+		# skip the timestamp updates without data
+		if (defined $row->get("bytes")) {
+			$unit->call($tPackets->getInputLabel()->adopt($_[1]));
+		}
+	});
+
+	# The makeNexus default option chainFront => 1 will make
+	# sure that the pass-through data propagates first, before the
+	# processed data.
+	my $faOut = $owner->makeNexus(
+		name => "data",
+		labels => [
+			$faIn->getFnReturn()->getLabelHash(),
+			hourly => $lbHourlyFiltered,
+		],
+		import => "writer",
+	);
+
+	my $lbPrint = $faOut->getLabel("print");
+
+	# the dump request processing
+	$tPackets->getDumpLabel()->makeChained("printDump", undef, sub {
+		$unit->makeArrayCall($lbPrint, "OP_INSERT", $_[1]->getRow()->printP() . "\n");
+	});
+	$faIn->getLabel("dumprq")->makeChained("dump", undef, sub {
+		if ($_[1]->getRow()->get("what") eq "packets") {
+			$tPackets->dumpAll();
+		}
+	});
+
+	$owner->readyReady();
+	$owner->mainLoop(); # all driven by the reader
+}
+</pre>
+
+		<para>
+		This function inherits the options from <pre>Triead::start()</pre> as usual and
+		adds the option <quote>from</quote> of its own. This option's value is then used as
+		the name of nexus to import for reading. The row types of the labels
+		from that imported facet are then used to create the table and
+		aggregation.
+		</para>
+
+		<para>
+		The table and aggregation themselves are the same as in
+		<xref linkend="sc_time_periodic" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		so I won't go into much detail describing them.  The only big change is
+		the use of SimpleAggergator instead of a manually-built one.  The
+		filter logic allows to delete the old raw data without propagation of
+		the aggregation changes caused by it.
+		</para>
+
+		<para>
+		Then the output nexus is created. The creation passes through all the
+		incoming data, short-circuiting the input and output, and adds the
+		extra label for the aggregated output. The call
+		<pre>$faIn->getFnReturn()->getLabelHash()</pre> pulls all the labels
+		and their names from the input facet, convenient for passing the
+		data directly through to the output.  Just like an FnReturn,
+		the Facet construction with <pre>makeNexus()</pre> has the option
+		<quote>chainFront</quote> set to 1 by default, and thus when it chains
+		the labels from the pass-through ones, they are chained on the front.
+		This works very nicely: this way the input data passes through first
+		and only then the input goes to the computational labels and produces
+		the results that follow it into the output facet.
+		</para>
+
+		<para>
+		The table dump is implemented after the output facet is defined because
+		it needs the print label from that facet to send the results to.
+		That print label ends up with two sources of datra for it. One is
+		the eponymous label from the input facet, that passes the print
+		requests from the previous stage of the pipeline. Another one is the
+		table dump logic from this thread. Both are fine and can be mixed
+		together.
+		</para>
+
+		<para>
+		And after that it's all usual <pre>readyReady()</pre> and <pre>mainLoop()</pre>.
+		</para>
+
+		<para>
+		The <pre>hourlyToDailyT()</pre> is very similar, so I won't even show it here, you can
+		find the full text in the sources.
+		</para>
+
 	</sect1>
 </chapter>
