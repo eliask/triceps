@@ -42,6 +42,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			Streaming functions.
 			</listitem>
+
+			<listitem>
+			Multithreading.
+			</listitem>
 		</itemizedlist>
 
 		<para>
@@ -163,7 +167,13 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			The <pre>chainFront()</pre> method added in the Label.
+			The <pre>chainFront()</pre> method added in the Label in the Perl API
+			and an extra argument with the same meaning added to <pre>chain</pre>
+			in the &Cpp; API.
+			</listitem>
+
+			<listitem>
+			The <pre>getTabtypeSafe()</pre> method added in the IndexType Perl API.
 			</listitem>
 		</itemizedlist>
 	</sect1>

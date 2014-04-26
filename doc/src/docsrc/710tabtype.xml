@@ -25,7 +25,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$tt = Triceps::TableType->new($rowType) or confess "$!";
+$tt = Triceps::TableType->new($rowType);
 </pre>
 
 		<para>
@@ -38,7 +38,7 @@ $tt = Triceps::TableType->new($rowType) or confess "$!";
 		</para>
 
 <pre>
-$tt->addSubIndex("indexName", $indexType) or confess "$!";
+$tt->addSubIndex("indexName", $indexType);
 </pre>
 
 		<para>
@@ -52,7 +52,7 @@ $tt->addSubIndex("indexName", $indexType) or confess "$!";
 $tt = Triceps::TableType->new($rowType) 
 	->addSubIndex("indexName1", $indexType1) 
 	->addSubIndex("indexName2", $indexType2)
-	or confess "$!";
+;
 </pre>
 
 		<para>
@@ -65,7 +65,7 @@ $tt = Triceps::TableType->new($rowType)
 		</para>
 
 <pre>
-$tt->initialize() or confess "$!";
+$tt->initialize();
 </pre>
 
 		<para>
@@ -95,7 +95,7 @@ $rowType = $tt->getRowType();
 		</para>
 
 <pre>
-$indexType = $tt->findSubIndex("indexName") or confess "$!";
+$indexType = $tt->findSubIndex("indexName");
 </pre>
 
 		<para>
@@ -141,7 +141,7 @@ $indexType = $tt->findIndexPath( ["indexName", "nestedIndexName"] );
 		</para>
 
 <pre>
-$indexType = $tt-findSubIndexById($indexTypeId) or confess "$!";
+$indexType = $tt-findSubIndexById($indexTypeId);
 </pre>
 
 		<para>

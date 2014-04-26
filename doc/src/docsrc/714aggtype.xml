@@ -28,7 +28,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 <pre>
 $at = Triceps::AggregatorType->new($resultRowType, "aggName", \&initFunc,
-	\&handlerFunc, @args) or die "$!";
+	\&handlerFunc, @args);
 </pre>
 
 		<para>

@@ -44,7 +44,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$rh = $table->makeRowHandle($row) or confess "$!";
+$rh = $table->makeRowHandle($row);
 </pre>
 
 		<para>
@@ -91,7 +91,7 @@ $result = $rh1->same($rh2);
 		</para>
 
 <pre>
-$row = $rh->getRow() or confess "$!";
+$row = $rh->getRow();
 </pre>
 
 		<para>
@@ -108,7 +108,7 @@ $rh = $rh->nextGroupIdx($idxType);
 
 		<para>
 		These methods work exactly the same as the same-named table methods.
-		They confess on errors. They are essentially syntactic sugar over
+		They are essentially syntactic sugar over
 		the table methods.
 		</para>
 

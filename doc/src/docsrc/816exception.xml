@@ -84,8 +84,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		interpreted (or compiled) languages. When something goes wrong
 		inside the Triceps program in Perl, you don't want to get a core dump
 		of the Perl interpreter. An interpreted program must never ever crash
-		the interpreter. You want to get the error reported in the Perl die()
-		or its nicer cousin confess(), and possibly intercept it in <pre>eval</pre>.
+		the interpreter. You want to get the error reported in the Perl <pre>die()</pre>
+		or its nicer cousin <pre>confess()</pre>, and possibly intercept it in <pre>eval</pre>.
 		So the Perl wrapper of the Triceps library changes the mode of Triceps exceptions
 		to actually throw the &Cpp; exceptions instead of aborting. Since  the
 		Perl code is not really interested in the details at the &Cpp; level, the

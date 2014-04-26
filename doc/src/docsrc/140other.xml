@@ -237,26 +237,24 @@ if ($a->get("value") < 0) {
 $lbA = $unit->makeLabel($rtA, "A", undef, sub {
 	my $rop = $_[1]; 
 	my $op = $rop->getOpcode(); my $a = $rop->getRow();
-	if ($a->get("value") < 0) { 
+	if ($a->get("value") < 0) {
 		$unit->call($lbB->makeRowop($op, $a));
-	} else { 
+	} else {
 		$unit->call($lbC->makeRowop($op, $a));
-	} 
-}) or die "$!";
+	}
+});
 
 $lbB = $unit->makeLabel($rtA, "B", undef, sub {
 	my $rop = $_[1]; 
 	my $op = $rop->getOpcode(); my $a = $rop->getRow();
-	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 1)
-		or die "$!";
-}) or die "$!";
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 1);
+});
 
 $lbC = $unit->makeLabel($rtA, "C", undef, sub {
 	my $rop = $_[1]; 
 	my $op = $rop->getOpcode(); my $a = $rop->getRow();
-	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 0)
-		or die "$!";
-}) or die "$!";
+	$unit->makeHashCall($lbD, $op, $a->toHash(), negative => 0);
+});
 </pre>
 
 		<indexterm>
@@ -495,7 +493,7 @@ my $collapse = Triceps::Collapse->new(
 
 		<para>
 		Like with the other shown templates, if something goes wrong, Collapse
-		will confess. No need to follow its methods with <pre>or confess</pre>.
+		will confess.
 		</para>
 
 <!-- t/Collapse.t testExplicitRowType -->

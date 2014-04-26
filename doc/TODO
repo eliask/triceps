@@ -130,7 +130,6 @@ Things that need to be done:
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
-* doc: in docbook update the source code produced by SimpleAggregator
 * doc: describe CLONE_SKIP
 * doc: a very short explanation of stock market terms in the intro
 * doc: in the scheduler description refer less to Coral8
@@ -143,7 +142,7 @@ Things that need to be done:
 * doc: in the intro, what is a "model"?
 * doc: for all C++ classes, show the header file for them
 * doc: reference for all new classes in Perl
-* doc: enumerate all the ways to call a streaming function
+* doc: for all Perl examples, show in the text the file that contains them
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -159,7 +158,8 @@ tangent 144, 157, 191, 197, 199, 204
 224-230
 231
 232-252
-254-260
+254-257
+259-260
 261 except Unit, FnReturn
 262-267
 269-277

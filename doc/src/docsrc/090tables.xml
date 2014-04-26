@@ -34,21 +34,20 @@ See the file COPYRIGHT for the copyright notice and license information
 
 <!-- t/xHelloTable.t helloWorldDirect reduced, shifted left -->
 <pre>
-my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
+my $hwunit = Triceps::Unit->new("hwunit");
 my $rtCount = Triceps::RowType->new(
 	address => "string",
 	count => "int32",
-) or confess "$!";
+);
 
 my $ttCount = Triceps::TableType->new($rtCount)
 	->addSubIndex("byAddress", 
 		Triceps::IndexType->newHashed(key => [ "address" ])
 	)
-or confess "$!";
-$ttCount->initialize() or confess "$!";
+;
+$ttCount->initialize();
 
-my $tCount = $hwunit->makeTable($ttCount, "tCount") 
-	or confess "$!";
+my $tCount = $hwunit->makeTable($ttCount, "tCount");
 
 while(&readLine) {
 	chomp;
@@ -67,7 +66,7 @@ while(&readLine) {
 		my $new = $rtCount->makeRowHash(
 			address => $data[1],
 			count => $cnt+1,
-		) or confess "$!";
+		);
 		$tCount->insert($new);
 	} elsif ($data[0] =~ /^count$/i) {
 		&send("Received '", $data[1], "' ", $cnt + 0, " times\n");
@@ -340,20 +339,20 @@ Received 'table' 2 times
 
 <!-- t/xHelloTable.t helloWorldLabels shifted left -->
 <pre>
-my $hwunit = Triceps::Unit->new("hwunit") or confess "$!";
+my $hwunit = Triceps::Unit->new("hwunit");
 my $rtCount = Triceps::RowType->new(
 	address => "string",
 	count => "int32",
-) or confess "$!";
+);
 
 my $ttCount = Triceps::TableType->new($rtCount)
 	->addSubIndex("byAddress", 
 		Triceps::IndexType->newHashed(key => [ "address" ])
 	)
-or confess "$!";
-$ttCount->initialize() or confess "$!";
+;
+$ttCount->initialize();
 
-my $tCount = $hwunit->makeTable($ttCount, "tCount") or confess "$!";
+my $tCount = $hwunit->makeTable($ttCount, "tCount");
 
 my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
 	"lbPrintCount", undef, sub { # (label, rowop)
@@ -361,8 +360,8 @@ my $lbPrintCount = $hwunit->makeLabel($tCount->getRowType(),
 		my $row = $rowop->getRow();
 		&send(&Triceps::opcodeString($rowop->getOpcode), " '", 
 			$row->get("address"), "', count ", $row->get("count"), "\n");
-	} ) or confess "$!";
-$tCount->getOutputLabel()->chain($lbPrintCount) or confess "$!";
+	} );
+$tCount->getOutputLabel()->chain($lbPrintCount);
 
 # the updates will be sent here, for the tables to process
 my $lbTableInput = $tCount->getInputLabel();
@@ -563,8 +562,7 @@ address="table" count="2"
 		<para>
 		The result allows to differentiate between the situations when the 
 		row was found and deleted and the row was not found.
-		On any error the call confesses. The <pre>insert()</pre> method also
-		follows this new convention and confesses on errors.
+		On any error the call confesses.
 		</para>
 
 		<para>
@@ -586,7 +584,7 @@ address="table" count="2"
 		<para>
 		It removes a specific row handle from the table. In whichever way you
 		find it, you can remove it. An attempt to remove a NULL handle would be
-		an error (and this method also confesses on errors).
+		an error and cause a confession.
 		</para>
 
 		<para>
@@ -698,7 +696,7 @@ address="table" count="2"
 		</para>
 
 <pre>
-$rh = $table->makeRowHandle($row) or confess "$!";
+$rh = $table->makeRowHandle($row);
 $table->insert($rh);
 </pre>
 
@@ -867,13 +865,13 @@ $result = $rh->isInTable();
 
 <!-- t/xWindow.t doWindow -->
 <pre>
-our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $uTrades = Triceps::Unit->new("uTrades");
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("bySymbol", 
@@ -882,27 +880,26 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
-our $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+;
+$ttWindow->initialize();
+our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
-our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol");
 # remember the FIFO index, for finding the start of the group
-our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2");
 
 # print out the changes to the table as they happen
 our $lbWindowPrint = $uTrades->makeLabel($rtTrade, "lbWindowPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n"); # print the change
-	}) or confess "$!";
-$tWindow->getOutputLabel()->chain($lbWindowPrint) or confess "$!";
+	});
+$tWindow->getOutputLabel()->chain($lbWindowPrint);
 
 while(&readLine) {
 	chomp;
-	my $rTrade = $rtTrade->makeRowArray(split(/,/)) or confess "$!";
-	my $rhTrade = $tWindow->makeRowHandle($rTrade) or confess "$!";
+	my $rTrade = $rtTrade->makeRowArray(split(/,/));
+	my $rhTrade = $tWindow->makeRowHandle($rTrade);
 	$tWindow->insert($rhTrade);
 	# There are two ways to find the first record for this
 	# symbol. Use one way for the symbol AAA and the other for the rest.
@@ -911,9 +908,9 @@ while(&readLine) {
 		$rhFirst = $tWindow->findIdx($itSymbol, $rTrade);
 	} else  {
 		# $rhTrade is now in the table but it's the last record
-		$rhFirst = $rhTrade->firstOfGroupIdx($itLast2) or confess "$!";
+		$rhFirst = $rhTrade->firstOfGroupIdx($itLast2);
 	}
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("New contents:\n");
 	for (my $rhi = $rhFirst; 
 			!$rhi->same($rhEnd); $rhi = $rhi->nextIdx($itLast2)) {
@@ -1235,15 +1232,6 @@ $ttWindow->addSubIndex("bySymbol", $itSymbol);
 		</para>
 
 		<indexterm>
-			<primary>error handling</primary>
-		</indexterm>
-		<para>
-		Checking the results of find and iteration methods by <pre>or confess</pre> would be
-		quite inconvenient, so these methods have been already made to
-		confess on errors.
-		</para>
-
-		<indexterm>
 			<primary>aggregation</primary>
 		</indexterm>
 		<para>
@@ -1299,20 +1287,21 @@ $size = $table->groupSizeIdx($idxType, $row_or_rh);
 		If you have a table type defined as:
 		</para>
 
+<!-- from t/xJoin.t -->
 <pre>
 our $ttPosition = Triceps::TableType->new($rtPosition)
 	->addSubIndex("primary",
 		Triceps::IndexType->newHashed(key => [ "date", "customer", "symbol" ])
-	) 
+	)
 	->addSubIndex("currencyLookup", # for joining with currency conversion
 		Triceps::IndexType->newHashed(key => [ "date", "currency" ])
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
-	) 
+	)
 	->addSubIndex("byDate", # for cleaning by date
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
-	) 
-or confess "$!";
+	)
+;
 </pre>
 
 		<para>
@@ -1391,13 +1380,13 @@ TableType
 
 <!-- t/xWindow.t doSecondary -->
 <pre>
-our $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+our $uTrades = Triceps::Unit->new("uTrades");
 our $rtTrade = Triceps::RowType->new(
 	id => "int32", # trade unique id
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 our $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -1409,30 +1398,29 @@ our $ttWindow = Triceps::TableType->new($rtTrade)
 				Triceps::IndexType->newFifo(limit => 2)
 			)
 	)
-	or confess "$!";
-$ttWindow->initialize() or confess "$!";
-our $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+;
+$ttWindow->initialize();
+our $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # remember the index type by symbol, for searching on it
-our $itSymbol = $ttWindow->findSubIndex("bySymbol") or confess "$!";
+our $itSymbol = $ttWindow->findSubIndex("bySymbol");
 # remember the FIFO index, for finding the start of the group
-our $itLast2 = $itSymbol->findSubIndex("last2") or confess "$!";
+our $itLast2 = $itSymbol->findSubIndex("last2");
 
 # remember, which was the last row modified
 our $rLastMod;
 our $lbRememberLastMod = $uTrades->makeLabel($rtTrade, "lbRememberLastMod",
 	undef, sub { # (label, rowop)
 		$rLastMod = $_[1]->getRow();
-	}) or confess "$!";
-$tWindow->getOutputLabel()->chain($lbRememberLastMod) or confess "$!";
+	});
+$tWindow->getOutputLabel()->chain($lbRememberLastMod);
 
 # Print the average price of the symbol in the last modified row
 sub printAverage # (row)
 {
 	return unless defined $rLastMod;
 	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("Contents:\n");
 	my $avg;
 	my ($sum, $count);
@@ -1451,11 +1439,7 @@ sub printAverage # (row)
 while(&readLine) {
 	chomp;
 	my @data = split(/,/);
-	my $op = shift @data; # string opcode, if incorrect then will die later
-	my $rTrade = $rtTrade->makeRowArray(@data) or confess "$!";
-	my $rowop = $tWindow->getInputLabel()->makeRowop($op, $rTrade) 
-		or confess "$!";
-	$uTrades->call($rowop) or confess "$!";
+	$uTrades->makeArrayCall($tWindow->getInputLabel(), @data);
 	&printAverage();
 	undef $rLastMod; # clear for the next iteration
 	$uTrades->drainFrame(); # just in case, for completeness
@@ -1664,22 +1648,22 @@ $it = Triceps::IndexType->newPerlSorted($sortName,
 		example:
 		</para>
 
+<!-- t/SortedIndexType.t -->
 <pre>
 $rt1 = Triceps::RowType->new(
 	a => "int32",
 	b => "string",
-) or confess "$!";
+);
 
-$it1 = Triceps::IndexType->newPerlSorted("basic", undef, \&compBasic)
-	or confess "$!"; 
+$it1 = Triceps::IndexType->newPerlSorted("basic", undef, \&compBasic);
 
 $tt1 = Triceps::TableType->new($rt1)
 	->addSubIndex("primary", $it1)
-	or confess "$!"; 
+; 
 
 $tt2 = Triceps::TableType->new($rt1)
 	->addSubIndex("first", $it1)
-	or confess "$!";
+; 
 
 print $tt1->print(), "\n";
 print $tt2->print(), "\n";
@@ -1754,7 +1738,7 @@ sub compAscDesc # ($row1, $row2, $numFldAsc, $strFldDesc)
 }
 
 my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
-	\&compAscDesc, "a", "b") or confess "$!";
+	\&compAscDesc, "a", "b");
 </pre>
 
 		<para>
@@ -1796,6 +1780,7 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 		last example can be defined as:
 		</para>
 
+<!-- XXXX add to xSnippets -->
 <pre>
 sub initNumStr # ($tabt, $idxt, $rowt, @args)
 {
@@ -1826,7 +1811,7 @@ sub initNumStr # ($tabt, $idxt, $rowt, @args)
 }
 
 my $sit = Triceps::IndexType->newPerlSorted("by_a_b", \&initNumStr,
-	\&compAscDesc, "a", "b") or confess "$!";
+	\&compAscDesc, "a", "b");
 </pre>
 
 		<para>
@@ -1835,16 +1820,8 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", \&initNumStr,
 		</para>
 
 <pre>
-$idxt->setComparator(\&compareFunc)
-	or return "Failed to set comparator: $!";
+$idxt->setComparator(\&compareFunc);
 </pre>
-
-		<para>
-		Instead of the usual <quote><pre>or confess</pre></quote>, 
-		this snippet shows <quote><pre>or return</pre></quote>
-		because this is the error indication convention of the init
-		function. But <quote><pre>or confess</pre></quote> woudl work too.
-		</para>
 
 		<para>
 		When the init function sets the comparator,
@@ -1912,8 +1889,7 @@ $idxt->setComparator(\&compareFunc)
 		</para>
 
 <pre>
-$it = Triceps::SimpleOrderedIndex->new($fieldName => $order, ...)
-	or confess "$!";
+$it = Triceps::SimpleOrderedIndex->new($fieldName => $order, ...);
 </pre>
 
 		<para>
@@ -1929,7 +1905,7 @@ my $tabType = Triceps::TableType->new($rowType)
 			a => "ASC",
 			b => "DESC",
 		)
-	) or confess "$!";
+	);
 </pre>
 
 		<para>
@@ -1950,7 +1926,7 @@ my $tabType = Triceps::TableType->new($rowType)
 		</para>
 
 <pre>
-$sortIdx = $tabType->findSubIndex("sorted") or confess "$!";
+$sortIdx = $tabType->findSubIndex("sorted");
 </pre>
 
 		<para>
@@ -1987,7 +1963,6 @@ PerlSortedIndex(SimpleOrder a ASC, b DESC, )
 <!-- lib/Triceps/SimpleOrderedIndex.pm with "XXX" lines dropped  -->
 <pre>
 package Triceps::SimpleOrderedIndex;
-use Carp;
 
 our @ISA = qw(Triceps::IndexType);
 
@@ -2008,8 +1983,8 @@ sub new # ($class, $fieldName => $direction...)
 	}
 
 	$self = Triceps::IndexType->newPerlSorted(
-		$sortName, \&init, undef, @args
-	) or confess "$!";
+		$sortName, '&Triceps::SimpleOrderedIndex::init(@_)', undef, @args
+	);
 	bless $self, $class;
 	return $self;
 }
@@ -2020,7 +1995,7 @@ sub init # ($tabt, $idxt, $rowt, @args)
 	my ($tabt, $idxt, $rowt, @args) = @_;
 	my %def = $rowt->getdef(); # the field definition
 	my $errors; # collect as many errors as possible
-	my $compare = "sub {\n"; # the generated comparison function
+	my $compare = ""; # the generated comparison function
 	my $connector = "return"; # what goes between the comparison operators
 
 	while ($#args >= 0) {
@@ -2060,23 +2035,15 @@ sub init # ($tabt, $idxt, $rowt, @args)
 	}
 
 	$compare .= "  ;\n";
-	$compare .= "}";
 
 	if (defined $errors) {
 		# help with diagnostics, append the row type to the error listing
 		$errors .= "the row type is:\n";
 		$errors .= $rowt->print();
 	} else {
-		# compile the comparison
+		# set the comparison as source code
 		#print STDERR "DEBUG Triceps::SimpleOrderedIndex::init: comparison function:\n$compare\n";
-		my $cmpfunc = eval $compare 
-			or return "Triceps::SimpleOrderedIndex::init: internal error when compiling the compare function:\n"
-				. "$@\n"
-				. "The generated comparator was:\n"
-				. $compare;
-		$idxt->setComparator($cmpfunc)
-			or return "Triceps::SimpleOrderedIndex::init: internal error: can not set the compare function:\n"
-			. "$!\n";
+		$idxt->setComparator($compare);
 	}
 	return $errors;
 }
@@ -2808,12 +2775,22 @@ $result = $idxType->isInitialized();
 		be changed any more, and any methods that change it will return an
 		error.
 		When an index type becomes initialized, it becomes tied to a particular
-		table type. This table type can be read with
+		table type. This table type can be read with:
 		</para>
 
 <pre>
-$tabType = $idxType->getTabtype() or confess "$!";
+$tabType = $idxType->getTabtype();
+$tabType = $idxType->getTabtypeSafe();
 </pre>
+
+		<para>
+		The difference between these methods is what happens if the index type
+		was not set into a table type yet. <pre>getTabtype()</pre> would
+		confess while <pre>getTabtypeSafe()</pre> would return an <pre>undef</pre>.
+		Which method to use, depends on the circumstances: if this situation
+		is valid and you're ready to check for it and handle it, use
+		<pre>getTabtypeSafe()</pre>, otherwise use <pre>getTabtype()</pre>.
+		</para>
 
 		<indexterm>
 			<primary>index</primary>
@@ -2837,10 +2814,10 @@ $idxTypeCopy = $idxType->copy();
 		</para>
 
 <pre>
-$itSub = $tabType->findSubIndex("indexName") or confess "$!";
+$itSub = $tabType->findSubIndex("indexName");
 @itSubs = $tabType->getSubIndexes();
 
-$itSub = $idxType->findSubIndex("indexName") or confess "$!";
+$itSub = $idxType->findSubIndex("indexName");
 @itSubs = $idxType->getSubIndexes();
 </pre>
 
@@ -2950,7 +2927,7 @@ $tt = Triceps::TableType->new($rt)
 		Triceps::IndexType->newHashed(key => [ "ccy2" ])
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
+;
 </pre>
 
 		<para>
@@ -2976,7 +2953,7 @@ $tt = Triceps::TableType->new($rt)
 			Triceps::IndexType->newHashed(key => [ "ccy2", "ccy1" ])
 		)
 	)
-or confess "$!";
+;
 </pre>
 
 		<para>
@@ -3041,7 +3018,7 @@ $stringId = &Triceps::indexIdString($intId);
 		</para>
 
 <pre>
-$itSub = $idxType->findSubIndexById($indexTypeId) or confess "$!";
+$itSub = $idxType->findSubIndexById($indexTypeId);
 </pre>
 
 		<para>

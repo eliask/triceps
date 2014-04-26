@@ -73,7 +73,7 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 my $ttWindow = Triceps::TableType->new($rtTrade)
 	->addSubIndex("byId", 
@@ -83,7 +83,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 		->addSubIndex("fifo", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
+;
 
 # the aggregation result
 my $rtVwap;
@@ -104,17 +104,15 @@ Triceps::SimpleAggregator::make(
 	saveComputeTo => \$compText,
 );
 
-$ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+$ttWindow->initialize();
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbPrint = $uTrades->makeLabel($rtVwap, "lbPrint",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint)
-	or confess "$!";
+	});
+$tWindow->getAggregatorLabel("aggrVwap")->chain($lbPrint);
 
 while(&readLine) {
 	chomp;
@@ -262,27 +260,27 @@ tWindow.aggrVwap OP_INSERT symbol="def" id="18" volume="1200" vwap="193.5"
 		and is omitted:
 		</para>
 
-<!-- t/xWindow.t doManualAgg1 -->
+<!-- t/xWindow.t doManualAgg1 fragment -->
 <pre>
 our $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or confess "$!";
+);
 
 # place to send the average: could be a dummy label, but to keep the
 # code smaller also print the rows here, instead of in a separate label
 our $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&send($_[1]->printP(), "\n");
-	}) or confess "$!";
+	});
 
 # Send the average price of the symbol in the last modified row
 sub computeAverage # (row)
 {
 	return unless defined $rLastMod;
-	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("Contents:\n");
 	my $avg = 0;
 	my ($sum, $count);
@@ -392,17 +390,22 @@ Contents:
 		The rest of the example stays the same.
 		</para>
 
-<!-- t/xWindow.t doManualAgg2 -->
+<!-- t/xWindow.t doManualAgg2 fragment -->
 <pre>
+our $rtAvgPrice = Triceps::RowType->new(
+	symbol => "string", # symbol traded
+	id => "int32", # last trade's id
+	price => "float64", # avg price of the last 2 trades
+);
+
 our $ttAvgPrice = Triceps::TableType->new($rtAvgPrice)
 	->addSubIndex("bySymbol", 
 		Triceps::IndexType->newHashed(key => [ "symbol" ])
 	)
-	or confess "$!";
-$ttAvgPrice->initialize() or confess "$!";
-our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, 
-	"tAvgPrice") or confess "$!";
-our $lbAvgPriceHelper = $tAvgPrice->getInputLabel() or confess "$!";
+;
+$ttAvgPrice->initialize();
+our $tAvgPrice = $uTrades->makeTable($ttAvgPrice, "tAvgPrice");
+our $lbAvgPriceHelper = $tAvgPrice->getInputLabel();
 
 # place to send the average: could be a dummy label, but to keep the
 # code smaller also print the rows here, instead of in a separate label
@@ -412,8 +415,8 @@ our $lbAverage = makePrintLabel("lbAverage", $tAvgPrice->getOutputLabel());
 sub computeAverage2 # (row)
 {
 	return unless defined $rLastMod;
-	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod) or confess "$!";
-	my $rhEnd = $rhFirst->nextGroupIdx($itLast2) or confess "$!";
+	my $rhFirst = $tWindow->findIdx($itSymbol, $rLastMod);
+	my $rhEnd = $rhFirst->nextGroupIdx($itLast2);
 	&send("Contents:\n");
 	my $avg = 0;
 	my ($sum, $count);
@@ -563,7 +566,7 @@ tAvgPrice.out OP_INSERT symbol="AAA" id="7" price="30"
 
 <!-- t/xAgg.t doNonAdditive -->
 <pre>
-my $uTrades = Triceps::Unit->new("uTrades") or confess "$!";
+my $uTrades = Triceps::Unit->new("uTrades");
 
 # the input data
 my $rtTrade = Triceps::RowType->new(
@@ -571,14 +574,14 @@ my $rtTrade = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	price => "float64",
 	size => "float64", # number of shares traded
-) or confess "$!";
+);
 
 # the aggregation result
 my $rtAvgPrice = Triceps::RowType->new(
 	symbol => "string", # symbol traded
 	id => "int32", # last trade's id
 	price => "float64", # avg price of the last 2 trades
-) or confess "$!";
+);
 
 # aggregation handler: recalculate the average each time the easy way
 sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
@@ -596,14 +599,14 @@ sub computeAverage1 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$context->send($opcode, $res);
 }
 
@@ -620,10 +623,9 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or confess "$!";
-$ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+;
+$ttWindow->initialize();
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -725,7 +727,7 @@ while(&readLine) {
 		</para>
 
 <pre>
-$aggLabel = $table->getAggregatorLabel("aggName") or confess "$!";
+$aggLabel = $table->getAggregatorLabel("aggName");
 </pre>
 
 		<para>
@@ -768,14 +770,6 @@ $aggLabel = $table->getAggregatorLabel("aggName") or confess "$!";
 		aggregated (look at the index tree drawings in
 		<xref linkend="sc_table_indextree" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		for the difference between an index type and an index).
-		</para>
-
-		<indexterm>
-			<primary>error handling</primary>
-		</indexterm>
-		<para>
-		All the aggregator context methods use the new error handling,
-		confessing on errors.
 		</para>
 
 		<indexterm>
@@ -1097,7 +1091,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or confess "$!";
+;
 </pre>
 
 		<para>
@@ -1177,14 +1171,14 @@ sub computeAverage2 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$context->send($opcode, $res);
 }
 </pre>
@@ -1251,7 +1245,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 		->addSubIndex("last3",
 			Triceps::IndexType->newFifo(limit => 3))
 	)
-or confess "$!";
+;
 </pre>
 
 		<para>
@@ -1412,14 +1406,14 @@ sub computeAverage4 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	${$state} = $res;
 	$context->send($opcode, $res);
 }
@@ -1443,7 +1437,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or confess "$!";
+;
 </pre>
 
 		<para>
@@ -1526,14 +1520,14 @@ sub computeAverage5 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$_[5] = $res;
 	$context->send($opcode, $res);
 }
@@ -1628,7 +1622,6 @@ tWindow.aggrAvgPrice OP_DELETE symbol="AAA" id="5" price="30"
 
 <!-- t/xAgg.t doSimpleAdditiveState -->
 <pre>
-# aggregation handler: recalculate the average additively
 sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 {
 	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
@@ -1650,14 +1643,14 @@ sub computeAverage7 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $count = $context->groupSize();
 	my $avg = $state->{price_sum}/$count;
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$state->{lastrow} = $res;
 
 	$context->send($opcode, $res);
@@ -1694,7 +1687,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or confess "$!";
+;
 </pre>
 
 		<indexterm>
@@ -1885,7 +1878,7 @@ sub computeAverage8 # (table, context, aggop, opcode, rh, state, args...)
 	return if ($context->groupSize()==0
 		|| $opcode == &Triceps::OP_NOP);
 
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $count = $context->groupSize();
 
 	$context->makeHashSend($opcode, 
@@ -2164,14 +2157,14 @@ sub computeAverage10 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$context->send($opcode, $res);
 }
 
@@ -2188,18 +2181,16 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or confess "$!";
-$ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+;
+$ttWindow->initialize();
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = $uTrades->makeLabel($rtAvgPrice, "lbAverage",
 	undef, sub { # (label, rowop)
 		&sendf("%.17g\n", $_[1]->getRow()->get("price"));
-	}) or confess "$!";
-$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage)
-	or confess "$!";
+	});
+$tWindow->getAggregatorLabel("aggrAvgPrice")->chain($lbAverage);
 </pre>
 
 		<para>
@@ -2291,14 +2282,14 @@ sub computeAverage11 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->last()->getRow() or confess "$!";
+	my $rLast = $context->last()->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$context->send($opcode, $res);
 }
 
@@ -2319,10 +2310,9 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			->addSubIndex("multi", Triceps::IndexType->newFifo())
 		)
 	)
-or confess "$!";
-$ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+;
+$ttWindow->initialize();
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 $idxByPrice = $ttWindow->findIndexPath("bySymbol", "byPrice");
 </pre>
@@ -2432,14 +2422,14 @@ sub computeAverage12 # (table, context, aggop, opcode, rh, state, args...)
 		$count++;
 		$sum += $rhi->getRow()->get("price");
 	}
-	my $rLast = $context->lastIdx($idxByOrder)->getRow() or confess "$!";
+	my $rLast = $context->lastIdx($idxByOrder)->getRow();
 	my $avg = $sum/$count;
 
 	my $res = $context->resultType()->makeRowHash(
 		symbol => $rLast->get("symbol"), 
 		id => $rLast->get("id"), 
 		price => $avg
-	) or confess "$!";
+	);
 	$context->send($opcode, $res);
 }
 
@@ -2460,10 +2450,9 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			)
 		)
 	)
-or confess "$!";
-$ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+;
+$ttWindow->initialize();
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 $idxByOrder = $ttWindow->findIndexPath("bySymbol", "last4");
 </pre>
@@ -2510,7 +2499,7 @@ my $ttWindow = Triceps::TableType->new($rtTrade)
 			Triceps::IndexType->newFifo(limit => 2)
 		)
 	)
-or confess "$!";
+;
 
 # the aggregation result
 my $rtAvgPrice;
@@ -2529,9 +2518,8 @@ Triceps::SimpleAggregator::make(
 	saveComputeTo => \$compText,
 );
 
-$ttWindow->initialize() or confess "$!";
-my $tWindow = $uTrades->makeTable($ttWindow, 
-	"tWindow") or confess "$!";
+$ttWindow->initialize();
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
 
 # label to print the result of aggregation
 my $lbAverage = makePrintLabel("lbAverage", 
@@ -2554,8 +2542,7 @@ $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 </pre>
 
 		<para>
-		It returns back the table type that it received as an option
-		on success or confesses on errors.
+		It returns back the table type that it received as an option.
 		But most of the time there is not a whole lot of use to that
 		return value, and it gets simply ignored.
 		Most of the <quote>options</quote> are actually mandatory. The
@@ -2640,34 +2627,33 @@ $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 		compute function to make sense of these errors. The option
 		<pre>saveComputeTo</pre> gives a variable to save that source code for future
 		perusal and other entertainment. Here is the compute function that 
-		gets produced by the example above:
+		gets produced by the example above (it gets implicitly wrapped in a
+		<pre>sub { ... }</pre>):
 		</para>
 
-<!-- saved by uncommenting the print in t/xAgg.t doSimpleAgg -->
+<!-- t/xAgg.t doSimpleAgg, contents of $compText -->
 <pre>
-sub {
-	use strict;
-	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
-	return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
-	my $v2_count = 0;
-	my $v2_sum = 0;
-	my $npos = 0;
-	for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
-		my $row = $rhi->getRow();
-		# field price=avg
-		my $a2 = $args[2]($row);
-		{ if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
-		$npos++;
-	}
-	my $rowLast = $context->last()->getRow();
-	my $l0 = $args[0]($rowLast);
-	my $l1 = $args[1]($rowLast);
-	$context->makeArraySend($opcode,
-		($l0), # symbol
-		($l1), # id
-		(($v2_count == 0? undef : $v2_sum / $v2_count)), # price
-	);
-}
+  use strict;
+  my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+  return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
+  my $v2_count = 0;
+  my $v2_sum = 0;
+  my $npos = 0;
+  for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
+    my $row = $rhi->getRow();
+    # field price=avg
+    my $a2 = $args[2]($row);
+    { if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
+    $npos++;
+  }
+  my $rowLast = $context->last()->getRow();
+  my $l0 = $args[0]($rowLast);
+  my $l1 = $args[1]($rowLast);
+  $context->makeArraySend($opcode,
+    ($l0), # symbol
+    ($l1), # id
+    (($v2_count == 0? undef : $v2_sum / $v2_count)), # price
+  );
 </pre>
 
 		<para>
@@ -3190,6 +3176,7 @@ sub make # (optName => optValue, ...)
 		function definition.
 		</para>
 
+<!-- removed XXX lines -->
 <pre>
 			### result building
 			my $result = $funcDef->{result};
@@ -3209,8 +3196,7 @@ sub make # (optName => optValue, ...)
 
 			$id++;
 		}
-		$rtRes = Triceps::RowType->new(@rtdefRes)
-			or confess "$myname: invalid result row type definition: $!";
+		$rtRes = Triceps::RowType->new(@rtdefRes);
 	}
 	${$opts->{saveRowTypeTo}} = $rtRes if (defined($opts->{saveRowTypeTo}));
 </pre>
@@ -3257,17 +3243,16 @@ sub make # (optName => optValue, ...)
 		The optional parts get included only if some of the functions needed them.
 		</para>
 
+<!-- removed XXX lines -->
 <pre>
 	# compile the computation function
 	my $compFun = eval $compText
 		or confess "$myname: error in compilation of the aggregation computation:\n  $@\nfunction text:\n$compText ";
 
 	# build and add the aggregator
-	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun, @compArgs)
-		or confess "$myname: internal error: failed to build an aggregator type: $! ";
+	my $agg = Triceps::AggregatorType->new($rtRes, $opts->{name}, undef, $compFun, @compArgs);
 
-	$idx->setAggregator($agg)
-		or confess "$myname: failed to set the aggregator in the index type: $! ";
+	$idx->setAggregator($agg);
 
 	return $opts->{tabType};
 }
@@ -3352,34 +3337,32 @@ sub replaceResult # ($varname, $func, $vars, $id, $argCount)
 </pre>
 
 		<para>
-		Which produced the function:
+		Which produced the function body:
 		</para>
 
 <!-- saved by uncommenting the print in t/xAgg.t doSimpleAgg, copy 2 -->
 <pre>
-sub {
-	use strict;
-	my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
-	return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
-	my $v2_count = 0;
-	my $v2_sum = 0;
-	my $npos = 0;
-	for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
-		my $row = $rhi->getRow();
-		# field price=avg
-		my $a2 = $args[2]($row);
-		{ if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
-		$npos++;
-	}
-	my $rowLast = $context->last()->getRow();
-	my $l0 = $args[0]($rowLast);
-	my $l1 = $args[1]($rowLast);
-	$context->makeArraySend($opcode,
-		($l0), # symbol
-		($l1), # id
-		(($v2_count == 0? undef : $v2_sum / $v2_count)), # price
-	);
-}
+  use strict;
+  my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+  return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
+  my $v2_count = 0;
+  my $v2_sum = 0;
+  my $npos = 0;
+  for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
+    my $row = $rhi->getRow();
+    # field price=avg
+    my $a2 = $args[2]($row);
+    { if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
+    $npos++;
+  }
+  my $rowLast = $context->last()->getRow();
+  my $l0 = $args[0]($rowLast);
+  my $l1 = $args[1]($rowLast);
+  $context->makeArraySend($opcode,
+    ($l0), # symbol
+    ($l1), # id
+    (($v2_count == 0? undef : $v2_sum / $v2_count)), # price
+  );
 </pre>
 
 		<para>

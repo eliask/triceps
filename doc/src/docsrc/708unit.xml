@@ -38,7 +38,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$myUnit = Triceps::Unit->new("name") or confess "$!";
+$myUnit = Triceps::Unit->new("name");
 </pre>
 
 		<para>
@@ -218,8 +218,7 @@ $unit->loopAt($mark, @rowops_or_trays);
 		<para>
 		The rowop arguments of the <pre>loopAt()</pre> are the same as for the
 		other enqueueing functions, and as for other functions they may happen
-		to be trays. These methods also use the new error handling scheme, and
-		will confess on errors. No need to check the results.
+		to be trays.
 		</para>
 
 		<para>

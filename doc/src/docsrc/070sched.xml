@@ -462,6 +462,9 @@ $tray->push(@rowops);
 			<primary>error handling</primary>
 		</indexterm>
 		<para>
+		The basics of error handling have been described in
+		<xref linkend="sc_confessions" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		Now let's look more in-depth.
 		When the labels execute, they may produce errors in one of two ways:
 		</para>
 
@@ -480,7 +483,8 @@ $tray->push(@rowops);
 		The idea is to catch the call sequences that are likely to go into 
 		the deep recursion and overflow the stack. It catches them early,
 		on the first attempt of recursion. If you need to do the recursion,
-		use <pre>schedule()</pre> or <pre>loopAt()</pre> or the streaming
+		the best way is to use instead
+		<pre>schedule()</pre> or <pre>loopAt()</pre> or the streaming
 		functions with trays. That way you avoid overrunning the stack.
 		</para>
 
@@ -569,7 +573,7 @@ $tray->push(@rowops);
 		</para>
 
 		<para>
-		An interesting question is, what happens to the rowops that were
+		What happens to the rowops that were
 		enqueued in the Triceps stack frames when the stack gets unwound? They
 		get thrown away. The memory gets collected thanks to the reference
 		counting, but the rowops and their sequence order get thrown out

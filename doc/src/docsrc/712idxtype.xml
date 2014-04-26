@@ -80,8 +80,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</variablelist>
 
 <pre>
-$it = Triceps::IndexType->newHashed($optionName => $optionValue, ...)
-	or confess "$!";
+$it = Triceps::IndexType->newHashed($optionName => $optionValue, ...);
 </pre>
 
 		<para>
@@ -91,8 +90,7 @@ $it = Triceps::IndexType->newHashed($optionName => $optionValue, ...)
 		</para>
 
 <pre>
-$it = Triceps::IndexType->newFifo($optionName => $optionValue, ...)
-	or confess "$!";
+$it = Triceps::IndexType->newFifo($optionName => $optionValue, ...);
 </pre>
 
 		<para>
@@ -135,7 +133,7 @@ $it = Triceps::IndexType->newFifo($optionName => $optionValue, ...)
 
 <pre>
 $it = Triceps::IndexType->newPerlSorted($sortName, \&initFunc,
-	\&compareFunc, @args...) or confess "$!";
+	\&compareFunc, @args...);
 </pre>
 
 		<para>
@@ -185,8 +183,7 @@ $it = Triceps::IndexType->newPerlSorted($sortName, \&initFunc,
 		</para>
 
 <pre>
-$it = Triceps::SimpleOrderedIndex->new($fieldName => $order, ...)
-	or confess "$!";
+$it = Triceps::SimpleOrderedIndex->new($fieldName => $order, ...);
 </pre>
 
 		<para>
@@ -197,7 +194,7 @@ $it = Triceps::SimpleOrderedIndex->new($fieldName => $order, ...)
 		</para>
 
 <pre>
-$indexType2->addSubIndex("indexName", $indexType1) or confess "$!";
+$indexType2->addSubIndex("indexName", $indexType1);
 </pre>
 
 		<para>
@@ -210,8 +207,8 @@ $indexType2->addSubIndex("indexName", $indexType1) or confess "$!";
 		</para>
 
 <pre>
-$itSub = $it->findSubIndex("indexName") or confess "$!";
-$itSub = $it->findSubIndexById($indexTypeId) or confess "$!";
+$itSub = $it->findSubIndex("indexName");
+$itSub = $it->findSubIndexById($indexTypeId);
 
 @itSubs = $it->getSubIndexes();
 $itSub = $it->getFirstLeaf();
@@ -223,7 +220,7 @@ $itSub = $it->getFirstLeaf();
 		</para>
 
 <pre>
-$it->setAggregator($aggType) or confess "$!";
+$it->setAggregator($aggType);
 </pre>
 
 		<para>
@@ -269,13 +266,19 @@ $itCopy = $it->copy();
 		</para>
 
 <pre>
-$tabType = $it->getTabtype() or confess "$!";
+$tabType = $it->getTabtype();
+$tabType = $it->getTabtypeSafe();
 </pre>
 
 		<para>
 		Returns the table type, to which this index type is tied.
 		When an index type becomes initialized, it becomes tied to a particular table type.
-		If the index type is not initialized yet, this will return an error.
+		If the index type is not initialized yet,
+		<pre>getTabtype()</pre> would confess while <pre>getTabtypeSafe()</pre> would 
+		return an <pre>undef</pre>.
+		Which method to use, depends on the circumstances: if this situation
+		is valid and you're ready to check for it and handle it, use
+		<pre>getTabtypeSafe()</pre>, otherwise use <pre>getTabtype()</pre>.
 		</para>
 
 <pre>
@@ -328,7 +331,7 @@ $result = $it->isLeaf();
 		</para>
 
 <pre>
-$it->setComparator(\&compareFunc, @args...) or confess "$!";
+$it->setComparator(\&compareFunc, @args...);
 </pre>
 
 		<para>
@@ -336,7 +339,7 @@ $it->setComparator(\&compareFunc, @args...) or confess "$!";
 		Sets an auto-generater comparator function and its optional
 		arguments from an initializer function at the table initialization
 		time. On success it returns 1. For all other index types this method
-		returns an error.
+		confesses.
 		</para>
 
 	</sect1>

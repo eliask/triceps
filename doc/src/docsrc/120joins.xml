@@ -234,13 +234,13 @@ our $rtInTrans = Triceps::RowType->new( # a transaction received
 	acctSrc => "string", # external system that sent us a transaction
 	acctXtrId => "string", # its name of the account of the transaction
 	amount => "int32", # the amount of transaction (int is easier to check)
-) or confess "$!";
+);
 
 our $rtAccounts = Triceps::RowType->new( # account translation map
 	source => "string", # external system that sent us a transaction
 	external => "string", # its name of the account in the transaction
 	internal => "int32", # our internal account id
-) or confess "$!";
+);
 </pre>
 
 		<para>
@@ -271,8 +271,8 @@ our $ttAccounts = Triceps::TableType->new($rtAccounts)
 		Triceps::IndexType->newHashed(key => [ "internal" ])
 		->addSubIndex("lookupInt", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttAccounts->initialize() or confess "$!";
+;
+$ttAccounts->initialize();
 </pre>
 
 		<para>
@@ -306,8 +306,7 @@ $ttAccounts->initialize() or confess "$!";
 <pre>
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tAccounts = $uJoin->makeTable($ttAccounts, 
-	"tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
 
 my $lbFilterResult = $uJoin->makeDummyLabel($rtInTrans, "lbFilterResult");
 my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
@@ -320,7 +319,7 @@ my $lbFilter = $uJoin->makeLabel($rtInTrans, "lbFilter", undef, sub {
 	if (!$rh->isNull()) {
 		$uJoin->call($lbFilterResult->adopt($rowop));
 	}
-}) or confess "$!";
+});
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbFilterResult);
@@ -692,11 +691,10 @@ our $ttAccounts2 = Triceps::TableType->new($rtAccounts)
 			->addSubIndex("grouping", Triceps::IndexType->newFifo())
 		)
 	)
-or confess "$!";
-$ttAccounts2->initialize() or confess "$!";
+;
+$ttAccounts2->initialize();
 
-our $tAccounts = $uJoin->makeTable($ttAccounts2, 
-	"tAccounts") or confess "$!";
+our $tAccounts = $uJoin->makeTable($ttAccounts2, "tAccounts");
 
 our $join = Triceps::LookupJoin->new(
 	unit => $uJoin,
@@ -706,6 +704,7 @@ our $join = Triceps::LookupJoin->new(
 	rightIdxPath => [ "iterateSrc", "lookupSrcExt" ],
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
+	#saveJoinerTo => \$code,
 ); # would confess by itself on an error
 </pre>
 
@@ -857,10 +856,10 @@ while(&readLine) {
 		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
 	} elsif ($type eq "trans") {
 		my $op = shift @data; # drop the opcode field
-		my $trans = $rtInTrans->makeRowArray(@data) or confess "$!";
+		my $trans = $rtInTrans->makeRowArray(@data);
 		my @rows = $join->lookup($trans);
 		foreach my $r (@rows) {
-			$uJoin->call($lbPrint->makeRowop($op, $r)) or confess "$!";
+			$uJoin->call($lbPrint->makeRowop($op, $r));
 		}
 	}
 	$uJoin->drainFrame(); # just in case, for completeness
@@ -1180,6 +1179,7 @@ our $join = Triceps::LookupJoin->new(
 		is this:
 		</para>
 
+<!-- t/xJoin.t, doLookupLeft, uncomment saveJoinerTo and print it -->
 <pre>
 sub # ($inLabel, $rowop, $self)
 {
@@ -1195,13 +1195,12 @@ sub # ($inLabel, $rowop, $self)
 	my $resLabel = $self->{outputLabel};
 
 	my $lookuprow = $self->{rightRowType}->makeRowHash(
-		source => $leftdata[1],
-		external => $leftdata[2],
+		"source" => $leftdata[1],
+		"external" => $leftdata[2],
 		);
 	
 	#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
 	my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
-	Carp::confess("$!") unless defined $rh;
 
 	my @rightdata; # fields from the right side, defaults to all-undef, if no data found
 	my @result; # the result rows will be collected here
@@ -1219,9 +1218,7 @@ sub # ($inLabel, $rowop, $self)
 		);
 		my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
 		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
-		Carp::confess("$!") unless defined $resrowop;
-		Carp::confess("$!") 
-			unless $resLabel->getUnit()->call($resrowop);
+		$resLabel->getUnit()->call($resrowop);
 		
 }
 </pre>
@@ -1258,13 +1255,12 @@ sub  # ($self, $row)
 	my @leftdata = $row->toArray();
 
 	my $lookuprow = $self->{rightRowType}->makeRowHash(
-		source => $leftdata[1],
-		external => $leftdata[2],
+		"source" => $leftdata[1],
+		"external" => $leftdata[2],
 		);
 	
 	#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
 	my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
-	Carp::confess("$!") unless defined $rh;
 
 	my @rightdata; # fields from the right side, defaults to all-undef, if no data found
 	my @result; # the result rows will be collected here
@@ -1329,13 +1325,12 @@ sub # ($inLabel, $rowop, $self)
 	my $resLabel = $self->{outputLabel};
 
 	my $lookuprow = $self->{rightRowType}->makeRowHash(
-		source => $leftdata[1],
-		external => $leftdata[2],
+		"source" => $leftdata[1],
+		"external" => $leftdata[2],
 		);
 	
 	#print STDERR "DEBUGX " . $self->{name} . " lookup: ", $lookuprow->printP(), "\n";
 	my $rh = $self->{rightTable}->findIdx($self->{rightIdxType}, $lookuprow);
-	Carp::confess("$!") unless defined $rh;
 
 	my @rightdata; # fields from the right side, defaults to all-undef, if no data found
 	my @result; # the result rows will be collected here
@@ -1351,9 +1346,7 @@ sub # ($inLabel, $rowop, $self)
 		);
 		my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
 		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
-		Carp::confess("$!") unless defined $resrowop;
-		Carp::confess("$!") 
-			unless $resLabel->getUnit()->call($resrowop);
+		$resLabel->getUnit()->call($resrowop);
 		
 	} else {
 		#print STDERR "DEBUGX " . $self->{name} . " found data: " . $rh->getRow()->printP() . "\n";
@@ -1368,9 +1361,7 @@ sub # ($inLabel, $rowop, $self)
 		);
 		my $resrowop = $resLabel->makeRowop($opcode, $resRowType->makeRowArray(@resdata));
 		#print STDERR "DEBUGX " . $self->{name} . " +out: ", $resrowop->printP(), "\n";
-		Carp::confess("$!") unless defined $resrowop;
-		Carp::confess("$!") 
-			unless $resLabel->getUnit()->call($resrowop);
+		$resLabel->getUnit()->call($resrowop);
 		
 		}
 	}
@@ -1455,7 +1446,7 @@ our $rtPosition = Triceps::RowType->new( # a customer account position
 	quantity => "float64", # number of shares
 	price => "float64", # share price in local currency
 	currency => "string", # currency code of the price
-) or confess "$!";
+);
 </pre>
 
 		<para>
@@ -1486,7 +1477,7 @@ our $rtToUsd = Triceps::RowType->new( # a currency conversion to USD
 	date => "int32", # as of which date, in format YYYYMMDD
 	currency => "string", # currency code
 	toUsd => "float64", # multiplier to convert this currency to USD
-) or confess "$!";
+);
 </pre>
 
 		<para>
@@ -1511,8 +1502,8 @@ our $ttToUsd = Triceps::TableType->new($rtToUsd)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttToUsd->initialize() or confess "$!";
+;
+$ttToUsd->initialize();
 
 # the positions in the original currency
 our $ttPosition = Triceps::TableType->new($rtPosition)
@@ -1527,15 +1518,13 @@ our $ttPosition = Triceps::TableType->new($rtPosition)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttPosition->initialize() or confess "$!";
+;
+$ttPosition->initialize();
 
 our $uJoin = Triceps::Unit->new("uJoin");
 
-our $tToUsd = $uJoin->makeTable($ttToUsd, 
-	"tToUsd") or confess "$!";
-our $tPosition = $uJoin->makeTable($ttPosition, 
-	"tPosition") or confess "$!";
+our $tToUsd = $uJoin->makeTable($ttToUsd, "tToUsd");
+our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -2370,8 +2359,8 @@ our $ttToUsd = Triceps::TableType->new($rtToUsd)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttToUsd->initialize() or confess "$!";
+;
+$ttToUsd->initialize();
 
 # the positions in the original currency
 our $ttPosition = Triceps::TableType->new($rtPosition)
@@ -2386,12 +2375,12 @@ our $ttPosition = Triceps::TableType->new($rtPosition)
 		Triceps::SimpleOrderedIndex->new(date => "ASC")
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttPosition->initialize() or confess "$!";
+;
+$ttPosition->initialize();
 
 # remember the indexes for the future use
-our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate") or confess "$!";
-our $ixtPositionByDate = $ttPosition->findSubIndex("byDate") or confess "$!";
+our $ixtToUsdByDate = $ttToUsd->findSubIndex("byDate");
+our $ixtPositionByDate = $ttPosition->findSubIndex("byDate");
 
 # Go through the table and clear all the rows where the field "date"
 # is less than the date argument. The index type orders the table by date.
@@ -2533,24 +2522,24 @@ join.leftLookup.out OP_DELETE date="20120310" customer="one" symbol="AAA" quanti
 <!-- t/xJoin.t, doJoinFiltered -->
 <pre>
 our $lbPositionCurrent = $uJoin->makeDummyLabel(
-	$tPosition->getRowType, "lbPositionCurrent") or confess "$!";
+	$tPosition->getRowType, "lbPositionCurrent");
 our $lbPositionFilter = $uJoin->makeLabel($tPosition->getRowType,
 	"lbPositionFilter", undef, sub {
 		if ($_[1]->getRow()->get("date") >= $businessDay) {
 			$uJoin->call($lbPositionCurrent->adopt($_[1]));
 		}
-	}) or confess "$!";
-$tPosition->getOutputLabel()->chain($lbPositionFilter) or confess "$!";
+	});
+$tPosition->getOutputLabel()->chain($lbPositionFilter);
 
 our $lbToUsdCurrent = $uJoin->makeDummyLabel(
-	$tToUsd->getRowType, "lbToUsdCurrent") or confess "$!";
+	$tToUsd->getRowType, "lbToUsdCurrent");
 our $lbToUsdFilter = $uJoin->makeLabel($tToUsd->getRowType,
 	"lbToUsdFilter", undef, sub {
 		if ($_[1]->getRow()->get("date") >= $businessDay) {
 			$uJoin->call($lbToUsdCurrent->adopt($_[1]));
 		}
-	}) or confess "$!";
-$tToUsd->getOutputLabel()->chain($lbToUsdFilter) or confess "$!";
+	});
+$tToUsd->getOutputLabel()->chain($lbToUsdFilter);
 
 our $join = Triceps::JoinTwo->new(
 	name => "join",
@@ -2653,13 +2642,13 @@ our $join = Triceps::JoinTwo->new(
 		the self-joins. Here we go:
 		</para>
 
-<!-- t/xSelfJoin.t, doArbJoins -->
+<!-- t/xSelfJoin.t, doArbJoins from 2 parts -->
 <pre>
 our $rtRate = Triceps::RowType->new( # an exchange rate between two currencies
 	ccy1 => "string", # currency code
 	ccy2 => "string", # currency code
 	rate => "float64", # multiplier when exchanging ccy1 to ccy2
-) or confess "$!";
+);
 
 # all exchange rates
 our $ttRate = Triceps::TableType->new($rtRate)
@@ -2673,13 +2662,12 @@ our $ttRate = Triceps::TableType->new($rtRate)
 		Triceps::IndexType->newHashed(key => [ "ccy2" ])
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttRate->initialize() or confess "$!";
+;
+$ttRate->initialize();
 
 our $uArb = Triceps::Unit->new("uArb");
 
-our $tRate = $uArb->makeTable($ttRate, 
-	"tRate") or confess "$!";
+our $tRate = $uArb->makeTable($ttRate, "tRate");
 
 our $join1 = Triceps::JoinTwo->new(
 	name => "join1",
@@ -2698,11 +2686,10 @@ our $ttJoin1 = Triceps::TableType->new($join1->getResultRowType())
 		Triceps::IndexType->newHashed(key => [ "ccy3", "ccy1" ])
 		->addSubIndex("grouping", Triceps::IndexType->newFifo())
 	)
-or confess "$!";
-$ttJoin1->initialize() or confess "$!";
-our $tJoin1 = $uArb->makeTable($ttJoin1,
-	"tJoin1") or confess "$!";
-$join1->getOutputLabel()->chain($tJoin1->getInputLabel()) or confess "$!";
+;
+$ttJoin1->initialize();
+our $tJoin1 = $uArb->makeTable($ttJoin1, "tJoin1");
+$join1->getOutputLabel()->chain($tJoin1->getInputLabel());
 
 our $join2 = Triceps::JoinTwo->new(
 	name => "join2",
@@ -2720,7 +2707,7 @@ our $join2 = Triceps::JoinTwo->new(
 our $rtResult = Triceps::RowType->new(
 	$join2->getResultRowType()->getdef(),
 	looprate => "float64",
-) or confess "$!";
+);
 my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
 my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef, sub {
 	my ($label, $rowop) = @_;
@@ -2735,8 +2722,8 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 	} else {
 			&send("__", $rowop->printP(), "looprate=$looprate \n"); # for debugging
 	}
-}) or confess "$!";
-$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
+});
+$join2->getOutputLabel()->chain($lbCompute);
 
 # label to print the changes to the detailed stats
 makePrintLabel("lbPrint", $lbResult);
@@ -2975,9 +2962,9 @@ our $rtResult = Triceps::RowType->new(
 	rate2 => "float64",
 	rate3 => "float64",
 	looprate => "float64",
-) or confess "$!";
-my $ixtCcy1 = $ttRate->findSubIndex("byCcy1") or confess "$!";
-my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12") or confess "$!";
+);
+my $ixtCcy1 = $ttRate->findSubIndex("byCcy1");
+my $ixtCcy12 = $ixtCcy1->findSubIndex("byCcy12");
 
 my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
 my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
@@ -2988,8 +2975,7 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 	my $rate1 = $row->get("rate");
 
 	my $rhi = $tRate->findIdxBy($ixtCcy1, ccy1 => $ccy2);
-	my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12)
-		or confess "$!";
+	my $rhiEnd = $rhi->nextGroupIdx($ixtCcy12);
 	for (; !$rhi->same($rhiEnd); $rhi = $rhi->nextIdx($ixtCcy12)) {
 		my $row2 = $rhi->getRow();
 		my $ccy3 = $row2->get("ccy2");
@@ -3048,8 +3034,8 @@ my $lbCompute = $uArb->makeLabel($rtRate, "lbCompute", undef, sub {
 			&send("__", $result->printP(), "\n"); # for debugging
 		}
 	}
-}) or confess "$!";
-$tRate->getOutputLabel()->chain($lbCompute) or confess "$!";
+});
+$tRate->getOutputLabel()->chain($lbCompute);
 makePrintLabel("lbPrint", $lbResult);
 </pre>
 
@@ -3220,7 +3206,7 @@ our $join2 = Triceps::LookupJoin->new(
 our $rtResult = Triceps::RowType->new(
 	$join2->getResultRowType()->getdef(),
 	looprate => "float64",
-) or confess "$!";
+);
 my $lbResult = $uArb->makeDummyLabel($rtResult, "lbResult");
 my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef, sub {
 	my ($label, $rowop) = @_;
@@ -3278,8 +3264,8 @@ my $lbCompute = $uArb->makeLabel($join2->getResultRowType(), "lbCompute", undef,
 	} else {
 		&send("__", $result->printP(), "\n"); # for debugging
 	}
-}) or confess "$!";
-$join2->getOutputLabel()->chain($lbCompute) or confess "$!";
+});
+$join2->getOutputLabel()->chain($lbCompute);
 </pre>
 
 		<para>
@@ -3455,7 +3441,6 @@ $join2->getOutputLabel()->chain($lbCompute) or confess "$!";
 
 	# create the output label
 	$self->{outputLabel} = $self->{unit}->makeDummyLabel($self->{leftLookup}->getResultRowType(), $self->{name} . ".out");
-	Carp::confess("$!") unless (ref $self->{outputLabel} eq "Triceps::Label");
 
 	# and connect them together
 	$self->{leftFromLabel}->chain($self->{leftLookup}->getInputLabel());

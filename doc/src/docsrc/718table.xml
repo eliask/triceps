@@ -24,7 +24,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$t = $unit->makeTable($tabType, "tableName") or confess "$!";
+$t = $unit->makeTable($tabType, "tableName");
 </pre>
 
 		<para>
@@ -53,7 +53,7 @@ $lb = $t->getInputLabel();
 $lb = $t->getPreLabel();
 $lb = $t->getOutputLabel();
 $lb = $t->getDumpLabel();
-$lb = $t->getAggregatorLabel("aggName") or confess "$!";
+$lb = $t->getAggregatorLabel("aggName");
 </pre>
 
 		<para>
@@ -81,7 +81,7 @@ $result = $t->size();
 		</para>
 
 <pre>
-$rh = $t->makeRowHandle($row) or confess "$!";
+$rh = $t->makeRowHandle($row);
 $rh = $t->makeNullRowHandle();
 </pre>
 
@@ -236,8 +236,7 @@ $rh = $t->nextIdx($idxType, $rh);
 		a NULL row handle. The <pre>next</pre> methods also return a NULL row handle if their
 		argument row handle is a NULL or not in the table. So, if you iterate
 		and remove the row handles, make sure to advance the iterator first and
-		only then remove the current row handle. If an error is detected, these
-		methods confess.
+		only then remove the current row handle.
 		</para>
 
 		<para>

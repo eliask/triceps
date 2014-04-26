@@ -173,50 +173,39 @@ See the file COPYRIGHT for the copyright notice and license information
 		through the Triceps machinery:
 		</para>
 
+<!-- perl/Triceps/t/xHelloWorld.t -->
 <pre>
 use Triceps;
-use Carp;
 
-$hwunit = Triceps::Unit->new("hwunit") or die "$!";
+$hwunit = Triceps::Unit->new("hwunit");
 $hw_rt = Triceps::RowType->new(
 	greeting => "string",
 	address => "string",
-) or confess "$!";
+);
 
 my $print_greeting = $hwunit->makeLabel($hw_rt, "print_greeting", undef, sub { 
 	my ($label, $rowop) = @_;
 	&sendf("%s!\n", join(', ', $rowop->getRow()->toArray()));
-} ) or confess "$!";
+} );
 
+setInputLines();
 $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT, 
 	$hw_rt->makeRowHash(
 		greeting => "Hello",
 		address => "world",
 	)
-)) or confess "$!";
+));
 </pre>
-
-		<indexterm>
-			<primary>confess</primary>
-		</indexterm>
-		<para>
-		What happens there? First, we import the Triceps module and the Carp
-		module. The Carp module isn't strictly necessary but it makes the
-		debugging easier by printing the whole stack trace, not just the line
-		number when an error has happened. The function <pre>confess</pre> is
-		provided by Carp, and works very much like <pre>die</pre> only with
-		the stack trace.
-		</para>
 
 		<indexterm>
 			<primary>unit</primary>
 		</indexterm>
 		<para>
+		What happens there? First, we import the Triceps module.
 		Then we create a Triceps execution unit. An execution unit keeps the
 		Triceps context and controls the execution for one thread. Nothing
 		really stops you from having multiple execution units in the same
-		thread. It might come handy if you want to essentially make multiple
-		ilogical user thread, each with its own unit in one kernel thread.  But
+		thread.  But
 		a single execution unit must never ever be used in multiple threads.
 		It's single-threaded by design and has no synchronization in it. 
 		</para>
@@ -235,21 +224,14 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		<indexterm>
 			<primary>error handling</primary>
 		</indexterm>
+		<indexterm>
+			<primary>confess</primary>
+		</indexterm>
 		<para>
-		If something goes wrong, the constructor will return an
-		<pre>undef</pre> and set the error message in <pre>$!</pre>. This
-		actually has turned out to be not such a good idea as it seemed, since
-		writing <quote><pre>or confess</pre></quote> (or <quote><pre>or die</pre></quote>) at every line
-		quickly turns tedious. And there is usually not much point in catching
-		the errors of this type, since they are essentially the compile-time
-		errors and should cause the program to die anyway. 
-		</para>
-
-		<para>
-		In the upcoming versions this will be changed throughought the code to confess 
-		on any serious errors (and if it needs to be caught, it can be caught with
-		<pre>eval</pre>). Some methods have been already changed to this new
-		convention, but most haven't yet. At the moment it's a bit of a mix.
+		If something goes wrong, the Triceps methods will confess. To be precise,
+		call <pre>Carp::confess</pre>, which is like Perl's <pre>die</pre>
+		but also prints the stack trace. Triceps also includes its own high-level
+		call stack into this trace.
 		</para>
 
 		<indexterm>
