@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 15 };
+BEGIN { plan tests => 16 };
 use Triceps;
 use Triceps::X::TestFeed qw(:all);
 use Carp;
@@ -1436,6 +1436,31 @@ while(&readLine) {
 }
 
 #print $compText, "\n";
+# Here the indenting is all spaces, not tabs!
+ok($compText,
+'  use strict;
+  my ($table, $context, $aggop, $opcode, $rh, $state, @args) = @_;
+  return if ($context->groupSize()==0 || $opcode == &Triceps::OP_NOP);
+  my $v2_count = 0;
+  my $v2_sum = 0;
+  my $npos = 0;
+  for (my $rhi = $context->begin(); !$rhi->isNull(); $rhi = $context->next($rhi)) {
+    my $row = $rhi->getRow();
+    # field price=avg
+    my $a2 = $args[2]($row);
+    { if (defined $a2) { $v2_sum += $a2; $v2_count++; }; }
+    $npos++;
+  }
+  my $rowLast = $context->last()->getRow();
+  my $l0 = $args[0]($rowLast);
+  my $l1 = $args[1]($rowLast);
+  $context->makeArraySend($opcode,
+    ($l0), # symbol
+    ($l1), # id
+    (($v2_count == 0? undef : $v2_sum / $v2_count)), # price
+  );
+');
+
 }; # SimpleAgg
 
 #########################
