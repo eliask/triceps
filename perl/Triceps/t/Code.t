@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 12 };
+BEGIN { plan tests => 16 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -47,11 +47,21 @@ ok(&$res(), 1);
 
 $res = eval { Triceps::Code::compile("1 ) 2"); };
 ok(!defined $res);
-ok("$@", qr/^Failed to compile the code snippet: syntax error at .*\nCode: ---\n1 \) 2\n---\n at .*\/Code.pm line \d*\n\tTriceps::Code::compile\('1 \) 2'\) called at .*\/Code.t line \d*\n\teval {...} called at .*\/Code.t line \d*\n/);
+ok("$@", qr/Code snippet: failed to compile the source code\nCompilation error: syntax error at .*\nThe source code was:\nsub {\n1 \) 2\n}\n at .*\/Code.pm line \d*\n\tTriceps::Code::compile\('1 \) 2'\) called at .*\/Code.t line \d*\n\teval {...} called at .*\/Code.t line \d*\n/);
 #print $@;
 
 $res = eval { Triceps::Code::compile("1 ) 2", "test code"); };
 ok(!defined $res);
-ok("$@", qr/^Failed to compile test code: syntax error at .*\nCode: ---\n1 \) 2\n---\n at .*\/Code.pm line \d*\n\tTriceps::Code::compile\('1 \) 2', 'test code'\) called at .*\/Code.t line \d*\n\teval {...} called at .*\/Code.t line \d*\n/);
+ok("$@", qr/^test code: failed to compile the source code\nCompilation error: syntax error at .*\nThe source code was:\nsub \{\n1 \) 2\n\}\n at .*\/Code.pm line \d*\n\tTriceps::Code::compile\('1 \) 2', 'test code'\) called at .*\/Code.t line \d*\n\teval {...} called at .*\/Code.t line \d*\n/);
 #print $@;
+
+# a completely wrong value
+$res = eval { Triceps::Code::compile([1, 2]); };
+ok(!defined $res);
+ok("$@", qr/^Code snippet: code must be a source code string or a reference to Perl function at/);
+
+# a completely wrong value, with custom name
+$res = eval { Triceps::Code::compile([1, 2], "test code"); };
+ok(!defined $res);
+ok("$@", qr/^test code: code must be a source code string or a reference to Perl function at/);
 

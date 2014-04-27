@@ -82,36 +82,32 @@ void PerlCallback::setCode(SV *code, const char *fname)
 		throw Exception::f("%s: code must not be NULL", fname);
 	}
 
-	if (threadable_) {
-		// printf("DBG %s: threadable\n", fname);
-		if (SvPOK(code)) {
-			STRLEN len;
-			char *s = SvPV(code, len);
-			codestr_.assign(s, len);
+	// printf("DBG %s: threadable\n", fname);
+	if (SvPOK(code)) {
+		STRLEN len;
+		char *s = SvPV(code, len);
+		codestr_.assign(s, len);
 
-			Erref err = compileCode(fname);
+		Erref err = compileCode(fname);
 
-			if (err->hasError()) {
-				throw Exception(err, false); // XXX add a heading message?
-			}
-			return;
-		} else {
+		if (err->hasError()) {
+			throw Exception(err, false); // XXX add a heading message?
+		}
+	} else { 
+		if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
+			throw Exception::f("%s: code must be a source code string or a reference to Perl function", fname);
+		}
+
+		if (threadable_) {
 			threadable_ = false;
 			// here it's not a fatal error, just remember for the future,
 			// in case if someone would ever want to make a deep copy
 			errt_.f("the code is not a source code string");
 		}
-	}
 
-	if (!SvROK(code) || SvTYPE(SvRV(code)) != SVt_PVCV) {
-		if (threadinit_)
-			throw Exception::f("%s: code must be a source code string or a reference to Perl function", fname);
-		else
-			throw Exception::f("%s: code must be a reference to Perl function", fname);
+		code_ = newSV(0);
+		sv_setsv(code_, code);
 	}
-
-	code_ = newSV(0);
-	sv_setsv(code_, code);
 }
 
 // Append another argument to args_.
@@ -227,7 +223,7 @@ Erref PerlCallback::compileCode(const char *fname)
 
 	string subcode = "sub {\n";
 	subcode += codestr_;
-	subcode += "}\n";
+	subcode += "\n}\n";
 
 	SV *code = NULL;
 	dSP;

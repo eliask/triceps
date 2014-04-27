@@ -10,6 +10,7 @@ use warnings;
 
 # This function must be outside the package.
 sub _Triceps_eval_ {
+	no warnings 'all'; # shut up the warnings from eval
 	# print "DBG code:\n$_[0]\n";
 	my $c = eval $_[0];
 	# print "DBG compiled $c\n";
