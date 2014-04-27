@@ -1,0 +1,19 @@
+callBound
+
+I've found that I've missed documenting yet another way to call a streaming function in Perl, the method Unit::callBound().
+
+$unit->callBound($rowop_or_tray, $fnreturn => $fnbinding, ...);
+$unit->callBound([@rowops], $fnreturn => $fnbinding, ...);
+
+
+It's an encapsulation of a streaming function call, a great method if you have all the rowops for the call available upfront.. The first argument is a rowop or a tray or a reference to an array of rowops (but the trays are not allowed in the array). The rest are the pairs of FnReturns and FnBindings. The bindings are pushed onto the FnReturns, then the rowops are called, then the bindings are popped. It replaces a whole block that would contain an AutoFnBind and the calls:
+
+{
+  my $ab = Triceps::AutoFnBind->new(
+    $fnreturn => $fnbinding, ...
+  );
+  $unit->call($rowop_or_tray);
+}
+
+
+Only callBound() does its work in C++, so it's more efficient than a Perl block, and it's shorter to write too. 

@@ -1,0 +1,16 @@
+code snippets conversions
+
+I've got to editing the description of how the Perl API classes with threading support allow to specify the source code snippets instead of code references for their arguments, and it made me think that for consistency probably the same behavior should be supported throughout the whole API. So I went and added this support. Now you can use the source code snippets like this everywhere, say in defining a Label.
+
+And to let the templates have the same feature, I've added the method Triceps::Code::compile() that will do the same support in Perl. It's used as:
+
+$code = Triceps::Code::compile($code_ref_or_source);
+$code = Triceps::Code::compile($code_ref_or_source, $description);
+
+It takes either a code reference or a source code string as an argument and returns the reference to the compiled code. If the argument was a code reference, it just passes through unchanged. If it was a source code snippet, it gets compiled.
+
+If the argument was an undef, it also passes through unchanged. This is convenient in case if the code is optional. But if it isn't then the caller should check for undef.
+
+If the compilation fails, the method confesses, and includes the error and the source code into the message, in the same way as the XS methods do.
+
+The optional argument $description can be used to provide information about the meaning of the code for the error messages. If it's undefined then the default is "Code snippet". 
