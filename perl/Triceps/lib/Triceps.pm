@@ -147,6 +147,8 @@ require Triceps::JoinTwo;
 require Triceps::Triead;
 require Triceps::TrieadOwner;
 require Triceps::App;
+require Triceps::Braced;
+require Triceps::Code;
 # The X subpackages contain the eXperimental, eXample, eXtraneous code.
 require Triceps::X::SimpleServer;
 require Triceps::X::DumbClient;
