@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 391 };
+BEGIN { plan tests => 403 };
 use Triceps;
 ok(1); # If we made it this far, we're ok.
 
@@ -159,21 +159,21 @@ sub badFnReturn # (optName, optValue, ...)
 		);
 	};
 	ok(!defined $res);
-	ok($@ =~ /^Usage: Triceps::FnReturn::new\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs/);
+	ok($@, qr/^Usage: Triceps::FnReturn::new\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs/);
 	#print "$@"
 }
 
 &badFnReturn(xxx => "fret1");
-ok($@ =~ /^Triceps::FnReturn::new: unknown option 'xxx'/);
+ok($@, qr/^Triceps::FnReturn::new: unknown option 'xxx'/);
 
 &badFnReturn(name => 1);
-ok($@ =~ /^Triceps::FnReturn::new: option 'name' value must be a string/);
+ok($@, qr/^Triceps::FnReturn::new: option 'name' value must be a string/);
 
 &badFnReturn(unit => "u1");
-ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
+ok($@, qr/^Triceps::FnReturn::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
 
 &badFnReturn(unit => $rt1);
-ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value has an incorrect magic for Triceps::Unit/);
+ok($@, qr/^Triceps::FnReturn::new: option 'unit' value has an incorrect magic for Triceps::Unit/);
 
 &badFnReturn(
 	labels => {
@@ -181,10 +181,10 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'unit' value has an incorrect magic fo
 		two => $rt2,
 	}
 );
-ok($@ =~ /^Triceps::FnReturn::new: option 'labels' value must be a reference to array/);
+ok($@, qr/^Triceps::FnReturn::new: option 'labels' value must be a reference to array/);
 
 &badFnReturn(labels => undef);
-ok($@ =~ /^Triceps::FnReturn::new: missing mandatory option 'labels'/);
+ok($@, qr/^Triceps::FnReturn::new: missing mandatory option 'labels'/);
 
 &badFnReturn(
 	labels => [
@@ -192,7 +192,7 @@ ok($@ =~ /^Triceps::FnReturn::new: missing mandatory option 'labels'/);
 		"two"
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: option 'labels' must contain elements in pairs, has 3 elements/);
+ok($@, qr/^Triceps::FnReturn::new: option 'labels' must contain elements in pairs, has 3 elements/);
 
 &badFnReturn(
 	labels => [
@@ -200,7 +200,7 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'labels' must contain elements in pair
 		$lb2 => "two",
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 name must be a string/);
+ok($@, qr/^Triceps::FnReturn::new: in option 'labels' element 2 name must be a string/);
 
 &badFnReturn(
 	labels => [
@@ -208,7 +208,7 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 name must be a s
 		two => 1,
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' value must be a blessed SV reference to Triceps::Label or Triceps::RowType/);
+ok($@, qr/^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' value must be a blessed SV reference to Triceps::Label or Triceps::RowType/);
 
 {
 	my $lbc = $u1->makeDummyLabel($rt1, "lbc");
@@ -221,7 +221,7 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 2 with name 'two' 
 		]
 	);
 }
-ok($@ =~ /^Triceps::FnReturn::new: a cleared label in option 'labels' element 2 with name 'two' can not be used/);
+ok($@, qr/^Triceps::FnReturn::new: a cleared label in option 'labels' element 2 with name 'two' can not be used/);
 
 &badFnReturn(
 	labels => [
@@ -229,7 +229,7 @@ ok($@ =~ /^Triceps::FnReturn::new: a cleared label in option 'labels' element 2 
 		two => $lb2,
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: label in option 'labels' element 2 with name 'two' has a mismatching unit 'u1', previously seen unit 'u2'/);
+ok($@, qr/^Triceps::FnReturn::new: label in option 'labels' element 2 with name 'two' has a mismatching unit 'u1', previously seen unit 'u2'/);
 
 &badFnReturn(
 	labels => [
@@ -237,13 +237,13 @@ ok($@ =~ /^Triceps::FnReturn::new: label in option 'labels' element 2 with name 
 		two => $rt2,
 	]
 );
-ok($@ =~ /^Triceps::FnReturn::new: the unit can not be auto-deduced, must use an explicit option 'unit'/);
+ok($@, qr/^Triceps::FnReturn::new: the unit can not be auto-deduced, must use an explicit option 'unit'/);
 
 &badFnReturn(name => "");
-ok($@ =~ /^Triceps::FnReturn::new: must specify a non-empty name with option 'name'/);
+ok($@, qr/^Triceps::FnReturn::new: must specify a non-empty name with option 'name'/);
 
 &badFnReturn(labels => [ one => $u1, two => $lb2, ]);
-ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' value has an incorrect magic for either Triceps::Label or Triceps::RowType/);
+ok($@, qr/^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' value has an incorrect magic for either Triceps::Label or Triceps::RowType/);
 
 &badFnReturn(
 	labels => [
@@ -252,20 +252,20 @@ ok($@ =~ /^Triceps::FnReturn::new: in option 'labels' element 1 with name 'one' 
 	]
 );
 # XXX should have a better way to prepend the high-level description
-ok($@ =~ /^Triceps::FnReturn::new: invalid arguments:\n  duplicate row name 'one'/);
+ok($@, qr/^Triceps::FnReturn::new: invalid arguments:\n  duplicate row name 'one'/);
 #print "$@";
 
 &badFnReturn(onPush => 10);
-ok($@ =~ /^Triceps::FnReturn::new: option 'onPush' value must be a reference to a function or an array starting with a reference to function at/);
+ok($@, qr/^Triceps::FnReturn::new: option 'onPush' value must be a reference to a function or an array starting with a reference to function at/);
 
 &badFnReturn(onPush => [10]);
-ok($@ =~ /^Triceps::FnReturn::new: option 'onPush' value must be a reference to a function or an array starting with a reference to function at/);
+ok($@, qr/^Triceps::FnReturn::new: option 'onPush' value must be a reference to a function or an array starting with a reference to function at/);
 
 &badFnReturn(onPop => 10);
-ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a function or an array starting with a reference to function at/);
+ok($@, qr/^Triceps::FnReturn::new: option 'onPop' value must be a reference to a function or an array starting with a reference to function at/);
 
 &badFnReturn(onPop => [10]);
-ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a function or an array starting with a reference to function at/);
+ok($@, qr/^Triceps::FnReturn::new: option 'onPop' value must be a reference to a function or an array starting with a reference to function at/);
 #print "$@";
 
 ######################### 
@@ -307,7 +307,7 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a
 		$fret1->getLabel("zzz");
 	};
 	ok(!defined($lb));
-	ok($@ =~ /^Triceps::FnReturn::getLabel: unknown label name 'zzz'./);
+	ok($@, qr/^Triceps::FnReturn::getLabel: unknown label name 'zzz'./);
 	#print "$@";
 }
 {
@@ -319,7 +319,7 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a
 		$fret1->getLabelAt(-1);
 	};
 	ok(!defined($lb));
-	ok($@ =~ /^Triceps::FnReturn::getLabelAt: bad index -1, valid range is 0..1./);
+	ok($@, qr/^Triceps::FnReturn::getLabelAt: bad index -1, valid range is 0..1./);
 	#print "$@";
 }
 {
@@ -331,7 +331,7 @@ ok($@ =~ /^Triceps::FnReturn::new: option 'onPop' value must be a reference to a
 		$fret1->findLabel("zzz");
 	};
 	ok(!defined($v));
-	ok($@ =~ /^Triceps::FnReturn::findLabel: unknown label name 'zzz'./);
+	ok($@, qr/^Triceps::FnReturn::findLabel: unknown label name 'zzz'./);
 	#print "$@";
 }
 
@@ -500,54 +500,57 @@ sub badFnBinding # (optName, optValue, ...)
 		);
 	};
 	ok(!defined $res);
-	ok($@ =~ /^Usage: Triceps::FnBinding::new\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs/);
+	ok($@, qr/^Usage: Triceps::FnBinding::new\(CLASS, optionName, optionValue, ...\), option names and values must go in pairs/);
 	#print "$@"
 }
 
 &badFnBinding(xxx => "fbind1");
-ok($@ =~ /^Triceps::FnBinding::new: unknown option 'xxx'/);
+ok($@, qr/^Triceps::FnBinding::new: unknown option 'xxx'/);
 
 &badFnBinding(on => undef);
-ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'on'/);
+ok($@, qr/^Triceps::FnBinding::new: missing mandatory option 'on'/);
 
 &badFnBinding(labels => undef);
-ok($@ =~ /^Triceps::FnBinding::new: missing mandatory option 'labels'/);
+ok($@, qr/^Triceps::FnBinding::new: missing mandatory option 'labels'/);
 
 &badFnBinding(name => undef);
-ok($@ =~ /^Triceps::FnBinding::new: missing or empty mandatory option 'name'/);
+ok($@, qr/^Triceps::FnBinding::new: missing or empty mandatory option 'name'/);
 
 &badFnBinding(unit => 'x');
-ok($@ =~ /^Triceps::FnBinding::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
+ok($@, qr/^Triceps::FnBinding::new: option 'unit' value must be a blessed SV reference to Triceps::Unit/);
 
 &badFnBinding(on => $u1);
-ok($@ =~ /^Triceps::FnBinding::new: option 'on' value has an incorrect magic for Triceps::FnReturn/);
+ok($@, qr/^Triceps::FnBinding::new: option 'on' value has an incorrect magic for Triceps::FnReturn/);
 
 &badFnBinding(labels => {});
-ok($@ =~ /^Triceps::FnBinding::new: option 'labels' value must be a reference to array/);
+ok($@, qr/^Triceps::FnBinding::new: option 'labels' value must be a reference to array/);
 
 &badFnBinding(name => {});
-ok($@ =~ /^Triceps::FnBinding::new: option 'name' value must be a string/);
+ok($@, qr/^Triceps::FnBinding::new: option 'name' value must be a string/);
 
 &badFnBinding(labels => [ "x" ]);
-ok($@ =~ /^Triceps::FnBinding::new: option 'labels' must contain elements in pairs, has 1 elements/);
+ok($@, qr/^Triceps::FnBinding::new: option 'labels' must contain elements in pairs, has 1 elements/);
 
 &badFnBinding(labels => [ $fret1 => $lbind1, ]);
-ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 name value must be a string/);
+ok($@, qr/^Triceps::FnBinding::new: in option 'labels' element 1 name value must be a string/);
 
 &badFnBinding(labels => [ one => "zzz", ]);
-ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 with name 'one' value must be a reference to Triceps::Label or a function/);
+ok($@, qr/^Label 'fbindx.one': failed to compile the source code\nCompilation error: Bareword "zzz" not allowed/);
+
+&badFnBinding(labels => [ one => 1, ]);
+ok($@, qr/^Triceps::FnBinding::new: in option 'labels' element 1 with name 'one' value must be a code snippet or a reference to code or Triceps::Label at/);
 
 &badFnBinding(unit => undef);
-ok($@ =~ /^Triceps::FnBinding::new: option 'unit' must be set to handle the code reference in option 'labels' element 2 with name 'two'/);
+ok($@, qr/^Triceps::FnBinding::new: option 'unit' must be set to handle the code reference in option 'labels' element 2 with name 'two'/);
 
 &badFnBinding(labels => [ zzz => sub { }, ]);
-ok($@ =~ /^Triceps::FnBinding::new: in option 'labels' element 1 has an unknown return label name 'zzz'/);
+ok($@, qr/^Triceps::FnBinding::new: in option 'labels' element 1 has an unknown return label name 'zzz'/);
 
 &badFnBinding(labels => [ zzz => $lbind1, ]);
-ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:\n  Unknown return label name 'zzz'/);
+ok($@, qr/^Triceps::FnBinding::new: invalid arguments:\n  Unknown return label name 'zzz'/);
 
 &badFnBinding(labels => [ two => $lbind1, ]);
-ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:
+ok($@, qr/^Triceps::FnBinding::new: invalid arguments:
   Attempted to add a mismatching label 'lbind1' to name 'two'.
     The expected row type:
     row {
@@ -633,7 +636,7 @@ ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:
 		$fbind1->getLabel("zzz");
 	};
 	ok(!defined($lb));
-	ok($@ =~ /^Triceps::FnBinding::getLabel: unknown label name 'zzz'./);
+	ok($@, qr/^Triceps::FnBinding::getLabel: unknown label name 'zzz'./);
 	#print "$@";
 }
 {
@@ -649,7 +652,7 @@ ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:
 		$fbind1->getLabelAt(-1);
 	};
 	ok(!defined($lb));
-	ok($@ =~ /^Triceps::FnBinding::getLabelAt: bad index -1, valid range is 0..1./);
+	ok($@, qr/^Triceps::FnBinding::getLabelAt: bad index -1, valid range is 0..1./);
 	#print "$@";
 }
 {
@@ -665,7 +668,7 @@ ok($@ =~ /^Triceps::FnBinding::new: invalid arguments:
 		$fbind1->findLabel("zzz");
 	};
 	ok(!defined($v));
-	ok($@ =~ /^Triceps::FnBinding::findLabel: unknown label name 'zzz'./);
+	ok($@, qr/^Triceps::FnBinding::findLabel: unknown label name 'zzz'./);
 	#print "$@";
 }
 
@@ -941,7 +944,7 @@ unit 'u2' after label 'fbindz3.two' op OP_INSERT }
 		$u1->call($lb1->makeRowopHash("OP_INSERT"));
 	};
 
-	ok($@ =~ /^FnReturn 'fretw2' attempted to call a cleared label 'lbindw1' in FnBinding 'fbindw1'.
+	ok($@, qr/^FnReturn 'fretw2' attempted to call a cleared label 'lbindw1' in FnBinding 'fbindw1'.
 Called through the label 'fretw2.one'.
 Called chained from the label 'lb1'./);
 	#print "$@";
@@ -1060,7 +1063,7 @@ Called chained from the label 'lb1'./);
 	my $v = eval {
 		$fbind5->swapTray();
 	};
-	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a mix of rowops for units 'u2' and 'u1'./);
+	ok($@, qr/^Triceps::FnBinding::swapTray: tray contains a mix of rowops for units 'u2' and 'u1'./);
 	#print "$@";
 	
 	ok($fbind5->traySize(), 0); # the tray gets consumed in the failed attempt
@@ -1109,7 +1112,7 @@ Called chained from the label 'lb1'./);
 	my $v = eval {
 		$fbindw1->swapTray();
 	};
-	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
+	ok($@, qr/^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
 	#print "$@";
 	
 	ok($fbindw1->traySize(), 0); # the tray gets consumed in the failed attempt
@@ -1159,7 +1162,7 @@ Called chained from the label 'lb1'./);
 	my $v = eval {
 		$fbindw1->swapTray();
 	};
-	ok($@ =~ /^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
+	ok($@, qr/^Triceps::FnBinding::swapTray: tray contains a rowop for cleared label 'lbindw1'./);
 	#print "$@";
 	
 	ok($fbindw1->traySize(), 0); # the tray gets consumed in the failed attempt
@@ -1207,7 +1210,7 @@ Called chained from the label 'lb1'./);
 	my $v = eval {
 		$fbindw1->callTray();
 	};
-	ok($@ =~ /^FnBinding::callTray: attempted to call a cleared label 'lbindw1'./);
+	ok($@, qr/^FnBinding::callTray: attempted to call a cleared label 'lbindw1'./);
 	#print "$@";
 	
 	ok($fbindw1->traySize(), 0); # the tray gets consumed in the failed attempt
@@ -1221,26 +1224,26 @@ Called chained from the label 'lb1'./);
 
 # XXX this actually returns an undef - change the typemap to confess()
 #eval { $fret1->push($u1); };
-#ok($@ =~ /^PLACEHOLDER/);
+#ok($@, qr/^PLACEHOLDER/);
 
 eval { $fret1->push($fbind4); };
-ok($@ =~ /^Triceps::FnReturn::push: invalid arguments:\n  Attempted to push a mismatching binding 'fbind4' on the FnReturn 'fret1'./);
+ok($@, qr/^Triceps::FnReturn::push: invalid arguments:\n  Attempted to push a mismatching binding 'fbind4' on the FnReturn 'fret1'./);
 #print "$@";
 
 eval { $fret1->pop($fbind4); };
-ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
+ok($@, qr/^Triceps::FnReturn::pop: invalid arguments:
   Attempted to pop from an empty FnReturn 'fret1'./);
 #print "$@";
 
 eval { $fret1->pop(); };
-ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
+ok($@, qr/^Triceps::FnReturn::pop: invalid arguments:
   Attempted to pop from an empty FnReturn 'fret1'./);
 #print "$@";
 
 $fret1->push($fbind3); # this is of the same row set type, so it's OK
 
 eval { $fret1->pop($fbind4); };
-ok($@ =~ /^Triceps::FnReturn::pop: invalid arguments:
+ok($@, qr/^Triceps::FnReturn::pop: invalid arguments:
   Attempted to pop an unexpected binding 'fbind4' from FnReturn 'fret1'.
   The bindings on the stack \(top to bottom\) are:
     fbind3/);
@@ -1321,7 +1324,7 @@ eval {
 	ok($fretz1->bindingStackSize(), 0);
 	$ab->clear();
 };
-ok($@ =~ /^Triceps::AutoFnBind::clear: encountered an FnReturn corruption
+ok($@, qr/^Triceps::AutoFnBind::clear: encountered an FnReturn corruption
   AutoFnBind::clear: caught an exception at position 0
     Attempted to pop from an empty FnReturn 'fretz1'./);
 #print "$@";
@@ -1331,7 +1334,7 @@ eval {
 		$fretz2 => $fbindz1,
 	);
 };
-ok($@ =~ /^Triceps::AutoFnBind::new: invalid arguments:
+ok($@, qr/^Triceps::AutoFnBind::new: invalid arguments:
   Attempted to push a mismatching binding 'fbindz1' on the FnReturn 'fretz2'./);
 #print "$@";
 # The pushed binding on fretz1 gets automatically cleared, no need to pop.
@@ -1413,7 +1416,7 @@ eval {
 		$fretz2
 	);
 };
-ok($@ =~ /^Usage: Triceps::Unit::callBound\(self, ops, fnret1 => fnbinding1, ...\), returns and bindings must go in pairs/);
+ok($@, qr/^Usage: Triceps::Unit::callBound\(self, ops, fnret1 => fnbinding1, ...\), returns and bindings must go in pairs/);
 #print "$@";
 
 eval {
@@ -1422,7 +1425,7 @@ eval {
 		$fretz2 => $fbindz1,
 	);
 };
-ok($@ =~ /^Triceps::Unit::callBound: arguments 4, 5:
+ok($@, qr/^Triceps::Unit::callBound: arguments 4, 5:
   Attempted to push a mismatching binding 'fbindz1' on the FnReturn 'fretz2'./);
 #print "$@";
 ok($fretz1->bindingStackSize(), 0);
@@ -1434,7 +1437,7 @@ eval {
 		$fretz2 => $fbindz3,
 	);
 };
-ok($@ =~ /^Triceps::Unit::callBound: ops argument value has an incorrect magic for either Triceps::Rowop or Triceps::Tray/);
+ok($@, qr/^Triceps::Unit::callBound: ops argument value has an incorrect magic for either Triceps::Rowop or Triceps::Tray/);
 #print "$@";
 
 eval {
@@ -1443,7 +1446,7 @@ eval {
 		$fretz2 => $fbindz3,
 	);
 };
-ok($@ =~ /^Triceps::Unit::callBound: element 0 of the rowop array value has an incorrect magic for Triceps::Rowop/);
+ok($@, qr/^Triceps::Unit::callBound: element 0 of the rowop array value has an incorrect magic for Triceps::Rowop/);
 #print "$@";
 
 eval {
@@ -1451,7 +1454,7 @@ eval {
 		$fretz1 => $fbindzmess,
 	);
 };
-ok($@ =~ /^Triceps::Unit::callBound: error on popping the bindings:
+ok($@, qr/^Triceps::Unit::callBound: error on popping the bindings:
   AutoFnBind::clear: caught an exception at position 0
     Attempted to pop an unexpected binding 'fbindzmess' from FnReturn 'fretz1'.
     The bindings on the stack \(top to bottom\) are:
@@ -1598,6 +1601,36 @@ unit 'u1' after label 'lbz2' op OP_INSERT }
 	$ts1->clearBuffer();
 	$ts2->clearBuffer();
 }
+sub WrapACall {
+	$u1->call($rop1);
+	$u1->call($rop2);
+}
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		code => '&WrapACall(@_);', # source code snippet
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 1);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one . $exp_call_two);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
 {
 	my $c1 = 0;
 	my $c2 = 0;
@@ -1615,6 +1648,37 @@ unit 'u1' after label 'lbz2' op OP_INSERT }
 			two => sub { $c2++; },
 		],
 		code => [$callem, $rop1, $rop2],
+	);
+	
+	ok($fretz1->bindingStackSize(), 0);
+	ok($fretz2->bindingStackSize(), 0);
+
+	ok($c1, 1);
+	ok($c2, 1);
+
+	my $v1 = $ts1->print();
+	ok($v1, $exp_call_one . $exp_call_two);
+	#print "$v1";
+	$ts1->clearBuffer();
+	$ts2->clearBuffer();
+}
+sub WrapACallArgs {
+	for my $rop (@_) {
+		$u1->call($rop);
+	}
+}
+{
+	my $c1 = 0;
+	my $c2 = 0;
+	Triceps::FnBinding::call(
+		name => "callb",
+		unit => $u1,
+		on => $fretz1,
+		labels => [
+			one => sub { $c1++; },
+			two => sub { $c2++; },
+		],
+		code => ['&WrapACallArgs(@_);', $rop1, $rop2],
 	);
 	
 	ok($fretz1->bindingStackSize(), 0);
@@ -1743,53 +1807,53 @@ sub badCall # (optName, optValue, ...)
 			name => "fbindx",
 			[
 				one => $lbind1,
-				two => sub { },
+				two => ' ', # same as "sub { }" but in source code
 			]
 		);
 	};
 	ok(!defined $res);
-	ok($@ =~ /^Usage: Triceps::FnBinding::call\(optionName, optionValue, ...\), option names and values must go in pairs/);
+	ok($@, qr/^Usage: Triceps::FnBinding::call\(optionName, optionValue, ...\), option names and values must go in pairs/);
 	#print "$@";
 }
 
 &badCall(xxx => "fbind1");
-ok($@ =~ /^Triceps::FnBinding::call: unknown option 'xxx'/);
+ok($@, qr/^Triceps::FnBinding::call: unknown option 'xxx'/);
 #print "$@";
 
 &badCall(name => "");
-ok($@ =~ /^Triceps::FnBinding::call: missing or empty mandatory option 'name'/);
+ok($@, qr/^Triceps::FnBinding::call: missing or empty mandatory option 'name'/);
 #print "$@";
 
 &badCall(unit => undef);
-ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'unit'/);
+ok($@, qr/^Triceps::FnBinding::call: missing mandatory option 'unit'/);
 #print "$@";
 
 &badCall(on => undef);
-ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'on'/);
+ok($@, qr/^Triceps::FnBinding::call: missing mandatory option 'on'/);
 #print "$@";
 
 &badCall(labels => undef);
-ok($@ =~ /^Triceps::FnBinding::call: missing mandatory option 'labels'/);
+ok($@, qr/^Triceps::FnBinding::call: missing mandatory option 'labels'/);
 #print "$@";
 
 &badCall();
-ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got 0 of them./);
+ok($@, qr/^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got 0 of them./);
 #print "$@";
 
 &badCall(rowop => $rop1, rowops => [$rop1, $rop2], tray => $u1->makeTray($rop1, $rop2), code => sub {});
-ok($@ =~ /^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got 4 of them./);
+ok($@, qr/^Triceps::FnBinding::call: exactly 1 of options 'rowop', 'tray', 'rowops', 'code' must be specified, got 4 of them./);
 #print "$@";
 
 &badCall(rowops => [$u1]);
-ok($@ =~ /^Triceps::FnBinding::call: element 0 of the option 'rowops' array value has an incorrect magic for Triceps::Rowop/);
+ok($@, qr/^Triceps::FnBinding::call: element 0 of the option 'rowops' array value has an incorrect magic for Triceps::Rowop/);
 #print "$@";
 
 &badCall(rowop => $rop1, labels => [zzz => $lbind1]);
-ok($@ =~ /^Triceps::FnBinding::call: invalid arguments:\n  Unknown return label name 'zzz'./);
+ok($@, qr/^Triceps::FnBinding::call: invalid arguments:\n  Unknown return label name 'zzz'./);
 #print "$@";
 
-&badCall(rowop => $rop001, labels => [one => sub { die "test die\n"; }]);
-ok($@ =~ /^test die
+&badCall(rowop => $rop001, labels => [one => 'die "test die\n";']); # also test the source code snnippet
+ok($@, qr/^test die
 Detected in the unit 'u1' label 'fbindx.one' execution handler.
 Called through the label 'fbindx.one'.
 Called through the label 'fret1.one'.
@@ -1797,7 +1861,7 @@ Called chained from the label 'lb1'./);
 #print "$@";
 
 &badCall(rowop => $rop001, labels => [one => sub { $fret1->push($fbind1); }]);
-ok($@ =~ /^Triceps::FnBinding::call: error on popping the bindings:
+ok($@, qr/^Triceps::FnBinding::call: error on popping the bindings:
   AutoFnBind::clear: caught an exception at position 0
     Attempted to pop an unexpected binding 'fbindx' from FnReturn 'fret1'.
     The bindings on the stack \(top to bottom\) are:
@@ -1809,15 +1873,15 @@ $fret1->pop();
 $fret1->pop();
 
 &badCall(code => 10);
-ok($@ =~ /^Triceps::FnBinding::call: option 'code' value must be a reference to a function or an array starting with a reference to function/);
+ok($@, qr/^Triceps::FnBinding::call: option 'code' value must be a reference to a function or an array starting with a reference to function/);
 #print "$@";
 
 &badCall(code => [10]);
-ok($@ =~ /^Triceps::FnBinding::call: option 'code' value must be a reference to a function or an array starting with a reference to function/);
+ok($@, qr/^Triceps::FnBinding::call: option 'code' value must be a reference to a function or an array starting with a reference to function/);
 #print "$@";
 
 &badCall(code => sub {die "test error"});
-ok($@ =~ /^test error at .*\nError detected in Triceps::FnBinding::call option 'code' at/);
+ok($@, qr/^test error at .*\nError detected in Triceps::FnBinding::call option 'code' at/);
 #print "$@";
 
 

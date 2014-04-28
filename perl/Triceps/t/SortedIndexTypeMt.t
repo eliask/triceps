@@ -360,7 +360,7 @@ sink.dump OP_INSERT b="2" c="2"
 					import => "writer",
 				);
 			};
-			ok($@, qr/^Triceps::TrieadOwner::makeNexus: invalid arguments:\n  In app 'a1' thread 'main' can not export the facet 'source' with an error:\n    Can not export the table type 'tt1' containing errors:\n      index error:\n        nested index 1 'primary':\n          PerlSortedIndex\(basic\) compare function is not compatible with multithreading:\n            the code is not a source code string/);
+			ok($@, qr/^Triceps::TrieadOwner::makeNexus: invalid arguments:\n  In app 'a1' thread 'main' can not export the facet 'source' with an error:\n    Can not export the table type 'tt1' containing errors:\n      index error:\n        nested index 1 'primary':\n          PerlSortedIndex\(basic\) compare function is not compatible with multithreading:\n            Triceps::IndexType::newPerlSorted\(compare\): the code is not a source code string/);
 
 		},
 	);

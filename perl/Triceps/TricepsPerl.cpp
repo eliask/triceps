@@ -501,8 +501,8 @@ void GetSvArrayOrHash(AV *&array, HV *&hash, SV *svptr, const char *fmt, ...)
 
 Label *GetSvLabelOrCode(SV *svptr, const char *fmt, ...)
 {
-	if (SvROK(svptr) && SvTYPE(SvRV(svptr)) == SVt_PVCV)
-		// this is a code reference
+	if (SvROK(svptr) && SvTYPE(SvRV(svptr)) == SVt_PVCV // this is a code reference
+	|| SvPOK(svptr)) // or a code snippet
 		return NULL;
 
 	if (!sv_isobject(svptr) || SvTYPE(SvRV(svptr)) != SVt_PVMG) {
@@ -510,7 +510,7 @@ Label *GetSvLabelOrCode(SV *svptr, const char *fmt, ...)
 		va_start(ap, fmt);
 		string s = vstrprintf(fmt, ap);
 		va_end(ap);
-		throw Exception(strprintf("%s value must be a reference to Triceps::Label or a function", 
+		throw Exception(strprintf("%s value must be a code snippet or a reference to code or Triceps::Label", 
 			s.c_str()), false);
 	}
 	WrapLabel *wvar = (WrapLabel *)SvIV((SV*)SvRV( svptr ));

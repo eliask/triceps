@@ -73,8 +73,33 @@ public:
 	//               OR a string with the code: it will be remembered and also 
 	//               compiled into a sub {}. If the code is not a string, will
 	//               reset the threadable_ flag.
-	// @param fname - caller function name, for error messages
+	// @param fname - function name for error messages.
 	void setCode(SV *code, const char *fname);
+
+	// Set code_. Implicitly does clear();
+	// On failure throws an Exception.
+	// The erro message prefix is a formattable string.
+	// @param code - Perl code reference for processing the rows; will check
+	//               for correctness; will make a copy of it (because if keeping a reference,
+	//               SV may change later, a copy is guaranteed to stay the same).
+	//               OR a string with the code: it will be remembered and also 
+	//               compiled into a sub {}. If the code is not a string, will
+	//               reset the threadable_ flag.
+	// @param fmt, ... - the prefix for the error message
+	void setCodeFmt(SV *code, const char *fmt, ...)
+		__attribute__((format(printf, 3, 4))); // +1 for "this"
+
+	// Set code_. Implicitly does clear();
+	// On failure throws an Exception.
+	// The version to pass through the va_args with format.
+	// @param code - Perl code reference for processing the rows; will check
+	//               for correctness; will make a copy of it (because if keeping a reference,
+	//               SV may change later, a copy is guaranteed to stay the same).
+	//               OR a string with the code: it will be remembered and also 
+	//               compiled into a sub {}. If the code is not a string, will
+	//               reset the threadable_ flag.
+	// @param fmt, ... - the prefix for the error message
+	void setCodeVa(SV *code, const char *fmt, va_list ap);
 
 	// Append another argument to args_.
 	// @param arg - argument value to append; will make a copy of it.
@@ -115,10 +140,13 @@ public:
 	// @param other - the original object
 	PerlCallback(const PerlCallback *other);
 
-	// compile the code from codestr_; leaves the result in code_ on success
-	// @param fname - caller function name, for error messages, or a placeholder
+	// compile the code from codestr_; leaves the result in code_ on success;
+	// the format can be either direct or pass-through
+	// @param fmt - message describing the caller function name, for error messages, or a placeholder
 	// @return - the error messages, or NULL if all successful
-	Erref compileCode(const char *fname);
+	Erref compileCodeFmt(const char *fmt, ...)
+		__attribute__((format(printf, 2, 3))); // +1 for "this"
+	Erref compileCodeVa(const char *fmt, va_list ap);
 
 	// for macros, the internals must be public
 	bool threadinit_; // the initial state of threadable stat, to be used after clearing, as came from the constructor
