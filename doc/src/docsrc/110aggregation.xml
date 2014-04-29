@@ -698,7 +698,7 @@ while(&readLine) {
 		<pre>undef</pre>, as in this example), 
 		</listitem>
 		<listitem>
-		group computation Perl function, 
+		group computation Perl function or source code snippet, 
 		</listitem>
 		<listitem>
 		the optional arguments for the functions. 
@@ -1032,6 +1032,20 @@ tWindow.aggrAvgPrice OP_INSERT symbol="AAA" id="7" price="30"
 		id became 3, since it's now the last row left in that group).
 		Then for the group where the row gets added, and since there was nothing in
 		that group before, it generates only an INSERT.
+		</para>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		The handling of the fatal errors (as in <pre>die()</pre>) in the 
+		aggregator functions is an interesting subject.
+		The errors propagate properly through the table,
+		and the table operations confess with the Perl handler's error message.
+		But since an error in the aggregator function means that things are going
+		very, very wrong, after that the table becomes inoperative and will die
+		on all the subsequent operations as well. You need to be very careful
+		in writing these functions.
 		</para>
 	</sect1>
 
@@ -2628,7 +2642,7 @@ $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 		<pre>saveComputeTo</pre> gives a variable to save that source code for future
 		perusal and other entertainment. Here is the compute function that 
 		gets produced by the example above (it gets implicitly wrapped in a
-		<pre>sub { ... }</pre>):
+		<pre>sub { ... }</pre>, like any other source code argument):
 		</para>
 
 <!-- t/xAgg.t doSimpleAgg, contents of $compText -->

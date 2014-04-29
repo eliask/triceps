@@ -797,8 +797,8 @@ foreach my $row (@rowset) {
 		</para>
 
 <pre>
-my ($lbFirst, $mark) = $unit->makeLoopHead($rowType, "name", \&clearSub,
-	\&execSub, @args);
+my ($lbFirst, $mark) = $unit->makeLoopHead($rowType, "name", $clearSub,
+	$execSub, @args);
 my ($lbFirst, $mark) = $unit->makeLoopAround("name", $lbToWrap);
 </pre>
 
@@ -2524,13 +2524,15 @@ unit 'u1' before label 'lab3' (chain 'lab1') op OP_DELETE
 		</para>
 
 <pre>
-$tracer = Triceps::UnitTracerPerl->new(\&sub, @args);
+$tracer = Triceps::UnitTracerPerl->new($sub, @args);
 </pre>
 
 		<para>
 		The arguments are a reference to a function, and optionally arguments
 		for it. The resulting tracer can be used in the unit's <pre>setTracer()</pre> as
 		usual.
+		A source code string may be used instead of the function reference, see
+		<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 		</para>
 
 		<para>

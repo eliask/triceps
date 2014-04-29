@@ -132,8 +132,8 @@ $it = Triceps::IndexType->newFifo($optionName => $optionValue, ...);
 		</variablelist>
 
 <pre>
-$it = Triceps::IndexType->newPerlSorted($sortName, \&initFunc,
-	\&compareFunc, @args...);
+$it = Triceps::IndexType->newPerlSorted($sortName, $initFunc,
+	$compareFunc, @args...);
 </pre>
 
 		<para>
@@ -150,21 +150,25 @@ $it = Triceps::IndexType->newPerlSorted($sortName, \&initFunc,
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>\&initFunc</pre></term>
+			<term><pre>$initFunc</pre></term>
 			<listitem>
 			a function reference that can be used
 			to generate the comparison function dynamically at the table type
 			initialization time (or use <pre>undef</pre> with a fixed comparison
 			function). 
+			A source code string may be used instead of the function reference, see
+			<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>\&compareFunc</pre></term>
+			<term><pre>$compareFunc</pre></term>
 			<listitem>
 			a function reference to the fixed comparison function, if preferred
 			(or use <pre>undef</pre> if it will be generated dynamically by the init
 			function). 
+			A source code string may be used instead of the function reference, see
+			<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 			</listitem>
 		</varlistentry>
 
@@ -180,6 +184,17 @@ $it = Triceps::IndexType->newPerlSorted($sortName, \&initFunc,
 		<para>
 		See the details in
 		<xref linkend="sc_table_sorted" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		The handling of the fatal errors (as in <pre>die()</pre>) in the initialization 
+		and especially comparison functions is an interesting subject.
+		The errors propagate properly through the table,
+		and the table operations confess with the Perl handler's error message.
+		But since an error in the comparison function means that things are going
+		very, very wrong, after that the table becomes inoperative and will die
+		on all the subsequent operations as well. You need to be very careful
+		in writing these functions.
 		</para>
 
 <pre>
@@ -331,15 +346,17 @@ $result = $it->isLeaf();
 		</para>
 
 <pre>
-$it->setComparator(\&compareFunc, @args...);
+$it->setComparator($compareFunc, @args...);
 </pre>
 
 		<para>
 		A special method that works only on the PerlSorted index types.
-		Sets an auto-generater comparator function and its optional
+		Sets an auto-generated comparator function and its optional
 		arguments from an initializer function at the table initialization
 		time. On success it returns 1. For all other index types this method
 		confesses.
+		A source code string may be used instead of the function reference, see
+		<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
 		</para>
 
 	</sect1>

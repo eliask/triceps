@@ -93,8 +93,8 @@ labels => [
 </pre>
 
 			<para>
-			If the second element in the pair is a function reference (anonymous
-			or not), a label will be automatically created using the unit from the
+			If the second element in the pair is a function reference
+			or a source code snippet in a string, a label will be automatically created using the unit from the
 			option <quote>unit</quote>, the row type from the matching label in
 			FnReturn, and the provided function as the label's code. It's a 
 			convenient way to make your code shorter.  The full names of these created
@@ -286,6 +286,9 @@ labels => [
 			<term><pre>code</pre></term>
 			<listitem>
 			A code reference to execute that sends the arguments to the streaming function.
+			The source code snippet in a string also works. This option may also specify
+			a function reference (or, again, its source code) together with its arguments.
+			In this case the value would be an array reference: <pre>code => [ $code, @args ]</pre>.
 			Exactly one of options <quote>rowop</quote>, <quote>rowops</quote>,
 			<quote>tray</quote>, <quote>code</quote> must be used.
 			</listitem>

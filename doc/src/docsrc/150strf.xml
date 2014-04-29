@@ -1445,11 +1445,8 @@ while(&readLine) {
 		<indexterm>
 			<primary>AutoFnBind</primary>
 		</indexterm>
-		<indexterm>
-			<primary>FnBinding::call</primary>
-		</indexterm>
 		<para>
-		The constructor of AutoFnBind (and also <pre>FnBinding::call()</pre>) can accept
+		The constructor of AutoFnBind can accept
 		multiple return-binding pairs. It will bind them all, and unbind them
 		back on its object destruction. It's the same thing as creating
 		multiple AutoFnBind objects, one for each pair, only more efficient.
@@ -2506,7 +2503,7 @@ $fbFibPrev2 = Triceps::FnBinding->new(
 		overwrite it. So it has to be built into a stack of objects, a new one
 		pushed for each call and popped after it. This pushing and popping can
 		be tied to the pushing and popping of the bindings on an FnReturn. When
-		the FnReturn is defined, the options onPush and onPop define the custom
+		the FnReturn is defined, the options <quote>onPush</quote> and <quote>onPop</quote> define the custom
 		Perl code to execute, which is used here for the management of the
 		state stack.
 		</para>

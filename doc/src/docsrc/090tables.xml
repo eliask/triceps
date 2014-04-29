@@ -1625,7 +1625,7 @@ Average price: Undefined
 
 <pre>
 $it = Triceps::IndexType->newPerlSorted($sortName,
-  \&initFunc, \&compareFunc, @args);
+  $initFunc, $compareFunc, @args);
 </pre>
 
 		<para>
@@ -1698,14 +1698,15 @@ table (
 		</para>
 
 		<para>
-		The <pre>initFunc</pre> and/or <pre>compareFunc</pre> references specify the sorting order.
+		The <pre>$initFunc</pre> and/or <pre>$compareFunc</pre> function references 
+		(or, as usual, they may be specified as source code strings) specify the sorting order.
 		One of them may be left undefined but not both. <pre>@args</pre> are the optional
 		arguments that will be passed to both functions.
 		</para>
 
 		<para>
 		The easiest but least flexible way is to just use the
-		<pre>compareFunc</pre>. It gets two Rows (not RowHandles!) as arguments, plus
+		<pre>$compareFunc</pre>. It gets two Rows (not RowHandles!) as arguments, plus
 		whatever is specified in <pre>@args</pre>. It returns the usual Perl-style
 		<quote>&lt;=&gt;</quote> result. For example:
 		</para>
@@ -1758,7 +1759,7 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 		</para>
 
 		<para>
-		The <pre>initFunc</pre> provides a way to do that check and more.
+		The <pre>$initFunc</pre> provides a way to do that check and more.
 		It is called at the table type initialization time. By this time all
 		this extra information is known, and it gets the references to the
 		table type, index type (itself, but with the class stripped back to
@@ -1820,7 +1821,7 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", \&initNumStr,
 		</para>
 
 <pre>
-$idxt->setComparator(\&compareFunc);
+$idxt->setComparator($compareFunc);
 </pre>
 
 		<para>
@@ -1860,6 +1861,20 @@ $idxt->setComparator(\&compareFunc);
 		means that they share certain traits. Both kinds have the unique keys,
 		there can not be two rows with the same key in an index of either kind.
 		Both kinds allow to nest other indexes in them.
+		</para>
+
+		<indexterm>
+			<primary>error handling</primary>
+		</indexterm>
+		<para>
+		The handling of the fatal errors (as in <pre>die()</pre>) in the initialization 
+		and especially comparison functions is an interesting subject.
+		The errors propagate properly through the table,
+		and the table operations confess with the Perl handler's error message.
+		But since an error in the comparison function means that things are going
+		very, very wrong, after that the table becomes inoperative and will die
+		on all the subsequent operations as well. You need to be very careful
+		in writing these functions.
 		</para>
 	</sect1>
 

@@ -38,6 +38,18 @@ $t = $unit->makeTable($tabType, "tableName");
 		the table labels.
 		</para>
 
+		<para>
+		A word needs to be said about the handling of the fatal errors (as in <pre>die()</pre>)
+		in the custom Perl functions provided in the user elements of the table,
+		such as the PerlSortedIndex and aggregators.
+		The errors propagate properly through the table,
+		and the table operations confess with the Perl handler's error message.
+		But since an error in these functions means that things are going
+		very, very wrong, after that the table becomes inoperative and will die
+		on all the subsequent operations as well. You need to be very careful
+		in writing these functions.
+		</para>
+
 <pre>
 $result = $t1->same($t2);
 </pre>

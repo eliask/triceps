@@ -130,7 +130,6 @@ Things that need to be done:
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
 * doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
-* doc: describe CLONE_SKIP
 * doc: a very short explanation of stock market terms in the intro
 * doc: in the scheduler description refer less to Coral8
 * doc: in section on topo loops add an xref to streaming functions loops
@@ -151,10 +150,10 @@ App ideas:
 * the challenges from http://www.orgs.ttu.edu/debs2013/
 * look at the use with RabbitMQ
 
-tangent 144, 157, 191, 197, 199, 204
+tangent 144, 157, 191, 197, 199, 204, 279
 171-172
 206
-211-222
+212-222
 224-230
 231
 232-252
@@ -163,4 +162,4 @@ tangent 144, 157, 191, 197, 199, 204
 261 except Unit, FnReturn
 262-267
 269-277
-*** next 279
+*** next 282

@@ -116,6 +116,7 @@ labels => [
 			<pre>onPush => [ $code, @args ]</pre>. The first argument of the function
 			will always be the FnReturn object itself, with extra arguments going
 			after it: <pre>&$code($thisFnReturn, @optional_args)</pre>.
+			As usual, a source code string may be used instead of the function reference.
 			Optional.
 			</listitem>
 		</varlistentry>
@@ -132,6 +133,7 @@ labels => [
 			<pre>onPop => [ $code, @args ]</pre>. The first argument of the function
 			will always be the FnReturn object itself, with extra arguments going
 			after it: <pre>&$code($thisFnReturn, @optional_args)</pre>.
+			As usual, a source code string may be used instead of the function reference.
 			Optional.
 			</listitem>
 		</varlistentry>

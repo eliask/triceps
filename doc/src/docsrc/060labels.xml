@@ -182,19 +182,22 @@ $label = $unit->makeDummyLabel($rowType, "name");
 			<secondary>Perl</secondary>
 		</indexterm>
 <pre>
-$label = $unit->makeLabel($rowType, "name", \&clearSub,
-	\&execSub, @args);
+$label = $unit->makeLabel($rowType, "name", $clearSub,
+	$execSub, @args);
 </pre>
 
 		<para>
 		The row type and name arguments are the same as for the dummy label.
-		The following arguments provide the references to the Perl functions
-		that perform the actions. <pre>execSub</pre> is the function that executes to
+		The following two arguments provide the references to the Perl functions
+		that perform the actions. 
+		They can be specified as a function reference or a source code string, see
+		<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
+		<pre>$execSub</pre> is the function that executes to
 		handle the incoming rows. It gets the arguments:
 		</para>
 
 <pre>
-execSub($label, $rowop, @args)
+&$execSub($label, $rowop, @args)
 </pre>
 
 		<para>
@@ -215,13 +218,13 @@ execSub($label, $rowop, @args)
 		</para>
 
 		<para>
-		<pre>clearSub</pre> is the function that clears the label. It will be explained in the
+		<pre>$clearSub</pre> is the function that clears the label. It will be explained in the
 		<xref linkend="sc_memory_labels" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
-		Either of <pre>execSub</pre> and <pre>clearSub</pre> can be specified as <pre>undef</pre>. Though
-		a label with an undefined <pre>execSub</pre> makes the label useless for anything
+		Either of <pre>$execSub</pre> and <pre>$clearSub</pre> can be specified as <pre>undef</pre>. Though
+		a label with an undefined <pre>$execSub</pre> makes the label useless for anything
 		other than clearing. On an attempt to send data to it, it will complain that
 		the label has been cleared.
-		The undefined <pre>clearSub</pre> causes the function
+		The undefined <pre>$clearSub</pre> causes the function
 		<pre>Triceps::clearArgs()</pre> to be used as the default, which provides the
 		correct reaction for most situations.
 		</para>

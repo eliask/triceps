@@ -325,6 +325,141 @@ $row1->same($row2)
 		</para>
 	</sect1>
 
+	<sect1 id="sc_code">
+		<title>Code references and snippets</title>
+
+		<indexterm>
+			<primary>code</primary>
+		</indexterm>
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
+		<para>
+		Many of the Triceps Perl API objects accept the Perl code arguments,
+		to be executed as needed. This code can be specified as either a function
+		reference or a string containing the source code snippet.
+		The major reason to accept the arguments in the source code format
+		is the ability to pass them through between the threads, which cannot
+		be done with the compiled code. See more information on that in 
+		<xref linkend="sc_mt_objects" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
+		</para>
+
+		<para>
+		Only a few of the classes can be exported between the threads
+		but for consistency all the classes support the code arguments in
+		either format. This feature is built into the general way the
+		Triceps XS methods handle the code references.
+		</para>
+
+		<para>
+		The following examples are equivalent, one using a function
+		reference, another using a source code snippet.
+		Of course, if you know that the created object will be
+		exported to another thread, you must use the source code
+		format. Otherwise you can take your pick.
+		</para>
+
+<pre>
+$it= Triceps::IndexType->newPerlSorted("b_c", undef, 
+sub {
+	my $res = ($_[0]->get("b") <=> $_[1]->get("b")
+		|| $_[0]->get("c") <=> $_[1]->get("c"));
+	return $res;
+}
+);
+
+$it= Triceps::IndexType->newPerlSorted("b_c", undef, 
+'
+	my $res = ($_[0]->get("b") <=> $_[1]->get("b")
+		|| $_[0]->get("c") <=> $_[1]->get("c"));
+	return $res;
+'
+);
+</pre>
+
+		<para>
+		As you can see, when specifying the handler as source code,
+		you must specify only the function body, and the 
+		<pre>sub { ... }</pre> will be wrapped around it implicitly.
+		Including the <pre>sub</pre> would be an error.
+		</para>
+
+		<para>
+		There are other differences between the code references and the
+		source code format:
+		</para>
+
+		<para>
+		When you compile a function, it carries with it the lexical context. So
+		you can make the closures that refer to the <quote>my</quote> variables in their
+		lexical scope. With the source code snippets you can't do this. 
+		The source code gets compiled in the context of the main package,
+		and that's all they can see. In some cases, it might not even be
+		compiled immediately. If an object has an explicit initialization,
+		the code snippets get compiled at the initialization time.
+		And if the object is exported to another thread, the code snippets
+		will be re-compiled when an object's copy is created and initialized in that
+		another thread.  Remember also that the global
+		variables are not shared between the threads, so if you refer to a
+		global variable in the code snippet and rely on a value in that
+		variable, it won't be present in the other threads (unless the other
+		threads are direct descendants and the value was set before their
+		creation).
+		</para>
+
+		<para>
+		The code written in Perl can make use of the source code snippets as well.
+		If it just passes these code arguments to the XS methods, it
+		will get this support automatically. But if it wants to call
+		these snippets directly from the Perl code, Triceps provides
+		a convenience method that would accept the code in either format
+		and compile it if needed:
+		</para>
+
+<pre>
+$code = Triceps::Code::compile($code_ref_or_source);
+</pre>
+		<para>
+		It takes either a code reference or a source code string as an argument
+		and returns the reference to the compiled code. If the argument was a
+		code reference, it just passes through unchanged. If it was a source
+		code snippet, it gets compiled (and the rules are the same, the text
+		gets the <pre>sub { ... }</pre> wrapper added around it implicitly).
+		</para>
+
+		<para>
+		If the argument was an <pre>undef</pre>, it also passes through unchanged. This is
+		convenient in case if the code is optional. But if it isn't then the
+		caller should check for <pre>undef</pre>.
+		</para>
+
+		<para>
+		If the compilation fails, the method confesses, and includes the error
+		and the source code into the message, in the same way as the XS methods
+		do.
+		</para>
+
+		<para>
+		The optional second argument can be used to provide information
+		about the meaning of the code for the error messages. If it's undefined
+		then the default is "Code snippet":
+		</para>
+
+<pre>
+$code = Triceps::Code::compile($code_ref_or_source, $description);
+</pre>
+
+		<para>
+		For example, if the code represents an error handler,
+		the call can be done as follows:
+		</para>
+
+<pre>
+$code = Triceps::Code::compile($code, "Error handler");
+</pre>
+
+	</sect1>
+
 	<sect1 id="sc_constants">
 		<title>Triceps constants</title>
 

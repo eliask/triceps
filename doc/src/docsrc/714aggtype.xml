@@ -27,8 +27,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$at = Triceps::AggregatorType->new($resultRowType, "aggName", \&initFunc,
-	\&handlerFunc, @args);
+$at = Triceps::AggregatorType->new($resultRowType, "aggName", $initFunc,
+	$handlerFunc, @args);
 </pre>
 
 		<para>
@@ -40,16 +40,30 @@ $at = Triceps::AggregatorType->new($resultRowType, "aggName", \&initFunc,
 		</para>
 
 		<para>
-		The optional <pre>@args</pre> are passed to both the init and handler functions (to
-		which <pre>\&initFunc</pre> and <pre>\&handlerFunc</pre> are references). The init function is
+		<pre>$initFunc</pre> and <pre>$handlerFunc</pre> provide either references or
+		source code strings for the init and handler functions (as usual, if the format
+		is the source code, the <pre>sub { ... }</pre> wrapper will be added implicitly, see
+		<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;). 
+		The init function is
 		called when the row group (contained in an index of the type, on which
 		this aggregator type is set) is created. It initializes the group's
 		aggregation state. The handler function gets called on the
 		changes to the group.  See the details in
 		<xref linkend="sc_aggregation_optimized" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
-		<xref linkend="sc_aggregation_additive" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		<xref linkend="sc_aggregation_additive" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		and
 		<xref linkend="sc_aggregation_args" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		The optional <pre>@args</pre> are passed to both the init and handler functions.
+		</para>
+
+		<para>
+		If any fatal errors (as in <pre>die()</pre>) occur in the 
+		aggregator functions, they propagate properly through the table,
+		and the table operations confess with the Perl handler's error message.
+		But since an error in the aggregator function means that things are going
+		very, very wrong, after that the table becomes inoperative and will die
+		on all the subsequent operations as well. You need to be very careful
+		in writing these functions.
 		</para>
 
 <pre>

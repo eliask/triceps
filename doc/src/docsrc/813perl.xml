@@ -291,6 +291,9 @@ DEFINE_WRAP_IDENT(Unit, Tray);
 		<indexterm>
 			<primary>multithreading</primary>
 		</indexterm>
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
 		<para>
 		Just one more thing: Perl is not happy about sharing the objects
 		between multiple threads. Even when a &Cpp; object is OK with multithreading,

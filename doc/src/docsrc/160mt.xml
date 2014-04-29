@@ -1004,6 +1004,247 @@ sub rawToHourlyT # (@opts)
 		The <pre>hourlyToDailyT()</pre> is very similar, so I won't even show it here, you can
 		find the full text in the sources.
 		</para>
+	</sect1>
+
+	<sect1 id="sc_mt_objects">
+		<title>Object passing between threads</title>
+
+		<indexterm>
+			<primary>multithreading</primary>
+		</indexterm>
+		<indexterm>
+			<primary>XS</primary>
+		</indexterm>
+		<para>
+		A limitation of the Perl threads is that no variables can be shared
+		between them. Well, there are the special shared variables but
+		they're are very special and have great many limitations on their own.
+		When a new thread gets created, it gets a copy of all the
+		variables of the parent. That is, of all the plain Perl variables. With
+		the XS extensions your luck may vary: the variables might get copied,
+		might become undefined, or just become broken (if the XS module is not
+		threads-aware). Copying the XS variables requires a quite high overhead
+		at all the other times, so Triceps doesn't do it and all the Triceps
+		object become undefined in the new thread.
+		</para>
+
+		<para>
+		This model of behavior for a package is marked by creating the
+		method <pre>CLONE_SKIP</pre> in it:
+		</para>
+
+<pre>
+sub CLONE_SKIP { 1; }
+</pre>
+
+		<para>
+		All the Triceps packages define it, and it's the best practice to
+		define it in your packages as well.
+		</para>
+
+		<para>
+		However the threads are useless without communication, and
+		Triceps provides a way to pass around certain objects through the
+		Nexuses.
+		</para>
+
+		<indexterm>
+			<primary>Nexus</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Facet</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Rowop</primary>
+		</indexterm>
+		<para>
+		First, obviously, the Nexuses are intended to pass through the Rowops.
+		These Rowops coming out of a nexus are not the same Rowop objects that
+		went in. Rowop is a single-threaded object and can not be shared by two
+		threads. Instead it gets converted to an internal form while in the
+		nexus, and gets re-created when it comes out, pointing to the same Row object and to the
+		correct Label in the local Facet.
+		</para>
+
+		<para>
+		Then, again obviously, the Facets get imported to the other threads
+		as an interface of the Nexus, together with their row types.
+		</para>
+
+		<indexterm>
+			<primary>RowType</primary>
+		</indexterm>
+		<indexterm>
+			<primary>TableType</primary>
+		</indexterm>
+		<para>
+		And two more types of objects can be exported through a Nexus: the
+		RowTypes and TableTypes. They get exported through the options as in
+		this example:
+		</para>
+
+<pre>
+$fa = $owner->makeNexus(
+    name => "nx1",
+    labels => [
+        one => $rt1,
+        two => $lb,
+    ], 
+    rowTypes => [
+        one => $rt2,
+        two => $rt1,
+    ], 
+    tableTypes => [
+        one => $tt1,
+        two => $tt2,
+    ], 
+    import => "writer",
+); 
+</pre>
+
+		<para>
+		As you can see, the namespaces for the labels, row types and table
+		types are completely independent, and the same names can be reused in
+		each of them for different meaning. All the three sections are
+		optional, so if you want, you can export only the types in the nexus,
+		without any labels.
+		</para>
+
+		<para>
+		They can then be extracted from the imported facet as:
+		</para>
+
+<pre>
+$rt1 = $fa->impRowType("one");
+$tt1 = $fa->impTableType("one");
+</pre>
+
+		<para>
+		Or the whole set of name-value pairs can be obtained with:
+		</para>
+
+<pre>
+@rtset = $fa->impRowTypesHash();
+@ttset = $fa->impTableTypesHash();
+</pre>
+
+		<para>
+		The exact table types and row types (by themselves or in the table
+		types or labels) in the importing thread will be copied. It's
+		technically possible to share the references to the same row type
+		from multiple threads in
+		the &Cpp; code but it's more efficient to make a separate copy for each
+		thread, and thus the Perl API goes along the more efficient way.
+		</para>
+
+		<para>
+		The import is smart in the sense that it preserves the sameness of the
+		row types: if in the exporting thread the same row type was referred
+		from multiple places in the <pre>labels</pre>, <pre>rowTypes</pre> and <pre>tableTypes</pre> sections,
+		in the imported facet that would again be the same row type object (even
+		though of course not the one that has been exported but its copy). This
+		again helps with the efficiency when various objects decide if the rows
+		created by this and that type are matching.
+		</para>
+
+		<para>
+		This is all well until you want to export a table type that has an
+		index with a Perl sort condition in it, or an aggregator with the Perl
+		code. The Perl code objects are tricky: they get copied OK when a new
+		thread is created but the attempts to import them through a nexus later
+		cause a terrible memory corruption. So Triceps doesn't allow to export
+		the table types with the function references in them. 
+		But it provides an
+		alternative solution: the code snippets can be specified as the source
+		code, as described in
+		<xref linkend="sc_code" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;. 
+		They get compiled when the table type gets initialized. When a
+		table type gets imported through a nexus, it brings the source code
+		with it. The imported table types are always uninitialized, so at
+		initialization time the source code gets compiled in the new thread and
+		works.
+		</para>
+
+		<para>
+		It all works transparently: just specify a string instead of a function
+		reference when creating the index, and it will be recognized and
+		processed. For example:
+		</para>
+
+<pre>
+$it= Triceps::IndexType->newPerlSorted("b_c", undef, '
+    my $res = ($_[0]->get("b") <=> $_[1]->get("b")
+        || $_[0]->get("c") <=> $_[1]->get("c"));
+    return $res;
+    '
+);
+</pre>
+
+		<para>
+		Before the code gets compiled, it gets wrapped into a <pre>sub { ... }</pre>, so
+		don't write your own <pre>sub</pre> in the code string, that would be an error.
+		</para>
+
+		<para>
+		There is also the issue of arguments that can be specified for these
+		functions. Triceps is smart enough to handle the arguments that are
+		one of:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			<pre>undef</pre>
+			</listitem>
+			<listitem>
+			integer
+			</listitem>
+			<listitem>
+			floating-point
+			</listitem>
+			<listitem>
+			string
+			</listitem>
+			<listitem>
+			Triceps::RowType object
+			</listitem>
+			<listitem>
+			Triceps::Row object
+			</listitem>
+			<listitem>
+			reference to an array or hash thereof
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		It converts the data to an internal &Cpp; representation in the nexus and
+		then converts it back on import. So, if a TableType has all the code in
+		it in the source form, and the arguments for this code within the
+		limits of this format, it can be exported through the nexus. Otherwise
+		an attempt to export it will fail.
+		</para>
+
+		<para>
+		The SimpleOrderedIndex and SimpleAggregator use the source code format for the
+		functions they generate, so they will pass through the nexuses as well.
+		</para>
+
+		<para>
+		To recap the differences between the code references and the
+		source code snippets format:
+		</para>
+
+		<para>
+		When you compile a function, it carries with it the lexical context. So
+		you can make the closures that refer to the <quote>my</quote> variables in their
+		lexical scope. With the source code you can't do this. The table type
+		compiles them at initialization time in the context of the main
+		package, and that's all they can see. Remember also that the global
+		variables are not shared between the threads, so if you refer to a
+		global variable in the code snippet and rely on a value in that
+		variable, it won't be present in the other threads (unless the other
+		threads are direct descendants and the value was set before their
+		creation).
+		</para>
 
 	</sect1>
 </chapter>
