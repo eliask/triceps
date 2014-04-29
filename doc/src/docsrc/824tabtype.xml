@@ -295,6 +295,12 @@ TableType *deepCopy(HoldRowTypes *holder) const;
 		</para>
 
 		<para>
+		The Perl API contains one more copy method, <pre>copyFundamental()</pre>.
+		It's not directly available in the &Cpp; API yet but the same task can be
+		done manually.
+		</para>
+
+		<para>
 		Ultimately, the TableType is used to construct the tables. The factory
 		method is:
 		</para>

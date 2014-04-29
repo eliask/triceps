@@ -217,4 +217,34 @@ $newtt = $tt->copy();
 		and in general you should not copy such a table type. The errors
 		will be detected again when you try to initialize the copy.
 		</para>
+
+<pre>
+$newtt = $tt->copyFundamental();
+$newtt = $tt->copyFundamental(@idx_type_paths);
+$newtt = $tt->copyFundamental("NO_FIRST_LEAF", @idx_type_paths);
+</pre>
+
+		<para>
+		Copy only the fundamental data organization of the table type:
+		the row type and the primary index (the whole path to the
+		first leaf index type), and leave alone the rest. All the aggregators
+		on all the indexes, even on the primary one, are not included in the
+		copy. This is a convenient way to create another table, usually
+		in a different thread, that would add its own secondary indexes
+		and aggregators. See
+		<xref linkend="sc_mt_objects" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for more detail.
+		</para>
+
+		<para>
+		The optional index type paths can be used to include the secondary
+		indexes into the copy. Each path is a reference to an array of index names,
+		such as <pre>[ "byDate", "byAddress", "fifo" ]</pre>. The path must
+		lead all the way to a leaf index. A special path element <pre>"+"</pre>
+		can be used last with the meaning <quote>the first leaf index from this point</quote>.
+		Multiple paths may overlap, their overlapping parts will be copied only once.
+		A special string <pre>"NO_FIRST_LEAF"</pre> used as the first argument
+		excludes the first leaf index
+		from the copy, then only the explicitly specified index paths will be copied.
+		</para>
 	</sect1>

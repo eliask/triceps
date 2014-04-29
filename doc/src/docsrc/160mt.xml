@@ -1147,6 +1147,9 @@ $tt1 = $fa->impTableType("one");
 		created by this and that type are matching.
 		</para>
 
+		<indexterm>
+			<primary>TableType</primary>
+		</indexterm>
 		<para>
 		This is all well until you want to export a table type that has an
 		index with a Perl sort condition in it, or an aggregator with the Perl
@@ -1183,6 +1186,24 @@ $it= Triceps::IndexType->newPerlSorted("b_c", undef, '
 		<para>
 		Before the code gets compiled, it gets wrapped into a <pre>sub { ... }</pre>, so
 		don't write your own <pre>sub</pre> in the code string, that would be an error.
+		</para>
+
+		<para>
+		To recap the differences between the code references and the
+		source code snippets format:
+		</para>
+
+		<para>
+		When you compile a function, it carries with it the lexical context. So
+		you can make the closures that refer to the <quote>my</quote> variables in their
+		lexical scope. With the source code you can't do this. The table type
+		compiles them at initialization time in the context of the main
+		package, and that's all they can see. Remember also that the global
+		variables are not shared between the threads, so if you refer to a
+		global variable in the code snippet and rely on a value in that
+		variable, it won't be present in the other threads (unless the other
+		threads are direct descendants and the value was set before their
+		creation).
 		</para>
 
 		<para>
@@ -1223,28 +1244,139 @@ $it= Triceps::IndexType->newPerlSorted("b_c", undef, '
 		an attempt to export it will fail.
 		</para>
 
+		<indexterm>
+			<primary>SimpleOrderedIndex</primary>
+		</indexterm>
+		<indexterm>
+			<primary>aggregation</primary>
+		</indexterm>
 		<para>
-		The SimpleOrderedIndex and SimpleAggregator use the source code format for the
-		functions they generate, so they will pass through the nexuses as well.
+		The SimpleOrderedIndex uses the source code format for the
+		functions it generates, so they will pass through the nexuses.
+		And if you specify the aggregator functions as code snippets, you
+		can export the table types with them through the nexuses too.
+		</para>
+
+		<indexterm>
+			<primary>SimpleAggregator</primary>
+		</indexterm>
+		<para>
+		However things didn't work out so well for the SimpleAggregator.
+		I've found that I can't just do it within the current aggregation
+		infrastructure. As mentioned in
+		<xref linkend="sc_aggregation_optimized" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		the aggregators don't have the same kind of initialization function
+		as indexes (one that would run at the table type initialization
+		time), and that becomes the deal-breaker. 
 		</para>
 
 		<para>
-		To recap the differences between the code references and the
-		source code snippets format:
+		Fortunately, some thinking had showed that this feature is not really
+		needed. There usually just isn't any need to export a table type with
+		aggregators. 
+		So it's a nice feature to have overall but not urgent.
+		Moreover, there is a need to export the table types with
+		many elements stripped. 
 		</para>
 
 		<para>
-		When you compile a function, it carries with it the lexical context. So
-		you can make the closures that refer to the <quote>my</quote> variables in their
-		lexical scope. With the source code you can't do this. The table type
-		compiles them at initialization time in the context of the main
-		package, and that's all they can see. Remember also that the global
-		variables are not shared between the threads, so if you refer to a
-		global variable in the code snippet and rely on a value in that
-		variable, it won't be present in the other threads (unless the other
-		threads are direct descendants and the value was set before their
-		creation).
+		What is to be stripped and why?
+		The most central part of the table type is its primary index. It
+		defines how the data gets organized. And then the secondary indexes and
+		aggregators perform the computations from the data in the table. The
+		tables can not be shared between threads, and thus the way to copy a
+		table between the threads is to export the table type and send the
+		data, then let the other thread construct a copy of the table from that.
+		But the table created in another thread really needs only the base data
+		organization. If it does any computations on that data, that would be
+		its own computations, different than the ones in the exporting thread.
+		So all it needs to get is the basic table type with the primary index,
+		very rarely some secondary indexes, and pretty much never the
+		aggregators. The importing thread would then add its own secondary
+		indexes and aggregators before initializing its table type and
+		constructing the table from it.
 		</para>
 
+		<para>
+		The way to get such a stripped table type with only the fundamentally
+		important parts is:
+		</para>
+
+<pre>
+$tabtype_fundamental = $tabtype->copyFundamental();
+</pre>
+
+		<para>
+		That copies the row type and the primary index (the whole path to the
+		first leaf index type) and leaves alone the rest. All the aggregators
+		on all the indexes, even on the primary one, are not included in the
+		copy. In the context of the full nexus, making it can look like:
+		</para>
+
+<pre>
+$facet = $owner->makeNexus(
+    name => "data"
+    labels => [ @labels ],
+    tableTypes => [
+         mytable => $mytable->getType()->copyFundamental(),
+    ],
+    import => "writer",
+);
+</pre>
+
+		<para>
+		In case if more index types need to be included, they can be specified
+		by path in the arguments of <pre>copyFundamental()</pre>:
+		</para>
+
+<pre>
+$tabtype_fundamental = $tabtype->copyFundamental(
+    [ "byDate", "byAddress", "fifo" ],
+    [ "byDate", "byPriority", "fifo" ],
+);
+</pre>
+
+		<para>
+		The paths may overlap, as shown here, and the matching subtrees will be
+		copied correctly, still properly overlapping in the result. There is
+		also a special syntax:
+		</para>
+
+<pre>
+$tabtype_fundamental = $tabtype->copyFundamental(
+    [ "secondary", "+" ],
+);
+</pre>
+
+		<para>
+		The <pre>"+"</pre> in the path means <quote>do the path to the first leaf index of that
+		subtree</quote> and saves the necessity to write out the whole path.
+		</para>
+
+		<para>
+		Finally, what if you don't want to include the original primary index
+		at all? You can use the string <pre>"NO_FIRST_LEAF"</pre> as the first argument.
+		That would skip it. You can still include it by using its explicit
+		path, possibly at the other position.
+		</para>
+
+		<para>
+		For example, suppose that you have a table type with two top-level
+		indexes, <quote>first</quote> is the primary index and <quote>second</quote> as secondary, and
+		make a copy:
+		</para>
+
+<pre>
+$tabtype_fundamental = $tabtype->copyFundamental(
+     "NO_FIRST_LEAF",
+    [ "second", "+" ],
+    [ "first", "+" ],
+);
+</pre>
+
+		<para>
+		In the copied table type the index <quote>second</quote> becomes primary and <quote>first</quote>
+		secondary.
+		</para>
 	</sect1>
 </chapter>

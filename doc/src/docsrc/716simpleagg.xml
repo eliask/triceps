@@ -24,6 +24,13 @@ See the file COPYRIGHT for the copyright notice and license information
 		aggregation functions.
 		</para>
 
+		<para>
+		The table types with SimpleAggregator cannot be currently exported
+		between threads through a nexus, see
+		<xref linkend="sc_mt_objects" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for more detail.
+		</para>
+
 <pre>
 $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 </pre>
