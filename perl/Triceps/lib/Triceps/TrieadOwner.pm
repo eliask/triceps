@@ -41,7 +41,7 @@ sub close(*) # ($self, $file)
 	close($_[1]);
 }
 
-# Load an file from the App, track it, and return a TrackedFile
+# Track a file, and return a TrackedFile
 # that will automatically make this TrieadOwner forget the file
 # descriptor and then close and dereference the handle when the
 # TrackedFile is destroyed.
