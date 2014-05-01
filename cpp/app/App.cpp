@@ -144,7 +144,7 @@ App::~App()
 {
 	// avoid leaking the descriptors on App failures
 	for (FdMap::iterator it = fdMap_.begin(); it != fdMap_.end(); ++it)
-		close(it->second);
+		close(it->second.fd_);
 }
 
 void App::setTimeout(int sec, int fragsec)
@@ -811,17 +811,30 @@ void App::storeFd(const string &name, int fd)
 	FdMap::iterator it = fdMap_.find(name);
 	if (it != fdMap_.end())
 		throw Exception::f("store of duplicate descriptor '%s', new fd=%d, existing fd=%d", 
-			name.c_str(), fd, it->second);
-	fdMap_[name] = fd;
+			name.c_str(), fd, it->second.fd_);
+	fdMap_[name] = FdInfo(fd);
 }
 
-int App::loadFd(const string &name) const
+void App::storeFd(const string &name, int fd, const string &className)
+{
+	pw::lockmutex lm(mutex_);
+	
+	FdMap::iterator it = fdMap_.find(name);
+	if (it != fdMap_.end())
+		throw Exception::f("store of duplicate descriptor '%s', new fd=%d, existing fd=%d", 
+			name.c_str(), fd, it->second.fd_);
+	fdMap_[name] = FdInfo(fd, className);
+}
+
+int App::loadFd(const string &name, string *className) const
 {
 	pw::lockmutex lm(mutex_);
 	FdMap::const_iterator it = fdMap_.find(name);
-	if (it != fdMap_.end())
-		return it->second;
-	else
+	if (it != fdMap_.end()) {
+		if (className != NULL)
+			*className = it->second.class_;
+		return it->second.fd_;
+	} else
 		return -1;
 }
 
@@ -842,7 +855,7 @@ bool App::closeFd(const string &name)
 	FdMap::iterator it = fdMap_.find(name);
 	if (it != fdMap_.end()) {
 		errno = 0;
-		close(it->second);
+		close(it->second.fd_);
 		fdMap_.erase(it);
 		return true;
 	} else 

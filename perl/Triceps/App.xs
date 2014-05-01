@@ -469,7 +469,7 @@ isDrained(SV *app)
 
 # Dups the descriptor before storing it.
 void 
-storeFd(SV *app, char *name, int fd)
+storeFd(SV *app, char *name, int fd, char *className)
 	CODE:
 		static char funcName[] =  "Triceps::App::storeFd";
 		clearErrMsg();
@@ -480,7 +480,7 @@ storeFd(SV *app, char *name, int fd)
 			if (dupfd < 0)
 				throw Exception::f("%s: dup failed: %s", funcName, strerror(errno));
 			try {
-				appv->storeFd(name, dupfd); // may throw
+				appv->storeFd(name, dupfd, className); // may throw
 			} catch (Exception e) {
 				close(dupfd);
 				throw;
@@ -488,42 +488,46 @@ storeFd(SV *app, char *name, int fd)
 		} while(0); } TRICEPS_CATCH_CROAK;
 	
 # dies on an unknown name
-int 
+SV * 
 loadFd(SV *app, char *name)
-	CODE:
+	PPCODE:
 		static char funcName[] =  "Triceps::App::loadFd";
 		clearErrMsg();
-		RETVAL = 0;
 		try { do {
 			Autoref<App> appv;
 			parseApp(funcName, "app", app, appv);
-			RETVAL = appv->loadFd(name);
-			if (RETVAL < 0)
+			string className;
+			int fd = appv->loadFd(name, &className);
+			if (fd < 0)
 				throw Exception::f("%s: unknown file descriptor '%s'", funcName, name);
+
+			XPUSHs(sv_2mortal(newSViv(fd)));
+			XPUSHs(sv_2mortal(newSVpvn(className.c_str(), className.size())));
 		} while(0); } TRICEPS_CATCH_CROAK;
-	OUTPUT:
-		RETVAL
 	
-# returns a dup()-ed descriptor
+# returns a pair ($fd, $className)
+# with a dup()-ed descriptor
 # dies on an unknown name
-int 
+SV * 
 loadDupFd(SV *app, char *name)
-	CODE:
+	PPCODE:
 		static char funcName[] =  "Triceps::App::loadDupFd";
 		clearErrMsg();
 		RETVAL = 0;
 		try { do {
 			Autoref<App> appv;
 			parseApp(funcName, "app", app, appv);
-			int fd = appv->loadFd(name);
+			string className;
+			int fd = appv->loadFd(name, &className);
 			if (fd < 0)
 				throw Exception::f("%s: unknown file descriptor '%s'", funcName, name);
-			RETVAL = dup(fd);
-			if (RETVAL < 0)
+			fd = dup(fd);
+			if (fd < 0)
 				throw Exception::f("%s: dup failed: %s", funcName, strerror(errno));
+
+			XPUSHs(sv_2mortal(newSViv(fd)));
+			XPUSHs(sv_2mortal(newSVpvn(className.c_str(), className.size())));
 		} while(0); } TRICEPS_CATCH_CROAK;
-	OUTPUT:
-		RETVAL
 
 # dies on an unknown name
 void 

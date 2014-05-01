@@ -60,7 +60,7 @@ sub storeFile # ($self, $name, $file)
 {
 	my ($self, $name, $file) = @_;
 	
-	Triceps::App::storeFd($self, $name, fileno($file));
+	Triceps::App::storeFd($self, $name, fileno($file), ref($file));
 }
 
 # Same as storeFile() but also closes the original file
@@ -69,12 +69,12 @@ sub storeCloseFile # ($self, $name, $file)
 {
 	my ($self, $name, $file) = @_;
 	
-	Triceps::App::storeFd($self, $name, fileno($file));
+	Triceps::App::storeFd($self, $name, fileno($file), ref($file));
 	close($file);
 }
 
 # Load a dup of file descriptor from the App into a
-# file handle object in a class that is a subclass of
+# file handle object in an explicitly specified class that is a subclass of
 # IO::Handle or otherwise supports the method new_from_fd().
 # @param self - the App object or app name
 # @param name - the storage name of the file descriptor
@@ -85,23 +85,24 @@ sub storeCloseFile # ($self, $name, $file)
 #         file descriptor (a dup of it)
 sub loadDupFileClass # ($self, $name, $mode, $class)
 {
-	confess "Triceps::App::loadDupFile: wrong argument count " . ($#_+1) . ", must be 4"
+	confess "Triceps::App::loadDupFileClass: wrong argument count " . ($#_+1) . ", must be 4"
 		unless ($#_ == 3);
 	my ($self, $name, $mode, $class) = @_;
+	my ($fd, $fdclass) = Triceps::App::loadDupFd($self, $name);
 	# XXX this could leak the $fd if new_from_fd() fails
-	return $class->new_from_fd(Triceps::App::loadDupFd($self, $name), $mode);
+	return $class->new_from_fd($fd, $mode);
 }
 
-# A specialization of loadDupFileClass that creates an IO::Handle.
+# Like loadDupFileClass() but gets the class name from the stored information.
 sub loadDupFile($$$) # ($self, $name, $mode)
 {
-	return loadDupFileClass(@_, "IO::Handle");
-}
-
-# A specialization of loadDupFileClass that creates an IO::Socket::INET.
-sub loadDupSocket($$$) # ($self, $name, $mode)
-{
-	return loadDupFileClass(@_, "IO::Socket::INET");
+	confess "Triceps::App::loadDupFile: wrong argument count " . ($#_+1) . ", must be 3"
+		unless ($#_ == 2);
+	my ($self, $name, $mode) = @_;
+	my ($fd, $class) = Triceps::App::loadDupFd($self, $name);
+	$class = "IO::Handle" unless $class; # default is a plain file, since ref(*FILE) returns an empty string
+	# XXX this could leak the $fd if new_from_fd() fails
+	return $class->new_from_fd($fd, $mode);
 }
 
 1;

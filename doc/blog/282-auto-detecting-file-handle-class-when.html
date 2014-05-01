@@ -1,0 +1,28 @@
+auto-detecting the file handle class when passing it through the App
+
+I've been editing the documentation for the passing of the file descriptors between threads, and I've realized that there is no need to specify the class of the Perl file handle when it gets loaded from the App. Instead the name of the class can be easily stored along with the file descriptor and then extracted back. So I went and changed the code to do that. The modifications are:
+
+In the App class the method storeFd() takes an extra argument:
+
+$app->storeFd($name, $fd, $className);
+
+The $className specifies the class of the file object. The empty string can be used as a synonym for "IO::Handle", since ref() returns an empty string for the globs of the old-fashioned file handles.
+
+The methods loadFd() and loadDupFd() now return two values:
+
+($fd, $fclass) = $app->loadFd($name);
+($fd, $fclass) = $app->loadDupFd($name);
+
+The second returned value is the class name, as it was stored by storeFd().
+
+And the methods App::loadDupSocket(), TrieadOwner::trackDupSocket() and TrieadOwner::trackGetSocket() have been removed. Instead App::loadDupFile(), TrieadOwner::trackDupFile() and TrieadOwner::trackGetFile() have been updated to get the stored file handle class and use it transparently, so they just work correctly for the sockets now.
+
+The methods App::loadDupFileClass(), trieadOwner::trackDupClass() and TrieadOwner::trackGetClass() are still present, in case if you would want to override the class name, but now they should be pretty much never needed, since any class names should be handled automatically without the need for overrides.
+
+And the C++ App class got changed a little bit as well, with the extended versions of storeFd() and loadFd():
+
+void storeFd(const string &name, int fd);
+void storeFd(const string &name, int fd, const string &className);
+int loadFd(const string &name, string *className = NULL) const;
+
+The new interface is backwards-compatible with the old one but also has the provision for storing and loading the file class name. 

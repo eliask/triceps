@@ -18,7 +18,7 @@ use threads;
 use Symbol;
 
 use Test;
-BEGIN { plan tests => 46 };
+BEGIN { plan tests => 54 };
 use Triceps;
 use Carp;
 use IO::Socket;
@@ -43,7 +43,7 @@ Triceps::Triead::startHere(
 		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
 		my $owner = $opts->{owner};
 		my $app = $owner->app();
-		my $fd;
+		my ($fd, $fclass);
 
 		# used for synchronization through draining
 		my $faSync = $owner->makeNexus(
@@ -56,12 +56,13 @@ Triceps::Triead::startHere(
 
 		open(A, "</dev/null") or confess "/dev/null error: $!";
 		&ls("========= open");
-		$app->storeFd("A", fileno(A));
+		$app->storeFd("A", fileno(A), "");
 		&ls("stored");
 		close(A);
 		&ls("closed orig");
 
-		$fd = $app->loadFd("A");
+		($fd, $fclass) = $app->loadFd("A");
+		ok($fclass, "");
 		open(A, "<&$fd");
 		&ls("reopened");
 		open(B, "<&$fd");
@@ -88,12 +89,13 @@ Triceps::Triead::startHere(
 
 		open(A, "</dev/null") or confess "/dev/null error: $!";
 		&ls("========= open for dup");
-		$app->storeFd("A", fileno(A));
+		$app->storeFd("A", fileno(A), "CLASS");
 		&ls("stored");
 		close(A);
 		&ls("closed orig");
 
-		$fd = Triceps::App::loadDupFd("a1", "A");
+		($fd, $fclass) = Triceps::App::loadDupFd("a1", "A");
+		ok($fclass, "CLASS");
 		&ls("dupped");
 		open(A, "<&$fd");
 		&ls("reopened");
@@ -122,12 +124,12 @@ Triceps::Triead::startHere(
 
 		open(A, "</dev/null") or confess "/dev/null error: $!";
 		&ls("========= open MT");
-		Triceps::App::storeFd("a1", "A", fileno(A));
+		Triceps::App::storeFd("a1", "A", fileno(A), "");
 		&ls("stored");
 		close(A);
 		&ls("closed orig");
 
-		$fd = Triceps::App::loadFd("a1", "A");
+		($fd, $fclass) = Triceps::App::loadFd("a1", "A");
 		&ls("t1 loaded");
 		open(A, "<&$fd");
 		&ls("t1 reopened");
@@ -140,14 +142,14 @@ Triceps::Triead::startHere(
 				&Triceps::Opt::parse("t2 main", $opts, {@Triceps::Triead::opts}, @_);
 				my $owner = $opts->{owner};
 				my $app = $owner->app();
-				my $fd;
+				my ($fd, $fclass);
 
 				my $faSync = $owner->importNexus(
 					from => "t1/sync",
 					import => "reader",
 				);
 
-				$fd = Triceps::App::loadFd("a1", "A");
+				($fd, $fclass) = Triceps::App::loadFd("a1", "A");
 				&ls("t2 loaded");
 				open(A, "<&$fd");
 				&ls("t2 reopened");
@@ -175,12 +177,12 @@ if (0) {
 
 		open(A, "</dev/null") or confess "/dev/null error: $!";
 		&ls("========= open MT for <&=");
-		Triceps::App::storeFd("a1", "A", fileno(A));
+		Triceps::App::storeFd("a1", "A", fileno(A), "");
 		&ls("stored");
 		close(A);
 		&ls("closed orig");
 
-		$fd = Triceps::App::loadFd("a1", "A");
+		($fd, $fclass) = Triceps::App::loadFd("a1", "A");
 		&ls("t1 loaded");
 		open(A, "<&=$fd");
 		&ls("t1 reopened");
@@ -193,14 +195,14 @@ if (0) {
 				&Triceps::Opt::parse("t3 main", $opts, {@Triceps::Triead::opts}, @_);
 				my $owner = $opts->{owner};
 				my $app = $owner->app();
-				my $fd;
+				my ($fd, $fclass);
 
 				my $faSync = $owner->importNexus(
 					from => "t1/sync",
 					import => "reader",
 				);
 
-				$fd = Triceps::App::loadFd("a1", "A");
+				($fd, $fclass) = Triceps::App::loadFd("a1", "A");
 				&ls("t2 loaded");
 				open(A, "<&=$fd");
 				&ls("t2 reopened");
@@ -227,12 +229,12 @@ if (0) {
 
 		open(A, "</dev/null") or confess "/dev/null error: $!";
 		&ls("========= open MT for dup <&=");
-		Triceps::App::storeFd("a1", "A", fileno(A));
+		Triceps::App::storeFd("a1", "A", fileno(A), "");
 		&ls("stored");
 		close(A);
 		&ls("closed orig");
 
-		$fd = Triceps::App::loadDupFd("a1", "A");
+		($fd, $fclass) = Triceps::App::loadDupFd("a1", "A");
 		&ls("t1 loaded");
 		open(A, "<&=$fd");
 		&ls("t1 reopened");
@@ -245,14 +247,14 @@ if (0) {
 				&Triceps::Opt::parse("t4 main", $opts, {@Triceps::Triead::opts}, @_);
 				my $owner = $opts->{owner};
 				my $app = $owner->app();
-				my $fd;
+				my ($fd, $fclass);
 
 				my $faSync = $owner->importNexus(
 					from => "t1/sync",
 					import => "reader",
 				);
 
-				$fd = Triceps::App::loadDupFd("a1", "A");
+				($fd, $fclass) = Triceps::App::loadDupFd("a1", "A");
 				&ls("t2 loaded");
 				open(A, "<&=$fd");
 				&ls("t2 reopened");
@@ -289,22 +291,26 @@ Triceps::Triead::startHere(
 		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
 		my $owner = $opts->{owner};
 		my $app = $owner->app();
+		my ($fdr, $fclass);
 
-		eval { $app->storeFd("x", -1); };
+		eval { $app->storeFd("x", -1, ""); };
 		ok($@, qr/^Triceps::App::storeFd: dup failed: Bad file descriptor/);
 
-		$app->storeFd("x", 0);
-		$n1 = $app->loadFd("x");
+		$app->storeFd("x", 0, "");
+		($n1, $fclass) = $app->loadFd("x");
 		my $n2 = $n1+1;
-		eval { $app->storeFd("x", 1); };
+		eval { $app->storeFd("x", 1, ""); };
 		ok($@, qr/^store of duplicate descriptor 'x', new fd=$n2, existing fd=$n1/);
 
 		# check that the failed descriptor got closed
-		$app->storeFd("y", 0);
-		ok($app->loadFd("y"), $n2);
+		$app->storeFd("y", 0, "");
+		($fdr, $fclass) = $app->loadFd("y");
+		ok($fdr, $n2);
 
-		my $dup = $app->loadDupFd("x");
+		my $dup;
+		($dup, $fclass) = $app->loadDupFd("x");
 		ok($dup, $n2+1);
+		ok($fclass, "");
 		open(F, "<&=$dup") or die "$!";
 		close(F) or die "$!";
 
@@ -327,8 +333,9 @@ Triceps::Triead::startHere(
 		close(F) or die "$!";
 
 		# now store one more fd, to check that the App destruction closes it
-		$app->storeFd("z", 0);
-		ok($app->loadFd("z"), $n1);
+		$app->storeFd("z", 0, "");
+		($fdr, $fclass) = $app->loadFd("z");
+		ok($fdr, $n1);
 	},
 );
 
@@ -340,11 +347,14 @@ Triceps::Triead::startHere(
 		&Triceps::Opt::parse("t1 main", $opts, {@Triceps::Triead::opts}, @_);
 		my $owner = $opts->{owner};
 		my $app = $owner->app();
+		my ($fdr, $fclass);
 
 		# store the file handle;
 		# along the way check that the previous App closed its fds
 		$app->storeFile("z", *STDIN);
-		ok($app->loadFd("z"), $n1);
+		($fdr, $fclass) = $app->loadFd("z");
+		ok($fdr, $n1);
+		ok($fclass, "");
 
 		# restore as file handles
 		my $f1 = $app->loadDupFileClass("z", "<", "IO::Handle") or die "$!";
@@ -354,10 +364,6 @@ Triceps::Triead::startHere(
 		my $f2 = $app->loadDupFile("z", "<") or die "$!";
 		ok(ref $f2, "IO::Handle");
 		$f2->close() or die "$!";
-
-		my $f3 = $app->loadDupSocket("z", "<") or die "$!";
-		ok(ref $f3, "IO::Socket::INET");
-		$f3->close() or die "$!";
 	},
 );
 
@@ -421,9 +427,12 @@ Triceps::Triead::startHere(
 
 		{
 			$app->storeFile("z", *STDIN);
-			ok($app->loadFd("z"), $n1);
+			my ($fdr, $fclass) = $app->loadFd("z");
+			ok($fdr, $n1);
+			ok($fclass, "");
 			my ($trf, $ff) = $owner->trackDupFile("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");
+			ok(ref $ff, "IO::Handle");
 			$app->closeFd("z");
 		}
 		{
@@ -436,8 +445,9 @@ Triceps::Triead::startHere(
 
 			$app->storeCloseFile("z", $sock);
 
-			my ($trf, $ff) = $owner->trackDupSocket("z", "<");
+			my ($trf, $ff) = $owner->trackDupFile("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");
+			ok(ref $ff, "IO::Socket::INET");
 
 			my $port2 = $trf->get()->sockport();
 			ok($port2, $port);
@@ -445,6 +455,7 @@ Triceps::Triead::startHere(
 
 			($trf, $ff) = $owner->trackDupClass("z", "<", "IO::Socket::INET");
 			ok(ref $trf, "Triceps::TrackedFile");
+			ok(ref $ff, "IO::Socket::INET");
 
 			$port2 = $trf->get()->sockport();
 			ok($port2, $port);
@@ -454,7 +465,9 @@ Triceps::Triead::startHere(
 		}
 		{
 			$app->storeFile("z", *STDIN);
-			ok($app->loadFd("z"), $n1);
+			my ($fdr, $fclass) = $app->loadFd("z");
+			ok($fdr, $n1);
+			ok($fclass, "");
 			my ($trf, $ff) = $owner->trackGetFile("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");
 		}
@@ -469,7 +482,7 @@ Triceps::Triead::startHere(
 			$app->storeFile("z", $sock);
 			$app->storeFile("y", $sock);
 
-			my ($trf, $ff) = $owner->trackGetSocket("z", "<");
+			my ($trf, $ff) = $owner->trackGetFile("z", "<");
 			ok(ref $trf, "Triceps::TrackedFile");
 
 			my $port2 = $trf->get()->sockport();
@@ -521,7 +534,7 @@ Triceps::Triead::startHere(
 				my $owner = $opts->{owner};
 				my $app = $owner->app();
 
-				my ($trf, $sock) = $owner->trackGetSocket("z", "+<");
+				my ($trf, $sock) = $owner->trackGetFile("z", "+<");
 				$owner->readyReady();
 
 				do {

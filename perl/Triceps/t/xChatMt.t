@@ -40,7 +40,7 @@ sub listenerT
 	undef @_;
 	my $owner = $opts->{owner};
 
-	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, "+<");
+	my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, "+<");
 
 	# a chat text message
 	my $rtMsg = Triceps::RowType->new(
@@ -90,7 +90,7 @@ sub chatSockReadT
 	my $tname = $opts->{thread};
 
 	# only dup the socket, the writer thread will consume it
-	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, "<");
+	my ($tsock, $sock) = $owner->trackDupFile($opts->{socketName}, "<");
 
 	# user messages will be sent here
 	my $faChat = $owner->importNexus(
@@ -184,7 +184,7 @@ sub chatSockWriteT
 	my $app = $owner->app();
 	my $tname = $opts->{thread};
 
-	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, ">");
+	my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, ">");
 
 	my $faChat = $owner->importNexus(
 		from => "global/chat",

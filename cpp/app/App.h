@@ -374,13 +374,20 @@ public:
 	//
 	// @param name - a symbolic name
 	// @param fd - the file descriptor number
+	// @param className - name of the class that contained this descriptor
+	void storeFd(const string &name, int fd, const string &className);
+	// The version without a known class name.
+	// @param name - a symbolic name
+	// @param fd - the file descriptor number
 	void storeFd(const string &name, int fd);
 
 	// Get a file descriptor back by name.
 	// This does not erase it from the kept map!
 	// @param name - a symbolic name
+	// @param className - if not NULL, a string where the stored class
+	//        name will be returned
 	// @return - the file descriptor or -1 if the name is unknown
-	int loadFd(const string &name) const;
+	int loadFd(const string &name, string *className = NULL) const;
 
 	// Erase the file descriptor from the map.
 	// @param name - a symbolic name
@@ -730,7 +737,24 @@ protected:
 	Triead *drainExcept_; // drain all threads except this one (exclusively)
 	int drainCnt_; // count of active drain requests, the app won't be undrained until it goes to 0
 
-	typedef map<string, int> FdMap;
+	struct FdInfo {
+		FdInfo()
+		{ }
+		
+		FdInfo(int fd, const string &className) :
+			fd_(fd), class_(className)
+		{ }
+
+		FdInfo(int fd) :
+			fd_(fd)
+		{ }
+
+		int fd_; // file descriptor
+		string class_; // class name of the object that contained the descriptor,
+			// so that on load an appropriate object can be reconstructed from the
+			// descriptor (this is mainly for the benefit of Perl)
+	};
+	typedef map<string, FdInfo> FdMap;
 	FdMap fdMap_;
 
 private:

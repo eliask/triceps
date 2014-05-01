@@ -220,7 +220,7 @@ sub clientSendT # (@opts)
 	my $owner = $opts->{owner};
 	my $app = $owner->app();
 	my $unit = $owner->unit();
-	my ($tsock, $sock) = $owner->trackDupSocket($opts->{client}, ">");
+	my ($tsock, $sock) = $owner->trackDupFile($opts->{client}, ">");
 
 	my $faSend = $owner->importNexus(
 		from => "collector/send",
@@ -284,7 +284,7 @@ sub clientRecvT # (@opts)
 	my $owner = $opts->{owner};
 	my $app = $owner->app();
 	my $unit = $owner->unit();
-	my ($tsock, $sock) = $owner->trackDupSocket($opts->{client}, "<");
+	my ($tsock, $sock) = $owner->trackDupFile($opts->{client}, "<");
 
 	my $faRecv = $owner->importNexus(
 		from => "collector/receive",

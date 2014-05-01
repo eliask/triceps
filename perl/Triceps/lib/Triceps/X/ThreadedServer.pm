@@ -92,7 +92,7 @@ sub interceptSigPipe
 # socketName => $name
 # (optional) Name to use for passing the socket to the main thread.
 # Default: "$threadName.listen". The main thread gets the full responsibility
-# for the socket, so it should use trackGetSocket().
+# for the socket, so it should use trackGetFile().
 #
 # fork => 0/1/-1
 # (optional) Tells how to fork the server:
@@ -207,7 +207,7 @@ sub startServer # ($optName => $optValue, ...)
 #   main => main function (\&TrieadMainFunc)
 #   socketName => name of socket stored in the App (same as name of the thread, 
 #     formed from $prefix), the handler thread's responsibility is to make the
-#     app forget it, such as by using trackGetSocket().
+#     app forget it, such as by using trackGetFile().
 # The options "prefix" and "handler" are not passed through.
 #
 sub listen # ($optName => $optValue, ...)

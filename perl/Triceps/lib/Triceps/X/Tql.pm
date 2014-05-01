@@ -1004,7 +1004,7 @@ sub listenerT
 	undef @_;
 	my $owner = $opts->{owner};
 
-	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, "+<");
+	my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, "+<");
 
 	$owner->readyReady();
 
@@ -1087,7 +1087,7 @@ sub readT
 	my $fragment = $opts->{fragment}; # this is the client name
 
 	# only dup the socket, the writer thread will consume it
-	my ($tsock, $sock) = $owner->trackDupSocket($opts->{socketName}, "<");
+	my ($tsock, $sock) = $owner->trackDupFile($opts->{socketName}, "<");
 
 	# messages will be sent here
 	my $faIn = $owner->importNexus(
@@ -1245,7 +1245,7 @@ sub writeT
 	my $fragment = $opts->{fragment}; # this is the client name
 	my @labels;
 
-	my ($tsock, $sock) = $owner->trackGetSocket($opts->{socketName}, ">");
+	my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, ">");
 
 	# incoming data and control commands
 	my $faOut = $owner->importNexus(

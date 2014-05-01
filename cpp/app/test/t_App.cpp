@@ -7,6 +7,8 @@
 // Test of the App building.
 
 #include <assert.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <utest/Utest.h>
 #include "AppTest.h"
 
@@ -1049,4 +1051,69 @@ UTESTCASE find_errors(Utest *utest)
 	restore_uncatchable();
 }
 
-// the file descriptor stuff storeFd() and such is tested in Perl
+UTESTCASE store_fd(Utest *utest)
+{
+	// the bigger-scale testing is done in Perl
+	string rcl;
+	int rfd;
+
+	make_catchable();
+
+	int fd = open("/dev/null", O_RDONLY);
+	UT_ASSERT(fd >= 0);
+
+	Autoref<App> a1 = App::make("a1");
+	a1->storeFd("f1", fd);
+	rfd = a1->loadFd("f1");
+	UT_IS(rfd, fd);
+
+	rcl = "XXX";
+	rfd = a1->loadFd("f1", &rcl);
+	UT_IS(rfd, fd);
+	UT_IS(rcl, "");
+
+	a1->storeFd("f2", fd, "CLASS");
+	rfd = a1->loadFd("f2");
+	UT_IS(rfd, fd);
+
+	rcl = "XXX";
+	rfd = a1->loadFd("f2", &rcl);
+	UT_IS(rfd, fd);
+	UT_IS(rcl, "CLASS");
+
+	a1->storeFd("ff", 98);
+	{
+		string msg;
+		try {
+			a1->storeFd("ff", 99);
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "store of duplicate descriptor 'ff', new fd=99, existing fd=98\n");
+	}
+
+	{
+		string msg;
+		try {
+			a1->storeFd("ff", 99, "CLASS");
+		} catch(Exception e) {
+			msg = e.getErrors()->print();
+		}
+		UT_IS(msg, "store of duplicate descriptor 'ff', new fd=99, existing fd=98\n");
+	}
+
+	UT_IS(a1->loadFd("zz"), -1);
+
+	UT_IS(a1->forgetFd("ff"), true);
+	UT_IS(a1->forgetFd("ff"), false);
+
+	UT_IS(a1->forgetFd("f1"), true);
+	UT_IS(a1->closeFd("f2"), true);
+	UT_IS(a1->closeFd("f2"), false);
+
+	rfd = open("/dev/null", O_RDONLY);
+	UT_IS(rfd, fd); // if fd cor closed, rfd will get the same id
+	close(rfd);
+
+	restore_uncatchable();
+}
