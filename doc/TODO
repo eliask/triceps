@@ -128,6 +128,9 @@ Things that need to be done:
 * add an option to adopt the rowop during the label chaining
 * add callAdopted() that combines $unit->call($label->adopt($rowop))
 * in FnBinding::call() allow to get back the tray (see "Streaming functions and more recursion")
+* add a C++ version of scoped FileInterrupt registration, like Perl TrackedFile
+* when storing Perl files in an App, can store the class name with it, and
+  extract it back later to construct the correct class.
 * docbook: make it not access http://docbook.sourceforge.net/release/images/draft.png
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
@@ -152,10 +155,11 @@ App ideas:
 * the challenges from http://www.orgs.ttu.edu/debs2013/
 * look at the use with RabbitMQ
 
-tangent 144, 157, 191, 197, 199, 204, 279
+tangent 144, 157, 191, 197, 199, 204, 206, 279
 171-172
-206
-212-222
+213-219
+220 except on the race - see sc_mt_files
+221-222
 225-230
 231
 232-252
@@ -164,4 +168,5 @@ tangent 144, 157, 191, 197, 199, 204, 279
 261 except Unit, FnReturn
 262-267
 269-277
-*** next 282
+282
+*** next 283

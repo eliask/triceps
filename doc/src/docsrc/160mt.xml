@@ -1379,4 +1379,376 @@ $tabtype_fundamental = $tabtype->copyFundamental(
 		secondary.
 		</para>
 	</sect1>
+
+	<sect1 id="sc_mt_files">
+		<title>Threads and file descriptors</title>
+
+		<indexterm>
+			<primary>multithreading</primary>
+		</indexterm>
+		<indexterm>
+			<primary>socket</primary>
+		</indexterm>
+		<indexterm>
+			<primary>file</primary>
+		</indexterm>
+		<para>
+		The interaction of the file descriptors (including sockets) with threads
+		tends to be a somewhat thorny issue. The problems lie around the problem
+		of geting a thread to  stop if it's stuck reading from a file descriptor.
+		Triceps aims to be an one-stop shop for the threading solutions, so
+		among other things it covers the interaction with the file descriptors.
+		</para>
+
+		<indexterm>
+			<primary>revocation</primary>
+		</indexterm>
+		<para>
+		The overall approach is that whenever a thread opens a file, it should register
+		that file with its TrieadOwner object. Then when the thread is requested
+		to die, that file will be revoked, waking up the thread if it's waiting
+		for that file descriptor. This is an operation that requires finesse,
+		with multiple possibilities for the race conditions, but Triceps
+		covers all the complexity and takes care of everything.
+		</para>
+
+		<para>
+		The registration of files with TrieadOwner is done with:
+		</para>
+
+<pre>
+$to->track(*FILE);
+$to->track($socket);
+</pre>
+
+		<para>
+		The form of the argument differs depending on whether it's a plain
+		Perl file handle or if it's a file object, such as the one returned
+		by the socket creation methods. The plain perl file handles have to be specified
+		in a glob form, with <pre>*</pre>.
+		</para>
+
+		<para>
+		To unregister the file and close it, use:
+		</para>
+
+<pre>
+$to->close(*FILE);
+$to->close($socket);
+</pre>
+
+		<para>
+		If you just want to unregister a file without closing it (not sure
+		why would you want to do that, but why not), there is also a way:
+		</para>
+
+<pre>
+$to->forget(*FILE);
+$to->forget($socket);
+</pre>
+
+		<para>
+		And there also are the methods that do the registration with the
+		plain file descriptors:
+		</para>
+
+<pre>
+$to->trackFd($fd);
+$to->forgetFd($fd);
+</pre>
+
+		<para>
+		The file descriptor methods underlie the file handle methods,
+		a <pre>$to->trackFd(fileno(FILE));</pre> is really an equivalent
+		of <pre>$to->track(*FILE);</pre>.
+		</para>
+
+		<para>
+		But wait, there is more. It's annoying to close the files manually,
+		and easy to miss too (especially if the code might die within an
+		<pre>eval</pre>, with the file close sandwiched between them). 
+		The scope-based file closing is much easier and more reliable: when
+		you leave the scope, the file is guaranteed to get closed.
+		Triceps provides the scope-based file handle management.
+		Actuallly, if you use files-as-objects in Perl (in the form like
+		<pre>$socket</pre>), Perl already does the scope-based management,
+		closing the file when the last reference to it disappears.
+		But Triceps adds the automatic forgetting of the file in the
+		TrieadOwner as well.  And it's very, very important to unregister
+		the file descriptors before closing them, or the file descriptor
+		corruption will result when the thread exits.
+		A scope-based file is registered like this:
+		</para>
+
+<pre>
+$tf = $to->makeTrackedFile($file);
+</pre>
+
+		<indexterm>
+			<primary>TrackedFile</primary>
+		</indexterm>
+		<para>
+		<pre>$tf</pre> will contain a TrackedFile object that will control
+		the life of the file tracking. <pre>$tf</pre> contains its own reference
+		to the file handle, so until <pre>$tf</pre> is destroyed, the file
+		handle will not be destroyed and thus will not be automatically closed.
+		When <pre>$tf</pre> goes out of scope and gets
+		destroyed, it will unregister the file from TrieadOwner and then
+		discard its reference to the file handle, letting Perl close it if all
+		the references are gone. 
+		To find the file handle from the TrackedFile, use:
+		</para>
+
+<pre>
+$file = $tf->get();
+</pre>
+
+		<para>
+		It's also possible to close the file explicitly before <pre>$tf</pre> goes
+		out of scope:
+		</para>
+
+<pre>
+$tf->close();
+</pre>
+
+		<para>
+		That will unregister the file and close it. And in this case close really
+		means close: even if there are other references to the file handle, it will
+		still get closed and could not be used through these other references any more
+		either. After that, the final destruction of the TrackedFile object will have
+		nothing to do.
+		</para>
+
+		<indexterm>
+			<primary>FileInterrupt</primary>
+		</indexterm>
+		<para>
+		In the &Cpp; API the file registration happens a bit differently, through a
+		FileInterrupt object that keeps track of a set of file descriptors. Each
+		trieadOwner object has a public field <pre>fileInterrupt_</pre> of that
+		class. There is no scoped unregistration in the &Cpp; API yet, it should
+		probably be added in the future. The Perl API actually also uses the
+		FileInterrupt but with the high-level logic on top of it.
+		</para>
+
+		<indexterm>
+			<primary>dup2</primary>
+		</indexterm>
+		<indexterm>
+			<primary>SIGUSR2</primary>
+		</indexterm>
+		<para>
+		In case if you wonder what exactly happens with the file handle during the
+		revocation, let me tell you. Overall it follows the approach described
+		in my book <biblioref linkend="Babkin10"/>,
+		with the system call <pre>dup2()</pre> copying a
+		descriptor of <pre>/dev/null</pre> opened read-only over the target file descriptor.
+		Perl's file handle keeps owning that file descriptor id but now
+		with a different contents in it. However there is a problem with
+		the plain <pre>dup2()</pre>, it doesn't always interrupt the ongoing system call.  
+		I've thought that on Linux it
+		works reliably but then I've found that it works on the sockets but not
+		on the pipes, and even with sockets the <pre>accept()</pre> seems to ignore it.
+		So I've found a better solution: use a <pre>dup2()</pre> but then also
+		send a signal (Triceps uses <pre>SIGUSR2</pre>) to the target thread, which
+		has a dummy handler of that signal to avoid killing the process.
+		Even if <pre>dup2()</pre> gets ignored by the
+		current system call, the signal will get through and either make the ongoing system call return
+		<pre>EINTR</pre> to make the user code retry or cause a system call restart in the
+		OS. In either case the new file descriptor copied by <pre>dup2()</pre> will be
+		discovered on the next attempt and cause the desired interruption. And
+		unlike the signal used by itself, <pre>dup2()</pre> closes the race window around
+		the signal.
+		</para>
+
+		<para>
+		And another detour into the gritty details, what if the thread gets
+		requested to die after the socket is opened but before it is tracked? 
+		The answer is that the tracking enrollment will check whether
+		the death request already happened, and if so, it will revoke the socket
+		right away, before returning. So the reading loop will find the socket
+		revoked right on its first iteration. It's one of these potential
+		race conditions that Triceps prevents.
+		</para>
+
+		<para>
+		Now returning back to the high-level Perl API.
+		As it turns out, Perl doesn't allow to pass the file descriptors between the
+		threads. Well, you sort of can pass them as arguments to another thread
+		but then it ends up printing the error messages like these and
+		corrupting the reference counts:
+		</para>
+
+<pre>
+Unbalanced string table refcount: (1) for "GEN1" during global destruction.
+Unbalanced string table refcount: (1) for "/usr/lib/perl5/5.10.0/Symbol.pm" during global destruction.
+Scalars leaked: 1
+</pre>
+
+		<indexterm>
+			<primary>socket</primary>
+		</indexterm>
+		<para>
+		If you try to pass a file descriptor through trheads::shared, it
+		honestly won't allow you, while the thread arguments pretend that they
+		can and then fail.
+		</para>
+
+		<para>
+		And it's something that is really needed, for more than one reason.
+		If you write a TCP server, you typically have one thread accepting
+		connections and then creating a new thread to handle each accepted
+		socket. And the typical way to avoid polling on a socket is to have
+		two threads handle it, one doing all the reading, another one
+		doing all the writing. None of that works with Perl out of the box.
+		Triceps comes to the rescue again, it gets done as follows:
+		</para>
+
+<pre>
+# in one thread
+$to->app()->storeCloseFile($name, $socket);
+
+#----------
+
+# in another thread
+my ($tf, $socket) = $to->trackGetFile($name, 'r+');
+</pre>
+
+		<para>
+		The first thing that needs to be clarified here is that even though
+		the variables <pre>$to</pre> are named the same in both threads, they
+		contain different TrieadOwner objects, each one belonging to its own thread.
+		<pre>storeCloseFile()</pre> stores a copy of the socket in the App object and
+		then closes it in the local thread (the copy stays open). <pre>trackGetFile()</pre> pulls the
+		socket out of the App, registers it with the TrieadOwner and creates
+		a TrackedFile scoped object for it, returning both the TrackedFile and
+		the socket handle object. The file opening mode still has to be specified
+		as a <pre>trackGetFile()</pre> argument because it can't be easily
+		pulled out of the original file handle, and also because the other
+		thread might want to use only a subset of the modes from the original.
+		The mode can be specified in either of the fashions: 
+		as <pre>r/w/a/r+/w+/a+</pre> or <pre></>/>>/+</+>/+>></pre>.
+		</para>
+
+		<para>
+		The <pre>$name</pre> is a unique name by which
+		this socket is known in the App, it has to be generated in some way
+		to guarantee the uniqueness. But then the name is a plain string that
+		can be passed between the threads, either as an argument at the thread
+		creation time or in a Triceps Rowop going through a nexus.
+		The whole procedure is easy, straightforward, and difficult to get wrong.
+		</para>
+
+		<para>
+		Let's look at more variations of the same. What if you want to pass
+		a file handle to more than one thread? It's a typical case when a TCP
+		server accepts a connection and wants to start the separate reader
+		and writer threads on that socket.  One way is to simply pass it twice,
+		with different names. For example:
+		</para>
+
+<pre>
+# in the acceptor thread
+$to->app()->storeFile('name_r', $socket);
+$to->app()->storeCloseFile('name_w', $socket);
+
+#----------
+
+# in the reader thread
+my ($tf, $socket) = $to->trackGetFile('name_r', 'r');
+
+#----------
+
+# in the writer thread
+my ($tf, $socket) = $to->trackGetFile('name_w', 'w');
+</pre>
+
+		<para>
+		The <pre>storeFile()</pre> in the acceptor stores a copy of the file
+		descriptor but doesn't close the original. Which then gets closed after
+		storing the second copy. Then two threads extract each its own copy.
+		In this example each thread adds its own permission limitation on the
+		extracted file handle, one reading, another one writing, even though the
+		underlying socket is capable of both reading and writing.
+		</para>
+
+		<para>
+		Another way is possible if the threads are started sequentially, such as
+		if the acceptor thread starts the reader thread, which in turn starts the
+		writer thread. Then the reader thread can load the file handle without
+		forgetting it in the App before starting the writer thread, and then
+		the writer thread would get it and discard from the App:
+		</para>
+
+<pre>
+# in the acceptor thread
+$to->app()->storeCloseFile('name', $socket);
+// ... start the reader thread
+
+#----------
+
+# in the reader thread
+my ($tf, $socket) = $to->trackDupFile('name', 'r');
+// ... start the writer thread
+
+#----------
+
+# in the writer thread
+my ($tf, $socket) = $to->trackGetFile('name', 'w');
+</pre>
+
+		<para>
+		Yet another way is to store the file once and load into
+		each thread without forgetting, but then have the storing thread close
+		the copy stored in the App
+		after all the loading threads have completed the initialization.
+		For example:
+		</para>
+
+<pre>
+# in the acceptor thread
+$to->app()->storeCloseFile('name', $socket);
+// ... start the reader thread
+// ... start the writer thread
+
+$to->readyReady(); // wait for all threads to initialize
+$to->app()->closeFd('name');
+
+#----------
+
+# in the reader thread
+my ($tf, $socket) = $to->trackDupFile('name', 'r');
+$to->readyReady();
+
+#----------
+
+# in the writer thread
+my ($tf, $socket) = $to->trackDupFile('name', 'w');
+$to->readyReady();
+</pre>
+
+		<para>
+		In the acceptor thread, <pre>readyReady()</pre> doesn't mark
+		the acceptor thread as ready, because it already is, but simply waits
+		for all other threads to become ready. And the reader and writer threads
+		report that they are ready only after they have copied the file handle
+		out of the App. This approach is used, for example, in Triceps::X::ThreadedClient.
+		It would not be so great in a server because generally we want the
+		server to accept the connections as fast as possible, without waiting
+		for each connection's threads to initialize. But it's fine for a client.
+		</para>
+
+		<para>
+		The App's copy of the file is closed by <pre>closeFd()</pre>. 
+		It's an Fd and not a File because the App really stores the OS file
+		descriptors, not the Perl file handles, and the File handling is
+		done as wrappers on top of it. If you really want, you can deal with the
+		raw file descriptors in the App, with the methods described in
+		XXXREF App reference
+		and
+		XXXREF TrieadOwner reference.
+		But dealing directly with the Perl file handles is much more convenient.
+		</para>
+	</sect1>
 </chapter>
