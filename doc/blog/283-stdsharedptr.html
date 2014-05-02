@@ -1,0 +1,7 @@
+std::shared_ptr
+
+I've tried recently to use the C++11 version of the reference counting, the class std::shared_ptr. And I must say, it's crap. Utter and complete crap.
+
+Their problem is that they are trying to do reference counting to any structures at all, without storing the reference counter in the structure itself. The consequence is that you absolutely can't mix the shared_ptr and pointers. Once you store a pointer in a shared_ptr , you have to refer to it by shared_ptr, and assign the shared_ptr values to each other. If you take a pointer and store it in another shared_ptr, you end up with two reference counters to the same structure, and end up with the memory corruption. And it's way to easy to make this mistake. It's really not usable.
+
+The end result, my Autoref template is way, way, way better and safer to use. 
