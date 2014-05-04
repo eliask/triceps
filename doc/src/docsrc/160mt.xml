@@ -1627,7 +1627,19 @@ my ($tf, $socket) = $to->trackGetFile($name, 'r+');
 		then closes it in the local thread (the copy stays open). <pre>trackGetFile()</pre> pulls the
 		socket out of the App, registers it with the TrieadOwner and creates
 		a TrackedFile scoped object for it, returning both the TrackedFile and
-		the socket handle object. The file opening mode still has to be specified
+		the socket handle object. 
+		</para>
+
+		<para>
+		You can actually get the filehandle directly from the
+		TrackedFile, as <pre>$tf->get()</pre>, so why return the socket separately? As
+		it turns out, Perl has issues with handling the Perl values stored
+		inside the XS objects if they aren't referred by any Perl variables.
+		Returning the file handle as a separate value prevents that.
+		</para>
+
+		<para>
+		The file opening mode still has to be specified
 		as a <pre>trackGetFile()</pre> argument because it can't be easily
 		pulled out of the original file handle, and also because the other
 		thread might want to use only a subset of the modes from the original.
@@ -2008,6 +2020,140 @@ $thread->join();
 		</para>
 
 		<para>
+		The listener thread is:
+		</para>
+
+<pre>
+sub listenerT
+{
+	my $opts = {};
+	&Triceps::Opt::parse("listenerT", $opts, {@Triceps::Triead::opts,
+		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	undef @_;
+	my $owner = $opts->{owner};
+
+	my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, "+<");
+
+	# a chat text message
+	my $rtMsg = Triceps::RowType->new(
+		topic => "string",
+		msg => "string",
+	);
+
+	# a control message between the reader and writer threads
+	my $rtCtl = Triceps::RowType->new(
+		cmd => "string", # the command to execute
+		arg => "string", # the command argument
+	);
+
+	$owner->makeNexus(
+		name => "chat",
+		labels => [
+			msg => $rtMsg,
+		],
+		rowTypes => [
+			ctl => $rtCtl,
+		],
+		import => "none",
+	);
+
+	$owner->readyReady();
+
+	Triceps::X::ThreadedServer::listen(
+		owner => $owner,
+		socket => $sock,
+		prefix => "cliconn",
+		handler => \&chatSockReadT,
+	);
+}
+</pre>
+
+		<para>
+		It gets the usual options of the thread start (and as usual you can
+		pass more options to the <pre>startServer()</pre> and they will make their way to
+		the listener thread. But there is also one more option added by
+		<pre>startServer()</pre>: <quote>socketName</quote>.
+		</para>
+
+		<para>
+		As described in
+		<xref linkend="sc_mt_files" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		since the the socket objects can't be passed directly between the
+		threads, a roundabout way is taken. After <pre>startServer()</pre> opens a socket,
+		it stores the dupped file descriptor in the App with a unique name and passes that name
+		through, so that it can be used to load the socket back
+		into the listener thread:
+		</para>
+
+<pre>
+my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, "+<");
+</pre>
+
+
+		<para>
+		This does multiple things:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			Loads the file descriptor from the App by name (with a <pre>dup()</pre>).
+			</listitem>
+
+			<listitem>
+			Opens a Perl socket object from that file descriptor.
+			</listitem>
+
+			<listitem>
+			Registers that file descriptor for tracking with the TrieadOwner,
+			so that if the thread needs to be shut down, that descriptor will
+			be revoked and any further operations with it will fail.
+			</listitem>
+
+			<listitem>
+			Creates a TrackedFile object that will automatically unregister the
+			file descriptor from TrieadOwner when the TrackedFile goes out of
+			scope. This is important to avoid that races between the revocation
+			and the normal close of the file.
+			</listitem>
+
+			<listitem>
+			Makes the App close and forget its file descriptor.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		The <pre>$tsock</pre> returned is a TrackedFile object, and <pre>$sock</pre> is the socket
+		filehandle.
+		</para>
+
+		<para>
+		The listener thread then creates the row types for the data messages
+		and for the control messages between the client's reader and writer
+		threads, and makes a nexus. The listener is not interested in the data,
+		so it doesn't even import this nexus itself. The nexus passes the data
+		only, so it has no label for the control messages, only the row type.
+		</para>
+
+		<para>
+		Then the mandatory <pre>readyReady()</pre>, and then the control goes again to the
+		library that accepts the connections and starts the client connection
+		threads. The handler is the main function for the thread that gets
+		started to handle the connection. The prefix is used to build the names
+		for the new thread, for its fragment, and for the connection socket
+		that gets also passed through by storing it in the App. The name is the
+		same for all three and gets created by concatenating the prefix with a
+		number that gets increased for every connection, to keep it unique. The newly created
+		thread will then get the option <quote>socketName</quote> with the name of the socket.
+		</para>
+
+		<para>
+		How does the <pre>ThreadedServer::listen()</pre> know when to return? It runs until the
+		App gets shut down, and returns only when the thread is requested to
+		die as a result of the shutdown. 
+		</para>
+
+		<para>
 		As described before, each socket gets served by two threads: one runs
 		reading from the socket and forwards the data into the model and
 		another one runs getting data from the model and forwards it into the
@@ -2381,6 +2527,251 @@ sub chatSockReadT
 		anyway, and then the socket will get closed when the last reference to
 		it disappears. But other than that, it's a good practice that unregisters the
 		socket from the TrieadOwner and then closes it. 
+		</para>
+
+		<para>
+		The socket writer thread is the last part of the puzzle:
+		</para>
+
+<!-- t/xChatMt.t, chatSockWriteT -->
+<pre>
+sub chatSockWriteT
+{
+	my $opts = {};
+	&Triceps::Opt::parse("chatSockWriteT", $opts, {@Triceps::Triead::opts,
+		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
+		ctlFrom => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	undef @_;
+	my $owner = $opts->{owner};
+	my $app = $owner->app();
+	my $tname = $opts->{thread};
+
+	my ($tsock, $sock) = $owner->trackGetFile($opts->{socketName}, ">");
+
+	my $faChat = $owner->importNexus(
+		from => "global/chat",
+		import => "reader",
+	);
+
+	my $faCtl = $owner->importNexus(
+		from => $opts->{ctlFrom},
+		import => "reader",
+	);
+</pre>
+
+		<para>
+		The usual preamble. The <pre>trackGetFile()</pre> consumes the socket from the
+		App, and this time reopens it for writing. The previously created
+		nexuses are imported.
+		</para>
+
+<!-- t/xChatMt.t, chatSockWriteT -->
+<pre>
+	my %topics; # subscribed topics for this thread
+
+	$faChat->getLabel("msg")->makeChained("lbMsg", undef, sub {
+		my $row = $_[1]->getRow();
+		my $topic = $row->get("topic");
+		#printOrShut($app, $opts->{fragment}, $sock, "XXX got topic '$topic'\n");
+		if ($topic eq "*" || exists $topics{$topic}) {
+			printOrShut($app, $opts->{fragment}, $sock, $topic, ",", $row->get("msg"), "\n");
+		}
+	});
+</pre>
+
+		<para>
+		The logic is defined as the connected labels. The topic hash keeps the
+		keys that this thread is subscribed to. When a message is received from
+		the chat nexus and the topic is in the hash or is <quote>*</quote>, the message gets
+		sent into the socket in the CSV format:
+		</para>
+
+<exdump>
+topic,text
+</exdump>
+
+		<para>
+		The function <pre>printOrShut()</pre> is imported from Triceps::X::ThreadedServer.
+		Its first 3 arguments are fixed, and the rest are passed through to
+		<pre>print()</pre>. It prints the message to the socket file handle, flushes the
+		socket, and in case of any errors it shuts down the fragment specified
+		in its second argument. This way if the socket gets closed from the
+		other side, the threads handling it automatically shut down.
+		</para>
+
+<!-- t/xChatMt.t, chatSockWriteT -->
+<pre>
+	$faCtl->getLabel("ctl")->makeChained("lbCtl", undef, sub {
+		my $row = $_[1]->getRow();
+		my ($cmd, $arg) = $row->toArray();
+		if ($cmd eq "print") {
+			printOrShut($app, $opts->{fragment}, $sock, $arg, "\n");
+		} elsif ($cmd eq "subscribe") {
+			$topics{$arg} = 1;
+			printOrShut($app, $opts->{fragment}, $sock, "!subscribed,$arg\n");
+		} elsif ($cmd eq "unsubscribe") {
+			delete $topics{$arg};
+			printOrShut($app, $opts->{fragment}, $sock, "!unsubscribed,$arg\n");
+		} else {
+			printOrShut($app, $opts->{fragment}, $sock, "!invalid command,$cmd,$arg\n");
+		}
+	});
+</pre>
+
+		<para>
+		The handling of the control commands is pretty straightforward.
+		</para>
+
+<!-- t/xChatMt.t, chatSockWriteT -->
+<pre>
+	$owner->readyReady();
+
+	$owner->mainLoop();
+
+	$tsock->close(); # not strictly necessary
+}
+</pre>
+
+		<para>
+		And the rest is taken care of by the <pre>mainLoop()</pre>. The thread's main loop
+		runs until the thread gets shut down, by handling the incoming
+		messages. So if say <pre>printOrShut()</pre> decides to shut down the fragment,
+		the next iteration of the loop will detect it and exit. 
+		</para>
+
+		<para>
+		And now a protocol from a run. It has been produced with the automated
+		testing infrastructure described in
+		XXXREF.
+		</para>
+
+		<para>
+		As usual, the lines sent from the clients to the socket server are
+		shown in bold. But since there are many clients, to tell them
+		apart, both the sent and received lines are prefixed by the client's
+		name and a <quote>|</quote>. I've just picked arbitrary client names to tell them
+		apart.
+		</para>
+
+		<para>
+		I've also marked the incoming connection as <quote><b>connect client_name</b></quote>,
+		the client's close of the socket for writing as <quote><b>close WR client_name</b></quote>,
+		and the disconnections as <quote>__EOF__</quote> after the client name.
+		</para>
+
+		<para>
+		So, here we go.
+		</para>
+
+<exdump>
+> connect c1
+c1|!ready,cliconn1
+> connect c2
+c2|!ready,cliconn2
+</exdump>
+
+		<para>
+		Two clients connect.
+		</para>
+
+<exdump>
+> c1|publish,*,zzzzzz
+c1|*,zzzzzz
+c2|*,zzzzzz
+</exdump>
+
+		<para>
+		A message published to the topic <quote>*</quote> gets forwarded to all the
+		connected clients. In reality the messages may of course be received on
+		separate sockets in any order, but I've ordered them here for the ease
+		of reading.
+		</para>
+
+<exdump>
+> c2|garbage,trash
+c2|!invalid command,garbage,trash
+</exdump>
+
+		<para>
+		An invalid command gets detected in the writer thread and responded as
+		such.
+		</para>
+
+<exdump>
+> c2|subscribe,A
+c2|!subscribed,A
+> c1|publish,A,xxx
+c2|A,xxx
+</exdump>
+
+		<para>
+		A subscription request gets acknowledged, and after that all the
+		messages sent to this topic get received by the client.
+		</para>
+
+<exdump>
+> c1|subscribe,A
+c1|!subscribed,A
+> c1|publish,A,www
+c1|A,www
+c2|A,www
+</exdump>
+
+		<para>
+		If more than one client is subscribed to a topic, all of them get the messages.
+		</para>
+
+<exdump>
+> c2|unsubscribe,A
+c2|!unsubscribed,A
+> c1|publish,A,vvv
+c1|A,vvv
+</exdump>
+
+		<para>
+		The unsubscription makes the client stop receiving messages from this
+		topic.
+		</para>
+
+<exdump>
+> connect c3
+c3|!ready,cliconn3
+> c3|exit
+c3|!exiting
+c3|__EOF__
+</exdump>
+
+		<para>
+		The third client connects, immediately requests an exit, gets the
+		confirmation and gets disconnected.
+		</para>
+
+<exdump>
+> connect c4
+c4|!ready,cliconn4
+> close WR c4
+c4|!exiting
+c4|__EOF__
+</exdump>
+
+		<para>
+		The fourth client connects and then closes its write side of the socket
+		(that is the read side for the server). It produces the same affect as
+		the exit command.
+		</para>
+
+<exdump>
+> c1|shutdown
+c1|*,server shutting down
+c1|__EOF__
+c2|*,server shutting down
+c2|__EOF__
+</exdump>
+
+		<para>
+		And the shutdown command sends the notifications to all the remaining
+		clients and closes the connections. 
 		</para>
 	</sect1>
 </chapter>
