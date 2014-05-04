@@ -123,6 +123,10 @@ See the file COPYRIGHT for the copyright notice and license information
 		how things work now.
 		</para>
 
+		<indexterm>
+			<primary>Nexus</primary>
+			<secondary>reverse</secondary>
+		</indexterm>
 		<para>
 		Each Nexus also has a direction: either direct (<quote>downwards</quote>) or reverse
 		(<quote>upwards</quote>). How does it know, which direction is down and
@@ -1968,6 +1972,7 @@ my ($port, $pid) = Triceps::X::ThreadedServer::startServer(
 		the way I use for the unit tests.
 		</para>
 
+<!-- t/xChatMt.t, shifted -->
 <pre>
 my ($port, $thread) = Triceps::X::ThreadedServer::startServer(
 		app => "chat",
@@ -2000,6 +2005,382 @@ $thread->join();
 		it right away, and not left wondering why does the application appear to run but
 		not work right. Unless, of course, you wrap the whole thing in an <pre>eval</pre>,
 		then you get the error message and the clean state, and can try running another App.
+		</para>
+
+		<para>
+		As described before, each socket gets served by two threads: one runs
+		reading from the socket and forwards the data into the model and
+		another one runs getting data from the model and forwards it into the
+		socket. Since the same thread can't wait for both a socket descriptor
+		and a thread synchronization primitive, they have to be separate.
+		</para>
+
+		<para>
+		The first thread started for a connection by the listener is the socket
+		reader. Let's go through it bit by bit.
+		</para>
+
+<!-- t/xChatMt.t, chatSockReadT -->
+<pre>
+sub chatSockReadT
+{
+	my $opts = {};
+	&Triceps::Opt::parse("chatSockReadT", $opts, {@Triceps::Triead::opts,
+		socketName => [ undef, \&Triceps::Opt::ck_mandatory ],
+	}, @_);
+	undef @_; # avoids a leak in threads module
+	my $owner = $opts->{owner};
+	my $app = $owner->app();
+	my $unit = $owner->unit();
+	my $tname = $opts->{thread};
+
+	# only dup the socket, the writer thread will consume it
+	my ($tsock, $sock) = $owner->trackDupFile($opts->{socketName}, "<");
+</pre>
+
+		<para>
+		The beginning is quite usual. Then it loads the socket from the App and
+		gets it tracked with the TrieadOwner. The listener passes the name
+		under which it stored the socket in the App as the option
+		<quote>socketName</quote>.
+		<pre>trackDupSocket()</pre> leaves the socket instance in the App, to be found by the
+		writer-side thread.
+		</para>
+
+		<para>
+		The socket is loaded in this thread as read-only. The writing to the
+		socket from all the threads has to be synchronized to avoid mixing the
+		half-messages. And the easiest way to synchronize is to always write
+		from one thread; if the other thread wants to write something, it
+		has to pass the data to the writer thread through the control nexus.
+		</para>
+
+<!-- t/xChatMt.t, chatSockReadT -->
+<pre>
+	# user messages will be sent here
+	my $faChat = $owner->importNexus(
+		from => "global/chat",
+		import => "writer",
+	);
+
+	# control messages to the reader side will be sent here
+	my $faCtl = $owner->makeNexus(
+		name => "ctl",
+		labels => [
+			ctl => $faChat->impRowType("ctl"),
+		],
+		reverse => 1, # gives this nexus a high priority
+		import => "writer",
+	);
+</pre>
+
+		<para>
+		Imports the chat nexus and creates the private control nexus for
+		communication with the writer side. The name of the chat nexus is
+		hardcoded here, since it's pretty much a solid part of the application.
+		If this were a module, the name of the chat nexus could be passed
+		through the options.
+		</para>
+
+		<indexterm>
+			<primary>Nexus</primary>
+			<secondary>reverse</secondary>
+		</indexterm>
+		<para>
+		The control nexus is marked as reverse even though it really isn't. But
+		the reverse option has a side effect of making this nexus
+		high-priority. Even if the writer thread has a long queue of messages
+		from the chat nexus, the messages from the control nexus will be read
+		first. Which again isn't strictly necessary here, but I wanted to show
+		how it's done.
+		</para>
+
+		<para>
+		The type of the control label is imported from the chat nexus, so it
+		doesn't have to be defined from scratch.
+		</para>
+
+<!-- t/xChatMt.t, chatSockReadT -->
+<pre>
+	$owner->markConstructed();
+
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => "$tname.rd",
+		fragment => $opts->{fragment},
+		main => \&chatSockWriteT,
+		socketName => $opts->{socketName},
+		ctlFrom => "$tname/ctl",
+	);
+
+	$owner->readyReady();
+</pre>
+
+		<indexterm>
+			<primary>fragment</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Triead</primary>
+			<secondary>stages</secondary>
+		</indexterm>
+		<para>
+		Then the construction is done and the writer thread gets started.  And
+		then the thread becomes ready and waits for the writer thread to be ready
+		too. The <pre>readyReady()</pre> works in the fragments just as it does at the
+		start of the App. Whenever a new thread is started, the App becomes not
+		ready, and stays this way until all the threads report that they are
+		ready. The rest of the App keeps working like nothing happened, at
+		least sort of. Whenever a nexus is imported, the messages from this
+		nexus start collecting for this thread, and if there are many of them,
+		the nexus will become backed up and the threads writing to it will
+		block. The new threads have to call <pre>readyReady()</pre> as usual to
+		synchronize between themselves, and then everything gets on its way.
+		</para>
+
+		<para>
+		Of course, if two connections are received in a quick succession, that
+		would start two sets of threads, and <pre>readyReady()</pre> will continue only
+		after all of them are ready. This is not very good but acceptable in most cases.
+		</para>
+
+<!-- t/xChatMt.t, chatSockReadT -->
+<pre>
+	my $lbChat = $faChat->getLabel("msg");
+	my $lbCtl = $faCtl->getLabel("ctl");
+
+	$unit->makeHashCall($lbCtl, "OP_INSERT", 
+		cmd => "print", arg => "!ready," . $opts->{fragment});
+	$owner->flushWriters();
+</pre>
+
+		<para>
+		A couple of labels get remembered for the future use, and the
+		connection ready message gets sent to the writer thread through the
+		control nexus. By convention of this application, the messages go in
+		the CSV format, with the control messages starting with <quote>!</quote>. If this is
+		the first client, this would send
+		</para>
+
+<exdump>
+!ready,cliconn1
+</exdump>
+
+		<para>
+		to the client. It's important to call <pre>flushWriters()</pre> every time to get
+		the message(s) delivered.
+		</para>
+
+<!-- t/xChatMt.t, chatSockReadT -->
+<pre>
+	while(<$sock>) {
+		s/[\r\n]+$//;
+		my @data = split(/,/);
+		if ($data[0] eq "exit") {
+			last; # a special case, handle in this thread
+		} elsif ($data[0] eq "kill") {
+			eval {$app->shutdownFragment($data[1]);};
+			if ($@) {
+				$unit->makeHashCall($lbCtl, "OP_INSERT", cmd => "print", arg => "!error,$@");
+				$owner->flushWriters();
+			}
+		} elsif ($data[0] eq "shutdown") {
+			$unit->makeHashCall($lbChat, "OP_INSERT", topic => "*", msg => "server shutting down");
+			$owner->flushWriters();
+			Triceps::AutoDrain::makeShared($owner);
+			eval {$app->shutdown();};
+		} elsif ($data[0] eq "publish") {
+			$unit->makeHashCall($lbChat, "OP_INSERT", topic => $data[1], msg => $data[2]);
+			$owner->flushWriters();
+		} else {
+			# this is not something you want to do in a real chat application
+			# but it's cute for a demonstration
+			$unit->makeHashCall($lbCtl, "OP_INSERT", cmd => $data[0], arg => $data[1]);
+			$owner->flushWriters();
+		}
+	}
+</pre>
+
+		<para>
+		The main loop keeps reading lines from the socket and interpreting
+		them. The lines are in CSV format, and the first field is the command
+		and the rest are the arguments (if any).  The commands are:
+		</para>
+
+		<variablelist>
+			<varlistentry>
+				<term>publish</term>
+				<listitem>
+				<para>
+				Send a message with a topic to the chat nexus.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>exit</term>
+				<listitem>
+				<para>
+				Close the connection.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>kill</term>
+				<listitem>
+				<para>
+				Close another connection, by name.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>shutdown</term>
+				<listitem>
+				<para>
+				Shut down the server.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>subscribe</term>
+				<listitem>
+				<para>
+				Subscribe the client to a topic.
+				</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term>unsibscribe</term>
+				<listitem>
+				<para>
+				Unsubscribe the client from a topic.
+				</para>
+				</listitem>
+			</varlistentry>
+		</variablelist>
+
+		<para>
+		The <quote>exit</quote> just exits the loop, since it works the same as if the socket
+		just gets closed from the other side.
+		</para>
+
+		<para>
+		The <quote>kill</quote> shuts down by name the fragment where the threads of the other
+		connection belong. This is a simple application, so it doesn't check
+		any permissions, whether this fragment should allowed to be shut down.
+		If there is no such fragment, the shutdown call will silently do
+		nothing, so the error check and reporting is really redundant (if
+		something goes grossly wrong in the thread interruption code, an error
+		might still occur, but theoretically this should never happen).
+		</para>
+
+		<para>
+		The <quote>shutdown</quote> sends the notification to the common topic <quote>*</quote> (to which
+		all the clients are subscribed by default), then drains the model and
+		shuts it down. The drain makes sure that all the messages in the model
+		get processed (and even written to the sockets) without allowing any new
+		messages to be injected. <quote>Shared</quote> means that there is no special
+		exceptions for some threads.
+		</para>
+
+		<para>
+		<pre>AutoDrain::makeShared()</pre> actually creates a drain object that keeps the drain
+		active during its lifetime. Here this object is not assigned anywhere,
+		so it gets immediately destroyed and lifts the drain. So potentially
+		more messages can get squeezed in between this point and shutdown.
+		Which doesn't matter a whole lot here.
+		</para>
+
+		<para>
+		If it were really important that nothing get sent after the shutdown
+		notification, it could be done like this (this is an untested fragment,
+		so it might contain typos):
+		</para>
+
+<!-- XXX should make a snippet? -->
+<pre>
+		} elsif ($data[0] eq "shutdown") {
+			my $drain = Triceps::AutoDrain::makeExclusive($owner);
+			$unit->makeHashCall($lbChat, "OP_INSERT", 
+				topic => "*", msg => "server shutting down");
+			$owner->flushWriters();
+			$drain->wait();
+			eval {$app->shutdown();};
+		}
+</pre>
+
+		<para>
+		This starts the drain, but this time the exclusive mode means that this
+		thread is excluded from the drain and allowed to send more data. When the drain is created, it
+		waits for success, so when the new message is inserted, it will be
+		after all the other messages. <pre>$drain->wait()</pre> does another wait and
+		makes sure that this last message propagates all the way. And then the
+		app gets shut down, while the drain is still in effect, so no more
+		messages can be sent for sure.
+		</para>
+
+		<para>
+		The <quote>publish</quote> sends the data to the chat nexus (note the <pre>flushWriters()</pre>,
+		as usual!).
+		</para>
+
+		<para>
+		And the rest of commands (that would be <quote>subscribe</quote> and <quote>unsubscribe</quote> but
+		you can do any other commands like <quote>print</quote>) get simply forwarded to the
+		reader thread for execution. Sending through the commands like this
+		without testing is not a good practice for a real application but it's
+		cute for a demo.
+		</para>
+
+<!-- t/xChatMt.t, chatSockReadT -->
+<pre>
+	{
+		# let the data drain through
+		my $drain = Triceps::AutoDrain::makeExclusive($owner);
+
+		# send the notification - can do it because the drain is excluding itself
+		$unit->makeHashCall($lbCtl, "OP_INSERT", cmd => "print", arg => "!exiting");
+		$owner->flushWriters();
+
+		$drain->wait(); # wait for the notification to drain
+
+		$app->shutdownFragment($opts->{fragment});
+	}
+
+	$tsock->close(); # not strictly necessary
+}
+</pre>
+
+		<para>
+		The last part is when the connection get closed, either by the <quote>exit</quote>
+		command or when the socket gets closed. Remember, the socket can get
+		closed asymmetrically, in one direction, so even when the reading is
+		closed, the writing may still work and needs to return the responses to
+		any commands received from the socket. And of course the same is true
+		for the <quote>exit</quote> command.
+		</para>
+
+		<indexterm>
+			<primary>drain</primary>
+		</indexterm>
+		<para>
+		So here the full exclusive drain sequence is used, ending with the
+		shutdown of this thread's own fragment, which will close the socket.
+		Even though only one fragment needs to be shut down, the drain drains
+		the whole model. Because of the potentially complex interdependencies,
+		there is no way to reliably drain only a part, and all the drains are
+		App-wide.
+		</para>
+
+		<para>
+		The last part, with <pre>$tsock->close()</pre>, is not technically necessary since
+		the shutdown of the fragment will get the socket descriptor revoked
+		anyway, and then the socket will get closed when the last reference to
+		it disappears. But other than that, it's a good practice that unregisters the
+		socket from the TrieadOwner and then closes it. 
 		</para>
 	</sect1>
 </chapter>

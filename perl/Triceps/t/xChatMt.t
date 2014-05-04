@@ -124,7 +124,8 @@ sub chatSockReadT
 	my $lbChat = $faChat->getLabel("msg");
 	my $lbCtl = $faCtl->getLabel("ctl");
 
-	$unit->makeHashCall($lbCtl, "OP_INSERT", cmd => "print", arg => "!ready," . $opts->{fragment});
+	$unit->makeHashCall($lbCtl, "OP_INSERT", 
+		cmd => "print", arg => "!ready," . $opts->{fragment});
 	$owner->flushWriters();
 
 	while(<$sock>) {
