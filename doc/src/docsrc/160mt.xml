@@ -333,6 +333,9 @@ See the file COPYRIGHT for the copyright notice and license information
 			<varlistentry>
 				<term>Dead:</term>
 				<listitem>
+				<indexterm>
+					<primary>harversting</primary>
+				</indexterm>
 				<para>
 				The thread had completed its execution and exited. Normally you
 				don't need to mark this explicitly. When the thread's main function
@@ -2772,6 +2775,254 @@ c2|__EOF__
 		<para>
 		And the shutdown command sends the notifications to all the remaining
 		clients and closes the connections. 
+		</para>
+	</sect1>
+
+	<sect1 id="sc_mt_threaded_server">
+		<title>ThreadedServer implementation, and the details of thread harvesting</title>
+
+		<indexterm>
+			<primary>ThreadedServer</primary>
+		</indexterm>
+		<indexterm>
+			<primary>harversting</primary>
+		</indexterm>
+		<indexterm>
+			<primary>socket</primary>
+		</indexterm>
+		<para>
+		And now I want to show the internals of the ThreadedServer methods. It
+		shows how to store the socket file handles into the App, how the
+		threads are harvested, and how the connections get accepted.
+		The class is defined in <pre>lib/Triceps/X/ThreadedServer.pm</pre>.
+		It's of essentially production quality but misses the detailed set of
+		tests yet, and thus for now is placed in the X subdirectory.
+		</para>
+
+		<para>
+		The most important method in it is <pre>startServer()</pre>:
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm startServer -->
+<pre>
+sub startServer # ($optName => $optValue, ...)
+{
+	my $myname = "Triceps::X::ThreadedServer::startServer";
+	my $opts = {};
+	my @myOpts = (
+		app => [ undef, \&Triceps::Opt::ck_mandatory ],
+		thread => [ "global", undef ],
+		main => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "CODE") } ],
+		port => [ undef, \&Triceps::Opt::ck_mandatory ],
+		socketName => [ undef, undef ],
+		fork => [ 1, undef ],
+	);
+	&Triceps::Opt::parse($myname, $opts, {
+		@myOpts,
+		'*' => [],
+	}, @_);
+
+	if (!defined $opts->{socketName}) {
+		$opts->{socketName} = $opts->{thread} . ".listen";
+	}
+
+	my $srvsock = IO::Socket::INET->new(
+		Proto => "tcp",
+		LocalPort => $opts->{port},
+		Listen => 10,
+	) or confess "$myname: socket creation failed: $!";
+	my $port = $srvsock->sockport() or confess "$myname: sockport failed: $!";
+</pre>
+
+		<para>
+		So far it's pretty standard: get the options and open the socket for
+		listening.
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm startServer -->
+<pre>
+	if ($opts->{fork} > 0)  {
+		my $pid = fork();
+		confess "$myname: fork failed: $!" unless defined $pid;
+		if ($pid) {
+			# parent
+			$srvsock->close();
+			return ($port, $pid);
+		}
+		# for the child, fall through
+	}
+</pre>
+
+		<para>
+		This handles the process forking option: if forking is requested, it
+		executes and then the parent process returns the PID while the child
+		process continues with the rest of the logic. By the way, your success
+		with forking a process that has multiple running threads may vary. The
+		resulting process usually has one running thread (continuing where the
+		thread that called <pre>fork()</pre> was) but the synchronization primitives in
+		the new process can be inherited in any state, so the attempts to
+		continue the threaded processing are usually not such a good idea. It's
+		usually best to fork first before there are more threads.
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm startServer -->
+<pre>
+	# make the app explicitly, to put the socket into it first
+	my $app = Triceps::App::make($opts->{app});
+	$app->storeCloseFile($opts->{socketName}, $srvsock);
+	Triceps::Triead::start(
+		app => $opts->{app},
+		thread => $opts->{thread},
+		main => $opts->{main},
+		socketName => $opts->{socketName},
+		&Triceps::Opt::drop({ @myOpts }, \@_),
+	);
+</pre>
+
+		<indexterm>
+			<primary>App</primary>
+		</indexterm>
+		<para>
+		Then the App gets created.  Previously I've shown starting the App
+		with <pre>startHere()</pre> that created the App, the first thread,
+		and did a bunch of services implicitly. Here everything will be done manually. 
+		</para>
+
+		<para>
+		Triceps keeps a global list of all its Apps in the process, and after
+		an App is created, it's placed into that list and can be found by name
+		from any thread. The App object will exist while there are references
+		to it, including the reference from that global list. On the other
+		hand, it's possible to remove the App from the list while it's still
+		running but that's a bad practice because it will break any attempts
+		from its threads to find it by name.
+		</para>
+		 
+		<para>
+		So the App is made, then the file handle gets stored.  The listening socket
+		has to be stored into the App before the listener thread gets started,
+		so that the listener thread can find it.
+		<pre>storeCloseFile()</pre>
+		gets the file descriptor from the socket, dups it, stores into the App,
+		and then closes the original file handle, as explained before. 
+		</para>
+
+		<para>
+		Then the listener thread is started, and as shown before, it's
+		responsible for starting all the other threads. In the meantime, the
+		<pre>startServer()</pre> continues:
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm startServer -->
+<pre>
+	my $tharvest;
+	if ($opts->{fork} < 0) {
+		@_ = (); # prevent the Perl object leaks
+		$tharvest = threads->create(sub {
+			# In case of errors, the Perl's join() will transmit the error 
+			# message through.
+			Triceps::App::find($_[0])->harvester();
+		}, $opts->{app}); # app has to be passed by name
+	} else {
+		$app->harvester();
+	}
+</pre>
+
+		<indexterm>
+			<primary>harversting</primary>
+		</indexterm>
+		<para>
+		The harvester logic is started. Each App must have its harvester.
+		<pre>startHere()</pre> runs the harvester implicitly, unless told otherwise, but
+		if the App is created manually, the harvester has to be run manually. 
+		It can be run either in this
+		thread or in another thread, as determined by the ThreadedServer option 
+		<quote>fork</quote>. 
+		</para>
+
+		<para>
+		If the option <quote>fork</quote> is 0, the server just runs the harvester in the
+		current process and thread. If the option <quote>fork</quote> is 1, the server
+		runs in the first thread of the child process, and if the code got to this
+		point, it would be running now in the child process. So these two cases
+		are handled together and for them the harvester just starts in the current thread
+		with <pre>$app->harvester();</pre> and returns after the App shuts down.
+		</para>
+
+		<para>
+		If the option <quote>fork</quote> is -1, it requires that the harvester is to
+		be started in another newly created thread.
+		<pre>$tharvest</pre> will contain that thread's
+		identity. A special thing about starting threads with <pre>threads->create()</pre>
+		is that it's sensitive to anything in <pre>@_</pre>. If <pre>@_</pre> contains anything, it
+		will be leaked (though the more recent versions of Perl should have it
+		fixed). So <pre>@_</pre> gets cleared before starting the thread.
+		</para>
+
+		<para>
+		And the harvester gets started in the new thread slightly differently.
+		Since in the new thread all the XS objects become <pre>undef</pre>s,
+		the App object has to be found by name in the global list first.
+		</para>
+
+		<para>
+		One way or the other, the harvester is started. What does it do? It
+		joins the App's threads as they exit. After all of them exit, it
+		removes the App from the global list of Apps, which will allow to
+		collect the App's memory when the last reference to it is gone, and
+		then the harvester returns.
+		</para>
+
+		<para>
+		If any of the App's threads die rather than exit nicely, they cause the App to be aborted. The
+		aborted App shuts down immediately and remembers the identity of the
+		failed thread and its error message (only the first message is saved
+		because the abort is likely to cause the other threads to die too, and
+		there is no point in seeing these derivative messages). The harvester,
+		in turn, collects this message from the App, and after all its
+		cleaning-up work is done, also dies, propagating this message. Then if the
+		harvester is running not in the first thread of the program, that message will be
+		propagated further by Perl's <pre>join()</pre>.
+		</para>
+
+		<para>
+		A catch is that the errors are not reported until the harvester
+		completes. Normally all the App's threads should exit immediately on
+		shutdown but if they don't, the program will be stuck without any
+		indication of what happened.
+		</para>
+
+		<para>
+		It's also possible to disable this propagation of dying by using the
+		option <quote>die_on_abort</quote>:
+		</para>
+
+<pre>
+$app->harvester(die_on_abort => 0);
+</pre>
+
+		<para>
+		There is a way to get the error message that caused the abort directly
+		from the App instead.
+		</para>
+
+		<para>
+		And finally the last part of startServer():
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm startServer -->
+<pre>
+	if ($opts->{fork} > 0) {
+		exit 0; # the forked child process
+	}
+
+	return ($port, $tharvest);
+}
+</pre>
+
+		<para>
+		 If this was the child process forked before, it exits at this point.
+		 Otherwise the port and the harvester's thread object are returned. 
 		</para>
 	</sect1>
 </chapter>
