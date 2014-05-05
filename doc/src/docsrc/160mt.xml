@@ -1570,6 +1570,14 @@ $tf->close();
 		</para>
 
 		<para>
+		By the way, the Perl's <pre>threads::kill()</pre> doesn't send a real signal, it
+		just sets a flag for the interpreter. If you try it on your own, it
+		won't interrupt the system calls, and now you know why. Instead Triceps
+		gets the POSIX thread identity from the Perl thread and calls the
+		honest <pre>ptherad_kill()</pre> from the C++ code.
+		</para>
+
+		<para>
 		And another detour into the gritty details, what if the thread gets
 		requested to die after the socket is opened but before it is tracked? 
 		The answer is that the tracking enrollment will check whether
@@ -2837,6 +2845,14 @@ sub startServer # ($optName => $optValue, ...)
 		<para>
 		So far it's pretty standard: get the options and open the socket for
 		listening.
+		A slightly special thing is that it saves the list of supported
+		options in the variable <pre>@myOpts</pre> for the future use.
+		That future use will be to pass the list of unknown options to the
+		user thread, so the known options in <pre>@myOpts</pre> will be removed
+		from the list before passing it.
+		<quote>*</quote> is the pass-through: it tells <pre>Opt::parse</pre>
+		to accept any options and gets all the unknown options collected in
+		<pre>$opts->{"*"}</pre>.
 		</para>
 
 <!-- lib/Triceps/X/ThreadedServer.pm startServer -->
@@ -2909,8 +2925,13 @@ sub startServer # ($optName => $optValue, ...)
 
 		<para>
 		Then the listener thread is started, and as shown before, it's
-		responsible for starting all the other threads. In the meantime, the
-		<pre>startServer()</pre> continues:
+		responsible for starting all the other threads. It gets a set of
+		fixed options plus all the unknown options that the user had specified.
+		It will do the same trick with passing these unknown options to
+		the thread that runs the user code and handles the accepted
+		connections, such as <pre>readerT()</pre> in 
+		<xref linkend="sc_mt_dynamic_server" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		In the meantime, the <pre>startServer()</pre> continues:
 		</para>
 
 <!-- lib/Triceps/X/ThreadedServer.pm startServer -->
@@ -3023,6 +3044,164 @@ $app->harvester(die_on_abort => 0);
 		<para>
 		 If this was the child process forked before, it exits at this point.
 		 Otherwise the port and the harvester's thread object are returned. 
+		</para>
+
+		<para>
+		The next function of the ThreadedServer is <pre>listen()</pre>, the function that gets
+		called from the listener thread and takes care of accepting the
+		connections and spawning the per-client threads.
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm listen -->
+<pre>
+sub listen # ($optName => $optValue, ...)
+{
+	my $myname = "Triceps::X::ThreadedServer::listen";
+	my $opts = {};
+	my @myOpts = (
+		owner => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "Triceps::TrieadOwner") } ],
+		socket => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "IO::Socket") } ],
+		prefix => [ undef, \&Triceps::Opt::ck_mandatory ],
+		handler => [ undef, sub { &Triceps::Opt::ck_mandatory(@_); &Triceps::Opt::ck_ref(@_, "CODE") } ],
+		pass => [ undef, sub { &Triceps::Opt::ck_ref(@_, "ARRAY") } ],
+	);
+	&Triceps::Opt::parse($myname, $opts, {
+		@myOpts,
+		'*' => [],
+	}, @_);
+	my $owner = $opts->{owner};
+	my $app = $owner->app();
+	my $prefix = $opts->{prefix};
+	my $sock = $opts->{socket};
+</pre>
+
+
+		<para>
+		The option parsing is similar to <pre>startServer()</pre>:
+		it also saves the list of supported options in the variable <pre>@myOpts</pre>
+		and accepts any unknown options with <quote>*</quote>, to pass them
+		through to the user thread.
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm listen -->
+<pre>
+	my $clid = 0; # client id
+
+	while(!$owner->isRqDead()) {
+		my $client = $sock->accept();
+		if (!defined $client) {
+			my $err = "$!"; # or the text message will be reset by isRqDead()
+			if ($owner->isRqDead()) {
+				last;
+			} elsif($!{EAGAIN} || $!{EINTR}) { # numeric codes don't get reset
+				next;
+			} else {
+				confess "$myname: accept failed: $err";
+			}
+		}
+</pre>
+
+		<para>
+		The accept loop starts. It runs until the thread is requested to die
+		at shutdown. The shutdown would also revoke the listening socket,
+		and thus if it happened in the middle of <pre>$sock->accept()</pre>,
+		<pre>$sock->accept()</pre> would return an <pre>undef</pre> because
+		it will see the revocation as an error.
+		Note that <pre>listen()</pre> itself doesn't request to
+		track the socket for revocation. The caller must do that
+		before calling <pre>listen()</pre>.
+		</para>
+
+		<para>
+		So, after <pre>accept()</pre> the code checks for
+		errors. The first thing to check for is again the <pre>isRdDead()</pre>, because
+		it's not really an error, it's an expected condition. 
+		If the shutdown is found, the loop exits.  However
+		the error text had to be saved before <pre>isRqDead()</pre>, 
+		because like other Triceps calls <pre>isRdDead()</pre> will clear the error text.
+		Then the check
+		for the spurious interruptions is done, and for them the loop
+		continues. Interestingly, the <pre>$!{}</pre> uses the numeric part of <pre>$!</pre> that is
+		independent from its text part and doesn't get cleared by the Triceps
+		calls. And on any other errors the thread confesses. The confession will unroll
+		the stack, eventually will get caught by the Triceps threading code, abort
+		the App, and propagate the error message to the harvester.
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm listen -->
+<pre>
+		$clid++;
+		my $cliname = "$prefix$clid";
+		$app->storeCloseFile($cliname, $client);
+
+		Triceps::Triead::start(
+			app => $app->getName(),
+			thread => $cliname,
+			fragment => $cliname,
+			main => $opts->{handler},
+			socketName => $cliname,
+			&Triceps::Opt::drop({ @myOpts }, \@_),
+		);
+
+		# Doesn't wait for the new thread(s) to become ready.
+	}
+}
+</pre>
+
+		<para>
+		If a proper connection has been received, the socket gets stored into
+		the App with a unique name, for later load by the per-client thread.
+		And then the per-client thread gets started.
+		</para>
+
+		<para>
+		<pre>Opt::drop()</pre> passes through all the original options except for the ones
+		handled by this thread. In retrospect, this is not the best solution
+		for this case. It would be better to just use <pre>@{$opts->{"*"}}</pre> instead.
+		<pre>Opt::drop()</pre> is convenient when not all the explicitly recognized
+		options but only some of them have to be dropped.
+		</para>
+
+		<para>
+		After starting the thread, the loop doesn't call <pre>readyReady()</pre> but goes
+		for the next iteration. This is basically because it doesn't care about
+		the started thread and doesn't ever send anything to it. And waiting
+		for the threads to start will make the loop slower, possibly
+		overflowing the socket's listening queue and dropping the incoming
+		connections if they arrive very fast.
+		</para>
+
+		<para>
+		And the last part of the ThreadedServer is the function <pre>printOrShut()</pre>:
+		</para>
+
+<!-- lib/Triceps/X/ThreadedServer.pm -->
+<pre>
+sub printOrShut # ($app, $fragment, $sock, @text)
+{
+	my $app = shift;
+	my $fragment = shift;
+	my $sock = shift;
+
+	undef $!;
+	print $sock @_;
+	$sock->flush();
+
+	if ($!) { # can't write, so shutdown
+		Triceps::App::shutdownFragment($app, $fragment);
+	}
+}
+</pre>
+
+		<para>
+		Nothing too complicated. Prints the text into the socket, flushes it
+		and checks for errors. On errors shuts down the fragment. In this case
+		there is no need for draining. After all, the socket leading to the
+		client is dead and there is no way to send anything more through it, so
+		there is no point in worrying about any unsent data. Just shut down as
+		fast as it can, before the threads have generated more data that can't
+		be sent any more. Any data queued in the nexuses for the shut down
+		threads will be discarded.
 		</para>
 	</sect1>
 </chapter>
