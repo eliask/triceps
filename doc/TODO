@@ -147,6 +147,7 @@ Things that need to be done:
 * doc: for all C++ classes, show the header file for them
 * doc: reference for all new classes in Perl
 * doc: for all Perl examples, show in the text the file that contains them
+* doc: the ways to create an App
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -157,8 +158,9 @@ App ideas:
 
 tangent 144, 157, 191, 197, 199, 204, 206, 279
 171-172
-221-222
-225-230
++225
+226-228
+230
 231
 232-252
 254-257

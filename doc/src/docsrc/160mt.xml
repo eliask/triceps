@@ -3204,4 +3204,202 @@ sub printOrShut # ($app, $fragment, $sock, @text)
 		threads will be discarded.
 		</para>
 	</sect1>
+
+	<sect1 id="sc_mt_threaded_client">
+		<title>ThreadedClient, a Triceps Expect</title>
+
+		<indexterm>
+			<primary>ThreadedClient</primary>
+		</indexterm>
+		<indexterm>
+			<primary>expect</primary>
+		</indexterm>
+		<para>
+		In case if you're not familiar with it, <pre>expect</pre> is a program that
+		allows to connect to the interactive programs and pretend being an
+		interactive user. Obviously, the terminal programs, not the GUI ones.
+		It has originally been done as an extension for Tcl, and later ported
+		as a library for Perl and other languages.
+		</para>
+
+		<para>
+		The class Triceps::X::ThreadedClient implements a variety of <pre>expect</pre> in
+		the Triceps framework. I'm using it for the unit tests of the Triceps
+		servers but it can have other uses as well. Why not just use <pre>expect</pre>?
+		One reason, I don't like bringing in extra dependencies, especially
+		just for tests, second, it was an interesting exercise, and third, I
+		didn't realize that I was writing a simplified variety of expect until I
+		had it mostly completed. The biggest simplification compared to the
+		real <pre>expect</pre> is that ThreadedClient works with the complete lines.
+		</para>
+
+		<para>
+		It gets used in the unit tests like this: first the server gets started
+		in a background process or thread, and then the server's port number is used to
+		create the clients. The ThreadedClient gets embedded into a Triceps
+		App, so you can start other things in the same App. Well, the names of
+		the ThreadedClient threads are hardcoded at the moment, so you can
+		start only one copy of it per App, and there could be conflicts if you
+		start your other threads and use the same names as in ThreadedClient.
+		</para>
+
+		<para>
+		But first you need to start an App. I'll show it done in yet another way this
+		time:
+		</para>
+
+<!-- t/xChatMt.t "test of the thread killing in the chat" reduced -->
+<pre>
+	Triceps::App::build "client", sub {
+		my $appname = $Triceps::App::name;
+		my $owner = $Triceps::App::global;
+
+		# give the port in startClient
+		my $client = Triceps::X::ThreadedClient->new(
+			owner => $owner,
+			totalTimeout => 5,
+			debug => 0,
+		);
+
+		$owner->readyReady();
+
+		$client->startClient("c1", $port);
+		$client->expect("c1", '!ready');
+
+		# this repetition tests the expecting to the first match
+		$client->send("c1", "publish,*,zzzzzz\n");
+		$client->send("c1", "publish,*,zzzzzz\n");
+		$client->expect("c1", '\*,zzzzzz');
+		$client->expect("c1", '\*,zzzzzz');
+
+		$client->startClient("c2", $port);
+		$client->expect("c2", '!ready,cliconn2');
+
+		$client->send("c1", "kill,cliconn2\n");
+		$client->expect("c2", '__EOF__');
+
+		$client->send("c1", "shutdown\n");
+		$client->expect("c1", '__EOF__');
+	};
+</pre>
+
+		<para>
+		<pre>Triceps::App::build()</pre> is kind of like <pre>Triceps::Triead::startHere()</pre> but
+		saves the trouble of parsing the options. The app name is its first
+		argument and the code for the main routine of the first thread is the
+		second argument. That first Triead will run in the current Perl thread.
+		After that the name of the app is placed into the global variable
+		<pre>$Triceps::App::name</pre>, the App object into <pre>$Triceps::App::app</pre>, and the
+		TrieadOwner into <pre>$Triceps::App::global</pre>. The name of the first Triead is
+		hardcoded as <quote>global</quote>.  After the main function exits,
+		<pre>Triceps::App::build()</pre> runs the harvester, very similar to <pre>startHere()</pre>.
+		</para>
+
+		<para>
+		<pre>Triceps::X::ThreadedClient->new()</pre> is used to start an instance of a
+		client. A single client instance supports multiple connections, to the
+		same or different servers.
+		The option <quote>owner</quote> gives it the current TrieadOwner as a
+		starting point but ThreadedClient will create its own threads starting from this
+		point. 
+		</para>
+
+		<para>
+		The port number for the connection can be specified as either the option <quote>port</quote> or as the
+		second argument of <pre>startClient()</pre>. You can use both, and then the option
+		will provide the default value while <pre>startClient()</pre> can stil override it.
+		</para>
+
+		<para>
+		The option <quote>debug</quote> is optional, with the default value of 0. In the non-debug
+		mode ThreadedClient collects the protocol of the run but otherwise runs silently.
+		Setting the <quote>debug</quote> option to 1 makes it also print the protocol as it gets
+		collected, so if something goes not the way you expected, you can see
+		what it is. Setting the debug to 1 also adds the printouts from the
+		socket-facing threads, so you can also see what goes in and out the
+		client socket.
+		</para>
+
+		<para>
+		The option <quote>totalTimeout</quote> can be used to set the time limit
+		in seconds (as a floating-point number) for the whole exchange from the
+		connection setup to teardown. It's very convenient for the unit tests,
+		limiting the time for which the test could get stuck if something
+		goes wrong. If the timeout gets exceeded, the app would be aborted.
+		</para>
+
+		<para>
+		After that the client connections get started with <pre>startClient()</pre>. Its first
+		argument is a symbolic name of the client that will be used in the
+		further calls and also in the protocol. The second optional argument is
+		the port number, if you want to use a different port than specified in
+		the <pre>new()</pre>.
+		</para>
+
+		<para>
+		After that the data gets sent into the client socket with <pre>send()</pre>, and
+		the returned lines get parsed with <pre>expect()</pre>. The usual procedure is
+		that you send something, then expect some response to it. 
+		</para>
+
+		<para>
+		The second argument of <pre>expect()</pre> is actually a regexp placed inside a
+		string. So to expect a literal special character like <quote>*</quote>, prefix it
+		with a backslash and put the string into single quotes, like:
+		</para>
+
+<pre>
+$client->expect("c1", '\*,zzzzzz');
+</pre>
+
+		<para>
+		<pre>expect()</pre> keeps reading lines until it finds one matching the
+		regexp. Then all the lines including that one are added to the protocol
+		and the call returns.  The sent
+		lines are also included into the protocol, with the prefix <quote>&gt; </quote>.
+		</para>
+
+		<para>
+		There are a couple of special lines generated by the connection status
+		itself rather than coming from the socket. When the socket gets
+		connected, it generates the line <quote>connected <i>name</i></quote> in the protocol
+		(but not as an expectable input). When the connection gets dropped by the server,
+		this generates an expectable line <quote>__EOF__</quote>. And each line in the
+		protocol gets prefixed with the client name and <quote>|</quote>. The example of the
+		chat server run in the previous section was created by the ThreadedClient.
+		</para>
+
+		<para>
+		The recorded protocol can be extracted as <pre>$client->protocol()</pre>. So for unit tests
+		you can check the protocol match as
+		</para>
+
+<pre>
+ok($client->protocol(), $expected);
+</pre>
+
+		<para>
+		One more method not shown above allows to close the client socket 
+		(in socket terms, shut it down):
+		</para>
+
+<pre>
+$client->sendClose("c4", "WR");
+</pre>
+
+		<para>
+		The first argument is the client name. The second argument determines,
+		which side of the socket gets closed: <quote>WR</quote> for the writing side, <quote>RD</quote>
+		for the reading side, and <quote>RDWR</quote> for both. It's the same names as for
+		the system call <pre>shutdown()</pre>. 
+		</para>
+
+		<para>
+		Internally the ThreadedClient is very much like the chat server, 
+		except for the support of the timeouts. The way the timeouts work is described
+		in XXXREF.
+		But there is not a whole lot of point in going over the rest of implementation
+		in detail. Feel free to read it on your own, in <pre>lib/Triceps/X/ThreadedClient.pm</pre>.
+		</para>
+	</sect1>
 </chapter>
