@@ -148,6 +148,7 @@ Things that need to be done:
 * doc: reference for all new classes in Perl
 * doc: for all Perl examples, show in the text the file that contains them
 * doc: the ways to create an App
+* doc: reference for Triceps::now()
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
@@ -158,7 +159,6 @@ App ideas:
 
 tangent 144, 157, 191, 197, 199, 204, 206, 279
 171-172
-+225
 226-228
 230
 231
