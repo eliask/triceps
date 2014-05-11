@@ -82,7 +82,10 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 			Array reference containing the path name of index type in table
 			used for the look-up. 
 			The index absolutely must be a Hash (leaf or non-leaf), not of any
-			other kind. Optional. Default: first top-level Hash index type.
+			other kind. Optional.
+			Default: automatically found by the set of key fields. Whether
+			explicitly specified or automatically found, the index must be available
+			in the table.
 			</listitem>
 		</varlistentry>
 
@@ -122,6 +125,16 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 			absent, when generating the result row, the key fields in it will
 			still be present by mirroring them from the other side. Used by
 			JoinTwo. Optional. Default: 0.
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>fieldsDropRightKey</pre></term>
+			<listitem>
+			Flag: remove the key fields on the right side from the result.
+			Convenient to avoid their duplication, especially if the key
+			fields are named the same on both sides.
+			Optional. Default: 0.
 			</listitem>
 		</varlistentry>
 

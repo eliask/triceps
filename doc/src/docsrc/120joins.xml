@@ -142,7 +142,6 @@ our $join = Triceps::LookupJoin->new(
 	name => "join",
 	leftFromLabel => $lbTrans,
 	rightTable => $tAccounts,
-	rightIdxPath => ["lookupSrcExt"],
 	leftFields => [ "!acct.*", ".*" ],
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
@@ -171,8 +170,9 @@ on
 </pre>
 
 		<para>
-		The condition looks up the rows in <pre>$tAccounts</pre> using the index <quote>lookupSrcExt</quote>
-		that must have the key fields <pre>source</pre> and <pre>external</pre>.
+		The condition looks up the rows in <pre>$tAccounts</pre> using the index
+		that has the key fields <pre>source</pre> and <pre>external</pre>. Such index must
+		be already defined, or the join will refuse to compile.
 		</para>
 
 		<para>
@@ -190,9 +190,8 @@ on
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "inner",
 );
 </pre>
@@ -203,9 +202,8 @@ our $join = Triceps::JoinTwo->new(
 		</indexterm>
 		<para>
 		It joins the tables <pre>$tPosition</pre> and <pre>$tToUsd</pre>, with the inner join logic.
-		The table <pre>$tPosition</pre> uses its index <quote>currencyLookup</quote>, and <pre>$tToUsd</pre> uses
-		its index <quote>primary</quote>. The join condition is determined by pairing the
-		key fields of the indexes.
+		The join condition is on the fields <quote>date</quote> and <quote>currency</quote> being
+		equal in rows in both tables.
 		</para>
 	</sect1>
 
@@ -466,9 +464,11 @@ while(&readLine) {
 		<quote><pre>,</pre></quote> too, but <quote><pre>=></pre></quote>
 		feels more idiomatic to me. These fields from the left are translated
 		to the right and are used for lookup through the index. The index
-		is specified with the path in the option <quote>rightIdxPath</quote>. If this
-		option is missing, LookupJoin will just try to find the first top-level
-		Hashed index. Either way, the index must be a Hashed index.
+		is specified with the path in the option <quote>rightIdxPath</quote>.
+		This option is optional: if it's missing, the template will automatically
+		find the index that matches the key fields. The index must exist though,
+		if it doesn't exist, LookupJoin can't create it and can't work without
+		it either. The index must be a Hashed index.
 		</para>
 
 		<indexterm>
@@ -519,7 +519,8 @@ while(&readLine) {
 
 		<para>
 		Remember that the field names in the result must not
-		duplicate. It would be an error. So if the duplications happen, use the
+		duplicate. It would be an error. 
+		If the duplications happen, the most general solution is to use the
 		substitution syntax to rename some of the fields.
 		</para>
 
@@ -535,7 +536,8 @@ while(&readLine) {
 
 		<para>
 		The <pre>$&</pre> in the substitution gets replaced with the whole matched
-		field name.
+		field name. There is also another way to solve a special case of duplication
+		that will be shown in a moment.
 		</para>
 
 		<para>
@@ -578,6 +580,68 @@ join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct
 		new rowops will see it. The same goes for deleting an account, it
 		doesn't affect the past rowops either.
 		</para>
+		
+		<para>
+		Now let's take another look at the field duplication problem.
+		The most typical case of duplication is in the key fields, when the
+		key fields on both sides are named the same. If all the fields from
+		both left and right sides were to be included (which is the default),
+		the key fields would be included twice, with the same names, and
+		cause a conflict. LookupJoin provides a solution for this special
+		case, shown in the following example:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftSameFields -->
+<pre>
+our $rtTrans = Triceps::RowType->new( # a transaction received
+	id => "int32", # the transaction id
+	source => "string", # external system that sent us a transaction
+	external => "string", # its name of the account of the transaction
+	amount => "int32", # the amount of transaction (int is easier to check)
+);
+
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
+
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtTrans,
+	rightTable => $tAccounts,
+	byLeft => [ "source", "external" ],
+	fieldsDropRightKey => 1,
+	isLeft => 1,
+); # would confess by itself on an error
+</pre>
+
+		<para>
+		The example does the exact same thing as the last one, only here the fields
+		in the incoming rows have been named the same as in the table. This made the
+		option <quote>byLeft</quote> the more convenient way to specify the join 
+		condition. And this time there are no explicit options to select the result fields,
+		all of them are included. But that would have included the fields
+		<quote>source</quote> and <quote>external</quote> twice, which is illegal.
+		The option <quote>fieldsDropRightKey</quote> set to 1 takes care of that: it automatically
+		removes the key fields on the right side from the result.
+		This example produces the output that is the same as the last one, only with
+		the different field names:
+		</para>
+
+<!-- t/xJoin.t, doLookupLeftSameFields -->
+<exdump>
+> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" source="source1" external="999" amount="100" internal="1" 
+> trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" source="source2" external="ABCD" amount="200" internal="1" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" source="source2" external="QWERTY" amount="200" 
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" source="source2" external="QWERTY" amount="200" internal="2" 
+> acct,OP_DELETE,source1,999,1
+</exdump>
 
 		<para>
 		The left-side data can also be specified in another way: the option
@@ -600,7 +664,6 @@ our $join = Triceps::LookupJoin->new(
 	name => "join",
 	leftFromLabel => $lbTrans,
 	rightTable => $tAccounts,
-	rightIdxPath => ["lookupSrcExt"],
 	leftFields => [ "id", "amount" ],
 	fieldsLeftFirst => 0,
 	rightFields => [ "internal/acct" ],
@@ -632,7 +695,8 @@ while(&readLine) {
 		The other options demonstrate the possibilities described in the last
 		post. This time it's an inner join, the result has the right-side
 		fields going first, and the left-side fields are filtered in the
-		result by an explicit list of fields to pass.
+		result by an explicit list of fields to pass. The right-side index is found 
+		automatically.
 		</para>
 
 		<para>
@@ -710,9 +774,10 @@ our $join = Triceps::LookupJoin->new(
 
 		<para>
 		The main loop is unchanged from the first LookupJoin example, so I
-		wont' copy it here. Just for something different, the join index here
+		won't copy it here. Just for something different, the join index here
 		is nested, and its path consists of two elements. It's not a leaf index
-		either, with one FIFO level under it. And when the <quote>isLeft</quote> is not
+		either, with one FIFO level under it. It could also have been found
+		automatically.  And when the <quote>isLeft</quote> is not
 		specified explicitly, it defaults to 1, making it a left join.
 		</para>
 
@@ -839,7 +904,6 @@ our $join = Triceps::LookupJoin->new(
 	name => "join",
 	leftRowType => $rtInTrans,
 	rightTable => $tAccounts,
-	rightIdxPath => ["lookupSrcExt"],
 	rightFields => [ "internal/acct" ],
 	by => [ "acctSrc" => "source", "acctXtrId" => "external" ],
 	automatic => 0,
@@ -1245,6 +1309,7 @@ our $join = Triceps::LookupJoin->new(
 		comes this code:
 		</para>
 
+<!-- t/xJoin.t, doLookupLeftManual, uncomment saveJoinerTo and print it -->
 <pre>
 sub  # ($self, $row)
 {
@@ -1529,9 +1594,8 @@ our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "inner",
 ); # would confess by itself on an error
 
@@ -1561,7 +1625,9 @@ while(&readLine) {
 
 		<para>
 		Both of the joined tables must provide a Hashed index for the efficient
-		joining.  The index may be leaf (selecting one row per key) or non-leaf
+		joining. In this case it will be <quote>currencyLookup</quote> on the left and
+		<quote>primary</quote> on the right, found automatically by the key fields.
+		The index may be leaf (selecting one row per key) or non-leaf
 		(containing multiple rows per key) but it must be there. This makes
 		sure that the joins are always efficient and you don't have to hunt for
 		why your model is suddenly so slow.
@@ -1572,9 +1638,28 @@ while(&readLine) {
 			<secondary>key field order</secondary>
 		</indexterm>
 		<para>
-		The indexes also provide the default way of finding the join condition:
-		the key fields in the indexes are paired up together, in the order they
-		go in the index specifications. Once again, the fields are paired not
+		There are two ways to provide the join condition: either specify
+		it explicitly in the option <quote>by</quote> or <quote>byLeft</quote>,
+		or specify the indexes in both tables and have the key fields in them
+		paired together. Or you can specify both, as long as the information stays consistent.
+		For example, the join in this example could also be written as:
+		</para>
+
+<!-- t/xJoin.t doJoinInner modified -->
+<pre>
+our $join = Triceps::JoinTwo->new(
+	name => "join",
+	leftTable => $tPosition,
+	leftIdxPath => [ "currencyLookup" ],
+	rightTable => $tToUsd,
+	rightIdxPath => [ "primary" ],
+	type => "inner",
+); # would confess by itself on an error
+</pre>
+
+		<para>
+		When the key fields in the indexes are paired up together, it's done
+		in the order they go in the index specifications. Once again, the fields are paired not
 		by name but by order. If the indexes are nested, the outer indexes
 		precede in the order. For example, the <pre>$ttToUsd</pre> could have the same
 		index done in a nested way and it would work just as well:
@@ -1601,7 +1686,7 @@ while(&readLine) {
 		</para>
 
 		<para>
-		But if the order of key fields in the <pre>$ttToUsd</pre> index were
+		If the order of key fields in the <pre>$ttToUsd</pre> index were
 		changed to be different from <pre>$ttPosition</pre>, like this
 		</para>
 
@@ -1612,10 +1697,14 @@ while(&readLine) {
 </pre>
 
 		<para>
-		then it would be a mess. The wrong fields would be matched up in the
+		then it would be a mess for the automatic pairing by index.
+		The wrong fields would be matched up in the
 		join condition, which would become 
 		<pre>(tPosition.date == tToUsd.currency && tPosition.currency == tToUsd.date)</pre>, 
 		and everything would go horribly wrong.
+		It would be no problem at all for selecting the pairing explicitly
+		with the <quote>by</quote> options and letting the join find the
+		index, which is the recommended way.
 		</para>
 
 		<indexterm>
@@ -1623,10 +1712,9 @@ while(&readLine) {
 			<secondary>key field types</secondary>
 		</indexterm>
 		<para>
-		Incidentally, this situation in this particular case would be caught
-		because JoinTwo is much less lenient than LookupJoin as the key field
+		JoinTwo is much less lenient than LookupJoin as the key field
 		types go. It requires the types of the matching fields to be exactly
-		the same. Partially, for the reasons of catching the wrong order,
+		the same. Partially, for the reasons of catching the wrong field pairing by order,
 		partially for the sake of the result consistency. JoinTwo does the
 		look-ups in both directions. And think about what happens if a string field
 		and an int32 field get matched up, and then the non-numeric strings
@@ -1657,14 +1745,6 @@ while(&readLine) {
 		</para>
 
 		<para>
-		If you wonder, there are ways to specify the key fields pairing
-		explicitly, with the option <quote>by</quote> or <quote>byLeft</quote>, same as for the
-		LookupJoin. But that's all they can do: change the pairing of the
-		key fields. You can't specify any other fields. And since they are
-		optional for JoinTwo, they get usually skipped.
-		</para>
-
-		<para>
 		More of the JoinTwo options closely parallel those in LookupJoin.
 		Obviously, <quote>name</quote>, <quote>rightTable</quote> and <quote>rightIdxPath</quote> are the same, with
 		the added symmetrical <quote>leftTable</quote> and <quote>leftIdxPath</quote>. There is no <quote>unit</quote>
@@ -1683,7 +1763,7 @@ while(&readLine) {
 			<secondary>inner</secondary>
 		</indexterm>
 		<para>
-		The option <quote>type</quote> selects the inner join mode. The inner join is the
+		The option <quote>type</quote> selects the join mode. The inner join is the
 		default, and would have been used even if this option was not
 		specified.
 		</para>
@@ -1694,9 +1774,10 @@ while(&readLine) {
 		</indexterm>
 		<para>
 		The options controlling the result are also the same as in LookupJoin: <quote>leftFields</quote>,
-		<quote>rightFields</quote>, <quote>fieldsLeftFirst</quote>.
+		<quote>rightFields</quote>, <quote>fieldsLeftFirst</quote>. There is
+		no option <quote>fieldsDropRightKey</quote>,
+		JoinTwo always excludes the duplicate key fields automatically.
 		The results in this example include all the fields from both sides by default.
-		JoinTwo is smart and knows how to exclude the duplicate key fields automatically.
 		</para>
 
 		<para>
@@ -1825,9 +1906,8 @@ join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quanti
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "left",
 ); # would confess by itself on an error
 </pre>
@@ -2023,9 +2103,8 @@ join.leftLookup.out OP_INSERT date="20120310" customer="one" symbol="AAA" quanti
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "outer",
 ); # would confess by itself on an error
 </pre>
@@ -2198,15 +2277,22 @@ join.leftLookup.out OP_INSERT date="20120310" currency="RUR" toUsd="0.04"
 		<para>
 		JoinTwo in its raw form has the same problem of the key field duplication
 		as LookupJoin (described in
-		<xref linkend="sc_joins_lookupjoin_keys" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;),
-		only worse because the table-to-table outer joins must work with the updates from
-		any side.
-		So JoinTwo has more magic built into it: it knows how to recognize this
-		situation and have the key fields copied into the result from whatever
+		<xref linkend="sc_joins_lookupjoin_keys" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
+		It's a more high-level template, so it solves this problem automatically,
+		removing the duplicate fields from the result by default.
+		</para>
+
+		<para>
+		But the problem in JoinTwo is even worse
+		because the table-to-table outer joins must work with the updates from
+		any side. If a row finds no match in the outer join, the other side
+		and all the fields in that other side will be NULL. If only the fields from that other
+		side pass through into the result, the result will contain NULLs in
+		the key fields, which would be very wrong.
+		Thus JoinTwo has even more magic built into it: it knows how to
+		have the key fields copied into the result from whatever
 		side happens to be present for a particular row, and does this by default. 
-		It makes these fields always available on both sides. And along the way it also takes care of
-		modifying the option <quote>rightFields</quote> or <quote>leftFields</quote> to actually pass
-		through only one of the copies.
+		The other way to think about it is that it makes these fields always available on both sides.
 		</para>
 
 		<para>
@@ -2419,9 +2505,8 @@ our $businessDay = undef;
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "left",
 ); # would confess by itself on an error
 
@@ -2545,10 +2630,9 @@ our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
 	leftFromLabel => $lbPositionCurrent,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
 	rightFromLabel => $lbToUsdCurrent,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "left",
 ); # would confess by itself on an error
 </pre>

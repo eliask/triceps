@@ -175,6 +175,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			The <pre>getTabtypeSafe()</pre> method added in the IndexType Perl API.
 			</listitem>
+
+			<listitem>
+			Finiding an index by its keys with <pre>TableType::findIndexPathForKeys()</pre>.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 

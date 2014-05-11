@@ -1781,7 +1781,7 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 		last example can be defined as:
 		</para>
 
-<!-- XXXX add to xSnippets -->
+<!-- XXX add to xSnippets -->
 <pre>
 sub initNumStr # ($tabt, $idxt, $rowt, @args)
 {
@@ -2907,7 +2907,7 @@ $itLast2 = $ttWindow->findIndexPath([ "bySymbol", "last2" ]);
 		</para>
 
 <pre>
-($idxType, @keys) = $tableType->findIndexKeyPath(\@path);
+($idxType, @keys) = $tabType->findIndexKeyPath(\@path);
 </pre>
 
 		<para>
@@ -2975,6 +2975,33 @@ $tt = Triceps::TableType->new($rt)
 		And they would even work fine, with just a little extra overhead from
 		duplication. But <pre>findIndexKeyPath()</pre> will refuse such indexes and
 		confess.
+		</para>
+
+		<para>
+		Yet another way to find an index is by the keys. Think of an SQL
+		query: having a WHERE condition, you would want to find if there
+		is an index on the fields in the condition, allowing to find the
+		records quickly. Triceps is not quite up to this level of automatic
+		query planning yet but it does some for the joins.
+		If you know, by which fields you want to join,
+		it's nice to find the correct index automatically. 
+		The finding of an index by key is done with the method:
+		</para>
+
+<pre>
+@idxPath = $tableType->findIndexPathForKeys(@keyFields);
+</pre>
+
+		<para>
+		It returns the array that represents the path to an index type that
+		matches these key fields. And then having the path you can find the
+		index type as such. The index type and all the types in the path
+		still have to be of the Hashed variety. If the correct index cannot
+		be found, an empty array is returned. If you specify the fields that
+		aren't present in the row type in the first place, this is simply
+		treated the same as being unable to find an index for these fields.
+		If more that one index would match, the first one found in the direct
+		order of the index tree walk is returned.
 		</para>
 
 		<indexterm>

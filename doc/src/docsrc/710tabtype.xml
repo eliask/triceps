@@ -141,6 +141,24 @@ $indexType = $tt->findIndexPath( ["indexName", "nestedIndexName"] );
 		</para>
 
 <pre>
+@idxPath = $tt->findIndexPathForKeys(@keyFields);
+</pre>
+
+		<para>
+		Finds an index path that matches the set of key fields.
+		It returns the array that represents the path.
+		And then having the path you can find the
+		index type as such. The index type and all the types in the path
+		have to be of the Hashed variety (returning their set of keys
+		with the method <pre>getKey()</pre>). If the correct index cannot
+		be found, an empty array is returned. If you specify the fields that
+		aren't present in the row type in the first place, this is simply
+		treated the same as being unable to find an index for these fields.
+		If more that one index would match, the first one found in the direct
+		order of the index tree walk is returned.
+		</para>
+
+<pre>
 $indexType = $tt-findSubIndexById($indexTypeId);
 </pre>
 
