@@ -194,6 +194,72 @@ join.out OP_DELETE id="3" acctSrc="source2" acctXtrId="QWERTY" amount="200" acct
 #print "$code\n";
 
 #########################
+# Just like doLookupLeft but with the left table having the same key 
+# field names as the right.
+
+sub doLookupLeftSameFields {
+
+our $uJoin = Triceps::Unit->new("uJoin");
+
+our $rtTrans = Triceps::RowType->new( # a transaction received
+	id => "int32", # the transaction id
+	source => "string", # external system that sent us a transaction
+	external => "string", # its name of the account of the transaction
+	amount => "int32", # the amount of transaction (int is easier to check)
+);
+
+our $tAccounts = $uJoin->makeTable($ttAccounts, "tAccounts");
+
+our $join = Triceps::LookupJoin->new(
+	unit => $uJoin,
+	name => "join",
+	leftRowType => $rtTrans,
+	rightTable => $tAccounts,
+	byLeft => [ "source", "external" ],
+	fieldsDropRightKey => 1,
+	isLeft => 1,
+); # would confess by itself on an error
+
+# label to print the changes to the detailed stats
+makePrintLabel("lbPrint", $join->getOutputLabel());
+
+while(&readLine) {
+	chomp;
+	my @data = split(/,/); # starts with a command, then string opcode
+	my $type = shift @data;
+	if ($type eq "acct") {
+		$uJoin->makeArrayCall($tAccounts->getInputLabel(), @data);
+	} elsif ($type eq "trans") {
+		$uJoin->makeArrayCall($join->getInputLabel(), @data);
+	}
+	$uJoin->drainFrame(); # just in case, for completeness
+}
+
+} # doLookupLeftSameFields
+
+setInputLines(@commonInput);
+&doLookupLeftSameFields();
+#print &getResultLines();
+ok(&getResultLines(), 
+'> acct,OP_INSERT,source1,999,1
+> acct,OP_INSERT,source1,2011,2
+> acct,OP_INSERT,source2,ABCD,1
+> trans,OP_INSERT,1,source1,999,100
+join.out OP_INSERT id="1" source="source1" external="999" amount="100" internal="1" 
+> trans,OP_INSERT,2,source2,ABCD,200
+join.out OP_INSERT id="2" source="source2" external="ABCD" amount="200" internal="1" 
+> trans,OP_INSERT,3,source2,QWERTY,200
+join.out OP_INSERT id="3" source="source2" external="QWERTY" amount="200" 
+> acct,OP_INSERT,source2,QWERTY,2
+> trans,OP_DELETE,3,source2,QWERTY,200
+join.out OP_DELETE id="3" source="source2" external="QWERTY" amount="200" internal="2" 
+> acct,OP_DELETE,source1,999,1
+');
+#$code =~ s/\n\t\t/\n/g;
+#$code =~ s/\t/  /g;
+#print "$code\n";
+
+#########################
 # perform a LookupJoin, with an inner join and leftFromLabel
 
 sub doLookupFull {
@@ -552,9 +618,8 @@ our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "inner",
 ); # would confess by itself on an error
 
