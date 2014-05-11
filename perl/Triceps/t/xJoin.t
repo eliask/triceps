@@ -696,9 +696,8 @@ our $businessDay = undef;
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "left",
 ); # would confess by itself on an error
 
@@ -784,9 +783,8 @@ our $tPosition = $uJoin->makeTable($ttPosition, "tPosition");
 our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "outer",
 ); # would confess by itself on an error
 
@@ -885,10 +883,9 @@ our $join = Triceps::JoinTwo->new(
 	name => "join",
 	leftTable => $tPosition,
 	leftFromLabel => $lbPositionCurrent,
-	leftIdxPath => [ "currencyLookup" ],
 	rightTable => $tToUsd,
 	rightFromLabel => $lbToUsdCurrent,
-	rightIdxPath => [ "primary" ],
+	byLeft => [ "date", "currency" ],
 	type => "left",
 ); # would confess by itself on an error
 
