@@ -235,7 +235,7 @@ sub listen # ($optName => $optValue, ...)
 	while(!$owner->isRqDead()) {
 		my $client = $sock->accept();
 		if (!defined $client) {
-			my $err = "$!"; # or th etext message will be reset by isRqDead()
+			my $err = "$!"; # or the text message will be reset by isRqDead()
 			if ($owner->isRqDead()) {
 				last;
 			} elsif($!{EAGAIN} || $!{EINTR}) { # numeric codes don't get reset
