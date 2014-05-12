@@ -327,6 +327,24 @@ if ($#chain >= 0) { ... }
 		</para>
 
 		<para>
+		There is also a convenience method that
+		creates a new label by chaining it from an existing label:
+		</para>
+
+<pre>
+$label2 = $label1->makeChained($name, $subClear, $subExec, @args);
+</pre>
+
+		<para>
+		The arguments are very much the same as in <pre>Unit::makeLabel()</pre>, only there is
+		no need to specify the row type for the new label (nor obviously the
+		Unit), these are taken from the original label. It's really a wrapper
+		that finds the unit and row type from <pre>label1</pre>, makes a new
+		label, and then chains it off <pre>label1</pre>.
+		</para>
+
+
+		<para>
 		The whole label can be cleared with
 		</para>
 
@@ -339,7 +357,12 @@ $label->clear();
 		the labels: it calls the clear function (if any) and clears the
 		chainings. Note that the labels that used to be chained from this one
 		do not get cleared themselves, they're only unchained from this one.
+		To check whether the label has been already cleared use:
 		</para>
+
+<pre>
+$result = $label->isCleared();
+</pre>
 
 		<para>
 		Labels have the usual way of comparing the references:
