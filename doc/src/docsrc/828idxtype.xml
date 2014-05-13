@@ -69,9 +69,9 @@ static int stringIndexId(const char *str);
 </pre>
 
 		<para>
-		As usual with the contant-and-name conversions, if the numeric id <i>enval</i> is
-		invalid, the string <i>def</i> is returned, by default <quote>???</quote>. If the string
-		name <i>str</i> is unknown, -1 is returned.
+		As usual with the contant-and-name conversions, if the numeric id <pre>enval</pre> is
+		invalid, the string <pre>def</pre> is returned, by default <quote>???</quote>. If the string
+		name <pre>str</pre> is unknown, -1 is returned.
 		</para>
 
 <pre>
@@ -228,19 +228,19 @@ IndexType *copy(bool flat = false) const;
 </pre>
 
 		<para>
-		Create an un-initialized copy of this index. If <i>flat</i> is false then
+		Create an un-initialized copy of this index. If <pre>flat</pre> is <pre>false</pre> then
 		the copy is done with all the sub-index and
 		aggregator types also copied, but the row types shared. This method is used by
-		addSubIndex() to copy its argument before adding. By the way, the usual
+		<pre>addSubIndex()</pre> to copy its argument before adding. By the way, the usual
 		copy constructor could theoretically be used on the index types but
 		usually doesn't make a whole lot of a sense because the sub-types and
 		such will end up shared by reference.
 		</para>
 
 		<para>
-		If <i>flat</i> is true, the copy is flat, with the sub-index types and aggregator
+		If <pre>flat</pre> is true, the copy is flat, with the sub-index types and aggregator
 		types simply not included. It's the &Cpp; analog of the Perl method
-		flatCopy(). This allows to re-create the partial index hierarchies,
+		<pre>flatCopy()</pre>. This allows to re-create the partial index hierarchies,
 		recursively flat-copying the parts that need to be included.
 		</para>
 
@@ -252,9 +252,9 @@ IndexType *deepCopy(HoldRowTypes *holder) const;
 		Create a deep copy, up to and including the row types. See the
 		<xref linkend="sc_cpp_tabtype" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		and
-		XXXREF kinds of copying
+		<xref linkend="sc_cpp_copy" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		for the detailed explanation. When you deep-copy a table type,
-		the <i>holder</i> argument propagates recurively to all the
+		the <pre>holder</pre> argument propagates recurively to all the
 		index types in it.
 		</para>
 

@@ -203,7 +203,7 @@ MySortCondition(const MySortCondition &other, HoldRowTypes *holder);
 			means that the sort condition has to report the error back to the
 			Table in some other way. Which means that it has to have a link
 			back to the table, and that link gets provided in the field
-			<i>table_</i>. But that means that the sort condition instance
+			<pre>table_</pre>. But that means that the sort condition instance
 			gets tied to a table. And normally a sort condition belongs to
 			an index type which belongs to a table type which can be shared
 			by multiple tables. This dilemma is solved by making a copy
@@ -266,10 +266,10 @@ IndexType *MySortCondition::deepCopy(HoldRowTypes *holder) const
 
 		<para>
 		The method initialize() is called at the table type initialization
-		time. The argument <i>errors</i> is an already allocated Errors object to
-		return the error messages in, <i>tabtype</i> is the table type where the
-		initialization is happening, and <i>indtype</i> is the index type that owns
-		this condition. Also the field <i>rt_</i> gets magically initialized to the
+		time. The argument <pre>errors</pre> is an already allocated Errors object to
+		return the error messages in, <pre>tabtype</pre> is the table type where the
+		initialization is happening, and <pre>indtype</pre> is the index type that owns
+		this condition. Also the field <pre>rt_</pre> gets magically initialized to the
 		table's row type reference before the sort condition initialization is
 		called. This method is expected to do all the initialization of the
 		internal state, check for all the errors, and return these errors if
@@ -291,13 +291,13 @@ intptr_t rhOffset_;
 			<primary>RowHandle</primary>
 		</indexterm>
 		<para>
-		<i>rt_</i> is set to NULL on construction and the gets properly set when the
+		<pre>rt_</pre> is set to NULL on construction and the gets properly set when the
 		SortedIndexType is initialized, before it calls the initialization of the
-		sort condition. <i>table_</i> is also NULL to start with and gets set
-		in tableCopy(), as described above. <i>table_</i> can be used by the
+		sort condition. <pre>table_</pre> is also NULL to start with and gets set
+		in tableCopy(), as described above. <pre>table_</pre> can be used by the
 		comparison operator to report the fatal errors back to the table,
 		as described in more detail below.
-		<i>rhOffset_</i> is used by the more advanced sort conditions that
+		<pre>rhOffset_</pre> is used by the more advanced sort conditions that
 		want to cache some per-row information in the RowHandle, I'll show
 		another example of that. It's the offset of that cached data in the
 		RowHandle.
@@ -831,8 +831,8 @@ SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
 </pre>
 
 		<para>
-		The field <i>rhOffset_</i> gets initialized by the SortedIndexType machinery
-		before either of these methods gets ever called. Here <i>rs</i> points to the
+		The field <pre>rhOffset_</pre> gets initialized by the SortedIndexType machinery
+		before either of these methods gets ever called. Here <pre>rs</pre> points to the
 		raw bytes, on which the placement constructors and the explicit
 		destructor are called.
 		</para>
@@ -877,10 +877,10 @@ int64_t seq = sc->getSeq(rh);
 </pre>
 
 		<para>
-		Here <i>sc</i> is the exact initialized sort condition from the actual table
+		Here <pre>sc</pre> is the exact initialized sort condition from the actual table
 		type (not from the exact table, since you can't get the sort condition from a table,
 		but the table type is good enough). If you use a wrong or uninitialized
-		sort condition, the <i>rhOffset_</i> in it will likely be wrong, and
+		sort condition, the <pre>rhOffset_</pre> in it will likely be wrong, and
 		will cause all kinds of memory corruption. You can get the sort
 		condition from a table type like this:
 		</para>
@@ -897,3 +897,4 @@ Autoref<SeqSortCondition> sc = dynamic_cast<SeqSortCondition *>(ixt->getConditio
 		</para>
 
 	</sect1>
+

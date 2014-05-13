@@ -281,6 +281,16 @@ $itCopy = $it->copy();
 		</para>
 
 <pre>
+$itCopy = $it->flatCopy();
+</pre>
+
+		<para>
+		Creates a copy of the index type object 
+		itself, without any connected object hierarchies such as the nested
+		indexes or aggregators.
+		</para>
+
+<pre>
 $tabType = $it->getTabtype();
 $tabType = $it->getTabtypeSafe();
 </pre>
