@@ -666,6 +666,19 @@ print $row->printP(), "\n";
 a="ab\\ \"cd\"" b=["0", "0"]
 </pre>
 
+		
+		<para>
+		It's possible to check quickly if all the fields of a row are NULL:
+		</para>
+
+<pre>
+$result = $row->isEmpty();
+</pre>
+
+		<para>
+		It returns 1 if all the fields are NULL and 0 otherwise.
+		</para>
+
 		<para>
 		Finally, there is a deep debugging method:
 		</para>
