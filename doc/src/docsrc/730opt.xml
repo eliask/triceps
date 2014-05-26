@@ -114,6 +114,146 @@ table => [ undef, sub {
 		the useful check functions, I'll add them.
 		</para>
 
+		<para>
+		A special case is the passing through of the options:
+		you can accept the arbitrary options, typically if your function is a
+		wrapper to another function, and you just want to process a few options
+		and let the others through. The <pre>Triead::start()</pre> is a good example,
+		passing the options through to the main function of the thread.
+		</para>
+
+		<para>
+		The acceptance of the arbitrary options is specified by using an option
+		named <quote>*</quote> in the <pre>Opt::parse()</pre> arguments. For example:
+		</para>
+
+<pre>
+  &Triceps::Opt::parse($myname, $opts, {
+    app => [ undef, \&Triceps::Opt::ck_mandatory ],
+    thread => [ undef, \&Triceps::Opt::ck_mandatory ],
+    fragment => [ "", undef ],
+    main => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
+    '*' => [],
+  }, @_);
+</pre>
+
+		<para>
+		The specification array for <quote>*</quote> is empty. The unknown options will be
+		collected in the array referred to from <pre>$opts->{'*'}</pre>, that is
+		<pre>@{$opts->{'*'}}</pre>.
+		</para>
+
+		<para>
+		From there on the wrapper has the choice of either passing through all
+		the options to the wrapped function, using <pre>@_</pre>, or explicitly specifying
+		a few options and  passing through the  rest from <pre>@{$opts->{'*'}}</pre>.
+		</para>
+
+		<para>
+		There is also the third possibility: filter out only some of the
+		incoming options. This can be done with <pre>Opt::drop()</pre>. 
+		It lets through only the options that are not present in the description:
+		</para>
+
+<pre>
+@filteredOpts = &Triceps::Opt::drop(\%optdescr, @opts);
+@filteredOpts = &Triceps::Opt::dropExcept(\%optdescr, @opts);
+</pre>
+
+		<para>
+		The <pre>Opt::drop()</pre> takes the specification of the options to drop as a
+		hash reference, the same as <pre>Opt::parse()</pre>. The values in the hash are
+		not important in this case, only the keys are used. But it's simpler to
+		store the same specification of the options and reuse it for both
+		<pre>parse()</pre> and <pre>drop()</pre> than to write it twice.
+		</para>
+
+		<para>
+		There is also an opposite function, <pre>Opt::dropExcept()</pre>. It passes
+		through only the listed options and drops the rest. It can come handy
+		if your wrapper wants to pass different subsets of its incoming options
+		to multiple functions.
+		</para>
+
+		<para>
+		The functions <pre>drop()</pre> and <pre>dropExcept()</pre> can really be used on any
+		name-value arrays, not just the options as such. And the same goes for
+		the <pre>Fields::filter()</pre> and friends. So you can use them interchangeably:
+		you can use <pre>Opt::drop()</pre> on the row type specifications and
+		<pre>Fields::filter()</pre> on the options if you feel that it makes your code
+		simpler. 
+		</para>
+
+		<para>
+		For an example of <pre>drop()</pre>, <pre>Triead::startHere()</pre> works like this:
+		</para>
+
+<!-- lib/Triceps/Triead.pm assembled from parts -->
+<pre>
+# The options for start(). Keeping them in a variable allows the individual
+# thread main functions to copy and reuse their definition instead of
+# reinventing it.
+our @startOpts = (
+	app => [ undef, \&Triceps::Opt::ck_mandatory ],
+	thread => [ undef, \&Triceps::Opt::ck_mandatory ],
+	fragment => [ "", undef ],
+	main => [ undef, sub { &Triceps::Opt::ck_ref(@_, "CODE") } ],
+);
+
+sub startHere # (@opts)
+{
+	my $myname = "Triceps::Triead::start";
+	my $opts = {};
+	my @myOpts = ( # options that don't propagate through
+		harvest => [ 1, undef ],
+		makeApp => [ 1, undef ],
+	);
+
+	&Triceps::Opt::parse($myname, $opts, {
+		@startOpts,
+		@myOpts,
+		'*' => [],
+	}, @_);
+
+	my @args = &Triceps::Opt::drop({
+		@myOpts
+	}, \@_);
+	@_ = (); # workaround for threads leaking objects
+
+	# no need to declare the Triead, since all the code executes synchronously anyway
+	my $app;
+	if ($opts->{makeApp}) {
+		$app = &Triceps::App::make($opts->{app});
+	} else {
+		$app = &Triceps::App::resolve($opts->{app});
+	}
+	my $owner = Triceps::TrieadOwner->new(undef, undef, $app, $opts->{thread}, $opts->{fragment});
+	push(@args, "owner", $owner);
+	eval { &{$opts->{main}}(@args) };
+	$owner->abort($@) if ($@);
+	# In case if the thread just wrote some rows outside of nextXtray()
+	# and exited, flush to get the rows through. Otherwise things might
+	# get stuck in a somewhat surprising way.
+	eval { $owner->flushWriters(); };
+	$owner->markDead();
+	if ($opts->{harvest}) {
+		$app->harvester();
+	}
+}
+</pre>
+
+		<para>
+		The <pre>@startOpts</pre> are both used by the <pre>startHere()</pre> and passed through. The
+		<pre>@myOpts</pre> are only used in <pre>startHere()</pre> and do not pass through. And the
+		rest of the options pass through without being used in <pre>startHere()</pre>. So
+		the options from <pre>@myOpts</pre> get dropped from <pre>@_</pre>, and the result goes to
+		the main thread.
+		</para>
+
+		<para>
+		The Opts package also provides the helper methods for processing the sets of options.
+		</para>
+
 <pre>
 &Triceps::Opt::handleUnitTypeLabel($caller, 
 	$nameUnit, \$refUnit, 

@@ -43,6 +43,11 @@ See the file COPYRIGHT for the copyright notice and license information
 		<xref linkend="sc_template_result" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
+		<para>
+		The option-processing functions <pre>Opt::drop()</pre> and <pre>Opt::dropExcept()</pre>
+		can also be used to filter the field lists.
+		</para>
+
 <pre>
 @pairs = &Triceps::Fields::filterToPairs(
 	$caller, \@inFields, \@translation);
