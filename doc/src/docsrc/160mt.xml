@@ -1772,7 +1772,7 @@ $to->readyReady();
 		descriptors, not the Perl file handles, and the File handling is
 		done as wrappers on top of it. If you really want, you can deal with the
 		raw file descriptors in the App, with the methods described in
-		XXXREF App reference
+		<xref linkend="sc_ref_app" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		and
 		XXXREF TrieadOwner reference.
 		But dealing directly with the Perl file handles is much more convenient.

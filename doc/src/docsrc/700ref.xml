@@ -97,5 +97,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<xi:include href="file:///DOCS/770autofn.xml"/>
 
+		<xi:include href="file:///DOCS/780app.xml"/>
+
 		<!-- XXX add references for all the X modules! -->
 </chapter>

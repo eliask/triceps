@@ -179,6 +179,14 @@ See the file COPYRIGHT for the copyright notice and license information
 			<listitem>
 			Finiding an index by its keys with <pre>TableType::findIndexPathForKeys()</pre>.
 			</listitem>
+
+			<listitem>
+			Passing through of arbitrary options, and manipulation of the option lists.
+			</listitem>
+
+			<listitem>
+			A fast way to check whether a row is empty.
+			</listitem>
 		</itemizedlist>
 	</sect1>
 
