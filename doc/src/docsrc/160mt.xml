@@ -1574,7 +1574,7 @@ $tf->close();
 		just sets a flag for the interpreter. If you try it on your own, it
 		won't interrupt the system calls, and now you know why. Instead Triceps
 		gets the POSIX thread identity from the Perl thread and calls the
-		honest <pre>ptherad_kill()</pre> from the C++ code.
+		honest <pre>ptherad_kill()</pre> from the &Cpp; code.
 		</para>
 
 		<para>
@@ -3743,5 +3743,846 @@ $limit = Triceps::now() + $timeout;
 		in the expect thread. 
 		</para>
 
+	</sect1>
+
+	<sect1 id="sc_mt_main_reorder">
+		<title>The threaded dreaded diamond and data reordering</title>
+
+		<indexterm>
+			<primary>diamond</primary>
+		</indexterm>
+		<indexterm>
+			<primary>fork-join</primary>
+		</indexterm>
+
+		<para>
+		The pipelined examples shown before had very conveniently preserved the
+		order of the data while spreading the computational load among multiple
+		threads. But it forced the computation to pass sequentially through
+		every thread, increasing the latency and adding overhead. The other
+		frequently used option is to farm out the work to a number of parallel
+		threads and then collect the results back from them.
+		This topology is colloquially known as <quote>diamond</quote> or <quote>fork-join</quote>
+		(having nothing to do with the SQL joins, just that the arrows first
+		fork from one box to multiple and then join back to one box).
+		</para>
+
+		<para>
+		The single-threaded use of this topology has already been discussed in
+		<xref linkend="sc_other_diamond" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		and its diagram can be found there in
+		<xref linkend="fig_other_diamond" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		There are multiple ways to decide, which thread gets which unit of data
+		to process. One possibility that provides the natural load balancing is
+		to keep a common queue of work items, and have the worker threads (B
+		and C in 
+		<xref linkend="fig_other_diamond" xrefstyle="select: label pageabbrev"/>&xrsp;)
+		read the next work item when they become free after
+		processing the last item. But this way has an important limitation:
+		there is no way to tell in advance, which work item will go to which
+		thread, so there is no way for the worker threads to keep any state.
+		All the state would have to be encapsulated into the work item (
+		a work item
+		would be a tray in the Triceps terms). And at the moment Triceps
+		provides no way to maintain such a shared queue.
+		</para>
+
+		<para>
+		The other way is to partition the data between the worker threads based
+		on the primary key. Usually it's done by using a hash of the key, which
+		would distribute the data randomly and hopefully evenly. Then a worker
+		thread can keep the state for its subset of keys, forming a partition
+		(also known as <quote>shard</quote>) and process the sequential updates for this
+		partition. The way to send a rowop only to the thread B or only to the
+		thread C would be by having a separate designated nexus for each worker
+		thread, and the thread A making the decision based on the hash of the
+		primary key in the data. The processed data from all the worker threads
+		can then be sent to a single nexus feeding the thread D.
+		</para>
+
+		<para>
+		But either way the data will arrive at D in an unpredictable order. The
+		balance of load between the worker threads is not perfect, and there is
+		no way to predict, how long will each tray take to process. A tray
+		following one path may overtake a tray following another path.
+		</para>
+
+		<indexterm>
+			<primary>reordering</primary>
+		</indexterm>
+		<indexterm>
+			<primary>collation</primary>
+		</indexterm>
+		<para>
+		If the order of the data is important, D must collate the data back
+		into the original order before processing it further. Obviously, for
+		that it must know what the original order was, so A must tag the data
+		with the sequential identifiers. Since the data rows themselves may get
+		multiplied, the tagging is best done at the tray level (what happens if
+		the trays split in the worker threads is a separate story,
+		for now the solution is simply <quote>keep the tray together</quote>).
+		</para>
+
+		<indexterm>
+			<primary>Facet</primary>
+		</indexterm>
+		<indexterm>
+			<primary>tray</primary>
+		</indexterm>
+		<para>
+		When the data goes through a nexus, Triceps always keeps a tray as an
+		indivisible bundle. It always gets read from the reading facet
+		together, without being interspersed with the data from the other
+		trays. As the data is sent into a writer facet, it's collected in a
+		tray, and sent on only when the facet gets flushed, with the
+		<pre>TrieadOwner::flushWriters()</pre> or <pre>Facet::flushWriter()</pre>.
+		</para>
+
+		<para>
+		There also are two special labels defined on every nexus, that tell the
+		tray boundaries to the reading thread:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			<quote>_BEGIN_</quote> is called at the start of the tray.
+			</listitem>
+
+			<listitem>
+			<quote>_END_</quote> is called at the end of the tray.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		These labels can be defined explicitly, or otherwise they become
+		defined implicitly anyway. If they get defined implicitly, they get the
+		empty row type (one with no fields). If you define them explicitly, you
+		can use any row type you please, and this is a good place for the tray
+		sequence id.
+		</para>
+
+		<para>
+		And in a writer facet you can send data to these labels. When you want
+		to put a sequence id on a tray, you define the <quote>_BEGIN_</quote> label with that
+		sequence id field, and then call the <quote>_BEGIN_</quote> label with the appropriate
+		id values. Even if you don't call the <quote>_BEGIN_</quote> and <quote>_END_</quote> labels, they do
+		get called (not quite called but placed on the tray) automatically
+		anyway, with the opcode of <pre>OP_INSERT</pre> and all the fields NULL. The
+		direct calling of these labels will also cause the facet to be flushed:
+		<quote>_BEGIN_</quote> flushes any data previously collected on the tray and then adds
+		itself; <quote>_END_</quote> adds itself and then flushes the tray.
+		</para>
+
+		<para>
+		The exact rules of how the <quote>_BEGIN_</quote> and <quote>_END_</quote> get called are actually
+		somewhat complicated, having to deal with the optimizations for the
+		case when nobody is interested in them, but they do what makes sense
+		intuitively.
+		</para>
+
+		<para>
+		The case when these labels get a call with <pre>OP_INSERT</pre> and no data, gets
+		optimized out by not placing it into the actual Xtray, even if it was
+		called explicitly. Then in the reader facet these implicit rowops are
+		re-created but only if there is a chaining for their labels from the
+		facet's FnReturn or if they are defined in the currently pushed
+		FnBinding. So if you do a trace on the reading thread's unit, you will
+		see these implicit rowops to be called only if they are actually used.
+		</para>
+
+		<indexterm>
+			<primary>partitioning</primary>
+		</indexterm>
+		<para>
+		Before going to the example itself, let's talk more about the general
+		issues of the data partitioning.
+		</para>
+
+		<para>
+		If the data processing is stateless, it's easy: just partition by the
+		primary key, and each thread can happily work on its own. If the data
+		depends on the previous data with the same primary key, the
+		partitioning is still easy: each thread keeps the state for its part of
+		the keys and updates it with the new data.
+		</para>
+
+		<para>
+		But what if you need to join two tables with independent primary keys,
+		where the matches of the keys between them are fairly arbitrary? Then
+		you can partition by one table but you have to give a copy of the
+		second table to each thread. Typically, if one table is larger than the
+		other, you would partition by the key of the big table, and copy the
+		small table everywhere. Since the data rows are referenced in Triceps,
+		the actual data of the smaller table won't be copied, it would be just
+		referenced from multiple threads, but each copy will still have the
+		overhead of its own index.
+		</para>
+
+		<para>
+		With some luck, and having enough CPUs, you might be able to save a
+		little overhead by doing a matrix: if you have one table partitioned
+		into the parts A, B and C, and the other table into parts 1, 2 and 3,
+		you can then do a matrix-combination into 9 threads processing the
+		combinations A1, A2, A3, B1, B2, B3, C1, C2, C3. If both tables are of
+		about the same size, this would create a total of 18 indexes, each
+		keeping 1/3 of one original table, so the total size of indexes will be
+		6 times the size of one original table (or 3 times the combined sizes
+		of both tables). On the other hand, if you were to copy the first table
+		to each thread and split the second table into 9 parts, creating the
+		same 9 threads, the total size of indexes will be 9 times the first
+		table and 1 times the second table, resulting in the 10 times the size
+		of one original table (or 5 times the combined sizes of both tables).
+		The 3x3 matrix is more optimal, but the catch is that the results from it
+		will really have to be restored to the correct order afterwards.
+		</para>
+
+		<para>
+		The reason is that when a row in the first table changes, it might change
+		its join key, matching the row from a different partition of the second table.
+		Which means that the DELETE of the old value and the INSERT of the
+		new value will be processed in the different threads.
+		For example, it might move the processing from the thread A1 to the thread A2. 
+		So the thread
+		A1 would generate a DELETE for the join result, and the thread A2 would
+		generate a following INSERT. With two separate threads, the resulting
+		order will be unpredictable, and the INSERT coming before the DELETE
+		would be bad. The post-reordering is required to ensure the correct order.
+		</para>
+
+		<para>
+		By contrast, if you just partition the first table and copy the second one
+		everywhere, you get 9 threads A, B, C, D, E, F, G, H, I, and the change
+		in a row will still keep it in the same thread, so the updates will
+		come out of that thread strictly sequentially. If you don't care about
+		the order of changes between different primary keys, you can get away
+		without the post-reordering. Of course, if a key field might change and
+		you care about it being processed in order, you'd still need the
+		post-reordering.
+		</para>
+
+		<para>
+		The example I'm going to show is a somewhat strange mix. It's an
+		adaptation of the Forex arbitration example from the 
+		<xref linkend="sc_joins_lookup_manual" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		As you can see from the name of that section,
+		it's doing a self-join, and doing it twice: kind of like going through the same table three
+		times.
+		</para>
+
+		<para>
+		The partitioning in this example works as follows:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			All the data is sent to all the threads. All the threads keep a
+			full copy of the table and update it according to the input. 
+			</listitem>
+
+			<listitem>
+			But then they compute the join only if the first currency name in
+			the update falls into the thread's partition. 
+			</listitem>
+
+			<listitem>
+			The partitioning is done by the first letter of the symbol, with
+			interleaving: the symbols starting with A are handled by the thread
+			0, with B by thread 1, and so on until the threads end, and then
+			continuing again with the thread 0. A production-ready
+			implementation would use a hash function instead. But the
+			interleaving approach makes much easier to predict, which symbol
+			goes to which thread for the demonstration.
+			</listitem>
+
+			<listitem>
+			Naturally, all this means that the loop of 3 currencies might get
+			created by a change in one pair and then very quickly disappear by
+			a change to another pair.of currencies. So the post-reordering of
+			the result is important to keep the things consistent.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		I've also added a tweak allowing to artificially slow down the thread
+		0, making the incorrect order show up reliably, and really exercise the
+		reordering code. For example, suppose the following input was
+		sent quickly:
+		</para>
+
+<exdump>
+OP_INSERT,AAA,BBB,1.30
+OP_INSERT,BBB,AAA,0.74
+OP_INSERT,AAA,CCC,1.98
+OP_INSERT,CCC,AAA,0.49
+OP_INSERT,BBB,CCC,1.28
+OP_INSERT,CCC,BBB,0.78
+OP_DELETE,BBB,AAA,0.74
+OP_INSERT,BBB,AAA,0.64
+</exdump>
+
+		<para>
+		With two threads, and thread 0 working slowly, it would produce the raw
+		result:
+		</para>
+
+<exdump>
+BEGIN OP_INSERT seq="2" triead="1"
+BEGIN OP_INSERT seq="5" triead="1"
+BEGIN OP_INSERT seq="7" triead="1"
+result OP_DELETE ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856"
+BEGIN OP_INSERT seq="8" triead="1"
+BEGIN OP_INSERT seq="1" triead="0"
+BEGIN OP_INSERT seq="3" triead="0"
+BEGIN OP_INSERT seq="4" triead="0"
+BEGIN OP_INSERT seq="6" triead="0"
+result OP_INSERT ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856"
+</exdump>
+
+		<para>
+		Here the BEGIN lines are generated by the code and show the sequence
+		number of the input row and the id of the thread that did the join. 
+		They represent the <quote>_BEGIN_</quote> rowops of the trays that
+		contain the transactions, and all the following result lines until
+		the next BEGIN belong in the same tray.  The
+		result lines show the arbitration opportunities produced by the join.
+		Obviously, not every update produces a new opportunity, most of them don't.
+		But the INSERT and DELETE in the result come in the wrong order: the
+		update 7 had overtaken the update 6.
+		</para>
+
+		<para>
+		The post-reordering comes to the resque and restores the order:
+		</para>
+
+<exdump>
+BEGIN OP_INSERT seq="1" triead="0"
+BEGIN OP_INSERT seq="2" triead="1"
+BEGIN OP_INSERT seq="3" triead="0"
+BEGIN OP_INSERT seq="4" triead="0"
+BEGIN OP_INSERT seq="5" triead="1"
+BEGIN OP_INSERT seq="6" triead="0"
+result OP_INSERT ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856"
+BEGIN OP_INSERT seq="7" triead="1"
+result OP_DELETE ccy1="AAA" ccy2="CCC" ccy3="BBB" rate1="1.98" rate2="0.78" rate3="0.74" looprate="1.142856"
+BEGIN OP_INSERT seq="8" triead="1"
+</exdump>
+
+		<para>
+		As you can see, now the sequence numbers go in the sequential order. 
+		</para>
+
+		<para>
+		And finally the code of the example. I've written it with the simple
+		approach of <quote>read all stdin, process, print all to stdout</quote>. 
+		It's easier this way, and
+		anyway to demonstrate the rowop reordering, all the input has to be
+		sent quickly in one chunk. The example is found in <pre>t/xForkJoinMt.t</pre>.
+		The application starts as:
+		</para>
+
+<!-- t/xForkJoinMt.t App1 RUN fragment -->
+<pre>
+Triceps::Triead::startHere(
+	app => "ForkJoin",
+	thread => "main",
+	main => \&mainT,
+	workers => 2,
+	delay => 0.02,
+);
+</pre>
+
+		<para>
+		The main thread is:
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+sub mainT # (@opts)
+{
+	my $opts = {};
+	&Triceps::Opt::parse("mainT", $opts, {@Triceps::Triead::opts,
+		workers => [ 1, undef ], # number of worker threads
+		delay => [ 0, undef ], # artificial delay for the 0th thread
+	}, @_);
+	undef @_; # avoids a leak in threads module
+	my $owner = $opts->{owner};
+	my $app = $owner->app();
+	my $unit = $owner->unit();
+</pre>
+
+		<para>
+		So far the pretty standard boilerplate with the argument parsing.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	my $rtRate = Triceps::RowType->new( # an exchange rate between two currencies
+		ccy1 => "string", # currency code
+		ccy2 => "string", # currency code
+		rate => "float64", # multiplier when exchanging ccy1 to ccy2
+	);
+
+	# the resulting trade recommendations
+	my $rtResult = Triceps::RowType->new(
+		triead => "int32", # id of the thread that produced it
+		ccy1 => "string", # currency code
+		ccy2 => "string", # currency code
+		ccy3 => "string", # currency code
+		rate1 => "float64",
+		rate2 => "float64",
+		rate3 => "float64",
+		looprate => "float64",
+	);
+</pre>
+
+		<para>
+		The row types originate from the self-join example code, unchanged.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	# each tray gets sequentially numbered and framed
+	my $rtFrame = Triceps::RowType->new(
+		seq => "int64", # sequence number
+		triead => "int32", # id of the thread that produced it (optional)
+	);
+	
+	# the plain-text output of the result
+	my $rtPrint = Triceps::RowType->new(
+		text => "string",
+	);
+</pre>
+
+		<para>
+		Thes definitions of the service row types. The frame row type is used to send the
+		information about the sequence number in the <quote>_BEGIN_</quote> label. The print
+		row type is used to send the text for printing back to the main thread.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	# the input data
+	my $faIn = $owner->makeNexus(
+		name => "input",
+		labels => [
+			rate => $rtRate,
+			_BEGIN_ => $rtFrame,
+		],
+		import => "none",
+	);
+
+	# the raw result collected from the workers
+	my $faRes = $owner->makeNexus(
+		name => "result",
+		labels => [
+			result => $rtResult,
+			_BEGIN_ => $rtFrame,
+		],
+		import => "none",
+	);
+
+	my $faPrint = $owner->makeNexus(
+		name => "print",
+		labels => [
+			raw => $rtPrint, # in raw order as received by collator
+			cooked => $rtPrint, # after collation
+		],
+		import => "reader",
+	);
+</pre>
+
+		<para>
+		The processing will go in essentially a pipeline: <quote>read the input ->
+		process in the worker threads -> collate -> print in the main thread</quote>.
+		A nexus is defined for each connection between the stages of the pipeline.
+		The worker thread stage spreads into multiple parallel threads for
+		parititoned data, then joining the data paths back together in the collator.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	Triceps::Triead::start(
+		app => $app->getName(),
+		thread => "reader",
+		main => \&readerT,
+		to => $owner->getName() . "/input",
+	);
+
+	for (my $i = 0; $i < $opts->{workers}; $i++) {
+		Triceps::Triead::start(
+			app => $app->getName(),
+			thread => "worker$i",
+			main => \&workerT,
+			from => $owner->getName() . "/input",
+			to => $owner->getName() . "/result",
+			delay => ($i == 0? $opts->{delay} : 0),
+			workers => $opts->{workers},
+			identity => $i,
+		);
+	}
+
+	Triceps::Triead::start(
+		app => $app->getName(),
+		thread => "collator",
+		main => \&collatorT,
+		from => $owner->getName() . "/result",
+		to => $owner->getName() . "/print",
+	);
+
+	my @rawp; # the print in original order
+	my @cookedp; # the print in collated order
+
+	$faPrint->getLabel("raw")->makeChained("lbRawP", undef, sub {
+		push @rawp, $_[1]->getRow()->get("text");
+	});
+	$faPrint->getLabel("cooked")->makeChained("lbCookedP", undef, sub {
+		push @cookedp, $_[1]->getRow()->get("text");
+	});
+
+	$owner->readyReady();
+
+	$owner->mainLoop();
+
+	&send("--- raw ---\n", join("\n", @rawp), "\n");
+	&send("--- cooked ---\n", join("\n", @cookedp), "\n");
+}
+</pre>
+
+		<para>
+		All the threads get started and instructed to connect to the appropriate nexuses.
+		The collator will send the data for printing twice: first time in the
+		order it was received (<quote>raw</quote>), second time in the order after collation
+		(<quote>cooked</quote>).
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+sub readerT # (@opts)
+{
+	my $opts = {};
+	&Triceps::Opt::parse("readerT", $opts, {@Triceps::Triead::opts,
+		to => [ undef, \&Triceps::Opt::ck_mandatory ], # dest nexus
+	}, @_);
+	undef @_; # avoids a leak in threads module
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	my $faIn = $owner->importNexus(
+		from => $opts->{to},
+		import => "writer",
+	);
+
+	my $lbRate = $faIn->getLabel("rate");
+	my $lbBegin = $faIn->getLabel("_BEGIN_");
+	# _END_ is always defined, even if not defined explicitly
+	my $lbEnd = $faIn->getLabel("_END_");
+</pre>
+
+		<para>
+		This demonstrates that the labels <quote>_BEGIN_</quote> and <quote>_END_</quote> always get defined
+		in each nexus, even if they are not defined explicitly. Here
+		<quote>_BEGIN_</quote> was defined explicitly but <quote>_END_</quote> was not, and nevertheless it
+		can be found and used.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	my $seq = 0; # the sequence
+
+	$owner->readyReady();
+
+	while(&readLine) {
+		chomp;
+
+		++$seq; # starts with 1
+		$unit->makeHashCall($lbBegin, "OP_INSERT", seq => $seq);
+		my @data = split(/,/); # starts with a string opcode
+		$unit->makeArrayCall($lbRate, @data);
+		# calling _END_ is an equivalent of flushWriter()
+		$unit->makeHashCall($lbEnd, "OP_INSERT");
+	}
+
+	{
+		# drain the pipeline before shutting down
+		my $ad = Triceps::AutoDrain::makeShared($owner);
+		$owner->app()->shutdown();
+	}
+}
+</pre>
+
+		<para>
+		Each input row is sent through in a separate transaction, or in another
+		word, a separate tray. The <quote>_BEGIN_</quote> label carries the sequence number of
+		the tray. The trays can as well be sent on with <pre>TrieadOwner::flushWriters()</pre> or
+		<pre>Facet::flushWriter()</pre>, but I wanted to show that you can also flush it by
+		calling the <quote>_END_</quote> label.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+sub workerT # (@opts)
+{
+	my $opts = {};
+	&Triceps::Opt::parse("workerT", $opts, {@Triceps::Triead::opts,
+		from => [ undef, \&Triceps::Opt::ck_mandatory ], # src nexus
+		to => [ undef, \&Triceps::Opt::ck_mandatory ], # dest nexus
+		delay => [ 0, undef ], # processing delay
+		workers => [ undef, \&Triceps::Opt::ck_mandatory ], # how many workers
+		identity => [ undef, \&Triceps::Opt::ck_mandatory ], # which one is us
+	}, @_);
+	undef @_; # avoids a leak in threads module
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+	my $delay = $opts->{delay};
+	my $workers = $opts->{workers};
+	my $identity = $opts->{identity};
+
+	my $faIn = $owner->importNexus(
+		from => $opts->{from},
+		import => "reader",
+	);
+
+	my $faRes = $owner->importNexus(
+		from => $opts->{to},
+		import => "writer",
+	);
+
+	my $lbInRate = $faIn->getLabel("rate");
+	my $lbResult = $faRes->getLabel("result");
+	my $lbResBegin = $faRes->getLabel("_BEGIN_");
+	my $lbResEnd = $faRes->getLabel("_END_");
+</pre>
+
+		<para>
+		The worker thread starts with the pretty usual boilerplate.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	my $seq; # sequence from the frame labels
+	my $compute; # the computation is to be done by this label
+	$faIn->getLabel("_BEGIN_")->makeChained("lbInBegin", undef, sub {
+		$seq = $_[1]->getRow()->get("seq");
+	});
+</pre>
+
+		<para>
+		The processing of each transaction starts by remembering its sequence
+		number from the <quote>_BEGIN_</quote> label. It doesn't send a <quote>_BEGIN_</quote> to the output
+		yet because it doesn't know yet if it will be producing the output.
+		All the threads get the same input, to be able to update their copies of the
+		table, but then only one thread produces the output. And the thread
+		doesn't know whether it will be the one producing the output until it
+		knows the primary key of the data. So it can start sending the
+		output only after it had seen the data. This whole scheme works for this example because
+		there is exactly one data row per each transaction. A more general
+		approach might be to have the reader thread decide up front, which worker will
+		produce the result and put this information (as either a copy of the
+		primary key or the computed thread id) into the <quote>_BEGIN_</quote> rowop.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	...
+
+	# the table gets updated for every incoming rate
+	$lbInRate->makeChained("lbIn", undef, sub {
+		my $ccy1 = $_[1]->getRow()->get("ccy1");
+		# decide, whether this thread is to perform the join
+		$compute = ((ord(substr($ccy1, 0, 1)) - ord('A')) % $workers == $identity);
+
+		# this relies on every Xtray containing only one rowop,
+		# otherwise one Xtray will be split into multiple
+		if ($compute) {
+			$unit->makeHashCall($lbResBegin, "OP_INSERT", seq => $seq, triead => $identity);
+			select(undef, undef, undef, $delay) if ($delay);
+		}
+
+		# even with $compute is set, this might produce some output or not,
+		# but the frame still goes out every time $compute is set, because
+		# _BEGIN_ forces it
+		$unit->call($lbRateInput->adopt($_[1]));
+	});
+</pre>
+
+		<para>
+		This code makes the decision of whether this join is to be computed for
+		this thread. The decisiton is remembered in the flag <pre>$compute</pre>, and used to generate the
+		<quote>_BEGIN_</quote> rowop for the output. Then the table gets updated in any case
+		(<pre>$lbRateInput</pre> is the table's input label). I've skipped over the table
+		creation code, it's unchanged from the original self-join example.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	$tRate->getOutputLabel()->makeChained("lbCompute", undef, sub {
+		return if (!$compute); # not this thread's problem
+		
+		...
+			if ($looprate > 1) {
+				$unit->call($result);
+			}
+		...
+	});
+	##################################################
+
+	$owner->readyReady();
+
+	$owner->mainLoop();
+}
+</pre>
+
+		<para>
+		Here again I've skipped over the way the result is computed because it's
+		lengthy and unchanged from the original example. The
+		important part is that if the <pre>$compute</pre> flag is not set, the whole
+		self-joining computation is not performed. 
+		</para>
+
+		<para>
+		The <quote>_END_</quote> label is not
+		touched, the flushing of transactions is taken care of by the
+		<pre>mainLoop()</pre>. Note that the <quote>_BEGIN_</quote> label is always sent if the data is
+		designated to this thread, even if no output as such is produced. This
+		is done because the collator needs to get an uninterrupted sequence of
+		transactions. Otherwise it would not be able to say if some transaction
+		had been dropped or only delayed.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+sub collatorT # (@opts)
+{
+	my $opts = {};
+	&Triceps::Opt::parse("collatorT", $opts, {@Triceps::Triead::opts,
+		from => [ undef, \&Triceps::Opt::ck_mandatory ], # src nexus
+		to => [ undef, \&Triceps::Opt::ck_mandatory ], # dest nexus
+	}, @_);
+	undef @_; # avoids a leak in threads module
+	my $owner = $opts->{owner};
+	my $unit = $owner->unit();
+
+	my $faRes = $owner->importNexus(
+		from => $opts->{from},
+		import => "reader",
+	);
+
+	my $faPrint = $owner->importNexus(
+		from => $opts->{to},
+		import => "writer",
+	);
+
+	my $lbResult = $faRes->getLabel("result");
+	my $lbResBegin = $faRes->getLabel("_BEGIN_");
+	my $lbResEnd = $faRes->getLabel("_END_");
+
+	my $lbPrintRaw = $faPrint->getLabel("raw");
+	my $lbPrintCooked = $faPrint->getLabel("cooked");
+
+	my $seq = 1; # next expected sequence
+	my @trays; # trays held for reordering: $trays[0] is the slot for sequence $seq
+		# (only of course that slot will be always empty but the following ones may
+		# contain the trays that arrived out of order)
+	my $curseq; # the sequence of the current arriving tray
+</pre>
+
+		<para>
+		The collator thread starts very much as usual. It has its expectation
+		of the next tray in order, which gets set correctly. The trays that
+		arrive out of order will be buffered in the array <pre>@trays</pre>. Well, more
+		exactly, for simplicity, all the trays get buffered there and then sent
+		on if their turn has come. But it's possible to make an optimized
+		version that would let the data flow through immediately if it's
+		arriving in order.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	# The processing of data after it has been "cooked", i.e. reordered.
+	my $bindRes = Triceps::FnBinding->new(
+		name => "bindRes",
+		on => $faRes->getFnReturn(),
+		unit => $unit,
+		withTray => 1,
+		labels => [
+			"_BEGIN_" => sub {
+				$unit->makeHashCall($lbPrintCooked, "OP_INSERT", text => $_[1]->printP("BEGIN"));
+			},
+			"result" => sub {
+				$unit->makeHashCall($lbPrintCooked, "OP_INSERT", text => $_[1]->printP("result"));
+			}
+		],
+	);
+	$faRes->getFnReturn()->push($bindRes); # will stay permanently
+</pre>
+
+		<para>
+		The data gets collected into trays through a binding that gets
+		permanently pushed onto the facet's FnReturn. Then when the tray's
+		turn comes, it will be simply called and will produce the print calls
+		for the cooked data order.
+		</para>
+
+<!-- t/xForkJoinMt.t App1 fragment -->
+<pre>
+	# manipulation of the reordering, 
+	# and along the way reporting of the raw sequence
+	$lbResBegin->makeChained("lbBegin", undef, sub {
+		$unit->makeHashCall($lbPrintRaw, "OP_INSERT", text => $_[1]->printP("BEGIN"));
+		$curseq = $_[1]->getRow()->get("seq");
+	});
+	$lbResult->makeChained("lbResult", undef, sub {
+		$unit->makeHashCall($lbPrintRaw, "OP_INSERT", text => $_[1]->printP("result"));
+	});
+	$lbResEnd->makeChained("lbEnd", undef, sub {
+		my $tray = $bindRes->swapTray();
+		if ($curseq == $seq) {
+			$unit->call($tray);
+			shift @trays;
+			$seq++;
+			while ($#trays >= 0 && defined($trays[0])) {
+				# flush the trays that arrived misordered
+				$unit->call(shift @trays);
+				$seq++;
+			}
+		} elsif ($curseq > $seq) {
+			$trays[$curseq-$seq] = $tray; # remember for the future
+		} else {
+			# should never happen but just in case
+			$unit->call($tray);
+		}
+	});
+
+	$owner->readyReady();
+
+	$owner->mainLoop();
+};
+</pre>
+
+		<para>
+		The input rowops are not only collected in the binding's tray but also
+		chained directly to the labels that print the raw order of arrival. The
+		handling of <quote>_BEGIN_</quote> also remembers its sequence number.
+		</para>
+
+		<para>
+		The handler of <quote>_END_</quote> (the <quote>_END_</quote> rowops get produced implicitly at the end
+		of transaction) then does the heavy lifting. It looks at the sequence
+		number remembered from <quote>_BEGIN_</quote> and makes the decision. If the received
+		sequence is the next expected one, the data collected in the tray gets
+		sent on immediately, and then the contents of the <pre>@trays</pre> array 
+		continues being
+		sent on until it hits a blank spot of missing data. Or if the received
+		sequence leaves a gap, the tray is placed into an appropriate spot in
+		<pre>@trays</pre> for later processing.
+		</para>
+
+		<para>
+		This whole logic can be encapsulated in a class but I haven't decided
+		yet on the best way to do it. Maybe some time in the future. 
+		</para>
 	</sect1>
 </chapter>
