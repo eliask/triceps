@@ -51,21 +51,21 @@ $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>name</pre></term>
+			<term><pre>name => $name</pre></term>
 			<listitem>
 			The aggregator type name.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>tabType</pre></term>
+			<term><pre>tabType => $tabType</pre></term>
 			<listitem>
 			Table type to put the aggregator on. It must be un-initialized yet.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>idxPath</pre></term>
+			<term><pre>idxPath => [ @path ]</pre></term>
 			<listitem>
 			A reference to an array of index names, forming the path to the
 			index where the aggregator type will be set. For example,
@@ -74,7 +74,7 @@ $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>result</pre></term>
+			<term><pre>result => [ [fieldName => $type, $funcName, $argFunc], ... ]</pre></term>
 			<listitem>
 			<para>
 			A reference to an array defining the result of the aggregation.
@@ -82,16 +82,16 @@ $tabType = Triceps::SimpleAggregator::make($optName => $optValue, ...);
 			</para>
 
 <pre>
-fieldName => type, function, \&argFunc,
+fieldName => $type, $funcName, $argFunc,
 </pre>
 
 			<para>
-			Here the type is the field type name, the function is the name of the
+			Here <pre>$type</pre> is the field type name, <pre>$funcName</pre> is the name of the
 			aggregtion function (case-sensitive, see the list in
 			<xref linkend="sc_aggregation_simple" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;),
-			and the
-			<pre>\&argFunc</pre> computes the argument of the aggregation function.
-			It's a reference to a function that receives the current row being aggregated
+			and 
+			<pre>$argFunc</pre> is the code reference that computes the argument of the aggregation function.
+			It's a function that receives the current row being aggregated
 			as <pre>$_[0]</pre> and computes a value from its fields. These values
 			from all the rows in the group then get fed to the aggregation function.
 			If the aggregation function requires no argument, <pre>argFunc</pre> must be
@@ -111,7 +111,7 @@ fieldName => type, function, \&argFunc,
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>saveRowTypeTo</pre></term>
+			<term><pre>saveRowTypeTo => \$rt</pre></term>
 			<listitem>
 			Optional. A reference to a scalar where to save the result row type. It will be
 			available when <pre>Triceps::SimpleAggregator::make()</pre> returns.
@@ -122,7 +122,7 @@ fieldName => type, function, \&argFunc,
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>saveInitTo</pre></term>
+			<term><pre>saveInitTo => \$code</pre></term>
 			<listitem>
 			Optional. A reference to a scalar where to save the auto-generated source
 			code of the initialization function for diagnostics.
@@ -130,7 +130,7 @@ fieldName => type, function, \&argFunc,
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>saveComputeTo</pre></term>
+			<term><pre>saveComputeTo => \$code</pre></term>
 			<listitem>
 			Optional. A reference to a scalar where to save the auto-generated source
 			code of the handler function for diagnostics.
@@ -138,7 +138,7 @@ fieldName => type, function, \&argFunc,
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>functions</pre></term>
+			<term><pre>functions => { %definitions }</pre></term>
 			<listitem>
 			Optional. The additional user-defined aggregation functions. See
 			the description of their structure in 

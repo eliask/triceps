@@ -84,10 +84,19 @@ $it = Triceps::IndexType->newHashed($optionName => $optionValue, ...);
 </pre>
 
 		<para>
-		Creates a Hashed index type.  The only available option is <quote>key</quote>, and
-		it's mandatory. It's argument is the reference to an array of strings
-		that specify the names of the key fields (<pre>key => ["f1", "f2"]</pre>).
+		Creates a Hashed index type.  The only available and mandatory option is:
 		</para>
+		
+		<variablelist>
+		<varlistentry>
+			<term><pre>key => [ @fields ]</pre></term>
+			<listitem>
+			The argument is a reference to an array of strings
+			that specify the names of the key fields (<pre>key => ["f1", "f2"]</pre>).
+			</listitem>
+		</varlistentry>
+		</variablelist>
+
 
 <pre>
 $it = Triceps::IndexType->newFifo($optionName => $optionValue, ...);
@@ -99,34 +108,34 @@ $it = Triceps::IndexType->newFifo($optionName => $optionValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>limit</pre></term>
+			<term><pre>limit => $limit</pre></term>
 			<listitem>
 			Sets the limit value for the replacement policy. Once the number of
 			rows attempts to grow beyond this value, the older records get
-			removed. Setting it to 0 disables the replacement policy, which is
-			the default. Don't try to set it to negative values, they will be
+			removed. Setting it to 0 disables the replacement policy.
+			Don't try to set it to negative values, they will be
 			treated as unsigned, and thus become some very large positive
-			ones.
+			ones. Optional. Default: 0.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>jumping</pre></term>
+			<term><pre>jumping => 0/1</pre></term>
 			<listitem>
 			Determines the variation of the replacement policy in effect. If
-			set to 0 (default), implements the sliding window policy, removing
+			set to 0, implements the sliding window policy, removing
 			the older rows one by one. If non-0, implements the jumping window
 			policy, removing all the older rows when a new row causes the limit
-			overflow.
+			overflow. Optional. Default: 0.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>reverse</pre></term>
+			<term><pre>reverse => 0/1</pre></term>
 			<listitem>
 			Defines the iteration order. If non-0, the iteration on this index
 			goes in the reverse order. However the expiration policy still
-			works in the direct order! The default is 0.
+			works in the direct order! Optional. Default: 0.
 			</listitem>
 		</varlistentry>
 		</variablelist>

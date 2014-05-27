@@ -34,21 +34,21 @@ $fret = Triceps::FnReturn->new($optName => $optValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>name</pre></term>
+			<term><pre>name => $name</pre></term>
 			<listitem>
 			Name of this object. Will be used to create the names of the labels in it.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>unit</pre></term>
+			<term><pre>unit => $unit</pre></term>
 			<listitem>
 			The unit where this object belongs.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>labels</pre></term>
+			<term><pre>labels => [ @definitions ]</pre></term>
 			<listitem>
 			<para>
 			Definition of the labels in the FnReturn, where the results of the
@@ -96,16 +96,16 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>chainFront</pre></term>
+			<term><pre>chainFront => 0/1</pre></term>
 			<listitem>
-			Determines whether the FnReturn labels built by chaining off the other
+			Flag: Determines whether the FnReturn labels built by chaining off the other
 			labels will be chained at the back (if 0) or at the front (if 1).
 			Optional. Default: 1.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>onPush</pre></term>
+			<term><pre>onPush => $code</pre></term>
 			<listitem>
 			The code to execute whenever an FnBinding is pushed onto this FnReturn.
 			This is useful to maintain the extended call contexts for the streaming
@@ -122,7 +122,7 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>onPop</pre></term>
+			<term><pre>onPop => $code</pre></term>
 			<listitem>
 			The code to execute whenever an FnBinding is popped from this FnReturn.
 			This is useful to maintain the extended call contexts for the streaming

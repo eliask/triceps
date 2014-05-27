@@ -42,28 +42,28 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>name</pre></term>
+			<term><pre>name => $name</pre></term>
 			<listitem>
 			Name of this object. Will be used to create the names of internal objects.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftTable</pre></term>
+			<term><pre>leftTable => $table</pre></term>
 			<listitem>
 			Table object to join, for the left side. Both tables must be of the same unit.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightTable</pre></term>
+			<term><pre>rightTable => $table</pre></term>
 			<listitem>
 			Table object to join, for the right side. Both tables must be of the same unit.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftFromLabel</pre></term>
+			<term><pre>leftFromLabel => $label</pre></term>
 			<listitem>
 			<para>
 			The label from which to receive the rows on
@@ -81,7 +81,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightFromLabel</pre></term>
+			<term><pre>rightFromLabel => $label</pre></term>
 			<listitem>
 			<para>
 			The label from which to receive the rows on the right side. 
@@ -97,7 +97,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftIdxPath</pre></term>
+			<term><pre>leftIdxPath => [ @path ]</pre></term>
 			<listitem>
 			An array reference containing the path name of an index type in the
 			left table used for look-up. The index absolutely must be a Hash
@@ -110,7 +110,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightIdxPath</pre></term>
+			<term><pre>rightIdxPath => [ @path ]</pre></term>
 			<listitem>
 			An array reference containing the path name of an index type in the
 			right table used for look-up. The index absolutely must be a Hash
@@ -123,7 +123,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftFields</pre></term>
+			<term><pre>leftFields => [ @patterns ]</pre></term>
 			<listitem>
 			Reference to an array of patterns for the left-side fields to pass
 			through to the result rows, with the syntax of
@@ -132,7 +132,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightFields</pre></term>
+			<term><pre>rightFields => [ @patterns ]</pre></term>
 			<listitem>
 			Reference to an array of patterns for the right-side fields to pass
 			through to the result rows, with the syntax of
@@ -141,7 +141,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>fieldsLeftFirst</pre></term>
+			<term><pre>fieldsLeftFirst => 0/1</pre></term>
 			<listitem>
 			Flag: if 1, in the result rows put the fields from the left side
 			first, then from the right side; if 0, then in the opposite order.
@@ -150,7 +150,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>fieldsUniqKey</pre></term>
+			<term><pre>fieldsUniqKey => $enum</pre></term>
 			<listitem>
 			<para>
 			Controls the logic that prevents the duplication of the key fields
@@ -222,7 +222,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>by</pre></term>
+			<term><pre>by => [ @fields ]</pre></term>
 			<listitem>
 			Reference to an array containing pairs of field names
 			used for look-up, <pre>[leftFld1, rightFld1, leftFld2, rightFld2, ...]</pre>. 
@@ -237,7 +237,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>byLeft</pre></term>
+			<term><pre>byLeft => [ @patterns ]</pre></term>
 			<listitem>
 			Reference to an array containing the patterns in the syntax of
 			<pre>Triceps::Fields::filter()</pre>. It gets applied to the left-side fields,
@@ -255,7 +255,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>type</pre></term>
+			<term><pre>type => $enum</pre></term>
 			<listitem>
 			The type of join from the inner/outer classification, one of:
 			<quote>inner</quote>, <quote>left</quote> for left outer, 
@@ -265,7 +265,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftSaveJoinerTo</pre></term>
+			<term><pre>leftSaveJoinerTo => \$code</pre></term>
 			<listitem>
 			Reference to a scalar where to save a copy of the joiner
 			function source code for the left side. Optional.
@@ -273,7 +273,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightSaveJoinerTo</pre></term>
+			<term><pre>rightSaveJoinerTo => \$code</pre></term>
 			<listitem>
 			Reference to a scalar where to save a copy of the joiner
 			function source code for the right side. Optional.
@@ -281,7 +281,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>overrideSimpleMinded</pre></term>
+			<term><pre>overrideSimpleMinded => 0/1</pre></term>
 			<listitem>
 			Flag: if 1, do not try to create the correct DELETE-INSERT sequence
 			for the updates, just produce the rows with the same opcode as the
@@ -294,7 +294,7 @@ $joiner = Triceps::JoinTwo->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>overrideKeyTypes</pre></term>
+			<term><pre>overrideKeyTypes => 0/1</pre></term>
 			<listitem>
 			Flag: if 1, allow the key field types to be not exactly the same.
 			Optional. Default: 0.

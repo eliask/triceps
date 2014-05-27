@@ -86,14 +86,14 @@ $resultRow = &$projectFunc($origRow1, $origRow2, ..., $origRowN);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>rowTypes</pre></term>
+			<term><pre>rowTypes => [ @rts ]</pre></term>
 			<listitem>
 			Reference to an array of row types for the original rows.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>filterPairs</pre></term>
+			<term><pre>filterPairs => [ @pairs ]</pre></term>
 			<listitem>
 			Reference to an array of arrays returned by filterPairs() for the
 			original rows. Obviously, each of the original rows requires
@@ -104,7 +104,7 @@ $resultRow = &$projectFunc($origRow1, $origRow2, ..., $origRowN);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>saveCodeTo</pre></term>
+			<term><pre>saveCodeTo => \$code</pre></term>
 			<listitem>
 			Optional. Reference to a scalar where to save the auto-generated source
 			code of the projection function, for debugging.

@@ -228,9 +228,9 @@ $app->harvester(@options);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>die_on_abort</pre></term>
+			<term><pre>die_on_abort => 0/1</pre></term>
 			<listitem>
-			If the App was aborted, the harvester will normally
+			Flag: If the App was aborted, the harvester will normally
 			confess after if had joined all the threads and disposed of the
 			App.  Setting this option to 0 will make the aborts silently
 			ignored. This option does not affect the errors in joining the

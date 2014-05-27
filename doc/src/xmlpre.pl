@@ -112,6 +112,7 @@ while(<STDIN>) {
 			s/<\/i>/<\/emphasis>/g;
 			s/<b>/<emphasis role="bold">/g;
 			s/<\/b>/<\/emphasis>/g;
+			s/<br\/>/<computeroutput>\n<\/computeroutput>/g;
 			print;
 		}
 	}

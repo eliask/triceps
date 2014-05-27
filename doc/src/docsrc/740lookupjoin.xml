@@ -35,7 +35,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>unit</pre></term>
+			<term><pre>unit => $unit</pre></term>
 			<listitem>
 			Scheduling unit object where this template belongs. 
 			May be skipped if <quote>leftFromLabel</quote> is used.
@@ -43,7 +43,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>name</pre></term>
+			<term><pre>name => $name</pre></term>
 			<listitem>
 			Name of this LookupJoin object. Will be used as a prefix to create
 			the names of internal objects. The input label will be named
@@ -52,7 +52,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftRowType</pre></term>
+			<term><pre>leftRowType => $rt</pre></term>
 			<listitem>
 			Type of the rows that will be coming in at the left side of the
 			join, and will be used for lookup.  Mutually exclusive with
@@ -61,7 +61,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftFromLabel</pre></term>
+			<term><pre>leftFromLabel => $label</pre></term>
 			<listitem>
 			Source of rows for the left side of the join; implies their type
 			and the scheduling unit where this object belongs.  Mutually
@@ -70,14 +70,14 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightTable</pre></term>
+			<term><pre>rightTable => $table</pre></term>
 			<listitem>
 			Table object where to do the look-ups.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightIdxPath</pre></term>
+			<term><pre>rightIdxPath => [ @path ]</pre></term>
 			<listitem>
 			Array reference containing the path name of index type in table
 			used for the look-up. 
@@ -90,7 +90,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>leftFields</pre></term>
+			<term><pre>leftFields => [ @patterns ]</pre></term>
 			<listitem>
 			Reference to an array of patterns for the left-side fields to pass
 			through. Syntax as described in <pre>Triceps::Fields::filter()</pre>. 
@@ -99,7 +99,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rightFields</pre></term>
+			<term><pre>rightFields => [ @patterns ]</pre></term>
 			<listitem>
 			Reference to an array of patterns for the right-side fields to pass
 			through. Syntax as described in <pre>Triceps::Fields::filter()</pre>. Optional.
@@ -110,7 +110,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>fieldsLeftFirst</pre></term>
+			<term><pre>fieldsLeftFirst => 0/1</pre></term>
 			<listitem>
 			Flag: in the resulting rows put the fields from the left side
 			first, then from right side. If 0, then opposite. 
@@ -119,7 +119,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>fieldsMirrorKey</pre></term>
+			<term><pre>fieldsMirrorKey => 0/1</pre></term>
 			<listitem>
 			Flag: even if the join is an outer join and the row on one side is
 			absent, when generating the result row, the key fields in it will
@@ -129,7 +129,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>fieldsDropRightKey</pre></term>
+			<term><pre>fieldsDropRightKey => 0/1</pre></term>
 			<listitem>
 			Flag: remove the key fields on the right side from the result.
 			Convenient to avoid their duplication, especially if the key
@@ -139,7 +139,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>by</pre></term>
+			<term><pre>by => [ @fields ]</pre></term>
 			<listitem>
 			Reference to an array containing pairs of field names used for
 			look-up, <pre>[leftFld1, rightFld1, leftFld2, rightFld2, ...]</pre>.
@@ -150,7 +150,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>byLeft</pre></term>
+			<term><pre>byLeft => [ @patterns ]</pre></term>
 			<listitem>
 			Reference to an array containing the patterns in the syntax of
 			<pre>Triceps::Fields::filter()</pre>. It gets applied to the left-side fields,
@@ -164,14 +164,14 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>isLeft</pre></term>
+			<term><pre>isLeft => 0/1</pre></term>
 			<listitem>
 			Flag: 1 for left outer join, 0 for inner join. Optional. Default: 1.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>limitOne</pre></term>
+			<term><pre>limitOne => 0/1</pre></term>
 			<listitem>
 			Flag: 1 to return no more than one row even
 			if multiple rows have been found by the look-up, 0 to return all
@@ -185,7 +185,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>automatic</pre></term>
+			<term><pre>automatic => 0/1</pre></term>
 			<listitem>
 			Flag: 1 means that the manual <pre>lookup()</pre> method will never be called.
 			This allows to optimize the label handler code and always
@@ -195,7 +195,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>oppositeOuter</pre></term>
+			<term><pre>oppositeOuter => 0/1</pre></term>
 			<listitem>
 			Flag: 1 for the right outer join, 0 for inner join. If both options
 			<quote>isLeft</quote> and <quote>oppositeOuter</quote> are set to 1, then this is a full outer
@@ -212,7 +212,7 @@ $joiner = Triceps::LookupJoin->new(optionName => optionValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>groupSizeCode</pre></term>
+			<term><pre>groupSizeCode => $func</pre></term>
 			<listitem>
 			<para>
 			Reference to a function that would compute the group size for this
@@ -260,7 +260,7 @@ sub { &Triceps::isInsert($_[0]); }
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>saveJoinerTo</pre></term>
+			<term><pre>saveJoinerTo => \$code</pre></term>
 			<listitem>
 			Reference to a scalar where to save a copy of the joiner function
 			source code.  Optional.

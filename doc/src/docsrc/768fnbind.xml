@@ -37,14 +37,14 @@ $fbind = Triceps::FnBinding->new($optName => $optValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>name</pre></term>
+			<term><pre>name => $name</pre></term>
 			<listitem>
 			Name of this object. Will be used to create the names of the labels in it.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>unit</pre></term>
+			<term><pre>unit => $unit</pre></term>
 			<listitem>
 			The unit where the labels specified as Perl inline code will be created.
 			If no labels are specified in this format, this option is not required.
@@ -52,7 +52,7 @@ $fbind = Triceps::FnBinding->new($optName => $optValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>on</pre></term>
+			<term><pre>on => $fret</pre></term>
 			<listitem>
 			The FnReturn on which this binding is defined. It determines what labels
 			are available for binding. The created FnBinding may be used not only with that
@@ -71,7 +71,7 @@ $fbind = Triceps::FnBinding->new($optName => $optValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>labels</pre></term>
+			<term><pre>labels => [ @definitions ]</pre></term>
 			<listitem>
 			<para>
 			Definition of the labels in the FnBinding, that will be connected to the
@@ -124,19 +124,19 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>withTray</pre></term>
+			<term><pre>withTray => 0/1</pre></term>
 			<listitem>
-			Determines, whether the rowops coming into the FnBinding will be executed
+			Flag: Determines, whether the rowops coming into the FnBinding will be executed
 			immediately (<pre>withTray => 0</pre>) or collected in a tray
 			(<pre>withTray => 1</pre>). Optional, 0 by default.
 			</listitem>
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>clearLabels</pre></term>
+			<term><pre>clearLabels => 0/1</pre></term>
 			<listitem>
 			<para>
-			Determines whether the labels in FnBinding will be automatically cleared
+			Flag: Determines whether the labels in FnBinding will be automatically cleared
 			and forgotten in their unit when the FnBinding gets destroyed. This allows
 			to create the temporary FnBindings dynamically and destroy them after the use,
 			without leaking the labels. This option applies only to the labels specified
@@ -185,7 +185,7 @@ Triceps::FnBinding::call($optName => $optValue, ...);
 
 		<variablelist>
 		<varlistentry>
-			<term><pre>name</pre></term>
+			<term><pre>name => $name</pre></term>
 			<listitem>
 			Name of the FnBinding object that will be constructed and destoryed for
 			this call. Will be used to create the names of the labels in it.
@@ -193,7 +193,7 @@ Triceps::FnBinding::call($optName => $optValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>unit</pre></term>
+			<term><pre>unit => $unit</pre></term>
 			<listitem>
 			The unit where the labels specified as Perl inline code will be created.
 			If no labels are specified in this format, this option is not required.
@@ -201,7 +201,7 @@ Triceps::FnBinding::call($optName => $optValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>on</pre></term>
+			<term><pre>on => $fret</pre></term>
 			<listitem>
 			The FnReturn on which this binding is defined (see mode details on
 			that in the description of FnBinding constructor) and also the FnReturn
@@ -210,7 +210,7 @@ Triceps::FnBinding::call($optName => $optValue, ...);
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>labels</pre></term>
+			<term><pre>labels => [ @definitions ]</pre></term>
 			<listitem>
 			<para>
 			Definition of the labels in the FnBinding, that will be connected to the
@@ -230,9 +230,9 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>delayed</pre></term>
+			<term><pre>delayed => 0/1</pre></term>
 			<listitem>
-			An analog of option <quote>withTray</quote> of the FnBinding constructor.
+			Flag: An analog of option <quote>withTray</quote> of the FnBinding constructor.
 			Determines, whether the rowops coming into the FnBinding will be executed
 			immediately (<pre>delayed => 0</pre>) or collected in a tray and the
 			tray executed after the FnBinding is popped from FnReturn (but before FnBinding
@@ -244,9 +244,9 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>clearLabels</pre></term>
+			<term><pre>clearLabels => 0/1</pre></term>
 			<listitem>
-			Determines whether the labels in FnBinding will be automatically cleared
+			Flag: Determines whether the labels in FnBinding will be automatically cleared
 			and forgotten in their unit when the FnBinding gets destroyed. The details
 			are described with the constructor.
 			Optional, 0 by default, and highly unlikely to be used.
@@ -254,7 +254,7 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rowop</pre></term>
+			<term><pre>rowop => $rowop</pre></term>
 			<listitem>
 			A reference to rowop to execute as the argument to the streaming function.
 			Exactly one of options <quote>rowop</quote>, <quote>rowops</quote>,
@@ -263,7 +263,7 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>rowops</pre></term>
+			<term><pre>rowops => [ @rowops ]</pre></term>
 			<listitem>
 			A reference to an array of rowops (<pre>rowops => [ @rowops ]</pre>) to execute as the argument to the
 			streaming function. This is just a convenient way to inline multiple
@@ -274,7 +274,7 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>tray</pre></term>
+			<term><pre>tray => $tray</pre></term>
 			<listitem>
 			A reference to tray to execute as the argument to the streaming function.
 			Exactly one of options <quote>rowop</quote>, <quote>rowops</quote>,
@@ -283,9 +283,13 @@ labels => [
 		</varlistentry>
 
 		<varlistentry>
-			<term><pre>code</pre></term>
+			<term><pre>code => $code</pre></term>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>code => [ $code, @args ]</pre></term>
 			<listitem>
-			A code reference to execute that sends the arguments to the streaming function.
+			A code reference or snippet to execute that sends the arguments to the streaming function.
 			The source code snippet in a string also works. This option may also specify
 			a function reference (or, again, its source code) together with its arguments.
 			In this case the value would be an array reference: <pre>code => [ $code, @args ]</pre>.
