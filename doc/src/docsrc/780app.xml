@@ -170,6 +170,8 @@ Triceps::App::declareTriead($appOrName, $trieadName);
 		time.  For the most part, the method <pre>Triead::start()</pre> just does the
 		right thing by calling this method automatically and you don't need the
 		use it manually, except in some very special circumstances.
+		Declaring a thread with the same name more than once or declaring an already
+		defined thread is perfectly all right.
 		</para>
 
 <pre>
