@@ -64,40 +64,24 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<xi:include href="file:///DOCS/708unit.xml"/>
-
 		<xi:include href="file:///DOCS/710tabtype.xml"/>
-
 		<xi:include href="file:///DOCS/712idxtype.xml"/>
-
 		<xi:include href="file:///DOCS/714aggtype.xml"/>
-
 		<xi:include href="file:///DOCS/716simpleagg.xml"/>
-
 		<xi:include href="file:///DOCS/718table.xml"/>
-
 		<xi:include href="file:///DOCS/720rowhand.xml"/>
-
 		<xi:include href="file:///DOCS/722aggcontext.xml"/>
-
 		<xi:include href="file:///DOCS/730opt.xml"/>
-
 		<xi:include href="file:///DOCS/732field.xml"/>
-
 		<xi:include href="file:///DOCS/740lookupjoin.xml"/>
-
 		<xi:include href="file:///DOCS/742jointwo.xml"/>
-
 		<xi:include href="file:///DOCS/744collapse.xml"/>
-
 		<xi:include href="file:///DOCS/760braced.xml"/>
-
 		<xi:include href="file:///DOCS/766fnreturn.xml"/>
-
 		<xi:include href="file:///DOCS/768fnbind.xml"/>
-
 		<xi:include href="file:///DOCS/770autofn.xml"/>
-
 		<xi:include href="file:///DOCS/780app.xml"/>
+		<xi:include href="file:///DOCS/782triead.xml"/>
 
 		<!-- XXX add references for all the X modules! -->
 </chapter>
