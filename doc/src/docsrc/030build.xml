@@ -436,6 +436,42 @@ perl t/xWindow.t
 
 	</sect1>
 
+	<sect1 id="sc_build_locale">
+		<title>Locale dependency</title>
+
+		<para>
+		Some of the Perl tests depend on the locale. They expect the English
+		text in some of the error strings received from the OS and Perl, so if
+		you try to run them in a non-English locale, these tests fail.
+		</para>
+
+		<para>
+		To work around this issue, I've added <pre>LANG=C</pre> in the top-level Makefile,
+		and when the tests run from there, they use this English locale.
+		</para>
+
+		<para>
+		However if you run <pre>make test</pre> directly in the <pre>perl/Triceps</pre>
+		subdirectory, it has no such override (because the Makefile there is built by Perl).
+		If you run the test from there and use a non-English locale, you'd have
+		to set the locale for the command expicitly:
+		</para>
+
+<pre>
+LANG=C make test
+</pre>
+
+		<para>
+		Some of these expected messages might also change between different 
+		OSes and between different versions of Perl. They seem pretty stable
+		overall but you'd never known when something might change somewhere,
+		and that would lead to the spurious failures that can be ignored.
+		I'd be interested to learn of them, to support all known forms of
+		messages in the future.
+		</para>
+
+	</sect1>
+
 	<sect1 id="sc_build_install_perl">
 		<title>Installation of the Perl library</title>
 
@@ -776,7 +812,7 @@ TRICEPS_CONF += -DTRICEPS_NS=Triceps2
 		<title>Build configuration settings</title>
 
 		<para>
-		Since Triceps has no autoconfiguration yet, it may need to be configured
+		Since Triceps has only a very limited autoconfiguration yet, it may need to be configured
 		manually for the target operating system. The same method is used for the
 		build options.
 		</para>
@@ -790,14 +826,26 @@ TRICEPS_CONF += -DTRICEPS_NS=Triceps2
 		<para>
 		So far the only such configurable library dependency is the NSPR4 library.
 		It's used for its implementation of the atomic integers and pointers.
+		Normally the build attempts to auto-detect the location and name of the
+		library and includes, or otherwise builds without it.
 		Without it the code still works but uses a less efficient implementation
-		of an integer or pointer protected by a mutex. It is enabled by
+		of an integer or pointer protected by a mutex. 
+		If your system has a version of NSPR4 that doesn't get auto-detected,
+		you can still enable it by changing the settings manually. For example,
+		for Fedora Linux the auto-detected version amounts to the following
+		settings:
 		</para>
 
 <pre>
-TRICEPS_CONF += -DTRICEPS_NSPR4
+TRICEPS_CONF += -DTRICEPS_NSPR -I/usr/include/nspr4
 TRICEPS_XLIB += -lnspr4
 </pre>
+
+		<para>
+		<pre>-DTRICEPS_NSPR</pre> tells the code to compile with NSPR support
+		enabled, and the other settings give the location of the includes and
+		of the library.
+		</para>
 
 		<para>
 		The other build options require only the <pre>-D</pre> settings.

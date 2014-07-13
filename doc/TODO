@@ -162,7 +162,7 @@ tangent 144, 157, 191, 197, 199, 204, 206, 279
 171-172 TQL
 226 about TQL: no more need for rightIdxPath in {join}
 227-228 TQL
-243-252
+244-252
 254-257
 259-260
 261 except Unit, FnReturn
