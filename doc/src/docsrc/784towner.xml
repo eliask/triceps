@@ -1,0 +1,666 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+	<sect1 id="sc_ref_triead_owner" xmlns:xi="http://www.w3.org/2001/XInclude">
+		<title>TrieadOwner reference</title>
+
+		<indexterm>
+			<primary>TrieadOwner</primary>
+		</indexterm>
+		<indexterm>
+			<primary>Triead</primary>
+		</indexterm>
+
+		<para>
+		TrieadOwner is the thread's private interface used to control its state
+		and interact with the App (the App uses the thread's identity to detect
+		the deadlocks in these interactions). Whenever a Triead is constructed,
+		its OS/Perl thread receives the TrieadOwner object for it.
+		</para>
+
+		<para>
+		Normally the TrieadOwner object is constructed inside <pre>Triead::start()</pre>
+		or <pre>Triead::startHere()</pre> and passed to the thread's main function. The
+		following constructor is used inside <pre>start()</pre>, and it's pretty much a
+		private method. The only reason to use it would be if you want to do
+		something very unusual, and even then you probably should write a
+		wrapper method for your unusual thing and then call that wrapper
+		method. The constructor constructs both Triead and TrieadOwner as a two
+		sides of the same item, and registers the thread with the App.
+		</para>
+
+<pre>
+$to = Triceps::TrieadOwner::new($tid, $handle, $appOrName, $tname, $fragname);
+</pre>
+
+		<para>
+		Here <pre>$tid</pre> is the Perl thread id where this TrieadOwner belongs (it can
+		be obtained with <pre>$thr->tid()</pre>). <pre>$handle</pre> is the Perl thread's low-level
+		handle (as in <pre>$thr->handle_()</pre>), it's the underlying POSIX thread
+		handle, used to interrupt the thread on shutdown (the long story is
+		that in the Perl threads the <pre>kill()</pre> call doesn't actually send a signal
+		to another thread but just sets a flag; to interrupt a sleeping system
+		call a real signal has to be delivered through the POSIX API). <pre>$handle</pre>
+		is a dangerous argument, and passing a wrong value there may cause a
+		crash.
+		</para>
+
+		<para>
+		Both <pre>$tid</pre> and <pre>$handle</pre> may be undef. If <pre>$tid</pre> is undef, the thread won't
+		be joined by the harvester and you can either detach it or join it
+		yourself. If either <pre>$tid</pre> or <pre>$handle</pre> is undef, the thread won't be
+		interrupted on shutdown.
+		</para>
+
+		<para>
+		The signal used for interruption is <pre>SIGUSR2</pre>. Triceps sets its default
+		handler that does nothing on this signal, but you can define your own
+		handler instead.
+		</para>
+
+		<para>
+		<pre>$appOrName</pre> is the App object or its name that would be automatically
+		looked up (or will confess if not found). <pre>$tname</pre> is the name for the
+		thread, that must be unique within the App (though
+		it might be declared before). <pre>$fragname</pre> is the name of the fragment
+		where the thread belongs, use <quote></quote> for no fragment.
+		</para>
+
+<pre>
+$app = $to->app();
+</pre>
+
+		<para>
+		Get the App where this Triead belongs.
+		</para>
+
+<pre>
+$unit = $to->unit();
+</pre>
+
+		<para>
+		Whenever a Triead is constructed, a Unit is automatically  created to
+		execute its logic. This call returns that unit. When the Triead is
+		destroyed, the unit will be cleaned and unreferenced.
+		</para>
+
+		<para>
+		The unit is named the same as the thread.
+		</para>
+
+<pre>
+$to->addUnit($moreUnit);
+</pre>
+
+		<para>
+		It's possible to split the Triead's logic into multiple units, all
+		running in the same Perl thread. This call puts an extra unit under
+		Triead's control, and has two effects: First, the unit will be
+		referenced for the life of the Triead, and cleaned and unreferenced
+		when the Triead is destroyed. Second, when the Triead's main loop runs,
+		after each incoming rowop it will check all the controlled units for
+		any rowops scheduled in them, and will run them until all such rowops
+		are processed.
+		</para>
+
+		<para>
+		The names of the units are not checked in any way, it's your
+		responsibility to name them sensibly and probably differently from each
+		other.
+		</para>
+
+		<para>
+		The repeated calls with the same unit will have no effect.
+		</para>
+
+<pre>
+$to->forgetUnit($moreUnit);
+</pre>
+
+		<para>
+		Pull a unit out of Triead's control. After that the cleaning of the
+		unit becomes your responsibility. The thread's main unit cannot be
+		forgotten, the attempts to forget it will be simply ignored. The same
+		goes for the units that aren't under the Triead's control in the first
+		place, these calls are ignored.
+		</para>
+
+<pre>
+@units = $to->listUnits();
+</pre>
+
+		<para>
+		Get the list of units under Triead's control. The main unit (the same
+		as returned with <pre>$to->unit()</pre>) will always be the first in the list. The
+		list contains only the unit references, <b>not</b> the name-value pairs (and
+		you can always get the names from the unit objects themselves).
+		</para>
+
+<pre>
+$triead = $to->get();
+</pre>
+
+		<para>
+		Get the public API of this Triead.
+		</para>
+
+<pre>
+$name = $to->getName();
+</pre>
+
+		<para>
+		Get this Triead's name.
+		</para>
+
+<pre>
+$frag = $to->fragment();
+</pre>
+
+		<para>
+		Get the name of this Triead's fragment (<quote></quote> if not in a fragment).
+		</para>
+
+<pre>
+$to->markConstructed();
+</pre>
+
+		<indexterm>
+			<primary>Nexus</primary>
+		</indexterm>
+		<para>
+		Advance the Triead to the Constructed state. After that point no more
+		nexuses may be exported in the Triead. Any look-ups by other Trieads
+		for the Nexuses of this Triead will proceed at this point, either
+		succeeding or failing (if the requested nexus is not exported).
+		</para>
+
+		<para>
+		In all the <pre>mark*()</pre> methods, the state advance is cumulative:
+		it brings the thread through all the intermediate states.
+		</para>
+
+		<para>
+		If the Triead is already in the Constructed or later state, this call
+		has no effect.
+		</para>
+
+<pre>
+$to->markReady();
+</pre>
+
+		<para>
+		Advance the Triead to the Ready (fully initialized) state. After that
+		point no more nexuses may be imported into this Triead.
+		</para>
+
+		<para>
+		In all the <pre>mark*()</pre> methods, the state advance is cumulative:
+		it brings the thread through all the intermediate states.
+		</para>
+
+		<para>
+		If the App has been already shut down, this Triead will be immediately
+		requested to die.
+		</para>
+
+		<para>
+		If this is the last Triead in the App to become ready, this method will invoke the
+		check for the topological correctness of the App. If the check finds an
+		error (a loop of nexuses of the same direction), it will abort the App
+		and confess with a message describing the nature of the error.
+		</para>
+
+		<para>
+		If the Triead is already in the Ready or later state, this call has no
+		effect.
+		</para>
+
+<pre>
+$to->readyReady();
+</pre>
+
+		<para>
+		Mark this Triead as Ready and wait for all the App's Trieads to become
+		Ready. There is no method that just waits for readiness because that
+		would be likely causing a deadlock. When the thread waits for
+		readiness, it must be ready itself, so this call does both. All the
+		error checks of <pre>markReady()</pre> apply.
+		</para>
+
+		<para>
+		It is possible and reasonable to call this method repeatedly: more
+		Trieads may be added to the App later, and it's a good idea to call
+		<pre>readyReady()</pre> again before communicating with these new threads.
+		Otherwise any rowops sent before these threads become ready will never
+		arrive to these threads.
+		</para>
+
+<pre>
+$to->markDead();
+</pre>
+
+		<para>
+		Mark this Triead as Dead. A dead thread will not receive any more
+		input, and any output from it will be thrown away. This notifies the
+		harvester that it needs to join the Perl thread, so there should not be
+		too much of a delay between making this call and exiting the Perl
+		thread. The repeated calls have no effect.
+		</para>
+
+		<para>
+		Normally the <pre>Triead::start()</pre> and <pre>startHere()</pre> call <pre>markDead()</pre>
+		automatically in their wrapper logic, and there is no need for a manual
+		call. However if you decide to bypass them, you must call <pre>markDead()</pre>
+		manually before exiting the thread, or the harvester will be stuck
+		forever waiting for this thread to die.
+		</para>
+
+		<para>
+		In all the <pre>mark*()</pre> methods, the state advance is cumulative:
+		it brings the thread through all the intermediate states.
+		But with <pre>markDead()</pre> there is an even more interesting twist.
+		Suppose there is an application with an incorrect topology, and all the
+		Trieads in it but one are ready. That last Triead then experiences an
+		error, and proceeds directly to call <pre>markDead()</pre> and then exit. This
+		<pre>markDead()</pre> will involve an intermediate step marking the Triead as
+		ready. Since it's the last Triead to be ready, it will trigger the
+		topology check, and since the topology is incorrect, it will fail. If
+		it happened in <pre>markReady()</pre>, the method would confess. But in <pre>markDead()</pre>
+		confessing doesn't make a whole lot of sense: after all, the thread is
+		about to exit anyway. So <pre>markDead()</pre> will catch all these confessions
+		and throw them away, it will never fail. However the failed check will
+		still abort the App, and the rest of the threads will wake up and fail
+		as usual.
+		</para>
+
+		<para>
+		<pre>markDead()</pre> also clears and unreferences all
+		the TrieadOwner's registered units, not waiting for the TrieadOwner
+		object to be destroyed. This unravels any potential cyclic references
+		where the code in a label might be referring back to the TrieadOwner.
+		</para>
+
+<pre>
+$to->abort($msg);
+</pre>
+
+		<para>
+		Abort the App with a message. This is a convenience wrapper that
+		translates to <pre>App::abortBy()</pre>.
+		</para>
+
+<pre>
+$result = $to->isRqDead();
+</pre>
+
+		<para>
+		Check whether the thread was requested to die. For most threads,
+		<pre>mainLoop()</pre> does this check automatically, and <pre>nextXtray()</pre> also returns
+		the same value. However in the special cases, such as doing some long
+		processing in response to a rowop, or doing some timeouts, it's best to
+		do a manual check of <pre>isRqDead()</pre> periodically and abort the long
+		operation if the thread has been requested to die, since any output
+		will be thrown away anyway.
+		</para>
+
+		<para>
+		Note that even when the Triead has been requested to die, it still must
+		call <pre>markDead()</pre> when it actually dies (normally the <pre>Triead::start()</pre> or
+		<pre>startHere()</pre> takes care of it in its wrapper).
+		</para>
+
+<pre>
+$result = $to->isConstructed();
+$result = $to->isReady();
+$result = $to->isDead();
+$result = $to->isInputOnly();
+</pre>
+
+		<para>
+		Check the state of the Triead, the same as Triead methods.
+		</para>
+
+<pre>
+$facet = $to->makeNexus(@options);
+</pre>
+
+		<para>
+		Create, export and (optionally) import a nexus. The result is an imported
+		Facet of this Nexus, except when the options specify the no-import mode
+		(then the result will be <pre>undef</pre>). Confesses on errors.
+		</para>
+
+		<para>
+		The options are:
+		</para>
+
+		<variablelist>
+		<varlistentry>
+			<term><pre>name => $name</pre></term>
+			<listitem>
+			<para>
+			Name of the nexus, it will be used both as the export name and the
+			local imported <quote>as-name</quote> of the facet.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>labels => [ @definitions ]</pre></term>
+			<listitem>
+
+			<para>
+			Defines the labels similarly to FnReturn in a referenced array. The
+			array contains the pairs of <pre>(label_name, label_definition)</pre>,
+			with definitions in one of two forms: 
+			</para>
+
+<pre>
+labels => [
+	name1 => $rowType1,
+	name2 => $fromLabel2,
+	...
+]
+</pre>
+			
+			<para>
+			The definition may be either a RowType, and then a label of this row
+			type will be created, or a Label, and then a label of the same row
+			type will be created and chained from that original label. The
+			created label objects can be later found from Facets, and used like
+			normal labels, by chaining them or sending rowops to them
+			(chaining from them is probably not the best idea, although it works
+			anyway).
+			</para>
+
+			<para>
+			Optional, or may be an empty array; the implicit labels <pre>_BEGIN_</pre> and
+			<pre>_END_</pre> will allways be added automatically if not explicitly
+			defined.
+			</para>
+
+			<para>
+			The labels are used to construct an implicit FnReturn in the
+			current Triead's main unit, and this is the FnReturn that will be
+			visible in the Facet that gets imported back. If the import mode is
+			<quote>none</quote>, the FnReturn will still be  constructed and then abandoned
+			(and freed by the reference count going to 0, as usual). The labels
+			used as <pre>$fromLabel</pre> above must always belong to the Triead's main unit.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>rowTypes => [ @definitions ]</pre></term>
+			<listitem>
+
+			<para>
+			Defines the row types exported in this Nexus as a referenced array
+			of name-value pairs:
+			</para>
+			
+<pre>
+rowTypes => [
+	name => $rowType,
+	...
+]
+</pre>
+
+			<para>
+			The types imported back into this Triead's
+			facet will be references to the exact same type objects. Optional,
+			or may be empty.
+			</para>
+
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>tableTypes => [ @definitions ]</pre></term>
+			<listitem>
+
+			<para>
+			Defines the table types exported in this Nexus as a referenced
+			array of name-value pairs:
+			</para>
+			
+<pre>
+tableTypes => [
+	name => $tableType,
+	...
+]
+</pre>
+
+			<para>
+			The types imported back into this
+			Triead's facet will be references to the exact same type objects.
+			Optional, or may be empty.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>reverse => 0/1</pre></term>
+			<listitem>
+			<para>
+			Flag: this Nexus goes in the reverse direction. The reverse nexuses
+			are used to break up the topological loops, to prevent the
+			deadlocks on the queueing. They have no limit on the queue size,
+			and the data is read from them at a higher priority than from the
+			direct nexuses. Default: 0.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>chainFront => 0/1</pre></term>
+			<listitem>
+			<para>
+			Flag: when the labels are specified as <pre>$fromLabel</pre>, chain them at
+			the front of the original labels.  Default: 1. 
+			</para>
+			<para>
+			The default is this
+			way because chaining at the front is what is typically needed. The
+			reasons are described at length in 
+			<xref linkend="sc_mt_pipeline" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+			but the short gist is that you might want to send the rows from both the
+			inputs, intermediate points, and the end of processing into an
+			output nexus. It's most convenient to create the nexus in one go,
+			after the whole thread's computation is defined. But the rowops
+			from the earlier stages of computations have to come to the nexus
+			before the rowops from the later stage. Chaining at the front
+			ensures that each such label will send the rowop into the nexus
+			first, and only then to the next stage of the computation.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>queueLimit => $number</pre></term>
+			<listitem>
+			<para>
+			Defines the size limit after which the writes to the queue of this
+			Nexus block. In reality because of the double-buffering the queue
+			may contain up to twice that many trays before the future writes
+			block. This option has no effect on the  reverse nexuses. Default:
+			<pre>&Facet::DEFAULT_QUEUE_LIMIT</pre>, 500 or so.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>import => $importType</pre></term>
+			<listitem>
+			<para>
+			A string value, essentially an enum, determining how this Nexus gets
+			immediately imported back into this Triead. The supported values are:
+			</para>
+
+			<itemizedlist>
+				<listitem>
+				<pre>reader</pre> (or anything starting from <quote>read</quote>) - import for reading
+				</listitem>
+				<listitem>
+				<pre>writer</pre> (or anything starting from <quote>write</quote>) - import for writing
+				</listitem>
+				<listitem>
+				<pre>none</pre> (or anything starting from <quote>no</quote>) - do not import
+				</listitem>
+			</itemizedlist>
+
+			<para>
+			Case-insensitive. The use of the canonical strings is recommended.
+			</para>
+			</listitem>
+		</varlistentry>
+		</variablelist>
+
+<pre>
+$facet = $to->importNexus(@options);
+</pre>
+
+		<para>
+		Import a nexus into this Triead. Returns the imported Facet. The
+		repeated attempts to import the same Nexus will return references to
+		the same Facet object. Confesses on errors. An attempt to import the
+		same nexus for both reading and writing is an error.
+		</para>
+
+		<para>
+		The options are:
+		</para>
+
+		<variablelist>
+		<varlistentry>
+			<term><pre>from => "$thread_name/$nexus_name"</pre></term>
+			<listitem>
+			<para>
+			Identifier of the nexus to import, consisting of two parts
+			separated by a slash.
+			</para>
+
+			<para>
+			The nexus name will also be used as the name of the local facet,
+			unless overridden by the option <quote>as</quote>. The reason for slash
+			separator is that normally both the thread name and the nexus name
+			parts may contain further components separated by dots, and a
+			different separator allows to find the boundary between them. If a
+			dot were used, in <quote>a.b.c</quote> it would be impossible to say, does it
+			mean the thread <quote>a</quote> and nexus <quote>b.c</quote> in it, or thread <quote>a.b</quote> and
+			nexus <quote>c</quote>? However <quote>a/b.c</quote> or <quote>a.b/c</quote> have no such ambiguity.
+			Mutually exclusive with options <quote>fromTriead</quote> and <quote>fromNexus</quote>.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>fromTriead => $t</pre></term>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>fromNexus => $n</pre></term>
+			<listitem>
+			<para>
+			The alternative way to specify the source thread and nexus as
+			separate options. Both options must be present or absent at the
+			same time. Mutually exclusive with <quote>from</quote>.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>as => $name</pre></term>
+			<listitem>
+			<para>
+			Specifies an override name for the local facet (and thus also for
+			the FnReturn created in the facet). Logically similar to the SQL
+			clause <i>AS</i>. Default is to reuse the nexus name.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>import => $importType</pre></term>
+			<listitem>
+			<para>
+			A string value, essentially an enum, determining how this Nexus
+			gets imported. The supported values are the same as for <pre>makeNexus()</pre>,
+			except <quote>none</quote>, since there is no point in a no-op import:
+			</para>
+
+			<itemizedlist>
+				<listitem>
+				<pre>reader</pre> (or anything starting from <quote>read</quote>) - import for reading;
+				</listitem>
+				<listitem>
+				<pre>writer</pre> (or anything starting from <quote>write</quote>) - import for writing.
+				</listitem>
+			</itemizedlist>
+
+			<para>
+			Case-insensitive. The use of the canonical strings is recommended.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>immed => 0/1</pre></term>
+			<listitem>
+			<para>
+			Flag: do not wait for the thread that exported the nexus to be
+			fully constructed. Waiting synchronizes with the exporter and
+			prevents a race of an import attempt trying to find a nexus before
+			it is made and failing. However if two threads are waiting for each
+			other, it becomes a deadlock that gets caught and aborts the App.
+			The immediate import allows to avoid such deadlocks for the
+			circular topologies with helper threads.
+			</para>
+
+			<para>
+			The helper threads are the <quote>blind alleys</quote> in the topology: the
+			<quote>main thread</quote> outsources some computation to a <quote>helper thread</quote>,
+			sending it the arguments, then later receiving the results and
+			continuing with its logic.
+			</para>
+
+			<para>
+			With the helper threads, the parent thread will import the
+			resul nexus of the helper as usual but the helper will
+			import the argument nexus from the parent immediately.
+			This can be done because the parent is required in this
+			situation to export the argument nexus first and only then
+			create the helper thread.
+			</para>
+
+			<para>
+			The sequence in
+			<xref linkend="seq784immed" xrefstyle="select: label nopage"/>&xrsp;
+			shows it in detail.
+			</para>
+
+			<xi:include href="file:///SEQS/seq784immed.xml"/>
+
+			<para>
+			Default: 0, except if importing a nexus that has been exported from
+			the same Triead. Importing from the same Triead is not used often,
+			since the export also imports the nexus back right away, and there
+			is rarely any use in importing separately. But it's possible, and
+			importing back from the same Triead is always treated as immediate
+			to avoid deadlocks. 
+			</para>
+			</listitem>
+		</varlistentry>
+		</variablelist>
+	</sect1>

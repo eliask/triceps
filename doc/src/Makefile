@@ -46,7 +46,7 @@ pdf: subdirs autodepend $(PDFTARGETS)
 html: subdirs autodepend $(HTMLTARGETS)
 
 subdirs:
-	#$(MAKE) -C seq
+	$(MAKE) -C seq
 	$(MAKE) -C figrefs
 	[ -d doc ] || mkdir doc
 
@@ -61,7 +61,7 @@ autodepend: .depends
 
 .depends:: Makefile xmldep.pl $(DEPENDSOURCES)
 ifeq (,$(strip $(NODEP) $(filter help% clean% %clean clobber% cfg%, $(MAKECMDGOALS))))
-	#$(MAKE) -C seq
+	$(MAKE) -C seq
 	./xmldep.pl $(DEPENDSOURCES) >.depends.tmp
 	mv .depends.tmp .depends
 endif
@@ -70,7 +70,7 @@ endif
 cleanwork:
 	rm -f .depends .depends.tmp *.xml *.pdf *.fo *.png *.gif *.tiff *.svg docsrc/allpics.xml
 	rm -rf cfg doc
-	#$(MAKE) -C seq clean
+	$(MAKE) -C seq clean
 	$(MAKE) -C figrefs clean
 
 clean: cleanwork
