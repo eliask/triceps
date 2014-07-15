@@ -29,6 +29,9 @@ See the file COPYRIGHT for the copyright notice and license information
 		its OS/Perl thread receives the TrieadOwner object for it.
 		</para>
 
+		<sect2 id="sc_ref_triead_owner_construct">
+		<title>TrieadOwner construction</title>
+
 		<para>
 		Normally the TrieadOwner object is constructed inside <pre>Triead::start()</pre>
 		or <pre>Triead::startHere()</pre> and passed to the thread's main function. The
@@ -76,6 +79,10 @@ $to = Triceps::TrieadOwner::new($tid, $handle, $appOrName, $tname, $fragname);
 		it might be declared before). <pre>$fragname</pre> is the name of the fragment
 		where the thread belongs, use <quote></quote> for no fragment.
 		</para>
+
+		</sect2>
+		<sect2 id="sc_ref_triead_owner_general">
+		<title>TrieadOwner general methods</title>
 
 <pre>
 $app = $to->app();
@@ -865,6 +872,10 @@ void TrieadOwner::mainLoop()
 }
 </pre>
 
+		</sect2>
+		<sect2 id="sc_ref_triead_owner_drains">
+		<title>TrieadOwner drains</title>
+
 		<para>
 		The drain API of the TrieadOwner is very similar to the one in the App.
 		The best way to do the drain is by the automatically-scoped AutoDrain
@@ -919,4 +930,241 @@ $result = $to->isRqDrain();
 		it from outside the model altogether.
 		</para>
 
+		</sect2>
+		<sect2 id="sc_ref_triead_owner_interrupt">
+		<title>TrieadOwner file interrruption</title>
+
+		<para>
+		The file interruption part of the API deals with how the thread handles
+		a request to die. It should stop its work and exit, and for the normal
+		threads that read from nexuses, this is fairly straightforward. The
+		difficulty is with the threads that read from the outside sources
+		(sockets and such). They may be in the middle of a read call, with no
+		way to tell when the next chunk of data will arrive. These long calls
+		on the file descriptors need to be interrupted when the thread is
+		requested to die.
+		</para>
+
+		<para>
+		The interruption is done by revoking the file descriptors (dupping a
+		<pre>/dev/null</pre> into it) and sending the signal <pre>SIGUSR2</pre> to the thread. Even
+		if the dupping doesn't interrupt the file operation, <pre>SIGUSR2</pre> does, and
+		on restart it will find that the file descriptor now refers to
+		<pre>/dev/null</pre> and return immediately. Triceps defines a <pre>SIGUSR2</pre> handler
+		that does nothing, but you can override it with a custom one.
+		</para>
+
+		<para>
+		For this to work, Triceps needs to know, which file descriptors are to
+		be revoked, which is achieved by registering them for tracking in the
+		TrieadOwner. To avoid accidentally revoking the unrelated descriptors, the descriptors must be
+		unregistered before closing. The normal sequence is:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			open a file descriptor;
+			</listitem>
+			<listitem>
+			register it for tracking;
+			</listitem>
+			<listitem>
+			do the file operations;
+			</listitem>
+			<listitem>
+			unregister the file descriptor;
+			</listitem>
+			<listitem>
+			close it.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		The lowest-level calls deal with the raw tracking:
+		</para>
+
+<pre>
+$to->trackFd($fd);
+</pre>
+
+		<para>
+		Register the file descriptor (obtained with <pre>fileno()</pre> or such) for
+		tracking. The repeated calls for the same descriptor have no effect.
+		</para>
+
+<pre>
+$to->forgetFd($fd);
+</pre>
+
+		<para>
+		Unregister the file descriptor. If the descriptor is not registered,
+		the call is ignored.
+		</para>
+
+		<para>
+		The next level of the API deals with the file handles, extracting the
+		file descriptors from them as needed.
+		</para>
+
+<pre>
+$to->track(FILE);
+</pre>
+
+		<para>
+		Get a file descriptor from the file handle and track it.
+		</para>
+
+<pre>
+$to->forget(FILE);
+</pre>
+
+		<para>
+		Get a file descriptor from the file handle and unregister it.
+		</para>
+
+<pre>
+$to->close(FILE);
+</pre>
+
+		<para>
+		Unegister the file handle's descriptor then close the file handle. It's
+		a convenience wrapper, to make the unregistering easier to remember.
+		</para>
+
+		<para>
+		The correct sequence might be hard to follow if the code involves some
+		dying and evals catching these deaths. To handle that, the next level
+		of the API provides the automatic tracking by scope. The scoping is
+		done with the class Triceps::TrackedFile. Which is probably easier to
+		describe right here.
+		</para>
+
+		</sect2>
+		<sect2 id="sc_ref_triead_owner_tracked_file">
+		<title>TrackedFile</title>
+
+		<indexterm>
+			<primary>TrackedFile</primary>
+		</indexterm>
+		<para>
+		A TrackedFile object keeps a reference of a file handle and also knows
+		of its file descriptor being tracked by the TrieadOwner (so yes, it has
+		a reference to the TrieadOwner too). Until the TrackedFile is
+		destroyed, the file handle in it will never have its reference count go
+		to 0, so it will never be automatically closed and destroyed. And when
+		the TrackedFile is destroyed, first it tells the TrieadOwner to forget
+		the file descriptor and only then unreferences the file handle,
+		preserving the correct sequence.
+		</para>
+
+		<para>
+		And the scope of the TrackedFile is controlled by the scope of a
+		variable that keeps a reference to it. If it's a local/my variable,
+		TrackedFile will be destroyed on leaving the block, if it's a field in
+		an object, it will be destroyed when the object is destroyed or the
+		field is reset. Basically, the usual Perl scope business in Triceps.
+		</para>
+
+		<para>
+		If you want to close the file handle before leaving the scope of
+		TrackedFile, don't call <pre>close()</pre> on the file handle. Instead, call <pre>close()</pre>
+		on the TrackedFile:
+		</para>
+
+<pre>
+$trf->close();
+</pre>
+
+		<para>
+		This will again properly untrack the file descriptor, and then close
+		the file handle, and remember that it has been closed, so no seconds
+		attempt at that will be done when the TrackedFile gets destroyed.
+		</para>
+
+		<para>
+		There also are a couple of getter methods on the TrackedFile:
+		</para>
+
+<pre>
+$fd = $trf->fd();
+</pre>
+
+		<para>
+		Get the tracked file descriptor. If the file handle has been already
+		closed, will return -1.
+		</para>
+
+<pre>
+$fh = $trf->get();
+</pre>
+
+		<para>
+		Get the tracked file handle. If the file handle had already been
+		closed, will confess.
+		</para>
+
+		<para>
+		Now we get back to the TrieadOwner.
+		</para>
+
+<pre>
+$trf = $to->makeTrackedFile(FILE);
+</pre>
+
+		<para>
+		Create a TrackedFile object from a file handle.
+		</para>
+
+<pre>
+$trf = $to->makeTrackedFileFd(FILE, $fd);
+</pre>
+
+		<para>
+		The more low-level way to construct a TrackedFile, with specifying the
+		file descriptor as a separate explicit argument. <pre>makeTrackedFile()</pre> is
+		pretty much a wrapper that calls <pre>fileno()</pre> on the file handle and then
+		calls <pre>makeTrackedFileFd()</pre>.
+		</para>
+
+		<para>
+		And the following methods combine the loading of a file descriptor from
+		the App and tracking it by the TrieadOwner. They are the most typically
+		used interface for passing around the file handles through the App.
+		</para>
+
+<pre>
+($trf, $file) = $to->trackDupFile($name, $mode);
+</pre>
+
+		<para>
+		Load the dupped file handle from the App, create a file handle
+		object from it according to the IO::Handle subclass received from
+		the App and <pre>$mode</pre> (in either <pre>r/w/a/r+/w+/a+</pre> or
+		<pre></>/>>/+</+>/+>></pre> format), and make a TrackedFile from it. Returns a
+		pair of the TrackedFile object and the created file handle. The App
+		still keeps the original file descriptor. The <pre>$mode</pre> must be consistent
+		with the original mode of the file stored into the App. <pre>$name</pre> is the
+		name that was used to store the file descriptor into the App.
+		</para>
+
+<pre>
+($trf, $file) = $to->trackGetFile($name, $mode);
+</pre>
+
+		<para>
+		Similar to <pre>trackDupFile()</pre> only the file descriptor is moved from the
+		App, and the App forgets about it.
+		</para>
+
+<pre>
+($trf, $file) = $to->trackDupClass($name, $mode, $class);
+($trf, $file) = $to->trackGetClass($name, $mode, $class);
+</pre>
+
+		<para>
+		Similar to the File versions, only creates the file handle of an
+		explicitly specified subclass of IO::Handle (per <pre>$class</pre>).
+		</para>
+
+		</sect2>
 	</sect1>
