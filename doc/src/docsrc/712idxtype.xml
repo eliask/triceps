@@ -262,7 +262,7 @@ $aggType = $it->getAggregator();
 
 		<para>
 		Returns the aggregator type set on this index type.
-		The returned value may be <pre>undef</pre> (but <pre>$!</pre> not set) if no
+		The returned value may be <pre>undef</pre> if no
 		aggregator type has been set.
 		</para>
 

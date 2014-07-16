@@ -530,9 +530,18 @@ print &Triceps::opcodeString(&Triceps::OP_INSERT);
 			<primary>error handling</primary>
 		</indexterm>
 		<para>
-		would print <quote>OP_INSERT</quote> If the argument is out of range of
-		the valid enums, it would return <pre>undef</pre> (but not set any error
-		message in <pre>$!</pre>, since it's not a fatal error).
+		would print <quote>OP_INSERT</quote>.
+		If the argument is out of range of the valid enums, it would confess.
+		There is also a version of these functions ending with <pre>Safe</pre>:
+		</para>
+
+<pre>
+print &Triceps::opcodeStringSafe(&Triceps::OP_INSERT);
+</pre>
+
+		<para>
+		The difference is that it returns <pre>undef</pre> if the input value
+		is out of range, thus being safe from confessions.
 		</para>
 
 		<para>
@@ -543,12 +552,14 @@ print &Triceps::opcodeString(&Triceps::OP_INSERT);
 
 <pre>
 &Triceps::stringOpcode("OP_INSERT")
+&Triceps::stringOpcodeSafe("OP_INSERT")
 </pre>
 
 		<para>
 		would return the integer value of <pre>Triceps::OP_INSERT</pre>. If the
 		string name is not valid for this kind of constants, it would also
-		return <pre>undef</pre>.
+		either confess without <pre>Safe</pre> in the name or return <pre>undef</pre>
+		with it.
 		</para>
 	</sect1>
 

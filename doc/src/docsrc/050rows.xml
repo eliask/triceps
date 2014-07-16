@@ -456,7 +456,7 @@ $row = $rowType->makeRowHash($fieldName => $fieldValue, ...);
 
 		<para>
 		Here <pre>$row</pre> is a reference to the resulting row. As usual, in case of
-		error it will be left as <pre>undef</pre>, with the error message in <pre>$!</pre>.
+		error it will confess.
 		</para>
 
 		<para>

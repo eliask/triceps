@@ -1744,22 +1744,18 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 
 		<para>
 		This assumes that the row type will have a numeric field <quote>a</quote> and a
-		string field <quote>b</quote>. The problem is that if it doesn't then this will not
+		string field <quote>b</quote>. If it doesn't then this will not
 		be discovered until you create a table and try to insert some rows into
-		it, which will finally call the comparison function. Even then it won't
-		be exactly obvious because this comparison function never checks <pre>"$!"</pre>
-		after <pre>get()</pre>, and you'll see no failures but all the rows will be
-		considered equal and will replace each other.
+		it, which will finally call the comparison function. At which point
+		the attempt to get a non-existing field will confess, this error
+		will be caught by the table and set the sticky error in it. The insert
+		operation will confess with this error, and any future operations
+		on the table will also confess with this error, the table will become
+		unusable.
 		</para>
 
 		<para>
-		You could check that the arguments match the row type
-		(<pre>$row1->getType()</pre>) in the comparison function but that would add
-		extra overhead, and the Perl comparisons are slow enough as they are.
-		</para>
-
-		<para>
-		The <pre>$initFunc</pre> provides a way to do that check and more.
+		The <pre>$initFunc</pre> provides a way to do that check and more up front.
 		It is called at the table type initialization time. By this time all
 		this extra information is known, and it gets the references to the
 		table type, index type (itself, but with the class stripped back to

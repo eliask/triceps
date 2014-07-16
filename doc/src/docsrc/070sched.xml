@@ -2589,6 +2589,8 @@ $tracer = Triceps::UnitTracerPerl->new($sub, @args);
 <pre>
 $string = &Triceps::tracerWhenString($value);
 $value = &Triceps::stringTracerWhen($string);
+$string = &Triceps::tracerWhenStringSafe($value);
+$value = &Triceps::stringTracerWhenSafe($string);
 </pre>
 
 		<para>
@@ -2607,6 +2609,8 @@ $value = &Triceps::stringTracerWhen($string);
 <pre>
 $string = &Triceps::tracerWhenHumanString($value);
 $value = &Triceps::humanStringTracerWhen($string);
+$string = &Triceps::tracerWhenHumanStringSafe($value);
+$value = &Triceps::humanStringTracerWhenSafe($string);
 </pre>
 
 		<para>

@@ -170,6 +170,8 @@ $unit->enqueque($mode, @rowops_or_trays);
 <pre>
 $string = &Triceps::emString($value);
 $value = &Triceps::stringEm($string);
+$string = &Triceps::emStringSafe($value);
+$value = &Triceps::stringEmSafe($string);
 </pre>
 
 		<para>
