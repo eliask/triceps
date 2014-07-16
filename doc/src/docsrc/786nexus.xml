@@ -18,7 +18,6 @@ See the file COPYRIGHT for the copyright notice and license information
 		<indexterm>
 			<primary>Nexus</primary>
 		</indexterm>
-
 		<para>
 		The Nexus class is pretty much opaque. It's created and managed
 		entirely inside the App infrastructure from a Facet, and even the
