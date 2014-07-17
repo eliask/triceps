@@ -1,5 +1,5 @@
 Things that need to be done:
-* make a Triceps version of confess() - see blog 255*
+* make a Triceps version of confess() - see blog 255*, 256*
 * check the labels for belonging to a right unit when enqueueing?
 * in Rowop construction replace asserts with exceptions
 * remove the enqueueing mode in Rowops, and in Unit::enqueueDelayedTray(), and in table output
@@ -160,7 +160,6 @@ tangent 144, 157, 191, 197, 199, 204, 206, 279
 171-172 TQL
 226 about TQL: no more need for rightIdxPath in {join}
 227-228 TQL
-256-257
 259-260
 261 except Unit, FnReturn
 262-267

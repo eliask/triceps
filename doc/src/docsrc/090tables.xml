@@ -2826,9 +2826,11 @@ $idxTypeCopy = $idxType->copy();
 
 <pre>
 $itSub = $tabType->findSubIndex("indexName");
+$itSub = $tabType->findSubIndexSafe("indexName");
 @itSubs = $tabType->getSubIndexes();
 
 $itSub = $idxType->findSubIndex("indexName");
+$itSub = $idxType->findSubIndexSafe("indexName");
 @itSubs = $idxType->getSubIndexes();
 </pre>
 
@@ -2837,6 +2839,8 @@ $itSub = $idxType->findSubIndex("indexName");
 		<xref linkend="sc_table_secondary" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		It allows to find the index types on the next level of nesting, starting
 		down from the table, and going recursively into the sub-indexes.
+		The <pre>Safe</pre> versions return <pre>undef</pre> if the index is not
+		found, instead of confessing.
 		<pre>getSubIndexes()</pre> returns the information about the index types of the
 		next level at once, as the name => value pairs. The result array
 		can be placed into a hash but that would lose the order

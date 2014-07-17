@@ -232,6 +232,7 @@ $indexType2->addSubIndex("indexName", $indexType1);
 
 <pre>
 $itSub = $it->findSubIndex("indexName");
+$itSub = $it->findSubIndexSafe("indexName");
 $itSub = $it->findSubIndexById($indexTypeId);
 
 @itSubs = $it->getSubIndexes();

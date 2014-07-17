@@ -175,7 +175,9 @@ $value = &Triceps::stringEmSafe($string);
 </pre>
 
 		<para>
-		And as usual, if the value can not be translated, they return <pre>undef</pre>.
+		And as usual, if the value can not be translated, the functions
+		with <pre>Safe</pre> return <pre>undef</pre>, the functions without
+		it confess.
 		</para>
 
 		<!-- XXXX update the loop methods per the new logic -->

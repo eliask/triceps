@@ -96,6 +96,7 @@ $rowType = $tt->getRowType();
 
 <pre>
 $indexType = $tt->findSubIndex("indexName");
+$indexType = $tt->findSubIndexSafe("indexName");
 </pre>
 
 		<para>
@@ -103,6 +104,8 @@ $indexType = $tt->findSubIndex("indexName");
 		This is symmetric with <pre>addSubIndex()</pre>, so it works only for the
 		top-level index types. To get the nested ones, repeat the same call on
 		the found index types or see the following methods.
+		The <pre>Safe</pre> version returns <pre>undef</pre> if the index is not
+		found, instead of confessing.
 		</para>
 
 <pre>

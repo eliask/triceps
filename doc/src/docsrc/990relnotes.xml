@@ -173,7 +173,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			The <pre>getTabtypeSafe()</pre> method added in the IndexType Perl API.
+			The <pre>*Safe()</pre> methods added to the Perl API.
 			</listitem>
 
 			<listitem>

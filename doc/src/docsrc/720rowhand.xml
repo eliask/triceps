@@ -58,7 +58,8 @@ $result = $rh->isInTable();
 </pre>
 
 		<para>
-		Finds out, whether the row handle is inserted in the table.
+		Finds out, whether the row handle is inserted in the table. If the
+		row handle is NULL, it will quietly return 0.
 		</para>
 
 <pre>
@@ -92,11 +93,14 @@ $result = $rh1->same($rh2);
 
 <pre>
 $row = $rh->getRow();
+$row = $rh->getRowSafe();
 </pre>
 
 		<para>
 		Extracts the row from the handle. The row will have the type of the
-		table's row type. A row can not be extracted from a NULL row handle.
+		table's row type. A row can not be extracted from a NULL row handle,
+		in this situation <pre>getRow()</pre> will confess and <pre>getRowSafe()</pre>
+		will return <pre>undef</pre>.
 		</para>
 
 <pre>
