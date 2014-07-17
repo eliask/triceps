@@ -182,6 +182,33 @@ eval { $self->{unit}->call($rowop) }
 		</para>
 
 		<para>
+		A known problem with <pre>confess</pre> in a threaded program
+		is that it leaks the scalars, apparently by leaving garbage on the Perl stack,
+		even when intercepted with <pre>eval</pre>. It's actually not a problem when the confession
+		is not intercepted, then the program exits anyway. But if confessing
+		frequently and catching these confessions, the leak can accumulate
+		to something noticeable.
+		</para>
+
+		<para>
+		The problem seems to be in the line 
+		</para>
+
+<pre>
+package DB;
+</pre>
+
+		<para>
+		in the middle of one
+		of its internal functions. Perhaps changing the package in the middle
+		of a function is not such a great idea, leaving some garbage on the
+		stack. The most interesting part is that this line can be removed
+		altogether, with no adverse effects, and then the leak stops.
+		So be warned and don't be surprised. Maybe it will get fixed.
+		</para>
+
+		<para>
+		Now let's look at how the &Cpp; parts of Triceps interact with confessions.
 		When the Perl code inside a label or tracer or aggregator or index sorting handler dies, the &Cpp;
 		infrastructure around it catches the error. 
 		It unrolls the stack trace through the
