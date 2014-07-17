@@ -85,6 +85,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		<xi:include href="file:///DOCS/784towner.xml"/>
 		<xi:include href="file:///DOCS/786nexus.xml"/>
 		<xi:include href="file:///DOCS/788facet.xml"/>
+		<xi:include href="file:///DOCS/790autodrain.xml"/>
 
 		<!-- XXX add references for all the X modules! -->
 </chapter>
