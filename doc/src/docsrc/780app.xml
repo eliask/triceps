@@ -575,7 +575,7 @@ Triceps::App::requestDrain($appOrName);
 		<para>
 		If an exclusive drain by another thread is active when <pre>requestDrain()</pre>
 		is called, the call will be stuck until the exclusive drain becomes
-		undrained (and potentially more exclusive drains might be queued up
+		released (and potentially more exclusive drains might be queued up
 		before the shared drain, using the POSIX read-write-lock
 		implementation). Otherwise the call will set the appropriate state and
 		return immediately.
@@ -583,14 +583,14 @@ Triceps::App::requestDrain($appOrName);
 
 		<para>
 		If this thread has requested an exclusive drain previously (and didn't
-		undrain it yet), an attempt to get a shared drain in the same thread
+		release it yet), an attempt to get a shared drain in the same thread
 		will likely deadlock. The same applies in the opposite order as well.
 		</para>
 
 		<para>
 		Once the shared drain is requested, the input-only threads will be
 		blocked from sending more data (any their attempts to flush their write
-		facets will get stuck until undrain), and the rest of the threads will
+		facets will get stuck until release), and the rest of the threads will
 		continue churning through the data buffered in the nexuses until all
 		the nexuses are empty and there is no more data to process (yes, these
 		threads will continue writing to their write facets).
@@ -602,6 +602,26 @@ Triceps::App::requestDrain($appOrName);
 		deadlock. The whole concept is doable, but an exclusive drain must be
 		used instead (<quote>exclusive</quote> means that a designated input-only thread is
 		excluded from blocking).
+		</para>
+
+		<para>
+		If the new Trieads are
+		created while a drain is active, these Trieads will be notified of the
+		drain. This means that the input-only Trieads won't be able to send any
+		data until the drain is released. However the Trieads in the middle of
+		the model will follow the normal protocol for such threads: the drain
+		will become incomplete after the Triead is marked as ready and until it
+		blocks on the following <pre>TrieadOwner::nextXtray()</pre>. Normally this should be a very
+		short amount of time. However such Trieads should take care to 
+		check <pre>TrieadOwner::isRdDrain()</pre> and never
+		send any rowops on their own before reading from <pre>nextXtray()</pre> if they
+		find that <pre>isRdDrain()</pre> returns true. Otherwise they may
+		introduce the data into the model at a very inconvenient moment, when
+		some logic expects that no data is changing, and cause a corruption.
+		This is the same caveat as for using <pre>nextXtray()</pre> varieties with the
+		timeouts: if you want to send data on a timeout, always check
+		<pre>isRqDrain()</pre>, and never send any data on timeouts if <pre>isRqDrain()</pre> returns
+		true.
 		</para>
 
 <pre>
@@ -616,7 +636,7 @@ Triceps::App::waitDrain($appOrName);
 		<para>
 		The effect of <pre>waitDrain()</pre> without a preceding <pre>requestDrain()</pre> is
 		undefined. If you definitely know that some other thread has requested
-		a drain and didn't undrain yet, it will work as normal, so you can have
+		a drain and didn't release yet, it will work as normal, so you can have
 		any number of threads wait for drain in parallel. (And the semantics,
 		shared or exclusive, will match that currently active request). If no
 		thread requested a drain, it might either return immediately

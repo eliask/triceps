@@ -22,10 +22,10 @@ See the file COPYRIGHT for the copyright notice and license information
 		The AutoDrain class creates the drains on an App with the automatic
 		scoping. When the returned AutoDrain object gets destroyed, the drain
 		becomes released. So placing the object into a lexically-scoped
-		variable in a block with cause the undrain on the block exit. Placing
-		it into another object will cause the undrain on deletion of that
+		variable in a block with cause the release on the block exit. Placing
+		it into another object will cause the release on deletion of that
 		object. And just not storing the object anywhere works as a barrier:
-		the drain gets completed and then immediately undrained, guaranteeing
+		the drain gets completed and then immediately released, guaranteeing
 		that all the previously sent data is processed and then continuing with
 		the processing of the new data.
 		</para>
