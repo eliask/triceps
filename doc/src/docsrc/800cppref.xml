@@ -171,5 +171,6 @@ See the file COPYRIGHT for the copyright notice and license information
 	<xi:include href="file:///DOCS/890autodrain.xml"/>
 	<xi:include href="file:///DOCS/892sigusr2.xml"/>
 	<xi:include href="file:///DOCS/894tjoin.xml"/>
+	<xi:include href="file:///DOCS/896fileint.xml"/>
 
 </chapter>
