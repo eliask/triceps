@@ -68,8 +68,14 @@ $to = Triceps::TrieadOwner::new($tid, $handle, $appOrName, $tname, $fragname);
 
 		<para>
 		The signal used for interruption is <pre>SIGUSR2</pre>. Triceps sets its default
-		handler that does nothing on this signal, but you can define your own
-		handler instead.
+		handler that does nothing on this signal. This is done in
+		the method <pre>Triceps::sigusr2_setup()</pre>, and it gets called
+		during the Triceps module loading. Internally it translates to the &Cpp;
+		method <pre>Sigusr2::setup()</pre> that sets the dummy handler on the first call.
+		The reason why it has to be done in &Cpp; is that Perl 5.19 crashes on SIGUSR2
+		if the handler is set in Perl.
+		If you're interested in the details, see
+		<ulink url="https://rt.perl.org/rt3//Public/Bug/Display.html?id=118929"/>.
 		</para>
 
 		<para>
