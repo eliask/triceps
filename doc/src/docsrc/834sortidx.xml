@@ -371,6 +371,9 @@ intptr_t rhOffset_;
 		be defined. Now let's look at some more advances subjects.
 		</para>
 
+		<indexterm>
+			<primary>sticky error</primary>
+		</indexterm>
 		<para>
 		What if operator() needs to to report an error? It has to set
 		the sticky error in the table and return false:

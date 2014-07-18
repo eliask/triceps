@@ -1742,6 +1742,9 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 	\&compAscDesc, "a", "b");
 </pre>
 
+		<indexterm>
+			<primary>sticky error</primary>
+		</indexterm>
 		<para>
 		This assumes that the row type will have a numeric field <quote>a</quote> and a
 		string field <quote>b</quote>. If it doesn't then this will not
@@ -1750,7 +1753,8 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 		the attempt to get a non-existing field will confess, this error
 		will be caught by the table and set the sticky error in it. The insert
 		operation will confess with this error, and any future operations
-		on the table will also confess with this error, the table will become
+		on the table will also confess with this error (this is the meaning of
+		<quote>sticky</quote>), the table will become
 		unusable.
 		</para>
 

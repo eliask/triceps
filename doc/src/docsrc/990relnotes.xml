@@ -55,11 +55,11 @@ See the file COPYRIGHT for the copyright notice and license information
 		<itemizedlist>
 			<listitem>
 			No more copy trays in the tables, they've got replaced by treating the table
-			as a streaming function (the automatically generated FnReturn).
+			as a streaming function (the automatically generated FnReturn in a Table).
 			</listitem>
 
 			<listitem>
-			When a hashed index type is initialized, its match() method 
+			When a hashed index type is initialized, its <pre>match()</pre> method 
 			takes the field name-to-index translation into account, and matches
 			even if the key field names are different but translating to the
 			same indexes.
@@ -72,10 +72,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			The execution of rowops enqueued by fork() and loopAt() has changed:
+			The execution of rowops enqueued by <pre>fork()</pre> and <pre>loopAt()</pre> has changed:
 			now they reuse the parent's stack frame. This changed the looping
 			logic: the marks are now set on the current, not parent's frame,
-			and the makeLoop* calls don't need, don't create and don't return
+			and the <pre>makeLoop*</pre> calls don't need, don't create and don't return
 			the begin label.
 			</listitem>
 
@@ -92,12 +92,21 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			In Table added <pre>clear()</pre>, sticky error methods, fixed the handling
+			of errors in the index comparators to produce the sticky errors.
+			</listitem>
+
+			<listitem>
 			The Unit ignores the attempts to remember, forget or clear labels while
 			it's already clearing labels.
 			</listitem>
 
 			<listitem>
-			Added Table::clear().
+			In Unit added <pre>isFrameEmpty</pre>, <pre>isInOuterFrame()</pre>.
+			</listitem>
+
+			<listitem>
+			In Rowop added an optional argument to <pre>printP()</pre>.
 			</listitem>
 
 			<listitem>
@@ -119,8 +128,8 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			In the &Cpp; API AggregatorGadget added the typeAs() template and the
-			version of sendDelayed() that constructs the row from the fields.
+			In the &Cpp; API AggregatorGadget added the <pre>typeAs()</pre> template and the
+			version of <pre>sendDelayed()</pre> that constructs the row from the fields.
 			</listitem>
 
 			<listitem>
@@ -128,7 +137,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			In &Cpp; added the method Label::adopt(), making it easier
+			In &Cpp; added the method <pre>Label::adopt()</pre>, making it easier
 			to remember.
 			</listitem>
 
@@ -141,11 +150,11 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			In &Cpp; addded the convenience get* methods on Rowref.
+			In &Cpp; addded the convenience <pre>get*</pre> methods on Rowref.
 			</listitem>
 
 			<listitem>
-			In &Cpp; addded the initializeOrThrow(), checkOrThrow() templates.
+			In &Cpp; addded the <pre>initializeOrThrow()</pre>, <pre>checkOrThrow()</pre> templates.
 			</listitem>
 
 			<listitem>
@@ -158,7 +167,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			The Triceps::X::SimpleServer::outBuf() now checks for the client
+			The <pre>Triceps::X::SimpleServer::outBuf()</pre> now checks for the client
 			disconnection before sending data to it.
 			</listitem>
 

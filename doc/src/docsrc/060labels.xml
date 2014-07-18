@@ -622,6 +622,7 @@ $row = $rowop->getRow();
 
 <pre>
 $string = $rowop->printP();
+$string = $rowop->printP($name);
 </pre>
 
 		<para>
@@ -651,6 +652,34 @@ lb OP_INSERT a="123" b="456" c="3000000000000000" d="3.14" e="text"
 		<para>
 		The row contents is printed through <pre>Row::printP()</pre>, so it has
 		the same format.
+		</para>
+
+		<para>
+		The optional argument allows to override the name of the label
+		printed. For example, if in the example above the last line were
+		to be replaced with
+		</para>
+
+<pre>
+print $rowop->printP("OtherLabel"), "\n";
+</pre>
+
+		<para>
+		the result will become:
+		</para>
+
+<pre>
+OtherLabel OP_INSERT a="123" b="456" c="3000000000000000" d="3.14" e="text" 
+</pre>
+
+		<para>
+		It makes the printing of rowops in the chained
+		labels more convenient. A chained label's execution handler receives
+		the original unchanged rowop that refers to the first label in the
+		chain. So when it gets printed, it will print the name of the first
+		label in the chain, which might be very surprising. The explicit
+		argument allows to override it to the name of the chained label (or to
+		any other value).
 		</para>
 	</sect1>
 

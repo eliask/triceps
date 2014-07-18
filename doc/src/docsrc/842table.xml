@@ -355,8 +355,11 @@ RowHandle *findRowIdx(IndexType *ixt, const Row *what) const;
 		perform the search.
 		</para>
 
+		<sect2 id="sc_cpp_table_dump">
+		<title>Data dump</title>
+
 		<para>
-		Next goes the dump API that sends the whole contents of the table to
+		The dump API of the table sends the whole contents of the table to
 		the <quote>dump</quote> label, thus making any labels connected to it perform an
 		implicit iteration over the table.
 		</para>
@@ -397,5 +400,67 @@ void dumpAllIdx(IndexType *ixt, Rowop::Opcode op = Rowop::OP_INSERT) const;
 		details and examples.
 		</para>
 
+		</sect2>
+		<sect2 id="sc_cpp_table_sticky">
+		<title>Sticky errors</title>
+
+		<indexterm>
+			<primary>sticky error</primary>
+		</indexterm>
+		<para>
+		The table
+		internals contain a few places where the errors can't just throw an
+		Exception because it will mess up the logic big time, most specifically
+		the comparator functions for the indexes. The Triceps built-in indexes
+		can't encounter any errors in the comparators but the user-defined
+		ones, such as the Perl Sorted Index, can. Previously there was no way
+		to report these errors other than print the error message and then
+		either continue pretending that nothing happened or abort the program.
+		</para>
+
+		<para>
+		The sticky errors provide a way out of this sticky situation. When an
+		index comparator encounters an error, it reports it as a sticky error
+		in the table and then returns false. The table logic then unrolls like
+		nothing happened for a while, but before returning from the
+		user-initiated method it will find this sticky error and throw an
+		Exception at a safe time. Obviously, the incorrect comparison means
+		that the table enters some messed-up state, so all the further
+		operations on the table will keep finding this sticky error and throw
+		an Exception right away, before doing anything. The sticky error can't
+		be unstuck. The only way out of it is to just discard the table and
+		move on.
+		</para>
+
+<pre>
+void setStickyError(Erref err);
+</pre>
+
+		<para>
+		Set the sticky error from a location where an exception can not be
+		thrown, such as from the comparators in the indexes. Only the first
+		error sticks, all the others are ignored since (a) the table will be
+		dead and throwing this error in exceptions from this point on anyway
+		and (b) the comparator is likely to report the same error repeatedly
+		and there is no point in seeing multiple copies.
+		</para>
+
+<pre>
+Errors *getStickyError() const;
+</pre>
+
+		<para>
+		Get the table's sticky error. Normally there is no point in doing this
+		manually, but just in case.
+		</para>
+
+<pre>
+void checkStickyError() const;
+</pre>
+
+		<para>
+		If the sticky error has been set, throws an Exception with it. 
+		</para>
+		</sect2>
 	</sect1>
 
