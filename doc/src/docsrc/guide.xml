@@ -87,43 +87,25 @@ See the file COPYRIGHT for the copyright notice and license information
 	-->
 
 	<xi:include href="file:///DOCS/010field.xml"/>
-
 	<xi:include href="file:///DOCS/020enter.xml"/>
-
 	<xi:include href="file:///DOCS/030build.xml"/>
-
 	<xi:include href="file:///DOCS/040apifund.xml"/>
-
 	<xi:include href="file:///DOCS/050rows.xml"/>
-
 	<xi:include href="file:///DOCS/060labels.xml"/>
-
 	<xi:include href="file:///DOCS/070sched.xml"/>
-
 	<xi:include href="file:///DOCS/080memory.xml"/>
-
 	<xi:include href="file:///DOCS/090tables.xml"/>
-
 	<xi:include href="file:///DOCS/100templates.xml"/>
-
 	<xi:include href="file:///DOCS/110aggregation.xml"/>
-
 	<xi:include href="file:///DOCS/120joins.xml"/>
-
 	<xi:include href="file:///DOCS/130time.xml"/>
-
 	<xi:include href="file:///DOCS/140other.xml"/>
-
 	<xi:include href="file:///DOCS/150strf.xml"/>
-
 	<xi:include href="file:///DOCS/160mt.xml"/>
-
+	<xi:include href="file:///DOCS/300perf.xml"/>
 	<xi:include href="file:///DOCS/700ref.xml"/>
-
 	<xi:include href="file:///DOCS/800cppref.xml"/>
-
 	<xi:include href="file:///DOCS/990relnotes.xml"/>
-
 	<xi:include href="file:///DOCS/biblio.xml"/>
 
 	<index/>

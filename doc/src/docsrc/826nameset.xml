@@ -23,7 +23,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</indexterm>
 		<para>
 		NameSet is a helper class used as an argument for construction of
-		other classes, most notably HashedIndexType.
+		other classes, most notably HashedIndexType. It's an Mtarget.
 		</para>
 
 		<para>

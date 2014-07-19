@@ -156,10 +156,9 @@ App ideas:
 * the challenges from http://www.orgs.ttu.edu/debs2013/
 * look at the use with RabbitMQ
 
-tangent 144, 157, 191, 197, 199, 204, 206, 279
+tangent 144, 157, 191, 197, 199, 204, 206, 271, 272, 274, 277, 279
 171-172 TQL
 226 about TQL: no more need for rightIdxPath in {join}
 227-228 TQL
-269-277
-282 except App
+275
 *** next 283
