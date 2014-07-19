@@ -491,6 +491,7 @@ printf("Lookup join (single hashed idx) %f s, %.02f per second.\n", $df, $pcount
 	);
 }
 $df = $end - $start;
+my $onerowdf = $df;
 
 printf("Nexus pass (1 row/flush) %f s, %.02f per second.\n", $df, $pcount/$df);
 
@@ -562,7 +563,12 @@ printf("Nexus pass (1 row/flush) %f s, %.02f per second.\n", $df, $pcount/$df);
 }
 $df = $end - $start;
 
-printf("Nexus pass (10 rows/flush) %f s, %.02f per second.\n", $df, $pcount*10/$df);
+printf("Nexus pass (10 rows/flush) %f s, %.02f per row per second.\n", $df, $pcount*10/$df);
+
+my $perrowdf = ($df - $onerowdf)/9.;
+printf("  Overhead of each row %f s, %.02f per second.\n", $perrowdf, $pcount/$perrowdf);
+my $perflushdf1 = $onerowdf - $perrowdf;
+printf("  Overhead of flush %f s, %.02f per second.\n", $perflushdf1, $pcount/$perflushdf1);
 
 #########################
 
