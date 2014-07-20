@@ -950,7 +950,7 @@ public:
 	{ 
 	}
 
-	// overrides BasicPthread::start
+	// overrides BasicPthread::execute
 	virtual void execute(TrieadOwner *to)
 	{
 		to->mainLoop(); // test of mainLoop
