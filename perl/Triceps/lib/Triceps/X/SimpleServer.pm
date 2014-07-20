@@ -302,16 +302,21 @@ sub makeExitLabel # ($unit, $name)
 #
 # @param fromLabel - the new label will be chained to this one and get the
 #        data from it
+# @param printName - if present, overrides the label name printed
 # @return - the newly created label object
-sub makeServerOutLabel # ($fromLabel)
+sub makeServerOutLabel # ($fromLabel [, $printName])
 {
 	no warnings; # or in tests prints a lot of warnings about undefs
 	my $fromLabel = shift;
+	my $printName = shift;
 	my $unit = $fromLabel->getUnit();
 	my $fromName = $fromLabel->getName();
+	if (!$printName) {
+		$printName = $fromName;
+	}
 	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
 		$fromName . ".serverOut", undef, sub {
-			&outCurBuf(join(",", $fromName, 
+			&outCurBuf(join(",", $printName, 
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
 		});

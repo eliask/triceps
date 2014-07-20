@@ -566,21 +566,18 @@ sub _tqlPrint # ($ctx, @args)
 		# no need for end-of-data notification, the framework code will
 		# take care of it (and it's not end-of-data but end-of-dump)
 	} else {
-		# XXX This gets the printed label name from the auto-generated label name,
-		# which is not a good practice.
-		# XXX Should have a custom query name somewhere in the context?
 		if ($tokenized) {
 			# print in the tokenized format
 			$prev->makeChained("lb" . $ctx->{id} . "print", undef, sub {
-				&Triceps::X::SimpleServer::outCurBuf($_[1]->printP() . "\n");
-			});
+				&Triceps::X::SimpleServer::outCurBuf($_[1]->printP($_[2]) . "\n");
+			}, $ctx->{qname});
 		} else {
-			Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev});
+			Triceps::X::SimpleServer::makeServerOutLabel($ctx->{prev}, $ctx->{qname});
 		}
 
 		# The end-of-data notification. It will run after the current pipeline
 		# finishes.
-		my $prevname = $prev->getName();
+		my $prevname = $ctx->{qname};
 		push @{$ctx->{actions}}, sub {
 			&Triceps::X::SimpleServer::outCurBuf("+EOD,OP_NOP,$prevname\n");
 		};
