@@ -2097,6 +2097,7 @@ Connection closed.
 		function, either of which can be placed into a dispatch table:
 		</para>
 
+<!-- t/lib/Triceps/SimpleServer.pm -->
 <pre>
 # A dispatch function, sending anything to which will exit the server.
 # The server will not flush the outputs before exit.
@@ -2134,26 +2135,40 @@ sub makeExitLabel # ($unit, $name)
 </pre>
 
 		<para>
-		There is also a function for making the labels that output
-		their rows in CSV to the client:
+		<pre>makeExitLabel()</pre> is quite simple, it creates a label with hardcoded
+		function of setting the flag <pre>$srv_exit</pre>. Even its row type
+		is hardcoded to the empty rows. <pre>exitFunc()</pre> sets the same flag
+		directly.
 		</para>
 
+		<para>
+		There is also a function for making the labels that output
+		their rows to the client in CSV format (as usual, no commas in the
+		values, the same as is expected by the socket server):
+		</para>
+
+<!-- t/lib/Triceps/SimpleServer.pm -->
 <pre>
 # Create a label that will print the data in CSV format to the server output
 # (to the current client).
 #
 # @param fromLabel - the new label will be chained to this one and get the
 #        data from it
+# @param printName - if present, overrides the label name printed
 # @return - the newly created label object
-sub makeServerOutLabel # ($fromLabel)
+sub makeServerOutLabel # ($fromLabel [, $printName])
 {
 	no warnings; # or in tests prints a lot of warnings about undefs
 	my $fromLabel = shift;
+	my $printName = shift;
 	my $unit = $fromLabel->getUnit();
 	my $fromName = $fromLabel->getName();
+	if (!$printName) {
+		$printName = $fromName;
+	}
 	my $lbOut = $unit->makeLabel($fromLabel->getType(), 
 		$fromName . ".serverOut", undef, sub {
-			&outCurBuf(join(",", $fromName, 
+			&outCurBuf(join(",", $printName, 
 				&Triceps::opcodeString($_[1]->getOpcode()),
 				$_[1]->getRow()->toArray()) . "\n");
 		});
@@ -2161,6 +2176,16 @@ sub makeServerOutLabel # ($fromLabel)
 	return $lbOut;
 }
 </pre>
+
+		<para>
+		<pre>makeServerOutLabel()</pre> finds the
+		unit and row type from the parent label, creates the printing label
+		and chains it off the parent label. The newly created label is returned.
+		The return value can be kept in a variable or immediately discarded;
+		since the created label is already chained, it won't disappear.
+		Tha name of the new label is produced from the name of the parent
+		label by appending <quote>.serverOut</quote> to it.
+		</para>
 
 		<indexterm>
 			<primary>DumbClient</primary>

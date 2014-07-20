@@ -102,6 +102,7 @@ See the file COPYRIGHT for the copyright notice and license information
 	<xi:include href="file:///DOCS/140other.xml"/>
 	<xi:include href="file:///DOCS/150strf.xml"/>
 	<xi:include href="file:///DOCS/160mt.xml"/>
+	<xi:include href="file:///DOCS/250tql.xml"/>
 	<xi:include href="file:///DOCS/300perf.xml"/>
 	<xi:include href="file:///DOCS/700ref.xml"/>
 	<xi:include href="file:///DOCS/800cppref.xml"/>

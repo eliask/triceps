@@ -128,8 +128,9 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			In the &Cpp; API AggregatorGadget added the <pre>typeAs()</pre> template and the
-			version of <pre>sendDelayed()</pre> that constructs the row from the fields.
+			In the &Cpp; API AggregatorGadget added the <pre>typeAs()</pre> template, the
+			version of <pre>sendDelayed()</pre> that constructs the row from the fields,
+			and <pre>getIndexType()</pre>.
 			</listitem>
 
 			<listitem>
