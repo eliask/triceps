@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5CR3//EN"
+	"http://www.oasis-open.org/docbook/xml/4.5CR3/docbookx.dtd" [
+<!ENTITY % userents SYSTEM "file:///ENTS/user.ent" >
+%userents;
+]>
+
+<!--
+(C) Copyright 2011-2013 Sergey A. Babkin.
+This file is a part of Triceps.
+See the file COPYRIGHT for the copyright notice and license information
+-->
+
+<chapter id="ch_tql" xmlns:xi="http://www.w3.org/2001/XInclude">
+	<title>TQL, Triceps Trivial Query Language</title>
+
+	<sect1 id="sc_tql_intro">
+		<title>Introduction to TQL</title>
+
+		<indexterm>
+			<primary>main loop</primary>
+		</indexterm>
+		<indexterm>
+			<primary>loop</primary>
+			<secondary>main</secondary>
+		</indexterm>
+		<indexterm>
+			<primary>TQL</primary>
+		</indexterm>
+		<para>
+		Triceps by itself is a library that can be embedded into any program
+		to add the CEP functionality. But sometimes having a ready server process
+		that handles the communications and queries and wraps the CEP logic
+		within itself is a great convenience.  TQL, the Triceps Trivial Query 
+		Language, is used in this server.
+		</para>
+
+		<para>
+		The server is useful as both a tool to play with Triceps programs
+		and as an example of implementation.
+		It all started with the example of simple queries in 
+		<xref linkend="sc_sched_mainloop_socket" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		then I've wanted to use the queries to demonstrate a feature of the
+		streaming functions, then I've wanted to use it for a threaded
+		logic demonstration, so it has been growing over time.
+		</para>
+
+		<para>
+		This server and the TQL are so far of only an example quality, but TQL
+		is extensible and it already can do some interesting things.
+		The <quote>example quality</quote> means that they work but they
+		don't have an extensive set of tests for every possibility,
+		so it could happen that some corner cases don't work so well.
+		</para>
+
+		<para>
+		Why not SQL, after all, there are multiple parser building tools
+		available in Perl? Partially, because I wanted to keep it trivial and
+		to avoid introducing extra dependencies, especially just for the
+		examples. Partially, because I don't like SQL. I think that the queries
+		can be expressed much more naturally in the form of shell-like
+		pipelines. At one of my past jobs I wrote a simple toolkit for querying and
+		comparison of the CSV files (yeah, I didn't find the DBD::CSV module),
+		I've used a pipeline semantics and it worked pretty well. It also did
+		things that are quite difficult with SQL, like mass renaming and
+		reordering of fields, and diffing. Although TQL is not a descendant of
+		the language I've used in that query tool, it is a further development
+		of the pipeline idea. As I've found later, there are other products
+		that also use the pipeline approach for the queries, such as the PowerShell.
+		</para>
+	</sect1>
+
+	<sect1 id="sc_tql_syntax">
+		<title>TQL syntax</title>
+
+		<para>
+		Syntactically, TQL is very simple: its query is represented as a
+		nested list, similar to Tcl (or if you like Lisp better, you can think
+		that it's similar to Lisp but with different parentheses). A list is
+		surrounded by curly braces <quote>{}</quote>. The elements of a list are either
+		other lists or words consisting of non-space characters.
+		</para>
+
+<exdump>
+{word1 {word21 word22} word3}
+</exdump>
+
+		<para>
+		Unlike Tcl, there are no quotes in the TQL syntax, the quote characters
+		are just the normal word characters. If you want to include spaces into
+		a word, you use the curly braces instead of the quotes.
+		</para>
+
+<exdump>
+{ this is a {brace-enquoted} string with spaces and nested braces }
+</exdump>
+
+		<para>
+		Note that the spaces inside a list are used as delimiters and thrown
+		away but within a brace-quoted word-string they are significant. How do
+		you know, which way they will be treated in a particular case? It all
+		depends on what is expected in this case. If the command expects a
+		string as an argument, it will treat it as a string. If the command
+		expects a list as an argument, it will treat it as a list.
+		</para>
+
+		<para>
+		What if you need to include an unbalanced brace character inside a
+		string? Escape it with a backslash, <quote>\{</quote>. The other usual Perl
+		backslash sequences work too (though in the future TQL may get
+		separated from Perl and then only the C sequences will work, that is to
+		be seen). Any non-alphanumeric characters (including spaces) can be
+		prepended with a backslash too. An important point is that when you
+		build the lists, unlike shell, and like Tcl, you do the backslash
+		escaping only once, when accepting a raw string. After that you can
+		include the string with escapes into the lists of any depth without any
+		extra escapes (and you must not add any extra escapes in the lists).
+		</para>
+
+		<para>
+		Unlike shell, you can't combine a single string out of the quoted and
+		unquoted parts. Instead the quoting braces work as implicit separators.
+		For example, if you specify a list as {a{b}c d}, you don't get two
+		strings <quote>abc</quote> and <quote>d</quote>, you get four 
+		strings <quote>a</quote>, <quote>b</quote>, <quote>c</quote>, <quote>d</quote>.
+		</para>
+
+		<para>
+		The parsing of the lists is done with the package Braced, with some more
+		examples shown in 
+		<xref linkend="sc_ref_braced" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
+
+		<para>
+		A TQL query is a list that represents a pipeline. Each element of the
+		list is a command. The first command reads the data from a table, and
+		the following commands perform transformations on that data. For
+		example:
+		</para>
+
+<exdump>
+{read table tWindow} {project fields {symbol price}} {print tokenized 0}
+</exdump>
+
+		<para>
+		If the print command is missing at the end of the pipeline, it will be
+		added implicitly, with the default arguments: <pre>{print}</pre>.
+		</para>
+
+		<para>
+		The arguments of each TQL command are always in the option name-value
+		format, very much like the Perl constructors of many Triceps objects.
+		There aren't any arguments in TQL that go by themselves without an
+		option name.
+		</para>
+
+		<para>
+		So for example the command <pre>read</pre> above has an option <quote>table</quote> with
+		value <quote>tWindow</quote>. The command <pre>project</pre> has an option <quote>fields</quote> with a
+		list value of two elements. In this case the elements are simple words
+		and don't need the further bracing. But the braces around it won't hurt.
+		Say, if you wanted to rename the field <quote>price</quote> to <quote>trade_price</quote>, you
+		use the <pre>Triceps::Fields::filter()</pre> syntax for it, and even though the
+		format doesn't contain any spaces and can be still used just as a word,
+		it looks nicer with the braces around it:
+		</para>
+
+<exdump>
+{project fields {symbol {price/trade_price} }}
+</exdump>
+	</sect1>
+
+	<sect1 id="sc_tql_commands">
+		<title>TQL commands</title>
+
+		<para>
+		I'm sure that the list of commands and their options will expand and
+		change over time. So far the supported commands are:
+		</para>
+
+		<variablelist>
+		<varlistentry>
+			<term><pre>read</pre></term>
+			<listitem>
+			<para>
+			Defines a table to read from and starts the command pipeline.
+			</para>
+			<para>
+			Options:
+			</para>
+			<para>
+			<pre>table</pre> - name of the table to read from. When a Triceps
+			model gets wrapped in the server, it defines, what tables it has
+			available.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>project</pre></term>
+			<listitem>
+			<para>
+			Projects (and possibly renames) a subset of fields in the current
+			pipeline. In other words, all the files besides the specified
+			ones get thrown away.
+			</para>
+			<para>
+			Options:
+			</para>
+			<para>
+			<pre>fields</pre> - an array of field definitions in the syntax of
+			<pre>Triceps::Fields::filter()</pre> (same as in the joins), as described in
+			<xref linkend="sc_ref_fields" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>print</pre></term>
+			<listitem>
+			<para>
+			The last command of the pipeline, which prints the results. If not
+			used explicitly, the query adds this command implicitly at the end
+			of the pipeline, with the default options.
+			</para>
+			<para>
+			Options:
+			</para>
+			<para>
+			<pre>tokenized</pre> (optional) - Flag: print in the name-value format, as in
+			Row::printP(). Otherwise prints only the values in the CSV format.
+			Default: 1.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>join</pre></term>
+			<listitem>
+			<para>
+			Joins the current pipeline with another table. This is the functionally
+			similar to LookupJoin, although the options are closer to JoinTwo.
+			</para>
+			<para>
+			Options:
+			</para>
+			<para>
+			<pre>table</pre> - name of the table to join with. The current pipeline is
+			considered the <quote>left side</quote>, the table the <quote>right side</quote>. The
+			duplicate key fields on the right side are always excluded from the
+			result, as by the LookupJoin option <pre>fieldsDropRightKey => 1</pre>.
+			</para>
+			<para>
+			<pre>rightIdxPath</pre> (optional) - path name of the table's index on which to join.
+			As usual, the path is an array of nested index type names. If this option is not
+			specified, the index path will be found automatically by the join fields.
+			</para>
+			<para>
+			<pre>by</pre> (semi-optional) - the join equality condition specified as pairs
+			of fields. Similarly to JoinTwo, it's a single-level array with the
+			fields logically paired:{leftFld1 rightFld1 leftFld2 rightFld2 ...
+			}.  Options <quote>by</quote> and <quote>byLeft</quote> are mutually exclusive, and one of
+			them must be present.
+			</para>
+			<para>
+			<pre>byLeft</pre> (semi-optional) - the join equality condition specified as a
+			transformation on the left-side field set in the syntax of
+			<pre>Triceps::Fields::filter()</pre>, with an implicit element <pre>{!.*}</pre> added at
+			the end. Options <quote>by</quote> and <quote>byLeft</quote> are mutually exclusive, and one
+			of them must be present.
+			</para>
+			<para>
+			<pre>leftFields</pre> (optional) - the list of patterns for the left-side
+			fields to pass through and possibly rename, in the syntax of
+			<pre>Triceps::Fields::filter()</pre>. Default: pass all, with the same name.
+			</para>
+			<para>
+			<pre>rightFields</pre> (optional) - the list of patterns for the right-side
+			fields to pass through and possibly rename, in the syntax of
+			<pre>Triceps::Fields::filter()</pre>. The key fields get implicitly removed
+			before. Default: pass all, with the same name.
+			</para>
+			<para>
+			<pre>type</pre> (optional) - type of the join, <quote>inner</quote> or 
+			<quote>left</quote>. Default: <quote>inner</quote>.
+			</para>
+			</listitem>
+		</varlistentry>
+
+		<varlistentry>
+			<term><pre>where</pre></term>
+			<listitem>
+			<para>
+			Filters/selects the rows.
+			</para>
+			<para>
+			Options:
+			</para>
+			<para>
+			<pre>istrue</pre> - a Perl expression, the condition for the rows to pass
+			through. The particularly dangerous constructions are not allowed
+			in the expression, including the loops and the general function
+			calls. The fields of the row are referred to as <pre>$%field</pre>, these
+			references get translated before the expression is compiled.
+			</para>
+			</listitem>
+		</varlistentry>
+		</variablelist>
+
+		<para>
+		Here are some examples of the Tql queries, with results produced from
+		the output of the code examples that will be shown below.
+		</para>
+
+<!-- t/xTql.t runTqlQuery1 assembled -->
+<exdump>
+> query,{read table tSymbol}
+query OP_INSERT symbol="AAA" name="Absolute Auto Analytics Inc" eps="0.5" 
++EOD,OP_NOP,query
+</exdump>
+
+		<para>
+		Reads the stock symbol information table and prints it in the default
+		tokenized format. The input line is CSV, containing as usual in the examples
+		from
+		<xref linkend="sc_sched_mainloop_socket" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		the command and the data for it. Here the command <quote>query</quote>
+		has been defined to handle the TQL queries. It's possible to define
+		multiple TQL-handling commands in a server, in case if you want them
+		to query different units, or different subsets of the tables.
+		The parsing of the data part is
+		smart enough not to break up the text of the query on the commas in it.
+		</para>
+		
+		<para>
+		The tokenized result format is a bit messy for now, a mix of
+		tokenized data lines and a CSV end-of-data line. 
+		</para>
+		
+		<para>
+		In the simpler examples in
+		<xref linkend="sc_sched_mainloop_socket" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		the end-of-data has been marked by either a row with opcode <pre>OP_NOP</pre> or not
+		marked at all. For the TQL queries I've decided to try out a
+		different approach: send a CSV row on the pseudo-label <quote>+EOD</quote> with the
+		value equal to the name of the command that has been completed. The
+		labels with names starting with <quote>+</quote> are special in this convention,
+		they represent some kind of metadata.
+		</para>
+
+<!-- t/xTql.t runTqlQuery1 assembled -->
+<exdump>
+> query,{read table tWindow} {project fields {symbol price}}
+query OP_INSERT symbol="AAA" price="20" 
+query OP_INSERT symbol="AAA" price="30" 
++EOD,OP_NOP,query
+</exdump>
+
+		<para>
+		Reads the trade window rows and projects the fields <quote>symbol</quote> and
+		<quote>price</quote> from them.
+		</para>
+
+<!-- t/xTql.t runTqlQuery1 assembled -->
+<exdump>
+> query,{read table tWindow} {project fields {symbol price}} {print tokenized 0}
+query,OP_INSERT,AAA,20
+query,OP_INSERT,AAA,30
++EOD,OP_NOP,query
+</exdump>
+
+		<para>
+		The same, only explicitly prints the data in the CSV format.
+		</para>
+
+<!-- t/xTql.t runTqlQuery1 assembled -->
+<exdump>
+> query,{read table tWindow} {where istrue {$%price == 20}}
+query OP_INSERT id="3" symbol="AAA" price="20" size="20" 
++EOD,OP_NOP,query
+</exdump>
+
+		<para>
+		Selects the trade window row with price equal to 20.
+		</para>
+
+<!-- t/xTql.t runTqlQuery1 assembled -->
+<exdump>
+> query,{read table tWindow} {join table tSymbol byLeft {symbol}}
+query OP_INSERT id="3" symbol="AAA" price="20" size="20" name="Absolute Auto Analytics Inc" eps="0.5" 
+query OP_INSERT id="5" symbol="AAA" price="30" size="30" name="Absolute Auto Analytics Inc" eps="0.5" 
++EOD,OP_NOP,query
+</exdump>
+
+		<para>
+		Reads the trade window and enriches it by joining with the symbol
+		information.
+		</para>
+
+		<para>
+		A nice feature of TQL is that it allows to combine the operations in
+		the pipeline in any order, repeated any number of times. For example,
+		you can read a table, filter it, join with another table, filter again,
+		join with the third table, filter again and so on. SQL in the same
+		situation has to resort to specially named clauses, for example <i>WHERE</i>
+		filters before grouping and <i>HAVING</i> filters after grouping.
+		</para>
+
+		<para>
+		Of course, a typical smart SQL compiler would determine the earliest
+		application point for each <i>WHERE</i> sub-expression and build a similar
+		pipeline. But TQL allows to keep the compiler trivial, following the
+		explicit pipelining in the query. And nothing really prevents a smart
+		TQL compiler either, it could as well analyze, split and reorder the
+		pipeline stages. 
+		</para>
+
+		<para>
+		As mentioned above, the TQL queries are compiled before the execution
+		into the normal Triceps code. A query is built in a separate unit.
+		After the query is built, the data is fed into it to produce the
+		result, and then the unit gets destroyed. Potentially, TQL could
+		be extended for writing the general Triceps programs as well.
+		</para>
+
+	</sect1>
+
+	<sect1 id="sc_tql_single">
+		<title>TQL in a single-threaded server</title>
+
+		<para>
+		The TQL support may be instantiated in both the single-threaded and
+		multi-threaded applications. The single-threaded support is simpler,
+		so we'll look at it first. The TQL itself stays the same in both cases,
+		and even the way to construct the TQL server is similar but then
+		the way for the TQL queries to extract the data from the application
+		is different.
+		</para>
+
+		<para>
+		The code that produced the query output examples from the previous section
+		looks like this:
+		</para>
+
+<!-- t/xTql.t assembled from type defintiions and runTqlQuery1 -->
+<pre>
+# The basic table type to be used for querying.
+# Represents the trades reports.
+our $rtTrade = Triceps::RowType->new(
+	id => "int32", # trade unique id
+	symbol => "string", # symbol traded
+	price => "float64",
+	size => "float64", # number of shares traded
+);
+
+our $ttWindow = Triceps::TableType->new($rtTrade)
+	->addSubIndex("bySymbol", 
+		Triceps::SimpleOrderedIndex->new(symbol => "ASC")
+			->addSubIndex("last2",
+				Triceps::IndexType->newFifo(limit => 2)
+			)
+	)
+;
+$ttWindow->initialize();
+
+# Represents the static information about a company.
+our $rtSymbol = Triceps::RowType->new(
+	symbol => "string", # symbol name
+	name => "string", # the official company name
+	eps => "float64", # last quarter earnings per share
+);
+
+our $ttSymbol = Triceps::TableType->new($rtSymbol)
+	->addSubIndex("bySymbol", 
+		Triceps::IndexType->newHashed(key => [ "symbol" ])
+	)
+;
+$ttSymbol->initialize();
+
+my $uTrades = Triceps::Unit->new("uTrades");
+my $tWindow = $uTrades->makeTable($ttWindow, "tWindow");
+my $tSymbol = $uTrades->makeTable($ttSymbol, "tSymbol");
+
+# The information about tables, for querying.
+my $tql = Triceps::X::Tql->new(
+	name => "tql",
+	tables => [
+		$tWindow,
+		$tSymbol,
+	],
+);
+
+my %dispatch;
+$dispatch{$tWindow->getName()} = $tWindow->getInputLabel();
+$dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
+$dispatch{"query"} = sub { $tql->query(@_); };
+$dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
+
+# calls Triceps::X::SimpleServer::startServer(0, \%dispatch);
+Triceps::X::DumbClient::run(\%dispatch);
+</pre>
+
+		<para>
+		It's very much like the example shown before in
+		<xref linkend="sc_sched_mainloop_socket" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		with one of the dispatch entries being a TQL query method.
+		The list of tables is given to the Tql object which figures
+		out all by itself how to run the queries on them.
+		</para>
+
+		<para>
+		Just as before, DumbClient is a class for both starting the server
+		and running the unit tests on it, so in reality the dispatch
+		table is handled in <pre>SimpleServer::startServer()</pre>.
+		</para>
+
+		<para>
+		The dispatched labels have the CSV line received from the socket broken
+		up into the fields and formed into the rowops but
+		the dispatched functions receive the whole argument
+		line as the client had sent it.
+		The functions can then do the text parsing
+		in their own way, which comes real handy for TQL. The <pre>Tql::query()</pre>
+		method splits off the name of the label to be used as the name of
+		the query, and parses the rest as the query body.
+		</para>
+
+		<para>
+		There are multiple ways to create a Tql object. By default the
+		option <quote>tables</quote> lists all the queryable tables, and their <quote>natural</quote>
+		names will be used in the queries, as was shown above. It's possible to specify the names
+		explicitly as well:
+		</para>
+
+<!-- t/xTql.t runTqlQuery3 -->
+<pre>
+my $tql = Triceps::X::Tql->new(
+	name => "tql",
+	tables => [
+		$tWindow,
+		$tSymbol,
+		$tWindow,
+		$tSymbol,
+	],
+	tableNames => [
+		"window",
+		"symbol",
+		$tWindow->getName(),
+		$tSymbol->getName(),
+	],
+);
+</pre>
+
+		<para>
+		This version defines each table under two synonymous names. The tables
+		and their names go in the parallel arrays in the same order.
+		</para>
+
+		<para>
+		It's also possible to create a Tql object without tables, and add tables to it
+		later as they are created:
+		</para>
+
+<!-- t/xTql.t runTqlQuery2 -->
+<pre>
+my $tql = Triceps::X::Tql->new(name => "tql");
+$tql->addNamedTable(
+	window => $tWindow,
+	symbol => $tSymbol,
+);
+# add 2nd time, with different names
+$tql->addTable(
+	$tWindow,
+	$tSymbol,
+);
+$tql->initialize();
+</pre>
+
+		<para>
+		Multiple tables can be added in one method call, as shown here.
+		The tables can be added with explicit names or with <quote>natural</quote> names.
+		After all the tables are added, the Tql object has to be initialized.
+		</para>
+
+		<para>
+		The two ways of creation are mutually exclusive: if the option <quote>tables</quote>
+		is used, the object will be initialized right away in the constructor.
+		If this option is absent, the explicit initialization has to be done later. The
+		methods <pre>addTable()</pre> and <pre>addNamedTable()</pre> cannot be used on an
+		initialized table, and <pre>query()</pre> cannot be used on an uninitialized
+		table. 
+		</para>
+	</sect1>
+</chapter>

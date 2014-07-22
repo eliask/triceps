@@ -84,6 +84,7 @@ $dispatch{$tSymbol->getName()} = $tSymbol->getInputLabel();
 $dispatch{"query"} = sub { $tql->query(@_); };
 $dispatch{"exit"} = \&Triceps::X::SimpleServer::exitFunc;
 
+# calls Triceps::X::SimpleServer::startServer(0, \%dispatch);
 Triceps::X::DumbClient::run(\%dispatch);
 };
 
