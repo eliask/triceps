@@ -143,6 +143,10 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
+			The <pre>Label::adopt()</pre> in Perl now allows the cross-unit adoption.
+			</listitem>
+
+			<listitem>
 			Out-of-the-box compilation with a wider range of GCC compiler versions.
 			</listitem>
 

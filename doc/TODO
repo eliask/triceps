@@ -128,8 +128,8 @@ Things that need to be done:
 * add callAdopted() that combines $unit->call($label->adopt($rowop))
 * in FnBinding::call() allow to get back the tray (see "Streaming functions and more recursion")
 * add a C++ version of scoped FileInterrupt registration, like Perl TrackedFile
-* when storing Perl files in an App, can store the class name with it, and
-  extract it back later to construct the correct class.
+* in nexuses with unicast capability, add the identity of a receiver facet as an address
+  (string or int) and specify it in the BEGIN row as a string or int or int array field
 * docbook: make it not access http://docbook.sourceforge.net/release/images/draft.png
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
@@ -157,5 +157,4 @@ App ideas:
 * look at the use with RabbitMQ
 
 tangent 144, 157, 191, 197, 199, 204, 206, 271, 272, 274, 277, 279
-228 TQL
 *** next 283

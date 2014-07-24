@@ -913,6 +913,7 @@ c1|confirm,cf1,,,
 		a direct short circuit.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|drain,dr1
 c1|drain,dr1,,,
@@ -925,6 +926,7 @@ c1|drain,dr1,,,
 		from it has been sent to all the clients.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|dump,d2,symbol
 c1|startdump,d2,symbol
@@ -942,6 +944,7 @@ c1|dump,d2,symbol
 		from that subscription may come before and after the dump.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|dumpsub,ds3,symbol
 c1|startdump,ds3,symbol
@@ -956,6 +959,7 @@ c1|dumpsub,ds3,symbol
 		following updates.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
 c1|d,symbol,OP_INSERT,DEF,Defense Corp,2
@@ -968,6 +972,7 @@ c1|d,symbol,OP_INSERT,DEF,Defense Corp,2
 		subscription.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,window,OP_INSERT,1,ABC,101,10
 </exdump>
@@ -977,6 +982,7 @@ c1|d,symbol,OP_INSERT,DEF,Defense Corp,2
 		there is no subscription to that table.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|dumpsub,ds4,window
 c1|startdump,ds4,window
@@ -990,6 +996,7 @@ c1|d,window,OP_INSERT,2,ABC,102,12
 		This demonstrates the pure dump-and-subscribe without any interventions.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|shutdown
 c1|shutdown,,,,
@@ -1005,6 +1012,7 @@ c1|__EOF__
 		Now on to the queries.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > connect c1
 c1|ready
@@ -1015,6 +1023,7 @@ c1|ready
 		Starts a client connection and sends some data.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|querysub,q1,query1,{read table symbol}{print tokenized 0}
 c1|d,query1,OP_INSERT,ABC,ABC Corp,1
@@ -1070,6 +1079,7 @@ c1|querysub,q1,query1
 		This particular query is very simple and equivalent to a <quote>dumpsub</quote>.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,symbol,OP_INSERT,DEF,Defense Corp,2.0
 c1|d,query1,OP_INSERT,DEF,Defense Corp,2
@@ -1079,6 +1089,7 @@ c1|d,query1,OP_INSERT,DEF,Defense Corp,2
 		Send more data and it will come out of the query.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|querysub,q2,query2,{read table symbol}{where istrue {$%symbol =~ /^A/}}{project fields {symbol eps}}
 c1|t,query2,query2 OP_INSERT symbol="ABC" eps="1"
@@ -1099,6 +1110,7 @@ c1|querysub,q2,query2
 		I'm not sure yet if it's a feature or a bug.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,symbol,OP_INSERT,AAA,Absolute Auto Analytics Inc,3.0
 c1|d,query1,OP_INSERT,AAA,Absolute Auto Analytics Inc,3
@@ -1113,6 +1125,7 @@ c1|d,query1,OP_DELETE,DEF,Defense Corp,2
 		query1 produces the result.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|shutdown
 c1|shutdown,,,,
@@ -1127,6 +1140,7 @@ c1|__EOF__
 		Now the <i>piece de resistance</i>: queries with joins.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > connect c1
 c1|ready
@@ -1140,6 +1154,7 @@ c1|ready
 		Connect and send some starting data.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|querysub,q1,query1,{read table window}{join table symbol byLeft {symbol} type left}
 c1|t,query1,query1 OP_INSERT id="1" symbol="AAA" price="12" size="100" name="Absolute Auto Analytics Inc" eps="3"
@@ -1161,6 +1176,7 @@ c1|querysub,q1,query1
 		some later time.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,window,OP_INSERT,2,ABC,13,100
 c1|t,query1,query1 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="2"
@@ -1172,6 +1188,7 @@ c1|t,query1,query1 OP_INSERT id="3" symbol="AAA" price="11" size="200" name="Abs
 		Sending the data updates the results of the query.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,symbol,OP_DELETE,AAA,Absolute Auto Analytics Inc,3.0
 > c1|d,symbol,OP_INSERT,AAA,Alcoholic Abstract Aliens,3.0
@@ -1182,6 +1199,7 @@ c1|t,query1,query1 OP_INSERT id="3" symbol="AAA" price="11" size="200" name="Abs
 		visible in the query directly.
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|d,window,OP_DELETE,1
 c1|t,query1,query1 OP_DELETE id="1" symbol="AAA" price="12" size="100" name="Alcoholic Abstract Aliens" eps="3"
@@ -1193,6 +1211,7 @@ c1|t,query1,query1 OP_DELETE id="1" symbol="AAA" price="12" size="100" name="Alc
 		row inserted before).
 		</para>
 
+<!-- t/xTqlMt.t -->
 <exdump>
 > c1|querysub,q2,query2,{read table window}{join table symbol byLeft {symbol} type left}{join table symbol byLeft {eps} type left rightFields {symbol/symbol2}}
 c1|t,query2,query2 OP_INSERT id="2" symbol="ABC" price="13" size="100" name="ABC Corp" eps="2" symbol2="ABC"
@@ -1219,5 +1238,725 @@ c1|querysub,q2,query2
 		index before creating the table, and TQL makes a good use of it.
 		</para>
 
+	</sect1>
+
+	<sect1 id="sc_tql_join_internals">
+		<title>Internals of a TQL join</title>
+
+		<para>
+		The TQL implementation provides interesting examples of the
+		sophisticated Triceps usage. Remember, it isn't somehow special
+		or monolothic with the rest of Triceps. It uses the normal triceps
+		API and anyone can write a similar language layer from scratch.
+		The code is located in <pre>perl/Triceps/lib/Triceps/X/DumbClient.pm</pre>.
+		</para>
+
+		<para>
+		The most complex operation implemented in TQL is the join in the
+		multi-threaded server. It requires copying of multiple tables
+		from the core logic thread to the client thread that executes
+		the join, and rebuilding them in the new thread, possibly with
+		the automatically added indexes.
+		</para>
+
+		<para>
+		It all starts in the Tql initialization method. In the multithreaded
+		mode it builds the nexuses for communication. I'll skip the input nexus
+		(it's straightforward) and show the building of only the output and
+		request-dump nexuses:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm, shifted left -->
+<pre>
+	# row type for dump requests and responses
+	my $rtRequest = Triceps::RowType->new(
+		client => "string", #requesting client
+		id => "string", # request id
+		name => "string", # the table name, for convenience of requestor
+		cmd => "string", # for convenience of requestor, the command that it is executing
+	);
+</pre>
+
+		<para>
+		The request row type is used by the client writer thread to request the
+		table dumps from the core logic, and to get back the notifications
+		about the dumps.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm, shifted left -->
+<pre>
+	# build the output side
+	for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
+		my $name = $self->{tableNames}[$i]; 
+		my $table = $self->{tables}[$i];
+
+		push @tabtypes, $name, $table->getType()->copyFundamental();
+		push @labels, "t.out." . $name, $table->getOutputLabel();
+		push @labels, "t.dump." . $name, $table->getDumpLabel();
+	}
+	push @labels, "control", $rtControl; # pass-through from in to out
+	push @labels, "beginDump", $rtRequest; # framing for the table dumps
+	push @labels, "endDump", $rtRequest;
+
+	$self->{faOut} = $owner->makeNexus(
+		name => $self->{nxprefix} . "out",
+		labels => [ @labels ],
+		tableTypes => [ @tabtypes ],
+		import => "writer",
+	);
+	$self->{beginDump} = $self->{faOut}->getLabel("beginDump");
+	$self->{endDump} = $self->{faOut}->getLabel("endDump");
+</pre>
+
+		<para>
+		On the output side each table is represented by 3 elements:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			its fundamental table type (stripped down to the primary index);
+			</listitem>
+			<listitem>
+			its output label for normal updates;
+			</listitem>
+			<listitem>
+			its dump label for the responses to the dump requests.
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		There also are the <quote>beginDump</quote> and <quote>endDump</quote> labels that frame each
+		response to a dump request.
+		</para>
+
+		<para>
+		The row type <pre>$rtControl</pre> and label <quote>control</quote> are used to pass the
+		commands from the client reader to client writer, but its exact
+		contents is not important here.
+		All the magic happens in the client writer thread. The
+		reader thread just passes the commands to the writer thread, and then
+		the writer thread controls the parsing and processing of the commands.
+		</para>
+
+		<para>
+		The dump request nexus is built in a similar way:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm, shifted left -->
+<pre>
+	# build the dump requests, will be coming from below
+	undef @labels;
+	for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
+		my $name = $self->{tableNames}[$i]; 
+		my $table = $self->{tables}[$i];
+
+		push @labels, "t.rqdump." . $name, $rtRequest;
+	}
+	$self->{faRqDump} = $owner->makeNexus(
+		name => $self->{nxprefix} . "rqdump",
+		labels => [ @labels ],
+		reverse => 1, # avoids making a loop, and gives priority
+		import => "reader",
+	);
+	# tie together the labels
+	for (my $i = 0; $i <= $#{$self->{tables}}; $i++) {
+		my $name = $self->{tableNames}[$i]; 
+		my $table = $self->{tables}[$i];
+
+		$self->{faRqDump}->getLabel("t.rqdump." . $name)->makeChained(
+			$self->{nxprefix} . "rqdump." . $name, undef, 
+			\&_dumpTable, $self, $table
+		);
+	}
+</pre>
+
+		<para>
+		Each table has a label created for requesting its contents.
+		The dumps are executed in the function _dumpTable:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm -->
+<pre>
+sub _dumpTable # ($label, $rowop, $self, $table)
+{
+	my ($label, $rop, $self, $table) = @_;
+	my $unit = $label->getUnit();
+	# pass through the client id to the dump
+	$unit->call($self->{beginDump}->adopt($rop));
+	$table->dumpAll();
+	$unit->call($self->{endDump}->adopt($rop));
+	$self->{faOut}->flushWriter();
+}
+</pre>
+
+		<para>
+		The data gets framed around by the 
+		copies of the original request sent to the labels
+		<quote>beginDump</quote> and <quote>endDump</quote>.
+		This helps the client
+		writer thread keep track of its current spot. The flushing of the
+		writer is not strictly needed. Just in case if multiple dump requests
+		are received in a single tray, the flush breaks up the responses into a
+		separate tray for each dump, keeping the size of the trays lower. Not
+		that this situation could actually happen yet.
+		</para>
+
+		<para>
+		This part taken care of, let's jump around and see how the client
+		writer thread processes a <quote>querysub</quote> command:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm, shifted left -->
+<pre>
+		} elsif ($cmd eq "querysub") {
+			if ($id eq "" || exists $queries{$id}) {
+				printOrShut($app, $fragment, $sock,
+					"error,$id,Duplicate id '$id': query ids must be unique,bad_id,$id\n");
+				next;
+			}
+			my $ctx = compileQuery(
+				qid => $id,
+				qname => $args[0],
+				text => $args[1],
+				subError => sub {
+					chomp $_[2];
+					$_[2] =~ s/\n/\\n/g; # no real newlines in the output
+					$_[2] =~ s/,/;/g; # no confusing commas in the output
+					printOrShut($app, $fragment, $sock, "error,", join(',', @_), "\n");
+				},
+				faOut => $faOut,
+				faRqDump => $faRqDump,
+				subPrint => sub {
+					printOrShut($app, $fragment, $sock, @_);
+				},
+			);
+			if ($ctx) { # otherwise the error is already reported
+				$queries{$id} = $ctx;
+				&$runNextRequest($ctx);
+			}
+		}
+</pre>
+
+		<para>
+		The query id is used to keep track of the outstanding queries, so the
+		code makes sure that it's unique. This is the origin of the
+		duplicate id error that was shown before.
+		</para>
+
+		<para>
+		The bulk of the work is done in the method
+		<pre>compileQuery()</pre>. Its arguments supply the details of the query and
+		also provide the closures for the functionality that differs between
+		the single-threaded and multi-threaded versions. The option <quote>subError</quote>
+		is used to send the errors to the client, and <quote>subPrint</quote> is used to
+		send the output to the client, it gets used for building the labels in
+		the <quote>print</quote> command of the query.
+		</para>
+
+		<para>
+		<pre>compileQuery()</pre> returns the query context, which contains a compiled
+		sub-model that executes the query and a set of requests that tell the
+		writer how to connect the query to the incoming data. Or on error it
+		reports the error using the closure from the option <quote>subError</quote>
+		and returns an <pre>undef</pre>. If the
+		compilation succeeded, the writer thread remembers the query and starts the
+		asynchronous execution of the requests. The requests are the 
+		data dump requests to be sent back to the application core thread.
+		More about the requests later,
+		now let's look at the query compilation and context.
+		</para>
+
+		<para>
+		The context is created in <pre>compileQuery()</pre> thusly:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm compileQuery -->
+<pre>
+	my $ctx = {};
+	$ctx->{qid} = $opts->{qid};
+	$ctx->{qname} = $opts->{qname};
+
+	# .. skipped the parts related to single-threadde TQL
+
+	$ctx->{faOut} = $opts->{faOut};
+	$ctx->{faRqDump} = $opts->{faRqDump};
+	$ctx->{subPrint} = $opts->{subPrint};
+	$ctx->{requests} = []; # dump and subscribe requests that will run the pipeline
+	$ctx->{copyTables} = []; # the tables created in this query
+		# (have to keep references to the tables or they will disappear)
+
+	# The query will be built in a separate unit
+	$ctx->{u} = Triceps::Unit->new($opts->{nxprefix} . "${q}.unit");
+	$ctx->{prev} = undef; # will contain the output of the previous command in the pipeline
+	$ctx->{id} = 0; # a unique id for auto-generated objects
+	# deletion of the context will cause the unit in it to clean
+	$ctx->{cleaner} = $ctx->{u}->makeClearingTrigger();
+</pre>
+
+		<para>
+		It has some parts common and some parts differing for the single- and
+		multi-threaded varieties, here I've skipped over the single-threaded
+		parts.
+		</para>
+
+		<para>
+		One element that is left undefined here is <pre>$ctx->{prev}</pre>. It's the label
+		created as the output of the previous stage of the query pipeline. As
+		each command in the pipeline builds its piece of processing, it chains
+		its logic from <pre>$ctx->{prev}</pre> and leaves its result label in
+		<pre>$ctx->{next}</pre>. Then <pre>compileQuery()</pre> moves <pre>next</pre> to <pre>prev</pre> and calls the
+		compilation of the next command in the pipeline. The only command that
+		accepts an undefined <pre>prev</pre> (and it must be undefined for it) is
+		<quote>read</quote> which reads the table at the start of the pipeline.
+		</para>
+
+		<para>
+		<pre>$ctx->{copyTables}</pre> also has an important point behind it. When you
+		create a label, it's OK to discard the original reference after you
+		chain the label into the logic, that chaining will keep a reference, and
+		the label will stay alive. Not so with a table: if you create a table,
+		then chain its input label and drop the reference to a table, the table
+		will be discarded. When the input label would try to send any data
+		to the table, it will die.
+		So it's important to keep the direct table references, and
+		that's what this array is for.
+		</para>
+
+		<para>
+		<pre>$ctx->{id}</pre> is used to generate the unique names for the objects built
+		in this context.
+		</para>
+
+		<para>
+		Each query is built in its own unit. This is convenient, after the
+		query is done or the compilation encounters an error, the unit with its
+		whole contents can be easily discarded. The clearing trigger placed in
+		the context makes sure that the unit gets properly cleared and
+		discarded.
+		</para>
+
+		<para>
+		Next goes the compilation of the join query command, I'll go through it
+		in chunks.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm -->
+<pre>
+sub _tqlJoin # ($ctx, @args)
+{
+	my $ctx = shift;
+	die "The join command may not be used at the start of a pipeline.\n" 
+		unless (defined($ctx->{prev}));
+	my $opts = {};
+	&Triceps::Opt::parse("join", $opts, {
+		table => [ undef, \&Triceps::Opt::ck_mandatory ],
+		rightIdxPath => [ undef, undef ],
+		by => [ undef, undef ],
+		byLeft => [ undef, undef ],
+		leftFields => [ undef, undef ],
+		rightFields => [ undef, undef ],
+		type => [ "inner", undef ],
+	}, @_);
+
+	my $tabname = bunescape($opts->{table});
+	my $unit = $ctx->{u};
+	my $table;
+
+	&Triceps::Opt::checkMutuallyExclusive("join", 1, "by", $opts->{by}, "byLeft", $opts->{byLeft});
+	my $by = split_braced_final($opts->{by});
+	my $byLeft = split_braced_final($opts->{byLeft});
+
+	my $rightIdxPath;
+	if (defined $opts->{rightIdxPath}) { # propagate the undef
+		$rightIdxPath = split_braced_final($opts->{rightIdxPath});
+	}
+</pre>
+
+		<para>
+		It starts by parsing the options and converting them to the internal
+		representation, removing the braced quotes.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm _tqlJoin -->
+<pre>
+	# If we were to use a JoinTwo (which is more correct), the data
+	# incoming through the query would have to be put into a table too.
+	# And that requires finding the primary key for the data.
+	# I suppose, after the sequence ids for the rows would get worked
+	# out, that would provide the easy default primary key.
+	if ($ctx->{faOut}) {
+		# Potentially, the tables might be reused between multiple joins
+		# in the query if the required keys match. But for now keep things
+		# simpler by creating a new table from scratch each time.
+
+		my $tt = eval {
+			# copy to avoid adding an index to the original type
+			$ctx->{faOut}->impTableType($tabname)->copy();
+		};
+		die ("Join found no such table '$tabname'\n") unless ($tt);
+
+		if (!defined $rightIdxPath) {
+			# determine or add the index automatically
+			my @workby;
+			if (defined $byLeft) { # need to translate
+				my @leftfld = $ctx->{prev}->getRowType()->getFieldNames();
+				@workby = &Triceps::Fields::filterToPairs("Join option 'byLeft'", 
+					\@leftfld, [ @$byLeft, "!.*" ]);
+			} else {
+				@workby = @$by;
+			}
+			
+			my @idxkeys; # extract the keys for the right side table
+			for (my $i = 1; $i <= $#workby; $i+= 2) {
+				push @idxkeys, $workby[$i];
+			}
+			$rightIdxPath = [ $tt->findOrAddIndex(@idxkeys) ];
+		}
+
+		# build the table from the type
+		$tt->initialize();
+		$table = $ctx->{u}->makeTable($tt, "tab" . $ctx->{id} . $tabname);
+		push @{$ctx->{copyTables}}, $table;
+
+		# build the request that fills the table with data and then
+		# keeps it up to date; 
+		# the table has to be filled before the query's main flow starts,
+		# so put the request at the front
+		&_makeQdumpsub($ctx, $tabname, 1, $table->getInputLabel());
+	} else {
+		die ("Join found no such table '$tabname'\n")
+			unless (exists $ctx->{tables}{$tabname});
+		$table = $ctx->{tables}{$tabname};
+	}
+</pre>
+
+		<para>
+		The presence of <pre>$ctx->{faOut}</pre> means that the query is compiled in the
+		multithreaded context.
+		</para>
+
+		<para>
+		The command handlers, including the join command handler,
+		may freely die, and the error messages will be
+		caught by <pre>compileQuery()</pre> and nicely (at least, sort-of) reported back
+		to the user.
+		</para>
+
+		<para>
+		If an explicit <quote>rightIdxPath</quote> option was not requested, it gets found or added
+		automatically. On the way there the index fields need to be determined.
+		Which can be specified either as the explicit field pairs in the option <quote>by</quote> or
+		as the name translation syntax in the option <quote>byLeft</quote>. If we've got
+		a <quote>byLeft</quote>, first it gets translated to the same format as <quote>by</quote>, and
+		then the right-side fields are extracted from the format of <quote>by</quote>. After
+		that <pre>$tt->findOrAddIndex()</pre> takes care of all the heavy lifting. It
+		either finds a matching index type in the table type or creates a new
+		one from the specified fields, and either way returns the index path
+		(an invalid field will make it confess).
+		</para>
+
+		<para>
+		You might wonder, how come the explicit <quote>rightIdxPath</quote> option is not checked in
+		any way? It will be checked later by <pre>LookupJoin()</pre>, so not much point in
+		doing the check twice.
+		</para>
+
+		<para>
+		After that the table is created in a straightforward way, and
+		rememebered in <pre>$ctx->{copyTables}</pre>. And the requests list gets prepended with a
+		request to dump and subscribe to this table in <pre>_makeQdumpsub()</pre>. I'll get back to that, for
+		now let's finish up with <pre>_tqlJoin()</pre>.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm _tqlJoin -->
+<pre>
+	my $isLeft = 0; # default for inner join
+	my $type = $opts->{type};
+	if ($type eq "inner") {
+		# already default
+	} elsif ($type eq "left") {
+		$isLeft = 1;
+	} else {
+		die "Unsupported value '$type' of option 'type'.\n"
+	}
+
+	my $leftFields = split_braced_final($opts->{leftFields});
+	my $rightFields = split_braced_final($opts->{rightFields});
+
+	my $join = Triceps::LookupJoin->new(
+		name => "join" . $ctx->{id},
+		unit => $unit,
+		leftFromLabel => $ctx->{prev},
+		rightTable => $table,
+		rightIdxPath => $rightIdxPath,
+		leftFields => $leftFields,
+		rightFields => $rightFields,
+		by => $by,
+		byLeft => $byLeft,
+		isLeft => $isLeft,
+		fieldsDropRightKey => 1,
+	);
+	
+	$ctx->{next} = $join->getOutputLabel();
+}
+</pre>
+
+		<para>
+		The rest of the options get parsed, and then all the collected data
+		gets forwarded to the LookupJoin constructor. Finally the <pre>next</pre> label
+		is assigned from the join's result.
+		</para>
+
+		<para>
+		Now jumping to the <pre>_makeQdumpsub()</pre>. It's used by both the <quote>read</quote> and
+		<quote>join</quote> query commands to initiate the joins and subscriptions.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm -->
+<pre>
+sub _makeQdumpsub # ($ctx, $tabname, [$front, $lbNext])
+{
+	my $ctx = shift;
+	my $tabname = shift;
+	my $front = shift;
+	my $lbNext = shift;
+
+	my $unit = $ctx->{u};
+
+	my $lbrq = eval {
+		$ctx->{faRqDump}->getLabel("t.rqdump.$tabname");
+	};
+	my $lbsrc = eval {
+		$ctx->{faOut}->getLabel("t.out.$tabname");
+	};
+	die ("Found no such table '$tabname'\n") unless ($lbrq && $lbsrc);
+
+	# compute the binding for the data dumps, that would be a cross-unit
+	# binding to the original faOut but it's OK
+	my $fretOut = $ctx->{faOut}->getFnReturn();
+	my $dumpname = "t.dump.$tabname";
+	# the dump and following subscription data will merge on this label
+	if (!defined $lbNext) {
+		$lbNext = $unit->makeDummyLabel(
+			$lbsrc->getRowType(), "lb" . $ctx->{id} . "out_$tabname");
+	}
+
+	my $bindDump = Triceps::FnBinding->new(
+		on => $fretOut,
+		name => "bind" . $ctx->{id} . "dump",
+		labels => [ $dumpname => $lbNext ],
+	);
+</pre>
+
+		<para>
+		First it finds all the proper labels. The label <pre>$lbNext</pre> will accept the
+		merged dump contents and the following subscription, and it might be
+		either auto-generated or received as an argument. A join will pass it as an
+		argument, set to <pre>$table->getInputLabel()</pre>, so all the data goes to the copied
+		table.
+		</para>
+
+		<para>
+		The binding is used to receive the dump. It's a bit of an optimization.
+		Remember, the dump responses are sent to all the clients. Whenever
+		any client requests a dump, all the clients will get the response. A
+		client finds that the incoming dump is destined for it by processing
+		the <quote>beginDump</quote> label. If it contains this client's name, the dump is
+		destined here, and the client reacts by pushing the appropriate binding
+		onto the facet's FnReturn, and the data flows. The matching <quote>endDump</quote>
+		label then pops the binding and the data stops flowing. The binding
+		allows to avoid checking every rowop for whether it's supposed to be
+		accepted and if yes then where exactly (rememeber, the same table may
+		be dumped independently multiple times by multiple queries). Just check
+		once at the start of the bundle and then let the data flow in bulk.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm _makeQdumpsub -->
+<pre>
+	# qdumpsub:
+	#   * label where to send the dump request to
+	#   * source output label, from which a subscription will be set up
+	#     at the end of the dump
+	#   * target label in the query that will be tied to the source label
+	#   * binding to be used during the dump, which also directs the data
+	#     to the same target label
+	my $request = [ "qdumpsub", $lbrq, $lbsrc, $lbNext, $bindDump ];
+	if ($front) {
+		unshift @{$ctx->{requests}}, $request;
+	} else {
+		push @{$ctx->{requests}}, $request;
+	}
+	return $lbNext;
+}
+</pre>
+
+		<para>
+		Finally, the created bits and pieces get packaged into a request and
+		added to the list of requests in the query context. The last tricky
+		part is that the request can be added at the back or the front of the
+		list. The <quote>normal</quote> way is to add at the back, however the dimension
+		tables for the joins have to be populated before the main data flow of
+		the query starts. So for them the argument <pre>$front</pre> is set to 1, and they
+		get added at the front.
+		</para>
+
+		<para>
+		Now jumping back to the writer thread logic, after it called
+		<pre>compileQuery()</pre>, it starts the query execution by calling
+		<pre>&$runNextRequest()</pre>. Which is a closure function defined inside the
+		client writer thread function, and knows how to send the dump requests we've
+		just seen created to the core logic.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm writerT shifted -->
+<pre>
+# The requests from a query context get sent one by one, and
+# after one is done, the next is sent until they all are done.
+my $runNextRequest = sub { # ($ctx)
+	my $ctx = shift;
+	my $requests = $ctx->{requests};
+	undef $ctx->{curRequest}; # clear the info of the previous request
+	my $r = shift @$requests;
+	if (!defined $r) {
+		# all done, now just need to pump the data through
+		printOrShut($app, $fragment, $sock,
+			"querysub,$ctx->{qid},$ctx->{qname}\n");
+		return;
+	}
+</pre>
+
+		<para>
+		First it clears the information about the previous request, if any.
+		This function will be called after each request, to send the next
+		one, so on all its calls except the first one of a query it will have
+		something to clear.
+		</para>
+
+		<para>
+		Then it checks if all the requests are already done. If so, it sends
+		the query confirmation to the client socket and returns. The subscription part
+		of the query will continue running on its own.
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm writerT/runNextRequest shifted -->
+<pre>
+	$ctx->{curRequest} = $r; # remember until completed
+	my $cmd = $$r[0];
+	if ($cmd eq "qdumpsub") {
+		# qdumpsub:
+		#   * label where to send the dump request to
+		#   * source output label, from which a subscription will be set up
+		#     at the end of the dump
+		#   * target label in the query that will be tied to the source label
+		#   * binding to be used during the dump, which also directs the data
+		#     to the same target label
+		my $lbrq = $$r[1];
+		# this code very specifically ignores %dump, doing its requests
+		# independently for each query, and showing off another way to
+		# do things
+		# print "DBG next request {" . $ctx->{qname} . "} qdumpsub " . $lbrq->getName() . "\n";
+		$unit->makeHashCall($lbrq, "OP_INSERT", 
+			client => $fragment, id => $ctx->{qid}, name => $ctx->{qname}, cmd => $cmd);
+	} else {
+		printOrShut($app, $fragment, $sock,
+			"error,", $ctx->{qid}, ",Internal error: unknown request '$cmd',internal,", $cmd, "\n");
+		$ctx->{requests} = [];
+		undef $ctx->{curRequest};
+		# and this will leave the query partially initialized,
+		# but it should never happen
+		return;
+	}
+};
+</pre>
+
+		<para>
+		The request data might vary by the command. If the command is <quote>qdumpsub</quote>,
+		the request gets translated to a rowop sent through the nexus to the dump
+		request label in the core logic.
+		</para>
+
+		<para>
+		And a catch-all just in case if the query compiler ever decides to
+		produce an invalid request.
+		</para>
+
+		<para>
+		Next goes the handling of the dump labels (again, this gets set up
+		during the build of the client reader threads, and then the nature is
+		left to run its course, reacting to the rowops as they come in).
+		It gets set up in the writer thread function:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm writerT -->
+<pre>
+	$faOut->getLabel("beginDump")->makeChained("lbBeginDump", undef, sub {
+		my $row = $_[1]->getRow();
+		my ($client, $id, $name, $cmd) = $row->toArray();
+		return unless ($client eq $fragment);
+		if ($cmd eq "qdumpsub") {
+			return unless(exists $queries{$id});
+			my $ctx = $queries{$id};
+			$fretOut->push($ctx->{curRequest}[4]); # the binding for the dump
+		} else {
+			return unless (exists $dumps{$name});
+			printOrShut($app, $fragment, $sock,
+				"startdump,$id,$name\n");
+			$fretOut->push($bindDump);
+		}
+	});
+</pre>
+
+		<para>
+		As described before, it checks if this is the destination client, and if there
+		is an active request with this id, then it pushes the appropriate
+		binding.
+		</para>
+
+		<para>
+		The handling of the end of transaction also gets set up in the writer
+		thread function:
+		</para>
+
+<!-- lib/Triceps/X/Tql.pm writerT modified -->
+<pre>
+	$faOut->getLabel("endDump")->makeChained("lbEndDump", undef, sub {
+		my $row = $_[1]->getRow();
+		my ($client, $id, $name, $cmd) = $row->toArray();
+		return unless ($client eq $fragment);
+
+		if ($cmd eq "qdumpsub") {
+			return unless(exists $queries{$id});
+			my $ctx = $queries{$id};
+			$fretOut->pop($ctx->{curRequest}[4]); # the binding for the dump
+			# and chain together all the following updates
+			$ctx->{curRequest}[2]->makeChained(
+				"qsub$id." . $ctx->{curRequest}[3]->getName(), undef,
+				sub {
+					# a cross-unit call
+					$_[2]->call($_[3]->adopt($_[1]));
+				},
+				$ctx->{u}, $ctx->{curRequest}[3]
+			);
+
+			&$runNextRequest($ctx);
+		} else {
+			# .. skipped the handling of dump/dumpsub
+		}
+	});
+</pre>
+
+		<para>
+		Same as the <quote>beginDump</quote>, it checks if this is the right client, and
+		if it has an outstanding dump request, then pops the binding. After the
+		dump is completed, the subscription has to be set up, so it sets up a
+		label that forwards the normal output of this table to the label
+		specified in the request. Since each query is defined in its own unit,
+		this forwarding is done as a cross-unit call.
+		</para>
+
+		<para>
+		And then the next request of this query can be started until they all are done.
+		And that's it, the end of the example. 
+		</para>
 	</sect1>
 </chapter>

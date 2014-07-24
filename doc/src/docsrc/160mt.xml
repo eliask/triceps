@@ -1385,6 +1385,12 @@ $tabtype_fundamental = $tabtype->copyFundamental(
 		In the copied table type the index <quote>second</quote> becomes primary and <quote>first</quote>
 		secondary.
 		</para>
+
+		<para>
+		Another example of the table type exporting and of the table copying is
+		shown in 
+		<xref linkend="sc_tql_join_internals" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		</para>
 	</sect1>
 
 	<sect1 id="sc_mt_files">
