@@ -125,8 +125,10 @@ See the file COPYRIGHT for the copyright notice and license information
 		model plus some small intermittent sub-models created on demand to handle
 		the user requests. These small sub-models would be created in the
 		separate units, to be destroyed when their work is done. But this is
-		a somewhat advanced usage, it will be described in detail in
-		XXXREF maybe TQL.
+		a somewhat advanced usage, more examples will be shown in
+		<xref linkend="sc_strf_units" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		The TQL implementation also does this, as described in
+		<xref linkend="ch_tql" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -1542,7 +1544,7 @@ while(&readLine) {
 		<para>
 		The multithreaded models have their own special needs for the
 		main loops. These will be discussed in 
-		XXXREF multithreaded main loop.
+		<xref linkend="sc_mt_dynamic_server" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 

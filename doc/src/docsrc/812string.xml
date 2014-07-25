@@ -59,7 +59,8 @@ extern const string &NOINDENT;
 		</indexterm>
 		<para>
 		The special constant that when passed to the printing of the Type
-		(see XXXREF),
+		(see
+		<xref linkend="sc_cpp_types" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;)
 		causes it to print without line breaks. Doesn't have any special effect
 		on Errors, there it's simply treated as an empty string.
 		</para>

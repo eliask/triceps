@@ -268,8 +268,10 @@ See the file COPYRIGHT for the copyright notice and license information
 				would be detected and will cause the App to be aborted). There are some
 				special cases when you need to import a nexus from a thread that is not
 				fully constructed yet, and it's possible, but requires more attention
-				and a special override. I'll talk about it in more detail in 
-				XXXREF.
+				and a special override of the <quote>immediate</quote> import.
+				This is described in more detail in
+				<xref linkend="sc_ref_triead_owner" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+				with the method <pre>importNexus()</pre>.
 				</para>
 				</listitem>
 			</varlistentry>
@@ -304,7 +306,8 @@ See the file COPYRIGHT for the copyright notice and license information
 				possible to create more threads after that (normally, parts of the
 				transient fragments), and until they all become ready, the App may
 				temporarily become unready again, but that's a whole separate advanced
-				topic that will be discussed in XXXREF.
+				topic that will be discussed in
+				<xref linkend="sc_mt_dynamic_server" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 				</para>
 				</listitem>
 			</varlistentry>
@@ -1780,7 +1783,7 @@ $to->readyReady();
 		raw file descriptors in the App, with the methods described in
 		<xref linkend="sc_ref_app" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
 		and
-		XXXREF TrieadOwner reference.
+		<xref linkend="sc_cpp_triead_owner" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		But dealing directly with the Perl file handles is much more convenient.
 		</para>
 	</sect1>
@@ -2658,9 +2661,9 @@ topic,text
 		</para>
 
 		<para>
-		And now a protocol from a run. It has been produced with the automated
+		And now a recorded log from a run. It has been produced with the automated
 		testing infrastructure described in
-		XXXREF.
+		<xref linkend="sc_mt_threaded_client" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

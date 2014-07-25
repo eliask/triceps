@@ -318,7 +318,7 @@ intptr_t rhOffset_;
 		For the simple single-line printouts it just appends to the result
 		string. The multi-line prints have to handle the indenting correctly,
 		as is described in
-		XXXREF printTo in index types
+		<xref linkend="sc_cpp_types" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -871,7 +871,7 @@ sc->setSeq(rh1, desired_number);
 		<para>
 		The class Rhref, a row handle reference, is similar in spirit to Rowref,
 		and is described in detail in
-		XXXREF Rhref.
+		<xref linkend="sc_cpp_rowhandle" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		Or to read the number, you do:
 		</para>
 

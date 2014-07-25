@@ -202,8 +202,8 @@ DELETE,key1,20,0
 		</para>
 
 		<para>
-		The multithreaded case in Triceps will be discussed separately
-		in XXXREF.
+		The multithreaded case in Triceps will be discussed separately in
+		<xref linkend="sc_mt_main_reorder" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

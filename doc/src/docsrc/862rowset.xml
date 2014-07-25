@@ -97,7 +97,7 @@ RowSetType *addRow(const string &rname, const_Autoref<RowType>rtype);
 		names must be unique within the set. The order of the addition matters
 		too. See the further explanation of why it does in the description of
 		the FnReturn in
-		XXXREF. 
+		<xref linkend="sc_cpp_fnreturn" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		If this method detects an error (such as duplicate
 		names), it will append the error to the internal Errors object, that
 		can be read later by <pre>getErrors()</pre>. A type with errors must not be used.

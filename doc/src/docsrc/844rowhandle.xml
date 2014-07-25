@@ -53,8 +53,8 @@ RowHandle *makeRowHandle(const Row *row) const;
 		the RowHandles. It's not a part of the RowHandle class as such, which is quite
 		dumb and only knows how to carry the bytes of the data. The smart part of the
 		RowHandle construction is contained in the API between the Table and its indexes
-		and aggregators, and will be described in 
-		XXXREF xref to 143-sortedindextype-row-handle-section-and.html XXXREF and look at aggregators.
+		and aggregators, and is outlined in 
+		<xref linkend="sc_cpp_sortidx" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<indexterm>

@@ -36,7 +36,8 @@ See the file COPYRIGHT for the copyright notice and license information
 		describing PerlTriedJoin, since it's in the internals of the Perl
 		implementation, never intended to be directly used by the application
 		developers, and if you're interested, you can always look at its source
-		code. BasicPthread is described in XXXREF.
+		code. BasicPthread is described in 
+		<xref linkend="sc_cpp_basic_pthread" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

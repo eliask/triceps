@@ -48,8 +48,9 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<para>
-		Triceps also has the exceptions (more on them in XXXREF) which also contain the
-		Errors objects inside them.
+		Triceps also has the exceptions (more on them in 
+		<xref linkend="sc_cpp_exception" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;)
+		which also contain the Errors objects inside them.
 		</para>
 
 		<indexterm>

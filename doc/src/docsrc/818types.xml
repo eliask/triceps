@@ -109,7 +109,8 @@ bool isSimple() const;
 		<para>
 		Generally, you can check the TypeId and then cast the Type pointer to
 		its subclass. All the simple types have the common base class
-		SimpleType, which will be described in XXXREF.
+		SimpleType, which is described in
+		<xref linkend="sc_cpp_types_simple" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -180,8 +181,8 @@ virtual Erref getErrors() const;
 		</indexterm>
 		<para>
 		There also are the convenience templates that do the initialization,
-		check the errors and throw an Exception on failure. They are described
-		in XXXREF Initialization.
+		check the errors and throw an Exception on failure. They are described in
+		<xref linkend="sc_cpp_init" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

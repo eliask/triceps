@@ -74,8 +74,9 @@ virtual AggregatorType *deepCopy(HoldRowTypes *holder) const;
 		and the virtual methods that invoke them. 
 		Both kinds of copies are deep but <pre>deepCopy()</pre> is even deeper,
 		copying even the row types.
-		XXXREF HoldRowTypes
-		XXXREF discussion of copy varieties
+		See 
+		<xref linkend="sc_cpp_copy" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for details.
 		</para>
 
 		<para>
@@ -1151,10 +1152,13 @@ protected:
 		<para>
 		The copy constructor and the constructor with HoldRowTypes are the
 		implementations of the virtual methods <pre>copy()</pre> and <pre>deepCopy()</pre>. The
-		<pre>deepCopy()</pre> is used in the multithreaded
-		support
-		XXXREF deepCopy
-		.
+		<pre>deepCopy()</pre> is used in the multithreaded support for passing the
+		table types through the nexus.
+		See 
+		<xref linkend="sc_cpp_copy" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		and
+		<xref linkend="sc_mt_objects" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		for details.
 		</para>
 
 		<para>

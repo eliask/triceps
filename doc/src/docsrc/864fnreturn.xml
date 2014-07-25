@@ -135,7 +135,7 @@ FnReturn *setContext(Onceref<FnContext> ctx);
 		the push or pop. They can be used to adjust the state of the streaming
 		function by pushing or popping its stack of local variables, like was
 		shown in the Perl examples in
-		XXXREF.
+		<xref linkend="sc_strf_more_recursion" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		The context may be set only until the return is initialized.
 		</para>
 

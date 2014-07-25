@@ -58,8 +58,8 @@ Autoref<TableType> tt = initializeOrThrow( (new TableType(rt1))
 		<para>
 		After a table type has been initialized, nothing can be added to it any
 		more. Just as in the Perl API, the addSubIndex() adds not its argument
-		index type object but its deep copy. 
-		XXXREF discussion of copy varieties
+		index type object but its deep copy (see more about the copy varieties in 
+		<xref linkend="sc_cpp_copy" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
 		When the table type gets initialized, these index types get tied to it.
 		</para>
 
@@ -289,9 +289,9 @@ TableType *deepCopy(HoldRowTypes *holder) const;
 		<para>
 		The HoldRowTypes object is what takes care of sharing the underlying
 		row types. To copy a bunch of objects with sharing, you create a
-		HoldRowTypes, copy the bunch, destroy the HoldRowTypes.
-		XXXREF HoldRowTypes
-		XXXREF discussion of copy varieties
+		HoldRowTypes, copy the bunch, destroy the HoldRowTypes,
+		as described in more detail in
+		<xref linkend="sc_cpp_copy" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>

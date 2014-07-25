@@ -1714,7 +1714,10 @@ $table->dumpAllIdx($indexType, $opcode);
 </pre>
 
 		<para>
-		And some more interesting examples will be forthcoming in XXXREF. 
+		And some more interesting examples will be forthcoming in
+		<xref linkend="sc_strf_units" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		and
+		<xref linkend="sc_tql_join_internals" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 	</sect1>
 
@@ -2975,7 +2978,9 @@ Followup1(n-1)
 		the tables of both the one-time and streaming varieties. The ad-hoc
 		capabilities of TQL are probably better than those of Sybase and
 		StreamBase, at least comparing to the last time I've looked at them
-		up close. TQL will be described in detail in XXXREF but right now
+		up close. TQL will be described in detail in
+		<xref linkend="ch_tql" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		but right now
 		I want to look at only one aspect of its implementation.
 		</para>
 
@@ -3333,8 +3338,11 @@ sub _tqlRead # ($ctx, @args)
 		binding pushed onto it. This means, if multiple subscriptions get set
 		up, only the last one will be getting the data. This problem gets
 		solved only in the multithreaded implementation of Tql that will
-		be discussed in XXXREF. There each query runs in its own thread,
-		and the inter-thread communications are used to subscribe to the
+		be discussed in
+		<xref linkend="sc_tql_join_internals" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
+		There each client runs in its own thread,
+		and each of its queries runs in its own unit;
+		the inter-thread communications are used to subscribe to the
 		updates.
 		</para>
 	</sect1>
