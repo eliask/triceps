@@ -744,6 +744,9 @@ $to->requestMyselfDead();
 $result = $to->nextXtray();
 </pre>
 
+		<indexterm>
+			<primary>Xtray</primary>
+		</indexterm>
 		<para>
 		Process one incoming tray from a single reader nexus (any nexus where
 		data is available, respecting the priorities). A tray essentially embodies a transaction, and <quote>X</quote>
@@ -854,6 +857,9 @@ $result = $to->nextXtrayTimeout($timeout);
 $result = $to->nextXtrayTimeLimit($deadline);
 </pre>
 
+		<indexterm>
+			<primary>now</primary>
+		</indexterm>
 		<para>
 		Similar to <pre>nextXtrayNoWait()</pre>, only if there is no data, waits until the
 		absolute deadline. The deadline value is time since epoch in

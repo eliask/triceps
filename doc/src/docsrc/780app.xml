@@ -703,6 +703,9 @@ Triceps::App::setDeadline($appOrName, $deadline_sec);
 		were created.
 		</para>
 
+		<indexterm>
+			<primary>now</primary>
+		</indexterm>
 		<para>
 		The time is represented as floating-point seconds since epoch.
 		<pre>Triceps::now()</pre> can be used to get the current time with the fractional

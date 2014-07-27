@@ -63,6 +63,24 @@ See the file COPYRIGHT for the copyright notice and license information
 		<xref linkend="sc_Rowop" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
+		<indexterm>
+			<primary>now</primary>
+		</indexterm>
+		<para>
+		The method <pre>Triceps::now()</pre> stands kind of alone. It's similar to
+		Perl <pre>time()</pre> but returns the current time as a floating point
+		number, with the fractional seconds:
+		</para>
+
+<pre>
+$time = &Triceps:now();
+</pre>
+		
+		<para>
+		This time format is used by a few Triceps methods, mostly in the
+		multithreading support.
+		</para>
+
 		<xi:include href="file:///DOCS/708unit.xml"/>
 		<xi:include href="file:///DOCS/710tabtype.xml"/>
 		<xi:include href="file:///DOCS/712idxtype.xml"/>
