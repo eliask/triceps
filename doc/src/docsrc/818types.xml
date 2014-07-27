@@ -32,7 +32,7 @@ See the file COPYRIGHT for the copyright notice and license information
 
 		<para>
 		The classes for types are generally defined in the subdirectory <pre>type/</pre>.
-		The class Type, defiined in <pre>type/Type.h</pre> is the common base class,
+		The class Type, defined in <pre>type/Type.h</pre> is the common base class,
 		inheriting from Mtarget. The types are gererally fullly constructed in one thread,
 		and then they become read-only and accessible from multiple threads.
 		</para>

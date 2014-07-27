@@ -32,6 +32,12 @@ See the file COPYRIGHT for the copyright notice and license information
 		while this section lists the available methods.
 		</para>
 
+		<para>
+		The base Index class is defined in <pre>table/Index.h</pre>, and its subclasses in
+		<pre>table/RootIndex.h</pre>, <pre>table/FifoIndex.h</pre>, <pre>table/TreeIndex.h</pre>,
+		<pre>table/TreeNestedIndex.h</pre>.
+		</para>
+
 <pre>
 const IndexType *getType() const;
 </pre>

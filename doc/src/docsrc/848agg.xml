@@ -24,6 +24,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		<para>
 		The AggregatorType is a base class from which you derive the concrete
 		aggregator types, similarly to how it's done for the index types.
+		It's defined in <pre>type/AggregatorType.h</pre>.
 		It has a chunk of functionality common for all the aggregator types and
 		the virtual functions that create the aggregator objects.
 		</para>

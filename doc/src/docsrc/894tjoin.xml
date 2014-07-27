@@ -21,7 +21,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		<para>
 		TrieadJoin is the abstract base class that tells the harvester how to
 		join a thread after it had finished. Obviously, it's present only in
-		the &Cpp; API and not in Perl.
+		the &Cpp; API and not in Perl. It's defined in <pre>app/TrieadJoin.h</pre>.
 		</para>
 
 		<indexterm>
