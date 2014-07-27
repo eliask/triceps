@@ -95,7 +95,7 @@ $resultRow = &$projectFunc($origRow1, $origRow2, ..., $origRowN);
 		<varlistentry>
 			<term><pre>filterPairs => [ @pairs ]</pre></term>
 			<listitem>
-			Reference to an array of arrays returned by filterPairs() for the
+			Reference to an array of arrays returned by <pre>filterPairs()</pre> for the
 			original rows. Obviously, each of the original rows requires
 			its own filter. The sizes of <quote>rowTypes</quote> and <quote>filterPairs</quote> arrays
 			must match.  The field names in the results must not have

@@ -78,7 +78,7 @@ virtual void clearSubclass();
 		The base class constructor is also protected, 
 		it's always constructed from a subclass.
 		You can not instantiate the base Label class because it contains an
-		abstract execute() method. 
+		abstract <pre>execute()</pre> method. 
 		</para>
 
 

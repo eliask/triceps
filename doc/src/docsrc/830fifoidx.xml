@@ -68,7 +68,7 @@ bool isReverse() const;
 		</para>
 
 		<para>
-		The equals() and match() are equivalent for the FifoIndexType, and are
+		The <pre>equals()</pre> and <pre>match()</pre> are equivalent for the FifoIndexType, and are
 		true when all the parameters are set to the same values. 
 		</para>
 	</sect1>

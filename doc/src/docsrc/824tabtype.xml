@@ -24,7 +24,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		and can be shared between the threads after it has been initialized.
 		However like RowType, it can benefit from creating a separate copy
 		for each thread, to keep the reference count changes local to one
-		CPU (see the method deepCopy() below).
+		CPU (see the method <pre>deepCopy()</pre> below).
 		</para>
 
 		<para>
@@ -52,12 +52,12 @@ Autoref<TableType> tt = initializeOrThrow( (new TableType(rt1))
 		<para>
 		In reality the index types would also be constructed as a part of this
 		long statement but for clarity they were assumed to be pre-created
-		as <i>it</i> and <i>itcopy</i>. 
+		as <pre>it</pre> and <pre>itcopy</pre>. 
 		</para>
 		
 		<para>
 		After a table type has been initialized, nothing can be added to it any
-		more. Just as in the Perl API, the addSubIndex() adds not its argument
+		more. Just as in the Perl API, the <pre>addSubIndex()</pre> adds not its argument
 		index type object but its deep copy (see more about the copy varieties in 
 		<xref linkend="sc_cpp_copy" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;).
 		When the table type gets initialized, these index types get tied to it.
@@ -66,7 +66,7 @@ Autoref<TableType> tt = initializeOrThrow( (new TableType(rt1))
 		<para>
 		Note that the operator <pre>new</pre> has to be in parenthesis to get the
 		priorities right. It's kind of annoying, so the better-looking
-		equivalent way to do it is to use the static method make():
+		equivalent way to do it is to use the static method <pre>make()</pre>:
 		</para>
 
 <pre>
@@ -104,17 +104,17 @@ void initialize();
 </pre>
 
 		<para>
-		The method initialize() is called by the initializeOrThrow() template,
+		The method <pre>initialize()</pre> is called by the <pre>initializeOrThrow()</pre> template,
 		which then checks for errors and throws an Exception if it finds any.
 		But you can call it manually instead if you wish.
 		</para>
 
 		<para>
-		The working of the addSubIndex() is such that it doesn't put its
-		<i>this</i> object into any kind of Autoref. Because of that it's able to
+		The working of the <pre>addSubIndex()</pre> is such that it doesn't put its
+		<pre>this</pre> object into any kind of Autoref. Because of that it's able to
 		pass that pointer right through to its result for chaining. It doesn't
 		check anything and can't throw any exceptions. So the TableType object
-		created by the constructor gets through the chain of addSubIndex()
+		created by the constructor gets through the chain of <pre>addSubIndex()</pre>
 		without having any counted references to it created, its reference
 		count stays at 0. Only when the result of the chain is assigned to an
 		Autoref, the first reference gets created. Obviously, this chain must
@@ -125,7 +125,7 @@ void initialize();
 
 		<para>
 		The result of initialization is void for a good reason: if you call
-		initialize() manually, you can't include it into this chain, and the
+		<pre>initialize()</pre> manually, you can't include it into this chain, and the
 		void result forces the non-chained call. Before the initialization is
 		called, the TableType object must be properly held in a counted
 		reference.  For example:
@@ -142,9 +142,9 @@ if (tt->getErrors()->hasError())
 </pre>
 
 		<para>
-		But initializeOrThrow() is smart enough to do things correctly
+		But <pre>initializeOrThrow()</pre> is smart enough to do things correctly
 		within the chained call format.
-		It saves the TableType in an Autoref, then calls initialize(),
+		It saves the TableType in an Autoref, then calls <pre>initialize()</pre>,
 		and on success returns that Autoref, never corrupting the references.
 		It involves a little more overhead but the TableType construction
 		usually happens only once at the start-up time, and thus a minor
@@ -152,7 +152,7 @@ if (tt->getErrors()->hasError())
 		</para>
 
 		<para>
-		It's safe to call initialize() multiple times, the repeated calls will
+		It's safe to call <pre>initialize()</pre> multiple times, the repeated calls will
 		simply have no effect.
 		</para>
 
@@ -207,7 +207,7 @@ if (it.isNull()) {
 </pre>
 
 		<para>
-		That special feature is that findSubIndex() in IndexType works
+		That special feature is that <pre>findSubIndex()</pre> in IndexType works
 		even on a NULL reference, simply returning NULL. So if 
 		<pre>findSubIndex("level1")</pre> returns NULL,
 		<pre>findSubIndex("level2")</pre> will simply propagate that NULL.

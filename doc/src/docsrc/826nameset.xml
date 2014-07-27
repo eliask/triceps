@@ -55,9 +55,9 @@ HashedIndexType::make(NameSet::make()->add("a")->add("e"))
 </pre>
 
 		<para>
-		The factory method make() gives the
-		more convenient operator priority than new().
-		The varieties of constructors and make() are:
+		The factory method <pre>make()</pre> gives the
+		more convenient operator priority than <pre>new()</pre>.
+		The varieties of constructors and <pre>make()</pre> are:
 		</para>
 
 <pre>

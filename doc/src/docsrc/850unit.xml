@@ -222,7 +222,7 @@ void  forgetLabel(Label *lab);
 </pre>
 
 		<para>
-		Make the unit forget a label, so on clearLabels() that label won't be
+		Make the unit forget a label, so on <pre>clearLabels()</pre> that label won't be
 		cleared. This is another dangerous low-level method, since only the
 		unit will forget about the label but the label will still keep the
 		pointer to the unit, unless it's cleared. Because of the danger, it's

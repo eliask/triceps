@@ -172,8 +172,8 @@ Autoref<IndexType> it = new SortedIndexType(new Int32SortCondition(1));
 			<xref linkend="sc_cpp_tabtype" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 			Most of the sort conditions would not have any row types in them,
 			nor anything deeper to copy than in the normal copy constructor,
-			so they don't need to bother. The base class provides the default deepCopy()
-			method that simply reverts to calling copy(), so no separate constructor
+			so they don't need to bother. The base class provides the default <pre>deepCopy()</pre>
+			method that simply reverts to calling <pre>copy()</pre>, so no separate constructor
 			is used.  If you need to define it, the typical prototype for the
 			deep-copy constructor will be:
 			</para>
@@ -228,7 +228,7 @@ MySortCondition(const MySortCondition &other, HoldRowTypes *holder);
 		<itemizedlist>
 			<listitem>
 			<para>
-			copy() copies the sort condition by calling the copy constructor,
+			<pre>copy()</pre> copies the sort condition by calling the copy constructor,
 			as shown above.  In particular, the
 			SortedIndexType constructor makes a private copy of the condition, and
 			remembers that copy, not the original.
@@ -240,11 +240,11 @@ MySortCondition(const MySortCondition &other, HoldRowTypes *holder);
 			</indexterm>
 			<listitem>
 			<para>
-			deepCopy() copies the sort condition all the way deep, as described in 
+			<pre>deepCopy()</pre> copies the sort condition all the way deep, as described in 
 			<xref linkend="sc_cpp_tabtype" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
 			by calling the deep-copy constructor. Most of the sort conditions don't
 			need to bother since they don't have any RowTypes in them, the base
-			class implements this method by calling copy(). If you need one, the
+			class implements this method by calling <pre>copy()</pre>. If you need one, the
 			typical implementation looks like:
 			</para>
 
@@ -258,14 +258,14 @@ IndexType *MySortCondition::deepCopy(HoldRowTypes *holder) const
 
 			<listitem>
 			<para>
-			tableCopy() creates a per-table instance of the copy condition,
+			<pre>tableCopy()</pre> creates a per-table instance of the copy condition,
 			by calling the table-copy constructor.
 			</para>
 			</listitem>
 		</itemizedlist>
 
 		<para>
-		The method initialize() is called at the table type initialization
+		The method <pre>initialize()</pre> is called at the table type initialization
 		time. The argument <pre>errors</pre> is an already allocated Errors object to
 		return the error messages in, <pre>tabtype</pre> is the table type where the
 		initialization is happening, and <pre>indtype</pre> is the index type that owns
@@ -294,7 +294,7 @@ intptr_t rhOffset_;
 		<pre>rt_</pre> is set to NULL on construction and the gets properly set when the
 		SortedIndexType is initialized, before it calls the initialization of the
 		sort condition. <pre>table_</pre> is also NULL to start with and gets set
-		in tableCopy(), as described above. <pre>table_</pre> can be used by the
+		in <pre>tableCopy()</pre>, as described above. <pre>table_</pre> can be used by the
 		comparison operator to report the fatal errors back to the table,
 		as described in more detail below.
 		<pre>rhOffset_</pre> is used by the more advanced sort conditions that
@@ -304,17 +304,17 @@ intptr_t rhOffset_;
 		</para>
 
 		<para>
-		equals() and match() compare two conditions for equality and match.
+		<pre>equals()</pre> and <pre>match()</pre> compare two conditions for equality and match.
 		Before they get called, the caller checks that both conditions are of
 		the same type (i.e. have the same &Cpp; typeid), so it's safe to cast the
 		second condition's pointer to our type. The easiest way to define
-		match() is to make it the same as equals(). These methods may be called
+		<pre>match()</pre> is to make it the same as <pre>equals()</pre>. These methods may be called
 		on both uninitialized and initialized conditions; if not initialized
 		then the field <pre>rt_</pre> will be NULL.
 		</para>
 
 		<para>
-		printTo() appends the printout of this index's description to a string.
+		<pre>printTo()</pre> appends the printout of this index's description to a string.
 		For the simple single-line printouts it just appends to the result
 		string. The multi-line prints have to handle the indenting correctly,
 		as is described in
@@ -322,7 +322,7 @@ intptr_t rhOffset_;
 		</para>
 
 		<para>
-		Finally, the operator() implements the comparison for <quote>Less</quote>: it gets
+		Finally, the <pre>operator()</pre> implements the comparison for <quote>Less</quote>: it gets
 		two row handles and returns true if the first one contains a row that
 		is <quote>less</quote> (i.e. goes before in the sorting order) than the second one.
 		The reason for why it's done like this is that the SortedIndexCondition
@@ -375,7 +375,7 @@ intptr_t rhOffset_;
 			<primary>sticky error</primary>
 		</indexterm>
 		<para>
-		What if operator() needs to to report an error? It has to set
+		What if <pre>operator()</pre> needs to to report an error? It has to set
 		the sticky error in the table and return false:
 		</para>
 
@@ -387,7 +387,7 @@ return false;
 </pre>
 
 		<para>
-		One more method that can be supported in the sort condition is getKey():
+		One more method that can be supported in the sort condition is <pre>getKey()</pre>:
 		</para>
 
 <pre>
@@ -397,12 +397,12 @@ virtual const NameSet *getKey() const;
 		<para>
 		The default implementation just returns NULL, thus saying that the
 		key is not available.
-		The SortedIndexType's getKey() is really just a wrapper for the
-		SortedIndexCondition's getKey().
+		The SortedIndexType's <pre>getKey()</pre> is really just a wrapper for the
+		SortedIndexCondition's <pre>getKey()</pre>.
 		</para>
 
 		<para>
-		To show getKey() and a bit more
+		To show <pre>getKey()</pre> and a bit more
 		techniques, so I've done a fairly big extension of the previous
 		example. Now it can compare multiple fields, and the fields are
 		specified by names. The only part missing from it being a general
@@ -579,7 +579,7 @@ public:
 
 		<para>
 		The printing and copying is nothing particularly new and fancy.
-		getKey() simply returns back the key. This feels a bit like an
+		<pre>getKey()</pre> simply returns back the key. This feels a bit like an
 		anti-climax, a whole big example for this little one-liner, but again,
 		that's not the only thing that this example shows.
 		</para>
@@ -800,15 +800,15 @@ Autoref<IndexType> it = new SortedIndexType(new SeqSortCondition());
 		</para>
 
 		<para>
-		The equals() and match() always return true because there is nothing
+		The <pre>equals()</pre> and <pre>match()</pre> always return true because there is nothing
 		configurable in this sort condition.
 		</para>
 
 		<para>
-		The new features start at sizeOfRhSection(). The size of each row
+		The new features start at <pre>sizeOfRhSection()</pre>. The size of each row
 		handle in a table type is the same, and is computed by asking every
 		index type in it at initialization time and adding up the totals (plus
-		alignment and some fixed amount of basic data). sizeOfRhSection() does
+		alignment and some fixed amount of basic data). <pre>sizeOfRhSection()</pre> does
 		its part by telling the caller the size of SeqRhSection.
 		</para>
 
@@ -819,9 +819,9 @@ Autoref<IndexType> it = new SortedIndexType(new SeqSortCondition());
 		as its virtual destructor. And there is no such thing as a virtual
 		constructor in &Cpp;, which gets simulated through more methods in the
 		index type. The SortedIndexType delegates most of this work to the sort
-		condition in it. The basic constructor is initRowHandleSection(), the
-		copy constructor is copyRowHandleSection(), and the destructor is
-		clearRowHandleSection().
+		condition in it. The basic constructor is <pre>initRowHandleSection()</pre>, the
+		copy constructor is <pre>copyRowHandleSection()</pre>, and the destructor is
+		<pre>clearRowHandleSection()</pre>.
 		</para>
 
 		<para>
@@ -841,12 +841,12 @@ SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
 		</para>
 
 		<para>
-		The methods getSeq() and setSeq() are not virtual, they are unique to
+		The methods <pre>getSeq()</pre> and <pre>setSeq()</pre> are not virtual, they are unique to
 		this SeqSortCondition. They allow to read the sequence from a row
 		handle or set the sequence in it. Naturally, the sequence number may be
 		changed only when the row handle is not in the table yet, or it would
 		mess up the indexing horribly. It's OK to throw the exceptions from
-		setSeq() and getSeq() since they are called directly from the user code
+		<pre>setSeq()</pre> and <pre>getSeq()</pre> since they are called directly from the user code
 		and won't confuse any Triceps code along the way.
 		</para>
 
@@ -854,9 +854,9 @@ SeqRhSection *rs = rh->get<SeqRhSection>(rhOffset_);
 		If you want to find a row handle in the table by its sequence number,
 		you start with creating a new row handle (which can even use an empty
 		row). That new row handle will have a new sequence number assigned to
-		it, but it doesn't matter, because next you call setSeq() and overwrite
+		it, but it doesn't matter, because next you call <pre>setSeq()</pre> and overwrite
 		it with your desired number. Then you use this row handle to call
-		find() or delete() on the table as usual. 
+		<pre>find()</pre> or <pre>delete()</pre> on the table as usual. 
 		</para>
 
 		<para>

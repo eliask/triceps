@@ -43,7 +43,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		The class is Errors, defined in <pre>common/Errors.h</pre>, and inheriting from
 		Starget (for single-threaded reference counting). The references to it
 		are used so often, that <pre>Autoref<Errors></pre> is defined to have its own
-		name <pre>Erref</pre> (yes, that's double <i>r</i>, not triple), as well as
+		name <pre>Erref</pre> (yes, that's double <pre>r</pre>, not triple), as well as
 		a couple of helper methods on it.
 		</para>
 
@@ -185,8 +185,8 @@ Erref checkObject()
 
 		<para>
 		No additional <b>if</b>s are necessary to check the result of
-		checkSubObject(), fAppend() contains this <b>if</b> inside it.
-		Similar to f(), the error message may be multi-line.
+		<pre>checkSubObject()</pre>, <pre>fAppend()</pre> contains this <b>if</b> inside it.
+		Similar to <pre>f()</pre>, the error message may be multi-line.
 		</para>
 
 		<para>
@@ -214,7 +214,7 @@ Erref err = Errors("error message");
 		to be filled with the messages (or not, returning an empty Errors
 		object is also possible, meaning that no errors were found, though
 		returning NULL is more efficient).
-		The argument <i>e</i> is an indicator than it contains an actual error.
+		The argument <pre>e</pre> is an indicator than it contains an actual error.
 		By default it's unset but will be set when an error message is added, or whan a nested Errors
 		object with an error in it is added.
 		</para>
@@ -237,7 +237,7 @@ void appendMsg(bool e, const string &msg);
 </pre>
 
 		<para>
-		The argument <i>e</i> shows whether the message is an error message
+		The argument <pre>e</pre> shows whether the message is an error message
 		(and it will set the error flag in Errors),
 		otherwise just a warning. 
 		There are no special per-message indications whether it's an error
@@ -248,9 +248,9 @@ void appendMsg(bool e, const string &msg);
 		</para>
 
 		<para>
-		The argument <i>msg</i> must be a single-line message, don't use a <quote>\n</quote> in it!
-		If you want to append multiple lines, call appendMsg() once per line, or
-		use appendMultiline() to append the whole multi-line message.
+		The argument <pre>msg</pre> must be a single-line message, don't use a <quote>\n</quote> in it!
+		If you want to append multiple lines, call <pre>appendMsg()</pre> once per line, or
+		use <pre>appendMultiline()</pre> to append the whole multi-line message.
 		</para>
 
 <pre>
@@ -258,7 +258,7 @@ void appendMultiline(bool e, const string &msg);
 </pre>
 
 		<para>
-		The same as appendMsg(), only it will safely break a multi-line message into
+		The same as <pre>appendMsg()</pre>, only it will safely break a multi-line message into
 		multiple single-liners and will ignore the <quote>\n</quote> at the end.
 		Inside the Errors object each line will become a separate message.
 		</para>
@@ -268,40 +268,40 @@ bool append(const string &msg, Autoref<Errors> clde);
 </pre>
 
 		<para>
-		The append() method is somewhat like Erref::fAppend() but
+		The <pre>append()</pre> method is somewhat like <pre>Erref::fAppend()</pre> but
 		different, because they represent different ages of the API.
-		When append() was written, the warnings were considered important,
+		When <pre>append()</pre> was written, the warnings were considered important,
 		and a common way to return a no-error condition was by returning
-		an Errors object with no contents. When fAppend() was written,
+		an Errors object with no contents. When <pre>fAppend()</pre> was written,
 		I've pretty much given up on the use of warnings, and the preferred
 		way to return the no-error condition had become by returning NULL.
 		</para>
 
 		<para>
-		In append() the following situations are possible:
+		In <pre>append()</pre> the following situations are possible:
 		</para>
 
 		<itemizedlist>
 			<listitem>
-			The argument <i>clde</i> is NULL or empty (that is contains no
+			The argument <pre>clde</pre> is NULL or empty (that is contains no
 			messages nor sub-objects), and the error flag in it is false. In this case
-			append() does nothing, and the message <i>msg</i> is thrown away.
+			<pre>append()</pre> does nothing, and the message <pre>msg</pre> is thrown away.
 			</listitem>
 
 			<listitem>
-			The argument <i>clde</i> is not empty but the error flag is false.
-			Both <i>msg</i> and child object will be appended to the Errors.
+			The argument <pre>clde</pre> is not empty but the error flag is false.
+			Both <pre>msg</pre> and child object will be appended to the Errors.
 			</listitem>
 
 			<listitem>
-			The argument <i>clde</i> is not empty and the error flag is true.
-			Both <i>msg</i> and child object will be appended to the Errors,
+			The argument <pre>clde</pre> is not empty and the error flag is true.
+			Both <pre>msg</pre> and child object will be appended to the Errors,
 			and the error flag will be set in it.
 			</listitem>
 
 			<listitem>
-			The argument <i>clde</i> is empty and the error flag is true.
-			The <i>msg</i> will be appended to the Errors and
+			The argument <pre>clde</pre> is empty and the error flag is true.
+			The <pre>msg</pre> will be appended to the Errors and
 			the error flag will be set in it. The child object will be thrown
 			away (it's reference-counted, so it will be freed when the last
 			reference is gone).
@@ -309,12 +309,12 @@ bool append(const string &msg, Autoref<Errors> clde);
 		</itemizedlist>
 
 		<para>
-		Just like appendMsg(), the argument <i>msg</i> must be a single-line message.
+		Just like <pre>appendMsg()</pre>, the argument <pre>msg</pre> must be a single-line message.
 		</para>
 
 
 		<para>
-		The return value of append() will be true
+		The return value of <pre>append()</pre> will be true
 		if the child element contained any data in it or an error indication
 		flag. This can be used together with another method
 		</para>
@@ -326,12 +326,12 @@ void replaceMsg(const string &msg);
 
 		<para>
 		to add a complex high-level description if a child element has reported
-		an error. By now it has become old-fashioned, and Erref::fAppend() is
-		a better choice. Before fAppend() came along, the typical way to
-		create an error message was by calling strprintf() that formats a
+		an error. By now it has become old-fashioned, and <pre>Erref::fAppend()</pre> is
+		a better choice. Before <pre>fAppend()</pre> came along, the typical way to
+		create an error message was by calling <pre>strprintf()</pre> that formats a
 		printf-like string into a &Cpp; string object. And it's kind of expensive
-		to call strprintf() in any case, even if the child returned no error.
-		So the optimization was to call append() with an empty string, and
+		to call <pre>strprintf()</pre> in any case, even if the child returned no error.
+		So the optimization was to call <pre>append()</pre> with an empty string, and
 		if it happened to actually append something, replace that empty
 		message with the real one. As the following pattern shows:
 		</para>
@@ -345,13 +345,13 @@ if (e.append("", clde)) {
 </pre>
 
 		<para>
-		The replaceMsg() replaces the string portion of the last element, which
+		The <pre>replaceMsg()</pre> replaces the string portion of the last element, which
 		owns the last added child error.
 		</para>
 
 		<para>
 		This pattern can still be used if the error message is truly
-		difficult to generate, but usually fAppend() is a better choice.
+		difficult to generate, but usually <pre>fAppend()</pre> is a better choice.
 		</para>
 
 		<para>
@@ -364,9 +364,9 @@ bool absorb(Autoref<Errors> clde);
 </pre>
 
 		<para>
-		The return value has the same meaning as with append() (but replaceMsg()
+		The return value has the same meaning as with <pre>append()</pre> (but <pre>replaceMsg()</pre>
 		can not be used with this method for anything reasonable). The argument
-		<i>clde</i> may be NULL. The error flag propagates to the parent as usual.
+		<pre>clde</pre> may be NULL. The error flag propagates to the parent as usual.
 		</para>
 
 		<para>
@@ -414,8 +414,8 @@ bool hasError();
 		error. The special convenience of these methods is that they can be
 		called on NULL pointers. Quite a few Triceps methods return a NULL
 		Erref if there was no error. In the following example, even if 
-		<i>er</i> is NULL, these calls are still safe and officially supported. 
-		But <b>not</b> er->size().
+		<pre>er</pre> is NULL, these calls are still safe and officially supported. 
+		But <b>not</b> <pre>er->size()</pre>.
 		</para>
 
 <pre>
@@ -439,15 +439,15 @@ string print(const string &indent = "", const string &subindent = "  ");
 </pre>
 
 		<para>
-		The <i>res</i> argument provides the result string to append the error messages
-		to. print() works by constructing a new string internally, calling printTo()
-		on it, and then returning it, so print() is more expensive than printTo().
+		The <pre>res</pre> argument provides the result string to append the error messages
+		to. <pre>print()</pre> works by constructing a new string internally, calling <pre>printTo()</pre>
+		on it, and then returning it, so <pre>print()</pre> is more expensive than <pre>printTo()</pre>.
 		</para>
 
 		<para>
 		The messages will be separated by the newline characters <quote>\n</quote>,
 		with the proper indentation after each of these characters.
-		The <i>indent</i> argument specifies the initial indentation, <i>subindent</i> the
+		The <pre>indent</pre> argument specifies the initial indentation, <pre>subindent</pre> the
 		additional indentation for each level. 
 		</para>
 		
@@ -455,10 +455,10 @@ string print(const string &indent = "", const string &subindent = "  ");
 		The very first line will have nothing prepended to it, it's assumed that you've
 		already done that indentation manually, or maybe you're appending to the end
 		of some ongoing line. But all the following top-level lines will have
-		the <i>indent</i> text following the <quote>\n</quote>. The nested error
-		lines will have the concatenation of <i>indent</i> and one copy of <i>subindent</i>
+		the <pre>indent</pre> text following the <quote>\n</quote>. The nested error
+		lines will have the concatenation of <pre>indent</pre> and one copy of <pre>subindent</pre>
 		in front of them after <quote>\n</quote>, the second level of nesting will have
-		an <i>indent</i> and two copies of <i>subindent</i>, and so on.
+		an <pre>indent</pre> and two copies of <pre>subindent</pre>, and so on.
 		</para>
 		
 		<para>

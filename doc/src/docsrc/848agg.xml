@@ -219,7 +219,7 @@ bool MyAggregatorType::equals(const Type *t) const
 </pre>
 
 		<para>
-		The other method that you can re-define or leave alone is printTo():
+		The other method that you can re-define or leave alone is <pre>printTo()</pre>:
 		</para>
 
 <pre>
@@ -608,7 +608,7 @@ for (RowHandle *rhit = table->firstOfGroupIdx(otherIndexType, sample); rhit != r
 </pre>
 				<para>
 				Unlike the Perl API of AggregatorContext, there are no direct
-				analogs of beginIdx() and such in the &Cpp; API. To get them in
+				analogs of <pre>beginIdx()</pre> and such in the &Cpp; API. To get them in
 				&Cpp;, you need to translate the iteration to another index type
 				through the Table (and of course, just like in Perl, you would
 				need somehow to get the reference or pointer to another index type into

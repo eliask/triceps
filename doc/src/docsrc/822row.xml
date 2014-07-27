@@ -112,18 +112,18 @@ void setNull();
 </pre>
 
 		<para>
-		If the argument <i>notNull</i> is false, the values of <i>data</i> and <i>len</i>
-		don't matter. The default constructor sets the <i>notNull</i> to false,
+		If the argument <pre>notNull</pre> is false, the values of <pre>data</pre> and <pre>len</pre>
+		don't matter. The default constructor sets the <pre>notNull</pre> to false,
 		and thus can be used to create the NULL fields.
-		setNull() is also a shortcut of setPtr() that sets the <i>notNull</i> to false
+		<pre>setNull()</pre> is also a shortcut of <pre>setPtr()</pre> that sets the <pre>notNull</pre> to false
 		and ignores the other fields. 
 		</para>
 		
 		<para>
-		The construction itself is done with the factory method RowType::makeRow(), and typically
+		The construction itself is done with the factory method <pre>RowType::makeRow()</pre>, and typically
 		the result it stored in a Rowref. Or there is a convenience constructor of Rowref
 		directly from an FdataVec.
-		It calls makeRow() internally so both forms provide the same result.
+		It calls <pre>makeRow()</pre> internally so both forms provide the same result.
 		For example:
 		</para>
 
@@ -170,9 +170,9 @@ void setFrom(const RowType *rtype, const Row *row, int nf);
 		In the example above the vector fd2 is smaller than the number of fields in the row. The
 		rest of fields are then filled with NULLs. They actually are literally
 		filled with NULLs in fd2: if the size of the argument vector for
-		makeRow() is smaller than the number of fields in the row type, the
+		<pre>makeRow()</pre> is smaller than the number of fields in the row type, the
 		vector gets extended with the NULL values before anything is done with
-		it. It's no accident that the argument of the RowType::makeRow() is not
+		it. It's no accident that the argument of the <pre>RowType::makeRow()</pre> is not
 		const, and the same applies to the Rowref constructor and assignment
 		from FdataVec:
 		</para>
@@ -194,7 +194,7 @@ class Rowref {
 		<quote>overrides</quote>: the <quote>main</quote> elements set the size and
 		initial contents of the fields while the
 		overrides copy the data fragments over that. 
-		Remember, setting the <i>data</i> argument of Fdata methods to NULL makes the elements
+		Remember, setting the <pre>data</pre> argument of Fdata methods to NULL makes the elements
 		initially set to all zeroes.
 		</para>
 
@@ -220,10 +220,10 @@ void setOverride(int nf, intptr_t off, const void *data, intptr_t len);
 </pre>
 
 		<para>
-		Here <i>nf</i> is the number (AKA index) of the field (starting from 0) whose 
-		contents is to be overridden, <i>off</i> is
+		Here <pre>nf</pre> is the number (AKA index) of the field (starting from 0) whose 
+		contents is to be overridden, <pre>off</pre> is
 		the byte offset in it where the override will start, 
-		and <i>data</i> and <i>len</i> point to the location to copy
+		and <pre>data</pre> and <pre>len</pre> point to the location to copy
 		from as usual. 
 		</para>
 		
@@ -279,7 +279,7 @@ Rowref r4(rt4,  fd4);
 		</para>
 
 		<para>
-		The second override uses the method setOverride() for the same purpose
+		The second override uses the method <pre>setOverride()</pre> for the same purpose
 		on the 4th element.
 		It sets a temporary Fdata which then gets appended (copied) to the
 		vector. 
@@ -289,17 +289,17 @@ Rowref r4(rt4,  fd4);
 		The third override shows a more involved way.
 		It copies the value from the row r1. Since there is no
 		ready method for this purpose (perhaps there should be?), it goes about
-		its way manually, setting the fields explicitly. <i>nf_</i> if the same as <i>nf</i>
-		in the methods, the field number to override. <i>off_</i> is the offset. And
-		the location and length get filled into <i>data_</i> and <i>len_</i> by getField(),
+		its way manually, setting the fields explicitly. <pre>nf_</pre> is the same as <pre>nf</pre>
+		in the methods, the field number to override. <pre>off_</pre> is the offset. And
+		the location and length get filled into <pre>data_</pre> and <pre>len_</pre> by <pre>getField()</pre>,
 		which takes the data from the row r1, field 2.
 		</para>
 
 		<para>
 		But wait, the field 2 of r1 has been set to NULL! Should not the NULL
 		indication be set in the copy as well? As it turns out, no. The NULL
-		indication (the field <i>notNull_</i> being set to false) is ignored by
-		makeRow() in the override elements. However getField() will set the
+		indication (the field <pre>notNull_</pre> being set to false) is ignored by
+		<pre>makeRow()</pre> in the override elements. However <pre>getField()</pre> will set the
 		length to 0, so nothing will get copied. The value at index 5 will be
 		left as it was initially set, which happens to be 0.
 		</para>
@@ -344,12 +344,12 @@ bool notNull_; // this field is not null (only for non-overrides)
 </pre>
 
 		<para>
-		The field <i>row_</i> has been mentioned before. It's a convenience placeholder
+		The field <pre>row_</pre> has been mentioned before. It's a convenience placeholder
 		for copying data from another row (and possibly replacing some of the
 		fields). You don't have to use it if you know that a reference to
 		the original row is kept somewhere until the construction of the new
 		row is completed. But sometimes this is difficult to do while
-		keeping the scopes straight. Then you can make <i>row_</i> refer to the
+		keeping the scopes straight. Then you can make <pre>row_</pre> refer to the
 		original row, and it's guaranteed to stay valid. Of course, if
 		you want to copy the fields from more than one original row,
 		you really have to keep the references to them in some other way.
@@ -370,7 +370,7 @@ bool isFieldNull(const Row *row, int nf) const;
 </pre>
 
 		<para>
-		Check whether a field is NULL, <i>nf</i> is the number (AKA index) of the field
+		Check whether a field is NULL, <pre>nf</pre> is the number (AKA index) of the field
 		starting from 0.
 		</para>
 
@@ -379,9 +379,9 @@ bool getField(const Row *row, int nf, const char *&ptr, intptr_t &len) const;
 </pre>
 
 		<para>
-		Get a field's data, <i>nf</i> is the number of the field starting from
+		Get a field's data, <pre>nf</pre> is the index (AKA <quote>number</quote>) of the field starting from
 		0.  The returned value will be true if the field is not NULL.  The
-		values at arguments <i>ptr</i> and <i>len</i> will be populated with
+		values at arguments <pre>ptr</pre> and <pre>len</pre> will be populated with
 		the pointer to the field's data in the row and its length information.
 		If the field is NULL, they will be set to NULL and 0.
 		</para>
@@ -405,9 +405,9 @@ if (getField(myrow, myfield, data, len)) {
 
 		<para>
 		Fortunately, the type checks will catch this usage attempt right at the
-		call of getField(). But there also are the convenience functions that
+		call of <pre>getField()</pre>. But there also are the convenience functions that
 		return the values of particular types. They are implemented over
-		getField() and take care of the alignment issue.
+		<pre>getField()</pre> and take care of the alignment issue.
 		</para>
 
 <pre>
@@ -420,11 +420,11 @@ const char *getString(const Row *row, int nf) const;
 
 		<para>
 		The convenience wrappers for getting the values of specific types.
-		The getString() returns only the pointer to the start of the
+		The <pre>getString()</pre> returns only the pointer to the start of the
 		string, not the length, expecting that you will treat it like a C
 		string and rely on the <quote>\0</quote> at the end. Obviously,
 		if a string contains <quote>\0</quote> in the middle, that would
-		not work very well, and if you care about that, use getField()
+		not work very well, and if you care about that, use <pre>getField()</pre>
 		directly instead.
 		</para>
 
@@ -443,16 +443,16 @@ if (!rt1->isFieldNull(r1, nf)) {
 </pre>
 
 		<para>
-		The field <i>pos</i> is the position in an array field. 
+		The field <pre>pos</pre> is the position in an array field. 
 		It's an array index, not a byte offset.
 		These methods don't
 		care very much about the differentiation of scalars and arrays, from
 		their standpoint a scalar is the same thing as an array of length 1.
-		So the default value <i>pos</i> = 0 works well for the scalars. For the arrays,
+		So the default value <pre>pos</pre> = 0 works well for the scalars. For the arrays,
 		if pos is beyond the end of the array, the result is the same as
 		for a NULL field. Even more so, a NULL field is considered the same 
 		thing as an array of length 0, and it's really just a specific case
-		of the general rule: for a NULL field any <i>pos</i> value is considered
+		of the general rule: for a NULL field any <pre>pos</pre> value is considered
 		to be beyond the end of the array.
 		</para>
 
@@ -488,9 +488,9 @@ void splitInto(const Row *row, FdataVec &data) const;
 		Does the first part of the copying: splits the original row into the
 		field data references which can then be modified (the Fdata entries,
 		not the data itself) to change some fields. The vector referred by
-		the <i>data</i> argument will be resized to the number of fields in this row
+		the <pre>data</pre> argument will be resized to the number of fields in this row
 		type and filled with the information. This method <b>does not</b>
-		modify <i>data.row_</i> in any way, if you want to put a reference to
+		modify <pre>data.row_</pre> in any way, if you want to put a reference to
 		the original row in there, you have to do it manually.
 		</para>
 
@@ -500,7 +500,7 @@ Row *makeRow(FdataVec &data) const;
 
 		<para>
 		Create a row from the data vector, as described above. If the size of
-		<i>data</i> is less than the number of fields in this row type, the vector
+		<pre>data</pre> is less than the number of fields in this row type, the vector
 		will be extended with the NULL fields before creating the row. If the
 		vector size is larger, the rest of fields will be treated as overrides.
 		</para>
@@ -520,9 +520,9 @@ Row *copyRow(const RowType *rtype, const Row *row) const;
 </pre>
 
 		<para>
-		Copy a row, essentially a combination of splitInto() and makeRow().
-		Here the current row type and the <i>rtype</i> argument (which is
-		the type of the argument <i>row</i>) don't have to
+		Copy a row, essentially a combination of <pre>splitInto()</pre> and <pre>makeRow()</pre>.
+		Here the current row type and the <pre>rtype</pre> argument (which is
+		the type of the argument <pre>row</pre>) don't have to
 		be completely matching, the restriction is more loose:
 		one of them has to be a matching prefix of the other.
 		In other words, one of the types may have extra fields.
@@ -536,10 +536,10 @@ static void fillFdata(FdataVec &v, int nf);
 </pre>
 
 		<para>
-		Fill an FdataVec, extending it with NULL fields to the size <i>nf</i>.
+		Fill an FdataVec, extending it with NULL fields to the size <pre>nf</pre>.
 		If the vector is of an already the same length or longer, it is left
 		unchanged. Note that this method is static. There is practically no
-		need to call it manually, makeRow() calls it for you automatically.
+		need to call it manually, <pre>makeRow()</pre> calls it for you automatically.
 		</para>
 
 <pre>
@@ -575,10 +575,10 @@ void hexdumpRow(string &dest, const Row *row, const string &indent="") const;
 
 		<para>
 		Dump the bytes of the row in a hexadecimal format, appending to the
-		destination string <i>dest</i>. This method is rarely needed in practice,
+		destination string <pre>dest</pre>. This method is rarely needed in practice,
 		only to investigate some strange data corruptions. Since the Row object
 		is opaque, the length of its data is hidden. This method finds the
-		length and then passes the data to hexdump(), described in
+		length and then passes the data to <pre>hexdump()</pre>, described in
 		<xref linkend="sc_cpp_string" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
@@ -719,7 +719,7 @@ const RowType *getType() const;
 
 		<para>
 		The usual conversion to a Row pointer and
-		the operator <pre>-></pre> on it also work automatically, and isNull()
+		the operator <pre>-></pre> on it also work automatically, and <pre>isNull()</pre>
 		checks if the Row is NULL. The operators <pre>==</pre> and <pre>!=</pre> check for the
 		equality of the Row pointer, ignoring the RowType pointer.
 		</para>

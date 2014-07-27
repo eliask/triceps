@@ -52,7 +52,7 @@ $ad = Triceps::AutoDrain::makeSharedNoWait($to);
 </pre>
 
 		<para>
-		Same as makeShared() but doesn't wait for the drain to complete before
+		Same as <pre>makeShared()</pre> but doesn't wait for the drain to complete before
 		returning. May still sleep if an exclusive drain is currently active.
 		</para>
 

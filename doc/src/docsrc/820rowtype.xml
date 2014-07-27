@@ -94,7 +94,7 @@ typedef vector<Field> FieldVec;
 
 		<para>
 		As usual for Type, the constructor arguments might not be correct, and any
-		errors will be remembered and returned with getErrors(). Don't use a
+		errors will be remembered and returned with <pre>getErrors()</pre>. Don't use a
 		type with errors (other than to read the error messages from it, and to
 		destroy it), it might cause your program to crash.
 		</para>
@@ -211,7 +211,7 @@ virtual RowType *newSameFormat(const FieldVec &fields) const;
 		<para>
 		And there is also a factory method that copies the current row type
 		together with its concrete representation (it's really a convenience
-		wrapper over newSameFormat()):
+		wrapper over <pre>newSameFormat()</pre>):
 		</para>
 
 <pre>
@@ -269,9 +269,9 @@ fields1.push_back(RowType::Field("d", Type::findSimpleType("uint8"), RowType::Fi
 		</indexterm>
 		<para>
 		If the type name is incorrect and the type is not found,
-		findSimpleType() will return NULL, which NULL will be caught later at
+		<pre>findSimpleType()</pre> will return NULL, which NULL will be caught later at
 		the row type creation times. Note that there is no automatic look-up of
-		the array types. You can't simply pass <quote>uint8[]</quote> to findSimpleType().
+		the array types. You can't simply pass <quote>uint8[]</quote> to <pre>findSimpleType()</pre>.
 		You have to break it up into the simple type name as such an the array
 		indication, like is done in <pre>perl/Triceps/RowType.xs</pre>. This would
 		probably a good thing to add to RowType::Field in the future.
@@ -309,7 +309,7 @@ Autoref<RowType> rt1 = checkOrThrow(new CompactRowType(fields1));
 		<para>
 		Don't forget to check that the constructed type has no errors, and bail
 		out if so. Throwing an Exception is a convenient way to abort with a
-		nice error message, and the template checkOrThrow() takes care of wrapping
+		nice error message, and the template <pre>checkOrThrow()</pre> takes care of wrapping
 		all the details.
 		</para>
 
@@ -367,10 +367,10 @@ const Field *find(const string &fname) const;
 </pre>
 
 		<para>
-		fields() had already been described. fieldCount() returns the count of
-		fields. findIdx() finds the index of the field by name, so that it can
-		then be looked up in the result of fields(). (Or -1 if there is no such
-		field). find() directly returns the pointer to the field by name,
+		<pre>fields()</pre> had already been described. <pre>fieldCount()</pre> returns the count of
+		fields. <pre>findIdx()</pre> finds the index of the field by name, so that it can
+		then be looked up in the result of <pre>fields()</pre>. Or -1 if there is no such
+		field. <pre>find()</pre> directly returns the pointer to the field by name,
 		combining these two actions. (Or it returns NULL if there is no such
 		field).
 		</para>

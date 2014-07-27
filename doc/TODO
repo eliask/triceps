@@ -140,14 +140,11 @@ Things that need to be done:
 * doc: in the scheduler description refer less to Coral8
 * doc: in section on topo loops add an xref to streaming functions loops
 * doc: clean up the section on unit
-* doc: the loop support in C++?
 * doc: somewhere up front, describe, what is a stock symbol etc
-* doc: wipe out all mentions of new/old error handling convention
 * doc: in the intro, what is a "model"?
 * doc: reference for all new classes in Perl
 * doc: for all Perl examples, show in the text the file that contains them
 * doc: reference for Triceps::now()
-* doc: in C++ reference, mark the code objects with <pre>, not <i> and not leave unmarked
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?

@@ -146,7 +146,7 @@ Autoref<IndexType> itsub = it->findSubIndex("xxx"); // doesn't crash, returns NU
 </pre>
 
 		<para>
-		The idea here is to allow the safe chaining of findSubIndex() for the
+		The idea here is to allow the safe chaining of <pre>findSubIndex()</pre> for the
 		look-ups of the nested types:
 		</para>
 

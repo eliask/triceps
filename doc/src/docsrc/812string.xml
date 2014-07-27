@@ -38,7 +38,7 @@ string vstrprintf(const char *fmt, va_list ap);
 </pre>
 
 		<para>
-		They are entirely similar to sprintf() and vsprintf() with the
+		They are entirely similar to <pre>sprintf()</pre> and <pre>vsprintf()</pre> with the
 		difference that they place the result of formatting into a newly
 		constructed string and return that string.
 		</para>
@@ -76,7 +76,7 @@ const string &nextindent(const string &indent, const string &subindent, string &
 
 		<variablelist>
 			<varlistentry>
-				<term><i>indent</i></term>
+				<term><pre>indent</pre></term>
 				<listitem>
 				<para>
 				indent string of the current level.
@@ -85,7 +85,7 @@ const string &nextindent(const string &indent, const string &subindent, string &
 			</varlistentry>
 
 			<varlistentry>
-				<term><i>subindent</i></term>
+				<term><pre>subindent</pre></term>
 				<listitem>
 				<para>
 				characters to append for the next indent level.
@@ -94,7 +94,7 @@ const string &nextindent(const string &indent, const string &subindent, string &
 			</varlistentry>
 
 			<varlistentry>
-				<term><i>target</i></term>
+				<term><pre>target</pre></term>
 				<listitem>
 				<para>
 				buffer to store the extended indent string.
@@ -104,13 +104,13 @@ const string &nextindent(const string &indent, const string &subindent, string &
 		</variablelist>
 
 		<para>
-		The passing of <i>target</i> as an argument allows to reuse the same string
+		The passing of <pre>target</pre> as an argument allows to reuse the same string
 		object and avoid the extra construction.
 		</para>
 
 		<para>
-		The function returns the computed reference: if <i>indent</i> was NOINDENT,
-		then reference to NOINDENT, otherwise reference to <i>target</i>. This
+		The function returns the computed reference: if <pre>indent</pre> was NOINDENT,
+		then reference to NOINDENT, otherwise reference to <pre>target</pre>. This
 		particular calling pattern is strongly tied to how things are computed
 		inside the type printing, but you're welcome to look inside it and do
 		the same for any other purpose.
@@ -122,10 +122,10 @@ void newlineTo(string &res, const string &indent);
 
 		<para>
 		Another helper function for the printing of Type, inserting a line
-		break. The <i>indent</i> argument specifies the indentation, with the special
-		handling of NOINDENT: if <i>indent</i> is NOINDENT, a single space is added,
+		break. The <pre>indent</pre> argument specifies the indentation, with the special
+		handling of NOINDENT: if <pre>indent</pre> is NOINDENT, a single space is added,
 		thus printing everything in one line; otherwise a <quote>\n</quote> and the contents
-		of <i>indent</i> are added. The <i>res</i> argument is the result string, where the
+		of <pre>indent</pre> are added. The <pre>res</pre> argument is the result string, where the
 		line break characters are added.
 		</para>
 
@@ -134,11 +134,11 @@ void hexdump(string &dest, const void *bytes, size_t n, const char *indent = "")
 </pre>
 
 		<para>
-		Print a hex dump of a sequence of bytes (at address <i>bytes</i> and of length
-		<i>n</i>), appending the dump to the destination string <i>dest</i>. The data will be
+		Print a hex dump of a sequence of bytes (at address <pre>bytes</pre> and of length
+		<pre>n</pre>), appending the dump to the destination string <pre>dest</pre>. The data will be
 		nicely broken into lines, with 16 bytes printed per line. The first
-		line is added directly to the end of the <i>dest</i> as-is,  but if <i>n</i> is over
-		16, the other lines will follow after <quote>\n</quote>. The <i>indent</i> argument allows to
+		line is added directly to the end of the <pre>dest</pre> as-is,  but if <pre>n</pre> is over
+		16, the other lines will follow after <quote>\n</quote>. The <pre>indent</pre> argument allows to
 		add indentation at the start of each following line.
 		</para>
 
@@ -168,10 +168,10 @@ const char *enum2string(const Valname *reft, int val, const char *def = "???");
 
 		<para>
 		The reference table is defined with an array of Valnames, with the
-		last element being <pre>{ -1, NULL }</pre>. Then it's passed as the argument <i>reft</i>
+		last element being <pre>{ -1, NULL }</pre>. Then it's passed as the argument <pre>reft</pre>
 		of the conversion functions which do a sequential look-up by that
-		table. If the argument is not found, string2enum() will return -1, and
-		enum2string() will return the value of the <i>def</i> argument (which may be
+		table. If the argument is not found, <pre>string2enum()</pre> will return -1, and
+		<pre>enum2string()</pre> will return the value of the <pre>def</pre> argument (which may be
 		NULL).
 		</para>
 

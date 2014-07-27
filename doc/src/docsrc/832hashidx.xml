@@ -39,15 +39,15 @@ HashedIndexType *setKey(NameSet *key);
 
 		<para>
 		The key can be read back using the parent class method
-		IndexType::getKey(). The value returned there is a
+		<pre>IndexType::getKey()</pre>. The value returned there is a
 		<pre>const NameSet*</pre>, telling you that the key NameSet must not be
 		changed afterward.
 		</para>
 
 		<para>
-		The check for equals() requires that the key fields are the same
+		The check for <pre>equals()</pre> requires that the key fields are the same
 		(not the exact same NameSet object, but its contents being the same).
-		The check for match() is more tricky and depends on whether
+		The check for <pre>match()</pre> is more tricky and depends on whether
 		the index type has been initialized. The match check of initialized types
 		is correct, while for the uninitialized types it's simplified.
 		This may lead to slightly surprising effects when the two indexes match
@@ -57,7 +57,7 @@ HashedIndexType *setKey(NameSet *key);
 		</para>
 
 		<para>
-		The simplified match() check of is the same as equals():
+		The simplified <pre>match()</pre> check is the same as <pre>equals()</pre>:
 		the list of key fields must be the same.
 		However this has a tricky effect: if two table types have matching row
 		types with different field names, and the same Hashed indexes differing

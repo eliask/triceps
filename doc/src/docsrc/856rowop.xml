@@ -32,7 +32,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		<para>
 		It has one more item that's not really visible in the Perl API, the
 		enqueueing mode, but it's semi-hidden in the &Cpp; API as well. The only
-		place where it's used is in <pre>Unit::enqueueDelayedTray().</pre> This
+		place where it's used is in <pre>Unit::enqueueDelayedTray()</pre>. This
 		allows to build a tray of rowops, each with its own enqueueing mode,
 		and then enqueue all of them appropriately in one go. This feature is
 		kind of historic and will be removed somewhere soon.

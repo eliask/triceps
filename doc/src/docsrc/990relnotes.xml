@@ -119,7 +119,7 @@ See the file COPYRIGHT for the copyright notice and license information
 			</listitem>
 
 			<listitem>
-			The &Cpp; API always throws Exceptions instead of direct abort().
+			The &Cpp; API always throws Exceptions instead of direct <pre>abort()</pre>.
 			</listitem>
 
 			<listitem>

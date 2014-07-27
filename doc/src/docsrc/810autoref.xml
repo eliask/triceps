@@ -133,7 +133,7 @@ int decref() const;
 		<para>
 		They are defined as const to allow the reference counting of even the
 		const objects, but of course the reference counter field must be mutable.
-		decref() returns the resulting counter value. When it goes down to 0,
+		<pre>decref()</pre> returns the resulting counter value. When it goes down to 0,
 		Autoref calls the destructor. 
 		</para>
 
@@ -300,7 +300,7 @@ ref2 = Autoref<T>::null(); // another way to assign NULL
 
 		<para>
 		The simple NULL usually works but there are cases with ambiguity,
-		and the static method null() helps to create the NULL of the correct
+		and the static method <pre>null()</pre> helps to create the NULL of the correct
 		type and remove that ambiguity.
 		</para>
 
@@ -348,7 +348,7 @@ ref1 != ref2
 </pre>
 
 		<para>
-		To compare them to pointers, use get(). Except for one special case:
+		To compare them to pointers, use <pre>get()</pre>. Except for one special case:
 		the comparison to NULL happens so often that a special method is
 		provided for it:
 		</para>
