@@ -604,7 +604,7 @@ $tray->push(@rowops);
 		</para>
 
 		<para>
-		I've seen the most damage done by bundling in the Coral8/Sybase
+		I've seen the most damage done by bundling in the Coral8/Sybase R4
 		scheduling, so I'll refer to it when explaining the dangers of
 		bundling.
 		</para>
@@ -668,7 +668,7 @@ F1(R1), F1(R2), F1(R3), F2(R1), F2(R2), F2(R3)
 		</indexterm>
 		<para>
 		That would not always be a problem, and even could be occasionally useful, if
-		the bundles were always created explicitly. In the reality of Coral8/Sybase scheduling,
+		the bundles were always created explicitly. In the reality of Coral8/Sybase R4 scheduling,
 		every time a statement produces multiple rows from a single one
 		(think of a join that picks multiple rows from another side), it
 		creates a bundle and messes up all the logic after it. Some logic gets

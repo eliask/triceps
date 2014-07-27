@@ -335,6 +335,28 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 		<para>
+		Let me elaborate a little on the point of <quote>dragging around all your
+		fields</quote>. Here is a typical example: you have a stream of data
+		and you want to pass through only the rows that find a match in some
+		reference table. Which is reasonable to do with something like:
+		</para>
+
+<pre>
+insert into filtered_data
+select
+	incoming_data.*
+from 
+	incoming_data as d left join reference_table as r
+	on d.key_field = r.key_field;
+</pre>
+
+		<para>
+		Only you can't write <pre>incoming_data.*</pre> in their syntax,
+		you have to list every single field of it explicitly. If the data
+		has 90 fields, that becomes quite a drag.
+		</para>
+
+		<para>
 		StreamBase does have modules with parametrizable arguments (<quote>
 		capture fields</quote>), somewhat like the &Cpp; templates. The limitation
 		is that you can say <quote>and carry any additional fields through 

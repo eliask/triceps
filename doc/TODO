@@ -134,15 +134,11 @@ Things that need to be done:
   propagate the error if timing out (see the Perl App reference, app timeout)
 * docbook: make it not access http://docbook.sourceforge.net/release/images/draft.png
 
-* doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
-* doc: update examples aggHandler1, aggHandler3 in the manual, using isNull()
-* doc: a very short explanation of stock market terms in the intro
-* doc: in the scheduler description refer less to Coral8
-* doc: in section on topo loops add an xref to streaming functions loops
 * doc: somewhere up front, describe, what is a stock symbol etc
 * doc: in the intro, what is a "model"?
 * doc: reference for all the X classes in Perl
 * doc: for all Perl examples, show in the text the file that contains them
+* doc: a better "Hello, world"
 
 App ideas:
 * queries on CSV files - already done in DBD::CSV?
