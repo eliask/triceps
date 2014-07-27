@@ -51,6 +51,8 @@ const-xs.inc
 lib/Triceps.pm
 lib/Triceps/AggregatorContext.pm
 lib/Triceps/App.pm
+lib/Triceps/Braced.pm
+lib/Triceps/Code.pm
 lib/Triceps/Collapse.pm
 lib/Triceps/Fields.pm
 lib/Triceps/JoinTwo.pm
@@ -68,7 +70,6 @@ lib/Triceps/TrieadOwner.pm
 lib/Triceps/Unit.pm
 lib/Triceps/UnitTracerPerl.pm
 lib/Triceps/UnitTracerStringName.pm
-lib/Triceps/X/Braced.pm
 lib/Triceps/X/DumbClient.pm
 lib/Triceps/X/SimpleServer.pm
 lib/Triceps/X/TestFeed.pm
@@ -81,7 +82,9 @@ t/AggregatorMt.t
 t/AggregatorType.t
 t/App.t
 t/AppFd.t
+t/Braced.t
 t/CloneSkip.t
+t/Code.t
 t/Collapse.t
 t/Fields.t
 t/Fn.t
@@ -91,6 +94,7 @@ t/JoinTwo.t
 t/Label.t
 t/LookupJoin.t
 t/Opt.t
+t/Perf.t
 t/PerlValue.t
 t/Row.t
 t/RowType.t
