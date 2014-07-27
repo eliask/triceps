@@ -27,8 +27,7 @@ See the file COPYRIGHT for the copyright notice and license information
 		</author>
 
 		<copyright>
-			<year>2011</year>
-			<year>2013</year>
+			<year>2014</year>
 			<holder>Sergey A. Babkin</holder>
 		</copyright>
 
@@ -86,6 +85,7 @@ See the file COPYRIGHT for the copyright notice and license information
 	<xi:include href="file:///DOCS/000preface.xml"/>
 	-->
 
+	<xi:include href="file:///DOCS/000preface.xml"/>
 	<xi:include href="file:///DOCS/010field.xml"/>
 	<xi:include href="file:///DOCS/020enter.xml"/>
 	<xi:include href="file:///DOCS/030build.xml"/>
