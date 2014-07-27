@@ -188,7 +188,6 @@ my $print_greeting = $hwunit->makeLabel($hw_rt, "print_greeting", undef, sub {
 	&sendf("%s!\n", join(', ', $rowop->getRow()->toArray()));
 } );
 
-setInputLines();
 $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT, 
 	$hw_rt->makeRowHash(
 		greeting => "Hello",
@@ -203,11 +202,7 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		<para>
 		What happens there? First, we import the Triceps module.
 		Then we create a Triceps execution unit. An execution unit keeps the
-		Triceps context and controls the execution for one thread. Nothing
-		really stops you from having multiple execution units in the same
-		thread.  But
-		a single execution unit must never ever be used in multiple threads.
-		It's single-threaded by design and has no synchronization in it. 
+		Triceps context and controls the execution for one logical thread.
 		</para>
 
 		<para>
@@ -256,23 +251,33 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 			<primary>label</primary>
 		</indexterm>
 		<para>
-		Then we create a label. If you look at the <quote>SQLy vs
-		procedural</quote> example in
-		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
-		you'll see that the labels are analogs of
-		streams in Coral8. And that's what they are in Triceps. Of course,
+		Then we create a label.
+		The <quote>label</quote> is the Triceps term for the
+		same kind of stream processing elements as in the other CEP systems.
+		The Coral8 term for the same concept is <quote>stream</quote>.
+		The <quote>SQLy vs procedural</quote> example in
+		<xref linkend="sc_1950s" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
+		shows why these elements are analogs of labels in the procedural programming,
+		and Triceps generally follows the procedural terminology.
+		</para>
+
+		<para>
+		Of course,
 		now, in the days of the structured programming, we don't create labels
 		for GOTOs all over the place. But we still use labels. The function
 		names are essentially labels, the loops in Perl may have labels. So a Triceps
-		label can often be seen kind of like a function definition, but so far
+		label can often be seen kind of like a function definition, but
 		only kind of. It takes a data row as a parameter and does something
 		with it. But unlike a proper function it has no way to return the
 		processed data back to the caller. It has to either pass the processed
 		data to other labels or collect it in some hardcoded data structure,
-		from which the caller can later extract it back. This means that until
-		this gets worked out better, a Triceps label is still much more like a
-		GOTO label or Coral8 stream than a proper function. Just like the
-		unit, a label may be used in only one thread.
+		from which the caller can later extract it back.
+		Thus a Triceps label is still much more like a GOTO label.
+		</para>
+
+		<para>
+		Triceps has the streaming functions too, where the caller does provide
+		the way to return the result. These are more than the ordinary labels.
 		</para>
 
 		<para>
@@ -309,10 +314,10 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		between multiple threads. On the other hand, a row operation says
 		<quote>take these data and do such and such a thing with them</quote>.
 		A row operation is a combination of a row of data, an operation code,
-		and a label that has to carry out the operation. It is confined to a
-		single thread. Inside this thread a reference to a row operation may
-		be kept and reused again and again, since the row operation object is
-		also immutable.
+		and a label that has to carry out the operation. 
+		Since the row operation object is also immutable,
+		a reference to a row operation may
+		be kept and reused again and again.
 		</para>
 
 		<indexterm>
@@ -322,9 +327,9 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 			<primary>operation code</primary>
 		</indexterm>
 		<para>
-		Triceps has the explicit operation codes, very much like Aleri (only
+		Triceps has the explicit operation codes, very much like Aleri/Sybase R5 (only
 		Aleri doesn't differentiate between a row and row operation, every row
-		there has an opcode in it, and the Sybase CEP R5 does the same). It
+		there has an opcode in it). It
 		might be just my background, but let me tell you: the CEP systems
 		without the explicit opcodes are a pain. The visible opcodes make life
 		a lot easier. However unlike Aleri, there is no UPDATE opcode. The
@@ -365,6 +370,12 @@ $hwunit->call($print_greeting->makeRowop(&Triceps::OP_INSERT,
 		method of the execution unit does exactly what its name implies: it
 		evaluates the label function right now, and returns after all its
 		processing its done.
+		</para>
+
+		<para>
+		This is a very simple example, so it does only one call. The real
+		Triceps programs get a stream of incoming data, and do the
+		calls to handle each row of it.
 		</para>
 	</sect1>
 
