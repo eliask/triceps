@@ -130,6 +130,8 @@ Things that need to be done:
 * add a C++ version of scoped FileInterrupt registration, like Perl TrackedFile
 * in nexuses with unicast capability, add the identity of a receiver facet as an address
   (string or int) and specify it in the BEGIN row as a string or int or int array field
+* in harvester, if an abort is detected, limit the waiting time for the thread exit;
+  propagate the error if timing out (see the Perl App reference, app timeout)
 * docbook: make it not access http://docbook.sourceforge.net/release/images/draft.png
 
 * doc: the SQLy way, refer to the filtering example in sc_joins_lookup_manual
@@ -145,7 +147,6 @@ Things that need to be done:
 * doc: for all C++ classes, show the header file for them
 * doc: reference for all new classes in Perl
 * doc: for all Perl examples, show in the text the file that contains them
-* doc: the ways to create an App
 * doc: reference for Triceps::now()
 * doc: in C++ reference, mark the code objects with <pre>, not <i> and not leave unmarked
 

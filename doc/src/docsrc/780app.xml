@@ -24,14 +24,13 @@ See the file COPYRIGHT for the copyright notice and license information
 		There may be multiple applications running in the same process.
 		</para>
 
-		<para>
-		The App API has two parts to it: The first part keeps track of all the
-		App instances in the program, and allows to list and find them. The
-		second part is the manipulations on a particular instance.
-		</para>
+	<sect2 id="sc_ref_app_inst_management">
+		<title>App instance management</title>
 
 		<para>
-		The global part of the API is:
+		The first part of the App API keeps track of all the
+		App instances in the program, and allows to list and find them.
+		It's global by necessity.
 		</para>
 
 <pre>
@@ -103,10 +102,10 @@ Triceps::App::drop($appName);
 		it doesn't matter a whole lot if the App is dropped by name or by
 		reference.
 		</para>
+	</sect2>
 
-		<para>
-		Now the second part of the API, working with an App instance.
-		</para>
+	<sect2 id="sc_ref_app_resolution">
+		<title>App resolution</title>
 
 		<para>
 		Many (but not all) of the App methods allow to specify the App either
@@ -122,7 +121,7 @@ Triceps::App::method($appName, ...);
 </pre>
 
 		<para>
-		Obviously, you can not use the <quote><pre>-></pre></quote> syntax with a name, and obviously
+		Obviously, you cannot use the <quote><pre>-></pre></quote> syntax with a name, and obviously
 		if the name is not in the app list, the method will confess. Below I'll
 		show the calls that allow the dual formats as
 		<pre>Triceps::App::method($appOrName, ...)</pre> but keep in mind that you can use
@@ -140,6 +139,10 @@ $app = Triceps::App::resolve($appOrName);
 		case (not the argument reference). You can use this resolver before the
 		methods that accept only a reference.
 		</para>
+	</sect2>
+
+	<sect2 id="sc_ref_app_introspection">
+		<title>App introspection</title>
 
 <pre>
 $result = $app->same($app2);
@@ -186,6 +189,36 @@ Triceps::App::declareTriead($appOrName, $trieadName);
 		alive and readable even if they get removed from the App, or even if
 		the App gets dropped.
 		</para>
+	</sect2>
+
+	<sect2 id="sc_ref_app_harvester">
+		<title>App harvester control</title>
+
+		<para>
+		The harvester logic is a necessary part of an App. It manages the
+		collection of the Trieads that died and allows the rest of the
+		program find out when the App terminates. It runs in a designated
+		thread (an OS/Perl thread, not a Triead, though in some special
+		cases it may use a thread left over from a Triead).
+		</para>
+
+		<para>
+		Normally the harvester thread runs in parallel with the rest of the
+		App logic. To wait for the App's exit, wait for the harvester's thread
+		to exit. In case of the small programs (such as the unit tests),
+		the App's <quote>main Triead</quote> may share the thread with the
+		harvester: first the main Triead method would run, and after it
+		returns, the harvester. This obviously means that the threads that
+		have exited will be sitting in the zombie state during the life
+		of the App, until the harvester has a chance to run.
+		</para>
+
+		<para>
+		The harvesting is an absolutely necessary part of the App life cycle,
+		however in most of the usage patterns (such as with <pre>Triead::startHere()</pre>
+		or <pre>App::build()</pre>) the harvester is called implicitly from the wrapping
+		library functions, so you don't need to care about it.
+		</para>
 
 <pre>
 $app->harvester(@options);
@@ -199,14 +232,7 @@ $app->harvester(@options);
 		</para>
 		 
 		<para>
-		The harvesting is an absolutely necessary part of the App life cycle,
-		however in most of the usage patterns (such as with <pre>Triead::startHere()</pre>
-		or <pre>App::build()</pre>) the harvester is called implicitly from the wrapping
-		library functions, so you don't need to care about it.
-		</para>
-
-		<para>
-		Note also that if you're running the harvester manually, you must call
+		Note that if you're running the harvester manually, you must call
 		it only after the first thread has been defined or at least declared.
 		Otherwise it will find no threads in the App, consider it dead and
 		immediately drop it.
@@ -282,15 +308,29 @@ $app->drop();
 		error handling. You can look it up in the source code in
 		<pre>cpp/app/App.cpp</pre>.
 		</para>
+	</sect2>
+
+	<sect2 id="sc_ref_app_state">
+		<title>App state management</title>
 
 <pre>
 $res = Triceps::App::isDead($appOrName);
 </pre>
 
 		<para>
-		Returns 1 if the App is dead (i.e. has no more live threads), otherwise
-		0.  Calling this method with a name for the argument is probably a bad
-		idea, since normally the harvester will drop the App quickly after it
+		Returns 1 if the App is dead (i.e. it has no alive Trieads, all the
+		defined and declared threads have exited). Right after the App is
+		created, before the first Triead is created, the App is also considered
+		dead, and becomes alive when the first Triead is declared or defined.
+		If an App becomes dead later, when all the Trieads exit, it can still
+		be brought back alive by creating more Trieads. But this is considered
+		bad practice, and will cause a race with the harvester (if you want to
+		do this, you have to make your own custom harvester).
+		</para>
+
+		<para>
+		Calling this method with a name for the argument is probably a bad
+		idea, since the App may be dropped quickly quickly after it
 		becomes dead, and you may end up with this method confessing when it
 		could not find the dropped App.
 		</para>
@@ -301,7 +341,24 @@ $res = Triceps::App::isShutdown($appOrName);
 
 		<para>
 		Returns 1 if the App has been requested to shut down, either normally
-		or by being aborted.
+		or by being aborted.  The Trieads might
+		still run for some time, until they properly detect and process the
+		shutdown, and exit. So this condition is not equivalent to Dead,
+		althouh they are connected. If any new Trieads get started, they will
+		be shut down right away and won't run.
+		</para>
+
+		<para>
+		To reiterate: if all the Trieads just exit by themselves, the App
+		becomes dead but not shut down. You could still start more Trieads and
+		bring the App back alive. If the App had been shut down, it won't
+		become immediately dead, but it will send the shutdown indication to
+		all the Trieads, and after all of them eventually exit, the App will
+		become dead too. And after shutdown there is no way to bring the App
+		back alive, since any new Trieads will be shut down right away.
+		There might be a short period until they detect the shutdown, so the
+		App could spike as alive for a short time, but then will become dead
+		again.
 		</para>
 
 <pre>
@@ -353,46 +410,6 @@ Triceps::App::abortBy($appOrName, $tname, $msg);
 		</para>
 
 <pre>
-$res = Triceps::App::isDead($appOrName);
-</pre>
-
-		<para>
-		Returns 1 if the App is dead (i.e. it has no alive Trieads, all the
-		defined and declared threads have exited). Right after the App is
-		created, before the first Triead is created, the App is also considered
-		dead, and becomes alive when the first Triead is declared or defined.
-		If an App becomes dead later, when all the Trieads exit, it can still
-		be brought back alive by creating more Trieads. But this is considered
-		bad practice, and will cause a race with the harvester (if you want to
-		do this, you have to make your own custom harvester).
-		</para>
-
-<pre>
-$res = Triceps::App::isShutdown($appOrName);
-</pre>
-
-		<para>
-		Returns 1 if the App was requested to shut down. The Trieads might
-		still run for some time, until they properly detect and process the
-		shutdown, and exit. So this condition is not equivalent to Dead,
-		althouh they are connected. If any new Trieads get started, they will
-		be shut down right away and won't run.
-		</para>
-
-		<para>
-		To reiterate: if all the Trieads just exit by themselves, the App
-		becomes dead but not shut down. You could still start more Trieads and
-		bring the App back alive. If the App has been shut down, it won't
-		become immediately dead, but it will send the shutdown indication to
-		all the Trieads, and after all of them eventually exit, the App will
-		become dead too. And after shutdown there is no way to bring the App
-		back alive, since any new Trieads will be shut down right away (OK,
-		there might be a short period until they detect the shutdown, so the
-		App could spike as alive for a short time, but then will become dead
-		again).
-		</para>
-
-<pre>
 Triceps::App::waitDead($appOrName);
 </pre>
 
@@ -429,129 +446,10 @@ Triceps::App::shutdownFragment($appOrName, $fragName);
 		<pre>shutdownFragment()</pre>. If any of the fragment's Trieads are not ready, the
 		call will confess.
 		</para>
+	</sect2>
 
-<pre>
-Triceps::App::setTimeout($appOrName, $main_to_sec);
-Triceps::App::setTimeout($appOrName, $main_to_sec, $frag_to_sec);
-</pre>
-
-		<para>
-		Set the readiness timeout. Even though Triceps is quite eager in
-		watching for deadlocks in the threads topology, it's still possible to
-		get some threads, and with them the whole program, stuck during
-		initialization. For example, if you declare a thread and then never
-		define it. These situations are very unpleasant because you start the
-		program and expect it to work but it doesn't, without any indication to
-		why. So Triceps imposes an initialization timeout. The App (and thus
-		all its threads) must become ready within the timeout after the
-		definition or declaration of the last Triead. If not, the App will be
-		aborted (and the error message will tell, which thread did not
-		initialize in time). The same applies to the creation of Trieads
-		(usually in the fragments) after the App is already running: all the
-		threads must become ready within the timeout since the last thread has
-		been defined or declared.
-		</para>
-
-		<para>
-		The default timeout is 30 seconds, or symbolically
-		</para>
-
-<pre>
-&Triceps::App::DEFAULT_TIMEOUT
-</pre>
-
-		<para>
-		(subject to possible changes of the exact value in the future).
-		</para>
-
-		<para>
-		But the timeout can be changed. Technically, there are two timeouts:
-		</para>
-
-		<itemizedlist>
-			<listitem>
-			one starts when the App is created
-			</listitem>
-
-			<listitem>
-			one restarts when any Triead is defined or declared
-			</listitem>
-		</itemizedlist>
-
-		<para>
-		For the App to be aborted, both timeouts must expire. By default they
-		are set to the same length, so only the second timeout really matters,
-		since it will always be the last one to start and last one to end. But
-		if you set the first timeout to be longer, you can allow for a longer
-		initialization period at the App start (<quote>main timeout</quote>) than later when
-		more threads are added to a running App (<quote>fragment timeout</quote>, since the
-		threads added later are typically the threads in fragments).
-		</para>
-
-		<para>
-		The one-argument form of <pre>setTimeout()</pre> sets both timeouts to the same
-		value, the two-argument form sets these timeouts separately.
-		</para>
-
-		<para>
-		The timeouts may be set only before the first thread has been created.
-		This is largely due to the historical reasons of implementation, with
-		the current implementation it should actually be safe to allow changing
-		the timeouts at a later point as well, and this limitation may be
-		removed in the future.
-		</para>
-
-		<para>
-		The timeout values are represented as integer whole seconds.
-		</para>
-
-		<para>
-		Note that it's still possible to get the initialization stuck without
-		any indication if it gets stuck in the other libraries. The reason is
-		that the harvester waits for all the threads to be joined before it
-		propagates the error, so if a thread doesn't get joined, the harvester
-		will be stuck. For example, if you open a file on NFS as a part of
-		Triead initialization, and the NFS server doesn't respond, this thread
-		will be stuck for a long time if not forever. The App will detect a
-		timeout and try to interrupt the threads but the NFS operations are
-		often not interruptable, so the harvester will wait for this thread to
-		complete this operation and exit before it propagates the error, and
-		thus the whole program will be silently stuck forever (and to avoid
-		this, the NFS mounts should be done in the <quote>soft</quote> mode but it's a
-		separate story). This will likely be improved in the future but it
-		needs more thinking about how to do it right.
-		</para>
-
-<pre>
-Triceps::App::setDeadline($appOrName, $deadline_sec);
-</pre>
-
-		<para>
-		Set the <quote>main</quote> timeout in the form of an absolute deadline. This is
-		actually closer to the way it works internally: the limit is expressed
-		as a deadline, and <pre>setTimeout()</pre> just adds the timeout value to the
-		current time to compute the deadline, while <pre>setDeadline()</pre> sets it
-		straight. Like <pre>setTimeout()</pre>, this may be called only before any Trieads
-		were created.
-		</para>
-
-		<para>
-		The time is represented as floating-point seconds since epoch.
-		<pre>Triceps::now()</pre> can be used to get the current time with the fractional
-		seconds (or if you don't care about the fractional seconds, you can
-		always use the stock <pre>time()</pre>).
-		</para>
-
-<pre>
-Triceps::App::refreshDeadline($appOrName);
-</pre>
-
-		<para>
-		Restart the <quote>fragment</quote> timeout. Same as when a Triead is defined or
-		declared, only without involving a Triead. Again, the name has to do
-		with how the time computations are done internally, computing the
-		deadline from both timeouts. This method can be called at any time.
-		</para>
+	<sect2 id="sc_ref_app_drain">
+		<title>App drain control</title>
 
 		<para>
 		The next few methods have to do with the drains. Generally, using the
@@ -690,12 +588,154 @@ $result = Triceps::App::isDrained($appOrName);
 		This call may also be used with a drain requested through a TrieadOwner
 		or through an AutoDrain.
 		</para>
+	</sect2>
+
+	<sect2 id="sc_ref_app_start_timeout">
+		<title>App start timeout</title>
 
 		<para>
-		The next section of the API deals with the passing of the file descriptors
-		between the Perl threads. The concepts are described in detail in
-		<xref linkend="sc_mt_files" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;
-		before, this is just a short reference. This API works under the hood
+		Even though Triceps is quite eager in
+		watching for deadlocks in the threads topology, it's still possible to
+		get some threads, and with them the whole program, stuck during
+		initialization. For example, if you declare a thread and then never
+		define it. These situations are very unpleasant because you start the
+		program and expect it to work but it doesn't, without any indication to
+		why. So Triceps imposes an initialization timeout. The App (and thus
+		all its threads) must become ready within the timeout after the
+		definition or declaration of the last Triead. If not, the App will be
+		aborted (and the error message will tell, which thread did not
+		initialize in time). The same applies to the creation of Trieads
+		(usually in the fragments) after the App is already running: all the
+		threads must become ready within the timeout since the last thread has
+		been defined or declared.
+		</para>
+
+<pre>
+Triceps::App::setTimeout($appOrName, $main_to_sec);
+Triceps::App::setTimeout($appOrName, $main_to_sec, $frag_to_sec);
+</pre>
+
+		<para>
+		Set the readiness timeout.
+		</para>
+
+		<para>
+		The default timeout is 30 seconds, or symbolically
+		</para>
+
+<pre>
+&Triceps::App::DEFAULT_TIMEOUT
+</pre>
+
+		<para>
+		(subject to possible changes of the exact value in the future).
+		</para>
+
+		<para>
+		But the timeout can be changed. Technically, there are two timeouts:
+		</para>
+
+		<itemizedlist>
+			<listitem>
+			one starts when the App is created
+			</listitem>
+
+			<listitem>
+			one restarts when any Triead is defined or declared
+			</listitem>
+		</itemizedlist>
+
+		<para>
+		For the App to be aborted, both timeouts must expire. By default they
+		are set to the same length, so only the second timeout really matters,
+		since it will always be the last one to start and last one to end. But
+		if you set the first timeout to be longer, you can allow for a longer
+		initialization period at the App start (<quote>main timeout</quote>) than later when
+		more threads are added to a running App (<quote>fragment timeout</quote>, since the
+		threads added later are typically the threads in fragments).
+		</para>
+
+		<para>
+		The one-argument form of <pre>setTimeout()</pre> sets both timeouts to the same
+		value, the two-argument form sets these timeouts separately.
+		</para>
+
+		<para>
+		The timeouts may be set only before the first thread has been created.
+		This is largely due to the historical reasons of implementation, with
+		the current implementation it should actually be safe to allow changing
+		the timeouts at a later point as well, and this limitation may be
+		removed in the future.
+		</para>
+
+		<para>
+		The timeout values are represented as integer whole seconds.
+		</para>
+
+		<para>
+		Note that it's still possible to get the initialization stuck without
+		any indication if it gets stuck in the other libraries. The reason is
+		that the harvester waits for all the threads to be joined before it
+		propagates the error, so if a thread doesn't get aborted properly
+		and doesn't get joined, the harvester
+		will be stuck. For example, if you open a file on NFS as a part of
+		Triead initialization, and the NFS server doesn't respond, this thread
+		will be stuck for a long time if not forever. The App will detect a
+		timeout and try to interrupt the threads but the NFS operations are
+		often not interruptable, so the harvester will wait for this thread to
+		complete this operation and exit before it propagates the error, and
+		thus the whole program will be silently stuck forever (and to avoid
+		this, the NFS mounts should be done in the <quote>soft</quote> mode but it's a
+		separate story). This will likely be improved in the future but it
+		needs more thinking about how to do it right.
+		</para>
+
+<pre>
+Triceps::App::setDeadline($appOrName, $deadline_sec);
+</pre>
+
+		<para>
+		Set the <quote>main</quote> timeout in the form of an absolute deadline. This is
+		actually closer to the way it works internally: the limit is expressed
+		as a deadline, and <pre>setTimeout()</pre> just adds the timeout value to the
+		current time to compute the deadline, while <pre>setDeadline()</pre> sets it
+		straight. Like <pre>setTimeout()</pre>, this may be called only before any Trieads
+		were created.
+		</para>
+
+		<para>
+		The time is represented as floating-point seconds since epoch.
+		<pre>Triceps::now()</pre> can be used to get the current time with the fractional
+		seconds (or if you don't care about the fractional seconds, you can
+		always use the stock <pre>time()</pre>).
+		</para>
+
+<pre>
+Triceps::App::refreshDeadline($appOrName);
+</pre>
+
+		<para>
+		Restart the <quote>fragment</quote> timeout. Same as when a Triead is defined or
+		declared, only without involving a Triead. 
+		This method can be called at any time.
+		</para>
+	</sect2>
+
+	<sect2 id="sc_ref_app_fd">
+		<title>File descriptor transfer through an App</title>
+
+		<para>
+		Perl doesn't allow the sharing or transfers of the file handles
+		between the threads. So Triceps works around this limitation
+		by passing the underlying file descriptors through the App.
+		After that the receiving Triead may construct a new file
+		handle from the descriptor.
+		</para>
+
+		<para>
+		The concepts are described in detail in
+		<xref linkend="sc_mt_files" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		this is just a short reference. This API works under the hood
 		of <pre>TrieadOwner::trackGetFile()</pre> and friends
 		but can also be used directly.
 		</para>
@@ -836,11 +876,39 @@ $file = Triceps::App::loadDupFileClass($appOrName, $name, $mode, $fileClassName)
 		IO::Handle, or at the very least must implement the method
 		<pre>new_from_fd()</pre> similar to IO::Handle.
 		</para>
+	</sect2>
 
+	<sect2 id="sc_ref_app_build">
+		<title>App build</title>
 		<para>
-		The last section of the API is the convenience methods for building and
-		starting an App.
+		There are multiple ways to build an App:
 		</para>
+
+		<itemizedlist>
+			<listitem>
+			Create the App manually with <pre>App::make()</pre>, then manually
+			create its Trieads and start the harvester. To wait for the app
+			completion, wait for the harvester thread to exit.
+			</listitem>
+
+			<listitem>
+			Create the App with <pre>App::build()</pre>, as described below.
+			The Trieads get constructed from the function that is passed as an
+			argument to <pre>build()</pre>. After running the thread construction,
+			<pre>build()</pre> runs the harvester automatically, and returns after the harvester
+			exits. 
+			</listitem>
+
+			<listitem>
+			Create the App with <pre>Triead::startHere()</pre>. It's very much like
+			<pre>App::build()</pre>, except that the code started from it is an
+			actual Triead, running in the context of the current thread. This is
+			convenient for running the short-lived Apps that get started, run for 
+			a short time and then need to return the results back to the calling
+			thread. The harvester also runs automatically by <pre>Triead::startHere()</pre>
+			but only after the the <quote>main</quote> Triead exits.
+			</listitem>
+		</itemizedlist>
 
 <pre>
 Triceps::App::build($name, $builder);
@@ -929,4 +997,5 @@ Triceps::App::globalNexus(@nexusOptions);
 		so this method can only be used from inside the builder function of
 		<pre>build()</pre>. 
 		</para>
+	</sect2>
 	</sect1>
