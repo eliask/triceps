@@ -15,7 +15,7 @@
 use ExtUtils::testlib;
 
 use Test;
-BEGIN { plan tests => 14 };
+BEGIN { plan tests => 15 };
 use Triceps;
 use Carp;
 ok(1); # If we made it this far, we're ok.
@@ -207,3 +207,42 @@ ok(&fib2(5), 5);
 
 }
 
+#########################
+# IndexType init.
+
+{
+use strict;
+
+sub initNumStr # ($tabt, $idxt, $rowt, @args)
+{
+	my ($tabt, $idxt, $rowt, @args) = @_;
+	my %def = $rowt->getdef(); # the field definition
+	my $errors; # collect as many errors as possible
+	my $t;
+
+	if ($#args != 1) {
+		$errors .= "Received " . ($#args + 1) . " arguments, must be 2.\n"
+	} else {
+		$t = $def{$args[0]};
+		if ($t !~ /int32$|int64$|float64$/) {
+			$errors .= "Field '" . $args[0] . "' is not of numeric type.\n"
+		}
+		$t = $def{$args[1]};
+		if ($t !~ /string$|uint8/) {
+			$errors .= "Field '" . $args[1] . "' is not of string type.\n"
+		}
+	}
+
+	if (defined $errors) {
+		# help with diagnostics, append the row type to the error listing
+		$errors .= "the row type is:\n";
+		$errors .= $rowt->print();
+	}
+	return $errors;
+}
+
+my $sit = Triceps::IndexType->newPerlSorted("by_a_b", \&initNumStr,
+	\&compAscDesc, "a", "b");
+
+ok(ref $sit, "Triceps::IndexType");
+}

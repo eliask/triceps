@@ -1781,7 +1781,7 @@ my $sit = Triceps::IndexType->newPerlSorted("by_a_b", undef,
 		last example can be defined as:
 		</para>
 
-<!-- XXX add to xSnippets -->
+<!-- t/xSnippets.t IndexType init -->
 <pre>
 sub initNumStr # ($tabt, $idxt, $rowt, @args)
 {

@@ -14,7 +14,6 @@ See the file COPYRIGHT for the copyright notice and license information
 
 	<sect1 id="sc_ref_unit">
 		<title>Unit and FrameMark reference</title>
-		<!-- XXXX update the description -->
 
 		<para>
 		The Unit class represents an execution unit and
@@ -38,11 +37,11 @@ See the file COPYRIGHT for the copyright notice and license information
 		</para>
 
 <pre>
-$myUnit = Triceps::Unit->new("name");
+$myUnit = Triceps::Unit->new($name);
 </pre>
 
 		<para>
-		The name argument will be used in the error messages, making easier
+		The <pre>$name</pre> argument will be used in the error messages, making easier
 		to find, which exact part of the model is having troubles.
 		By convention the name should be the same as the name of the unit variable
 		(<quote>myUnit</quote> in this case). When a Unit is created as a part of
@@ -113,7 +112,7 @@ $unit->schedule(@rowops_or_trays);
 
 		<para>
 		<pre>Call()</pre> executes the rowop immediately, <pre>fork()</pre> puts it onto the current
-		stack frame to be executed after the current label return, and <pre>schedule()</pre> 
+		stack frame to be executed after the current label returns, and <pre>schedule()</pre> 
 		puts the rowop onto the outermost frame, to be executed when the model
 		becomes idle.
 		</para>
@@ -180,7 +179,6 @@ $value = &Triceps::stringEmSafe($string);
 		it confess.
 		</para>
 
-		<!-- XXXX update the loop methods per the new logic -->
 		<para>
 		The frame marks for looping are created as their own class:
 		</para>
@@ -189,7 +187,7 @@ $value = &Triceps::stringEmSafe($string);
 			<primary>frame mark</primary>
 		</indexterm>
 <pre>
-$mark = Triceps::FrameMark->new("name");
+$mark = Triceps::FrameMark->new($name);
 </pre>
 
 		<para>
@@ -217,12 +215,15 @@ $unit->loopAt($mark, @rowops_or_trays);
 		normally before doing anything else. <pre>loopAt()</pre> is called
 		in any label inside the loop that wants to send a rowop back to the
 		start of the loop.
+		The rowop or tray arguments of the <pre>loopAt()</pre> are the same as for the
+		other enqueueing functions.
 		</para>
 
 		<para>
-		The rowop arguments of the <pre>loopAt()</pre> are the same as for the
-		other enqueueing functions, and as for other functions they may happen
-		to be trays.
+		The examples of the <pre>loopAt()</pre> operation are presented in
+		<xref linkend="sc_sched_topo_loops" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;,
+		and the details of its internal works are in 
+		<xref linkend="sc_sched_loop" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
 		<para>
@@ -320,16 +321,16 @@ $tray = $unit->makeTray(@rowops);
 		</indexterm>
 <pre>
 ($label, $frameMark) = $unit->makeLoopHead(
-	$rowType, "name", $clearSub, $execSub, @args);
+	$rowType, $name, $clearSub, $execSub, @args);
 
 ($label, $frameMark) = $unit->makeLoopAround(
-	"name", $labelFirst);
+	$name, $labelFirst);
 </pre>
 
 		<para>
 		You don't have to use them, you can create the loops manually. These
 		methods merely make it more convenient. Remember also that a procedural
-		loop is usually much easier to write and debug and read later than a
+		loop is usually much easier to write, debug, and read later than a
 		topological one.
 		</para>
 
@@ -350,8 +351,8 @@ $tray = $unit->makeTray(@rowops);
 
 		<itemizedlist>
 		<listitem>
-		The label that will be the real start of the loop, where you both
-		send a rowop to initiate the loop and to do the next iteration of the
+		The label that will be the real start of the loop, where you
+		send a rowop to both initiate the loop and to do the next iteration of the
 		loop with <pre>loopAt</pre>.
 		</listitem>
 		<listitem>
@@ -368,7 +369,7 @@ $tray = $unit->makeTray(@rowops);
 
 		<para>
 		<pre>makeLoopAround()</pre> takes the row type for its wrpper label
-		from the label that is given to it as an argument.
+		from <pre>$labelFirst</pre>.
 		</para>
 
 		<para>
@@ -422,7 +423,7 @@ $unit->drainFrame();
 </pre>
 
 		<para>
-		<pre>callNext()</pre> takes one label from the top (inner) stack frame queue and calls it.
+		<pre>callNext()</pre> takes one label from the top (innermost) stack frame queue and calls it.
 		If the inner frame happens to be empty, it does nothing. 
 		<pre>drainFrame()</pre> calls the rowops from the top stack frame until it becomes
 		empty. This includes any rowops that may be created and enqueued as
@@ -510,15 +511,25 @@ $unit->clearLabels();
 		<xref linkend="sc_ref_cycles" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;.
 		</para>
 
+		<para>
+		In case if any errors are found during the clearing of the labels
+		(such as a bug in the user code in the label clearing routine),
+		they get printed to stderr. The reason for that is that the
+		clearing is normally called from the object destructors, and
+		there just isn't any proper way to report an error from a destructor.
+		The only thing that can be done is printing them.
+		</para>
+
 <pre>
 $trigger = $unit->makeClearingTrigger();
 </pre>
 
 		<para>
 		Create a unit clearing trigger object. When this object gets destroyed
-		(at exiting the block, or when it encompassing object gets destroyed)
+		(at exiting the block, or when its encompassing object gets destroyed)
 		it will cause the clearing of the unit.
 		</para>
+
 <pre>
 $unit->setTracer($tracer); 
 $oldTracer = $unit->getTracer();
@@ -545,7 +556,9 @@ $unit->callBound([@rowops], $fnreturn => $fnbinding, ...);
 		(but the trays are not allowed in the array). The rest are the pairs
 		of FnReturns and FnBindings. The bindings are pushed onto the FnReturns,
 		then the rowops are called, then the bindings are popped. It replaces
-		a whole block that would contain an AutoFnBind and the call:
+		a whole block that would contain an AutoFnBind (described in
+		<xref linkend="sc_ref_autofnbind" xrefstyle="select: label quotedtitle pageabbrev"/>&xrsp;)
+		and the call:
 		</para>
 
 <pre>
@@ -562,13 +575,4 @@ $unit->callBound([@rowops], $fnreturn => $fnbinding, ...);
 		than a Perl block, and it's shorter to write too.
 		</para>
 
-		<para>
-		</para>
-
-		<para>
-		</para>
 	</sect1>
-
-<!-- XXXXXXXXXXXX check for any other missing methods -->
-<!-- XXXXXXXXXXXX document reference for AutoFnBind class -->
-<!-- XXXXXXXXXXXX clear() catches all errors and prints on stderr -->

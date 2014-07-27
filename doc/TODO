@@ -139,10 +139,9 @@ Things that need to be done:
 * doc: a very short explanation of stock market terms in the intro
 * doc: in the scheduler description refer less to Coral8
 * doc: in section on topo loops add an xref to streaming functions loops
-* doc: clean up the section on unit
 * doc: somewhere up front, describe, what is a stock symbol etc
 * doc: in the intro, what is a "model"?
-* doc: reference for all new classes in Perl
+* doc: reference for all the X classes in Perl
 * doc: for all Perl examples, show in the text the file that contains them
 
 App ideas:

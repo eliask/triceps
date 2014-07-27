@@ -2305,7 +2305,6 @@ sub run # ($labels)
 
 	</sect1>
 
-<!-- XXXX the exact tracing sequences will change -->
 	<sect1 id="sc_sched_tracing">
 		<title>Tracing the execution</title>
 

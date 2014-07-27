@@ -2354,6 +2354,12 @@ sub chatSockReadT
 			$owner->flushWriters();
 			Triceps::AutoDrain::makeShared($owner);
 			eval {$app->shutdown();};
+		} elsif ($data[0] eq "shutdown2") { # with the guarantee of the last word
+			my $drain = Triceps::AutoDrain::makeExclusive($owner);
+			$unit->makeHashCall($lbChat, "OP_INSERT", topic => "*", msg => "server shutting down");
+			$owner->flushWriters();
+			$drain->wait();
+			eval {$app->shutdown();};
 		} elsif ($data[0] eq "publish") {
 			$unit->makeHashCall($lbChat, "OP_INSERT", topic => $data[1], msg => $data[2]);
 			$owner->flushWriters();
@@ -2461,25 +2467,13 @@ sub chatSockReadT
 		</para>
 
 		<para>
-		If it were really important that nothing get sent after the shutdown
-		notification, it could be done like this (this is an untested fragment,
-		so it might contain typos):
+		The command <quote>shutdown2</quote> shows the implementation for
+		the case when it's really important that nothing get sent after the shutdown
+		notification.
 		</para>
 
-<!-- XXX should make a snippet? -->
-<pre>
-		} elsif ($data[0] eq "shutdown") {
-			my $drain = Triceps::AutoDrain::makeExclusive($owner);
-			$unit->makeHashCall($lbChat, "OP_INSERT", 
-				topic => "*", msg => "server shutting down");
-			$owner->flushWriters();
-			$drain->wait();
-			eval {$app->shutdown();};
-		}
-</pre>
-
 		<para>
-		This starts the drain, but this time the exclusive mode means that this
+		It starts the drain in the exclusive mode, which means that this
 		thread is excluded from the drain and allowed to send more data. When the drain is created, it
 		waits for success, so when the new message is inserted, it will be
 		after all the other messages. <pre>$drain->wait()</pre> does another wait and
